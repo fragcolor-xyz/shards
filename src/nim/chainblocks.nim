@@ -4,7 +4,6 @@
 
 import sequtils, tables, times, macros, strutils
 import fragments/[serialization]
-import fragments/math/vectors
 import images, packedjson
 
 import types
@@ -864,8 +863,7 @@ proc json2Block(json: var JsonNode): ptr CBRuntimeBlock =
     result.setParam(result, i, json2Var(paramValue))
 
 when not defined(skipCoreBlocks):
-  # include blocks/[core, stack, calculate]
-  include blocks/internal/[core]
+  include blocks/internal/[core, stack, calculate]
 
 # Swaps from compile time chain mode on/off
 macro setCompileTimeChain*(enabled: bool) = compileTimeMode = enabled.boolVal

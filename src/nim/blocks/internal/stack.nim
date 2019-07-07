@@ -9,7 +9,7 @@ when true:
   template inputTypes*(b: CBStackPush): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBStackPush): CBTypesInfo = ({ Any }, true #[seq]#)
   template activate*(b: var CBStackPush; context: CBContext; input: CBVar): CBVar =
-    context.stack.add(input)
+    context.stack.push(input)
     input
 
   chainblock CBStackPush, "Push", "Stack"
@@ -43,7 +43,7 @@ when true:
   template getParam*(b: CBStack; index: int): CBVar =
     CBVar(valueType: Int, intValue: b.index)
   template activate*(b: var CBStack; context: CBContext; input: CBVar): CBVar =
-    context.stack[context.stack.high - b.index]
+    context.stack[(context.stack.len - 1) - b.index]
 
   chainblock CBStack, "Peek", "Stack"
 
@@ -57,33 +57,33 @@ when true:
   template activate*(b: var CBStackPushUnpacked; context: CBContext; input: CBVar): CBVar =
     case input.valueType
     of Int:
-      context.stack.add(input.intValue)
+      context.stack.push(input.intValue)
     of Int2:
-      context.stack.add(input.int2Value[1])
-      context.stack.add(input.int2Value[0])
+      context.stack.push(input.int2Value[1])
+      context.stack.push(input.int2Value[0])
     of Int3:
-      context.stack.add(input.int3Value[2])
-      context.stack.add(input.int3Value[1])
-      context.stack.add(input.int3Value[0])
+      context.stack.push(input.int3Value[2])
+      context.stack.push(input.int3Value[1])
+      context.stack.push(input.int3Value[0])
     of Int4:
-      context.stack.add(input.int4Value[3])
-      context.stack.add(input.int4Value[2])
-      context.stack.add(input.int4Value[1])
-      context.stack.add(input.int4Value[0])
+      context.stack.push(input.int4Value[3])
+      context.stack.push(input.int4Value[2])
+      context.stack.push(input.int4Value[1])
+      context.stack.push(input.int4Value[0])
     of Float:
-      context.stack.add(input.floatValue)
+      context.stack.push(input.floatValue)
     of Float2:
-      context.stack.add(input.float2Value[1])
-      context.stack.add(input.float2Value[0])
+      context.stack.push(input.float2Value[1])
+      context.stack.push(input.float2Value[0])
     of Float3:
-      context.stack.add(input.float3Value[2])
-      context.stack.add(input.float3Value[1])
-      context.stack.add(input.float3Value[0])
+      context.stack.push(input.float3Value[2])
+      context.stack.push(input.float3Value[1])
+      context.stack.push(input.float3Value[0])
     of Float4:
-      context.stack.add(input.float4Value[3])
-      context.stack.add(input.float4Value[2])
-      context.stack.add(input.float4Value[1])
-      context.stack.add(input.float4Value[0])
+      context.stack.push(input.float4Value[3])
+      context.stack.push(input.float4Value[2])
+      context.stack.push(input.float4Value[1])
+      context.stack.push(input.float4Value[0])
     else:
       assert(false)
     input
@@ -103,7 +103,7 @@ when true:
         x = context.stack.pop()
         y = context.stack.pop()
       
-      (x.intValue, y.intValue).CBVar
+      (x.intValue.int64, y.intValue.int64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 
@@ -123,7 +123,7 @@ when true:
         y = context.stack.pop()
         z = context.stack.pop()
       
-      (x.intValue, y.intValue, z.intValue).CBVar
+      (x.intValue.int64, y.intValue.int64, z.intValue.int64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 
@@ -144,7 +144,7 @@ when true:
         z = context.stack.pop()
         w = context.stack.pop()
             
-      (x.intValue, y.intValue, z.intValue, w.intValue).CBVar
+      (x.intValue.int64, y.intValue.int64, z.intValue.int64, w.intValue.int64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 
@@ -163,7 +163,7 @@ when true:
         x = context.stack.pop()
         y = context.stack.pop()
       
-      (x.floatValue, y.floatValue).CBVar
+      (x.floatValue.float64, y.floatValue.float64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 
@@ -183,7 +183,7 @@ when true:
         y = context.stack.pop()
         z = context.stack.pop()
       
-      (x.floatValue, y.floatValue, z.floatValue).CBVar
+      (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 
@@ -204,7 +204,7 @@ when true:
         z = context.stack.pop()
         w = context.stack.pop()
       
-      (x.floatValue, y.floatValue, z.floatValue, w.floatValue).CBVar
+      (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64, w.floatValue.float64).CBVar
     else:
       raise newException(CBRuntimeException, "Stack imbalance")
 

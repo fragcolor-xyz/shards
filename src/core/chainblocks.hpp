@@ -372,10 +372,13 @@ struct CBRegistry
 
 struct CBContext
 {
-  CBContext(CBCoro&& sink) : restarted(false), aborted(false), continuation(std::move(sink)) {}
+  CBContext(CBCoro&& sink) : restarted(false), aborted(false), continuation(std::move(sink)) 
+  {
+    da_init(stack);
+  }
 
   std::unordered_map<std::string, CBVar> variables;
-  std::vector<CBVar> stack;
+  CBSeq stack;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -653,7 +656,14 @@ namespace chainblocks
       {
         running = looped;
         context.restarted = false; // Remove restarted flag
-        context.stack.clear(); // Reset len to 0 of the stack
+
+        // Reset len to 0 of the stack and free eventual garbage
+        for(CBVar *it = da_begin(context.stack), *end = da_end(context.stack); it != end; ++it)
+        {
+          it->free();
+        }
+        da_clear(context.stack);
+        
         thisChain->finished = false; // Reset finished flag
 
         auto runRes = runChain(thisChain, &context, thisChain->rootTickInput);
@@ -681,10 +691,8 @@ namespace chainblocks
       {
         item.second.free();
       }
-      for(auto& item : context.stack)
-      {
-        item.free();
-      }
+      // Completely free the stack
+      da_free(context.stack);
 
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;

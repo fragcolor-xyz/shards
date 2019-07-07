@@ -36,6 +36,7 @@ type
   CBContextObj* {.importcpp: "CBContext", header: "chainblocks.hpp".} = object
     aborted*: bool
     restarted*: bool
+    stack*: CBSeq
   CBContext* = ptr CBContextObj
 
   CBBoolOp* {.importcpp: "CBBoolOp", header: "chainblocks.hpp".} = enum
@@ -176,6 +177,7 @@ proc initSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("da_init", cbs).to(voi
 proc freeSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("da_free", cbs).to(void)
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
+proc pop*(cbs: var CBSeq): CBVar {.inline.} = invokeFunction("da_pop", cbs).to(CBVar)
 proc len*(tinfo: CBSeqLike): int {.inline.} = invokeFunction("da_count", tinfo).to(int)
 proc clear*(s: var CBSeqLike) {.inline.} = invokeFunction("da_clear", s).to(void)
 proc clear*(s: var CBSeq) {.inline.} = invokeFunction("da_clear", s).to(void)

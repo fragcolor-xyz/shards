@@ -5,8 +5,10 @@ when true:
     type
       typeName* = object
         operand*: CBVar
-        seqCache*: seq[CBVar]
+        seqCache*: CBSeq
 
+    template setup*(b: typename) = initSeq(b.seqCache)
+    template destroy*(b: typename) = freeSeq(b.seqCache)
     template inputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color}, true)
     template outputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color }, true)
     template parameters*(b: typeName): CBParametersInfo =
@@ -15,9 +17,9 @@ when true:
     template getParam*(b: typeName; index: int): CBVar = b.operand
     template activate*(b: typeName; context: CBContext; input: CBVar): CBVar =
       if input.valueType == Seq:
-        b.seqCache.setLen(0)
+        b.seqCache.clear()
         for val in input.seqValue:
-          b.seqCache.add op(val, b.operand)
+          b.seqCache.push(op(val, b.operand))
         b.seqCache.CBVar
       else:
         op(input, b.operand)
