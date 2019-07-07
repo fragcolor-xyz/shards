@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, CBString fullName, CBBlockConstructor constructor)
+EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const CBString fullName, CBBlockConstructor constructor)
 {
   chainblocks::registerBlock(*registry, fullName, constructor);
 }
@@ -18,9 +18,14 @@ EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32
   chainblocks::registerObjectType(*registry, vendorId, typeId, info);
 }
 
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, CBString name)
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const CBString name)
 {
   return chainblocks::contextVariable(context, name);
+}
+
+EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString errorText)
+{
+  context->error = errorText;
 }
 
 #ifdef __cplusplus

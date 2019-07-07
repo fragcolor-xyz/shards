@@ -186,7 +186,7 @@ proc `$`*(a: CBVar): string {.inline.} =
   of Float3: return $a.float3Value.toCpp[0].to(float64) & ", " & $a.float3Value.toCpp[1].to(float64) & ", " & $a.float3Value.toCpp[2].to(float64)
   of Float4: return $a.float4Value.toCpp[0].to(float64) & ", " & $a.float4Value.toCpp[1].to(float64) & ", " & $a.float4Value.toCpp[2].to(float64) & ", " & $a.float4Value.toCpp[3].to(float64)
   of String, ContextVar:
-    if a.stringValue != nil:
+    if a.stringValue.pointer != nil:
       return a.stringValue
     else:
       return ""

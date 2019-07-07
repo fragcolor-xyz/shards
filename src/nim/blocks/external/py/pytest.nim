@@ -1,4 +1,4 @@
-import ../chainblocks
+import ../../../chainblocks
 import dynlib, os
 
 putEnv("PYTHONHOME", "C:/ProgramData/Miniconda3")

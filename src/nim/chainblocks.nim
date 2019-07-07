@@ -343,7 +343,7 @@ template withChain*(chain, body: untyped): untyped =
   setCurrentChain(prev)
 
 # Make those optional
-template help*(b: auto): CBString = "".cstring
+template help*(b: auto): CBString = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
 template preChain*(b: auto; context: CBContext) = discard
@@ -516,7 +516,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
       `rtName`* = ptr `rtNameValue` 
     
     template name*(b: `blk`): string = `namespace` & `blockName`
-    proc `nameProc`*(b: `rtName`): CBString {.inline.} = (`namespace` & `blockName`).cstring
+    proc `nameProc`*(b: `rtName`): CBString {.cdecl.} = (`namespace` & `blockName`)
     proc `helpProc`*(b: `rtName`): CBString {.cdecl.} = b.sb.help()
     proc `setupProc`*(b: `rtName`) {.cdecl.} =
       {.warning[LockLevel]:off.}
@@ -626,6 +626,8 @@ when appType != "lib":
 
   proc contextVariable*(ctx: CBContext; name: CBString): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
   proc contextVariable*(ctx: CBContext; name: string): ptr CBVar {.inline.} = contextVariable(ctx, cast[CBString](name.cstring))
+
+  proc setError*(ctx: CBContext; errorTxt: CBString) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
   
 else:
   # When we are a dll with a collection of blocks!
@@ -636,6 +638,7 @@ else:
     RegisterBlkProc = proc(registry: pointer; name: CBString; initProc: CBBlockConstructor) {.cdecl.}
     RegisterTypeProc = proc(registry: pointer; vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: CBString): ptr CBVar {.cdecl.}
+    CtxSetErrorProc = proc(ctx: CBContext; errorTxt: CBString) {.cdecl.}
   
   var
     localBlocks: seq[tuple[name: string; initProc: CBBlockConstructor]]
@@ -645,6 +648,7 @@ else:
     cbRegisterBlock = cast[RegisterBlkProc](exeLib.symAddr("chainblocks_RegisterBlock"))
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
+    cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
 
   proc chainblocks_init_module(registry: pointer) {.exportc, dynlib, cdecl.} =
     for localBlock in localBlocks:
@@ -663,6 +667,8 @@ else:
 
   proc contextVariable*(ctx: CBContext; name: CBString): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc contextVariable*(ctx: CBContext; name: string): ptr CBVar {.inline.} = contextVariable(ctx, cast[CBString](name.cstring))
+
+  proc setError*(ctx: CBContext; errorTxt: CBString) = cbSetError(ctx, errorTxt)
 
 proc initChain*(): CBChain {.inline, noinit.} = CBChain.cppinit()
 proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
@@ -713,7 +719,7 @@ proc var2Json(v: CBVar): JsonNode =
       jnode["v"] = %[v.float4Value.toCpp[0].to(float64), v.float4Value.toCpp[1].to(float64), v.float4Value.toCpp[2].to(float64), v.float4Value.toCpp[3].to(float64)]
     of String, ContextVar:
       jnode["t"] = %v.valueType
-      if v.stringValue != nil:
+      if v.stringValue.pointer != nil:
         jnode["v"] = %v.stringValue
       else:
         jnode["v"] = %("")

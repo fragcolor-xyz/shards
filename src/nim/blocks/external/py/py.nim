@@ -1,8 +1,5 @@
-import ../types
-import ../chainblocks
-import ../../error
-import fragments/math/vectors
-import fragments/serialization
+import ../../../types
+import ../../../chainblocks
 import nimpy/py_types
 import nimpy/py_lib
 import nimpy
@@ -123,48 +120,45 @@ when true:
 
   template activate*(blk: var CBPython; context: CBContext; input: CBVar): CBVar =
     var res = StopChain
+    try:
+      if py == nil or pySys == nil:
+        py = pyBuiltinsModule()
+        pySys = pyImport("sys")
+        doAssert py != nil and pySys != nil
+      
+      if blk.instance == nil:
+        # Create a empty object to attach to this block instance
+        blk.instance = py.dict()
+      
+      if not blk.loaded and blk.fileName != "" and fileExists(blk.fileName):
+        # Load, but might also be in memory!
+        let (dir, name, _) = blk.fileName.splitFile()
+        pySys.path.append(dir).to(void)
+        blk.pymod = pyImport(name)
 
-    if py == nil or pySys == nil:
-      py = pyBuiltinsModule()
-      pySys = pyImport("sys")
-      doAssert py != nil and pySys != nil
-    
-    if blk.instance == nil:
-      # Create a empty object to attach to this block instance
-      blk.instance = py.dict()
-    
-    if not blk.loaded and blk.fileName != "" and fileExists(blk.fileName):
-      # Load, but might also be in memory!
-      let (dir, name, _) = blk.fileName.splitFile()
-      pySys.path.append(dir).to(void)
-      blk.pymod = pyImport(name)
-
-      # Also actually force a reload, to support changes in the module during runtime
-      let
-        majorVer = pySys.version_info[0].to(int)
-        minorVer = pySys.version_info[1].to(int)
-      if majorVer < 3:
-        py.reload(blk.pymod).to(void)
-      elif majorVer == 3 and minorVer <= 4:
-        let imp = pyImport("imp")
-        imp.reload(blk.pymod).to(void)
-      else:
-        let imp = pyImport("importlib")
-        imp.reload(blk.pymod).to(void)
-            
-      blk.loaded = true
-        
-    if blk.loaded:
-      try:
+        # Also actually force a reload, to support changes in the module during runtime
         let
-          pyinput = var2Py(input)
-          pyres = blk.pymod.callMethod("activate", blk.instance, pyinput)
-        blk.seqStorage.clear()
-        res = py2Var(pyres, blk)
-      except:
-        echo "called and failed..."
-        raise
-    
+          majorVer = pySys.version_info[0].to(int)
+          minorVer = pySys.version_info[1].to(int)
+        if majorVer < 3:
+          py.reload(blk.pymod).to(void)
+        elif majorVer == 3 and minorVer <= 4:
+          let imp = pyImport("imp")
+          imp.reload(blk.pymod).to(void)
+        else:
+          let imp = pyImport("importlib")
+          imp.reload(blk.pymod).to(void)
+              
+        blk.loaded = true
+          
+      if blk.loaded:
+          let
+            pyinput = var2Py(input)
+            pyres = blk.pymod.callMethod("activate", blk.instance, pyinput)
+          blk.seqStorage.clear()
+          res = py2Var(pyres, blk)
+    except:
+      context.setError(getCurrentExceptionMsg())
     res
 
   chainblock CBPython, "Py", "Scripting"

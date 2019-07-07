@@ -150,9 +150,9 @@ struct CBObjectInfo
 struct CBParameterInfo
 {
   CBString name;
+  CBString help;
   CBTypesInfo valueTypes;
   bool allowContext;
-  CBString help;
 };
 
 struct CBVar 
@@ -214,8 +214,8 @@ struct CBVar
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
 
-typedef CBString (__cdecl *CBNameProc)(CBRuntimeBlock*);
-typedef CBString (__cdecl *CBHelpProc)(CBRuntimeBlock*);
+typedef const CBString (__cdecl *CBNameProc)(CBRuntimeBlock*);
+typedef const CBString (__cdecl *CBHelpProc)(CBRuntimeBlock*);
 
 // Construction/Destruction
 typedef void (__cdecl *CBSetupProc)(CBRuntimeBlock*);
@@ -372,13 +372,14 @@ struct CBRegistry
 
 struct CBContext
 {
-  CBContext(CBCoro&& sink) : restarted(false), aborted(false), continuation(std::move(sink)) 
+  CBContext(CBCoro&& sink) : error(nullptr), restarted(false), aborted(false), continuation(std::move(sink))
   {
     da_init(stack);
   }
 
   std::unordered_map<std::string, CBVar> variables;
   CBSeq stack;
+  CBString error;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -435,10 +436,12 @@ extern "C" {
 
 // The runtime (even if it is an exe), will export the following, they need to be available in order to load and work with blocks collections within dlls
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, CBString fullName, CBBlockConstructor constructor);
+EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const CBString fullName, CBBlockConstructor constructor);
 EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32_t vendorId, int32_t typeId, CBObjectInfo info);
 
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, CBString name);
+
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const CBString name);
+EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString errorText);
 
 #ifdef __cplusplus
 };
@@ -470,7 +473,7 @@ namespace chainblocks
     return &GlobalRegistry;
   }
 
-  static void registerBlock(CBRegistry& registry, CBString fullName, CBBlockConstructor constructor)
+  static void registerBlock(CBRegistry& registry, const CBString fullName, CBBlockConstructor constructor)
   {
     auto cname = std::string(fullName);
     auto findIt = registry.blocksRegister.find(cname);
@@ -486,7 +489,7 @@ namespace chainblocks
     }
   }
 
-  static void registerBlock(CBString fullName, CBBlockConstructor constructor)
+  static void registerBlock(const CBString fullName, CBBlockConstructor constructor)
   {
     registerBlock(GlobalRegistry, fullName, constructor);
   }
@@ -513,13 +516,13 @@ namespace chainblocks
     registerObjectType(GlobalRegistry, vendorId, typeId, info);
   }
 
-  static CBVar* globalVariable(const char* name)
+  static CBVar* globalVariable(const CBString name)
   {
     CBVar& v = GlobalVariables[name];
     return &v;
   }
 
-  static bool hasGlobalVariable(const char* name)
+  static bool hasGlobalVariable(const CBString name)
   {
     auto findIt = GlobalVariables.find(name);
     if(findIt == GlobalVariables.end())
@@ -527,13 +530,13 @@ namespace chainblocks
     return true;
   }
 
-  static CBVar* contextVariable(CBContext* ctx, const char* name)
+  static CBVar* contextVariable(CBContext* ctx, const CBString name)
   {
     CBVar& v = ctx->variables[name];
     return &v;
   }
 
-  static CBRuntimeBlock* createBlock(const char* name)
+  static CBRuntimeBlock* createBlock(const CBString name)
   {
     auto it = GlobalRegistry.blocksRegister.find(name);
     if(it == GlobalRegistry.blocksRegister.end())
@@ -562,12 +565,16 @@ namespace chainblocks
       catch(const std::exception& e)
       {
         std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+        if(context->error)
+          std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";
         return { false, {} };
       }
       catch(...)
       {
         std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+        if(context->error)
+          std::cerr << "Last error: " << std::string(context->error) << "\n";
         return { false, {} };
       }
     }
@@ -581,12 +588,16 @@ namespace chainblocks
       catch(const std::exception& e)\
       {\
         std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+        if(context->error)\
+          std::cerr << "Last error: " << std::string(context->error) << "\n";\
         std::cerr << e.what() << "\n";\
         return { false, previousOutput };\
       }\
       catch(...)\
       {\
         std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+        if(context->error)\
+          std::cerr << "Last error: " << std::string(context->error) << "\n";\
         return { false, previousOutput };\
       }\
     }
@@ -614,6 +625,9 @@ namespace chainblocks
             }
             case Stop:
             {
+              // Print errors if any, we might have stopped because of some error!
+              if(context->error)
+                std::cerr << "Last error: " << std::string(context->error) << "\n";
               runChainPOSTCHAIN
               return { false, previousOutput };
             }
@@ -623,6 +637,8 @@ namespace chainblocks
       catch(const std::exception& e)
       {
         std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
+        if(context->error)
+          std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";;
         runChainPOSTCHAIN
         return { false, previousOutput };
@@ -630,6 +646,8 @@ namespace chainblocks
       catch(...)
       {
         std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
+        if(context->error)
+          std::cerr << "Last error: " << std::string(context->error) << "\n";
         runChainPOSTCHAIN
         return { false, previousOutput };
       }
@@ -691,6 +709,7 @@ namespace chainblocks
       {
         item.second.free();
       }
+
       // Completely free the stack
       da_free(context.stack);
 

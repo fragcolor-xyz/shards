@@ -4,4 +4,4 @@ def activate(self, input):
   else:
     self["i"] = 0
   # 12 = String type
-  return (12, input + " world " + str(self["i"]))
+  return (11, input + " world " + str(self["i"]))

@@ -26,7 +26,7 @@ type
   CBColor* {.importcpp: "CBColor", header: "chainblocks.hpp".} = object
     r*,g*,b*,a*: uint8
   CBPointer* {.importcpp: "CBPointer", header: "chainblocks.hpp".} = pointer
-  CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = pointer
+  CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = distinct pointer
   CBSeq* {.importcpp: "CBSeq", header: "chainblocks.hpp".} = object
 
   CBChain* {.importcpp: "CBChain", header: "chainblocks.hpp".} = object
@@ -207,3 +207,4 @@ proc freeString*(cbStr: CBString) {.inline.} =
   invokeFunction("gb_free_string", cbStr).to(void)
 proc setString*(cbStr: CBString; s: string): CBString {.inline.} = invokeFunction("gb_set_string", cbStr, s.cstring).to(CBString)
 converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
+converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
