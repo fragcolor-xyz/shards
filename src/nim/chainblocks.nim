@@ -371,15 +371,27 @@ proc hasGlobalVariable*(name: string): bool {.inline.} =
   let cstr = CBString.cppinit(name)
   hasGlobalVariable(cstr)
 
-proc start*(chain: ptr CBChain; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
+proc startInternal(chain: ptr CBChain; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
+proc start*(chain: ptr CBChain; loop: bool = false) {.inline.} =
+  var frame = getFrameState()
+  startInternal(chain, loop)
+  setFrameState(frame)
 proc start*(chain: var CBChain; loop: bool = false) {.inline.} =
   var chainptr = addr chain
   chainptr.start(loop)
-proc tick*(chain: ptr CBChain; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "chainblocks.hpp".}
+proc tickInternal(chain: ptr CBChain; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "chainblocks.hpp".}
+proc tick*(chain: ptr CBChain; rootInput: CBVar = Empty) {.inline.} =
+  var frame = getFrameState()
+  tickInternal(chain, rootInput)
+  setFrameState(frame)
 proc tick*(chain: var CBChain; rootInput: CBVar = Empty) {.inline.} =
   var chainptr = addr chain
   chainptr.tick(rootInput)
-proc stop*(chain: ptr CBChain): CBVar {.importcpp: "chainblocks::stop(#)", header: "chainblocks.hpp".}
+proc stopInternal(chain: ptr CBChain): CBVar {.importcpp: "chainblocks::stop(#)", header: "chainblocks.hpp".}
+proc stop*(chain: ptr CBChain): CBVar {.inline.} =
+  var frame = getFrameState()
+  result = stopInternal(chain)
+  setFrameState(frame)
 proc stop*(chain: var CBChain): CBVar {.inline.} =
   var chainptr = addr chain
   chainptr.stop()
@@ -1091,13 +1103,9 @@ when isMainModule:
     chain1.start(true)
     for i in 0..3:
       echo "Iteration ", i
-      var frame = getFrameState()
       chain1.tick()
-      setFrameState(frame)
       sleep(500)
-    var frame = getFrameState()
     discard chain1.stop()
-    setFrameState(frame)
     echo "Stopped"
     chain1.tick() # should do nothing
     echo "Done"
@@ -1124,26 +1132,17 @@ when isMainModule:
     ToString()
     Log()
     
-    frame = getFrameState()
     mainChain.start(true)
-    setFrameState(frame)
     for i in 0..10:
       var idx = i.CBVar
-      var frame = getFrameState()
       mainChain.tick(idx)
-      setFrameState(frame)
     
     discard mainChain.stop()
 
-    frame = getFrameState()
     mainChain.start(true)
-    setFrameState(frame)
     for i in 0..10:
       var idx = i.CBVar
-      var frame = getFrameState()
-      mainChain.tick(idx)
-      setFrameState(frame)
-    
+      mainChain.tick(idx)    
 
     # compileTimeChain:
     #   Msg "Hello"
