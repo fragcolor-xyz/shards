@@ -657,76 +657,76 @@ when true:
     let maxLen = blk.imgCache.width * blk.imgCache.height * blk.imgCache.channels
 
     if input.valueType != Seq:
-      raise newException(CBRuntimeException, "ToImage always expects a sequence.")
-    
-    var index = 0
-    for i in 0..min(maxLen - 1, input.seqValue.len - 1):
-      let val = input.seqValue[i]
-      case val.valueType
-      of Float:
-        blk.imgCache.data[index] = val.floatValue.clamp(0, 255).uint8
-        inc index
-      of Float2:
-        blk.imgCache.data[index] = val.float2Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.float2Value[1].clamp(0, 255).uint8
-        inc index
-      of Float3:
-        blk.imgCache.data[index] = val.float3Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.float3Value[1].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.float3Value[2].clamp(0, 255).uint8
-        inc index
-      of Float4:
-        blk.imgCache.data[index] = val.float4Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.float4Value[1].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.float4Value[2].clamp(0, 255).uint8
-        inc index
-        if blk.imgCache.channels > 3:
-          blk.imgCache.data[index] = val.float4Value[3].clamp(0, 255).uint8
+      halt(context, "ToImage always expects a sequence.")
+    else:
+      var index = 0
+      for i in 0..min(maxLen - 1, input.seqValue.len - 1):
+        let val = input.seqValue[i]
+        case val.valueType
+        of Float:
+          blk.imgCache.data[index] = val.floatValue.clamp(0, 255).uint8
           inc index
-      of Int:
-        blk.imgCache.data[index] = val.intValue.clamp(0, 255).uint8
-        inc index
-      of Int2:
-        blk.imgCache.data[index] = val.int2Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.int2Value[1].clamp(0, 255).uint8
-        inc index
-      of Int3:
-        blk.imgCache.data[index] = val.int3Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.int3Value[1].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.int3Value[2].clamp(0, 255).uint8
-        inc index
-      of Int4:
-        blk.imgCache.data[index] = val.int4Value[0].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.int4Value[1].clamp(0, 255).uint8
-        inc index
-        blk.imgCache.data[index] = val.int4Value[2].clamp(0, 255).uint8
-        inc index
-        if blk.imgCache.channels > 3:
-          blk.imgCache.data[index] = val.int4Value[3].clamp(0, 255).uint8
+        of Float2:
+          blk.imgCache.data[index] = val.float2Value[0].clamp(0, 255).uint8
           inc index
-      of Color:
-        blk.imgCache.data[index] = val.colorValue.r
-        inc index
-        blk.imgCache.data[index] = val.colorValue.g
-        inc index
-        blk.imgCache.data[index] = val.colorValue.b
-        inc index
-        if blk.imgCache.channels > 3:
-          blk.imgCache.data[index] = val.colorValue.a
+          blk.imgCache.data[index] = val.float2Value[1].clamp(0, 255).uint8
           inc index
-      else:
-        assert(false)
+        of Float3:
+          blk.imgCache.data[index] = val.float3Value[0].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.float3Value[1].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.float3Value[2].clamp(0, 255).uint8
+          inc index
+        of Float4:
+          blk.imgCache.data[index] = val.float4Value[0].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.float4Value[1].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.float4Value[2].clamp(0, 255).uint8
+          inc index
+          if blk.imgCache.channels > 3:
+            blk.imgCache.data[index] = val.float4Value[3].clamp(0, 255).uint8
+            inc index
+        of Int:
+          blk.imgCache.data[index] = val.intValue.clamp(0, 255).uint8
+          inc index
+        of Int2:
+          blk.imgCache.data[index] = val.int2Value[0].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.int2Value[1].clamp(0, 255).uint8
+          inc index
+        of Int3:
+          blk.imgCache.data[index] = val.int3Value[0].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.int3Value[1].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.int3Value[2].clamp(0, 255).uint8
+          inc index
+        of Int4:
+          blk.imgCache.data[index] = val.int4Value[0].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.int4Value[1].clamp(0, 255).uint8
+          inc index
+          blk.imgCache.data[index] = val.int4Value[2].clamp(0, 255).uint8
+          inc index
+          if blk.imgCache.channels > 3:
+            blk.imgCache.data[index] = val.int4Value[3].clamp(0, 255).uint8
+            inc index
+        of Color:
+          blk.imgCache.data[index] = val.colorValue.r
+          inc index
+          blk.imgCache.data[index] = val.colorValue.g
+          inc index
+          blk.imgCache.data[index] = val.colorValue.b
+          inc index
+          if blk.imgCache.channels > 3:
+            blk.imgCache.data[index] = val.colorValue.a
+            inc index
+        else:
+          assert(false)
 
-    CBVar(valueType: CBType.Image, imageValue: blk.imgCache)
+      CBVar(valueType: CBType.Image, imageValue: blk.imgCache)
 
   chainblock CBToImage, "ToImage"
 

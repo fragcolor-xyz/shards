@@ -143,8 +143,6 @@ type
     activate*: proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
     cleanup*: proc(b: ptr CBRuntimeBlock) {.cdecl.}
 
-  CBRuntimeException* = object of Exception
-
   CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBRuntimeBlock {.cdecl.}
 
   CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo

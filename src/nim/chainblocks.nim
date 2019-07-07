@@ -704,6 +704,10 @@ template pause*(secs: float): untyped =
   if suspendRes.chainState != Continue:
     return suspendRes
 
+template halt*(context: CBContext; txt: string): untyped =
+  context.setError(txt)
+  StopChain
+
 proc block2Json*(blk: ptr CBRuntimeBlock): JsonNode
 
 proc var2Json(v: CBVar): JsonNode =

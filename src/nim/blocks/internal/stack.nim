@@ -25,7 +25,7 @@ when true:
     if context.stack.len >= 1:
       context.stack.pop()
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPop, "Pop", "Stack"
 
@@ -105,7 +105,7 @@ when true:
       
       (x.intValue.int64, y.intValue.int64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopInt2, "PopInt2", "Stack"
 
@@ -125,7 +125,7 @@ when true:
       
       (x.intValue.int64, y.intValue.int64, z.intValue.int64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopInt3, "PopInt3", "Stack"
 
@@ -146,7 +146,7 @@ when true:
             
       (x.intValue.int64, y.intValue.int64, z.intValue.int64, w.intValue.int64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopInt4, "PopInt4", "Stack"
 
@@ -165,7 +165,7 @@ when true:
       
       (x.floatValue.float64, y.floatValue.float64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopFloat2, "PopFloat2", "Stack"
 
@@ -185,7 +185,7 @@ when true:
       
       (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopFloat3, "PopFloat3", "Stack"
 
@@ -206,7 +206,7 @@ when true:
       
       (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64, w.floatValue.float64).CBVar
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock CBStackPopFloat4, "PopFloat4", "Stack"
 
@@ -221,7 +221,7 @@ template stackBinaryOp(typeName: untyped, name: string, op: untyped): untyped =
       let x = context.stack.pop()
       op(input, x)
     else:
-      raise newException(CBRuntimeException, "Stack imbalance")
+      halt(context, "Stack imbalance")
 
   chainblock typeName, name, "Stack"
 

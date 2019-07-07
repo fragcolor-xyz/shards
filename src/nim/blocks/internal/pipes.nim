@@ -81,7 +81,7 @@ when true:
             zeroMem(addr b.overlapped, sizeof(W32OVERLAPPED))
             global.ConnectNamedPipe(b.pipe.namedPipe, addr b.overlapped).to(void)
           else:
-            raise newException(CBRuntimeException, "Failed to create pipe, maybe already exists.")
+            halt(context, "Failed to create pipe, maybe already exists.")
       
       if b.pipe.namedPipe.int != invalidHandle.int: # Compiler will optimize this, keep it sane in terms of flow
         if not b.connected:

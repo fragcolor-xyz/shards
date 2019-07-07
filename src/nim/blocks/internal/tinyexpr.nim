@@ -34,7 +34,7 @@ when true:
       var error: cint
       b.expression = te_compile(b.expressionString, addr b.variablesInternal[0], b.variablesInternal.len.cint, addr error)
       if error != 0:
-        raise newException(CBRuntimeException, "Syntax error in math expression.")
+        halt(context, "Syntax error in math expression.")
   template inputTypes*(b: CBExpr): CBTypesInfo = { Float }
   template outputTypes*(b: CBExpr): CBTypesInfo = { Float }
   template parameters*(b: CBExpr): CBParametersInfo =
@@ -92,7 +92,7 @@ when true:
             b.variablesStorage[i] = v.floatValue
       te_eval(b.expression)
     else:
-      raise newException(CBRuntimeException, "Math expression is not valid!")
+      halt(context, "Math expression is not valid!")
 
   chainblock CBExpr, "Expr", "Math"
 
