@@ -477,6 +477,17 @@ proc generateInit*(rtName: string; ctName: typedesc): NimNode {.compileTime.} =
 
 proc allocateBlock*[T](): ptr T {.importcpp: "chainblocks::allocateBlock<'*0>()".}
 
+when appType == "lib" and not defined(nimV2):
+  template updateStackBottom*() =
+    var sp {.volatile.}: pointer
+    sp = addr(sp)
+    nimGC_setStackBottom(sp)
+    when compileOption("threads"):
+      setupForeignThreadGC()
+else:
+  template updateStackBottom*() =
+    discard
+
 macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): untyped =
   var
     rtName = ident($blk & "RT")
@@ -512,39 +523,54 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
     type
       `rtNameValue` = object of CBRuntimeBlock
         sb: `blk`
-      `rtName`* = ptr `rtNameValue` 
+      `rtName`* = ptr `rtNameValue`
     
-    template name*(b: `blk`): string = `namespace` & `blockName`
-    proc `nameProc`*(b: `rtName`): CBString {.cdecl.} = (`namespace` & `blockName`)
-    proc `helpProc`*(b: `rtName`): CBString {.cdecl.} = b.sb.help()
+    template name*(b: `blk`): string =
+      (`namespace` & `blockName`)
+    proc `nameProc`*(b: `rtName`): CBString {.cdecl.} =
+      updateStackBottom()
+      (`namespace` & `blockName`)
+    proc `helpProc`*(b: `rtName`): CBString {.cdecl.} =
+      updateStackBottom()
+      b.sb.help()
     proc `setupProc`*(b: `rtName`) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.setup()
     proc `destroyProc`*(b: `rtName`) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.destroy()
     proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.preChain(context)
     proc `postChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.postChain(context)
-    proc `inputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} = b.sb.inputTypes
-    proc `outputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} = b.sb.outputTypes
-    proc `exposedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} = b.sb.exposedVariables
-    proc `consumedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} = b.sb.consumedVariables
-    proc `parametersProc`*(b: `rtName`): CBParametersInfo {.cdecl.} = b.sb.parameters
+    proc `inputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
+      updateStackBottom()
+      b.sb.inputTypes
+    proc `outputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
+      updateStackBottom()
+      b.sb.outputTypes
+    proc `exposedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
+      updateStackBottom()
+      b.sb.exposedVariables
+    proc `consumedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
+      updateStackBottom()
+      b.sb.consumedVariables
+    proc `parametersProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
+      updateStackBottom()
+      b.sb.parameters
     proc `setParamProc`*(b: `rtName`; index: int; val: CBVar) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.setParam(index, val)
     proc `getParamProc`*(b: `rtName`; index: int): CBVar {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.getParam(index)
     proc `activateProc`*(b: `rtName`; context: CBContext; input: CBVar): CBVar {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.activate(context, input)
     proc `cleanupProc`*(b: `rtName`) {.cdecl.} =
-      {.warning[LockLevel]:off.}
+      updateStackBottom()
       b.sb.cleanup()
     registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
       # we need to do this sorcery to ensure methods work!
