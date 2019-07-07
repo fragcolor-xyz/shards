@@ -1,6 +1,7 @@
 buildAndRun:win:  
   script:
     - cd src/nim
+    - nimble install --depsOnly -y
     - nim cpp --newruntime -r chainblocks.nim
     - nim cpp -r chainblocks.nim
   tags:
