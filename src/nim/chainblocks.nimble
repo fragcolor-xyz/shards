@@ -11,6 +11,6 @@ backend       = "cpp"
 # Dependencies
 
 requires "nim >= 0.20.9"
-requires "nimpy"
-requires "nimline"
-requires "fragments"
+requires "nimpy#head"
+requires "nimline#head"
+requires "fragments#head"
