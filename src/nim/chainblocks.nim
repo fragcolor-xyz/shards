@@ -24,8 +24,6 @@ else:
 const
   FragCC* = toFourCC("frag")
 
-proc free*(v: CBVar) {.importcpp: "#.free()".}
-
 proc elems*(v: CBInt2): array[2, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64)]
 proc elems*(v: CBInt3): array[3, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64), v.toCpp[2].to(int64)]
 proc elems*(v: CBInt4): array[4, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64), v.toCpp[2].to(int64), v.toCpp[3].to(int64)]
@@ -48,6 +46,11 @@ converter toCBTypeInfo*(s: tuple[ty: CBType, isSeq: bool]): CBTypeInfo {.inline,
   CBTypeInfo(basicType: s.ty, sequenced: s.isSeq)
 
 converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = (s, false)
+
+converter toCBTypesInfo*(s: seq[CBTypeInfo]): CBTypesInfo {.inline.} =
+  initSeq(result)
+  for ti in s:
+    result.push ti
 
 converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline.} =
   # This relies on const strings!! will crash if not!
@@ -116,17 +119,16 @@ converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: tuple
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-# converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: seq[CBTypeInfo]]]): CBParametersInfo {.inline.} =
-#   initSeq(result)
-#   for i in 0..s.high:
-#     var
-#       record = s[i]
-#       cname = CBString.cppinit(record.paramName)
-#       pinfo = CBParameterInfo(name: cname)
-#     initSeq(pinfo.valueTypes)
-#     for at in record.actualTypes:
-#       pinfo.valueTypes.push(at)
-#     result.push(pinfo)
+converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: seq[CBTypeInfo]]]): CBParametersInfo {.inline.} =
+  initSeq(result)
+  for i in 0..s.high:
+    var
+      record = s[i]
+      pinfo = CBParameterInfo(name: record.paramName)
+    initSeq(pinfo.valueTypes)
+    for at in record.actualTypes:
+      pinfo.valueTypes.push(at)
+    result.push(pinfo)
 
 when isMainModule:
   var
@@ -327,10 +329,10 @@ var
 
 include ops
 
-# proc contextVariable*(name: string): CBVar {.inline.} =
-#   return CBVar(valueType: ContextVar, stringValue: name)
+proc contextVariable*(name: string): CBVar {.inline.} =
+  return CBVar(valueType: ContextVar, stringValue: name)
 
-# template `~~`*(name: string): CBVar = contextVariable(name)
+template `~~`*(name: string): CBVar = contextVariable(name)
 
 template withChain*(chain, body: untyped): untyped =
   var `chain` {.inject.} = initChain()

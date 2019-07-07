@@ -166,23 +166,30 @@ registerCppType CBFloat2
 registerCppType CBFloat3
 registerCppType CBFloat4
 
+proc free*(v: CBVar) {.importcpp: "#.free()".}
+
 proc `[]`*(v: CBIntVectorsLike; index: int): int64 {.inline, noinit.} = v.toCpp[index].to(int64)
 proc `[]=`*(v: var CBIntVectorsLike; index: int; value: int64) {.inline.} = v.toCpp[index] = value
 proc `[]`*(v: CBFloatVectorsLike; index: int): float64 {.inline, noinit.} = v.toCpp[index].to(float64)
 proc `[]=`*(v: var CBFloatVectorsLike; index: int; value: float64) {.inline.} = v.toCpp[index] = value
 
+proc len*(tinfo: CBSeqLike): int {.inline.} = invokeFunction("da_count", tinfo).to(int)
 proc initSeq*(cbs: var CBSeqLike) {.inline.} = invokeFunction("da_init", cbs).to(void)
 proc freeSeq*(cbs: var CBSeqLike) {.inline.} = invokeFunction("da_free", cbs).to(void)
 proc initSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("da_init", cbs).to(void)
-proc freeSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("da_free", cbs).to(void)
+proc getItemRef*(tinfo: CBSeq; index: int): var CBVar {.inline, noinit.} = invokeFunction("da_getptr", tinfo, index).to(ptr CBVar)[]
+iterator mitems*(s: CBSeq): var CBVar {.inline.} =
+  for i in 0..<s.len:
+    yield getItemRef(s, i)
+proc freeSeq*(cbs: var CBSeq) {.inline.} =
+  for item in cbs.mitems: item.free()
+  invokeFunction("da_free", cbs).to(void)
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
 proc pop*(cbs: var CBSeq): CBVar {.inline.} = invokeFunction("da_pop", cbs).to(CBVar)
-proc len*(tinfo: CBSeqLike): int {.inline.} = invokeFunction("da_count", tinfo).to(int)
 proc clear*(s: var CBSeqLike) {.inline.} = invokeFunction("da_clear", s).to(void)
 proc clear*(s: var CBSeq) {.inline.} = invokeFunction("da_clear", s).to(void)
 proc `[]`*(tinfo: CBSeq; index: int): CBVar {.inline, noinit.} = invokeFunction("da_get", tinfo, index).to(CBVar)
-proc getItemRef*(tinfo: CBSeq; index: int): var CBVar {.inline, noinit.} = invokeFunction("da_getptr", tinfo, index).to(ptr CBVar)[]
 proc `[]=`*(tinfo: var CBSeq; index: int; value: CBVar) {.inline.} = invokeFunction("da_set", tinfo, index, value).to(void)
 proc `[]`*(tinfo: CBTypesInfo; index: int): CBTypeInfo {.inline, noinit.} = invokeFunction("da_get", tinfo, index).to(CBTypeInfo)
 proc `[]=`*(tinfo: var CBTypesInfo; index: int; value: CBTypeInfo) {.inline.} = invokeFunction("da_set", tinfo, index, value).to(void)
@@ -194,9 +201,6 @@ iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
 iterator items*(s: CBSeq): CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
-iterator mitems*(s: CBSeq): var CBVar {.inline.} =
-  for i in 0..<s.len:
-    yield getItemRef(s, i)
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
 proc newString*(txt: string): CBString {.inline.} =
@@ -231,3 +235,4 @@ proc clone*(v: CBSeq): CBSeq {.inline.} =
   initSeq(result)
   for item in v.mitems:
     result.push item.clone()
+
