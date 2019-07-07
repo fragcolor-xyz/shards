@@ -155,6 +155,25 @@ struct CBParameterInfo
   bool allowContext;
 };
 
+/*
+  # Of CBVars and memory
+
+  ## Specifically String and Seq types
+
+  ### Blocks need to maintain their own garbage, in a way so that any reciver of CBVar/s will not have to worry about it.
+  
+  #### In the case of getParam:
+    * the callee should allocate and preferably cache any String or Seq that needs to return.
+    * the callers will just read and should not modify the contents.
+  #### In the case of activate:
+    * The input var memory is owned by the previous block.
+    * The output var memory is owned by the activating block.
+    * The activating block will have to manage any CBVar that puts in the stack or context variables as well!
+  #### In the case of setParam:
+    * If the block needs to store the String or Seq data it will then need to deep copy it.
+    * Callers should free up any allocated memory.
+*/ 
+
 struct CBVar 
 {
   CBVar(CBChainState state = Continue) : valueType(None), chainState(state) {}
@@ -219,7 +238,7 @@ typedef const CBString (__cdecl *CBHelpProc)(CBRuntimeBlock*);
 
 // Construction/Destruction
 typedef void (__cdecl *CBSetupProc)(CBRuntimeBlock*);
-typedef CBVar (__cdecl *CBDestroyProc)(CBRuntimeBlock*);
+typedef void (__cdecl *CBDestroyProc)(CBRuntimeBlock*);
 
 typedef CBTypesInfo (__cdecl *CBInputTypesProc)(CBRuntimeBlock*);
 typedef CBTypesInfo (__cdecl *CBOutputTypesProc)(CBRuntimeBlock*);
@@ -673,11 +692,7 @@ namespace chainblocks
         running = looped;
         context.restarted = false; // Remove restarted flag
 
-        // Reset len to 0 of the stack and free eventual garbage
-        for(CBVar *it = da_begin(context.stack), *end = da_end(context.stack); it != end; ++it)
-        {
-          it->free();
-        }
+        // Reset len to 0 of the stack
         da_clear(context.stack);
         
         thisChain->finished = false; // Reset finished flag
@@ -702,15 +717,9 @@ namespace chainblocks
         }
       }
 
-      // Cleanup remains of context now
-      for(auto& item : context.variables)
-      {
-        item.second.free();
-      }
-
       // Completely free the stack
       da_free(context.stack);
-
+      
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;
       return std::move(context.continuation);
