@@ -651,6 +651,10 @@ when appType != "lib":
   proc contextVariable*(ctx: CBContext; name: string): ptr CBVar {.inline.} = contextVariable(ctx, cast[CBString](name.cstring))
 
   proc setError*(ctx: CBContext; errorTxt: CBString) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
+
+  proc initChain*(): CBChain {.inline, noinit.} = CBChain.cppinit()
+  proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
+  proc suspend*(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
   
 else:
   # When we are a dll with a collection of blocks!
@@ -662,6 +666,7 @@ else:
     RegisterTypeProc = proc(registry: pointer; vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: CBString): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: CBString) {.cdecl.}
+    SuspendProc = proc(seconds: float64) {.cdecl.}
   
   var
     localBlocks: seq[tuple[name: string; initProc: CBBlockConstructor]]
@@ -672,6 +677,7 @@ else:
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
     cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
+    cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
 
   proc chainblocks_init_module(registry: pointer) {.exportc, dynlib, cdecl.} =
     for localBlock in localBlocks:
@@ -687,22 +693,16 @@ else:
     localObjTypes.add((vendorId, typeId, info))
 
   proc contextVariable*(ctx: CBContext; name: CBString): ptr CBVar {.inline.} = cbContextVar(ctx, name)
-  proc contextVariable*(ctx: CBContext; name: string): ptr CBVar {.inline.} = contextVariable(ctx, cast[CBString](name.cstring))
-
-  proc setError*(ctx: CBContext; errorTxt: CBString) = cbSetError(ctx, errorTxt)
-
-proc initChain*(): CBChain {.inline, noinit.} = CBChain.cppinit()
-proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
-proc suspend*(seconds: float64): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
+  proc setError*(ctx: CBContext; errorTxt: CBString) {.inline.} = cbSetError(ctx, errorTxt)
+  
+  proc suspend*(seconds: float64): CBVar {.inline.} = cbSuspend(seconds)
 
 # This template is inteded to be used inside blocks activations
 template pause*(secs: float): untyped =
   let
     suspendRes = suspend(secs.float64)
-    shouldReturn = cppTupleGet[bool](0, suspendRes.toCpp)
-    returnVar = cppTupleGet[CBVar](1, suspendRes.toCpp)
-  if shouldReturn:
-    return returnVar
+  if suspendRes.chainState != Continue:
+    return suspendRes
 
 proc block2Json*(blk: ptr CBRuntimeBlock): JsonNode
 

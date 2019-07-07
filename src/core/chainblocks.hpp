@@ -290,9 +290,6 @@ struct CBRuntimeBlock
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes internally to clean up the block state
 };
 
-typedef void (__cdecl *CBRegisterBlock)(CBString fullName, CBBlockConstructor constructor);
-typedef void (__cdecl *CBRegisterObjectType)(int32_t vendorId, int32_t typeId, CBObjectInfo info);
-
 namespace chainblocks
 {
   template<typename T>
@@ -439,9 +436,10 @@ extern "C" {
 EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const CBString fullName, CBBlockConstructor constructor);
 EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32_t vendorId, int32_t typeId, CBObjectInfo info);
 
-
 EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const CBString name);
 EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString errorText);
+
+EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
 #ifdef __cplusplus
 };
@@ -775,16 +773,16 @@ namespace chainblocks
     return CBVar();
   }
 
-  static std::tuple<bool, CBVar> suspend(double seconds)
+  static CBVar suspend(double seconds)
   {
     auto current = chainblocks::CurrentChain;
     current->sleepSeconds = seconds;
     current->context->continuation = current->context->continuation.resume();
     if(current->context->restarted)
-      return { true, CBVar(Restart) };
-    else if(current->context->restarted || current->context->aborted)
-      return { true, CBVar(Stop) };
-    return { false, CBVar() };
+      return CBVar(Restart);
+    else if(current->context->aborted)
+      return CBVar(Stop);
+    return CBVar(Continue);
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())

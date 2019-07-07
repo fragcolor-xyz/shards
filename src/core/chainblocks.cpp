@@ -28,6 +28,11 @@ EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString er
   context->error = errorText;
 }
 
+EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
+{
+  return chainblocks::suspend(seconds);
+}
+
 #ifdef __cplusplus
 };
 #endif
