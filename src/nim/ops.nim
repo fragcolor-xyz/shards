@@ -70,7 +70,7 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Float2: return (a.float2Value.toCpp >= b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp >= b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
   of Float4: return (a.float4Value.toCpp >= b.float4Value.toCpp).to(CBFloat4).elems.allit(it != 0)
-  of String, ContextVar: return a.stringValue.string >= b.stringValue.string
+  of String, ContextVar: return $a.stringValue.string >= b.stringValue.string
   of Color: doAssert(false, "Color `>=` Not supported")
   of CBType.Image: doAssert(false, "Image `>=` Not supported")
   of Seq: doAssert(false, "Seq `>=` Not supported")

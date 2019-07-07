@@ -37,10 +37,6 @@ proc makeStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
   result.stringValue = newString(s)
 
-converter toStringVar*(s: string): CBVar {.inline.} =
-  result = s.makeStringVar()
-  echo "Converted a string> ", s
-
 converter toCBTypesInfo*(s: tuple[types: set[CBType]; canBeSeq: bool]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for t in s.types:
@@ -54,10 +50,11 @@ converter toCBTypeInfo*(s: tuple[ty: CBType, isSeq: bool]): CBTypeInfo {.inline,
 converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = (s, false)
 
 converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline.} =
+  # This relies on const strings!! will crash if not!
   result.valueTypes = record.actualTypes.toCBTypesInfo()
   let
-    pname = newString(record.paramName)
-    help = newString(record.helpText)
+    pname = record.paramName
+    help = record.helpText
   result.name = pname
   result.help = help
   result.allowContext = record.usesContext
@@ -615,9 +612,7 @@ when appType != "lib":
   # When building the runtime!
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) =
-    var cbName = newString(name)
-    invokeFunction("chainblocks::registerBlock", cbName, initProc).to(void)
-    cbName.freeString()
+    invokeFunction("chainblocks::registerBlock", name, initProc).to(void)
 
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
     invokeFunction("chainblocks::registerObjectType", vendorId, typeId, info).to(void)
@@ -652,9 +647,7 @@ else:
 
   proc chainblocks_init_module(registry: pointer) {.exportc, dynlib, cdecl.} =
     for localBlock in localBlocks:
-      var cbName = newString(localBlock.name)
-      cbRegisterBlock(registry, cbName, localBlock.initProc)
-      cbName.freeString()
+      cbRegisterBlock(registry, localBlock.name, localBlock.initProc)
     
     for localType in localObjTypes:
       cbRegisterObjectType(registry, localType.vendorId, localType.typeId, localType.info)

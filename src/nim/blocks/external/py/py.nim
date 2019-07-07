@@ -15,7 +15,7 @@ var
 when true:
   type
     CBPython = object
-      fileName*: CBString
+      filename*: string
       stringStorage*: CBString
       pymod*: PyObject
       instance*: PyObject

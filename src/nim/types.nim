@@ -200,11 +200,34 @@ iterator mitems*(s: CBSeq): var CBVar {.inline.} =
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
 proc newString*(txt: string): CBString {.inline.} =
-  echo "newString: ", txt
+  # echo "newString: ", txt
   invokeFunction("gb_make_string", txt.cstring).to(CBString)
 proc freeString*(cbStr: CBString) {.inline.} =
-  echo "freeString: ", cbStr
+  # echo "freeString: ", cbStr
   invokeFunction("gb_free_string", cbStr).to(void)
 proc setString*(cbStr: CBString; s: string): CBString {.inline.} = invokeFunction("gb_set_string", cbStr, s.cstring).to(CBString)
 converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
+converter toString*(s: string): CBString {.inline.} =
+  # echo "Quick string convert...: ", s
+  cast[CBString](s.cstring)
+converter toStringVar*(s: string): CBVar {.inline.} =
+  # echo "Quick string convert...: ", s
+  result.valueType = String
+  result.stringValue = cast[CBString](s.cstring)
+
+proc clone*(v: CBVar): CBVar {.inline.} =
+  if v.valueType == String:
+    result.valueType = String
+    result.stringValue = invokeFunction("gb_make_string", v.stringValue).to(CBString)
+  elif v.valueType == Seq:
+    result.valueType = Seq
+    initSeq(result.seqValue)
+    for item in v.seqValue.mitems:
+      result.seqValue.push item.clone()
+  else:
+    result = v
+
+proc clone*(v: CBSeq): CBSeq {.inline.} =
+  initSeq(result)
+  for item in v.mitems:
+    result.push item.clone()

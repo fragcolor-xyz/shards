@@ -144,7 +144,7 @@ when true:
   template setParam*(b: CBSetGlobal; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
-  template getParam*(b: CBSetGlobal; index: int): CBVar = b.name.makeStringVar()
+  template getParam*(b: CBSetGlobal; index: int): CBVar = b.name
   template activate*(b: CBSetGlobal; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = globalVariable(b.name)
@@ -169,7 +169,7 @@ when true:
   template setParam*(b: CBUseGlobal; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
-  template getParam*(b: CBUseGlobal; index: int): CBVar = b.name.makeStringVar()
+  template getParam*(b: CBUseGlobal; index: int): CBVar = b.name
   template activate*(b: var CBUseGlobal; context: CBContext; input: CBVar): CBVar =
     if b.ctarget == nil:
       b.ctarget = context.contextVariable(b.name)
@@ -194,7 +194,7 @@ when true:
     @[("Value", ({ None, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#))]
   template setParam*(b: CBlockConst; index: int; val: CBVar) =
     b.value.free() # might have some value stored!
-    b.value = val
+    b.value = val.clone()
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     b.value
@@ -253,7 +253,7 @@ when true:
   template inputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBlockMsg): CBParametersInfo = @[("Message", { String })]
-  template setParam*(b: CBlockMsg; index: int; val: CBVar) = b.msg = val
+  template setParam*(b: CBlockMsg; index: int; val: CBVar) = b.msg = val.clone()
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
     echo b.msg
@@ -297,7 +297,7 @@ when true:
     @[("Accept", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#)]
   template setParam*(b: CBWhen; index: int; val: CBVar) =
     if val.valueType == Seq:
-      b.acceptedValues = val.seqValue
+      b.acceptedValues = val.seqValue.clone()
     else:
       b.acceptedValues.push(val)
   template getParam*(b: CBWhen; index: int): CBVar =
@@ -332,7 +332,7 @@ when true:
     @[("Reject", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#)]
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
     if val.valueType == Seq:
-      b.acceptedValues = val.seqValue
+      b.acceptedValues = val.seqValue.clone()
     else:
       b.acceptedValues.push(val)
   template getParam*(b: CBWhenNot; index: int): CBVar =
@@ -385,7 +385,7 @@ when true:
       b.Op = val.boolOpValue
     of 1:
       b.Match.free()
-      b.Match = val
+      b.Match = val.clone()
     of 2:
       case val.valueType
       of Chain:

@@ -283,7 +283,7 @@ struct CBRuntimeBlock
   CBConsumedVariablesProc consumedVariables;
 
   CBParametersProc parameters;
-  CBSetParamProc setParam; // Set a parameter, the block takes ownership of any allocated stuff you pass and might free it! (strings, seqs)
+  CBSetParamProc setParam; // Set a parameter, the block will copy the value, so if you allocated any memory you should free it
   CBGetParamProc getParam; // Gets a parameter, the block is the owner of any allocated stuff, DO NOT free them
   
   CBActivateProc activate;
