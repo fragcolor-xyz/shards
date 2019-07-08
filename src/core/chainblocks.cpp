@@ -32,10 +32,7 @@ EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const ch
 
 EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText)
 {
-  if(!context->error)
-    context->error = gb_make_string(errorText);
-  else
-    context->error = gb_set_string(context->error, errorText);
+  context->setError(errorText);
 }
 
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)

@@ -826,8 +826,13 @@ when true:
   template setParam*(b: CBGetItems; index: int; val: CBVar) = b.indices = val
   template getParam*(b: CBGetItems; index: int): CBVar = b.indices
   template activate*(b: var CBGetItems; context: CBContext; input: CBVar): CBVar =
-    if b.indices.valueType == Int:
-      input.seqValue[b.indices.intValue.int]
+    if input.valueType != Seq:
+      halt(context, "GetItems expected a sequence!")
+    elif b.indices.valueType == Int:
+      if b.indices.intValue.int >= input.seqValue.len.int - 1:
+        halt(context, "GetItems out of range! len: " & $input.seqValue.len & " wanted index: " & $b.indices.intValue)
+      else:
+        input.seqValue[b.indices.intValue.int]
     elif b.indices.valueType == Seq:
       b.cachedResult.clear()
       for index in b.indices.seqValue:

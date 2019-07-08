@@ -414,6 +414,14 @@ struct CBContext
 
   // Used within the coro stack! (suspend, etc)
   CBCoro&& continuation;
+
+  void setError(const char* errorMsg)
+  {
+    if(!error)
+      error = gb_make_string(errorMsg);
+    else
+      error = gb_set_string(error, errorMsg);
+  }
 };
 
 struct CBChain
@@ -980,7 +988,7 @@ namespace chainblocks
       // Completely free the stack
       da_free(context.stack);
 
-      // Free any error we might have
+      // Free any error we might have, internally there is a null check!
       gb_free_string(context.error);
       
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming

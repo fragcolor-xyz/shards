@@ -656,7 +656,7 @@ when appType != "lib":
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
 
-  proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
+  proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "chainblocks.hpp".}
 
   proc initChain*(name: string): CBChain {.inline, noinit.} =
     var chain {.noinit.} = CBChain.cppinit(name)
