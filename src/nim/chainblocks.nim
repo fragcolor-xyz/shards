@@ -759,7 +759,7 @@ macro synthesizeCompileTimeChain*(input: untyped): untyped =
     ctx = gensym(nskVar)
 
   result.add quote do:
-    var `ctx` = new CBContext
+    var `ctx`: CBContext
 
   for blkData in staticChainBlocks:
     var blk = blkData.blk
@@ -886,29 +886,24 @@ when isMainModule:
     echo sizeof(CBVar)
     assert sizeof(CBVar) == 48
 
-    # compileTimeChain:
-    #   Msg "Hello"
-    #   Msg "Static"
-    #   Msg "World"
+    compileTimeChain:
+      Msg "Hello"
+      Msg "Static"
+      Msg "World"
     
-    # prepareCompileTimeChain()
-    # discard synthesizeCompileTimeChain(Empty)
+    prepareCompileTimeChain()
+    discard synthesizeCompileTimeChain(Empty)
 
-    # proc test1() =
-    #   discard synthesizeCompileTimeChain(Empty)
+    proc test1() =
+      discard synthesizeCompileTimeChain(Empty)
 
-    # proc test2() =
-    #   discard synthesizeCompileTimeChain(Empty)
+    proc test2() =
+      discard synthesizeCompileTimeChain(Empty)
 
-    # test1()
-    # test2()
+    test1()
+    test2()
 
-    # clearCompileTimeChain()
-
-    # var cblk: CBlockConst
-    # echo cblk.parameters()
-
-    # reset()
+    clearCompileTimeChain()
   
   run()
   
