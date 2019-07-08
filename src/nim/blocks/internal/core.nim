@@ -829,7 +829,7 @@ when true:
     if input.valueType != Seq:
       halt(context, "GetItems expected a sequence!")
     elif b.indices.valueType == Int:
-      if b.indices.intValue.int >= input.seqValue.len.int - 1:
+      if b.indices.intValue.int >= input.seqValue.len.int:
         halt(context, "GetItems out of range! len: " & $input.seqValue.len & " wanted index: " & $b.indices.intValue)
       else:
         input.seqValue[b.indices.intValue.int]
