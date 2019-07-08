@@ -482,7 +482,8 @@ proc generateInit*(rtName: string; ctName: typedesc): NimNode {.compileTime.} =
       var `sym`: `ctName`
     staticChainBlocks.add((sym, params))
 
-proc allocateBlock*[T](): ptr T {.importcpp: "chainblocks::allocateBlock<'*0>()".}
+proc allocateBlock*[T](): ptr T {.importcpp: "chainblocks::allocate<'*0>()".}
+proc finalizeBlock*[T](p: ptr T) {.importcpp: "chainblocks::finalize<'*0>(#)".}
 
 when appType == "lib" and not defined(nimV2):
   template updateStackBottom*() =
@@ -580,8 +581,9 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
       updateStackBottom()
       b.sb.cleanup()
     registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
-      # we need to do this sorcery to ensure methods work!
-      result = allocateBlock[`rtNameValue`]()
+      var blk: `rtName`
+      cppnewptr blk
+      result = blk
       result.name = cast[result.name.type](`nameProc`)
       result.help = cast[result.help.type](`helpProc`)
       result.setup = cast[result.setup.type](`setupProc`)

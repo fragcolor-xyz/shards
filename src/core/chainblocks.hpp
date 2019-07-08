@@ -313,12 +313,6 @@ struct CBRuntimeBlock
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes internally to clean up the block state
 };
 
-namespace chainblocks
-{
-  template<typename T>
-  static T* allocateBlock() { return new T(); }
-};
-
 #ifdef CHAINBLOCKS_RUNTIME
 // C++ Mandatory from now!
 
@@ -453,6 +447,15 @@ struct CBChain
   void addBlock(CBRuntimeBlock* blk)
   {
     blocks.push_back(blk);
+  }
+
+  void removeBlock(CBRuntimeBlock* blk)
+  {
+    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
+    if(findIt != blocks.end())
+    {
+      blocks.erase(findIt);
+    }
   }
 };
 
