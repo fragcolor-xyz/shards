@@ -199,6 +199,10 @@ iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
 iterator items*(s: CBSeq): CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
+converter toCBSeq*(s: var seq[CBVar]): CBSeq {.inline.} =
+  invokeFunction("da_init_external", result, addr s[0], s.len).to(void)
+  invokeFunction("da_setcount", result, s.len).to(void)
+  # Cannot get seq capacity..... https://github.com/nim-lang/RFCs/issues/97
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
 proc newString*(txt: string): CBString {.inline.} =
