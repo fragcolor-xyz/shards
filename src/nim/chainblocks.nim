@@ -4,7 +4,7 @@
 
 import sequtils, tables, times, macros, strutils
 import fragments/[serialization]
-import images, packedjson
+import images
 
 import types
 export types
@@ -315,9 +315,9 @@ converter toCBVar*(v: ptr CBChain): CBVar {.inline.} =
 
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
   if container.valueType == ContextVar:
-    var foundVar = context.variables.getOrDefault(container.stringValue)
-    if foundVar.valueType == wantedType:
-      subject = foundVar.typeGetter
+    var foundVar = context.contextVariable(container.stringValue)
+    if foundVar[].valueType == wantedType:
+      subject = foundVar[].typeGetter
   else:
     subject = container.typeGetter
 
