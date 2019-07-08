@@ -141,10 +141,14 @@ struct CBTypeInfo
   CBTypesInfo seqTypes;
 };
 
+typedef CBString (__cdecl *CBObjectSerializer)(CBPointer); // callers should free the string!
+typedef CBPointer (__cdecl *CBObjectDeserializer)(CBString); // callers should free the string!
+
 struct CBObjectInfo
 {
   const char* name;
-  // Add more info about custom objects here
+  CBObjectSerializer serialize;
+  CBObjectDeserializer deserialize;
 };
 
 struct CBParameterInfo
@@ -471,17 +475,209 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 };
 #endif
 
+namespace chainblocks
+{
+  static CBRegistry GlobalRegistry;
+  static std::unordered_map<std::string, CBVar> GlobalVariables;
+  thread_local static CBChain* CurrentChain;
+};
+
 using json = nlohmann::json;
 
 static void to_json(json& j, const CBVar& var)
 {
+  auto valType = int(var.valueType);
   switch(var.valueType)
   {
+    case None:
+    {
+      j = json{
+        { "type", None },
+        { "value", int(var.chainState) }
+      };
+      break;
+    }
+    case Object:
+    {
+      auto findIt = chainblocks::GlobalRegistry.objectTypesRegister.find(std::make_tuple(var.objectTypeId, var.objectTypeId));
+      if(findIt != chainblocks::GlobalRegistry.objectTypesRegister.end())
+      {
+        j = json{
+          { "type", valType },
+          { "vendorId", var.objectVendorId },
+          { "typeId", var.objectTypeId },
+          { "value", findIt->second.serialize(var.objectValue) }
+        };
+      }
+      else
+      {
+        j = json{
+          { "type", valType },
+          { "vendorId", var.objectVendorId },
+          { "typeId", var.objectTypeId },
+          { "value", nullptr }
+        };
+      }
+      break;
+    }
+    case Bool:
+    {
+      j = json{
+        { "type", valType },
+        { "value", var.boolValue }
+      };
+      break;
+    }
+    case Int:
+    {
+      j = json{
+        { "type", valType },
+        { "value", var.intValue }
+      };
+      break;
+    }
+    case Int2:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.int2Value[0], var.int2Value[1] } }
+      };
+      break;
+    }
+    case Int3:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.int3Value[0], var.int3Value[1], var.int3Value[2] } }
+      };
+      break;
+    }
+    case Int4:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.int4Value[0], var.int4Value[1], var.int4Value[2], var.int4Value[3] } }
+      };
+      break;
+    }
+    case Float:
+    {
+      j = json{
+        { "type", valType },
+        { "value", var.intValue }
+      };
+      break;
+    }
+    case Float2:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.float2Value[0], var.float2Value[1] } }
+      };
+      break;
+    }
+    case Float3:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.float3Value[0], var.float3Value[1], var.float3Value[2] } }
+      };
+      break;
+    }
+    case Float4:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.float4Value[0], var.float4Value[1], var.float4Value[2], var.float4Value[3] } }
+      };
+      break;
+    }
+    case ContextVar:
+    case String:
+    {
+      j = json{
+        { "type", valType },
+        { "value", var.stringValue }
+      };
+      break;
+    }
+    case Color:
+    {
+      j = json{
+        { "type", valType },
+        { "value", { var.colorValue.r, var.colorValue.g, var.colorValue.b, var.colorValue.a } }
+      };
+      break;
+    }
+    case Image:
+    {
+      if(var.imageValue.data)
+      {
+        auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
+        std::vector<uint8_t> buffer(binsize);
+        memcpy(&buffer[0], var.imageValue.data, binsize);
+        j = json{
+          { "type", valType },
+          { "width", var.imageValue.width },
+          { "height", var.imageValue.height },
+          { "channels", var.imageValue.channels },
+          { "data", buffer }
+        };
+      }
+      else
+      {
+        j = json{
+          { "type", None },
+          { "value", int(Continue) }
+        };
+      }
+      break;
+    }
+    case BoolOp:
+    {
+      j = json{
+        { "type", valType },
+        { "value", int(var.boolOpValue) }
+      };
+      break;
+    }
+    case Seq:
+    {
+      std::vector<json> items;
+      for(int i = 0; i < da_count(var.seqValue); i++)
+      {
+        auto v = da_get(var.seqValue, i);
+        items.push_back(v);
+      }
+      j = json{
+        { "type", valType },
+        { "values", items }
+      };
+      break;
+    }
+    case Chain:
+    {
+      if(var.chainValue)
+      {
+        j = json{
+          { "type", valType },
+          { "value", var.chainValue->name }
+        };
+      }
+      else
+      {
+        j = json{
+          { "type", None },
+          { "value", int(Continue) }
+        };
+      }
+      break;
+    }
     default:
     {
-      auto val = int(var.valueType);
       j = json{
-        { "type", 0 }
+        { "type", None },
+        { "value", int(Continue) }
       };
     }
   };
@@ -533,10 +729,6 @@ static void from_json(const json& j, CBChain& chain)
 
 namespace chainblocks
 {
-  static CBRegistry GlobalRegistry;
-  static std::unordered_map<std::string, CBVar> GlobalVariables;
-  thread_local static CBChain* CurrentChain;
-
   static void setCurrentChain(CBChain* chain)
   {
     CurrentChain = chain;
