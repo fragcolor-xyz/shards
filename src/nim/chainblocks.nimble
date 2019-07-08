@@ -5,6 +5,8 @@ author        = "Giovanni"
 description   = "A new awesome nimble package"
 license       = "Proprietary"
 backend       = "cpp"
+installDirs   = @["blocks"]
+installFiles  = @["types.nim", "ops.nim", "images.nim"]
 
 # Dependencies
 

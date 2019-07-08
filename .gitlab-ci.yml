@@ -8,5 +8,7 @@ buildAndRun:win:
     - nim cpp -f py.nim
     - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3' "
     - nim cpp -f -r pytest.nim
+    # Finally install it so to let other repo use this build internally in the CI machine (this is a hack btw, works just cos 1 builder is present and we need to fix it soon)
+    - nimble install -y
   tags:
     - WIN, NIM, BOOST, MINGW
