@@ -83,13 +83,13 @@ type
   CBTypesInfo* {.importcpp: "CBTypesInfo", header: "chainblocks.hpp".} = object
 
   CBObjectInfo* {.importcpp: "CBObjectInfo", header: "chainblocks.hpp".} = object
-    name*: CBString
+    name*: cstring
 
   CBParameterInfo* {.importcpp: "CBParameterInfo", header: "chainblocks.hpp".} = object
-    name*: CBString
+    name*: cstring
     valueTypes*: CBTypesInfo
     allowContext*: bool # This parameter could be a contextvar
-    help*: CBString
+    help*: cstring
   
   CBParametersInfo* {.importcpp: "CBParametersInfo", header: "chainblocks.hpp".} = object
   
@@ -121,8 +121,8 @@ type
     valueType*: CBType
 
   CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp", inheritable.} = object
-    name*: proc(b: ptr CBRuntimeBlock): CBString {.cdecl.}
-    help*: proc(b: ptr CBRuntimeBlock): CBString {.cdecl.}
+    name*: proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
+    help*: proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
     
     setup*: proc(b: ptr CBRuntimeBlock) {.cdecl.}
     destroy*: proc(b: ptr CBRuntimeBlock) {.cdecl.}

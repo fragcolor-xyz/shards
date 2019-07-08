@@ -9,8 +9,8 @@
 // Cannot afford to use any C++ std as any block maker should be free to use their versions
 
 #include <stdint.h>
-#include "DG_dynarr.h"
-#include "gb_string.h"
+#include "3rdparty/DG_dynarr.h"
+#include "3rdparty/gb_string.h"
 
 // All the available types
 enum CBType : uint8_t
@@ -143,14 +143,14 @@ struct CBTypeInfo
 
 struct CBObjectInfo
 {
-  CBString name;
+  const char* name;
   // Add more info about custom objects here
 };
 
 struct CBParameterInfo
 {
-  CBString name;
-  CBString help;
+  const char* name;
+  const char* help;
   CBTypesInfo valueTypes;
   bool allowContext;
 };
@@ -233,8 +233,8 @@ struct CBVar
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
 
-typedef const CBString (__cdecl *CBNameProc)(CBRuntimeBlock*);
-typedef const CBString (__cdecl *CBHelpProc)(CBRuntimeBlock*);
+typedef const char* (__cdecl *CBNameProc)(CBRuntimeBlock*);
+typedef const char* (__cdecl *CBHelpProc)(CBRuntimeBlock*);
 
 // Construction/Destruction
 typedef void (__cdecl *CBSetupProc)(CBRuntimeBlock*);
@@ -325,7 +325,12 @@ namespace chainblocks
 #include <memory>
 #include <iostream>
 #include <ctime>
+
+// Required external dependency!
 #include <boost/context/continuation.hpp>
+
+// Included 3rdparty
+#include "3rdparty/json.hpp"
 
 #include <tuple>
 namespace std{
@@ -452,11 +457,11 @@ extern "C" {
 
 // The runtime (even if it is an exe), will export the following, they need to be available in order to load and work with blocks collections within dlls
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const CBString fullName, CBBlockConstructor constructor);
+EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const char* fullName, CBBlockConstructor constructor);
 EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32_t vendorId, int32_t typeId, CBObjectInfo info);
 
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const CBString name);
-EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString errorText);
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name);
+EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
 
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
@@ -490,7 +495,7 @@ namespace chainblocks
     return &GlobalRegistry;
   }
 
-  static void registerBlock(CBRegistry& registry, const CBString fullName, CBBlockConstructor constructor)
+  static void registerBlock(CBRegistry& registry, const char* fullName, CBBlockConstructor constructor)
   {
     auto cname = std::string(fullName);
     auto findIt = registry.blocksRegister.find(cname);
@@ -506,7 +511,7 @@ namespace chainblocks
     }
   }
 
-  static void registerBlock(const CBString fullName, CBBlockConstructor constructor)
+  static void registerBlock(const char* fullName, CBBlockConstructor constructor)
   {
     registerBlock(GlobalRegistry, fullName, constructor);
   }
@@ -533,13 +538,13 @@ namespace chainblocks
     registerObjectType(GlobalRegistry, vendorId, typeId, info);
   }
 
-  static CBVar* globalVariable(const CBString name)
+  static CBVar* globalVariable(const char* name)
   {
     CBVar& v = GlobalVariables[name];
     return &v;
   }
 
-  static bool hasGlobalVariable(const CBString name)
+  static bool hasGlobalVariable(const char* name)
   {
     auto findIt = GlobalVariables.find(name);
     if(findIt == GlobalVariables.end())
@@ -547,13 +552,13 @@ namespace chainblocks
     return true;
   }
 
-  static CBVar* contextVariable(CBContext* ctx, const CBString name)
+  static CBVar* contextVariable(CBContext* ctx, const char* name)
   {
     CBVar& v = ctx->variables[name];
     return &v;
   }
 
-  static CBRuntimeBlock* createBlock(const CBString name)
+  static CBRuntimeBlock* createBlock(const char* name)
   {
     auto it = GlobalRegistry.blocksRegister.find(name);
     if(it == GlobalRegistry.blocksRegister.end())
@@ -719,6 +724,9 @@ namespace chainblocks
 
       // Completely free the stack
       da_free(context.stack);
+
+      // Free any error we might have
+      gb_free_string(context.error);
       
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;

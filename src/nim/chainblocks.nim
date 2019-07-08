@@ -209,6 +209,8 @@ converter toCBVar*(cbStr: CBString): CBVar {.inline.} =
   result.valueType = String
   result.stringValue = cbStr
 
+converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring](cbStr)
+
 converter imageTypesConv*(cbImg: CBImage): Image[uint8] {.inline, noinit.} =
   result.width = cbImg.width
   result.height = cbImg.height
@@ -311,9 +313,6 @@ converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
 converter toCBVar*(v: ptr CBChain): CBVar {.inline.} =
   return CBVar(valueType: Chain, chainValue: v)
 
-converter toCBVar*(v: CBString): CBVar {.inline.} =
-  return CBVar(valueType: String, stringValue: v)
-
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
   if container.valueType == ContextVar:
     var foundVar = context.variables.getOrDefault(container.stringValue)
@@ -342,7 +341,7 @@ template withChain*(chain, body: untyped): untyped =
   setCurrentChain(prev)
 
 # Make those optional
-template help*(b: auto): CBString = ""
+template help*(b: auto): cstring = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
 template preChain*(b: auto; context: CBContext) = discard
@@ -354,22 +353,15 @@ template setParam*(b: auto; index: int; val: CBVar) = discard
 template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
 
-proc createBlock*(name: CBString): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "chainblocks.hpp".}
-proc createBlock*(name: string): ptr CBRuntimeBlock = createBlock(cast[CBstring](name.cstring))
+proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "chainblocks.hpp".}
 
 proc getCurrentChain*(): var CBChain {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
 proc setCurrentChain*(chain: ptr CBChain) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
 proc setCurrentChain*(chain: var CBChain) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
 proc add*(chain: var CBChain; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
 
-proc globalVariable*(name: CBString): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
-proc globalVariable*(name: string): ptr CBVar {.inline.} =
-  let cstr = CBString.cppinit(name)
-  globalVariable(cstr)
-proc hasGlobalVariable*(name: CBString): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "chainblocks.hpp".}
-proc hasGlobalVariable*(name: string): bool {.inline.} =
-  let cstr = CBString.cppinit(name)
-  hasGlobalVariable(cstr)
+proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
+proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "chainblocks.hpp".}
 
 proc startInternal(chain: ptr CBChain; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
 proc start*(chain: ptr CBChain; loop: bool = false) {.inline.} =
@@ -418,7 +410,7 @@ proc generateInitMultiple*(rtName: string; ctName: typedesc; args: seq[tuple[lab
       var
         cparams = `sym`.parameters(`sym`)
         paramsSeq = cparams.cbParamsToSeq()
-        `paramNames` = paramsSeq.map do (x: CBParameterInfo) -> string: x.name.toLowerAscii
+        `paramNames` = paramsSeq.map do (x: CBParameterInfo) -> string: ($x.name).toLowerAscii
         `paramSets` = paramsSeq.map do (x: CBParameterInfo) -> CBTypesInfo: x.valueTypes
     
     for i in 0..`args`.high:
@@ -539,10 +531,10 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
     
     template name*(b: `blk`): string =
       (`namespace` & `blockName`)
-    proc `nameProc`*(b: `rtName`): CBString {.cdecl.} =
+    proc `nameProc`*(b: `rtName`): cstring {.cdecl.} =
       updateStackBottom()
       (`namespace` & `blockName`)
-    proc `helpProc`*(b: `rtName`): CBString {.cdecl.} =
+    proc `helpProc`*(b: `rtName`): cstring {.cdecl.} =
       updateStackBottom()
       b.sb.help()
     proc `setupProc`*(b: `rtName`) {.cdecl.} =
@@ -659,10 +651,9 @@ when appType != "lib":
 
   proc getGlobalRegistry*(): pointer = invokeFunction("chainblocks::GetGlobalRegistry").to(pointer)
 
-  proc contextVariable*(ctx: CBContext; name: CBString): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
-  proc contextVariable*(ctx: CBContext; name: string): ptr CBVar {.inline.} = contextVariable(ctx, cast[CBString](name.cstring))
+  proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
 
-  proc setError*(ctx: CBContext; errorTxt: CBString) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
+  proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
 
   proc initChain*(): CBChain {.inline, noinit.} = CBChain.cppinit()
   proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
@@ -674,10 +665,10 @@ else:
   import dynlib
   
   type
-    RegisterBlkProc = proc(registry: pointer; name: CBString; initProc: CBBlockConstructor) {.cdecl.}
+    RegisterBlkProc = proc(registry: pointer; name: cstring; initProc: CBBlockConstructor) {.cdecl.}
     RegisterTypeProc = proc(registry: pointer; vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
-    CtxVariableProc = proc(ctx: CBContext; name: CBString): ptr CBVar {.cdecl.}
-    CtxSetErrorProc = proc(ctx: CBContext; errorTxt: CBString) {.cdecl.}
+    CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
+    CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
     SuspendProc = proc(seconds: float64) {.cdecl.}
   
   var
@@ -704,8 +695,8 @@ else:
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
     localObjTypes.add((vendorId, typeId, info))
 
-  proc contextVariable*(ctx: CBContext; name: CBString): ptr CBVar {.inline.} = cbContextVar(ctx, name)
-  proc setError*(ctx: CBContext; errorTxt: CBString) {.inline.} = cbSetError(ctx, errorTxt)
+  proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
+  proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)
   
   proc suspend*(seconds: float64): CBVar {.inline.} = cbSuspend(seconds)
 
@@ -884,7 +875,7 @@ proc fromJson*(v: string): CBVar =
 
 proc block2Json(blk: ptr CBRuntimeBlock): JsonNode =
   var jnode = newJObject()
-  jnode["name"] = %blk.name(blk).string
+  jnode["name"] = %($blk.name(blk))
 
   var paramsNode: seq[JsonNode]
   let paramsLen = blk.parameters(blk).len

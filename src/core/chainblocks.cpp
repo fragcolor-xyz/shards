@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const CBString fullName, CBBlockConstructor constructor)
+EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const char* fullName, CBBlockConstructor constructor)
 {
   chainblocks::registerBlock(*registry, fullName, constructor);
 }
@@ -18,14 +18,17 @@ EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32
   chainblocks::registerObjectType(*registry, vendorId, typeId, info);
 }
 
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const CBString name)
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name)
 {
   return chainblocks::contextVariable(context, name);
 }
 
-EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const CBString errorText)
+EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText)
 {
-  context->error = errorText;
+  if(!context->error)
+    context->error = gb_make_string(errorText);
+  else
+    context->error = gb_set_string(context->error, errorText);
 }
 
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
@@ -57,7 +60,7 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
     chainblocks::stop(chainblocks::CurrentChain);
 
     chainblocks::GlobalVariables.insert(std::make_pair("TestVar", CBVar(Restart)));
-    auto tv = chainblocks::globalVariable("TestVar");
+    auto tv = chainblocks::globalVariable(u8"TestVar");
     if(tv->valueType == None && tv->chainState == Restart)
     {
       printf("Map ok!\n");
