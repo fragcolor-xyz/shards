@@ -25,29 +25,19 @@ proc run() =
   Log()
   
   echo "Start"
-  var frame = getFrameState()
   getCurrentChain().start(true)
-  setFrameState(frame)
 
   echo "First tick"
-  frame = getFrameState()
   getCurrentChain().tick()
-  setFrameState(frame)
   
   echo "Stop"
-  frame = getFrameState()
   discard getCurrentChain().stop()
-  setFrameState(frame)
   
   echo "Start again"
-  frame = getFrameState()
   getCurrentChain().start(true)
-  setFrameState(frame)
 
   for _ in 0..9:
-    frame = getFrameState()
     getCurrentChain().tick()
-    setFrameState(frame)
     sleep 30
   
 run()
