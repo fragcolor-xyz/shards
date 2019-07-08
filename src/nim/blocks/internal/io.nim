@@ -1,6 +1,5 @@
-import ../chainblocks
-import ../../error
-import tables, streams, parsecsv, strscans
+import ../../chainblocks
+import streams, parsecsv, strscans
 
 # Namespace
 type IO* = object
@@ -41,7 +40,10 @@ when true:
       opened*: bool
       csv*: CsvParser
       looped*: bool
+      seqCache*: CBSeq
 
+  template setup*(b: CBReadLine) = initSeq(b.seqCache)
+  template destroy*(b: CBReadLine) = freeSeq(b.seqCache)
   template cleanup*(b: CBReadLine) =
     if b.opened:
       b.csv.close()
@@ -82,18 +84,18 @@ when true:
     while true:
       if b.csv.readRow():
         if b.csv.headers.len > 1:
-          var varseq = newSeqOfCap[CBVar](b.csv.headers.len)
+          b.seqCache.clear()
           for col in items(b.csv.headers):
             var
               vi: int
               vf: float
             if scanf(col, "$s$i$s", vi):
-              varseq.add vi
+              b.seqCache.push vi
             elif scanf(col, "$s$f$s", vf):
-              varseq.add vf
+              b.seqCache.push vf
             else:
-              varseq.add col
-          return varseq
+              b.seqCache.push col
+          return b.seqCache
         else:
           for col in items(b.csv.headers):
             var
@@ -120,7 +122,8 @@ when true:
 when isMainModule:
   import os
 
-  chainblocks.init()
+  var mainChain = initChain("mainChain")
+  setCurrentChain(mainChain)
 
   withChain writer:
     Const (10, 20, 30, 40)
@@ -130,7 +133,7 @@ when isMainModule:
   withChain writeit:
     Repeat:
       Times: 4
-      Chain: writer
+      Chain: addr writer
   
   withChain reader:
     IO.ReadLine:
@@ -141,14 +144,14 @@ when isMainModule:
   withChain readit:
     Repeat:
       Times: 4
-      Chain: reader
+      Chain: addr reader
   
   writeit.start(true)
   writeit.tick()
-  writeit.stop()
+  discard writeit.stop()
 
   readit.start(true)
   while true:
     readit.tick()
     sleep 100
-  readit.stop()
+  discard readit.stop()
