@@ -478,9 +478,9 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
 namespace chainblocks
 {
-  static CBRegistry GlobalRegistry;
-  static std::unordered_map<std::string, CBVar> GlobalVariables;
-  thread_local static CBChain* CurrentChain;
+  extern CBRegistry GlobalRegistry;
+  extern std::unordered_map<std::string, CBVar> GlobalVariables;
+  extern thread_local CBChain* CurrentChain;
 };
 
 using json = nlohmann::json;

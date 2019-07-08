@@ -4,6 +4,13 @@
 #define DLL_EXPORT 1
 #include "chainblocks.hpp"
 
+namespace chainblocks
+{
+  CBRegistry GlobalRegistry;
+  std::unordered_map<std::string, CBVar> GlobalVariables;
+  thread_local CBChain* CurrentChain;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
