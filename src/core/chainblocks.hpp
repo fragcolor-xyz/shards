@@ -413,8 +413,10 @@ struct CBContext
 
 struct CBChain
 {
-  CBChain() : coro(nullptr), next(0), sleepSeconds(0.0), started(false), finished(false), returned(false), rootTickInput(CBVar()), finishedOutput(CBVar())
+  CBChain(const char* chain_name = "Anonymous chain") : name(chain_name), coro(nullptr), next(0), sleepSeconds(0.0), started(false), finished(false), returned(false), rootTickInput(CBVar()), finishedOutput(CBVar())
   {}
+
+  const char* name;
 
   CBCoro* coro;
   clock_t next;
@@ -468,6 +470,66 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 #ifdef __cplusplus
 };
 #endif
+
+using json = nlohmann::json;
+
+static void to_json(json& j, const CBVar& var)
+{
+  switch(var.valueType)
+  {
+    default:
+    {
+      auto val = int(var.valueType);
+      j = json{
+        { "type", 0 }
+      };
+    }
+  };
+}
+
+static void from_json(const json& j, CBVar& var)
+{
+  var = CBVar();
+}
+
+static void to_json(json& j, const CBChain& chain)
+{
+  std::vector<json> blocks;
+  for(auto blk : chain.blocks)
+  {
+    std::vector<json> params;
+    auto paramsDesc = blk->parameters(blk);
+    for(int i = 0; i < da_count(paramsDesc); i++)
+    {
+      auto desc = da_getptr(paramsDesc, i);
+      auto value = blk->getParam(blk, i);
+
+      json param_obj = {
+        { "name", desc->name },
+        { "value", value }
+      };
+      
+      params.push_back(param_obj);
+    }
+
+    json block_obj = {
+      { "name", blk->name(blk) },
+      { "params", params }
+    };
+
+    blocks.push_back(block_obj);
+  }
+
+  j = {
+    { "blocks", blocks },
+    { "name", chain.name },
+    { "version", 0.1 },
+  };
+}
+
+static void from_json(const json& j, CBChain& chain)
+{
+}
 
 namespace chainblocks
 {
@@ -827,6 +889,18 @@ namespace chainblocks
         chain->next = now + clock_t(chain->sleepSeconds * double(CLOCKS_PER_SEC));
       }
     }
+  } 
+
+  static std::string store(CBVar var) 
+  { 
+    json jsonVar = var;
+    return jsonVar.dump();
+  }
+
+  static std::string store(CBChain* chain, const char* chainName) 
+  { 
+    json jsonChain = *chain;
+    return jsonChain.dump(); 
   }
 };
 #endif

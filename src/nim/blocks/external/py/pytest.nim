@@ -10,13 +10,13 @@ proc run() =
   var libInit = cast[proc(registry: pointer) {.cdecl.}](lib.symAddr("chainblocks_init_module"))
   libInit(getGlobalRegistry())
 
-  var chain = initChain()
+  var chain = initChain("chain")
   setCurrentChain(chain)
 
   Const "Hello"
   var pyBlk = createBlock("Scripting.Py")
   assert pyBlk != nil
-  assert pyBlk.name(pyBlk) == "Scripting.Py", "Got: " & pyBlk.name(pyBlk)
+  assert $pyBlk.name(pyBlk) == "Scripting.Py", "Got: " & $pyBlk.name(pyBlk)
   pyBlk.setup(pyBlk)
   pyBlk.setParam(pyBlk, 0, "./pytest.py")
   getCurrentChain().add(pyBlk)

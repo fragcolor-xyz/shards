@@ -334,7 +334,7 @@ proc contextVariable*(name: string): CBVar {.inline.} =
 template `~~`*(name: string): CBVar = contextVariable(name)
 
 template withChain*(chain, body: untyped): untyped =
-  var `chain` {.inject.} = initChain()
+  var `chain` {.inject.} = initChain(astToStr(`chain`))
   var prev = getCurrentChain()
   setCurrentChain(chain)
   body
@@ -387,6 +387,9 @@ proc stop*(chain: ptr CBChain): CBVar {.inline.} =
 proc stop*(chain: var CBChain): CBVar {.inline.} =
   var chainptr = addr chain
   chainptr.stop()
+
+proc store*(chain: ptr CBChain, name: cstring): StdString {.importcpp: "chainblocks::store(#, #)", header: "chainblocks.hpp".}
+proc store*(chain: var CBChain, name: string): string = $store(addr chain, name.cstring).c_str().to(cstring)
 
 var
   compileTimeMode {.compileTime.}: bool = false
@@ -655,7 +658,9 @@ when appType != "lib":
 
   proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "(#->error = #)", header: "chainblocks.hpp".}
 
-  proc initChain*(): CBChain {.inline, noinit.} = CBChain.cppinit()
+  proc initChain*(name: string): CBChain {.inline, noinit.} =
+    var chain {.noinit.} = CBChain.cppinit(name)
+    return chain
   proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
   proc suspend*(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
   
@@ -1055,15 +1060,19 @@ when isMainModule:
     var res3 = pblock3.activate(pblock3, nil, 2.0)
     echo res3.float
     echo pblock3.block2Json
+    
+    var
+      mainChain = initChain("mainChain")
+    setCurrentChain(mainChain)
 
-    # var
-    #   ifblock = createBlock("If")
+    var
+      ifblock = createBlock("If")
     
-    # withChain trueMsg:
-    #   Msg "True"
+    withChain trueMsg:
+      Msg "True"
     
-    # withChain falseMsg:
-    #   Msg "False"
+    withChain falseMsg:
+      Msg "False"
     
     # ifblock.setParam(ifblock, 0, More)
     # ifblock.setParam(ifblock, 1, 10)
@@ -1083,10 +1092,6 @@ when isMainModule:
     # var color = var2Json((10'u8, 20'u8, 30'u8, 255'u8)).json2Var()
     # echo var2Json color
 
-    var
-      mainChain = initChain()
-    setCurrentChain(mainChain)
-
     withChain chain1:
       Msg "SubChain!"
       Sleep 0.2
@@ -1102,7 +1107,7 @@ when isMainModule:
     echo "Done"
 
     var
-      subChain1 = initChain()
+      subChain1 = initChain("subChain1")
     setCurrentChain(subChain1)
     
     Const "Hey hey"
@@ -1133,7 +1138,9 @@ when isMainModule:
     mainChain.start(true)
     for i in 0..10:
       var idx = i.CBVar
-      mainChain.tick(idx)    
+      mainChain.tick(idx)
+
+    echo mainChain.store("MainChain")
 
     # compileTimeChain:
     #   Msg "Hello"
