@@ -178,7 +178,7 @@ struct CBParameterInfo
     * Callers should free up any allocated memory.
 */ 
 
-struct CBVar 
+struct CBVar // will be 48 bytes, 16 aligned due to vectors
 {
   CBVar(CBChainState state = Continue) : valueType(None), chainState(state) {}
 
@@ -219,7 +219,7 @@ struct CBVar
 
   CBType valueType;
 
-  // uint8_t reserved[31]; // compiler will align this anyway to 64 bytes due to vectors!
+  uint8_t reserved[15];
 
   void free()
   {

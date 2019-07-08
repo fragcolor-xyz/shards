@@ -882,6 +882,7 @@ when isMainModule:
     echo mainChain.store("MainChain")
 
     echo sizeof(CBVar)
+    assert sizeof(CBVar) == 48
 
     # compileTimeChain:
     #   Msg "Hello"
