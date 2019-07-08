@@ -662,7 +662,11 @@ when appType != "lib":
     var chain {.noinit.} = CBChain.cppinit(name)
     return chain
   proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
-  proc suspend*(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
+  proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
+  proc suspend*(seconds: float64): CBVar {.inline.} =
+    var frame = getFrameState()
+    result = suspendInternal(seconds)
+    setFrameState(frame)
   
 else:
   # When we are a dll with a collection of blocks!
@@ -674,7 +678,7 @@ else:
     RegisterTypeProc = proc(registry: pointer; vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
-    SuspendProc = proc(seconds: float64) {.cdecl.}
+    SuspendProc = proc(seconds: float64): CBVar {.cdecl.}
   
   var
     localBlocks: seq[tuple[name: string; initProc: CBBlockConstructor]]
@@ -703,12 +707,14 @@ else:
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)
   
-  proc suspend*(seconds: float64): CBVar {.inline.} = cbSuspend(seconds)
+  proc suspend*(seconds: float64): CBVar {.inline.} =
+    var frame = getFrameState()
+    result = cbSuspend(seconds)
+    setFrameState(frame)
 
 # This template is inteded to be used inside blocks activations
 template pause*(secs: float): untyped =
-  let
-    suspendRes = suspend(secs.float64)
+  let suspendRes = suspend(secs.float64)
   if suspendRes.chainState != Continue:
     return suspendRes
 
