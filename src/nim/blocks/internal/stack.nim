@@ -123,7 +123,7 @@ when true:
         y = context.stack.pop()
         z = context.stack.pop()
       
-      (x.intValue.int64, y.intValue.int64, z.intValue.int64).CBVar
+      (x.intValue.int32, y.intValue.int32, z.intValue.int32).CBVar
     else:
       halt(context, "Stack imbalance")
 
@@ -144,7 +144,7 @@ when true:
         z = context.stack.pop()
         w = context.stack.pop()
             
-      (x.intValue.int64, y.intValue.int64, z.intValue.int64, w.intValue.int64).CBVar
+      (x.intValue.int32, y.intValue.int32, z.intValue.int32, w.intValue.int32).CBVar
     else:
       halt(context, "Stack imbalance")
 
@@ -183,7 +183,7 @@ when true:
         y = context.stack.pop()
         z = context.stack.pop()
       
-      (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64).CBVar
+      (x.floatValue.float32, y.floatValue.float32, z.floatValue.float32).CBVar
     else:
       halt(context, "Stack imbalance")
 
@@ -204,7 +204,7 @@ when true:
         z = context.stack.pop()
         w = context.stack.pop()
       
-      (x.floatValue.float64, y.floatValue.float64, z.floatValue.float64, w.floatValue.float64).CBVar
+      (x.floatValue.float32, y.floatValue.float32, z.floatValue.float32, w.floatValue.float32).CBVar
     else:
       halt(context, "Stack imbalance")
 

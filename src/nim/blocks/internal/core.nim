@@ -588,9 +588,9 @@ when true:
           of 1:
             b.cachedSeq.push storage[0].float64.CBVar
           of 3:
-            b.cachedSeq.push (storage[0].float64, storage[1].float64, storage[2].float64).CBVar
+            b.cachedSeq.push (storage[0].float32, storage[1].float32, storage[2].float32).CBVar
           of 4:
-            b.cachedSeq.push (storage[0].float64, storage[1].float64, storage[2].float64, storage[3].float64).CBVar
+            b.cachedSeq.push (storage[0].float32, storage[1].float32, storage[2].float32, storage[3].float32).CBVar
           else:
             assert(false, "Unsupported image channels number")
       b.cachedSeq.CBVar

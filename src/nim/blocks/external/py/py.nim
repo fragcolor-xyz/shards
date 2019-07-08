@@ -93,12 +93,12 @@ when true:
     of Bool: result = tupRes.value.to(bool)
     of Int: result = tupRes.value.to(int64)
     of Int2: result = tupRes.value.to(tuple[a, b: int64])
-    of Int3: result = tupRes.value.to(tuple[a, b, c: int64])
-    of Int4: result = tupRes.value.to(tuple[a, b, c, d: int64])
+    of Int3: result = tupRes.value.to(tuple[a, b, c: int32])
+    of Int4: result = tupRes.value.to(tuple[a, b, c, d: int32])
     of Float: result = tupRes.value.to(float64)
     of Float2: result = tupRes.value.to(tuple[a, b: float64])
-    of Float3: result = tupRes.value.to(tuple[a, b, c: float64])
-    of Float4: result = tupRes.value.to(tuple[a, b, c, d: float64])
+    of Float3: result = tupRes.value.to(tuple[a, b, c: float32])
+    of Float4: result = tupRes.value.to(tuple[a, b, c, d: float32])
     of String:
       blk.stringStorage = blk.stringStorage.setString(tupRes.value.to(string))
       result = blk.stringStorage

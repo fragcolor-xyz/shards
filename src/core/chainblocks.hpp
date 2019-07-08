@@ -72,42 +72,42 @@ typedef gbString CBString;
 
 #if defined(__clang__) || defined(__GNUC__)
   typedef int64_t CBInt2 __attribute__((vector_size(16)));
-  typedef int64_t CBInt3 __attribute__((vector_size(32)));
-  typedef int64_t CBInt4 __attribute__((vector_size(32)));
+  typedef int32_t CBInt3 __attribute__((vector_size(16)));
+  typedef int32_t CBInt4 __attribute__((vector_size(16)));
 
   typedef double CBFloat2 __attribute__((vector_size(16)));
-  typedef double CBFloat3 __attribute__((vector_size(32)));
-  typedef double CBFloat4 __attribute__((vector_size(32)));
+  typedef float CBFloat3 __attribute__((vector_size(16)));
+  typedef float CBFloat4 __attribute__((vector_size(16)));
 #else
   // TODO, this is not aligned correctly!
   struct CBInt2
   {
-    CBInt elements[2];
+    int64_t elements[2];
   };
 
   struct CBInt3
   {
-    CBInt elements[3];
+    int32_t elements[3];
   };
 
   struct CBInt4
   {
-    CBInt elements[4];
+    int32_t elements[4];
   };
 
   struct CBFloat2
   {
-    CBFloat elements[2];
+    double elements[2];
   };
 
   struct CBFloat3
   {
-    CBFloat elements[3];
+    float elements[3];
   };
 
   struct CBFloat4
   {
-    CBFloat elements[4];
+    float elements[4];
   };
 #endif
 
@@ -388,6 +388,7 @@ namespace std{
 }
 
 typedef boost::context::continuation CBCoro;
+typedef std::unordered_map<std::string, CBChain> CBChainGroup;
 
 struct CBRegistry
 {
@@ -661,7 +662,7 @@ static void to_json(json& j, const CBVar& var)
       {
         j = json{
           { "type", valType },
-          { "value", var.chainValue->name }
+          { "name", var.chainValue->name }
         };
       }
       else

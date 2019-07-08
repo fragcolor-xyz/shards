@@ -25,11 +25,11 @@ const
   FragCC* = toFourCC("frag")
 
 proc elems*(v: CBInt2): array[2, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64)]
-proc elems*(v: CBInt3): array[3, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64), v.toCpp[2].to(int64)]
-proc elems*(v: CBInt4): array[4, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64), v.toCpp[2].to(int64), v.toCpp[3].to(int64)]
+proc elems*(v: CBInt3): array[3, int32] {.inline.} = [v.toCpp[0].to(int32), v.toCpp[1].to(int32), v.toCpp[2].to(int32)]
+proc elems*(v: CBInt4): array[4, int32] {.inline.} = [v.toCpp[0].to(int32), v.toCpp[1].to(int32), v.toCpp[2].to(int32), v.toCpp[3].to(int32)]
 proc elems*(v: CBFloat2): array[2, float64] {.inline.} = [v.toCpp[0].to(float64), v.toCpp[1].to(float64)]
-proc elems*(v: CBFloat3): array[3, float64] {.inline.} = [v.toCpp[0].to(float64), v.toCpp[1].to(float64), v.toCpp[2].to(float64)]
-proc elems*(v: CBFloat4): array[4, float64] {.inline.} = [v.toCpp[0].to(float64), v.toCpp[1].to(float64), v.toCpp[2].to(float64), v.toCpp[3].to(float64)]
+proc elems*(v: CBFloat3): array[3, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32)]
+proc elems*(v: CBFloat4): array[4, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32), v.toCpp[3].to(float32)]
 
 proc makeStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
@@ -253,22 +253,22 @@ converter toCBVar*(v: tuple[a,b: int64]): CBVar {.inline.} =
 
 converter toCBVar*(v: tuple[a,b,c: int]): CBVar {.inline.} =
   var wval: CBInt3
-  iterateTuple(v, wval, int64)
+  iterateTuple(v, wval, int32)
   return CBVar(valueType: Int3, int3Value: wval)
 
-converter toCBVar*(v: tuple[a,b,c: int64]): CBVar {.inline.} =
+converter toCBVar*(v: tuple[a,b,c: int32]): CBVar {.inline.} =
   var wval: CBInt3
-  iterateTuple(v, wval, int64)
+  iterateTuple(v, wval, int32)
   return CBVar(valueType: Int3, int3Value: wval)
 
 converter toCBVar*(v: tuple[a,b,c,d: int]): CBVar {.inline.} =
   var wval: CBInt4
-  iterateTuple(v, wval, int64)
+  iterateTuple(v, wval, int32)
   return CBVar(valueType: Int4, int4Value: wval)
 
-converter toCBVar*(v: tuple[a,b,c,d: int64]): CBVar {.inline.} =
+converter toCBVar*(v: tuple[a,b,c,d: int32]): CBVar {.inline.} =
   var wval: CBInt4
-  iterateTuple(v, wval, int64)
+  iterateTuple(v, wval, int32)
   return CBVar(valueType: Int4, int4Value: wval)
 
 converter toCBVar*(v: bool): CBVar {.inline.} =
@@ -289,17 +289,17 @@ converter toCBVar*(v: CBFloat3): CBVar {.inline.} =
 converter toCBVar*(v: CBFloat4): CBVar {.inline.} =
   return CBVar(valueType: Float4, float4Value: v)
 
-converter toCBVar*(v: tuple[a,b: BiggestFloat]): CBVar {.inline.} =
+converter toCBVar*(v: tuple[a,b: float64]): CBVar {.inline.} =
   var wval: CBFloat2
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float2, float2Value: wval)
 
-converter toCBVar*(v: tuple[a,b,c: BiggestFloat]): CBVar {.inline.} =
+converter toCBVar*(v: tuple[a,b,c: float32]): CBVar {.inline.} =
   var wval: CBFloat3
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float3, float3Value: wval)
 
-converter toCBVar*(v: tuple[a,b,c,d: BiggestFloat]): CBVar {.inline.} =
+converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
   var wval: CBFloat4
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float4, float4Value: wval)
@@ -716,191 +716,6 @@ template halt*(context: CBContext; txt: string): untyped =
   context.setError(txt)
   StopChain
 
-proc block2Json*(blk: ptr CBRuntimeBlock): JsonNode
-
-proc var2Json(v: CBVar): JsonNode =
-  var jnode = newJObject()
-  case v.valueType
-    of Any, None, Object:
-      jnode["t"] = %v.valueType
-    of Bool:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %v.boolValue
-    of Int:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %v.intValue
-    of Int2:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.int2Value.toCpp[0].to(int64), v.int2Value.toCpp[1].to(int64)]
-    of Int3:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.int3Value.toCpp[0].to(int64), v.int3Value.toCpp[1].to(int64), v.int3Value.toCpp[2].to(int64)]
-    of Int4:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.int4Value.toCpp[0].to(int64), v.int4Value.toCpp[1].to(int64), v.int4Value.toCpp[2].to(int64), v.int4Value.toCpp[3].to(int64)] 
-    of Float:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %v.floatValue
-    of Float2:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.float2Value.toCpp[0].to(float64), v.float2Value.toCpp[1].to(float64)]
-    of Float3:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.float3Value.toCpp[0].to(float64), v.float3Value.toCpp[1].to(float64), v.float3Value.toCpp[2].to(float64)]
-    of Float4:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %[v.float4Value.toCpp[0].to(float64), v.float4Value.toCpp[1].to(float64), v.float4Value.toCpp[2].to(float64), v.float4Value.toCpp[3].to(float64)]
-    of String, ContextVar:
-      jnode["t"] = %v.valueType
-      if v.stringValue.pointer != nil:
-        jnode["v"] = %v.stringValue
-      else:
-        jnode["v"] = %("")
-    of Color:
-      jnode["t"] = %v.valueType
-      echo v.colorValue.a
-      jnode["v"] = %[v.colorValue.r.int, v.colorValue.g.int, v.colorValue.b.int, v.colorValue.a.int]
-    of CBType.Image: # TODO/Figure, add context as param and stick the ref in the context
-      jnode["t"] = %v.valueType
-    of BoolOp:
-      jnode["t"] = %v.valueType
-      jnode["v"] = %v.boolOpValue
-    of Seq:
-      jnode["t"] = %v.valueType
-      var arr = newJArray()
-      for item in v.seqValue.items:
-        arr.add var2Json(item)
-      jnode["v"] = arr
-    of Chain:
-      discard
-      # var arr = newJArray()
-      # for b in v.chainValue.blocks.mitems:
-      #   arr.add block2Json(b)
-      # jnode["t"] = %v.valueType
-      # jnode["v"] = arr
-  return jnode
-
-proc json2Var(node: var JsonNode): CBVar =
-  let valueType = node["t"].getStr()
-  case valueType
-    of "Any":
-      result = CBVar(valueType: Any)
-    of "Object":
-      result = CBVar(valueType: Object)
-    of "None":
-      result = CBVar(valueType: None)
-    of "Bool":
-      result = CBVar(valueType: Bool, boolValue: node["v"].getBool())
-    of "Int":
-      result = CBVar(valueType: Int, intValue: node["v"].getInt())
-    of "Int2":
-      result = (
-          node["v"][0].getInt().int64, 
-          node["v"][1].getInt().int64
-        ).CBVar
-    of "Int3":
-      result = (
-          node["v"][0].getInt().int64, 
-          node["v"][1].getInt().int64, 
-          node["v"][2].getInt().int64
-        ).CBVar
-    of "Int4":
-      result = (
-          node["v"][0].getInt().int64, 
-          node["v"][1].getInt().int64, 
-          node["v"][2].getInt().int64, 
-          node["v"][3].getInt().int64
-        ).CBVar
-    of "Float":
-      result = CBVar(valueType: Float, floatValue: node["v"].getFloat())
-    of "Float2":
-      result = (
-          node["v"][0].getFloat().float64, 
-          node["v"][1].getFloat().float64
-        ).CBVar
-    of "Float3":
-      result = (
-          node["v"][0].getFloat().float64, 
-          node["v"][1].getFloat().float64, 
-          node["v"][2].getFloat().float64
-        ).CBVar
-    of "Float4":
-      result = (
-          node["v"][0].getFloat().float64, 
-          node["v"][1].getFloat().float64, 
-          node["v"][2].getFloat().float64, 
-          node["v"][3].getFloat().float64
-        ).CBVar
-    of "String":
-      discard
-      # result = CBVar(valueType: String, stringValue: node["v"].getStr())
-    of "ContextVar":
-      discard
-      # result = CBVar(valueType: ContextVar, stringValue: node["v"].getStr())
-    of "Color":
-      result = (
-          node["v"][0].getInt().uint8, 
-          node["v"][1].getInt().uint8, 
-          node["v"][2].getInt().uint8, 
-          node["v"][3].getInt().uint8
-        ).CBVar
-    of "Image": # TODO/Figure
-      result = CBVar(valueType: CBType.Image) # Hmm, maybe use ref for the data, but where to stick it?
-    of "BoolOp":
-      let ops = { Equal, More, Less, MoreEqual, LessEqual }
-      for op in ops:
-        if $op == node["v"].getStr():
-          result = CBVar(valueType: BoolOp, boolOpValue: op)
-          break
-    of "Seq":
-      discard
-      # result = CBVar(valueType: Seq)
-      # for subn in node["v"]:
-      #   var subnCopy = subn
-      #   result.seqValue.add(json2Var(subnCopy))
-    of "Chain":
-      discard
-      # TODO - owned for new runtime
-      # result = CBVar(valueType: Chain)
-      # new result.chainValue
-      # for subn in node["v"]:
-      #   result.chainValue.blocks.add json2Block(subn)
-
-proc toJson*(v: CBVar): string =
-  let jstr = $var2Json(v)
-  purgeJsonCache()
-  return jstr
-
-proc fromJson*(v: string): CBVar =
-  var
-    jnode = parseJson(v).toJsonNode()
-    jvar = json2Var(jnode)
-  purgeJsonCache()
-  return jvar
-
-proc block2Json(blk: ptr CBRuntimeBlock): JsonNode =
-  var jnode = newJObject()
-  jnode["name"] = %($blk.name(blk))
-
-  var paramsNode: seq[JsonNode]
-  let paramsLen = blk.parameters(blk).len
-  for i in 0..<paramsLen:
-    var
-      param = blk.getParam(blk, i)
-      paramJson = var2Json(param)
-    paramsNode.add(paramJson)
-    
-  jnode["params"] = %paramsNode
-  return jnode
-
-proc json2Block(json: var JsonNode): ptr CBRuntimeBlock =
-  result = createBlock(json["name"].getStr())
-  result.setup(result)
-  let paramsLen = result.parameters(result).len
-  for i in 0..<paramsLen:
-    var paramValue = json["params"][i]
-    result.setParam(result, i, json2Var(paramValue))
-
 when not defined(skipCoreBlocks):
   include blocks/internal/[core, stack, calculate]
 
@@ -966,78 +781,6 @@ when isMainModule:
 
   chainblock CBPow2Block, "Pow2StaticBlock"
 
-  proc testJson() =
-    template jsonTestVar(x: CBVar): untyped =
-      echo x
-      var jvar = var2Json(x)
-      echo jvar
-      let varval = json2Var(jvar)
-      echo varVal
-      if x != varval:
-        raiseAssert("Failed json test with var: " & $x.valueType)
-    
-    var types = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, CBType.Image, BoolOp, Seq,  Chain }
-    for t in types:
-      case t
-      of Any, None, Object:
-        jsonTestVar(Empty)
-        jsonTestVar(RestartChain)
-        jsonTestVar(StopChain)
-        jsonTestVar(CBVar(valueType: Any))
-      of Bool:
-        jsonTestVar(true)
-        jsonTestVar(false)
-      of Int:
-        jsonTestVar(int64.low)
-        jsonTestVar(int64.high)
-      of Int2:
-        jsonTestVar((int64.low, int64.high))
-        jsonTestVar((int64.high, int64.low))
-      of Int3:
-        jsonTestVar((int64.low, int64.high, int64.low))
-        jsonTestVar((int64.high, int64.low, int64.high))
-      of Int4:
-        jsonTestVar((int64.low, int64.high, int64.low, int64.high))
-        jsonTestVar((int64.high, int64.low, int64.high, int64.low))
-      of Float:
-        jsonTestVar(float64.low)
-        jsonTestVar(float64.high)
-      of Float2:
-        jsonTestVar((float64.low, float64.high))
-        jsonTestVar((float64.high, float64.low))
-      of Float3:
-        jsonTestVar((float64.low, float64.high, float64.low))
-        jsonTestVar((float64.high, float64.low, float64.high))
-      of Float4:
-        jsonTestVar((float64.low, float64.high, float64.low, float64.high))
-        jsonTestVar((float64.high, float64.low, float64.high, float64.low))
-      of String, ContextVar:
-        discard
-        # jsonTestVar("Hello chainworld.")
-        # jsonTestVar(~~"Hello chainworld.")
-      of Color:
-        jsonTestVar((1'u8, 2'u8, 3'u8, 255'u8))
-      of BoolOp:
-        jsonTestVar CBVar(valueType: BoolOp, boolOpValue: More)
-        jsonTestVar CBVar(valueType: BoolOp, boolOpValue: Less)
-      of Seq:
-        discard
-        # var vars = @[1.CBVar, 3.0.CBVar, "Hello".CBVar]
-        # jsonTestVar CBVar(valueType: Seq, seqValue: vars)
-      of Chain:
-        discard
-        # withChain jsonTestChain:
-        #   Msg "This"
-        #   Msg "Is A"
-        #   Msg "Chain"
-        #   Log()
-        #   If:
-        #     Operator: More
-        #     Operand: 10
-        # jsonTestVar(CBVar(valueType: Chain, chainValue: jsonTestChain))
-      of CBType.Image:
-        discard
-
   proc run() =
     var
       pblock1: CBPow2Block
@@ -1053,20 +796,10 @@ when isMainModule:
     echo pblock2.getParam(pblock2, 0).valueType
     var res2 = pblock2.activate(pblock2, nil, 2.0)
     echo res2.float
-    echo pblock2.block2Json()
-    var jt = pblock2.block2Json()
-
-    var pblock3 = json2Block(jt)
-    var res3 = pblock3.activate(pblock3, nil, 2.0)
-    echo res3.float
-    echo pblock3.block2Json
     
     var
       mainChain = initChain("mainChain")
     setCurrentChain(mainChain)
-
-    var
-      ifblock = createBlock("If")
     
     withChain trueMsg:
       Msg "True"
@@ -1142,6 +875,8 @@ when isMainModule:
 
     echo mainChain.store("MainChain")
 
+    echo sizeof(CBVar)
+
     # compileTimeChain:
     #   Msg "Hello"
     #   Msg "Static"
@@ -1166,7 +901,6 @@ when isMainModule:
 
     # reset()
   
-  testJson()
   run()
   
   echo "Done"
