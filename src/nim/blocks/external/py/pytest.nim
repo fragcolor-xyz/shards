@@ -7,8 +7,6 @@ putEnv("PYTHONPATH", "C:/ProgramData/Miniconda3")
 proc run() =
   var lib = loadLib("py")
   assert lib != nil
-  var libInit = cast[proc(registry: pointer) {.cdecl.}](lib.symAddr("chainblocks_init_module"))
-  libInit(getGlobalRegistry())
 
   var chain = initChain("chain")
   setCurrentChain(chain)

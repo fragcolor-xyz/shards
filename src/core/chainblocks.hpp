@@ -62,7 +62,6 @@ DA_TYPEDEF(CBTypeInfo, CBTypesInfo)
 struct CBParameterInfo;
 DA_TYPEDEF(CBParameterInfo, CBParametersInfo)
 struct CBContext;
-struct CBRegistry;
 
 typedef void* CBPointer;
 typedef int64_t CBInt;
@@ -236,6 +235,7 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
 };
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
+typedef void (__cdecl *CBOnRunLoopTick)();
 
 typedef const char* (__cdecl *CBNameProc)(CBRuntimeBlock*);
 typedef const char* (__cdecl *CBHelpProc)(CBRuntimeBlock*);
@@ -323,6 +323,8 @@ struct CBRuntimeBlock
 #include <memory>
 #include <iostream>
 #include <ctime>
+#include <thread>
+#include <chrono>
 
 // Required external dependency!
 #include <boost/context/continuation.hpp>
@@ -382,13 +384,6 @@ namespace std{
 }
 
 typedef boost::context::continuation CBCoro;
-typedef std::unordered_map<std::string, CBChain> CBChainGroup;
-
-struct CBRegistry
-{
-  std::unordered_map<std::string, CBBlockConstructor> blocksRegister;
-  std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> objectTypesRegister;
-};
 
 struct CBContext
 {
@@ -475,8 +470,10 @@ extern "C" {
 
 // The runtime (even if it is an exe), will export the following, they need to be available in order to load and work with blocks collections within dlls
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const char* fullName, CBBlockConstructor constructor);
-EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32_t vendorId, int32_t typeId, CBObjectInfo info);
+EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockConstructor constructor);
+EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
+EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback);
+EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName);
 
 EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name);
 EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
@@ -489,8 +486,10 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
 namespace chainblocks
 {
-  extern CBRegistry GlobalRegistry;
+  extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
+  extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern std::unordered_map<std::string, CBVar> GlobalVariables;
+  extern std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   extern thread_local CBChain* CurrentChain;
 };
 
@@ -511,8 +510,8 @@ static void to_json(json& j, const CBVar& var)
     }
     case Object:
     {
-      auto findIt = chainblocks::GlobalRegistry.objectTypesRegister.find(std::make_tuple(var.objectTypeId, var.objectTypeId));
-      if(findIt != chainblocks::GlobalRegistry.objectTypesRegister.end())
+      auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(var.objectTypeId, var.objectTypeId));
+      if(findIt != chainblocks::ObjectTypesRegister.end())
       {
         j = json{
           { "type", valType },
@@ -756,52 +755,51 @@ namespace chainblocks
     return *CurrentChain;
   }
 
-  static CBRegistry* GetGlobalRegistry()
-  {
-    return &GlobalRegistry;
-  }
-
-  static void registerBlock(CBRegistry& registry, const char* fullName, CBBlockConstructor constructor)
+  static void registerBlock(const char* fullName, CBBlockConstructor constructor)
   {
     auto cname = std::string(fullName);
-    auto findIt = registry.blocksRegister.find(cname);
-    if(findIt == registry.blocksRegister.end())
+    auto findIt = BlocksRegister.find(cname);
+    if(findIt == BlocksRegister.end())
     {
-      registry.blocksRegister.insert(std::make_pair(cname, constructor));
+      BlocksRegister.insert(std::make_pair(cname, constructor));
       std::cout << "added block: " << cname << "\n";
     }
     else
     {
-      registry.blocksRegister[cname] = constructor;
+      BlocksRegister[cname] = constructor;
       std::cout << "overridden block: " << cname << "\n";
-    }
-  }
-
-  static void registerBlock(const char* fullName, CBBlockConstructor constructor)
-  {
-    registerBlock(GlobalRegistry, fullName, constructor);
-  }
-
-  static void registerObjectType(CBRegistry& registry, int32_t vendorId, int32_t typeId, CBObjectInfo info)
-  {
-    auto tup = std::make_tuple(vendorId, typeId);
-    auto typeName = std::string(info.name);
-    auto findIt = registry.objectTypesRegister.find(tup);
-    if(findIt == registry.objectTypesRegister.end())
-    {
-      registry.objectTypesRegister.insert(std::make_pair(tup, info));
-      std::cout << "added object type: " << typeName << "\n";
-    }
-    else
-    {
-      registry.objectTypesRegister[tup] = info;
-      std::cout << "overridden object type: " << typeName << "\n";
     }
   }
 
   static void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info)
   {
-    registerObjectType(GlobalRegistry, vendorId, typeId, info);
+    auto tup = std::make_tuple(vendorId, typeId);
+    auto typeName = std::string(info.name);
+    auto findIt = ObjectTypesRegister.find(tup);
+    if(findIt == ObjectTypesRegister.end())
+    {
+      ObjectTypesRegister.insert(std::make_pair(tup, info));
+      std::cout << "added object type: " << typeName << "\n";
+    }
+    else
+    {
+      ObjectTypesRegister[tup] = info;
+      std::cout << "overridden object type: " << typeName << "\n";
+    }
+  }
+
+  static void registerRunLoopCallback(const char* eventName, CBOnRunLoopTick callback)
+  {
+    chainblocks::RunLoopHooks[eventName] = callback;
+  }
+
+  static void unregisterRunLoopCallback(const char* eventName)
+  {
+    auto findIt = chainblocks::RunLoopHooks.find(eventName);
+    if(findIt != chainblocks::RunLoopHooks.end())
+    {
+      chainblocks::RunLoopHooks.erase(findIt);
+    }
   }
 
   static CBVar* globalVariable(const char* name)
@@ -826,8 +824,8 @@ namespace chainblocks
 
   static CBRuntimeBlock* createBlock(const char* name)
   {
-    auto it = GlobalRegistry.blocksRegister.find(name);
-    if(it == GlobalRegistry.blocksRegister.end())
+    auto it = BlocksRegister.find(name);
+    if(it == BlocksRegister.end())
     {
       return nullptr;
     }
@@ -1105,6 +1103,24 @@ namespace chainblocks
   { 
     json jsonChain = *chain;
     return jsonChain.dump(); 
+  }
+
+  static void sleep(double seconds = -1.0)
+  {
+    //negative = no sleep, just run callbacks
+    if(seconds >= 0)
+    {
+      std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
+    }
+
+    // Run loop callbacks after sleeping
+    for(auto& cbinfo : RunLoopHooks)
+    {
+      if(cbinfo.second)
+      {
+        cbinfo.second();
+      }
+    }
   }
 };
 #endif

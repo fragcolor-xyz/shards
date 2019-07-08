@@ -145,6 +145,8 @@ type
 
   CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBRuntimeBlock {.cdecl.}
 
+  CBOnRunLoopTick* {.importcpp: "CBOnRunLoopTick", header: "chainblocks.hpp".} = proc(): void {.cdecl.}
+
   CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4

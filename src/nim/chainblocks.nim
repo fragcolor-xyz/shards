@@ -654,7 +654,11 @@ when appType != "lib":
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
     invokeFunction("chainblocks::registerObjectType", vendorId, typeId, info).to(void)
 
-  proc getGlobalRegistry*(): pointer = invokeFunction("chainblocks::GetGlobalRegistry").to(pointer)
+  proc registerRunLoopCallback*(name: string; callback: CBOnRunLoopTick) =
+    invokeFunction("chainblocks::registerRunLoopCallback", name, callback).to(void)
+
+  proc unregisterRunLoopCallback*(name: string) =
+    invokeFunction("chainblocks::unregisterRunLoopCallback", name).to(void)
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
 
@@ -669,6 +673,8 @@ when appType != "lib":
     var frame = getFrameState()
     result = suspendInternal(seconds)
     setFrameState(frame)
+
+  proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "chainblocks.hpp".}
   
 else:
   # When we are a dll with a collection of blocks!
@@ -676,35 +682,28 @@ else:
   import dynlib
   
   type
-    RegisterBlkProc = proc(registry: pointer; name: cstring; initProc: CBBlockConstructor) {.cdecl.}
-    RegisterTypeProc = proc(registry: pointer; vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
+    RegisterBlkProc = proc(name: cstring; initProc: CBBlockConstructor) {.cdecl.}
+    RegisterTypeProc = proc(vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
+    RegisterLoopCb = proc(name: cstring; cb: CBOnRunLoopTick) {.cdecl.}
+    UnregisterLoopCb = proc(name: cstring) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
     SuspendProc = proc(seconds: float64): CBVar {.cdecl.}
   
   var
-    localBlocks: seq[tuple[name: string; initProc: CBBlockConstructor]]
-    localObjTypes: seq[tuple[vendorId, typeId: FourCC; info: CBObjectInfo]]
-
     exeLib = loadLib()
     cbRegisterBlock = cast[RegisterBlkProc](exeLib.symAddr("chainblocks_RegisterBlock"))
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
+    cbRegisterLoopCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterRunLoopCallback"))
+    cbUnregisterLoopCb = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_UnregisterRunLoopCallback"))
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
     cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
     cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
 
-  proc chainblocks_init_module(registry: pointer) {.exportc, dynlib, cdecl.} =
-    for localBlock in localBlocks:
-      cbRegisterBlock(registry, localBlock.name, localBlock.initProc)
-    
-    for localType in localObjTypes:
-      cbRegisterObjectType(registry, localType.vendorId, localType.typeId, localType.info)
-
-  proc registerBlock*(name: string; initProc: CBBlockConstructor) =
-    localBlocks.add((name, initProc))
-
-  proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
-    localObjTypes.add((vendorId, typeId, info))
+  proc registerBlock*(name: string; initProc: CBBlockConstructor) = cbRegisterBlock(name, initProc)
+  proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) = cbRegisterObjectType(vendorId, typeId, info)
+  proc registerRunLoopCallback*(name: string; callback: CBOnRunLoopTick) = cbRegisterLoopCb(name, callback)
+  proc unregisterRunLoopCallback*(name: string) = cbUnregisterLoopCb(name)
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)

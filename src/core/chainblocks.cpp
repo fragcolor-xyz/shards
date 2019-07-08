@@ -6,8 +6,10 @@
 
 namespace chainblocks
 {
-  CBRegistry GlobalRegistry;
+  std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
+  std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   std::unordered_map<std::string, CBVar> GlobalVariables;
+  std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   thread_local CBChain* CurrentChain;
 };
 
@@ -15,14 +17,24 @@ namespace chainblocks
 extern "C" {
 #endif
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(CBRegistry* registry, const char* fullName, CBBlockConstructor constructor)
+EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockConstructor constructor)
 {
-  chainblocks::registerBlock(*registry, fullName, constructor);
+  chainblocks::registerBlock(fullName, constructor);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterObjectType(CBRegistry* registry, int32_t vendorId, int32_t typeId, CBObjectInfo info)
+EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info)
 {
-  chainblocks::registerObjectType(*registry, vendorId, typeId, info);
+  chainblocks::registerObjectType(vendorId, typeId, info);
+}
+
+EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback)
+{
+  chainblocks::registerRunLoopCallback(eventName, callback);
+}
+
+EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName)
+{
+  chainblocks::unregisterRunLoopCallback(eventName);
 }
 
 EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name)
@@ -38,6 +50,11 @@ EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* error
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
 {
   return chainblocks::suspend(seconds);
+}
+
+EXPORTED CBVar __cdecl chainblocks_Sleep(double seconds)
+{
+  chainblocks::sleep(seconds);
 }
 
 #ifdef __cplusplus
