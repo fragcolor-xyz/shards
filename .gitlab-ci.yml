@@ -6,6 +6,7 @@ buildAndRun:win:
     - nim cpp -r -f chainblocks.nim
     - cd blocks/external/py
     - nim cpp -f py.nim
-    - nim cpp -f pytest.nim
+    - 'call C:\ProgramData\Miniconda3\Scripts\activate.bat C:\ProgramData\Miniconda3'
+    - nim cpp -f -r pytest.nim
   tags:
     - WIN, NIM, BOOST, MINGW

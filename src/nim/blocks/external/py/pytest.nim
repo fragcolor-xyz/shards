@@ -14,12 +14,14 @@ proc run() =
   setCurrentChain(chain)
 
   Const "Hello"
+
   var pyBlk = createBlock("Scripting.Py")
   assert pyBlk != nil
   assert $pyBlk.name(pyBlk) == "Scripting.Py", "Got: " & $pyBlk.name(pyBlk)
   pyBlk.setup(pyBlk)
   pyBlk.setParam(pyBlk, 0, "./pytest.py")
   getCurrentChain().add(pyBlk)
+  
   Log()
   
   echo "Start"
@@ -42,7 +44,7 @@ proc run() =
   getCurrentChain().start(true)
   setFrameState(frame)
 
-  while true:
+  for _ in 0..9:
     frame = getFrameState()
     getCurrentChain().tick()
     setFrameState(frame)
