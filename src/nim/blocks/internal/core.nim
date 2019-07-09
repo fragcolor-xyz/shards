@@ -286,8 +286,6 @@ when true:
 
   chainblock CBlockSleep, "Sleep"
 
-defineCppType(StdRegex, "std::regex", "<regex>")
-
 # When - a filter block, that let's inputs pass only when the condition is true
 when true:
   type
@@ -622,7 +620,7 @@ when true:
     CBToString* = object
       cachedStr*: CBString
   
-  template setup*(b: CBToString) = b.cachedStr = newString("")
+  template setup*(b: CBToString) = b.cachedStr = makeString("")
   template destroy*(b: CBToString) = freeString(b.cachedStr)
   template inputTypes*(b: CBToString): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBToString): CBTypesInfo = { String }

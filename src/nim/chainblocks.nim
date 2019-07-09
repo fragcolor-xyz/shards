@@ -31,10 +31,6 @@ proc elems*(v: CBFloat2): array[2, float64] {.inline.} = [v.toCpp[0].to(float64)
 proc elems*(v: CBFloat3): array[3, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32)]
 proc elems*(v: CBFloat4): array[4, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32), v.toCpp[3].to(float32)]
 
-proc makeStringVar*(s: string): CBVar {.inline.} =
-  result.valueType = String
-  result.stringValue = newString(s)
-
 converter toCBTypesInfo*(s: tuple[types: set[CBType]; canBeSeq: bool]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for t in s.types:
@@ -755,8 +751,12 @@ template halt*(context: CBContext; txt: string): untyped =
   context.setError(txt)
   StopChain
 
+defineCppType(StdRegex, "std::regex", "<regex>")
+defineCppType(StdSmatch, "std::smatch", "<regex>")
+defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
+
 when not defined(skipCoreBlocks):
-  include blocks/internal/[core, stack, calculate]
+  include blocks/internal/[core, strings, stack, calculate]
 
 when appType != "lib":
   # Swaps from compile time chain mode on/off
@@ -939,6 +939,13 @@ when isMainModule:
       Msg "No! Regex!"
     
     regexMatchNotTest.start()
+
+    withChain testMatchText:
+      Const """baz.dat"""
+      MatchText """([a-z]+)\.([a-z]+)"""
+      Log()
+    
+    testMatchText.start()
 
     let
       jstr = mainChain.store()

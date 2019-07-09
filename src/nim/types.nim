@@ -217,9 +217,12 @@ converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
     invokeFunction("da_push", result, str.cstring).to(void)
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
-proc newString*(txt: string): CBString {.inline.} =
+proc makeString*(txt: string): CBString {.inline.} =
   # echo "newString: ", txt
   invokeFunction("gb_make_string", txt.cstring).to(CBString)
+proc makeString*(txt: cstring): CBString {.inline.} =
+  # echo "newString: ", txt
+  invokeFunction("gb_make_string", txt).to(CBString)
 proc freeString*(cbStr: CBString) {.inline.} =
   # echo "freeString: ", cbStr
   invokeFunction("gb_free_string", cbStr).to(void)
