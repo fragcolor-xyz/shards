@@ -294,10 +294,20 @@ converter toCBVar*(v: tuple[a,b: float64]): CBVar {.inline.} =
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float2, float2Value: wval)
 
+converter toCBVar*(v: tuple[a,b,c: float]): CBVar {.inline.} =
+  var wval: CBFloat3
+  iterateTuple(v, wval, float64)
+  return CBVar(valueType: Float3, float3Value: wval)
+
 converter toCBVar*(v: tuple[a,b,c: float32]): CBVar {.inline.} =
   var wval: CBFloat3
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float3, float3Value: wval)
+
+converter toCBVar*(v: tuple[a,b,c,d: float]): CBVar {.inline.} =
+  var wval: CBFloat4
+  iterateTuple(v, wval, float64)
+  return CBVar(valueType: Float4, float4Value: wval)
 
 converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
   var wval: CBFloat4
@@ -312,6 +322,9 @@ converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
 
 converter toCBVar*(v: ptr CBChainPtr): CBVar {.inline.} =
   return CBVar(valueType: Chain, chainValue: v)
+
+converter toCBVar*(v: var CBChainPtr): CBVar {.inline.} =
+  return CBVar(valueType: Chain, chainValue: addr v)
 
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
   if container.valueType == ContextVar:

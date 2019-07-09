@@ -798,9 +798,10 @@ when true:
       target*: ptr CBVar
   
   template cleanup*(b: CBAddVariable) =
+    if b.target != nil:
+      # also we turned the target into a sequence, so we are responsible for the memory
+      b.target[].free()
     b.target = nil
-    # also we turned the target into a sequence, so we are responsible for the memory
-    b.target[].free()
   template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
