@@ -63,7 +63,7 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
 };
 #endif
 
-static void to_json(json& j, const CBVar& var)
+void to_json(json& j, const CBVar& var)
 {
   auto valType = int(var.valueType);
   switch(var.valueType)
@@ -264,7 +264,7 @@ static void to_json(json& j, const CBVar& var)
   };
 }
 
-static void from_json(const json& j, CBVar& var)
+void from_json(const json& j, CBVar& var)
 {
   auto valType = CBType(j.at("type").get<int>());
   switch (valType)
@@ -435,7 +435,7 @@ static void from_json(const json& j, CBVar& var)
   }
 }
 
-static void to_json(json& j, const CBChainPtr& chain)
+void to_json(json& j, const CBChainPtr& chain)
 {
   std::vector<json> blocks;
   for(auto blk : chain->blocks)
@@ -470,7 +470,7 @@ static void to_json(json& j, const CBChainPtr& chain)
   };
 }
 
-static void from_json(const json& j, CBChainPtr& chain)
+void from_json(const json& j, CBChainPtr& chain)
 {
   auto chainName = j.at("name").get<std::string>();
   chain = new CBChain(chainName.c_str());

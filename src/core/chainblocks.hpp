@@ -566,10 +566,10 @@ namespace chainblocks
 
 using json = nlohmann::json;
 // The following procedures implement json.hpp protocol in order to allow easy integration! they must stay outside the namespace!
-static void to_json(json& j, const CBVar& var);
-static void from_json(const json& j, CBVar& var);
-static void to_json(json& j, const CBChainPtr& chain);
-static void from_json(const json& j, CBChainPtr& chain);
+void to_json(json& j, const CBVar& var);
+void from_json(const json& j, CBVar& var);
+void to_json(json& j, const CBChainPtr& chain);
+void from_json(const json& j, CBChainPtr& chain);
 
 namespace chainblocks
 {
