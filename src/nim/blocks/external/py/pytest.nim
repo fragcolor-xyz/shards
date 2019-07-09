@@ -34,7 +34,7 @@ proc run() =
   echo "Start again"
   getCurrentChain().start(true)
 
-  for _ in 0..9:
+  for _ in 0..100:
     getCurrentChain().tick()
     sleep 30
   

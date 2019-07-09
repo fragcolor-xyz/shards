@@ -21,6 +21,7 @@ when true:
       instance*: PyObject
       loaded*: bool
       seqStorage*: CBSeq
+      pySuspendRes*: CBVar
   
   template cleanup*(b: CBPython) =
     b.instance = nil
@@ -128,6 +129,11 @@ when true:
       if blk.instance == nil:
         # Create a empty object to attach to this block instance
         blk.instance = py.dict()
+        blk.instance["suspend"] = proc(seconds: float64): bool =
+          blk.pySuspendRes = suspend(seconds)
+          if blk.pySuspendRes.chainState != Continue:
+            return false
+          return true
       
       if not blk.loaded and blk.filename != "" and fileExists(blk.filename):
         # Load, but might also be in memory!
@@ -154,8 +160,11 @@ when true:
           let
             pyinput = var2Py(input)
             pyres = blk.pymod.callMethod("activate", blk.instance, pyinput)
-          blk.seqStorage.clear()
-          res = py2Var(pyres, blk)
+          if blk.pySuspendRes.chainState != Continue:
+            res = blk.pySuspendRes
+          else:
+            blk.seqStorage.clear()
+            res = py2Var(pyres, blk)
     except:
       context.setError(getCurrentExceptionMsg())
     res
