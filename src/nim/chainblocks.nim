@@ -358,6 +358,7 @@ when appType != "lib":
 
   proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
   proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
+  proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "chainblocks.hpp".}
   proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
 
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
@@ -384,6 +385,13 @@ when appType != "lib":
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
     $(str.c_str().to(cstring))
+  
+  proc store*(v: CBVar): string =
+    let str = invokeFunction("chainblocks::store", v).to(StdString)
+    $(str.c_str().to(cstring))
+  
+  proc load*(chain: var CBChainPtr; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "chainblocks.hpp".}
+  proc load*(chain: var CBVar; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "chainblocks.hpp".}
 
   var
     compileTimeMode {.compileTime.}: bool = false
@@ -659,6 +667,7 @@ when appType != "lib":
 
   proc newChain*(name: string): CBChainPtr {.inline, noinit.} =
     cppnewptr(result, name)
+    registerChain(result)
   
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
@@ -874,8 +883,16 @@ when isMainModule:
       var idx = i.CBVar
       mainChain.tick(idx)
 
-    echo mainChain.store()
-    assert mainChain.store() == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    let
+      jstr = mainChain.store()
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    echo jstr
+    var jchain: CBChainPtr
+    load(jchain, jstr)
+    let
+      jstr2 = jchain.store()
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    echo jstr2
 
     echo sizeof(CBVar)
     assert sizeof(CBVar) == 48

@@ -243,7 +243,7 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
   // Use with care, only if you know you own the memory, this is just utility
   void free()
   {
-    if(valueType == String && stringValue != nullptr)
+    if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
     {
       gb_free_string(stringValue);
       stringValue = nullptr;
@@ -463,7 +463,7 @@ struct CBChain
     }
   }
 
-  const char* name;
+  std::string name;
 
   CBCoro* coro;
   clock_t next;
@@ -537,12 +537,25 @@ namespace chainblocks
   extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern std::unordered_map<std::string, CBVar> GlobalVariables;
   extern std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
-  extern std::unordered_map<std::string, CBChain**> GlobalChains;
+  extern std::unordered_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
+  static CBRuntimeBlock* createBlock(const char* name);
+
+  struct CBException : public std::exception
+  {
+    CBException(const char* errmsg) : errorMessage(errmsg) {}
+
+    const char * what () const throw ()
+    {
+      return errorMessage;
+    }
+
+    const char* errorMessage;
+  };
 };
 
 using json = nlohmann::json;
-
+// The following procedures implement json.hpp protocol in order to allow easy integration! they must stay outside the namespace!
 static void to_json(json& j, const CBVar& var)
 {
   auto valType = int(var.valueType);
@@ -744,28 +757,31 @@ static void to_json(json& j, const CBVar& var)
 
 static void from_json(const json& j, CBVar& var)
 {
-  auto valType = CBType(j["type"].get<int>());
+  auto valType = CBType(j.at("type").get<int>());
   switch (valType)
   {
     case None:
     {
       var.valueType = None;
-      var.chainState = CBChainState(j["value"].get<int>());
+      var.chainState = CBChainState(j.at("value").get<int>());
       break;
     }
     case Object:
     {
-      auto vendorId = j["vendorId"].get<int32_t>();
-      auto typeId = j["typeId"].get<int32_t>();
-      if(!j["value"].is_null())
+      auto vendorId = j.at("vendorId").get<int32_t>();
+      auto typeId = j.at("typeId").get<int32_t>();
+      if(!j.at("value").is_null())
       {
-        auto value = j["value"].get<std::string>();
+        auto value = j.at("value").get<std::string>();
         auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(vendorId, typeId));
         if(findIt != chainblocks::ObjectTypesRegister.end() && findIt->second.deserialize)
         {
           var.objectValue = findIt->second.deserialize(const_cast<CBString>(value.c_str()));
         }
-        // TODO propagate some error if not found?
+        else
+        {
+          throw chainblocks::CBException("Failed to find a custom object deserializer.");
+        }
       }
       else
       {
@@ -778,87 +794,101 @@ static void from_json(const json& j, CBVar& var)
     case Bool:
     {
       var.valueType = Bool;
-      var.boolValue = j["value"].get<bool>();
+      var.boolValue = j.at("value").get<bool>();
       break;
     }
     case Int:
     {
       var.valueType = Int;
-      var.intValue = j["value"].get<int64_t>();
+      var.intValue = j.at("value").get<int64_t>();
       break;
     }
     case Int2:
     {
       var.valueType = Int2;
-      var.int2Value[0] = j["value"][0].get<int64_t>();
-      var.int2Value[1] = j["value"][1].get<int64_t>();
+      var.int2Value[0] = j.at("value")[0].get<int64_t>();
+      var.int2Value[1] = j.at("value")[1].get<int64_t>();
       break;
     }
     case Int3:
     {
       var.valueType = Int3;
-      var.int3Value[0] = j["value"][0].get<int32_t>();
-      var.int3Value[1] = j["value"][1].get<int32_t>();
-      var.int3Value[2] = j["value"][2].get<int32_t>();
+      var.int3Value[0] = j.at("value")[0].get<int32_t>();
+      var.int3Value[1] = j.at("value")[1].get<int32_t>();
+      var.int3Value[2] = j.at("value")[2].get<int32_t>();
       break;
     }
     case Int4:
     {
       var.valueType = Int4;
-      var.int4Value[0] = j["value"][0].get<int32_t>();
-      var.int4Value[1] = j["value"][1].get<int32_t>();
-      var.int4Value[2] = j["value"][2].get<int32_t>();
-      var.int4Value[3] = j["value"][3].get<int32_t>();
+      var.int4Value[0] = j.at("value")[0].get<int32_t>();
+      var.int4Value[1] = j.at("value")[1].get<int32_t>();
+      var.int4Value[2] = j.at("value")[2].get<int32_t>();
+      var.int4Value[3] = j.at("value")[3].get<int32_t>();
       break;
     }
     case Float:
     {
       var.valueType = Float;
-      var.intValue = j["value"].get<double>();
+      var.intValue = j.at("value").get<double>();
       break;
     }
     case Float2:
     {
       var.valueType = Float2;
-      var.float2Value[0] = j["value"][0].get<double>();
-      var.float2Value[1] = j["value"][1].get<double>();
+      var.float2Value[0] = j.at("value")[0].get<double>();
+      var.float2Value[1] = j.at("value")[1].get<double>();
       break;
     }
     case Float3:
     {
       var.valueType = Float3;
-      var.float3Value[0] = j["value"][0].get<float>();
-      var.float3Value[1] = j["value"][1].get<float>();
-      var.float3Value[2] = j["value"][2].get<float>();
+      var.float3Value[0] = j.at("value")[0].get<float>();
+      var.float3Value[1] = j.at("value")[1].get<float>();
+      var.float3Value[2] = j.at("value")[2].get<float>();
       break;
     }
     case Float4:
     {
       var.valueType = Float4;
-      var.float4Value[0] = j["value"][0].get<float>();
-      var.float4Value[1] = j["value"][1].get<float>();
-      var.float4Value[2] = j["value"][2].get<float>();
-      var.float4Value[3] = j["value"][3].get<float>();
+      var.float4Value[0] = j.at("value")[0].get<float>();
+      var.float4Value[1] = j.at("value")[1].get<float>();
+      var.float4Value[2] = j.at("value")[2].get<float>();
+      var.float4Value[3] = j.at("value")[3].get<float>();
+      break;
+    }
+    case ContextVar:
+    {
+      var.valueType = ContextVar;
+      auto strVal = j.at("value").get<std::string>();
+      var.stringValue = gb_make_string(strVal.c_str());
+      break;
+    }
+    case String:
+    {
+      var.valueType = String;
+      auto strVal = j.at("value").get<std::string>();
+      var.stringValue = gb_make_string(strVal.c_str());
       break;
     }
     case Color:
     {
       var.valueType = Color;
-      var.colorValue.r = j["value"][0].get<uint8_t>();
-      var.colorValue.g = j["value"][1].get<uint8_t>();
-      var.colorValue.b = j["value"][2].get<uint8_t>();
-      var.colorValue.a = j["value"][3].get<uint8_t>();
+      var.colorValue.r = j.at("value")[0].get<uint8_t>();
+      var.colorValue.g = j.at("value")[1].get<uint8_t>();
+      var.colorValue.b = j.at("value")[2].get<uint8_t>();
+      var.colorValue.a = j.at("value")[3].get<uint8_t>();
       break;
     }
     case Image:
     {
       var.valueType = Image;
-      var.imageValue.width = j["width"].get<int32_t>();
-      var.imageValue.height = j["height"].get<int32_t>();
-      var.imageValue.channels = j["channels"].get<int32_t>();
+      var.imageValue.width = j.at("width").get<int32_t>();
+      var.imageValue.height = j.at("height").get<int32_t>();
+      var.imageValue.channels = j.at("channels").get<int32_t>();
       var.imageValue.data = nullptr;
       var.imageValue.alloc();
-      auto buffer = j["data"].get<std::vector<uint8_t>>();
+      auto buffer = j.at("data").get<std::vector<uint8_t>>();
       auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
       memcpy(var.imageValue.data, &buffer[0], binsize);
       break;
@@ -866,13 +896,13 @@ static void from_json(const json& j, CBVar& var)
     case BoolOp:
     {
       var.valueType = BoolOp;
-      var.intValue = CBBoolOp(j["value"].get<int>());
+      var.intValue = CBBoolOp(j.at("value").get<int>());
       break;
     }
     case Seq:
     {
       var.valueType = Seq;
-      auto items = j["values"].get<std::vector<json>>();
+      auto items = j.at("values").get<std::vector<json>>();
       da_init(var.seqValue);
       for(auto item : items)
       {
@@ -883,9 +913,8 @@ static void from_json(const json& j, CBVar& var)
     case Chain:
     {
       var.valueType = Chain;
-      auto chainName = j["name"].get<std::string>();
-      // GlobalChains is a **, means a ref to the actual chain so we always pick it
-      var.chainValue = chainblocks::GlobalChains["chainName"]; // might be null now, but might get filled after
+      auto chainName = j.at("name").get<std::string>();
+      var.chainValue = &chainblocks::GlobalChains[chainName]; // might be null now, but might get filled after
       break;
     }
     default:
@@ -895,10 +924,10 @@ static void from_json(const json& j, CBVar& var)
   }
 }
 
-static void to_json(json& j, const CBChain& chain)
+static void to_json(json& j, const CBChainPtr& chain)
 {
   std::vector<json> blocks;
-  for(auto blk : chain.blocks)
+  for(auto blk : chain->blocks)
   {
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
@@ -925,13 +954,53 @@ static void to_json(json& j, const CBChain& chain)
 
   j = {
     { "blocks", blocks },
-    { "name", chain.name },
+    { "name", chain->name },
     { "version", 0.1 },
   };
 }
 
-static void from_json(const json& j, CBChain& chain)
+static void from_json(const json& j, CBChainPtr& chain)
 {
+  auto chainName = j.at("name").get<std::string>();
+  chain = new CBChain(chainName.c_str());
+  chainblocks::GlobalChains["chainName"] = chain;
+
+  auto jblocks = j.at("blocks");
+  for(auto jblock : jblocks)
+  {
+    auto blkname = jblock.at("name").get<std::string>();
+    auto blk = chainblocks::createBlock(blkname.c_str());
+    if(!blk)
+    {
+      auto errmsg = "Failed to create block of type: " + std::string("blkname");
+      throw chainblocks::CBException(errmsg.c_str());
+    }
+  
+    // Setup
+    blk->setup(blk);
+    
+    // Set params
+    auto jparams = jblock.at("params");
+    auto blkParams = blk->parameters(blk);
+    for(auto jparam : jparams)
+    {
+      auto paramName = jparam.at("name").get<std::string>();
+      auto value = jparam.at("value").get<CBVar>();
+      for(auto i = 0; i < da_count(blkParams); i++)
+      {
+        auto paramInfo = da_getptr(blkParams, i);
+        if(paramName == paramInfo->name)
+        {
+          blk->setParam(blk, i, value);
+          break;
+        }
+      }
+      value.free();
+    }
+
+    // From now on this chain owns the block
+    chain->addBlock(blk);
+  }
 }
 
 namespace chainblocks
@@ -944,6 +1013,20 @@ namespace chainblocks
   static CBChain* getCurrentChain()
   {
     return CurrentChain;
+  }
+
+  static void registerChain(CBChain* chain)
+  {
+    chainblocks::GlobalChains[chain->name] = chain;
+  }
+
+  static void unregisterChain(CBChain* chain)
+  {
+    auto findIt = chainblocks::GlobalChains.find(chain->name);
+    if(findIt != chainblocks::GlobalChains.end())
+    {
+      chainblocks::GlobalChains.erase(findIt);
+    }
   }
 
   static void registerBlock(const char* fullName, CBBlockConstructor constructor)
@@ -1290,10 +1373,22 @@ namespace chainblocks
     return jsonVar.dump();
   }
 
-  static std::string store(CBChain* chain) 
+  static void load(CBVar& var, const char* jsonStr)
+  {
+    auto j = json::parse(jsonStr);
+    var = j.get<CBVar>();
+  }
+
+  static std::string store(CBChainPtr chain) 
   { 
-    json jsonChain = *chain;
+    json jsonChain = chain;
     return jsonChain.dump(); 
+  }
+
+  static void load(CBChainPtr& chain, const char* jsonStr)
+  {
+    auto j = json::parse(jsonStr);
+    chain = j.get<CBChainPtr>();
   }
 
   static void sleep(double seconds = -1.0)

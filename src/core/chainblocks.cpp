@@ -10,7 +10,7 @@ namespace chainblocks
   std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   std::unordered_map<std::string, CBVar> GlobalVariables;
   std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
-  std::unordered_map<std::string, CBChain**> GlobalChains;
+  std::unordered_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
 };
 
