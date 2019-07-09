@@ -547,6 +547,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
     proc `destroyProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.destroy()
+      cppdelptr b # Also free self
     proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
       updateStackBottom()
       b.sb.preChain(context)

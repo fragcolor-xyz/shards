@@ -123,7 +123,22 @@ struct CBImage
   int32_t width;
   int32_t height;
   int32_t channels;
-  int8_t* data;
+  uint8_t* data;
+
+  void alloc()
+  {
+    if(data)
+      dealloc();
+
+    auto binsize = width * height * channels;
+    data = new uint8_t[binsize];
+  }
+
+  void dealloc()
+  {
+    if(data)
+      delete[] data;
+  }
 };
 
 struct CBTypeInfo
@@ -220,6 +235,7 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
 
   uint8_t reserved[15];
 
+  // Use with care, only if you know you own the memory, this is just utility
   void free()
   {
     if(valueType == String && stringValue != nullptr)
@@ -230,6 +246,11 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
     else if(valueType == Seq)
     {
       da_free(seqValue);
+      da_init(seqValue);
+    }
+    else if(valueType == Image)
+    {
+      imageValue.dealloc();
     }
   }
 };
@@ -294,7 +315,7 @@ struct CBRuntimeBlock
   CBHelpProc help; // Returns the help text of the block, do not free the string, generally const
 
   CBSetupProc setup; // A one time construtor setup for the block
-  CBDestroyProc destroy; // A one time finalizer for the block
+  CBDestroyProc destroy; // A one time finalizer for the block, blocks should also free all the memory in here!
   
   CBPreChainProc preChain; // Called inside the coro before a chain starts
   CBPostChainProc postChain; // Called inside the coro afer a chain ends
@@ -415,8 +436,27 @@ struct CBContext
 
 struct CBChain
 {
-  CBChain(const char* chain_name = "Anonymous chain") : name(chain_name), coro(nullptr), next(0), sleepSeconds(0.0), started(false), finished(false), returned(false), rootTickInput(CBVar()), finishedOutput(CBVar())
+  CBChain(const char* chain_name = "Anonymous chain") : 
+    name(chain_name),
+    coro(nullptr),
+    next(0),
+    sleepSeconds(0.0),
+    started(false),
+    finished(false),
+    returned(false),
+    rootTickInput(CBVar()),
+    finishedOutput(CBVar()),
+    context(nullptr)
   {}
+
+  ~CBChain()
+  {
+    for(auto blk : blocks)
+    {
+      blk->destroy(blk);
+      //blk is responsible to free itself, as they might use any allocation strategy they wish!
+    }
+  }
 
   const char* name;
 
@@ -439,11 +479,13 @@ struct CBChain
   CBContext* context;
   std::vector<CBRuntimeBlock*> blocks;
 
+  // Also the chain takes ownership of the block!
   void addBlock(CBRuntimeBlock* blk)
   {
     blocks.push_back(blk);
   }
 
+  // Also removes ownership of the block
   void removeBlock(CBRuntimeBlock* blk)
   {
     auto findIt = std::find(blocks.begin(), blocks.end(), blk);
@@ -503,15 +545,15 @@ static void to_json(json& j, const CBVar& var)
     case None:
     {
       j = json{
-        { "type", None },
+        { "type", 0 },
         { "value", int(var.chainState) }
       };
       break;
     }
     case Object:
     {
-      auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(var.objectTypeId, var.objectTypeId));
-      if(findIt != chainblocks::ObjectTypesRegister.end())
+      auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(var.objectVendorId, var.objectTypeId));
+      if(findIt != chainblocks::ObjectTypesRegister.end() && findIt->second.serialize)
       {
         j = json{
           { "type", valType },
@@ -638,7 +680,7 @@ static void to_json(json& j, const CBVar& var)
       else
       {
         j = json{
-          { "type", None },
+          { "type", 0 },
           { "value", int(Continue) }
         };
       }
@@ -678,7 +720,7 @@ static void to_json(json& j, const CBVar& var)
       else
       {
         j = json{
-          { "type", None },
+          { "type", 0 },
           { "value", int(Continue) }
         };
       }
@@ -687,7 +729,7 @@ static void to_json(json& j, const CBVar& var)
     default:
     {
       j = json{
-        { "type", None },
+        { "type", 0 },
         { "value", int(Continue) }
       };
     }
@@ -696,7 +738,130 @@ static void to_json(json& j, const CBVar& var)
 
 static void from_json(const json& j, CBVar& var)
 {
-  var = CBVar();
+  auto valType = CBType(j["type"].get<int>());
+  switch (valType)
+  {
+    case None:
+    {
+      var.valueType = None;
+      var.chainState = CBChainState(j["value"].get<int>());
+      break;
+    }
+    case Object:
+    {
+      auto vendorId = j["vendorId"].get<int32_t>();
+      auto typeId = j["typeId"].get<int32_t>();
+      if(!j["value"].is_null())
+      {
+        auto value = j["value"].get<std::string>();
+        auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(vendorId, typeId));
+        if(findIt != chainblocks::ObjectTypesRegister.end() && findIt->second.deserialize)
+        {
+          var.objectValue = findIt->second.deserialize(const_cast<CBString>(value.c_str()));
+        }
+        // TODO propagate some error if not found?
+      }
+      else
+      {
+        var.objectValue = nullptr;
+      }
+      var.objectVendorId = vendorId;
+      var.objectTypeId = typeId;
+      break;
+    }
+    case Bool:
+    {
+      var.valueType = Bool;
+      var.boolValue = j["value"].get<bool>();
+      break;
+    }
+    case Int:
+    {
+      var.valueType = Int;
+      var.intValue = j["value"].get<int64_t>();
+      break;
+    }
+    case Int2:
+    {
+      var.valueType = Int2;
+      var.int2Value[0] = j["value"][0].get<int64_t>();
+      var.int2Value[1] = j["value"][1].get<int64_t>();
+      break;
+    }
+    case Int3:
+    {
+      var.valueType = Int3;
+      var.int3Value[0] = j["value"][0].get<int32_t>();
+      var.int3Value[1] = j["value"][1].get<int32_t>();
+      var.int3Value[2] = j["value"][2].get<int32_t>();
+      break;
+    }
+    case Int4:
+    {
+      var.valueType = Int4;
+      var.int4Value[0] = j["value"][0].get<int32_t>();
+      var.int4Value[1] = j["value"][1].get<int32_t>();
+      var.int4Value[2] = j["value"][2].get<int32_t>();
+      var.int4Value[3] = j["value"][3].get<int32_t>();
+      break;
+    }
+    case Float:
+    {
+      var.valueType = Float;
+      var.intValue = j["value"].get<double>();
+      break;
+    }
+    case Float2:
+    {
+      var.valueType = Float2;
+      var.float2Value[0] = j["value"][0].get<double>();
+      var.float2Value[1] = j["value"][1].get<double>();
+      break;
+    }
+    case Float3:
+    {
+      var.valueType = Float3;
+      var.float3Value[0] = j["value"][0].get<float>();
+      var.float3Value[1] = j["value"][1].get<float>();
+      var.float3Value[2] = j["value"][2].get<float>();
+      break;
+    }
+    case Float4:
+    {
+      var.valueType = Float4;
+      var.float4Value[0] = j["value"][0].get<float>();
+      var.float4Value[1] = j["value"][1].get<float>();
+      var.float4Value[2] = j["value"][2].get<float>();
+      var.float4Value[3] = j["value"][3].get<float>();
+      break;
+    }
+    case Color:
+    {
+      var.valueType = Color;
+      var.colorValue.r = j["value"][0].get<uint8_t>();
+      var.colorValue.g = j["value"][1].get<uint8_t>();
+      var.colorValue.b = j["value"][2].get<uint8_t>();
+      var.colorValue.a = j["value"][3].get<uint8_t>();
+      break;
+    }
+    case Image:
+    {
+      var.valueType = Image;
+      var.imageValue.width = j["width"].get<int32_t>();
+      var.imageValue.height = j["height"].get<int32_t>();
+      var.imageValue.channels = j["channels"].get<int32_t>();
+      var.imageValue.data = nullptr;
+      var.imageValue.alloc();
+      auto buffer = j["data"].get<std::vector<uint8_t>>();
+      auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
+      memcpy(var.imageValue.data, &buffer[0], binsize);
+      break;
+    }
+    default:
+    {
+      var = CBVar();
+    }
+  }
 }
 
 static void to_json(json& j, const CBChain& chain)

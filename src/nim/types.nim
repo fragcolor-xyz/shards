@@ -181,8 +181,9 @@ proc getItemRef*(tinfo: CBSeq; index: int): var CBVar {.inline, noinit.} = invok
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:
     yield getItemRef(s, i)
-proc freeSeq*(cbs: var CBSeq) {.inline.} =
-  for item in cbs.mitems: item.free()
+proc freeSeq*(cbs: var CBSeq; callFree: bool = false) {.inline.} =
+  if callFree:
+    for item in cbs.mitems: item.free()
   invokeFunction("da_free", cbs).to(void)
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("da_push", cbs, val).to(void)

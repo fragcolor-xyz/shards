@@ -52,11 +52,6 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
   return chainblocks::suspend(seconds);
 }
 
-EXPORTED CBVar __cdecl chainblocks_Sleep(double seconds)
-{
-  chainblocks::sleep(seconds);
-}
-
 #ifdef __cplusplus
 };
 #endif

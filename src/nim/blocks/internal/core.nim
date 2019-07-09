@@ -286,7 +286,7 @@ when true:
       acceptedValues*: CBSeq
   
   template setup*(b: CBWhen) = initSeq(b.acceptedValues)
-  template destroy*(b: CBWhen) = freeSeq(b.acceptedValues)
+  template destroy*(b: CBWhen) = freeSeq(b.acceptedValues, true)
   template inputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
@@ -295,7 +295,7 @@ when true:
     if val.valueType == Seq:
       b.acceptedValues = val.seqValue.clone()
     else:
-      b.acceptedValues.push(val)
+      b.acceptedValues.push(val.clone())
   template getParam*(b: CBWhen; index: int): CBVar =
     if b.acceptedValues.len == 1:
       b.acceptedValues[0]
@@ -321,7 +321,7 @@ when true:
       acceptedValues*: CBSeq
   
   template setup*(b: CBWhenNot) = initSeq(b.acceptedValues)
-  template destroy*(b: CBWhenNot) = freeSeq(b.acceptedValues)
+  template destroy*(b: CBWhenNot) = freeSeq(b.acceptedValues, true)
   template inputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo =
@@ -330,7 +330,7 @@ when true:
     if val.valueType == Seq:
       b.acceptedValues = val.seqValue.clone()
     else:
-      b.acceptedValues.push(val)
+      b.acceptedValues.push(val.clone())
   template getParam*(b: CBWhenNot; index: int): CBVar =
     if b.acceptedValues.len == 1:
       b.acceptedValues[0]
@@ -786,6 +786,8 @@ when true:
   
   template cleanup*(b: CBAddVariable) =
     b.target = nil
+    # also we turned the target into a sequence, so we are responsible for the memory
+    b.target[].free()
   template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
