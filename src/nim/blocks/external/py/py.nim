@@ -28,7 +28,7 @@ when true:
     b.pymod = nil
     b.loaded = false
   template setup*(b: CBPython) =
-    b.stringStorage = newString("")
+    b.stringStorage = makeString("")
     initSeq(b.seqStorage)
   template destroy*(b: CBPython) =
     b.stringStorage.freeString()
