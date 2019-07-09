@@ -30,7 +30,6 @@ when true:
     b.stringStorage = newString("")
     initSeq(b.seqStorage)
   template destroy*(b: CBPython) =
-    b.fileName.freeString()
     b.stringStorage.freeString()
     freeSeq(b.seqStorage)
   template inputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
@@ -38,9 +37,9 @@ when true:
   template parameters*(b: CBPython): CBParametersInfo = @[("File", { String })]
   template setParam*(b: CBPython; index: int; val: CBVar) =
     cleanup(b) # force reload of python module
-    b.fileName = val.stringValue
+    b.filename = val.stringValue
   template getParam*(b: CBPython; index: int): CBVar =
-    b.fileName
+    b.filename
   
   proc var2Py*(input: CBVar): PPyObject =
     case input.valueType
@@ -130,9 +129,9 @@ when true:
         # Create a empty object to attach to this block instance
         blk.instance = py.dict()
       
-      if not blk.loaded and blk.fileName != "" and fileExists(blk.fileName):
+      if not blk.loaded and blk.filename != "" and fileExists(blk.filename):
         # Load, but might also be in memory!
-        let (dir, name, _) = blk.fileName.splitFile()
+        let (dir, name, _) = blk.filename.splitFile()
         pySys.path.append(dir).to(void)
         blk.pymod = pyImport(name)
 
