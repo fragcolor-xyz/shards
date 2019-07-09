@@ -8,7 +8,7 @@ proc run() =
   var lib = loadLib("py")
   assert lib != nil
 
-  var chain = initChain("chain")
+  var chain = newChain("chain")
   setCurrentChain(chain)
 
   Const "Hello"
@@ -39,3 +39,4 @@ proc run() =
     sleep 30
   
 run()
+GC_fullCollect()

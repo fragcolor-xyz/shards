@@ -33,6 +33,7 @@ type
     finishedOutput*: CBVar
     started*: bool
     finished*: bool
+  CBChainPtr* = ptr CBChain
   CBContextObj* {.importcpp: "CBContext", header: "chainblocks.hpp".} = object
     aborted*: bool
     restarted*: bool
@@ -116,7 +117,7 @@ type
     colorValue*: CBColor
     imageValue*: CBImage
     seqValue*: CBSeq
-    chainValue*: ptr CBChain
+    chainValue*: ptr CBChainPtr
     boolOpValue*: CBBoolOp
     valueType*: CBType
 

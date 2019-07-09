@@ -115,7 +115,7 @@ when true:
       for pyvar in pyseq.items:
         let sub = py2Var(pyvar, blk)
         push(blk.seqStorage, sub)
-    of Chain: result = cast[ptr CBChain](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
+    of Chain: result = cast[ptr CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
 
   template activate*(blk: var CBPython; context: CBContext; input: CBVar): CBVar =
     var res = StopChain

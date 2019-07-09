@@ -56,6 +56,7 @@ enum CBBoolOp
 struct CBVar;
 DA_TYPEDEF(CBVar, CBSeq);
 struct CBChain;
+typedef CBChain* CBChainPtr;
 struct CBRuntimeBlock;
 struct CBTypeInfo;
 DA_TYPEDEF(CBTypeInfo, CBTypesInfo)
@@ -125,6 +126,7 @@ struct CBImage
   int32_t channels;
   uint8_t* data;
 
+  // Utility
   void alloc()
   {
     if(data)
@@ -134,6 +136,7 @@ struct CBImage
     data = new uint8_t[binsize];
   }
 
+  // Utility
   void dealloc()
   {
     if(data)
@@ -155,14 +158,16 @@ struct CBTypeInfo
   CBTypesInfo seqTypes;
 };
 
-typedef CBString (__cdecl *CBObjectSerializer)(CBPointer); // callers should free the string!
-typedef CBPointer (__cdecl *CBObjectDeserializer)(CBString); // callers should free the string!
+typedef CBString (__cdecl *CBObjectSerializer)(CBPointer);
+typedef CBPointer (__cdecl *CBObjectDeserializer)(CBString);
+typedef CBPointer (__cdecl *CBObjectFree)(CBPointer);
 
 struct CBObjectInfo
 {
   const char* name;
   CBObjectSerializer serialize;
   CBObjectDeserializer deserialize;
+  CBObjectFree free;
 };
 
 struct CBParameterInfo
@@ -226,7 +231,7 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
     
     CBImage imageValue;
 
-    CBChain* chainValue;
+    CBChainPtr* chainValue;
 
     CBBoolOp boolOpValue;
   };
@@ -436,7 +441,7 @@ struct CBContext
 
 struct CBChain
 {
-  CBChain(const char* chain_name = "Anonymous chain") : 
+  CBChain(const char* chain_name) : 
     name(chain_name),
     coro(nullptr),
     next(0),
@@ -532,6 +537,7 @@ namespace chainblocks
   extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern std::unordered_map<std::string, CBVar> GlobalVariables;
   extern std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
+  extern std::unordered_map<std::string, CBChain**> GlobalChains;
   extern thread_local CBChain* CurrentChain;
 };
 
@@ -710,11 +716,11 @@ static void to_json(json& j, const CBVar& var)
     }
     case Chain:
     {
-      if(var.chainValue)
+      if(var.chainValue && *var.chainValue)
       {
         j = json{
           { "type", valType },
-          { "name", var.chainValue->name }
+          { "name", (*var.chainValue)->name }
         };
       }
       else
@@ -857,6 +863,31 @@ static void from_json(const json& j, CBVar& var)
       memcpy(var.imageValue.data, &buffer[0], binsize);
       break;
     }
+    case BoolOp:
+    {
+      var.valueType = BoolOp;
+      var.intValue = CBBoolOp(j["value"].get<int>());
+      break;
+    }
+    case Seq:
+    {
+      var.valueType = Seq;
+      auto items = j["values"].get<std::vector<json>>();
+      da_init(var.seqValue);
+      for(auto item : items)
+      {
+        da_push(var.seqValue, item.get<CBVar>());
+      }
+      break;
+    }
+    case Chain:
+    {
+      var.valueType = Chain;
+      auto chainName = j["name"].get<std::string>();
+      // GlobalChains is a **, means a ref to the actual chain so we always pick it
+      var.chainValue = chainblocks::GlobalChains["chainName"]; // might be null now, but might get filled after
+      break;
+    }
     default:
     {
       var = CBVar();
@@ -910,14 +941,9 @@ namespace chainblocks
     CurrentChain = chain;
   }
 
-  static void setCurrentChain(CBChain& chain)
+  static CBChain* getCurrentChain()
   {
-    CurrentChain = &chain;
-  }
-
-  static CBChain& getCurrentChain()
-  {
-    return *CurrentChain;
+    return CurrentChain;
   }
 
   static void registerBlock(const char* fullName, CBBlockConstructor constructor)
@@ -1264,7 +1290,7 @@ namespace chainblocks
     return jsonVar.dump();
   }
 
-  static std::string store(CBChain* chain, const char* chainName) 
+  static std::string store(CBChain* chain) 
   { 
     json jsonChain = *chain;
     return jsonChain.dump(); 

@@ -310,7 +310,7 @@ converter toCBVar*(v: CBBoolOp): CBVar {.inline.} =
 converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
   return CBVar(valueType: Color, colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a))
 
-converter toCBVar*(v: ptr CBChain): CBVar {.inline.} =
+converter toCBVar*(v: ptr CBChainPtr): CBVar {.inline.} =
   return CBVar(valueType: Chain, chainValue: v)
 
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
@@ -334,7 +334,7 @@ proc contextVariable*(name: string): CBVar {.inline.} =
 template `~~`*(name: string): CBVar = contextVariable(name)
 
 template withChain*(chain, body: untyped): untyped =
-  var `chain` {.inject.} = initChain(astToStr(`chain`))
+  var `chain` {.inject.} = newChain(astToStr(`chain`))
   var prev = getCurrentChain()
   setCurrentChain(chain)
   body
@@ -353,137 +353,128 @@ template setParam*(b: auto; index: int; val: CBVar) = discard
 template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
 
-proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "chainblocks.hpp".}
+when appType != "lib":
+  proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "chainblocks.hpp".}
 
-proc getCurrentChain*(): var CBChain {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
-proc setCurrentChain*(chain: ptr CBChain) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
-proc setCurrentChain*(chain: var CBChain) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
-proc add*(chain: var CBChain; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
+  proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
+  proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
+  proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
 
-proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
-proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "chainblocks.hpp".}
+  proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
+  proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "chainblocks.hpp".}
 
-proc startInternal(chain: ptr CBChain; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
-proc start*(chain: ptr CBChain; loop: bool = false) {.inline.} =
-  var frame = getFrameState()
-  startInternal(chain, loop)
-  setFrameState(frame)
-proc start*(chain: var CBChain; loop: bool = false) {.inline.} =
-  var chainptr = addr chain
-  chainptr.start(loop)
-proc tickInternal(chain: ptr CBChain; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "chainblocks.hpp".}
-proc tick*(chain: ptr CBChain; rootInput: CBVar = Empty) {.inline.} =
-  var frame = getFrameState()
-  tickInternal(chain, rootInput)
-  setFrameState(frame)
-proc tick*(chain: var CBChain; rootInput: CBVar = Empty) {.inline.} =
-  var chainptr = addr chain
-  chainptr.tick(rootInput)
-proc stopInternal(chain: ptr CBChain): CBVar {.importcpp: "chainblocks::stop(#)", header: "chainblocks.hpp".}
-proc stop*(chain: ptr CBChain): CBVar {.inline.} =
-  var frame = getFrameState()
-  result = stopInternal(chain)
-  setFrameState(frame)
-proc stop*(chain: var CBChain): CBVar {.inline.} =
-  var chainptr = addr chain
-  chainptr.stop()
+  proc startInternal(chain: CBChainPtr; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
+  proc start*(chain: CBChainPtr; loop: bool = false) {.inline.} =
+    var frame = getFrameState()
+    startInternal(chain, loop)
+    setFrameState(frame)
+  
+  proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "chainblocks.hpp".}
+  proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
+    var frame = getFrameState()
+    tickInternal(chain, rootInput)
+    setFrameState(frame)
+  
+  proc stopInternal(chain: CBChainPtr): CBVar {.importcpp: "chainblocks::stop(#)", header: "chainblocks.hpp".}
+  proc stop*(chain: CBChainPtr): CBVar {.inline.} =
+    var frame = getFrameState()
+    result = stopInternal(chain)
+    setFrameState(frame)
 
-proc store*(chain: ptr CBChain, name: cstring): StdString {.importcpp: "chainblocks::store(#, #)", header: "chainblocks.hpp".}
-proc store*(chain: var CBChain, name: string): string = $store(addr chain, name.cstring).c_str().to(cstring)
+  proc store*(chain: CBChainPtr): string =
+    let str = invokeFunction("chainblocks::store", chain).to(StdString)
+    $(str.c_str().to(cstring))
 
-var
-  compileTimeMode {.compileTime.}: bool = false
-  staticChainBlocks {.compileTime.}: seq[tuple[blk: NimNode; params: seq[NimNode]]]
+  var
+    compileTimeMode {.compileTime.}: bool = false
+    staticChainBlocks {.compileTime.}: seq[tuple[blk: NimNode; params: seq[NimNode]]]
 
-proc generateInitMultiple*(rtName: string; ctName: typedesc; args: seq[tuple[label, value: NimNode]]): NimNode {.compileTime.} =
-  if not compileTimeMode:
-    # Generate vars
-    # Setup
-    # Validate params
-    # Fill params
-    # Add to chain
-    var
-      sym = gensym(nskVar)
-      paramNames = gensym(nskVar)
-      paramSets = gensym(nskVar)
-    result = quote do:
+  proc generateInitMultiple*(rtName: string; ctName: typedesc; args: seq[tuple[label, value: NimNode]]): NimNode {.compileTime.} =
+    if not compileTimeMode:
+      # Generate vars
+      # Setup
+      # Validate params
+      # Fill params
+      # Add to chain
       var
-        `sym` = createBlock(`rtName`)
-      `sym`.setup(`sym`)
-      var
-        cparams = `sym`.parameters(`sym`)
-        paramsSeq = cparams.cbParamsToSeq()
-        `paramNames` = paramsSeq.map do (x: CBParameterInfo) -> string: ($x.name).toLowerAscii
-        `paramSets` = paramsSeq.map do (x: CBParameterInfo) -> CBTypesInfo: x.valueTypes
-    
-    for i in 0..`args`.high:
-      var
-        val = `args`[i].value
-        lab = newStrLitNode($`args`[i].label.strVal)
+        sym = gensym(nskVar)
+        paramNames = gensym(nskVar)
+        paramSets = gensym(nskVar)
+      result = quote do:
+        var
+          `sym` = createBlock(`rtName`)
+        `sym`.setup(`sym`)
+        var
+          cparams = `sym`.parameters(`sym`)
+          paramsSeq = cparams.cbParamsToSeq()
+          `paramNames` = paramsSeq.map do (x: CBParameterInfo) -> string: ($x.name).toLowerAscii
+          `paramSets` = paramsSeq.map do (x: CBParameterInfo) -> CBTypesInfo: x.valueTypes
+      
+      for i in 0..`args`.high:
+        var
+          val = `args`[i].value
+          lab = newStrLitNode($`args`[i].label.strVal)
+        result.add quote do:
+          var
+            cbVar: CBVar = `val`
+            label = `lab`.toLowerAscii
+            idx = `paramNames`.find(label)
+          assert idx != -1, "Could not find parameter: " & label
+          # TODO
+          # assert cbVar.valueType in `paramSets`[idx]
+          `sym`.setParam(`sym`, idx, cbVar)
+      
       result.add quote do:
-        var
-          cbVar: CBVar = `val`
-          label = `lab`.toLowerAscii
-          idx = `paramNames`.find(label)
-        assert idx != -1, "Could not find parameter: " & label
-        # TODO
-        # assert cbVar.valueType in `paramSets`[idx]
-        `sym`.setParam(`sym`, idx, cbVar)
-    
-    result.add quote do:
-      getCurrentChain().add(`sym`)
-  else:
-    var
-      sym = gensym(nskVar)
-      params: seq[NimNode]
-    for arg in args:
-      params.add arg.value
-    result = quote do:
-      var `sym`: `ctName`
-    staticChainBlocks.add((sym, params))
-    
-proc generateInitSingle*(rtName: string; ctName: typedesc; args: NimNode): NimNode {.compileTime.} =
-  if not compileTimeMode:
-    result = quote do:
+        getCurrentChain().add(`sym`)
+    else:
       var
-        b = createBlock(`rtName`)
-      b.setup(b)
+        sym = gensym(nskVar)
+        params: seq[NimNode]
+      for arg in args:
+        params.add arg.value
+      result = quote do:
+        var `sym`: `ctName`
+      staticChainBlocks.add((sym, params))
       
-      when not defined release:
+  proc generateInitSingle*(rtName: string; ctName: typedesc; args: NimNode): NimNode {.compileTime.} =
+    if not compileTimeMode:
+      result = quote do:
         var
-          # params = b.parameters(b)
-          cbVar: CBVar = `args`
-        # TODO
-        # if params.len > 0:
-        #   assert cbVar.valueType in params[0].valueType
-      
-      b.setParam(b, 0, cbVar)
-      getCurrentChain().add(b)
-  else:
-    var
-      sym = gensym(nskVar)
-      params = @[args]
-    result = quote do:
-      var `sym`: `ctName`
-    staticChainBlocks.add((sym, params))
-
-proc generateInit*(rtName: string; ctName: typedesc): NimNode {.compileTime.} =
-  if not compileTimeMode:
-    result = quote do:
+          b = createBlock(`rtName`)
+        b.setup(b)
+        
+        when not defined release:
+          var
+            # params = b.parameters(b)
+            cbVar: CBVar = `args`
+          # TODO
+          # if params.len > 0:
+          #   assert cbVar.valueType in params[0].valueType
+        
+        b.setParam(b, 0, cbVar)
+        getCurrentChain().add(b)
+    else:
       var
-        b = createBlock(`rtName`)
-      b.setup(b)
-      getCurrentChain().add(b)
-  else:
-    var
-      sym = gensym(nskVar)
-      params: seq[NimNode] = @[]
-    result = quote do:
-      var `sym`: `ctName`
-    staticChainBlocks.add((sym, params))
+        sym = gensym(nskVar)
+        params = @[args]
+      result = quote do:
+        var `sym`: `ctName`
+      staticChainBlocks.add((sym, params))
 
-proc allocateBlock*[T](): ptr T {.importcpp: "chainblocks::allocate<'*0>()".}
-proc finalizeBlock*[T](p: ptr T) {.importcpp: "chainblocks::finalize<'*0>(#)".}
+  proc generateInit*(rtName: string; ctName: typedesc): NimNode {.compileTime.} =
+    if not compileTimeMode:
+      result = quote do:
+        var
+          b = createBlock(`rtName`)
+        b.setup(b)
+        getCurrentChain().add(b)
+    else:
+      var
+        sym = gensym(nskVar)
+        params: seq[NimNode] = @[]
+      result = quote do:
+        var `sym`: `ctName`
+      staticChainBlocks.add((sym, params))
 
 when appType == "lib" and not defined(nimV2):
   template updateStackBottom*() =
@@ -604,47 +595,48 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
     static:
       echo "Registered chainblock: " & `namespace` & `blockName`
   
-  if $namespaceStr != "":
-    var nameSpaceType = ident($namespaceStr)
-    # DSL Utilities
-    result.add quote do:
-      macro `macroName`*(_: typedesc[`nameSpaceType`]): untyped =
-        result = generateInit(`namespace` & `blockName`, `blk`)
-
-      macro `macroName`*(_: typedesc[`nameSpaceType`]; args: untyped): untyped =
-        if args.kind == nnkStmtList:
-          # We need to transform the stmt list
-          var argNodes = newSeq[tuple[label, value: NimNode]]()
-          for arg in args:
-            assert arg.kind == nnkCall, "Syntax error" # TODO better errors
-            var
-              labelNode = arg[0]
-              varNode = arg[1][0]
-            argNodes.add (labelNode, varNode)
-          result = generateInitMultiple(`namespace` & `blockName`, `blk`, argNodes)
-        else:
-          # assume single? maybe need to be precise to filter mistakes
-          result = generateInitSingle(`namespace` & `blockName`, `blk`, args)
-  else:
-    result.add quote do:
+  when appType != "lib":
+    if $namespaceStr != "":
+      var nameSpaceType = ident($namespaceStr)
       # DSL Utilities
-      macro `macroName`*(): untyped =
-        result = generateInit(`blockName`, `blk`)
+      result.add quote do:
+        macro `macroName`*(_: typedesc[`nameSpaceType`]): untyped =
+          result = generateInit(`namespace` & `blockName`, `blk`)
 
-      macro `macroName`*(args: untyped): untyped =
-        if args.kind == nnkStmtList:
-          # We need to transform the stmt list
-          var argNodes = newSeq[tuple[label, value: NimNode]]()
-          for arg in args:
-            assert arg.kind == nnkCall, "Syntax error" # TODO better errors
-            var
-              labelNode = arg[0]
-              varNode = arg[1][0]
-            argNodes.add (labelNode, varNode)
-          result = generateInitMultiple(`blockName`, `blk`, argNodes)
-        else:
-          # assume single? maybe need to be precise to filter mistakes
-          result = generateInitSingle(`blockName`, `blk`, args)
+        macro `macroName`*(_: typedesc[`nameSpaceType`]; args: untyped): untyped =
+          if args.kind == nnkStmtList:
+            # We need to transform the stmt list
+            var argNodes = newSeq[tuple[label, value: NimNode]]()
+            for arg in args:
+              assert arg.kind == nnkCall, "Syntax error" # TODO better errors
+              var
+                labelNode = arg[0]
+                varNode = arg[1][0]
+              argNodes.add (labelNode, varNode)
+            result = generateInitMultiple(`namespace` & `blockName`, `blk`, argNodes)
+          else:
+            # assume single? maybe need to be precise to filter mistakes
+            result = generateInitSingle(`namespace` & `blockName`, `blk`, args)
+    else:
+      result.add quote do:
+        # DSL Utilities
+        macro `macroName`*(): untyped =
+          result = generateInit(`blockName`, `blk`)
+
+        macro `macroName`*(args: untyped): untyped =
+          if args.kind == nnkStmtList:
+            # We need to transform the stmt list
+            var argNodes = newSeq[tuple[label, value: NimNode]]()
+            for arg in args:
+              assert arg.kind == nnkCall, "Syntax error" # TODO better errors
+              var
+                labelNode = arg[0]
+                varNode = arg[1][0]
+              argNodes.add (labelNode, varNode)
+            result = generateInitMultiple(`blockName`, `blk`, argNodes)
+          else:
+            # assume single? maybe need to be precise to filter mistakes
+            result = generateInitSingle(`blockName`, `blk`, args)
 
 when appType != "lib":
   # When building the runtime!
@@ -665,10 +657,10 @@ when appType != "lib":
 
   proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "chainblocks.hpp".}
 
-  proc initChain*(name: string): CBChain {.inline, noinit.} =
-    var chain {.noinit.} = CBChain.cppinit(name)
-    return chain
-  proc runChain*(chain: ptr CBChain, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
+  proc newChain*(name: string): CBChainPtr {.inline, noinit.} =
+    cppnewptr(result, name)
+  
+  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
   proc suspend*(seconds: float64): CBVar {.inline.} =
     var frame = getFrameState()
@@ -727,50 +719,51 @@ template halt*(context: CBContext; txt: string): untyped =
 when not defined(skipCoreBlocks):
   include blocks/internal/[core, stack, calculate]
 
-# Swaps from compile time chain mode on/off
-macro setCompileTimeChain*(enabled: bool) = compileTimeMode = enabled.boolVal
+when appType != "lib":
+  # Swaps from compile time chain mode on/off
+  macro setCompileTimeChain*(enabled: bool) = compileTimeMode = enabled.boolVal
 
-template compileTimeChain*(body: untyped): untyped =
-  block:
-    setCompileTimeChain(true)
-    body
-    setCompileTimeChain(false)
+  template compileTimeChain*(body: untyped): untyped =
+    block:
+      setCompileTimeChain(true)
+      body
+      setCompileTimeChain(false)
 
-# Unrolls the setup and params settings of the current compile time chain once
-macro prepareCompileTimeChain*(): untyped =
-  result = newStmtList()
+  # Unrolls the setup and params settings of the current compile time chain once
+  macro prepareCompileTimeChain*(): untyped =
+    result = newStmtList()
 
-  for blkData in staticChainBlocks:
-    var
-      blk = blkData.blk
-      params = blkData.params
-    result.add quote do:
-      `blk`.setup()
-    for i in 0..params.high:
-      var param = params[i]
+    for blkData in staticChainBlocks:
+      var
+        blk = blkData.blk
+        params = blkData.params
       result.add quote do:
-        `blk`.setParam(`i`, `param`)
+        `blk`.setup()
+      for i in 0..params.high:
+        var param = params[i]
+        result.add quote do:
+          `blk`.setParam(`i`, `param`)
 
-# Unrolls the current compile time chain once
-macro synthesizeCompileTimeChain*(input: untyped): untyped =
-  result = newStmtList()
-  var
-    currentOutput = input
-    ctx = gensym(nskVar)
+  # Unrolls the current compile time chain once
+  macro synthesizeCompileTimeChain*(input: untyped): untyped =
+    result = newStmtList()
+    var
+      currentOutput = input
+      ctx = gensym(nskVar)
 
-  result.add quote do:
-    var `ctx`: CBContext
-
-  for blkData in staticChainBlocks:
-    var blk = blkData.blk
     result.add quote do:
-      `currentOutput` = `blk`.activate(`ctx`, `currentOutput`)
-  
-  result.add quote do:
-    `currentOutput`
-  
-# Clear the compile time chain state
-macro clearCompileTimeChain*() = staticChainBlocks.setLen(0) # consume all
+      var `ctx`: CBContext
+
+    for blkData in staticChainBlocks:
+      var blk = blkData.blk
+      result.add quote do:
+        `currentOutput` = `blk`.activate(`ctx`, `currentOutput`)
+    
+    result.add quote do:
+      `currentOutput`
+    
+  # Clear the compile time chain state
+  macro clearCompileTimeChain*() = staticChainBlocks.setLen(0) # consume all
 
 when isMainModule:
   import os
@@ -806,7 +799,7 @@ when isMainModule:
     echo res2.float
     
     var
-      mainChain = initChain("mainChain")
+      mainChain = newChain("mainChain")
     setCurrentChain(mainChain)
     
     withChain trueMsg:
@@ -848,7 +841,7 @@ when isMainModule:
     echo "Done"
 
     var
-      subChain1 = initChain("subChain1")
+      subChain1 = newChain("subChain1")
     setCurrentChain(subChain1)
     
     Const "Hey hey"
@@ -881,7 +874,8 @@ when isMainModule:
       var idx = i.CBVar
       mainChain.tick(idx)
 
-    echo mainChain.store("MainChain")
+    echo mainChain.store()
+    assert mainChain.store() == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
 
     echo sizeof(CBVar)
     assert sizeof(CBVar) == 48

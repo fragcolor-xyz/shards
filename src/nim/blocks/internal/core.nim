@@ -4,15 +4,14 @@ import strutils
 when true:
   type
     CBRunChain* = object
-      chain: ptr CBChain
+      chain: ptr CBChainPtr
       once: bool
       done: bool
       passthrough: bool
 
   template cleanup*(b: CBRunChain) =
-    if b.chain != nil:
-      discard b.chain.stop()
-      b.chain = nil
+    if b.chain != nil and b.chain[] != nil:
+      discard b.chain[].stop()
   template inputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRunChain): CBParametersInfo =
@@ -45,23 +44,27 @@ when true:
     else:
       CBVar(valueType: None)
   template activate*(b: CBRunChain; context: CBContext; input: CBVar): CBVar =
-    if not b.done:
+    if b.chain == nil:
+      input
+    elif b.chain[] == nil: # Chain is required but not avai! , stop!
+      halt(context, "A required sub-chain was not found, stopping!")
+    elif not b.done:
       if b.once:
         b.done = true
-      b.chain[].finished = false
+      b.chain[][].finished = false
       let
-        resTuple = runChain(b.chain, context, input)
+        resTuple = runChain(b.chain[], context, input)
         noerrors = cppTupleGet[bool](0, resTuple.toCpp)
         output = cppTupleGet[CBVar](1, resTuple.toCpp)
-      b.chain[].finished = true
+      b.chain[][].finished = true
       if not noerrors or context[].aborted:
-        b.chain[].finishedOutput = StopChain
-        b.chain[].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
+        b.chain[][].finishedOutput = StopChain
+        b.chain[][].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
       elif b.passthrough: # Second priority to passthru property
-        b.chain[].finishedOutput = output
+        b.chain[][].finishedOutput = output
         input
       else: # Finally process the actual output
-        b.chain[].finishedOutput = output
+        b.chain[][].finishedOutput = output
         output
     else:
       input
@@ -72,7 +75,7 @@ when true:
 when true:
   type
     CBWaitChain* = object
-      chain: ptr CBChain
+      chain: ptr CBChainPtr
       once: bool
       done: bool
       passthrough: bool
@@ -109,11 +112,15 @@ when true:
     else:
       CBVar(valueType: None)
   template activate*(b: var CBWaitChain; context: CBContext; input: CBVar): CBVar =
-    if not b.done:
+    if b.chain == nil:
+      input
+    elif b.chain[] == nil: # Chain is required but not avai! , stop!
+      halt(context, "A required sub-chain was not found, stopping!")
+    elif not b.done:
       if b.once:
         b.done = true
       
-      while not b.chain.finished:
+      while not b.chain[][].finished:
         pause(0.0)
       
       if b.passthrough:
@@ -355,16 +362,14 @@ when true:
     CBlockIf* = object
       Op: CBBoolOp
       Match: CBVar
-      True: ptr CBChain
-      False: ptr CBChain
+      True: ptr CBChainPtr
+      False: ptr CBChainPtr
   
   template cleanup*(b: CBlockIf) =
-    if b.True != nil:
-      discard b.True.stop()
-      b.True = nil
-    if b.False != nil:
-      discard b.False.stop()
-      b.False = nil
+    if b.True != nil and b.True[] != nil:
+      discard b.True[].stop()
+    if b.False != nil and b.False[] != nil:
+      discard b.False[].stop()
   template destroy*(b: CBlockIf) = b.Match.free()
   template inputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
   template outputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
@@ -427,8 +432,10 @@ when true:
     template operation(operator: untyped): untyped =
       if operator(input, match):
         if b.True != nil:
+          if b.True[] == nil:
+            return halt(context, "A required sub-chain was not found, stopping!")
           let
-            resTuple = runChain(b.True, context, input)
+            resTuple = runChain(b.True[], context, input)
             noerrors = cppTupleGet[bool](0, resTuple.toCpp)
             res = cppTupleGet[CBVar](1, resTuple.toCpp)
           # While we ignore the results from the chain we need to check for global cancelation
@@ -438,8 +445,10 @@ when true:
             return RestartChain
       else:
         if b.False != nil:
+          if b.False[] == nil:
+            return halt(context, "A required sub-chain was not found, stopping!")
           let
-            resTuple = runChain(b.False, context, input)
+            resTuple = runChain(b.False[], context, input)
             noerrors = cppTupleGet[bool](0, resTuple.toCpp)
             res = cppTupleGet[CBVar](1, resTuple.toCpp)
           # While we ignore the results from the chain we need to check for global cancelation
@@ -464,12 +473,11 @@ when true:
   type
     CBRepeat* = object
       times: int64
-      chain: ptr CBChain
+      chain: ptr CBChainPtr
   
   template cleanup*(b: CBRepeat) =
-    if b.chain != nil:
-      discard b.chain.stop()
-      b.chain = nil
+    if b.chain != nil and b.chain[] != nil:
+      discard b.chain[].stop()
   template inputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
@@ -494,16 +502,21 @@ when true:
     else:
       Empty
   template activate*(b: var CBRepeat; context: CBContext; input: CBVar): CBVar =
-    for i in 0..<b.times:
-      let
-        resTuple = runChain(b.chain, context, input)
-        noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-      # While we ignore the results from the chain we need to check for global cancelation
-      if not noerrors or context[].aborted:
-        return StopChain
-      elif context[].restarted:
-        return RestartChain
-    input
+    if b.chain == nil:
+      input
+    elif b.chain[] == nil:
+      halt(context, "A required sub-chain was not found, stopping!")
+    else:
+      for i in 0..<b.times:
+        let
+          resTuple = runChain(b.chain[], context, input)
+          noerrors = cppTupleGet[bool](0, resTuple.toCpp)
+        # While we ignore the results from the chain we need to check for global cancelation
+        if not noerrors or context[].aborted:
+          return StopChain
+        elif context[].restarted:
+          return RestartChain
+      input
 
   chainblock CBRepeat, "Repeat"
 
