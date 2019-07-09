@@ -28,6 +28,8 @@ type
   CBPointer* {.importcpp: "CBPointer", header: "chainblocks.hpp".} = pointer
   CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = distinct pointer
   CBSeq* {.importcpp: "CBSeq", header: "chainblocks.hpp".} = object
+  CBStrings* {.importcpp: "CBStrings", header: "chainblocks.hpp".} = object
+  CBEnum* {.importcpp: "CBEnum", header: "chainblocks.hpp".} = distinct int32
 
   CBChain* {.importcpp: "CBChain", header: "chainblocks.hpp".} = object
     finishedOutput*: CBVar
@@ -40,12 +42,9 @@ type
     stack*: CBSeq
   CBContext* = ptr CBContextObj
 
-  CBBoolOp* {.importcpp: "CBBoolOp", header: "chainblocks.hpp".} = enum
-    Equal,
-    More,
-    Less,
-    MoreEqual,
-    LessEqual
+  CBEnumInfo* {.importcpp: "CBEnumInfo", header: "chainblocks.hpp".} = object
+    name*: cstring
+    labels*: CBStrings
 
   CBImage* {.importcpp: "CBImage", header: "chainblocks.hpp".} = object
     width*: int32
@@ -57,6 +56,7 @@ type
     None,
     Any,
     Object,
+    Enum,
     Bool,
     Int,
     Int2, # A vector of 2 ints
@@ -69,7 +69,6 @@ type
     String,
     Color, # A vector of 4 uint8
     Image,
-    BoolOp,
     Seq, 
     Chain, # sub chains, e.g. IF/ELSE
     ContextVar, # A string label to find from CBContext variables
@@ -79,7 +78,8 @@ type
     basicType*: CBType
     objectVendorId*: int32
     objectTypeId*: int32
-    seqTypes*: CBTypesInfo
+    enumVendorId*: int32
+    enumTypeId*: int32
 
   CBTypesInfo* {.importcpp: "CBTypesInfo", header: "chainblocks.hpp".} = object
 
@@ -118,7 +118,9 @@ type
     imageValue*: CBImage
     seqValue*: CBSeq
     chainValue*: ptr CBChainPtr
-    boolOpValue*: CBBoolOp
+    enumValue*: CBEnum
+    enumVendorId*: int32
+    enumTypeId*: int32
     valueType*: CBType
 
   CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp", inheritable.} = object
@@ -204,9 +206,15 @@ iterator items*(s: CBSeq): CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
 converter toCBSeq*(s: var seq[CBVar]): CBSeq {.inline.} =
+  # s must be kept alive!
   invokeFunction("da_init_external", result, addr s[0], s.len).to(void)
   invokeFunction("da_setcount", result, s.len).to(void)
   # Cannot get seq capacity..... https://github.com/nim-lang/RFCs/issues/97
+converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
+  # strings must be kept alive!
+  invokeFunction("da_init", result).to(void)
+  for str in strings.mitems:
+    invokeFunction("da_push", result, str.cstring).to(void)
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
 proc newString*(txt: string): CBString {.inline.} =

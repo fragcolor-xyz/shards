@@ -69,7 +69,7 @@ when true:
           py_lib.pyLib.PyCapsule_New(cast[pointer](input.imageValue.data), nil, nil)
         )
       )
-    of BoolOp: result = toPyObjectArgument input.boolOpValue.int
+    of Enum: result = toPyObjectArgument (input.enumValue.int32, input.enumVendorId, input.enumTypeId)
     of Seq:
       var pySeq = newSeq[PPyObject]()
       for item in input.seqValue.mitems:
@@ -86,10 +86,10 @@ when true:
     of None, Any, ContextVar: result = Empty
     of Object:
       let
-        objValue = tupRes.value.to(tuple[capsule: PPyObject; vendor, typeid: int])
+        objValue = tupRes.value.to(tuple[capsule: PPyObject; vendor, typeid: int32])
       result.objectValue = py_lib.pyLib.PyCapsule_GetPointer(objValue.capsule, nil)
-      result.objectVendorId = objValue.vendor.int32
-      result.objectTypeId = objValue.typeid.int32
+      result.objectVendorId = objValue.vendor
+      result.objectTypeId = objValue.typeid
     of Bool: result = tupRes.value.to(bool)
     of Int: result = tupRes.value.to(int64)
     of Int2: result = tupRes.value.to(tuple[a, b: int64])
@@ -110,7 +110,12 @@ when true:
       result.imageValue.height = img.h.int32
       result.imageValue.channels = img.c.int32
       result.imageValue.data = cast[ptr UncheckedArray[uint8]](py_lib.pyLib.PyCapsule_GetPointer(img.data, nil))
-    of BoolOp: result = tupRes.value.to(int).CBBoolOp
+    of Enum:
+      let
+        enumTup = tupRes.value.to(tuple[enumVal, vendor, typeid: int32])
+      result.enumValue = enumTup.enumVal.CBEnum
+      result.enumVendorId = enumTup.vendor
+      result.enumTypeId = enumTup.typeId
     of Seq:
       var pyseq = tupRes.value.to(seq[PyObject])   
       for pyvar in pyseq.items:

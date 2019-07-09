@@ -18,6 +18,7 @@ enum CBType : uint8_t
   None,
   Any,
   Object,
+  Enum,
   Bool,
   Int,
   Int2, // A vector of 2 ints
@@ -30,7 +31,6 @@ enum CBType : uint8_t
   String,
   Color, // A vector of 4 uint8
   Image,
-  BoolOp,
   Seq, 
   Chain, // sub chains, e.g. IF/ELSE
   ContextVar, // A string label to find from CBContext variables
@@ -41,15 +41,6 @@ enum CBChainState
   Continue, // Even if None returned, continue to next block
   Restart, // Restart the chain from the top
   Stop // Stop the chain execution
-};
-
-enum CBBoolOp
-{
-    Equal,
-    More,
-    Less,
-    MoreEqual,
-    LessEqual
 };
 
 // Forward declarations
@@ -68,7 +59,9 @@ typedef void* CBPointer;
 typedef int64_t CBInt;
 typedef double CBFloat;
 typedef bool CBBool;
+typedef int32_t CBEnum;
 typedef gbString CBString;
+DA_TYPEDEF(const char*, CBStrings);
 
 #if defined(__clang__) || defined(__GNUC__)
   typedef int64_t CBInt2 __attribute__((vector_size(16)));
@@ -146,7 +139,6 @@ struct CBImage
 
 struct CBTypeInfo
 {
-  bool sequenced;
   CBType basicType;
   union
   {
@@ -154,8 +146,13 @@ struct CBTypeInfo
       int32_t objectVendorId;
       int32_t objectTypeId;
     };
+
+    struct {
+      int32_t enumVendorId;
+      int32_t enumTypeId;
+    };
   };
-  CBTypesInfo seqTypes;
+  bool sequenced;
 };
 
 typedef CBString (__cdecl *CBObjectSerializer)(CBPointer);
@@ -168,6 +165,12 @@ struct CBObjectInfo
   CBObjectSerializer serialize;
   CBObjectDeserializer deserialize;
   CBObjectFree free;
+};
+
+struct CBEnumInfo
+{
+  const char* name;
+  CBStrings labels;
 };
 
 struct CBParameterInfo
@@ -233,7 +236,11 @@ struct CBVar // will be 48 bytes, 16 aligned due to vectors
 
     CBChainPtr* chainValue;
 
-    CBBoolOp boolOpValue;
+    struct {
+      CBEnum enumValue;
+      int32_t enumVendorId;
+      int32_t enumTypeId;
+    };
   };
 
   CBType valueType;
@@ -519,6 +526,7 @@ extern "C" {
 
 EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockConstructor constructor);
 EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
+EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
 EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback);
 EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName);
 
@@ -535,10 +543,12 @@ namespace chainblocks
 {
   extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
   extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
+  extern std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   extern std::unordered_map<std::string, CBVar> GlobalVariables;
   extern std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   extern std::unordered_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
+
   static CBRuntimeBlock* createBlock(const char* name);
 
   struct CBException : public std::exception
@@ -705,11 +715,13 @@ static void to_json(json& j, const CBVar& var)
       }
       break;
     }
-    case BoolOp:
+    case Enum:
     {
       j = json{
         { "type", valType },
-        { "value", int(var.boolOpValue) }
+        { "value", int32_t(var.enumValue) },
+        { "vendorId", var.enumVendorId },
+        { "typeId", var.enumTypeId }
       };
       break;
     }
@@ -893,10 +905,12 @@ static void from_json(const json& j, CBVar& var)
       memcpy(var.imageValue.data, &buffer[0], binsize);
       break;
     }
-    case BoolOp:
+    case Enum:
     {
-      var.valueType = BoolOp;
-      var.intValue = CBBoolOp(j.at("value").get<int>());
+      var.valueType = Enum;
+      var.enumValue = CBEnum(j.at("value").get<int32_t>());
+      var.enumVendorId = CBEnum(j.at("vendorId").get<int32_t>());
+      var.enumTypeId = CBEnum(j.at("typeId").get<int32_t>());
       break;
     }
     case Seq:
@@ -1058,6 +1072,23 @@ namespace chainblocks
     else
     {
       ObjectTypesRegister[tup] = info;
+      std::cout << "overridden object type: " << typeName << "\n";
+    }
+  }
+
+  static void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info)
+  {
+    auto tup = std::make_tuple(vendorId, typeId);
+    auto typeName = std::string(info.name);
+    auto findIt = ObjectTypesRegister.find(tup);
+    if(findIt == ObjectTypesRegister.end())
+    {
+      EnumTypesRegister.insert(std::make_pair(tup, info));
+      std::cout << "added object type: " << typeName << "\n";
+    }
+    else
+    {
+      EnumTypesRegister[tup] = info;
       std::cout << "overridden object type: " << typeName << "\n";
     }
   }

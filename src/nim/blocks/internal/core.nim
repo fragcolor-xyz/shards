@@ -358,6 +358,26 @@ when true:
 
 # If
 when true:
+  const
+    BoolOpCC* = toFourCC("bool")
+  
+  var
+    boolOpLabelsSeq = @["Equal", "More", "Less", "MoreEqual", "LessEqual"]
+    boolOpLabels = boolOpLabelsSeq.toCBStrings()
+  
+  let
+    boolOpInfo = CBTypeInfo(basicType: Enum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+  
+  registerEnumType(FragCC, BoolOpCC, CBEnumInfo(name: "Boolean operation", labels: boolOpLabels))
+
+  type
+    CBBoolOp* = enum
+      Equal,
+      More,
+      Less,
+      MoreEqual,
+      LessEqual
+
   type
     CBlockIf* = object
       Op: CBBoolOp
@@ -375,15 +395,15 @@ when true:
   template outputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
     @[
-      ("Operator", ({ BoolOp }, false), false),
-      ("Operand", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#),
-      ("True", ({ Chain, None }, false), false),
-      ("False", ({ Chain, None }, false), false)
+      ("Operator", @[boolOpInfo].toCBTypesInfo(), false),
+      ("Operand", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
+      ("True", ({ Chain, None }, false).toCBTypesInfo(), false),
+      ("False", ({ Chain, None }, false).toCBTypesInfo(), false)
     ]
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
     of 0:
-      b.Op = val.boolOpValue
+      b.Op = val.enumValue.CBBoolOp
     of 1:
       b.Match.free()
       b.Match = val.clone()
@@ -408,7 +428,7 @@ when true:
   template getParam*(b: CBlockIf; index: int): CBVar =
     case index
     of 0:
-      CBVar(valueType: BoolOp, boolOpValue: b.Op)
+      CBVar(valueType: Enum, enumValue: b.Op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
     of 1:
       b.Match
     of 2:

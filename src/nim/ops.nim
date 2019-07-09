@@ -23,7 +23,7 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
   of CBType.Image: doAssert(false, "Image " & astToStr(`/`) & " Not supported")
   of Seq: doAssert(false, "Seq " & astToStr(`/`) & " Not supported")
   of Chain: doAssert(false, "Chain " & astToStr(`/`) & " Not supported")
-  of BoolOp: doAssert(false, "BoolOp " & astToStr(`/`) & " Not supported")
+  of Enum: doAssert(false, "Enum " & astToStr(`/`) & " Not supported")
 
 template mathBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
@@ -51,7 +51,7 @@ template mathBinaryOp(op: untyped): untyped =
     of CBType.Image: doAssert(false, "Image " & astToStr(op) & " Not supported")
     of Seq: doAssert(false, "Seq " & astToStr(op) & " Not supported")
     of Chain: doAssert(false, "Chain " & astToStr(op) & " Not supported")
-    of BoolOp: doAssert(false, "BoolOp " & astToStr(op) & " Not supported")
+    of Enum: doAssert(false, "Enum " & astToStr(op) & " Not supported")
 
 mathBinaryOp(`+`)
 mathBinaryOp(`-`)
@@ -75,7 +75,7 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of CBType.Image: doAssert(false, "Image `>=` Not supported")
   of Seq: doAssert(false, "Seq `>=` Not supported")
   of Chain: doAssert(false, "Chain `>=` Not supported")
-  of BoolOp: doAssert(false, "BoolOp `>=` Not supported")
+  of Enum: doAssert(false, "Enum `>=` Not supported")
   of Object: doAssert(false, "Object `>=` Not supported")
 
 proc `>`*(a,b: CBVar): bool {.inline.} =
@@ -96,7 +96,7 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of CBType.Image: doAssert(false, "Image `>` Not supported")
   of Seq: doAssert(false, "Seq `>` Not supported")
   of Chain: doAssert(false, "Chain `>` Not supported")
-  of BoolOp: doAssert(false, "BoolOp `>` Not supported")
+  of Enum: doAssert(false, "Enum `>` Not supported")
   of Object: doAssert(false, "Object `>` Not supported")
 
 proc `<`*(a,b: CBVar): bool {.inline.} =
@@ -117,7 +117,7 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of CBType.Image: doAssert(false, "Image `<` Not supported")
   of Seq: doAssert(false, "Seq `<` Not supported")
   of Chain: doAssert(false, "Chain `<` Not supported")
-  of BoolOp: doAssert(false, "BoolOp `<` Not supported")
+  of Enum: doAssert(false, "Enum `<` Not supported")
   of Object: doAssert(false, "Object `<` Not supported")
 
 proc `<=`*(a,b: CBVar): bool {.inline.} =
@@ -138,7 +138,7 @@ proc `<=`*(a,b: CBVar): bool {.inline.} =
   of CBType.Image: doAssert(false, "Image `<=` Not supported")
   of Seq: doAssert(false, "Seq `<=` Not supported")
   of Chain: doAssert(false, "Chain `<=` Not supported")
-  of BoolOp: doAssert(false, "BoolOp `<=` Not supported")
+  of Enum: doAssert(false, "Enum `<=` Not supported")
   of Object: doAssert(false, "Object `<=` Not supported")
 
 proc `==`*(a,b: CBVar): bool {.inline.} =
@@ -166,7 +166,7 @@ proc `==`*(a,b: CBVar): bool {.inline.} =
     return equalMem(a.imageValue.data, b.imageValue.data, a.imageValue.width * a.imageValue.height * a.imageValue.channels)
   of Seq: return a.seqValue == b.seqValue
   of Chain: return a.chainValue == b.chainValue
-  of BoolOp:  return a.boolOpValue  == b.boolOpValue
+  of Enum:  return a.enumValue.int32  == b.enumValue.int32 and a.enumVendorId == b.enumVendorId and a.enumTypeId == b.enumTypeId
   of Object:
     if  a.objectVendorId.int32 != b.objectVendorId.int32 or
         a.objectTypeId.int32 != b.objectTypeId.int32 or
@@ -203,5 +203,5 @@ proc `$`*(a: CBVar): string {.inline.} =
         result &= $item & ", "
       inc idx
   of Chain: return $a.chainValue
-  of BoolOp:  return $a.boolOpValue
+  of Enum:  return $a.enumValue.int32
   of Object: return "Object - addr: 0x" & $cast[int](a.objectValue).toHex() & " vendorId: 0x" & a.objectVendorId.toHex() & " typeId: 0x" & a.objectTypeId.toHex() 

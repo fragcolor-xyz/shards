@@ -62,10 +62,21 @@ converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; 
   result.help = help
   result.allowContext = record.usesContext
 
+converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; actualTypes: CBTypesInfo; usesContext: bool]): CBParameterInfo {.inline.} =
+  # This relies on const strings!! will crash if not!
+  result.valueTypes = record.actualTypes
+  let
+    pname = record.paramName
+    help = record.helpText
+  result.name = pname
+  result.help = help
+  result.allowContext = record.usesContext
+
 converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes, false), false)
 converter toCBParameterInfo*(s: tuple[paramName: string; helpText: string; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), false)
 converter toCBParameterInfo*(s: tuple[paramName: string; helpText: string; actualTypes: set[CBType]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), s.usesContext)
 converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: set[CBType], usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes, false), s.usesContext)
+converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: CBTypesInfo, usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", s.actualTypes, s.usesContext)
 converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes.types, s.actualTypes.canBeSeq), false)
 converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes.types, s.actualTypes.canBeSeq), s.usesContext)
 
@@ -96,6 +107,12 @@ converter toCBParametersInfo*(s: seq[tuple[paramName: string; helpText: string; 
     result.push(record.toCBParameterInfo())
 
 converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: set[CBType]; usesContext: bool]]): CBParametersInfo {.inline.} =
+  initSeq(result)
+  for i in 0..s.high:
+    var record = s[i]
+    result.push(record.toCBParameterInfo())
+
+converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: CBTypesInfo; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
@@ -313,9 +330,6 @@ converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
   var wval: CBFloat4
   iterateTuple(v, wval, float64)
   return CBVar(valueType: Float4, float4Value: wval)
-
-converter toCBVar*(v: CBBoolOp): CBVar {.inline.} =
-  return CBVar(valueType: BoolOp, boolOpValue: v)
 
 converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
   return CBVar(valueType: Color, colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a))
@@ -668,6 +682,9 @@ when appType != "lib":
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
     invokeFunction("chainblocks::registerObjectType", vendorId, typeId, info).to(void)
 
+  proc registerEnumType*(vendorId, typeId: FourCC; info: CBEnumInfo) =
+    invokeFunction("chainblocks::registerEnumType", vendorId, typeId, info).to(void)
+
   proc registerRunLoopCallback*(name: string; callback: CBOnRunLoopTick) =
     invokeFunction("chainblocks::registerRunLoopCallback", name, callback).to(void)
 
@@ -876,7 +893,7 @@ when isMainModule:
     Msg "World"
     Const 15
     If:
-      Operator: MoreEqual
+      Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
       Operand: 10
       True: addr subChain1
     Sleep 0.0
@@ -898,13 +915,13 @@ when isMainModule:
 
     let
       jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":12,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":15,"value":3}},{"name":"Operand","value":{"type":4,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":8,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":4,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":17}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr2
 
     echo sizeof(CBVar)

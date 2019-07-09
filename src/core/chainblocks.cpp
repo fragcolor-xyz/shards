@@ -8,6 +8,7 @@ namespace chainblocks
 {
   std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
   std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
+  std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   std::unordered_map<std::string, CBVar> GlobalVariables;
   std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   std::unordered_map<std::string, CBChain*> GlobalChains;
@@ -26,6 +27,11 @@ EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockCon
 EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info)
 {
   chainblocks::registerObjectType(vendorId, typeId, info);
+}
+
+EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info)
+{
+  chainblocks::registerEnumType(vendorId, typeId, info);
 }
 
 EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback)
