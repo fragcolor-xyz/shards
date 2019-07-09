@@ -286,37 +286,76 @@ when true:
 
   chainblock CBlockSleep, "Sleep"
 
+defineCppType(StdRegex, "std::regex", "<regex>")
+
 # When - a filter block, that let's inputs pass only when the condition is true
 when true:
   type
     CBWhen* = object
       acceptedValues*: CBSeq
+      isregex*: bool
+      all*: bool
   
   template setup*(b: CBWhen) = initSeq(b.acceptedValues)
   template destroy*(b: CBWhen) = freeSeq(b.acceptedValues, true)
   template inputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
-    @[("Accept", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#)]
+    @[
+      ("Accept", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#),
+      ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
+      ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+    ]
   template setParam*(b: CBWhen; index: int; val: CBVar) =
-    if val.valueType == Seq:
-      b.acceptedValues = val.seqValue.clone()
+    case index
+    of 0:
+      if val.valueType == Seq:
+        b.acceptedValues = val.seqValue.clone()
+      else:
+        b.acceptedValues.push(val.clone())
+    of 1:
+      b.isregex = val.boolValue
+    of 2:
+      b.all = val.boolValue
     else:
-      b.acceptedValues.push(val.clone())
+      assert(false)
   template getParam*(b: CBWhen; index: int): CBVar =
-    if b.acceptedValues.len == 1:
-      b.acceptedValues[0]
-    elif b.acceptedValues.len > 1:
-      b.acceptedValues
+    case index
+    of 0:
+      if b.acceptedValues.len == 1:
+        b.acceptedValues[0]
+      elif b.acceptedValues.len > 1:
+        b.acceptedValues
+      else:
+        CBVar(valueType: None)
+    of 1:
+      b.isregex
+    of 2:
+      b.all
     else:
-      CBVar(valueType: None)
+      assert(false)
+      Empty
   template activate*(b: CBWhen; context: CBContext; input: CBVar): CBVar =
     var res = RestartChain
+    var matches = 0
     for accepted in b.acceptedValues:
       let val = if accepted.valueType == ContextVar: context.contextVariable(accepted.stringValue)[] else: accepted
-      if input == val:
-        res = input
-        break
+      if b.isregex and val.valueType == String and input.valueType == String:
+        let regex = StdRegex.cppinit(val.stringValue.cstring)
+        if invokeFunction("std::regex_match", input.stringValue.cstring, regex).to(bool):
+          if not b.all:
+            res = input
+            break
+          else:
+            inc matches
+      elif input == val:
+        if not b.all:
+          res = input
+          break
+        else:
+          inc matches
+    if b.all and matches == b.acceptedValues.len:
+      res = input
     res
 
   chainblock CBWhen, "When"
@@ -326,32 +365,69 @@ when true:
   type
     CBWhenNot* = object
       acceptedValues*: CBSeq
+      isregex*: bool
+      all*: bool
   
   template setup*(b: CBWhenNot) = initSeq(b.acceptedValues)
   template destroy*(b: CBWhenNot) = freeSeq(b.acceptedValues, true)
   template inputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBWhenNot): CBParametersInfo =
-    @[("Reject", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#)]
+  template parameters*(b: CBWhenNot): CBParametersInfo = 
+    @[
+      ("Reject", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#),
+      ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
+      ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+    ]
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
-    if val.valueType == Seq:
-      b.acceptedValues = val.seqValue.clone()
+    case index
+    of 0:
+      if val.valueType == Seq:
+        b.acceptedValues = val.seqValue.clone()
+      else:
+        b.acceptedValues.push(val.clone())
+    of 1:
+      b.isregex = val.boolValue
+    of 2:
+      b.all = val.boolValue
     else:
-      b.acceptedValues.push(val.clone())
+      assert(false)
   template getParam*(b: CBWhenNot; index: int): CBVar =
-    if b.acceptedValues.len == 1:
-      b.acceptedValues[0]
-    elif b.acceptedValues.len > 1:
-      b.acceptedValues
+    case index
+    of 0:
+      if b.acceptedValues.len == 1:
+        b.acceptedValues[0]
+      elif b.acceptedValues.len > 1:
+        b.acceptedValues
+      else:
+        CBVar(valueType: None)
+    of 1:
+      b.isregex
+    of 2:
+      b.all
     else:
-      CBVar(valueType: None)
+      assert(false)
+      Empty
   template activate*(b: CBWhenNot; context: CBContext; input: CBVar): CBVar =
     var res = input
+    var matches = 0
     for accepted in b.acceptedValues:
       let val = if accepted.valueType == ContextVar: context.contextVariable(accepted.stringValue)[] else: accepted
-      if input == val:
-        res = RestartChain
-        break
+      if b.isregex and val.valueType == String and input.valueType == String:
+        let regex = StdRegex.cppinit(val.stringValue.cstring)
+        if invokeFunction("std::regex_match", input.stringValue.cstring, regex).to(bool):
+          if not b.all:
+            res = RestartChain
+            break
+          else:
+            inc matches
+      elif input == val:
+        if not b.all:
+          res = RestartChain
+          break
+        else:
+          inc matches
+    if b.all and matches == b.acceptedValues.len:
+      res = RestartChain
     res
 
   chainblock CBWhenNot, "WhenNot"
