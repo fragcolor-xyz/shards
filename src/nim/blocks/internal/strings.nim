@@ -53,7 +53,18 @@ when true:
       res = b.results
     res
 
-  chainblock CBMatchText, "MatchText"
+  chainblock CBMatchText, "MatchText", "":
+    withChain testMatchText:
+      Const """baz.dat"""
+      MatchText """([a-z]+)\.([a-z]+)"""
+      Log()
+    
+    testMatchText.start()
+    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    testMatchText.start()
+    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    testMatchText.start()
+    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
 
 # ReplaceText
 when true:
@@ -94,4 +105,17 @@ when true:
     b.strCache = setString(b.strCache, replaced.c_str().to(cstring))
     b.strCache.CBVar
 
-  chainblock CBReplaceText, "ReplaceText"
+  chainblock CBReplaceText, "ReplaceText", "":
+    withChain testReplaceText:
+      Const """Quick brown fox"""
+      ReplaceText:
+        Regex: """a|e|i|o|u"""
+        Replacement: "[$&]"
+      Log()
+    
+    testReplaceText.start()
+    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+    testReplaceText.start()
+    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+    testReplaceText.start()
+    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"

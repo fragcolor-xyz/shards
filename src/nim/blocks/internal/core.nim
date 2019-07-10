@@ -356,7 +356,26 @@ when true:
       res = input
     res
 
-  chainblock CBWhen, "When"
+  chainblock CBWhen, "When", "":
+    withChain regexMatchTest:
+      Const """j["hello"] ="""
+      When:
+        Accept: """j\[\".*\"\]\s="""
+        IsRegex: true
+      Msg "Yes! Regex!"
+    
+    regexMatchTest.start()
+    doAssert regexMatchTest.stop() == """j["hello"] =""".CBVar
+
+    withChain regexWontMatchTest:
+      Const """j["hello] ="""
+      When:
+        Accept: """j\[\".*\"\]\s="""
+        IsRegex: true
+      Msg "Yes! Regex!"
+    
+    regexWontMatchTest.start()
+    doAssert regexWontMatchTest.stop() == RestartChain
 
 # WhenNot - a filter block, that let's inputs pass only when the condition is false
 when true:
@@ -428,7 +447,16 @@ when true:
       res = RestartChain
     res
 
-  chainblock CBWhenNot, "WhenNot"
+  chainblock CBWhenNot, "WhenNot", "":
+    withChain regexMatchNotTest:
+      Const """j["hello] ="""
+      WhenNot:
+        Reject: """j\[\".*\"\]\s="""
+        IsRegex: true
+      Msg "No! Regex!"
+    
+    regexMatchNotTest.start()
+    doAssert regexMatchNotTest.stop() == """j["hello] =""".CBVar
 
 # If
 when true:

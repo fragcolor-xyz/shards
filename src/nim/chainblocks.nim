@@ -518,12 +518,13 @@ else:
   template updateStackBottom*() =
     discard
 
-macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): untyped =
+macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; testCode: untyped = nil): untyped =
   var
     rtName = ident($blk & "RT")
     rtNameValue = ident($blk & "RTValue")
     macroName = ident($blockName)
     namespace = if $namespaceStr != "": $namespaceStr & "." else: ""
+    testName = ident("test_" & $blk)
 
     nameProc = ident($blk & "_name")
     helpProc = ident($blk & "_help")
@@ -668,6 +669,13 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""): u
           else:
             # assume single? maybe need to be precise to filter mistakes
             result = generateInitSingle(`blockName`, `blk`, args)
+      
+    if testCode != nil:
+      result.add quote do:
+        when defined blocksTesting:
+          proc `testName`() =
+            `testCode`
+          `testName`()
 
 when appType != "lib":
   # When building the runtime!
@@ -912,53 +920,6 @@ when isMainModule:
     for i in 0..10:
       var idx = i.CBVar
       mainChain.tick(idx)
-
-    withChain regexMatchTest:
-      Const """j["hello"] ="""
-      When:
-        Accept: """j\[\".*\"\]\s="""
-        IsRegex: true
-      Msg "Yes! Regex!"
-    
-    regexMatchTest.start()
-
-    withChain regexWontMatchTest:
-      Const """j["hello] ="""
-      When:
-        Accept: """j\[\".*\"\]\s="""
-        IsRegex: true
-      Msg "Yes! Regex!"
-    
-    regexWontMatchTest.start()
-
-    withChain regexMatchNotTest:
-      Const """j["hello] ="""
-      WhenNot:
-        Reject: """j\[\".*\"\]\s="""
-        IsRegex: true
-      Msg "No! Regex!"
-    
-    regexMatchNotTest.start()
-
-    withChain testMatchText:
-      Const """baz.dat"""
-      MatchText """([a-z]+)\.([a-z]+)"""
-      Log()
-    
-    testMatchText.start()
-    testMatchText.start()
-    testMatchText.start()
-
-    withChain testReplaceText:
-      Const """Quick brown fox"""
-      ReplaceText:
-        Regex: """a|e|i|o|u"""
-        Replacement: "[$&]"
-      Log()
-    
-    testReplaceText.start()
-    testReplaceText.start()
-    testReplaceText.start()
 
     let
       jstr = mainChain.store()

@@ -2,11 +2,11 @@ buildAndRun:win:
   script:
     - cd src/nim
     - nimble install --depsOnly -y
-    - nim cpp --newruntime -r -f chainblocks.nim
-    - nim cpp -r -f chainblocks.nim
+    - nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp -d:blocksTesting -r -f chainblocks.nim
     - cd blocks/external/py
     - nim cpp -f py.nim
     - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3' "
-    - nim cpp -f -r pytest.nim
+    - nim cpp -d:blocksTesting -f -r pytest.nim
   tags:
     - WIN, NIM, BOOST, MINGW
