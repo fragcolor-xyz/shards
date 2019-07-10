@@ -226,7 +226,10 @@ proc makeString*(txt: cstring): CBString {.inline.} =
 proc freeString*(cbStr: CBString) {.inline.} =
   # echo "freeString: ", cbStr
   invokeFunction("gb_free_string", cbStr).to(void)
-proc setString*(cbStr: CBString; s: string): CBString {.inline.} = invokeFunction("gb_set_string", cbStr, s.cstring).to(CBString)
+proc setString*(cbStr: CBString; s: string): CBString {.inline.} =
+  invokeFunction("gb_set_string", cbStr, s.cstring).to(CBString)
+proc setString*(cbStr: CBString; s: cstring): CBString {.inline.} =
+  invokeFunction("gb_set_string", cbStr, s).to(CBString)
 converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
 converter toString*(s: string): CBString {.inline.} =
   # echo "Quick string convert...: ", s

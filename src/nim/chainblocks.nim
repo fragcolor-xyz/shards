@@ -946,6 +946,19 @@ when isMainModule:
       Log()
     
     testMatchText.start()
+    testMatchText.start()
+    testMatchText.start()
+
+    withChain testReplaceText:
+      Const """Quick brown fox"""
+      ReplaceText:
+        Regex: """a|e|i|o|u"""
+        Replacement: "[$&]"
+      Log()
+    
+    testReplaceText.start()
+    testReplaceText.start()
+    testReplaceText.start()
 
     let
       jstr = mainChain.store()
