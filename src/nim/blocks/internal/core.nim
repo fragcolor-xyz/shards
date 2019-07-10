@@ -187,6 +187,7 @@ when true:
 when true:
   type
     CBlockConst* = object
+      cache*: CachedVarValues
       value: CBVar
 
   template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
@@ -194,12 +195,12 @@ when true:
   template parameters*(b: CBlockConst): CBParametersInfo = 
     @[("Value", ({ None, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#))]
   template setParam*(b: CBlockConst; index: int; val: CBVar) =
-    b.value.free() # might have some value stored!
-    b.value = val.clone()
+    b.cache.destroy()
+    b.value = val.clone(b.cache)
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     b.value
-  template destroy*(b: CBlockConst) = b.value.free()
+  template destroy*(b: CBlockConst) = b.cache.destroy()
 
   chainblock CBlockConst, "Const"
 
@@ -249,12 +250,16 @@ when true:
 when true:
   type
     CBlockMsg* = object
+      cache*: CachedVarValues
       msg*: CBVar
 
+  template destroy*(b: CBlockMsg) = b.cache.destroy()
   template inputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBlockMsg): CBParametersInfo = @[("Message", { String })]
-  template setParam*(b: CBlockMsg; index: int; val: CBVar) = b.msg = val.clone()
+  template setParam*(b: CBlockMsg; index: int; val: CBVar) =
+    b.cache.destroy()
+    b.msg = val.clone(b.cache)
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
     echo b.msg
@@ -288,12 +293,16 @@ when true:
 when true:
   type
     CBWhen* = object
+      cache*: CachedVarValues
       acceptedValues*: CBSeq
       isregex*: bool
       all*: bool
   
-  template setup*(b: CBWhen) = initSeq(b.acceptedValues)
-  template destroy*(b: CBWhen) = freeSeq(b.acceptedValues, true)
+  template setup*(b: CBWhen) =
+    initSeq(b.acceptedValues)
+  template destroy*(b: CBWhen) =
+    freeSeq(b.acceptedValues)
+    b.cache.destroy()
   template inputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
@@ -305,10 +314,11 @@ when true:
   template setParam*(b: CBWhen; index: int; val: CBVar) =
     case index
     of 0:
+      b.cache.destroy()
       if val.valueType == Seq:
-        b.acceptedValues = val.seqValue.clone()
+        b.acceptedValues = val.seqValue.clone(b.cache)
       else:
-        b.acceptedValues.push(val.clone())
+        b.acceptedValues.push(val.clone(b.cache))
     of 1:
       b.isregex = val.boolValue
     of 2:
@@ -381,12 +391,16 @@ when true:
 when true:
   type
     CBWhenNot* = object
+      cache*: CachedVarValues
       acceptedValues*: CBSeq
       isregex*: bool
       all*: bool
   
-  template setup*(b: CBWhenNot) = initSeq(b.acceptedValues)
-  template destroy*(b: CBWhenNot) = freeSeq(b.acceptedValues, true)
+  template setup*(b: CBWhenNot) =
+    initSeq(b.acceptedValues)
+  template destroy*(b: CBWhenNot) =
+    freeSeq(b.acceptedValues)
+    b.cache.destroy()
   template inputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
@@ -398,10 +412,11 @@ when true:
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
     case index
     of 0:
+      b.cache.destroy()
       if val.valueType == Seq:
-        b.acceptedValues = val.seqValue.clone()
+        b.acceptedValues = val.seqValue.clone(b.cache)
       else:
-        b.acceptedValues.push(val.clone())
+        b.acceptedValues.push(val.clone(b.cache))
     of 1:
       b.isregex = val.boolValue
     of 2:
@@ -483,6 +498,7 @@ when true:
 
   type
     CBlockIf* = object
+      cache*: CachedVarValues
       Op: CBBoolOp
       Match: CBVar
       True: ptr CBChainPtr
@@ -493,7 +509,7 @@ when true:
       discard b.True[].stop()
     if b.False != nil and b.False[] != nil:
       discard b.False[].stop()
-  template destroy*(b: CBlockIf) = b.Match.free()
+  template destroy*(b: CBlockIf) = b.cache.destroy()
   template inputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
   template outputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
@@ -508,8 +524,8 @@ when true:
     of 0:
       b.Op = val.enumValue.CBBoolOp
     of 1:
-      b.Match.free()
-      b.Match = val.clone()
+      b.cache.destroy()
+      b.Match = val.clone(b.cache)
     of 2:
       case val.valueType
       of Chain:
@@ -647,17 +663,16 @@ when true:
 when true:
   type
     CBToString* = object
-      cachedStr*: CBString
+      cachedStr*: string
   
-  template setup*(b: CBToString) = b.cachedStr = makeString("")
-  template destroy*(b: CBToString) = freeString(b.cachedStr)
   template inputTypes*(b: CBToString): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBToString): CBTypesInfo = { String }
   template activate*(b: var CBToString; context: CBContext; input: CBVar): CBVar =
+    b.cachedStr.setLen(0)
     if input.valueType == ContextVar:
-      b.cachedStr = b.cachedStr.setString($(context.contextVariable(input.stringValue)[]))
+      b.cachedStr &= $(context.contextVariable(input.stringValue)[])
     else:
-      b.cachedStr = b.cachedStr.setString($input)
+      b.cachedStr &= $input
     b.cachedStr
 
   chainblock CBToString, "ToString"
@@ -923,7 +938,8 @@ when true:
   template cleanup*(b: CBAddVariable) =
     if b.target != nil:
       # also we turned the target into a sequence, so we are responsible for the memory
-      b.target[].free()
+      if b.target[].valueType == Seq:
+        freeSeq(b.target[].seqValue)
     b.target = nil
   template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)

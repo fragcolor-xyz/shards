@@ -36,6 +36,7 @@ type
     started*: bool
     finished*: bool
   CBChainPtr* = ptr CBChain
+
   CBContextObj* {.importcpp: "CBContext", header: "chainblocks.hpp".} = object
     aborted*: bool
     restarted*: bool
@@ -191,8 +192,6 @@ registerCppType CBFloat2
 registerCppType CBFloat3
 registerCppType CBFloat4
 
-proc free*(v: CBVar) {.importcpp: "#.free()".}
-
 proc `[]`*(v: CBIntVectorsLike; index: int): int64 {.inline, noinit.} = v.toCpp[index].to(int64)
 proc `[]=`*(v: var CBIntVectorsLike; index: int; value: int64) {.inline.} = v.toCpp[index] = value
 proc `[]`*(v: CBFloatVectorsLike; index: int): float64 {.inline, noinit.} = v.toCpp[index].to(float64)
@@ -206,9 +205,7 @@ proc getItemRef*(tinfo: CBSeq; index: int): var CBVar {.inline, noinit.} = invok
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:
     yield getItemRef(s, i)
-proc freeSeq*(cbs: var CBSeq; callFree: bool = false) {.inline.} =
-  if callFree:
-    for item in cbs.mitems: item.free()
+proc freeSeq*(cbs: var CBSeq) {.inline.} =
   invokeFunction("da_free", cbs).to(void)
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("da_push", cbs, val).to(void)
@@ -231,7 +228,6 @@ converter toCBSeq*(s: var seq[CBVar]): CBSeq {.inline.} =
   # s must be kept alive!
   invokeFunction("da_init_external", result, addr s[0], s.len).to(void)
   invokeFunction("da_setcount", result, s.len).to(void)
-  # Cannot get seq capacity..... https://github.com/nim-lang/RFCs/issues/97
 converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
   # strings must be kept alive!
   invokeFunction("da_init", result).to(void)
@@ -239,44 +235,45 @@ converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
     invokeFunction("da_push", result, str.cstring).to(void)
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
-proc makeString*(txt: string): CBString {.inline.} =
-  # echo "newString: ", txt
-  invokeFunction("gb_make_string", txt.cstring).to(CBString)
-proc makeString*(txt: cstring): CBString {.inline.} =
-  # echo "newString: ", txt
-  invokeFunction("gb_make_string", txt).to(CBString)
-proc freeString*(cbStr: CBString) {.inline.} =
-  # echo "freeString: ", cbStr
-  invokeFunction("gb_free_string", cbStr).to(void)
-proc setString*(cbStr: CBString; s: string): CBString {.inline.} =
-  invokeFunction("gb_set_string", cbStr, s.cstring).to(CBString)
-proc setString*(cbStr: CBString; s: cstring): CBString {.inline.} =
-  invokeFunction("gb_set_string", cbStr, s).to(CBString)
 converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: string): CBString {.inline.} =
-  # echo "Quick string convert...: ", s
-  cast[CBString](s.cstring)
+converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
 converter toStringVar*(s: string): CBVar {.inline.} =
-  # echo "Quick string convert...: ", s
   result.valueType = String
   result.stringValue = cast[CBString](s.cstring)
 
-proc clone*(v: CBVar): CBVar {.inline.} =
+# Memory utilities to cache stuff around
+
+type
+  CachedVarValues* = object
+    strings: seq[string]
+    seqs: seq[CBSeq]
+
+proc destroy*(cache: var CachedVarValues) =
+  for s in cache.seqs.mitems:
+    freeSeq(s)
+  # Force deallocs
+  cache.strings = @[]
+  cache.seqs = @[]
+
+proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
+  # Need to add image support if we ever have image parameters! TODO
   if v.valueType == String:
     result.valueType = String
-    result.stringValue = invokeFunction("gb_make_string", v.stringValue).to(CBString)
+    cache.strings.add(v.stringValue)
+    result.stringValue = cache.strings[^1].cstring.CBString
   elif v.valueType == Seq:
     result.valueType = Seq
     initSeq(result.seqValue)
     for item in v.seqValue.mitems:
-      result.seqValue.push item.clone()
+      result.seqValue.push item.clone(cache)
+    cache.seqs.add(result.seqValue)
   else:
     result = v
 
-proc clone*(v: CBSeq): CBSeq {.inline.} =
+proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
   initSeq(result)
   for item in v.mitems:
-    result.push item.clone()
+    result.push item.clone(cache)
 
 proc throwCBException*(msg: string) =
   {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}

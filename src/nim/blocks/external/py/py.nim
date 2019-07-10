@@ -16,7 +16,7 @@ when true:
   type
     CBPython = object
       filename*: string
-      stringStorage*: CBString
+      stringStorage*: string
       pymod*: PyObject
       instance*: PyObject
       loaded*: bool
@@ -28,10 +28,8 @@ when true:
     b.pymod = nil
     b.loaded = false
   template setup*(b: CBPython) =
-    b.stringStorage = makeString("")
     initSeq(b.seqStorage)
   template destroy*(b: CBPython) =
-    b.stringStorage.freeString()
     freeSeq(b.seqStorage)
   template inputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
   template outputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
@@ -100,7 +98,8 @@ when true:
     of Float3: result = tupRes.value.to(tuple[a, b, c: float32])
     of Float4: result = tupRes.value.to(tuple[a, b, c, d: float32])
     of String:
-      blk.stringStorage = blk.stringStorage.setString(tupRes.value.to(string))
+      blk.stringStorage.setLen(0)
+      blk.stringStorage &= tupRes.value.to(string)
       result = blk.stringStorage
     of Color: result = tupRes.value.to(tuple[r, g, b, a: uint8])
     of Image:

@@ -1,5 +1,4 @@
 #define DG_DYNARR_IMPLEMENTATION 1
-#define GB_STRING_IMPLEMENTATION 1
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "chainblocks.hpp"
@@ -370,14 +369,16 @@ void from_json(const json& j, CBVar& var)
     {
       var.valueType = ContextVar;
       auto strVal = j.at("value").get<std::string>();
-      var.stringValue = gb_make_string(strVal.c_str());
+      var.stringValue = new char[strVal.length() + 1];
+      strcpy((char*)var.stringValue, strVal.c_str());
       break;
     }
     case String:
     {
       var.valueType = String;
       auto strVal = j.at("value").get<std::string>();
-      var.stringValue = gb_make_string(strVal.c_str());
+      var.stringValue = new char[strVal.length() + 1];
+      strcpy((char*)var.stringValue, strVal.c_str());
       break;
     }
     case Color:

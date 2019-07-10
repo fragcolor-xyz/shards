@@ -10,7 +10,6 @@
 
 #include <stdint.h>
 #include "3rdparty/DG_dynarr.h"
-#include "3rdparty/gb_string.h"
 
 // All the available types
 enum CBType : uint8_t
@@ -60,7 +59,7 @@ typedef int64_t CBInt;
 typedef double CBFloat;
 typedef bool CBBool;
 typedef int32_t CBEnum;
-typedef gbString CBString;
+typedef const char* CBString;
 DA_TYPEDEF(const char*, CBStrings);
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -132,8 +131,8 @@ struct CBTypeInfo
   bool sequenced;
 };
 
-typedef CBString (__cdecl *CBObjectSerializer)(CBPointer);
-typedef CBPointer (__cdecl *CBObjectDeserializer)(CBString);
+typedef const char* (__cdecl *CBObjectSerializer)(CBPointer);
+typedef CBPointer (__cdecl *CBObjectDeserializer)(const char*);
 typedef CBPointer (__cdecl *CBObjectFree)(CBPointer);
 
 struct CBObjectInfo
@@ -232,7 +231,7 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
   {
     if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
     {
-      gb_free_string(stringValue);
+      delete[] stringValue;
       stringValue = nullptr;
     }
     else if(valueType == Seq)
@@ -400,14 +399,14 @@ typedef boost::context::continuation CBCoro;
 
 struct CBContext
 {
-  CBContext(CBCoro&& sink) : error(nullptr), restarted(false), aborted(false), continuation(std::move(sink))
+  CBContext(CBCoro&& sink) : restarted(false), aborted(false), continuation(std::move(sink))
   {
     da_init(stack);
   }
 
   std::unordered_map<std::string, CBVar> variables;
   CBSeq stack;
-  CBString error;
+  std::string error;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -419,10 +418,7 @@ struct CBContext
 
   void setError(const char* errorMsg)
   {
-    if(!error)
-      error = gb_make_string(errorMsg);
-    else
-      error = gb_set_string(error, errorMsg);
+    error = errorMsg;
   }
 };
 
@@ -690,7 +686,7 @@ namespace chainblocks
       catch(const std::exception& e)
       {
         std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error)
+        if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";
         return { false, {} };
@@ -698,7 +694,7 @@ namespace chainblocks
       catch(...)
       {
         std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error)
+        if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         return { false, {} };
       }
@@ -713,7 +709,7 @@ namespace chainblocks
       catch(const std::exception& e)\
       {\
         std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-        if(context->error)\
+        if(context->error.length() > 0)\
           std::cerr << "Last error: " << std::string(context->error) << "\n";\
         std::cerr << e.what() << "\n";\
         return { false, previousOutput };\
@@ -721,7 +717,7 @@ namespace chainblocks
       catch(...)\
       {\
         std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-        if(context->error)\
+        if(context->error.length() > 0)\
           std::cerr << "Last error: " << std::string(context->error) << "\n";\
         return { false, previousOutput };\
       }\
@@ -751,7 +747,7 @@ namespace chainblocks
             case Stop:
             {
               // Print errors if any, we might have stopped because of some error!
-              if(context->error)
+              if(context->error.length() > 0)
                 std::cerr << "Last error: " << std::string(context->error) << "\n";
               runChainPOSTCHAIN
               return { false, previousOutput };
@@ -762,7 +758,7 @@ namespace chainblocks
       catch(const std::exception& e)
       {
         std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error)
+        if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";;
         runChainPOSTCHAIN
@@ -771,7 +767,7 @@ namespace chainblocks
       catch(...)
       {
         std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error)
+        if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         runChainPOSTCHAIN
         return { false, previousOutput };
@@ -828,9 +824,6 @@ namespace chainblocks
       // Completely free the stack
       da_free(context.stack);
 
-      // Free any error we might have, internally there is a null check!
-      gb_free_string(context.error);
-      
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;
       return std::move(context.continuation);

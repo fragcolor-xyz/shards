@@ -3,14 +3,12 @@ when true:
   type
     CBMatchText* = object
       results*: CBSeq
-      stringPool*: seq[CBString]
+      stringPool*: seq[string]
       regexStr*: string
       regex*: StdRegex
   
   template setup*(b: CBMatchText) = initSeq(b.results)
-  template destroy*(b: CBMatchText) =
-    freeSeq(b.results, true)
-    for s in b.stringPool: freeString(s)
+  template destroy*(b: CBMatchText) = freeSeq(b.results)
   template inputTypes*(b: CBMatchText): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBMatchText): CBTypesInfo = ({ String }, true #[seq]#)
   template parameters*(b: CBMatchText): CBParametersInfo = 
@@ -31,10 +29,8 @@ when true:
     if invokeFunction("std::regex_match", subject, matches, b.regex).to(bool):
       let
         count = matches.size().to(int)
-        cacheLen = b.results.len
       
-      for i in 0..<cacheLen:
-        b.stringPool.add(b.results[i].stringValue)
+      b.stringPool.setLen(count) # Should allocate more str if needed or keep existing hopefully
       b.results.clear()
 
       for i in 0..<count:
@@ -42,13 +38,9 @@ when true:
           subm = matches[i].to(StdSSubMatch)
           str = subm.str().c_str().to(cstring)
         
-        if b.stringPool.len > 0:
-          var s = b.stringPool.pop()
-          s = setString(s, str)
-          b.results.push(s)
-        else:
-          var s = makeString(str)
-          b.results.push(s)
+        b.stringPool[i].setLen(0)
+        b.stringPool[i] &= $str
+        b.results.push(b.stringPool[i])
       
       res = b.results
     res
@@ -72,13 +64,11 @@ when true:
 when true:
   type
     CBReplaceText* = object
-      strCache*: CBstring
+      strCache*: string
       regexStr*: string
       regex*: StdRegex
       replacement*: string
   
-  template setup*(b: CBReplaceText) = b.strCache = makeString("")
-  template destroy*(b: CBReplaceText) = freeString(b.strCache)
   template inputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
   template parameters*(b: CBReplaceText): CBParametersInfo = 
@@ -102,9 +92,9 @@ when true:
     of 1: b.replacement
     else: assert(false); Empty
   template activate*(b: CBReplaceText; context: CBContext; input: CBVar): CBVar =
-    # The following has an allocation per activation! TODO
     let replaced = invokeFunction("std::regex_replace", input.stringValue, b.regex, b.replacement.cstring).to(StdString)
-    b.strCache = setString(b.strCache, replaced.c_str().to(cstring))
+    b.strCache.setLen(0)
+    b.strCache &= $replaced.c_str().to(cstring)
     b.strCache.CBVar
 
   chainblock CBReplaceText, "ReplaceText", "":
@@ -133,7 +123,8 @@ when true:
   template inputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template activate*(b: CBToUppercase; context: CBContext; input: CBVar): CBVar =
-    b.strCache = input.stringValue.string.toUpper
+    b.strCache.setLen(0)
+    b.strCache &= input.stringValue.string.toUpper
     b.strCache
 
   chainblock CBToUppercase, "ToUppercase", "":
