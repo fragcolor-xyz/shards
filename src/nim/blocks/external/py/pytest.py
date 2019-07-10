@@ -7,5 +7,5 @@ def activate(self, input):
   if not self["suspend"](0.5):
     return # if false, return asap
 
-  # 12 = String type
-  return (12, input + " world " + str(self["i"]))
+  # 13 = String type
+  return (13, input + " world " + str(self["i"]))
