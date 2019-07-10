@@ -26,7 +26,13 @@ when true:
 
     chainblock typeName, shortName, "Math"
 
-  calculateBinaryOp(CBMathAdd, "Add", `+`)
+  calculateBinaryOp(CBMathAdd,      "Add",      `+`)
   calculateBinaryOp(CBMathSubtract, "Subtract", `-`)
   calculateBinaryOp(CBMathMultiply, "Multiply", `*`)
-  calculateBinaryOp(CBMathDivide, "Divide", `/`)
+  calculateBinaryOp(CBMathDivide,   "Divide",   `/`)
+  calculateBinaryOp(CBMathXor,      "Xor",      `xor`)
+  calculateBinaryOp(CBMathAnd,      "And",      `and`)
+  calculateBinaryOp(CBMathOr,       "Or",       `or`)
+  calculateBinaryOp(CBMathMod,      "Mod",      `mod`)
+  calculateBinaryOp(CBMathLShift,   "LShift",   `shl`)
+  calculateBinaryOp(CBMathRShift,   "RShift",   `shr`)

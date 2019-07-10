@@ -1,5 +1,3 @@
-import strutils
-
 # RunChain - runs a sub chain, ends the parent chain if the sub chain fails
 when true:
   type

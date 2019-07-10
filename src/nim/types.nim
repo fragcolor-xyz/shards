@@ -278,3 +278,5 @@ proc clone*(v: CBSeq): CBSeq {.inline.} =
   for item in v.mitems:
     result.push item.clone()
 
+proc throwCBException*(msg: string) =
+  {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}

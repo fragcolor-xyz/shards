@@ -1,9 +1,9 @@
 proc `/`*(a,b: CBVar): CBVar {.inline.} =
   if a.valueType != b.valueType: doAssert(false, astToStr(`/`) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
-  of None, Any: doAssert(false, "None, Any, End, Stop " & astToStr(`/`) & " Not supported")
-  of Object: doAssert(false, "Object " & astToStr(`/`) & " Not supported")
-  of Bool: doAssert(false, "Bool " & astToStr(`/`) & " Not supported")
+  of None, Any: throwCBException("None, Any, End, Stop " & astToStr(`/`) & " Not supported")
+  of Object: throwCBException("Object " & astToStr(`/`) & " Not supported")
+  of Bool: throwCBException("Bool " & astToStr(`/`) & " Not supported")
   of Int: return `div`(a.intValue, b.intValue).toCBVar()
   of Int2: return `/`(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
   of Int3: return `/`(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
@@ -12,50 +12,84 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
   of Float2: return `/`(a.float2Value.toCpp, b.float2Value.toCpp).to(CBFloat2).toCBVar()
   of Float3: return `/`(a.float3Value.toCpp, b.float3Value.toCpp).to(CBFloat3).toCBVar()
   of Float4: return `/`(a.float4Value.toCpp, b.float4Value.toCpp).to(CBFloat4).toCBVar()
-  of String: doAssert(false, "String " & astToStr(`/`) & " Not supported")
-  of ContextVar: doAssert(false, "ContextVar " & astToStr(`/`) & " Not supported")
+  of String: throwCBException("String " & astToStr(`/`) & " Not supported")
+  of ContextVar: throwCBException("ContextVar " & astToStr(`/`) & " Not supported")
   of Color: return (
       a.colorValue.r div b.colorValue.r, 
       a.colorValue.g div b.colorValue.g,
       a.colorValue.b div b.colorValue.b,
       a.colorValue.a div b.colorValue.a
     )
-  of CBType.Image: doAssert(false, "Image " & astToStr(`/`) & " Not supported")
-  of Seq: doAssert(false, "Seq " & astToStr(`/`) & " Not supported")
-  of Chain: doAssert(false, "Chain " & astToStr(`/`) & " Not supported")
-  of Enum: doAssert(false, "Enum " & astToStr(`/`) & " Not supported")
+  of CBType.Image: throwCBException("Image " & astToStr(`/`) & " Not supported")
+  of Seq: throwCBException("Seq " & astToStr(`/`) & " Not supported")
+  of Chain: throwCBException("Chain " & astToStr(`/`) & " Not supported")
+  of Enum: throwCBException("Enum " & astToStr(`/`) & " Not supported")
 
 template mathBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
     if a.valueType != b.valueType: doAssert(false, astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
     case a.valueType
-    of None, Any: doAssert(false, "None, Any, End, Stop " & astToStr(op) & " Not supported")
-    of Object: doAssert(false, "Object " & astToStr(op) & " Not supported")
-    of Bool: doAssert(false, "Bool " & astToStr(op) & " Not supported")
-    of Int: return op(a.intValue, b.intValue).toCBVar()
+    of None, Any: throwCBException("None, Any, End, Stop " & astToStr(op) & " Not supported")
+    of Object: throwCBException("Object " & astToStr(op) & " Not supported")
+    of Bool: throwCBException("Bool " & astToStr(op) & " Not supported")
+    of Int:  return op(a.intValue, b.intValue).toCBVar()
     of Int2: return op(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
     of Int3: return op(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
     of Int4: return op(a.int4Value.toCpp, b.int4Value.toCpp).to(CBInt4).toCBVar()
-    of Float: return op(a.floatValue, b.floatValue).toCBVar()
+    of Float:  return op(a.floatValue, b.floatValue).toCBVar()
     of Float2: return op(a.float2Value.toCpp, b.float2Value.toCpp).to(CBFloat2).toCBVar()
     of Float3: return op(a.float3Value.toCpp, b.float3Value.toCpp).to(CBFloat3).toCBVar()
     of Float4: return op(a.float4Value.toCpp, b.float4Value.toCpp).to(CBFloat4).toCBVar()
-    of String: doAssert(false, "String " & astToStr(op) & " Not supported")
-    of ContextVar: doAssert(false, "ContextVar " & astToStr(op) & " Not supported")
+    of String: throwCBException("String " & astToStr(op) & " Not supported")
+    of ContextVar: throwCBException("ContextVar " & astToStr(op) & " Not supported")
     of Color: return (
         op(a.colorValue.r, b.colorValue.r), 
         op(a.colorValue.g, b.colorValue.g),
         op(a.colorValue.b, b.colorValue.b),
         op(a.colorValue.a, b.colorValue.a)
       )
-    of CBType.Image: doAssert(false, "Image " & astToStr(op) & " Not supported")
-    of Seq: doAssert(false, "Seq " & astToStr(op) & " Not supported")
-    of Chain: doAssert(false, "Chain " & astToStr(op) & " Not supported")
-    of Enum: doAssert(false, "Enum " & astToStr(op) & " Not supported")
+    of CBType.Image: throwCBException("Image " & astToStr(op) & " Not supported")
+    of Seq: throwCBException("Seq " & astToStr(op) & " Not supported")
+    of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
+    of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
+
+template mathIntBinaryOp(op: untyped): untyped =
+  proc op*(a,b: CBVar): CBVar {.inline.} =
+    if a.valueType != b.valueType: doAssert(false, astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
+    case a.valueType
+    of None, Any: throwCBException("None, Any, End, Stop " & astToStr(op) & " Not supported")
+    of Object: throwCBException("Object " & astToStr(op) & " Not supported")
+    of Bool: throwCBException("Bool " & astToStr(op) & " Not supported")
+    of Int:  return op(a.intValue, b.intValue).int64.toCBVar()
+    of Int2: return op(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
+    of Int3: return op(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
+    of Int4: return op(a.int4Value.toCpp, b.int4Value.toCpp).to(CBInt4).toCBVar()
+    of Float:  throwCBException("Float " & astToStr(op) & " Not supported")
+    of Float2: throwCBException("Float2 " & astToStr(op) & " Not supported")
+    of Float3: throwCBException("Float3 " & astToStr(op) & " Not supported")
+    of Float4: throwCBException("Float4 " & astToStr(op) & " Not supported")
+    of String: throwCBException("String " & astToStr(op) & " Not supported")
+    of ContextVar: throwCBException("ContextVar " & astToStr(op) & " Not supported")
+    of Color: return (
+        op(a.colorValue.r, b.colorValue.r), 
+        op(a.colorValue.g, b.colorValue.g),
+        op(a.colorValue.b, b.colorValue.b),
+        op(a.colorValue.a, b.colorValue.a)
+      )
+    of CBType.Image: throwCBException("Image " & astToStr(op) & " Not supported")
+    of Seq: throwCBException("Seq " & astToStr(op) & " Not supported")
+    of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
+    of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
 
 mathBinaryOp(`+`)
 mathBinaryOp(`-`)
 mathBinaryOp(`*`)
+mathIntBinaryOp(`xor`)
+mathIntBinaryOp(`and`)
+mathIntBinaryOp(`or`)
+mathIntBinaryOp(`mod`)
+mathIntBinaryOp(`shl`)
+mathIntBinaryOp(`shr`)
 
 proc `>=`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: doAssert(false, "`>=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -71,12 +105,12 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Float3: return (a.float3Value.toCpp >= b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
   of Float4: return (a.float4Value.toCpp >= b.float4Value.toCpp).to(CBFloat4).elems.allit(it != 0)
   of String, ContextVar: return $a.stringValue.string >= b.stringValue.string
-  of Color: doAssert(false, "Color `>=` Not supported")
-  of CBType.Image: doAssert(false, "Image `>=` Not supported")
-  of Seq: doAssert(false, "Seq `>=` Not supported")
-  of Chain: doAssert(false, "Chain `>=` Not supported")
-  of Enum: doAssert(false, "Enum `>=` Not supported")
-  of Object: doAssert(false, "Object `>=` Not supported")
+  of Color: throwCBException("Color `>=` Not supported")
+  of CBType.Image: throwCBException("Image `>=` Not supported")
+  of Seq: throwCBException("Seq `>=` Not supported")
+  of Chain: throwCBException("Chain `>=` Not supported")
+  of Enum: throwCBException("Enum `>=` Not supported")
+  of Object: throwCBException("Object `>=` Not supported")
 
 proc `>`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: doAssert(false, "`>` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -92,12 +126,12 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of Float3: return (a.float3Value.toCpp > b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
   of Float4: return (a.float4Value.toCpp > b.float4Value.toCpp).to(CBFloat4).elems.allit(it != 0)
   of String, ContextVar: return a.stringValue.string > b.stringValue.string
-  of Color: doAssert(false, "Color `>` Not supported")
-  of CBType.Image: doAssert(false, "Image `>` Not supported")
-  of Seq: doAssert(false, "Seq `>` Not supported")
-  of Chain: doAssert(false, "Chain `>` Not supported")
-  of Enum: doAssert(false, "Enum `>` Not supported")
-  of Object: doAssert(false, "Object `>` Not supported")
+  of Color: throwCBException("Color `>` Not supported")
+  of CBType.Image: throwCBException("Image `>` Not supported")
+  of Seq: throwCBException("Seq `>` Not supported")
+  of Chain: throwCBException("Chain `>` Not supported")
+  of Enum: throwCBException("Enum `>` Not supported")
+  of Object: throwCBException("Object `>` Not supported")
 
 proc `<`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: doAssert(false, "`<` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -113,12 +147,12 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of Float3: return (a.float3Value.toCpp < b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
   of Float4: return (a.float4Value.toCpp < b.float4Value.toCpp).to(CBFloat4).elems.allit(it != 0)
   of String, ContextVar: return a.stringValue.string < b.stringValue.string
-  of Color: doAssert(false, "Color `<` Not supported")
-  of CBType.Image: doAssert(false, "Image `<` Not supported")
-  of Seq: doAssert(false, "Seq `<` Not supported")
-  of Chain: doAssert(false, "Chain `<` Not supported")
-  of Enum: doAssert(false, "Enum `<` Not supported")
-  of Object: doAssert(false, "Object `<` Not supported")
+  of Color: throwCBException("Color `<` Not supported")
+  of CBType.Image: throwCBException("Image `<` Not supported")
+  of Seq: throwCBException("Seq `<` Not supported")
+  of Chain: throwCBException("Chain `<` Not supported")
+  of Enum: throwCBException("Enum `<` Not supported")
+  of Object: throwCBException("Object `<` Not supported")
 
 proc `<=`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: doAssert(false, "`<=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -134,12 +168,12 @@ proc `<=`*(a,b: CBVar): bool {.inline.} =
   of Float3: return (a.float3Value.toCpp <= b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
   of Float4: return (a.float4Value.toCpp <= b.float4Value.toCpp).to(CBFloat4).elems.allit(it != 0)
   of String, ContextVar: return a.stringValue.string <= b.stringValue.string
-  of Color: doAssert(false, "Color `<=` Not supported")
-  of CBType.Image: doAssert(false, "Image `<=` Not supported")
-  of Seq: doAssert(false, "Seq `<=` Not supported")
-  of Chain: doAssert(false, "Chain `<=` Not supported")
-  of Enum: doAssert(false, "Enum `<=` Not supported")
-  of Object: doAssert(false, "Object `<=` Not supported")
+  of Color: throwCBException("Color `<=` Not supported")
+  of CBType.Image: throwCBException("Image `<=` Not supported")
+  of Seq: throwCBException("Seq `<=` Not supported")
+  of Chain: throwCBException("Chain `<=` Not supported")
+  of Enum: throwCBException("Enum `<=` Not supported")
+  of Object: throwCBException("Object `<=` Not supported")
 
 proc `==`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: return false
