@@ -1,15 +1,17 @@
 buildAndRun:win:  
   script:
+    - $currentDir = Get-Location
+    - $nimbleDir = "$currentDir/nimbledir"
     - cd src/nim
-    - nimble install --depsOnly -y
-    - nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim
-    - nim cpp -d:blocksTesting -r -f chainblocks.nim
+    - nimble install --depsOnly --nimbleDir:$nimbleDir -y
+    - nim cpp --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -r -f chainblocks.nim
     - cd blocks/external/py
-    - nim cpp -f py.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -f py.nim
     - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3' "
-    - nim cpp -d:blocksTesting -f -r pytest.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim
     - cd ../dummy
-    - nim cpp -f --cc:vcc dummy.nim
-    - nim cpp -f -r --newruntime dummytest.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
   tags:
     - WIN, NIM, BOOST, MINGW
