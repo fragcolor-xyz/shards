@@ -371,6 +371,7 @@ when appType != "lib":
   proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
   proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
   proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "chainblocks.hpp".}
+  proc unregisterChain*(chain: CBChainPtr) {.importcpp: "chainblocks::unregisterChain(#)", header: "chainblocks.hpp".}
   proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
 
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
@@ -694,6 +695,10 @@ when appType != "lib":
     cppnewptr(result, name)
     registerChain(result)
   
+  proc destroy*(chain: CBChainPtr) {.inline.} =
+    unregisterChain(chain)
+    cppdelptr(chain)
+  
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
   proc suspend*(seconds: float64): CBVar {.inline.} =
@@ -755,6 +760,7 @@ defineCppType(StdSmatch, "std::smatch", "<regex>")
 defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
 
 when not defined(skipCoreBlocks):
+  import unicode
   include blocks/internal/[core, strings, stack, calculate]
 
 when appType != "lib":

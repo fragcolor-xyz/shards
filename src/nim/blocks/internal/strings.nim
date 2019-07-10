@@ -66,6 +66,8 @@ when true:
     testMatchText.start()
     doAssert $testMatchText.stop() == "baz.dat, baz, dat"
 
+    destroy testMatchText
+
 # ReplaceText
 when true:
   type
@@ -119,3 +121,32 @@ when true:
     doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
     testReplaceText.start()
     doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+
+    destroy testReplaceText
+
+# ToUppercase
+when true:
+  type
+    CBToUppercase* = object
+      strCache*: string
+  
+  template inputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
+  template outputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
+  template activate*(b: CBToUppercase; context: CBContext; input: CBVar): CBVar =
+    b.strCache = input.stringValue.string.toUpper
+    b.strCache
+
+  chainblock CBToUppercase, "ToUppercase", "":
+    withChain testToUppercase:
+      Const "Quick brown fox"
+      ToUppercase
+      Log()
+    
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+
+    destroy testToUppercase

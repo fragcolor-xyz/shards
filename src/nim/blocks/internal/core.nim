@@ -366,6 +366,7 @@ when true:
     
     regexMatchTest.start()
     doAssert regexMatchTest.stop() == """j["hello"] =""".CBVar
+    destroy regexMatchTest
 
     withChain regexWontMatchTest:
       Const """j["hello] ="""
@@ -376,6 +377,7 @@ when true:
     
     regexWontMatchTest.start()
     doAssert regexWontMatchTest.stop() == RestartChain
+    destroy regexWontMatchTest
 
 # WhenNot - a filter block, that let's inputs pass only when the condition is false
 when true:
@@ -457,6 +459,7 @@ when true:
     
     regexMatchNotTest.start()
     doAssert regexMatchNotTest.stop() == """j["hello] =""".CBVar
+    destroy regexMatchNotTest
 
 # If
 when true:
