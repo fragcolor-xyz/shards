@@ -17,8 +17,7 @@ when appType != "lib":
   {.passC: "-DCHAINBLOCKS_RUNTIME.".}
 else:
   {.emit: """/*INCLUDESECTION*/
-#define DG_DYNARR_IMPLEMENTATION 1
-#define GB_STRING_IMPLEMENTATION 1
+#define STB_DS_IMPLEMENTATION 1
 """.}
 
 const
@@ -34,7 +33,7 @@ proc elems*(v: CBFloat4): array[4, float32] {.inline.} = [v.toCpp[0].to(float32)
 converter toCBTypesInfo*(s: tuple[types: set[CBType]; canBeSeq: bool]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for t in s.types:
-    global.da_push(result, CBTypeInfo(basicType: t, sequenced: s.canBeSeq)).to(void)
+    global.stbds_arrpush(result, CBTypeInfo(basicType: t, sequenced: s.canBeSeq)).to(void)
 
 converter toCBTypesInfo*(s: set[CBType]): CBTypesInfo {.inline, noinit.} = (s, false)
 
@@ -43,7 +42,7 @@ converter toCBTypeInfo*(s: tuple[ty: CBType, isSeq: bool]): CBTypeInfo {.inline,
 
 converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = (s, false)
 
-converter toCBTypesInfo*(s: seq[CBTypeInfo]): CBTypesInfo {.inline.} =
+converter toCBTypesInfo*(s: seq[CBTypeInfo]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for ti in s:
     result.push ti

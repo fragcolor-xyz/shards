@@ -9,7 +9,7 @@
 // Cannot afford to use any C++ std as any block maker should be free to use their versions
 
 #include <stdint.h>
-#include "3rdparty/DG_dynarr.h"
+#include "3rdparty/stb_ds.h"
 
 // All the available types
 enum CBType : uint8_t
@@ -44,14 +44,14 @@ enum CBChainState
 
 // Forward declarations
 struct CBVar;
-DA_TYPEDEF(CBVar, CBSeq);
+typedef CBVar* CBSeq;
 struct CBChain;
 typedef CBChain* CBChainPtr;
 struct CBRuntimeBlock;
 struct CBTypeInfo;
-DA_TYPEDEF(CBTypeInfo, CBTypesInfo)
+typedef CBTypeInfo* CBTypesInfo;
 struct CBParameterInfo;
-DA_TYPEDEF(CBParameterInfo, CBParametersInfo)
+typedef CBParameterInfo* CBParametersInfo;
 struct CBContext;
 
 typedef void* CBPointer;
@@ -60,7 +60,7 @@ typedef double CBFloat;
 typedef bool CBBool;
 typedef int32_t CBEnum;
 typedef const char* CBString;
-DA_TYPEDEF(const char*, CBStrings);
+typedef CBString* CBStrings;
 
 #if defined(__clang__) || defined(__GNUC__)
   typedef int64_t CBInt2 __attribute__((vector_size(16)));
@@ -227,7 +227,7 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
   uint8_t reserved[15];
 
   // Use with care, only if you know you own the memory, this is just utility
-  void free()
+  void releaseMemory()
   {
     if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
     {
@@ -236,8 +236,11 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
     }
     else if(valueType == Seq)
     {
-      da_free(seqValue);
-      da_init(seqValue);
+      if(seqValue)
+      {
+        stbds_arrfree(seqValue);
+        seqValue = nullptr;
+      }
     }
     else if(valueType == Image)
     {
@@ -399,9 +402,8 @@ typedef boost::context::continuation CBCoro;
 
 struct CBContext
 {
-  CBContext(CBCoro&& sink) : restarted(false), aborted(false), continuation(std::move(sink))
+  CBContext(CBCoro&& sink) : stack(nullptr), restarted(false), aborted(false), continuation(std::move(sink))
   {
-    da_init(stack);
   }
 
   std::unordered_map<std::string, CBVar> variables;
@@ -797,7 +799,7 @@ namespace chainblocks
         context.restarted = false; // Remove restarted flag
 
         // Reset len to 0 of the stack
-        da_clear(context.stack);
+        stbds_arrfree(context.stack);
         
         thisChain->finished = false; // Reset finished flag
 
@@ -822,7 +824,7 @@ namespace chainblocks
       }
 
       // Completely free the stack
-      da_free(context.stack);
+      stbds_arrfree(context.stack);
 
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;

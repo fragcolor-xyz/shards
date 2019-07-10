@@ -1,4 +1,4 @@
-#define DG_DYNARR_IMPLEMENTATION 1
+#define STB_DS_IMPLEMENTATION 1
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "chainblocks.hpp"
@@ -224,9 +224,9 @@ void to_json(json& j, const CBVar& var)
     case Seq:
     {
       std::vector<json> items;
-      for(int i = 0; i < da_count(var.seqValue); i++)
+      for(int i = 0; i < stbds_arrlen(var.seqValue); i++)
       {
-        auto v = da_get(var.seqValue, i);
+        auto& v = var.seqValue[i];
         items.push_back(v);
       }
       j = json{
@@ -415,10 +415,10 @@ void from_json(const json& j, CBVar& var)
     {
       var.valueType = Seq;
       auto items = j.at("values").get<std::vector<json>>();
-      da_init(var.seqValue);
+      var.seqValue = nullptr;
       for(auto item : items)
       {
-        da_push(var.seqValue, item.get<CBVar>());
+        stbds_arrpush(var.seqValue, item.get<CBVar>());
       }
       break;
     }
@@ -443,13 +443,13 @@ void to_json(json& j, const CBChainPtr& chain)
   {
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for(int i = 0; i < da_count(paramsDesc); i++)
+    for(int i = 0; i < stbds_arrlen(paramsDesc); i++)
     {
-      auto desc = da_getptr(paramsDesc, i);
+      auto& desc = paramsDesc[i];
       auto value = blk->getParam(blk, i);
 
       json param_obj = {
-        { "name", desc->name },
+        { "name", desc.name },
         { "value", value }
       };
       
@@ -498,16 +498,16 @@ void from_json(const json& j, CBChainPtr& chain)
     {
       auto paramName = jparam.at("name").get<std::string>();
       auto value = jparam.at("value").get<CBVar>();
-      for(auto i = 0; i < da_count(blkParams); i++)
+      for(auto i = 0; i < stbds_arrlen(blkParams); i++)
       {
-        auto paramInfo = da_getptr(blkParams, i);
-        if(paramName == paramInfo->name)
+        auto& paramInfo = blkParams[i];
+        if(paramName == paramInfo.name)
         {
           blk->setParam(blk, i, value);
           break;
         }
       }
-      value.free();
+      value.releaseMemory();
     }
 
     // From now on this chain owns the block

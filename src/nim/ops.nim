@@ -230,7 +230,7 @@ proc `$`*(a: CBVar): string {.inline.} =
     result = ""
     let len = a.seqValue.len
     var idx = 0
-    for item in a.seqValue.items:
+    for item in a.seqValue.mitems:
       if idx == len - 1:
         result &= $item
       else:
