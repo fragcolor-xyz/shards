@@ -255,34 +255,28 @@ converter toCBVar*(v: CBInt4): CBVar {.inline.} =
   return CBVar(valueType: Int4, int4Value: v)
 
 converter toCBVar*(v: tuple[a,b: int]): CBVar {.inline.} =
-  var wval: CBInt2
-  iterateTuple(v, wval, int64)
-  return CBVar(valueType: Int2, int2Value: wval)
+  result.valueType = Int2
+  iterateTuple(v, result.int2Value, int64)
 
 converter toCBVar*(v: tuple[a,b: int64]): CBVar {.inline.} =
-  var wval: CBInt2
-  iterateTuple(v, wval, int64)
-  return CBVar(valueType: Int2, int2Value: wval)
+  result.valueType = Int2
+  iterateTuple(v, result.int2Value, int64)
 
 converter toCBVar*(v: tuple[a,b,c: int]): CBVar {.inline.} =
-  var wval: CBInt3
-  iterateTuple(v, wval, int32)
-  return CBVar(valueType: Int3, int3Value: wval)
+  result.valueType = Int3
+  iterateTuple(v, result.int3Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c: int32]): CBVar {.inline.} =
-  var wval: CBInt3
-  iterateTuple(v, wval, int32)
-  return CBVar(valueType: Int3, int3Value: wval)
+  result.valueType = Int3
+  iterateTuple(v, result.int3Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c,d: int]): CBVar {.inline.} =
-  var wval: CBInt4
-  iterateTuple(v, wval, int32)
-  return CBVar(valueType: Int4, int4Value: wval)
+  result.valueType = Int4
+  iterateTuple(v, result.int4Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c,d: int32]): CBVar {.inline.} =
-  var wval: CBInt4
-  iterateTuple(v, wval, int32)
-  return CBVar(valueType: Int4, int4Value: wval)
+  result.valueType = Int4
+  iterateTuple(v, result.int4Value, int32)
 
 converter toCBVar*(v: bool): CBVar {.inline.} =
   return CBVar(valueType: Bool, boolValue: v)
@@ -303,29 +297,24 @@ converter toCBVar*(v: CBFloat4): CBVar {.inline.} =
   return CBVar(valueType: Float4, float4Value: v)
 
 converter toCBVar*(v: tuple[a,b: float64]): CBVar {.inline.} =
-  var wval: CBFloat2
-  iterateTuple(v, wval, float64)
-  return CBVar(valueType: Float2, float2Value: wval)
+  result.valueType = Float2
+  iterateTuple(v, result.float2Value, float64)
 
 converter toCBVar*(v: tuple[a,b,c: float]): CBVar {.inline.} =
-  var wval: CBFloat3
-  iterateTuple(v, wval, float64)
-  return CBVar(valueType: Float3, float3Value: wval)
+  result.valueType = Float3
+  iterateTuple(v, result.float3Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c: float32]): CBVar {.inline.} =
-  var wval: CBFloat3
-  iterateTuple(v, wval, float64)
-  return CBVar(valueType: Float3, float3Value: wval)
+  result.valueType = Float3
+  iterateTuple(v, result.float3Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c,d: float]): CBVar {.inline.} =
-  var wval: CBFloat4
-  iterateTuple(v, wval, float64)
-  return CBVar(valueType: Float4, float4Value: wval)
+  result.valueType = Float4
+  iterateTuple(v, result.float4Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
-  var wval: CBFloat4
-  iterateTuple(v, wval, float64)
-  return CBVar(valueType: Float4, float4Value: wval)
+  result.valueType = Float4
+  iterateTuple(v, result.float4Value, float32)
 
 converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
   return CBVar(valueType: Color, colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a))
@@ -522,9 +511,9 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
   var
     rtName = ident($blk & "RT")
     rtNameValue = ident($blk & "RTValue")
-    macroName = ident($blockName)
+    macroName {.used.} = ident($blockName)
     namespace = if $namespaceStr != "": $namespaceStr & "." else: ""
-    testName = ident("test_" & $blk)
+    testName {.used.} = ident("test_" & $blk)
 
     nameProc = ident($blk & "_name")
     helpProc = ident($blk & "_help")
@@ -608,21 +597,23 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       var blk: `rtName`
       cppnewptr blk
       result = blk
-      result.name = cast[result.name.type](`nameProc`)
-      result.help = cast[result.help.type](`helpProc`)
-      result.setup = cast[result.setup.type](`setupProc`)
-      result.destroy = cast[result.destroy.type](`destroyProc`)
-      result.preChain = cast[result.preChain.type](`preChainProc`)
-      result.postChain = cast[result.postChain.type](`postChainProc`)
-      result.inputTypes = cast[result.inputTypes.type](`inputTypesProc`)
-      result.outputTypes = cast[result.outputTypes.type](`outputTypesProc`)
-      result.exposedVariables = cast[result.exposedVariables.type](`exposedVariablesProc`)
-      result.consumedVariables = cast[result.consumedVariables.type](`consumedVariablesProc`)
-      result.parameters = cast[result.parameters.type](`parametersProc`)
-      result.setParam = cast[result.setParam.type](`setParamProc`)
-      result.getParam = cast[result.getParam.type](`getParamProc`)
-      result.activate = cast[result.activate.type](`activateProc`)
-      result.cleanup = cast[result.cleanup.type](`cleanupProc`)
+      # DO NOT CHANGE THE FOLLOWING, this sorcery is needed to build with msvc 19ish
+      # Moreover it's kinda nim's fault, as it won't generate a C cast without `.pointer`
+      result.name = cast[CBNameProc](`nameProc`.pointer)
+      result.help = cast[CBHelpProc](`helpProc`.pointer)
+      result.setup = cast[CBSetupProc](`setupProc`.pointer)
+      result.destroy = cast[CBDestroyProc](`destroyProc`.pointer)
+      result.preChain = cast[CBPreChainProc](`preChainProc`.pointer)
+      result.postChain = cast[CBPostChainProc](`postChainProc`.pointer)
+      result.inputTypes = cast[CBInputTypesProc](`inputTypesProc`.pointer)
+      result.outputTypes = cast[CBOutputTypesProc](`outputTypesProc`.pointer)
+      result.exposedVariables = cast[CBExposedVariablesProc](`exposedVariablesProc`.pointer)
+      result.consumedVariables = cast[CBConsumedVariablesProc](`consumedVariablesProc`.pointer)
+      result.parameters = cast[CBParametersProc](`parametersProc`.pointer)
+      result.setParam = cast[CBSetParamProc](`setParamProc`.pointer)
+      result.getParam = cast[CBGetParamProc](`getParamProc`.pointer)
+      result.activate = cast[CBActivateProc](`activateProc`.pointer)
+      result.cleanup = cast[CBCleanupProc](`cleanupProc`.pointer)
 
     static:
       echo "Registered chainblock: " & `namespace` & `blockName`
@@ -812,6 +803,9 @@ when appType != "lib":
   # Clear the compile time chain state
   macro clearCompileTimeChain*() = staticChainBlocks.setLen(0) # consume all
 
+# always try this for safety
+assert sizeof(CBVar) == 48
+
 when isMainModule:
   import os
   
@@ -933,7 +927,6 @@ when isMainModule:
     echo jstr2
 
     echo sizeof(CBVar)
-    assert sizeof(CBVar) == 48
 
     compileTimeChain:
       Msg "Hello"

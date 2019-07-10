@@ -3,3 +3,5 @@
 *.exe
 *.pyc
 *.dll
+*.exp
+*.lib

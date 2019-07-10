@@ -26,7 +26,7 @@ type
   CBColor* {.importcpp: "CBColor", header: "chainblocks.hpp".} = object
     r*,g*,b*,a*: uint8
   CBPointer* {.importcpp: "CBPointer", header: "chainblocks.hpp".} = pointer
-  CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = distinct pointer
+  CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = distinct cstring
   CBSeq* {.importcpp: "CBSeq", header: "chainblocks.hpp".} = object
   CBStrings* {.importcpp: "CBStrings", header: "chainblocks.hpp".} = object
   CBEnum* {.importcpp: "CBEnum", header: "chainblocks.hpp".} = distinct int32
@@ -123,28 +123,50 @@ type
     enumTypeId*: int32
     valueType*: CBType
 
-  CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp", inheritable.} = object
-    name*: proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
-    help*: proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
-    
-    setup*: proc(b: ptr CBRuntimeBlock) {.cdecl.}
-    destroy*: proc(b: ptr CBRuntimeBlock) {.cdecl.}
-    
-    preChain*: proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
-    postChain*: proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
-    
-    inputTypes*: proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
-    outputTypes*: proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
-    
-    exposedVariables*: proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
-    consumedVariables*: proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
-    
-    parameters*: proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
-    setParam*: proc(b: ptr CBRuntimeBlock; index: int; val: CBVar) {.cdecl.}
-    getParam*: proc(b: ptr CBRuntimeBlock; index: int): CBVar {.cdecl.}
+  CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
+  CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
 
-    activate*: proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
-    cleanup*: proc(b: ptr CBRuntimeBlock) {.cdecl.}
+  CBSetupProc* {.importcpp: "CBSetupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
+  CBDestroyProc* {.importcpp: "CBDestroyProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
+
+  CBPreChainProc* {.importcpp: "CBPreChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
+  CBPostChainProc* {.importcpp: "CBPostChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
+
+  CBInputTypesProc*{.importcpp: "CBInputTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
+  CBOutputTypesProc* {.importcpp: "CBOutputTypesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
+
+  CBExposedVariablesProc* {.importcpp: "CBExposedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
+  CBConsumedVariablesProc* {.importcpp: "CBConsumedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
+
+  CBParametersProc* {.importcpp: "CBParametersProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
+  CBSetParamProc* {.importcpp: "CBSetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int; val: CBVar) {.cdecl.}
+  CBGetParamProc* {.importcpp: "CBGetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int): CBVar {.cdecl.}
+
+  CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
+  CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
+
+  CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp", inheritable.} = object
+    name*: CBNameProc
+    help*: CBHelpProc
+    
+    setup*: CBSetupProc
+    destroy*: CBDestroyProc
+    
+    preChain*: CBPreChainProc
+    postChain*: CBPostChainProc
+    
+    inputTypes*: CBInputTypesProc
+    outputTypes*: CBOutputTypesProc
+    
+    exposedVariables*: CBExposedVariablesProc
+    consumedVariables*: CBConsumedVariablesProc
+    
+    parameters*: CBParametersProc
+    setParam*: CBSetParamProc
+    getParam*: CBGetParamProc
+
+    activate*: CBActivateProc
+    cleanup*: CBCleanupProc
 
   CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBRuntimeBlock {.cdecl.}
 

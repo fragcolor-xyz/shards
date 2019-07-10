@@ -72,36 +72,13 @@ DA_TYPEDEF(const char*, CBStrings);
   typedef float CBFloat3 __attribute__((vector_size(16)));
   typedef float CBFloat4 __attribute__((vector_size(16)));
 #else
-  // TODO, this is not aligned correctly!
-  struct CBInt2
-  {
-    int64_t elements[2];
-  };
+  typedef int64_t CBInt2[2];
+  typedef int32_t CBInt3[3];
+  typedef int32_t CBInt4[4];
 
-  struct CBInt3
-  {
-    int32_t elements[3];
-  };
-
-  struct CBInt4
-  {
-    int32_t elements[4];
-  };
-
-  struct CBFloat2
-  {
-    double elements[2];
-  };
-
-  struct CBFloat3
-  {
-    float elements[3];
-  };
-
-  struct CBFloat4
-  {
-    float elements[4];
-  };
+  typedef double CBFloat2[2];
+  typedef float CBFloat3[3];
+  typedef float CBFloat4[4];
 #endif
 
 struct CBColor
@@ -200,7 +177,10 @@ struct CBParameterInfo
     * Callers should free up any allocated memory.
 */ 
 
-struct CBVar // will be 48 bytes, 16 aligned due to vectors
+#ifdef _MSC_VER
+__declspec(align(16))
+#endif
+struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 {
   CBVar(CBChainState state = Continue) : valueType(None), chainState(state) {}
 
