@@ -200,7 +200,8 @@ iterator mitems*(s: CBSeq): var CBVar {.inline.} =
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc pop*(cbs: CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
-proc clear*(s: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrsetlen", s, 0).to(void)
+proc clear*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
+proc clear*(cbs: var CBSeq) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
 iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
