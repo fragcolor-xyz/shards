@@ -33,6 +33,7 @@ enum CBType : uint8_t
   Seq,
   Table,
   Chain, // sub chains, e.g. IF/ELSE
+  Block, // a block, useful for future introspection blocks!
   ContextVar, // A string label to find from CBContext variables
 };
 
@@ -222,6 +223,8 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
     CBImage imageValue;
 
     CBChainPtr* chainValue;
+
+    CBRuntimeBlock* blockValue;
 
     struct {
       CBEnum enumValue;
@@ -841,8 +844,10 @@ namespace chainblocks
       }
 
       // Run cleanup on all blocks, prepare them for a new start if necessary
-      for(auto blk : chain->blocks)
+      // Do this in reverse to allow a safer cleanup
+      for (auto it = chain->blocks.rbegin(); it != chain->blocks.rend(); ++it)
       {
+        auto blk = *it;
         try
         {
           blk->cleanup(blk);
