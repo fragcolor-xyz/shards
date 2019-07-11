@@ -83,6 +83,10 @@ typedef CBString* CBStrings;
   typedef float CBFloat4[4];
 #endif
 
+#ifndef _WIN32 
+#define __cdecl __attribute__((__cdecl__))
+#endif
+
 struct CBColor
 {
   uint8_t r;
@@ -276,25 +280,6 @@ struct CBRuntimeBlock
     exposedVariables(nullptr), consumedVariables(nullptr), parameters(nullptr), setParam(nullptr),
     getParam(nullptr), activate(nullptr), cleanup(nullptr)
   {}
-  
-  CBRuntimeBlock(CBRuntimeBlock*& blk) 
-  {
-    name = blk->name;
-    help = blk->help;
-    setup = blk->setup;
-    destroy = blk->destroy;
-    preChain = blk->preChain;
-    postChain = blk->postChain;
-    inputTypes = blk->inputTypes;
-    outputTypes = blk->outputTypes;
-    exposedVariables = blk->exposedVariables;
-    consumedVariables = blk->consumedVariables;
-    parameters = blk->parameters;
-    setParam = blk->setParam;
-    getParam = blk->getParam;
-    activate = blk->activate;
-    cleanup = blk->cleanup;
-  }
 
   CBNameProc name; // Returns the name of the block, do not free the string, generally const
   CBHelpProc help; // Returns the help text of the block, do not free the string, generally const
@@ -790,7 +775,8 @@ namespace chainblocks
         context.restarted = false; // Remove restarted flag
 
         // Reset len to 0 of the stack
-        stbds_arrfree(context.stack);
+        if(context.stack)
+          stbds_arrfree(context.stack);
         
         thisChain->finished = false; // Reset finished flag
 
@@ -815,7 +801,8 @@ namespace chainblocks
       }
 
       // Completely free the stack
-      stbds_arrfree(context.stack);
+      if(context.stack)
+        stbds_arrfree(context.stack);
 
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;

@@ -153,7 +153,7 @@ type
   CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
   CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
 
-  CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp", inheritable.} = object
+  CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp".} = object
     name*: CBNameProc
     help*: CBHelpProc
     
@@ -262,8 +262,9 @@ proc destroy*(cache: var CachedVarValues) =
   for s in cache.seqs.mitems:
     freeSeq(s)
   # Force deallocs
-  cache.strings = @[]
-  cache.seqs = @[]
+  when defined nimV2:
+    cache.strings = @[]
+    cache.seqs = @[]
 
 proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
   # Need to add image support if we ever have image parameters! TODO
@@ -273,7 +274,7 @@ proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
     result.stringValue = cache.strings[^1].cstring.CBString
   elif v.valueType == Seq:
     result.valueType = Seq
-    result.seqValue = nil
+    initSeq(result.seqValue)
     for item in v.seqValue.mitems:
       result.seqValue.push item.clone(cache)
     cache.seqs.add(result.seqValue)
@@ -281,9 +282,16 @@ proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
     result = v
 
 proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
-  result = nil
+  initSeq(result)
   for item in v.mitems:
     result.push item.clone(cache)
 
-proc throwCBException*(msg: string) =
-  {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}
+# Leave them last cos VScode highlight will freak out..
+
+# Exception
+proc throwCBException*(msg: string) = {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}
+
+# Allocators using cpp to properly construct in C++ fashion (we have some blocks that need this)
+template newCBRuntimeBlock*(p, t: untyped) = {.emit: [`p`, """ = (""", `CBRuntimeBlock`, """*) (new """, `t`, """());"""].}
+template newCBChain*(p, t, a1: untyped) = {.emit: [`p`, """ = (""", `CBChain`, """*) (new """, `t`, """(""", `a1`, """));"""].}
+template delCPP*(p: untyped) = {.emit: ["""delete """, `p`, """;"""].}
