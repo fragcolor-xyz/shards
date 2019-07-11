@@ -6,7 +6,7 @@ when true:
       typeName* = object
         operand*: CBVar
         seqCache*: CBSeq
-
+    
     template setup*(b: typename) = initSeq(b.seqCache)
     template destroy*(b: typename) = freeSeq(b.seqCache)
     template inputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color}, true)
@@ -23,9 +23,15 @@ when true:
         b.seqCache.CBVar
       else:
         op(input, b.operand)
-
+    
+    when defined blocksTesting:
+      var blk: typeName
+      blk.setParam(0, 77.CBVar)
+      let res = blk.activate(nil, 10.CBVar).intValue
+      echo "10", astToStr(op), "77 = ", res
+      assert res == op(10.int64, 77.int64)
+    
     chainblock typeName, shortName, "Math"
-    # write a macro and use `bindSym` to bind the string type (Math.Add) etc to generate tests
 
   calculateBinaryOp(CBMathAdd,      "Add",      `+`)
   calculateBinaryOp(CBMathSubtract, "Subtract", `-`)
