@@ -30,7 +30,8 @@ enum CBType : uint8_t
   String,
   Color, // A vector of 4 uint8
   Image,
-  Seq, 
+  Seq,
+  Table,
   Chain, // sub chains, e.g. IF/ELSE
   ContextVar, // A string label to find from CBContext variables
 };
@@ -45,6 +46,8 @@ enum CBChainState
 // Forward declarations
 struct CBVar;
 typedef CBVar* CBSeq;
+struct CBNamedVar;
+typedef CBNamedVar* CBTable;
 struct CBChain;
 typedef CBChain* CBChainPtr;
 struct CBRuntimeBlock;
@@ -112,7 +115,6 @@ struct CBImage
       delete[] data;
   }
 };
-
 struct CBTypeInfo
 {
   CBType basicType;
@@ -207,6 +209,8 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 
     CBSeq seqValue;
 
+    CBTable tableValue;
+
     CBString stringValue;
 
     CBColor colorValue;
@@ -226,27 +230,14 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 
   uint8_t reserved[15];
 
-  // Use with care, only if you know you own the memory, this is just utility
-  void releaseMemory()
-  {
-    if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
-    {
-      delete[] stringValue;
-      stringValue = nullptr;
-    }
-    else if(valueType == Seq)
-    {
-      if(seqValue)
-      {
-        stbds_arrfree(seqValue);
-        seqValue = nullptr;
-      }
-    }
-    else if(valueType == Image)
-    {
-      imageValue.dealloc();
-    }
-  }
+  // Use with care, mostly internal (json) and only if you know you own the memory, this is just utility
+  void releaseMemory();
+};
+
+struct CBNamedVar
+{
+  const char* key;
+  CBVar value;
 };
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();

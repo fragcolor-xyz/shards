@@ -28,8 +28,13 @@ type
   CBPointer* {.importcpp: "CBPointer", header: "chainblocks.hpp".} = pointer
   CBString* {.importcpp: "CBString", header: "chainblocks.hpp".} = distinct cstring
   CBSeq* {.importcpp: "CBSeq", header: "chainblocks.hpp".} = ptr UncheckedArray[CBVar]
+  CBTable* {.importcpp: "CBTable", header: "chainblocks.hpp".} = ptr UncheckedArray[CBNamedVar]
   CBStrings* {.importcpp: "CBStrings", header: "chainblocks.hpp".} = ptr UncheckedArray[CBString]
   CBEnum* {.importcpp: "CBEnum", header: "chainblocks.hpp".} = distinct int32
+
+  CBNamedVar* {.importcpp: "CBNamedVar", header: "chainblocks.hpp".} = object
+    key*: cstring
+    value*: CBVar
 
   CBChain* {.importcpp: "CBChain", header: "chainblocks.hpp".} = object
     finishedOutput*: CBVar
@@ -70,7 +75,8 @@ type
     String,
     Color, # A vector of 4 uint8
     Image,
-    Seq, 
+    Seq,
+    Table,
     Chain, # sub chains, e.g. IF/ELSE
     ContextVar, # A string label to find from CBContext variables
 
@@ -118,6 +124,7 @@ type
     colorValue*: CBColor
     imageValue*: CBImage
     seqValue*: CBSeq
+    tableValue*: CBTable
     chainValue*: ptr CBChainPtr
     enumValue*: CBEnum
     enumVendorId*: int32
@@ -186,14 +193,34 @@ registerCppType CBFloat2
 registerCppType CBFloat3
 registerCppType CBFloat4
 
+var
+  Empty* = CBVar(valueType: None, chainState: Continue)
+  RestartChain* = CBVar(valueType: None, chainState: Restart)
+  StopChain* = CBVar(valueType: None, chainState: Stop)
+
+# Vectors
 proc `[]`*(v: CBIntVectorsLike; index: int): int64 {.inline, noinit.} = v.toCpp[index].to(int64)
 proc `[]=`*(v: var CBIntVectorsLike; index: int; value: int64) {.inline.} = v.toCpp[index] = value
 proc `[]`*(v: CBFloatVectorsLike; index: int): float64 {.inline, noinit.} = v.toCpp[index].to(float64)
 proc `[]=`*(v: var CBFloatVectorsLike; index: int; value: float64) {.inline.} = v.toCpp[index] = value
 
+# CBTable
+proc initTable*(t: var CBTable) {.inline.} =
+  t = nil
+  invokeFunction("stbds_shdefault", Empty).to(void)
+proc freeTable*(t: var CBTable) {.inline.} = invokeFunction("stbds_shfree", t).to(void)
+proc len*(t: CBTable): int {.inline.} = invokeFunction("stbds_shlen", t).to(int)
+iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
+  for i in 0..<t.len:
+    yield t[i]
+proc incl*(t: CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
+proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
+proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
+
+# CBSeqLikes
 proc initSeq*(s: var CBSeqLike) {.inline.} = s = nil
 proc freeSeq*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrfree", cbs).to(void)
-proc len*(tinfo: CBSeqLike): int {.inline.} = invokeFunction("stbds_arrlen", tinfo).to(int)
+proc len*(s: CBSeqLike): int {.inline.} = invokeFunction("stbds_arrlen", s).to(int)
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
@@ -208,7 +235,8 @@ iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
 iterator items*(s: CBSeq): CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
-  
+
+# Strings
 converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
   # strings must be kept alive!
   initSeq(result)
@@ -223,7 +251,6 @@ converter toStringVar*(s: string): CBVar {.inline.} =
   result.stringValue = cast[CBString](s.cstring)
 
 # Memory utilities to cache stuff around
-
 type
   CachedVarValues* = object
     strings: seq[string]

@@ -22,6 +22,7 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
     )
   of CBType.Image: throwCBException("Image " & astToStr(`/`) & " Not supported")
   of Seq: throwCBException("Seq " & astToStr(`/`) & " Not supported")
+  of Table: throwCBException("Table " & astToStr(`/`) & " Not supported")
   of Chain: throwCBException("Chain " & astToStr(`/`) & " Not supported")
   of Enum: throwCBException("Enum " & astToStr(`/`) & " Not supported")
 
@@ -50,6 +51,7 @@ template mathBinaryOp(op: untyped): untyped =
       )
     of CBType.Image: throwCBException("Image " & astToStr(op) & " Not supported")
     of Seq: throwCBException("Seq " & astToStr(op) & " Not supported")
+    of Table: throwCBException("Table " & astToStr(op) & " Not supported")
     of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
     of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
 
@@ -78,6 +80,7 @@ template mathIntBinaryOp(op: untyped): untyped =
       )
     of CBType.Image: throwCBException("Image " & astToStr(op) & " Not supported")
     of Seq: throwCBException("Seq " & astToStr(op) & " Not supported")
+    of Table: throwCBException("Table " & astToStr(op) & " Not supported")
     of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
     of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
 
@@ -108,6 +111,7 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Color: throwCBException("Color `>=` Not supported")
   of CBType.Image: throwCBException("Image `>=` Not supported")
   of Seq: throwCBException("Seq `>=` Not supported")
+  of Table: throwCBException("Table `>=` Not supported")
   of Chain: throwCBException("Chain `>=` Not supported")
   of Enum: throwCBException("Enum `>=` Not supported")
   of Object: throwCBException("Object `>=` Not supported")
@@ -129,6 +133,7 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of Color: throwCBException("Color `>` Not supported")
   of CBType.Image: throwCBException("Image `>` Not supported")
   of Seq: throwCBException("Seq `>` Not supported")
+  of Table: throwCBException("Table `>` Not supported")
   of Chain: throwCBException("Chain `>` Not supported")
   of Enum: throwCBException("Enum `>` Not supported")
   of Object: throwCBException("Object `>` Not supported")
@@ -150,6 +155,7 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of Color: throwCBException("Color `<` Not supported")
   of CBType.Image: throwCBException("Image `<` Not supported")
   of Seq: throwCBException("Seq `<` Not supported")
+  of Table: throwCBException("Table `<` Not supported")
   of Chain: throwCBException("Chain `<` Not supported")
   of Enum: throwCBException("Enum `<` Not supported")
   of Object: throwCBException("Object `<` Not supported")
@@ -171,6 +177,7 @@ proc `<=`*(a,b: CBVar): bool {.inline.} =
   of Color: throwCBException("Color `<=` Not supported")
   of CBType.Image: throwCBException("Image `<=` Not supported")
   of Seq: throwCBException("Seq `<=` Not supported")
+  of Table: throwCBException("Table `<=` Not supported")
   of Chain: throwCBException("Chain `<=` Not supported")
   of Enum: throwCBException("Enum `<=` Not supported")
   of Object: throwCBException("Object `<=` Not supported")
@@ -198,7 +205,17 @@ proc `==`*(a,b: CBVar): bool {.inline.} =
         (a.imageValue.data != nil) and (b.imageValue.data == nil): return false
     if a.imageValue.data == nil and b.imageValue.data == nil: return true
     return equalMem(a.imageValue.data, b.imageValue.data, a.imageValue.width * a.imageValue.height * a.imageValue.channels)
-  of Seq: return a.seqValue == b.seqValue
+  of Seq: 
+    if a.seqValue.len != b.seqValue.len: return false
+    for i in 0..<a.seqValue.len:
+      if a.seqValue[i] != b.seqValue[i]: return false
+    return true
+  of Table: 
+    if a.tableValue.len != b.tableValue.len: return false
+    for i in 0..<a.tableValue.len:
+      if a.tableValue[i].key != b.tableValue[i].key: return false
+      if a.tableValue[i].value != b.tableValue[i].value: return false
+    return true
   of Chain: return a.chainValue == b.chainValue
   of Enum:  return a.enumValue.int32  == b.enumValue.int32 and a.enumVendorId == b.enumVendorId and a.enumTypeId == b.enumTypeId
   of Object:
@@ -235,6 +252,16 @@ proc `$`*(a: CBVar): string {.inline.} =
         result &= $item
       else:
         result &= $item & ", "
+      inc idx
+  of Table:
+    result = ""
+    let len = a.tableValue.len
+    var idx = 0
+    for item in a.tableValue.mitems:
+      if idx == len - 1:
+        result &= $item.key & ": " & $item.value
+      else:
+        result &= $item.key & ": " & $item.value & ", "
       inc idx
   of Chain: return $a.chainValue
   of Enum:  return $a.enumValue.int32

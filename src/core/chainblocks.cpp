@@ -12,6 +12,38 @@ namespace chainblocks
   std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   std::unordered_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
+
+  void CBVar::releaseMemory()
+  {
+    if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
+    {
+      delete[] stringValue;
+      stringValue = nullptr;
+    }
+    else if(valueType == Seq && seqValue)
+    {
+      for(auto i = 0; i < stbds_arrlen(seqValue); i++)
+      {
+        seqValue[i].releaseMemory();
+      }
+      stbds_arrfree(seqValue);
+      seqValue = nullptr;
+    }
+    else if(valueType == Table && tableValue)
+    {
+      for(auto i = 0; i < stbds_shlen(tableValue); i++)
+      {
+        delete[] tableValue[i].key;
+        tableValue[i].value.releaseMemory();
+      }
+      stbds_shfree(tableValue);
+      tableValue = nullptr;
+    }
+    else if(valueType == Image)
+    {
+      imageValue.dealloc();
+    }
+  }
 };
 
 #ifdef __cplusplus
@@ -235,6 +267,23 @@ void to_json(json& j, const CBVar& var)
       };
       break;
     }
+    case Table:
+    {
+      std::vector<json> items;
+      for(int i = 0; i < stbds_arrlen(var.tableValue); i++)
+      {
+        auto& v = var.tableValue[i];
+        items.push_back(json{
+          { "key", v.key },
+          { "value", v.value }
+        });
+      }
+      j = json{
+        { "type", valType },
+        { "values", items }
+      };
+      break;
+    }
     case Chain:
     {
       if(var.chainValue && *var.chainValue)
@@ -422,6 +471,24 @@ void from_json(const json& j, CBVar& var)
       }
       break;
     }
+    case Table:
+    {
+      var.valueType = Seq;
+      auto items = j.at("values").get<std::vector<json>>();
+      var.tableValue = nullptr;
+      stbds_shdefault(var.tableValue, CBVar());
+      for(auto item : items)
+      {
+        auto key = item.at("key").get<std::string>();
+        auto value = item.at("value").get<CBVar>();
+        CBNamedVar named;
+        named.key = new char[key.length() + 1];
+        strcpy((char*)named.key, key.c_str());
+        named.value = value;
+        stbds_shputs(var.tableValue, named);
+      }
+      break;
+    }
     case Chain:
     {
       var.valueType = Chain;
@@ -507,6 +574,7 @@ void from_json(const json& j, CBChainPtr& chain)
           break;
         }
       }
+      // Assume block copied memory internally so we can clean up here!!!
       value.releaseMemory();
     }
 
