@@ -13,8 +13,11 @@ import nimline
 
 when appType != "lib":
   {.compile: "../core/chainblocks.cpp".}
-  {.passL: "-lboost_context-mt".}
-  {.passC: "-DCHAINBLOCKS_RUNTIME.".}
+  when defined windows:
+    {.passL: "-lboost_context-mt".}
+  else:
+    {.passL: "-lboost_context".}
+  {.passC: "-DCHAINBLOCKS_RUNTIME".}
 else:
   {.emit: """/*INCLUDESECTION*/
 #define STB_DS_IMPLEMENTATION 1
@@ -458,14 +461,7 @@ when appType != "lib":
           b = createBlock(`rtName`)
         b.setup(b)
         
-        when not defined release:
-          var
-            # params = b.parameters(b)
-            cbVar: CBVar = `args`
-          # TODO
-          # if params.len > 0:
-          #   assert cbVar.valueType in params[0].valueType
-        
+        var cbVar: CBVar = `args`
         b.setParam(b, 0, cbVar)
         getCurrentChain().add(b)
     else:
@@ -536,7 +532,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     import macros, strutils, sequtils
 
     type
-      `rtNameValue` = object of CBRuntimeBlock
+      `rtNameValue` = object
+        pre: CBRuntimeBlock
         sb: `blk`
       `rtName`* = ptr `rtNameValue`
     
@@ -554,7 +551,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `destroyProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.destroy()
-      cppdelptr b # Also free self
+      delCPP(b)
     proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
       updateStackBottom()
       b.sb.preChain(context)
@@ -563,19 +560,19 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       b.sb.postChain(context)
     proc `inputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.inputTypes
+      b.sb.inputTypes()
     proc `outputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.outputTypes
+      b.sb.outputTypes()
     proc `exposedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.exposedVariables
+      b.sb.exposedVariables()
     proc `consumedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.consumedVariables
+      b.sb.consumedVariables()
     proc `parametersProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.parameters
+      b.sb.parameters()
     proc `setParamProc`*(b: `rtName`; index: int; val: CBVar) {.cdecl.} =
       updateStackBottom()
       b.sb.setParam(index, val)
@@ -589,9 +586,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       updateStackBottom()
       b.sb.cleanup()
     registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
-      var blk: `rtName`
-      cppnewptr blk
-      result = blk
+      newCBRuntimeBlock(result, `rtNameValue`)
       # DO NOT CHANGE THE FOLLOWING, this sorcery is needed to build with msvc 19ish
       # Moreover it's kinda nim's fault, as it won't generate a C cast without `.pointer`
       result.name = cast[CBNameProc](`nameProc`.pointer)
@@ -685,13 +680,13 @@ when appType != "lib":
 
   proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "chainblocks.hpp".}
 
-  proc newChain*(name: string): CBChainPtr {.inline, noinit.} =
-    cppnewptr(result, name)
+  proc newChain*(name: string): CBChainPtr {.inline.} =
+    newCBChain(result, CBChain, name.cstring)
     registerChain(result)
   
   proc destroy*(chain: CBChainPtr) {.inline.} =
     unregisterChain(chain)
-    cppdelptr(chain)
+    delCPP(chain)
   
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
@@ -762,10 +757,9 @@ when appType != "lib":
   macro setCompileTimeChain*(enabled: bool) = compileTimeMode = enabled.boolVal
 
   template compileTimeChain*(body: untyped): untyped =
-    block:
-      setCompileTimeChain(true)
-      body
-      setCompileTimeChain(false)
+    setCompileTimeChain(true)
+    body
+    setCompileTimeChain(false)
 
   # Unrolls the setup and params settings of the current compile time chain once
   macro prepareCompileTimeChain*(): untyped =
@@ -934,16 +928,6 @@ when isMainModule:
     
     prepareCompileTimeChain()
     discard synthesizeCompileTimeChain(Empty)
-
-    proc test1() =
-      discard synthesizeCompileTimeChain(Empty)
-
-    proc test2() =
-      discard synthesizeCompileTimeChain(Empty)
-
-    test1()
-    test2()
-
     clearCompileTimeChain()
   
   run()

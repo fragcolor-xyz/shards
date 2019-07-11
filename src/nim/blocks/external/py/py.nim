@@ -146,6 +146,7 @@ when true:
         blk.tableStorage.incl(k.cstring, sub)
         blk.outputTableKeyCache.excl(k.cstring)
       
+      # Remove from the cache anything that has disappeared
       for key in blk.outputTableKeyCache:
         blk.outputTableKeyCache.excl(key)
 
