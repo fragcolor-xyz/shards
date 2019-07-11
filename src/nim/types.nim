@@ -214,8 +214,10 @@ iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
   for i in 0..<t.len:
     yield t[i]
 proc incl*(t: CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
+proc incl*(t: CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
 proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
 proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
+converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, tableValue: t)
 
 # CBSeqLikes
 proc initSeq*(s: var CBSeqLike) {.inline.} = s = nil

@@ -3,7 +3,7 @@ import ../../../chainblocks
 import nimpy/py_types
 import nimpy/py_lib
 import nimpy
-import dynlib, tables, os, times
+import dynlib, tables, os, times, sets
 
 type
   Scripting* = object
@@ -19,9 +19,14 @@ when true:
       stringStorage*: string
       pymod*: PyObject
       instance*: PyObject
+      pyresult*: PyObject # need to keep it alive
       loaded*: bool
       seqStorage*: CBSeq
+      tableStorage*: CBTable
       pySuspendRes*: CBVar
+      inputSeqCache*: seq[PPyObject]
+      inputTableCache*: Table[string, PPyObject]
+      outputTableKeyCache*: HashSet[cstring]
   
   template cleanup*(b: CBPython) =
     b.instance = nil
@@ -29,8 +34,11 @@ when true:
     b.loaded = false
   template setup*(b: CBPython) =
     initSeq(b.seqStorage)
+    initTable(b.tableStorage)
+    b.inputTableCache = initTable[string, PPyObject]()
   template destroy*(b: CBPython) =
     freeSeq(b.seqStorage)
+    freeTable(b.tableStorage)
   template inputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
   template outputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
   template parameters*(b: CBPython): CBParametersInfo = @[("File", { String })]
@@ -40,7 +48,7 @@ when true:
   template getParam*(b: CBPython; index: int): CBVar =
     b.filename
   
-  proc var2Py*(input: CBVar): PPyObject =
+  proc var2Py*(input: CBVar; blk: var CBPython): PPyObject =
     case input.valueType
     of None, Any, ContextVar: result = newPyNone()
     of Object:
@@ -69,10 +77,15 @@ when true:
       )
     of Enum: result = toPyObjectArgument (input.enumValue.int32, input.enumVendorId, input.enumTypeId)
     of Seq:
-      var pySeq = newSeq[PPyObject]()
+      blk.inputSeqCache.setLen(0)
       for item in input.seqValue.mitems:
-        pySeq.add var2Py(item)
-      result = toPyObjectArgument pySeq
+        blk.inputSeqCache.add var2Py(item, blk)
+      result = toPyObjectArgument blk.inputSeqCache
+    of CBType.Table:
+      blk.inputTableCache.clear()
+      for item in input.tableValue.mitems:
+        blk.inputTableCache.add($item.key, var2Py(item.value, blk))
+      result = toPyObjectArgument blk.inputTableCache
     of Chain: result = py_lib.pyLib.PyCapsule_New(cast[pointer](input.chainValue), nil, nil)
   
   proc py2Var*(input: PyObject; blk: var CBPython): CBVar =
@@ -117,9 +130,26 @@ when true:
       result.enumTypeId = enumTup.typeId
     of Seq:
       var pyseq = tupRes.value.to(seq[PyObject])   
-      for pyvar in pyseq.items:
+      for pyvar in pyseq.mitems:
         let sub = py2Var(pyvar, blk)
-        push(blk.seqStorage, sub)
+        blk.seqStorage.push(sub)
+      result = blk.seqStorage
+    of CBType.Table:
+      # keep a list of all current keys, later remove all that disappeared!
+      blk.outputTableKeyCache.clear()
+      for item in blk.tableStorage.mitems:
+        blk.outputTableKeyCache.incl item.key
+
+      var pytab = tupRes.value.to(Table[string, PyObject])
+      for k, v in pytab.mpairs:
+        let sub = py2Var(v, blk)
+        blk.tableStorage.incl(k.cstring, sub)
+        blk.outputTableKeyCache.excl(k.cstring)
+      
+      for key in blk.outputTableKeyCache:
+        blk.outputTableKeyCache.excl(key)
+
+      result = blk.tableStorage
     of Chain: result = cast[ptr CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
 
   template activate*(blk: var CBPython; context: CBContext; input: CBVar): CBVar =
@@ -162,13 +192,13 @@ when true:
           
       if blk.loaded:
           let
-            pyinput = var2Py(input)
-            pyres = blk.pymod.callMethod("activate", blk.instance, pyinput)
+            pyinput = var2Py(input, blk)
+          blk.pyresult = blk.pymod.callMethod("activate", blk.instance, pyinput)
           if blk.pySuspendRes.chainState != Continue:
             res = blk.pySuspendRes
           else:
             blk.seqStorage.clear()
-            res = py2Var(pyres, blk)
+            res = py2Var(blk.pyresult, blk)
     except:
       context.setError(getCurrentExceptionMsg())
     res
