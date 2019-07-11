@@ -321,6 +321,9 @@ converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
 converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
   return CBVar(valueType: Color, colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a))
 
+converter toCBVar*(v: CBColor): CBVar {.inline.} =
+  return CBVar(valueType: Color, colorValue: v)
+
 converter toCBVar*(v: ptr CBChainPtr): CBVar {.inline.} =
   return CBVar(valueType: Chain, chainValue: v)
 

@@ -25,6 +25,7 @@ when true:
         op(input, b.operand)
 
     chainblock typeName, shortName, "Math"
+    # write a macro and use `bindSym` to bind the string type (Math.Add) etc to generate tests
 
   calculateBinaryOp(CBMathAdd,      "Add",      `+`)
   calculateBinaryOp(CBMathSubtract, "Subtract", `-`)

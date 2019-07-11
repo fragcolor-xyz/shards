@@ -422,6 +422,7 @@ struct CBChain
   {
     for(auto blk : blocks)
     {
+      blk->cleanup(blk);
       blk->destroy(blk);
       //blk is responsible to free itself, as they might use any allocation strategy they wish!
     }
