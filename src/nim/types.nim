@@ -207,7 +207,7 @@ proc `[]=`*(v: var CBFloatVectorsLike; index: int; value: float64) {.inline.} = 
 # CBTable
 proc initTable*(t: var CBTable) {.inline.} =
   t = nil
-  invokeFunction("stbds_shdefault", Empty).to(void)
+  invokeFunction("stbds_shdefault", t, Empty).to(void)
 proc freeTable*(t: var CBTable) {.inline.} = invokeFunction("stbds_shfree", t).to(void)
 proc len*(t: CBTable): int {.inline.} = invokeFunction("stbds_shlen", t).to(int)
 iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
