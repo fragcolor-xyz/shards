@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef CHAINBLOCKS_RUNTIME
+
 #include "chainblocks.hpp"
 // C++ Mandatory from now!
 
@@ -928,3 +930,5 @@ namespace chainblocks
     }
   }
 };
+
+#endif //CHAINBLOCKS_RUNTIME
