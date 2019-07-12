@@ -226,6 +226,12 @@ proc len*(s: CBSeqLike): int {.inline.} = invokeFunction("stbds_arrlen", s).to(i
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:
     yield s[i]
+iterator mitems*(s: CBTypesInfo): var CBTypeInfo {.inline.} =
+  for i in 0..<s.len:
+    yield s[i]
+iterator mitems*(s: CBParametersInfo): var CBParameterInfo {.inline.} =
+  for i in 0..<s.len:
+    yield s[i]
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc pop*(cbs: CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)

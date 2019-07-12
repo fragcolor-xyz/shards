@@ -538,6 +538,12 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       `rtNameValue` = object
         pre: CBRuntimeBlock
         sb: `blk`
+        cacheInputTypes: owned(ref CBTypesInfo)
+        cacheOutputTypes: owned(ref CBTypesInfo)
+        cacheExposedVariables: owned(ref CBParametersInfo)
+        cacheConsumedVariables: owned(ref CBParametersInfo)
+        cacheParameters: owned(ref CBParametersInfo)
+      
       `rtName`* = ptr `rtNameValue`
     
     template name*(b: `blk`): string =
@@ -554,6 +560,29 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `destroyProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.destroy()
+      # manually destroy nim side
+      when defined nimV2:
+        if b.cacheInputTypes != nil:
+          freeSeq(b.cacheInputTypes[])
+          dispose(b.cacheInputTypes)
+        if b.cacheOutputTypes != nil:
+          freeSeq(b.cacheOutputTypes[])
+          dispose(b.cacheOutputTypes)
+        if b.cacheExposedVariables != nil:
+          for item in b.cacheExposedVariables[].mitems:
+            freeSeq(item.valueTypes)
+          freeSeq(b.cacheExposedVariables[])
+          dispose(b.cacheExposedVariables)
+        if b.cacheConsumedVariables != nil:
+          for item in b.cacheConsumedVariables[].mitems:
+            freeSeq(item.valueTypes)
+          freeSeq(b.cacheConsumedVariables[])
+          dispose(b.cacheConsumedVariables)
+        if b.cacheParameters != nil:
+          for item in b.cacheParameters[].mitems:
+            freeSeq(item.valueTypes)
+          freeSeq(b.cacheParameters[])
+          dispose(b.cacheParameters)
       delCPP(b)
     proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
       updateStackBottom()
@@ -563,19 +592,34 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       b.sb.postChain(context)
     proc `inputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.inputTypes()
+      if b.cacheInputTypes == nil:
+        new b.cacheInputTypes
+        b.cacheInputTypes[] = b.sb.inputTypes()
+      b.cacheInputTypes[]
     proc `outputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.outputTypes()
+      if b.cacheOutputTypes == nil:
+        new b.cacheOutputTypes
+        b.cacheOutputTypes[] = b.sb.outputTypes()
+      b.cacheOutputTypes[]
     proc `exposedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.exposedVariables()
+      if b.cacheExposedVariables == nil:
+        new b.cacheExposedVariables
+        b.cacheExposedVariables[] = b.sb.exposedVariables()
+      b.cacheExposedVariables[]
     proc `consumedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.consumedVariables()
+      if b.cacheConsumedVariables == nil:
+        new b.cacheConsumedVariables
+        b.cacheConsumedVariables[] = b.sb.consumedVariables()
+      b.cacheConsumedVariables[]
     proc `parametersProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
       updateStackBottom()
-      b.sb.parameters()
+      if b.cacheParameters == nil:
+        new b.cacheParameters
+        b.cacheParameters[] = b.sb.parameters()
+      b.cacheParameters[]
     proc `setParamProc`*(b: `rtName`; index: int; val: CBVar) {.cdecl.} =
       updateStackBottom()
       b.sb.setParam(index, val)

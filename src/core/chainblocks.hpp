@@ -117,7 +117,10 @@ struct CBImage
   void dealloc()
   {
     if(data)
+    {
       delete[] data;
+      data = nullptr;
+    }
   }
 };
 struct CBTypeInfo
@@ -140,14 +143,14 @@ struct CBTypeInfo
 
 typedef const char* (__cdecl *CBObjectSerializer)(CBPointer);
 typedef CBPointer (__cdecl *CBObjectDeserializer)(const char*);
-typedef CBPointer (__cdecl *CBObjectFree)(CBPointer);
+typedef CBPointer (__cdecl *CBObjectDestroy)(CBPointer);
 
 struct CBObjectInfo
 {
   const char* name;
   CBObjectSerializer serialize;
   CBObjectDeserializer deserialize;
-  CBObjectFree free;
+  CBObjectDestroy destroy;
 };
 
 struct CBEnumInfo
@@ -181,7 +184,10 @@ struct CBParameterInfo
   #### In the case of setParam:
     * If the block needs to store the String or Seq data it will then need to deep copy it.
     * Callers should free up any allocated memory.
-*/ 
+  
+  ### What about exposed/consumedVariables, parameters and input/outputTypes:
+  * Same for them, they are just read only basically
+*/
 
 #ifdef _MSC_VER
 __declspec(align(16))
