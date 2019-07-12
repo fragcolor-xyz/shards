@@ -148,25 +148,28 @@ void to_json(json& j, const CBVar& var)
     }
     case Int2:
     {
+      auto vec = { var.int2Value[0], var.int2Value[1] };
       j = json{
         { "type", valType },
-        { "value", { var.int2Value[0], var.int2Value[1] } }
+        { "value", vec }
       };
       break;
     }
     case Int3:
     {
+      auto vec = { var.int3Value[0], var.int3Value[1], var.int3Value[2] };
       j = json{
         { "type", valType },
-        { "value", { var.int3Value[0], var.int3Value[1], var.int3Value[2] } }
+        { "value", vec }
       };
       break;
     }
     case Int4:
     {
+      auto vec = { var.int4Value[0], var.int4Value[1], var.int4Value[2], var.int4Value[3] };
       j = json{
         { "type", valType },
-        { "value", { var.int4Value[0], var.int4Value[1], var.int4Value[2], var.int4Value[3] } }
+        { "value", vec }
       };
       break;
     }
@@ -180,25 +183,28 @@ void to_json(json& j, const CBVar& var)
     }
     case Float2:
     {
+      auto vec = { var.float2Value[0], var.float2Value[1] };
       j = json{
         { "type", valType },
-        { "value", { var.float2Value[0], var.float2Value[1] } }
+        { "value", vec }
       };
       break;
     }
     case Float3:
     {
+      auto vec = { var.float3Value[0], var.float3Value[1], var.float3Value[2] };
       j = json{
         { "type", valType },
-        { "value", { var.float3Value[0], var.float3Value[1], var.float3Value[2] } }
+        { "value", vec }
       };
       break;
     }
     case Float4:
     {
+      auto vec = { var.float4Value[0], var.float4Value[1], var.float4Value[2], var.float4Value[3] };
       j = json{
         { "type", valType },
-        { "value", { var.float4Value[0], var.float4Value[1], var.float4Value[2], var.float4Value[3] } }
+        { "value", vec }
       };
       break;
     }
