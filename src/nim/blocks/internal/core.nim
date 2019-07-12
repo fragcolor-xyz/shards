@@ -31,10 +31,7 @@ when true:
   template getParam*(b: CBRunChain; index: int): CBVar =
     case index
     of 0:
-      if b.chain == nil:
-        CBVar(valueType: None)
-      else:
-        b.chain
+      b.chain.CBVar
     of 1:
       CBVar(valueType: Bool, boolValue: b.once)
     of 2:
@@ -99,10 +96,7 @@ when true:
   template getParam*(b: CBWaitChain; index: int): CBVar =
     case index
     of 0:
-      if b.chain == nil:
-        CBVar(valueType: None)
-      else:
-        b.chain
+      b.chain.CBVar
     of 1:
       CBVar(valueType: Bool, boolValue: b.once)
     of 2:
@@ -527,21 +521,9 @@ when true:
       b.cache.destroy()
       b.Match = val.clone(b.cache)
     of 2:
-      case val.valueType
-      of Chain:
-        b.True = val.chainValue
-      of None:
-        b.True = nil
-      else:
-        discard
+      b.True = val.chainValue
     of 3:
-      case val.valueType
-      of Chain:
-        b.False = val.chainValue
-      of None:
-        b.False = nil
-      else:
-        discard
+      b.False = val.chainValue
     else:
       assert(false)
   template getParam*(b: CBlockIf; index: int): CBVar =
@@ -551,15 +533,9 @@ when true:
     of 1:
       b.Match
     of 2:
-      if b.True == nil:
-        CBVar(valueType: None)
-      else:
-        b.True
+      b.True
     of 3:
-      if b.False == nil:
-        CBVar(valueType: None)
-      else:
-        b.False
+      b.False
     else:
       Empty
   template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
