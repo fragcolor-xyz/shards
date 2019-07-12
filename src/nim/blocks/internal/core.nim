@@ -177,10 +177,11 @@ when true:
 
   chainblock CBUseGlobal, "WaitGlobal"
 
-# Const - a debug value logger
+# Const - passes a const value
 when true:
   type
     CBlockConst* = object
+      # INLINE BLOCK, CORE STUB PRESENT
       value*: CBVar
       cache*: CachedVarValues
   
@@ -194,6 +195,8 @@ when true:
     b.value = val.clone(b.cache)
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
+    # THIS CODE WON'T BE EXECUTED
+    # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
     b.value
 
   chainblock CBlockConst, "Const"
@@ -265,7 +268,8 @@ when true:
 when true:
   type
     CBlockSleep* = object
-      time: float
+      # INLINE BLOCK, CORE STUB PRESENT
+      time: float64
 
   template inputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
@@ -278,6 +282,8 @@ when true:
     assert index == 0
     CBVar(valueType: Float, floatValue: b.time)
   template activate*(b: CBlockSleep; context: CBContext; input: CBVar): CBVar =
+    # THIS CODE WON'T BE EXECUTED
+    # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
     pause(b.time)
     input
 

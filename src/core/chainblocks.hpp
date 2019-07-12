@@ -47,7 +47,18 @@ enum CBChainState : uint8_t
 enum CBInlineBlocks : uint8_t
 {
   NotInline,
-  Const
+  CoreConst,
+  CoreSleep,
+  MathAdd,
+  MathSubtract,
+  MathMultiply,
+  MathDivide,
+  MathXor,
+  MathAnd,
+  MathOr,
+  MathMod,
+  MathLShift,
+  MathRShift
 };
 
 // Forward declarations
@@ -73,6 +84,9 @@ typedef const char* CBString;
 typedef CBString* CBStrings;
 
 #if defined(__clang__) || defined(__GNUC__)
+  #define likely(x)       __builtin_expect((x),1)
+  #define unlikely(x)     __builtin_expect((x),0)
+  
   typedef int64_t CBInt2 __attribute__((vector_size(16)));
   typedef int32_t CBInt3 __attribute__((vector_size(16)));
   typedef int32_t CBInt4 __attribute__((vector_size(16)));
@@ -330,6 +344,17 @@ struct CBConstStub
 {
   CBRuntimeBlock header;
   CBVar constValue;
+};
+struct CBSleepStub
+{
+  CBRuntimeBlock header;
+  double sleepTime;
+};
+struct CBMathStub
+{
+  CBRuntimeBlock header;
+  CBVar operand;
+  CBSeq seqCache;
 };
 
 // Since we build the runtime we are free to use any std and lib
@@ -671,12 +696,82 @@ namespace chainblocks
 
     auto blkp = it->second();
 
+    // Hook inline blocks to override activation in runChain
     if(name == "Const")
     {
-      blkp->inlineBlockId = CBInlineBlocks::Const;
+      blkp->inlineBlockId = CBInlineBlocks::CoreConst;
+    }
+    else if(name == "Sleep")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
+    }
+    else if(name == "Math.Add")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAdd;
+    }
+    else if(name == "Math.Subtract")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathSubtract;
+    }
+    else if(name == "Math.Multiply")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathMultiply;
+    }
+    else if(name == "Math.Divide")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathDivide;
+    }
+    else if(name == "Math.Xor")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathXor;
+    }
+    else if(name == "Math.And")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAnd;
+    }
+    else if(name == "Math.Or")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathOr;
+    }
+    else if(name == "Math.Mod")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathMod;
+    }
+    else if(name == "Math.LShift")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLShift;
+    }
+    else if(name == "Math.RShift")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathRShift;
     }
 
     return blkp;
+  }
+
+  static CBVar suspend(double seconds)
+  {
+    auto current = chainblocks::CurrentChain;
+    current->sleepSeconds = seconds;
+    current->context->continuation = current->context->continuation.resume();
+    if(current->context->restarted)
+    {
+      CBVar restart = {};
+      restart.valueType = None;
+      restart.chainState = Restart;
+      return restart;
+    }
+    else if(current->context->aborted)
+    {
+      CBVar stop = {};
+      stop.valueType = None;
+      stop.chainState = Stop;
+      return stop;
+    }
+    CBVar cont = {};
+    cont.valueType = None;
+    cont.chainState = Continue;
+    return cont;
   }
 
   static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
@@ -733,6 +828,126 @@ namespace chainblocks
       }\
     }
 
+    #define _runChainINLINEMATH(__op, __input, __output)\
+    if(unlikely(__input.valueType != cblock->operand.valueType))\
+    {\
+      throw CBException("__op not supported between different types!");\
+    }\
+    switch(__input.valueType)\
+    {\
+      case Int:\
+        __output.valueType = Int;\
+        __output.intValue = __input.intValue __op cblock->operand.intValue;\
+        break;\
+      case Int2:\
+        __output.valueType = Int2;\
+        __output.int2Value = __input.int2Value __op cblock->operand.int2Value;\
+        break;\
+      case Int3:\
+        __output.valueType = Int3;\
+        __output.int3Value = __input.int3Value __op cblock->operand.int3Value;\
+        break;\
+      case Int4:\
+        __output.valueType = Int4;\
+        __output.int4Value = __input.int4Value __op cblock->operand.int4Value;\
+        break;\
+      case Float:\
+        __output.valueType = Float;\
+        __output.floatValue = __input.floatValue __op cblock->operand.floatValue;\
+        break;\
+      case Float2:\
+        __output.valueType = Float2;\
+        __output.float2Value = __input.float2Value __op cblock->operand.float2Value;\
+        break;\
+      case Float3:\
+        __output.valueType = Float3;\
+        __output.float3Value = __input.float3Value __op cblock->operand.float3Value;\
+        break;\
+      case Float4:\
+        __output.valueType = Float4;\
+        __output.float4Value = __input.float4Value __op cblock->operand.float4Value;\
+        break;\
+      case Color:\
+        __output.valueType = Color;\
+        __output.colorValue.r = __input.colorValue.r __op cblock->operand.colorValue.r;\
+        __output.colorValue.g = __input.colorValue.g __op cblock->operand.colorValue.g;\
+        __output.colorValue.b = __input.colorValue.b __op cblock->operand.colorValue.b;\
+        __output.colorValue.a = __input.colorValue.a __op cblock->operand.colorValue.a;\
+        break;\
+      default:\
+        throw CBException("__op operation not supported between given types!");\
+    }
+
+    #define runChainINLINEMATH(__op)\
+    if(unlikely(input.valueType == Seq))\
+    {\
+      stbds_arrsetlen(cblock->seqCache, 0);\
+      for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
+      {\
+        CBVar tmp;\
+        _runChainINLINEMATH(__op, input.seqValue[i], tmp)\
+        stbds_arrpush(cblock->seqCache, tmp);\
+      }\
+      previousOutput.valueType = Seq;\
+      previousOutput.seqValue = cblock->seqCache;\
+    }\
+    else\
+    {\
+      _runChainINLINEMATH(__op, input, previousOutput)\
+    }
+
+    #define __runChainINLINE_INT_MATH(__op, __input, __output)\
+    if(unlikely(__input.valueType != cblock->operand.valueType))\
+    {\
+      throw CBException("__op not supported between different types!");\
+    }\
+    switch(__input.valueType)\
+    {\
+      case Int:\
+        __output.valueType = Int;\
+        __output.intValue = __input.intValue __op cblock->operand.intValue;\
+        break;\
+      case Int2:\
+        __output.valueType = Int2;\
+        __output.int2Value = __input.int2Value __op cblock->operand.int2Value;\
+        break;\
+      case Int3:\
+        __output.valueType = Int3;\
+        __output.int3Value = __input.int3Value __op cblock->operand.int3Value;\
+        break;\
+      case Int4:\
+        __output.valueType = Int4;\
+        __output.int4Value = __input.int4Value __op cblock->operand.int4Value;\
+        break;\
+      case Color:\
+        __output.valueType = Color;\
+        __output.colorValue.r = __input.colorValue.r __op cblock->operand.colorValue.r;\
+        __output.colorValue.g = __input.colorValue.g __op cblock->operand.colorValue.g;\
+        __output.colorValue.b = __input.colorValue.b __op cblock->operand.colorValue.b;\
+        __output.colorValue.a = __input.colorValue.a __op cblock->operand.colorValue.a;\
+        break;\
+      default:\
+        throw CBException("__op operation not supported between given types!");\
+    }
+
+    #define runChainINLINE_INT_MATH(__op)\
+    if(unlikely(input.valueType == Seq))\
+    {\
+      stbds_arrsetlen(cblock->seqCache, 0);\
+      for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
+      {\
+        CBVar tmp;\
+        __runChainINLINE_INT_MATH(__op, input.seqValue[i], tmp)\
+        stbds_arrpush(cblock->seqCache, tmp);\
+      }\
+      previousOutput.valueType = Seq;\
+      previousOutput.seqValue = cblock->seqCache;\
+    }\
+    else\
+    {\
+      __runChainINLINE_INT_MATH(__op, input, previousOutput)\
+    }
+
     for(auto blk : chain->blocks)
     {
       try
@@ -745,10 +960,78 @@ namespace chainblocks
         auto input = previousOutput.valueType == None ? chainInput : previousOutput;
         switch(blk->inlineBlockId)
         {
-          case Const:
+          case CoreConst:
           {
             auto cblock = reinterpret_cast<CBConstStub*>(blk);
             previousOutput = cblock->constValue;
+            break;
+          }
+          case CoreSleep:
+          {
+            auto cblock = reinterpret_cast<CBSleepStub*>(blk);
+            auto suspendRes = suspend(cblock->sleepTime);
+            if(suspendRes.chainState != Continue)
+              previousOutput = suspendRes;
+            break;
+          }
+          case MathAdd:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINEMATH(+)
+            break;
+          }
+          case MathSubtract:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINEMATH(-)
+            break;
+          }
+          case MathMultiply:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINEMATH(*)
+            break;
+          }
+          case MathDivide:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINEMATH(/)
+            break;
+          }
+          case MathXor:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(^)
+            break;
+          }
+          case MathAnd:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(&)
+            break;
+          }
+          case MathOr:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(|)
+            break;
+          }
+          case MathMod:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(%)
+            break;
+          }
+          case MathLShift:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(<<)
+            break;
+          }
+          case MathRShift:
+          {
+            auto cblock = reinterpret_cast<CBMathStub*>(blk);
+            runChainINLINE_INT_MATH(>>)
             break;
           }
           default: // NotInline
@@ -910,31 +1193,6 @@ namespace chainblocks
     }
 
     return CBVar();
-  }
-
-  static CBVar suspend(double seconds)
-  {
-    auto current = chainblocks::CurrentChain;
-    current->sleepSeconds = seconds;
-    current->context->continuation = current->context->continuation.resume();
-    if(current->context->restarted)
-    {
-      CBVar restart = {};
-      restart.valueType = None;
-      restart.chainState = Restart;
-      return restart;
-    }
-    else if(current->context->aborted)
-    {
-      CBVar stop = {};
-      stop.valueType = None;
-      stop.chainState = Stop;
-      return stop;
-    }
-    CBVar cont = {};
-    cont.valueType = None;
-    cont.chainState = Continue;
-    return cont;
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())

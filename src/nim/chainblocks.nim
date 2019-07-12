@@ -879,34 +879,27 @@ when isMainModule:
     echo pblock2.getParam(pblock2, 0).valueType
     var res2 = pblock2.activate(pblock2, nil, 2.0)
     echo res2.float
+
+    withChain inlineTesting:
+      Const 10
+      Math.Add 10
+      Log()
+    inlineTesting.start()
+    assert inlineTesting.stop() == 20.CBVar
+    
+    var f4seq: CBSeq
+    initSeq(f4seq)
+    f4seq.push (2.0, 3.0, 4.0, 5.0).CBVar
+    f4seq.push (6.0, 7.0, 8.0, 9.0).CBVar
+    withChain inlineTesting2:
+      Const f4seq
+      Math.Add (0.1, 0.2, 0.3, 0.4)
+      Log()
+    inlineTesting2.start()
     
     var
       mainChain = newChain("mainChain")
     setCurrentChain(mainChain)
-    
-    withChain trueMsg:
-      Msg "True"
-    
-    withChain falseMsg:
-      Msg "False"
-    
-    # ifblock.setParam(ifblock, 0, More)
-    # ifblock.setParam(ifblock, 1, 10)
-    # ifblock.setParam(ifblock, 2, addr trueMsg)
-    # ifblock.setParam(ifblock, 3, addr falseMsg)
-
-    # echo ifblock.activate(ifblock, nil, 20)
-    # echo ifblock.activate(ifblock, nil, 10)
-
-    # echo ifblock.block2Json()
-    # var newifblock = ifblock.block2Json().json2Block()
-
-    # echo newifblock.activate(ctx, 20).valueType
-    # echo newifblock.activate(ctx, 10).valueType
-
-    # echo var2Json (10'u8, 20'u8, 30'u8, 255'u8)
-    # var color = var2Json((10'u8, 20'u8, 30'u8, 255'u8)).json2Var()
-    # echo var2Json color
 
     withChain chain1:
       Msg "SubChain!"
