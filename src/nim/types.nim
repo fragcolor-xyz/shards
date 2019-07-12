@@ -297,6 +297,7 @@ proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
 # Leave them last cos VScode highlight will freak out..
 
 # Exception
+{.emit: "#include <runtime.hpp>".}
 proc throwCBException*(msg: string) = {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}
 
 # Allocators using cpp to properly construct in C++ fashion (we have some blocks that need this)

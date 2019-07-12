@@ -1,7 +1,7 @@
 #define STB_DS_IMPLEMENTATION 1
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
-#include "chainblocks.hpp"
+#include "runtime.hpp"
 
 namespace chainblocks
 {

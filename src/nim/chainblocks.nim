@@ -12,7 +12,7 @@ export types
 import nimline
 
 when appType != "lib":
-  {.compile: "../core/chainblocks.cpp".}
+  {.compile: "../core/runtime.cpp".}
   when defined windows:
     {.passL: "-lboost_context-mt".}
   else:
@@ -366,30 +366,30 @@ template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
 
 when appType != "lib":
-  proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "chainblocks.hpp".}
+  proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
 
-  proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "chainblocks.hpp".}
-  proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "chainblocks.hpp".}
-  proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "chainblocks.hpp".}
-  proc unregisterChain*(chain: CBChainPtr) {.importcpp: "chainblocks::unregisterChain(#)", header: "chainblocks.hpp".}
-  proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "chainblocks.hpp".}
+  proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "runtime.hpp".}
+  proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "runtime.hpp".}
+  proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "runtime.hpp".}
+  proc unregisterChain*(chain: CBChainPtr) {.importcpp: "chainblocks::unregisterChain(#)", header: "runtime.hpp".}
+  proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "runtime.hpp".}
 
-  proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "chainblocks.hpp".}
-  proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "chainblocks.hpp".}
+  proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
+  proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc startInternal(chain: CBChainPtr; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "chainblocks.hpp".}
+  proc startInternal(chain: CBChainPtr; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "runtime.hpp".}
   proc start*(chain: CBChainPtr; loop: bool = false) {.inline.} =
     var frame = getFrameState()
     startInternal(chain, loop)
     setFrameState(frame)
   
-  proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "chainblocks.hpp".}
+  proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "runtime.hpp".}
   proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
     var frame = getFrameState()
     tickInternal(chain, rootInput)
     setFrameState(frame)
   
-  proc stopInternal(chain: CBChainPtr): CBVar {.importcpp: "chainblocks::stop(#)", header: "chainblocks.hpp".}
+  proc stopInternal(chain: CBChainPtr): CBVar {.importcpp: "chainblocks::stop(#)", header: "runtime.hpp".}
   proc stop*(chain: CBChainPtr): CBVar {.inline.} =
     var frame = getFrameState()
     result = stopInternal(chain)
@@ -403,8 +403,8 @@ when appType != "lib":
     let str = invokeFunction("chainblocks::store", v).to(StdString)
     $(str.c_str().to(cstring))
   
-  proc load*(chain: var CBChainPtr; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "chainblocks.hpp".}
-  proc load*(chain: var CBVar; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "chainblocks.hpp".}
+  proc load*(chain: var CBChainPtr; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
+  proc load*(chain: var CBVar; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
 
   var
     compileTimeMode {.compileTime.}: bool = false
