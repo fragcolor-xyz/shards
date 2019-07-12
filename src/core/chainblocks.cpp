@@ -12,39 +12,39 @@ namespace chainblocks
   std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
   std::unordered_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
-
-  void CBVar::releaseMemory()
-  {
-    if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
-    {
-      delete[] stringValue;
-      stringValue = nullptr;
-    }
-    else if(valueType == Seq && seqValue)
-    {
-      for(auto i = 0; i < stbds_arrlen(seqValue); i++)
-      {
-        seqValue[i].releaseMemory();
-      }
-      stbds_arrfree(seqValue);
-      seqValue = nullptr;
-    }
-    else if(valueType == Table && tableValue)
-    {
-      for(auto i = 0; i < stbds_shlen(tableValue); i++)
-      {
-        delete[] tableValue[i].key;
-        tableValue[i].value.releaseMemory();
-      }
-      stbds_shfree(tableValue);
-      tableValue = nullptr;
-    }
-    else if(valueType == Image)
-    {
-      imageValue.dealloc();
-    }
-  }
 };
+
+void CBVar::releaseMemory()
+{
+  if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
+  {
+    delete[] stringValue;
+    stringValue = nullptr;
+  }
+  else if(valueType == Seq && seqValue)
+  {
+    for(auto i = 0; i < stbds_arrlen(seqValue); i++)
+    {
+      seqValue[i].releaseMemory();
+    }
+    stbds_arrfree(seqValue);
+    seqValue = nullptr;
+  }
+  else if(valueType == Table && tableValue)
+  {
+    for(auto i = 0; i < stbds_shlen(tableValue); i++)
+    {
+      delete[] tableValue[i].key;
+      tableValue[i].value.releaseMemory();
+    }
+    stbds_shfree(tableValue);
+    tableValue = nullptr;
+  }
+  else if(valueType == Image)
+  {
+    imageValue.dealloc();
+  }
+}
 
 #ifdef __cplusplus
 extern "C" {
