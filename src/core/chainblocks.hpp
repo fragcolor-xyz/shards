@@ -37,11 +37,17 @@ enum CBType : uint8_t
   ContextVar, // A string label to find from CBContext variables
 };
 
-enum CBChainState
+enum CBChainState : uint8_t
 {
   Continue, // Even if None returned, continue to next block
   Restart, // Restart the chain from the top
   Stop // Stop the chain execution
+};
+
+enum CBInlineBlocks : uint8_t
+{
+  NotInline,
+  Const
 };
 
 // Forward declarations
@@ -283,12 +289,15 @@ typedef void (__cdecl *CBCleanupProc)(CBRuntimeBlock*);
 
 struct CBRuntimeBlock
 {
-  CBRuntimeBlock() : 
+  CBRuntimeBlock() :
+    inlineBlockId(NotInline),
     name(nullptr), help(nullptr), setup(nullptr), destroy(nullptr),
     preChain(nullptr), postChain(nullptr), inputTypes(nullptr), outputTypes(nullptr),
     exposedVariables(nullptr), consumedVariables(nullptr), parameters(nullptr), setParam(nullptr),
     getParam(nullptr), activate(nullptr), cleanup(nullptr)
   {}
+
+  CBInlineBlocks inlineBlockId;
 
   CBNameProc name; // Returns the name of the block, do not free the string, generally const
   CBHelpProc help; // Returns the help text of the block, do not free the string, generally const
@@ -315,6 +324,13 @@ struct CBRuntimeBlock
 
 #ifdef CHAINBLOCKS_RUNTIME
 // C++ Mandatory from now!
+
+// Stub inline blocks, actually implemented in respective nim code!
+struct CBConstStub
+{
+  CBRuntimeBlock header;
+  CBVar constValue;
+};
 
 // Since we build the runtime we are free to use any std and lib
 #include <vector>
@@ -654,6 +670,12 @@ namespace chainblocks
     }
 
     auto blkp = it->second();
+
+    if(name == "Const")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::Const;
+    }
+
     return blkp;
   }
 
@@ -721,7 +743,19 @@ namespace chainblocks
 
         // Pass chain root input every time we find None, this allows a long chain to re-process the root input if wanted!
         auto input = previousOutput.valueType == None ? chainInput : previousOutput;
-        previousOutput = blk->activate(blk, context, input);
+        switch(blk->inlineBlockId)
+        {
+          case Const:
+          {
+            auto cblock = reinterpret_cast<CBConstStub*>(blk);
+            previousOutput = cblock->constValue;
+            break;
+          }
+          default: // NotInline
+          {
+            previousOutput = blk->activate(blk, context, input);
+          }
+        }
 
         if(previousOutput.valueType == None)
         {

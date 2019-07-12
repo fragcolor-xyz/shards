@@ -181,9 +181,10 @@ when true:
 when true:
   type
     CBlockConst* = object
+      value*: CBVar
       cache*: CachedVarValues
-      value: CBVar
-
+  
+  template destroy*(b: CBlockConst) = b.cache.destroy()
   template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
   template outputTypes*(b: CBlockConst): CBTypesInfo = ({ None, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true)
   template parameters*(b: CBlockConst): CBParametersInfo = 
@@ -194,7 +195,6 @@ when true:
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     b.value
-  template destroy*(b: CBlockConst) = b.cache.destroy()
 
   chainblock CBlockConst, "Const"
 

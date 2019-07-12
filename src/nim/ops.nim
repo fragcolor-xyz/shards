@@ -1,5 +1,5 @@
 proc `/`*(a,b: CBVar): CBVar {.inline.} =
-  if a.valueType != b.valueType: doAssert(false, astToStr(`/`) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
+  if a.valueType != b.valueType: throwCBException(astToStr(`/`) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
   of None, Any: throwCBException("None, Any, End, Stop " & astToStr(`/`) & " Not supported")
   of Object: throwCBException("Object " & astToStr(`/`) & " Not supported")
@@ -28,7 +28,7 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
 
 template mathBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
-    if a.valueType != b.valueType: doAssert(false, astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
+    if a.valueType != b.valueType: throwCBException(astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
     case a.valueType
     of None, Any: throwCBException("None, Any, End, Stop " & astToStr(op) & " Not supported")
     of Object: throwCBException("Object " & astToStr(op) & " Not supported")
@@ -57,7 +57,7 @@ template mathBinaryOp(op: untyped): untyped =
 
 template mathIntBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
-    if a.valueType != b.valueType: doAssert(false, astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
+    if a.valueType != b.valueType: throwCBException(astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
     case a.valueType
     of None, Any: throwCBException("None, Any, End, Stop " & astToStr(op) & " Not supported")
     of Object: throwCBException("Object " & astToStr(op) & " Not supported")
@@ -95,7 +95,7 @@ mathIntBinaryOp(`shl`)
 mathIntBinaryOp(`shr`)
 
 proc `>=`*(a,b: CBVar): bool {.inline.} =
-  if a.valueType != b.valueType: doAssert(false, "`>=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
+  if a.valueType != b.valueType: throwCBException("`>=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
   of None, Any: return true
   of Bool: return a.boolValue >= b.boolValue
@@ -117,7 +117,7 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Object: throwCBException("Object `>=` Not supported")
 
 proc `>`*(a,b: CBVar): bool {.inline.} =
-  if a.valueType != b.valueType: doAssert(false, "`>` Not supported between different types " & $a.valueType & " and " & $b.valueType)
+  if a.valueType != b.valueType: throwCBException("`>` Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
   of None, Any: return true
   of Bool: return a.boolValue > b.boolValue
@@ -139,7 +139,7 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of Object: throwCBException("Object `>` Not supported")
 
 proc `<`*(a,b: CBVar): bool {.inline.} =
-  if a.valueType != b.valueType: doAssert(false, "`<` Not supported between different types " & $a.valueType & " and " & $b.valueType)
+  if a.valueType != b.valueType: throwCBException("`<` Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
   of None, Any: return true
   of Bool: return a.boolValue < b.boolValue
@@ -161,7 +161,7 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of Object: throwCBException("Object `<` Not supported")
 
 proc `<=`*(a,b: CBVar): bool {.inline.} =
-  if a.valueType != b.valueType: doAssert(false, "`<=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
+  if a.valueType != b.valueType: throwCBException("`<=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
   case a.valueType
   of None, Any: return true
   of Bool: return a.boolValue <= b.boolValue

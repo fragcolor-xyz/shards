@@ -154,6 +154,8 @@ type
   CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
 
   CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp".} = object
+    inlineBlockId*: uint8
+    
     name*: CBNameProc
     help*: CBHelpProc
     
