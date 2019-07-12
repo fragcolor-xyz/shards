@@ -571,15 +571,20 @@ void from_json(const json& j, CBChainPtr& chain)
     {
       auto paramName = jparam.at("name").get<std::string>();
       auto value = jparam.at("value").get<CBVar>();
-      for(auto i = 0; i < stbds_arrlen(blkParams); i++)
+      
+      if(value.valueType != None)
       {
-        auto& paramInfo = blkParams[i];
-        if(paramName == paramInfo.name)
+        for(auto i = 0; i < stbds_arrlen(blkParams); i++)
         {
-          blk->setParam(blk, i, value);
-          break;
+          auto& paramInfo = blkParams[i];
+          if(paramName == paramInfo.name)
+          {
+            blk->setParam(blk, i, value);
+            break;
+          }
         }
       }
+
       // Assume block copied memory internally so we can clean up here!!!
       value.releaseMemory();
     }

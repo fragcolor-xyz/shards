@@ -194,9 +194,9 @@ __declspec(align(16))
 #endif
 struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 {
-  CBVar(CBChainState state = Continue) : valueType(None), chainState(state) {}
-
-  union 
+  CBVar() : valueType(None), intValue(0) {}
+  
+  union
   {
     CBChainState chainState;
     
@@ -884,10 +884,23 @@ namespace chainblocks
     current->sleepSeconds = seconds;
     current->context->continuation = current->context->continuation.resume();
     if(current->context->restarted)
-      return CBVar(Restart);
+    {
+      CBVar restart = {};
+      restart.valueType = None;
+      restart.chainState = Restart;
+      return restart;
+    }
     else if(current->context->aborted)
-      return CBVar(Stop);
-    return CBVar(Continue);
+    {
+      CBVar stop = {};
+      stop.valueType = None;
+      stop.chainState = Stop;
+      return stop;
+    }
+    CBVar cont = {};
+    cont.valueType = None;
+    cont.chainState = Continue;
+    return cont;
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())
