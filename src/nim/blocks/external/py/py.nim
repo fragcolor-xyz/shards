@@ -87,6 +87,7 @@ when true:
         blk.inputTableCache.add($item.key, var2Py(item.value, blk))
       result = toPyObjectArgument blk.inputTableCache
     of Chain: result = py_lib.pyLib.PyCapsule_New(cast[pointer](input.chainValue), nil, nil)
+    of Block, Type: assert(false) # TODO
   
   proc py2Var*(input: PyObject; blk: var CBPython): CBVar =
     let
@@ -152,6 +153,7 @@ when true:
 
       result = blk.tableStorage
     of Chain: result = cast[ptr CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
+    of Block, Type: assert(false) # TODO
 
   template activate*(blk: var CBPython; context: CBContext; input: CBVar): CBVar =
     var res = StopChain
