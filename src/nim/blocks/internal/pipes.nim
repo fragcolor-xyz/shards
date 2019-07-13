@@ -1,6 +1,5 @@
 import nimline
-import ../chainblocks
-import ../../error
+import ../../chainblocks
 import tables
 import fragments/serialization
 
@@ -19,17 +18,18 @@ type
 
 const
   pipeServerMaxBuffer = 32 * 1024
-  payloadMaxSize = 256 + sizeof(CBVar)
+  maxStringLen = 512
+  payloadMaxSize = maxStringLen + 1 + 48
 
 const
   PipeCC* = toFourCC("pipe")
 
 let
-  PipeInfo* = CBTypeInfo(basicType: Object, objectVendorId: FragCC, objectTypeId: PipeCC)
+  PipeInfo* = CBTypeInfo(basicType: Object, objectVendorId: FragCC.int32, objectTypeId: PipeCC.int32)
 
 registerObjectType(FragCC, PipeCC, CBObjectInfo(name: "IPC Pipe"))
 
-template isPipeObject*(v: CBVar): bool = (v.valueType == Object and v.objectVendorId == FragCC and v.objectTypeId == PipeCC)
+template isPipeObject*(v: CBVar): bool = (v.valueType == Object and v.objectVendorId == FragCC.int32 and v.objectTypeId == PipeCC.int32)
 converter toCBVar*(v: ptr NamedPipe): CBVar {.inline.} = v.pointer.asCBVar(FragCC, PipeCC)
 
 # PipeServer - opens a named pipe server and resumes flow
@@ -64,6 +64,7 @@ when true:
     b.cleanup() # Also reset the pipe if we have one
   template getParam*(b: CBPipeServer; index: int): CBVar = b.name
   template activate*(b: var CBPipeServer; context: CBContext; input: CBVar): CBVar =
+    var res = input
     when defined windows:
       if b.pipe.namedPipe.int == invalidHandle.int:
         b.connected = false
@@ -81,7 +82,7 @@ when true:
             zeroMem(addr b.overlapped, sizeof(W32OVERLAPPED))
             global.ConnectNamedPipe(b.pipe.namedPipe, addr b.overlapped).to(void)
           else:
-            halt(context, "Failed to create pipe, maybe already exists.")
+            res = halt(context, "Failed to create pipe, maybe already exists.")
       
       if b.pipe.namedPipe.int != invalidHandle.int: # Compiler will optimize this, keep it sane in terms of flow
         if not b.connected:
@@ -91,9 +92,9 @@ when true:
           
           echo b.name & " connected."
           b.connected = true
-          context.variables["CBPipe." & b.name] = addr b.pipe
+          context.contextVariable("CBPipe." & b.name)[] = addr b.pipe
       
-    input
+    res
 
   chainblock CBPipeServer, "PipeServer"
 
@@ -139,7 +140,7 @@ when true:
             global.NULL).to(W32HANDLE)
           if b.pipe.namedPipe.int != invalidHandle.int:
             echo b.name & " opened."
-            context.variables["CBPipe." & b.name] = addr b.pipe
+            context.contextVariable("CBPipe." & b.name)[] = addr b.pipe
           else:
             # Keep trying to open if fails!
             pause(0.0)
@@ -154,14 +155,15 @@ when true:
     CBWritePipe* = object
       name*: string
 
-  template inputTypes*(b: CBWritePipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, BoolOp }
-  template outputTypes*(b: CBWritePipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, BoolOp }
+  template inputTypes*(b: CBWritePipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }
+  template outputTypes*(b: CBWritePipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }
   template parameters*(b: CBWritePipe): CBParametersInfo = @[("Name", { String, ContextVar })]
   template consumedVariables*(b: CBWritePipe): CBParametersInfo = @[("CBPipe." & b.name, @[PipeInfo])]
   template setParam*(b: CBWritePipe; index: int; val: CBVar) = b.name = val.stringValue
   template getParam*(b: CBWritePipe; index: int): CBVar = b.name
   template activate*(b: var CBWritePipe; context: CBContext; input: CBVar): CBVar =
-    var pipeInt = context.variables.getOrDefault("CBPipe." & b.name)
+    var res = input
+    var pipeInt = context.contextVariable("CBPipe." & b.name)[]
     if pipeInt.isPipeObject():
       var pipe = cast[ptr NamedPipe](pipeInt.objectValue)
       when defined windows:
@@ -175,9 +177,13 @@ when true:
         copyMem(addr payload[0], addr inputVar, sizeof(CBVar))
         
         if inputVar.valueType == String:
-          var cs = inputVar.stringValue.cstring
-          copyMem(addr payload[sizeof(CBVar)], cs, input.stringValue.len)
-          payloadSize += input.stringValue.len
+          let
+            cs = inputVar.stringValue.cstring
+            cslen = cs.len
+          if cslen > maxStringLen:
+            res = halt(context, "WritePipe, input string longer then max size of " & $maxStringLen)
+          copyMem(addr payload[sizeof(CBVar)], cs, cslen)
+          payloadSize += cslen
         
         if not global.WriteFile(pipe.namedPipe, addr payload[0], payloadSize, addr written, addr overlapped).to(bool):
           when not defined release:
@@ -185,8 +191,8 @@ when true:
           # Close the pipe so server/client might re-open it eventually
           global.CloseHandle(pipe.namedPipe).to(void)
           pipe.namedPipe = invalidHandle
-          context.variables.del("CBPipe." & b.name)
-    input
+          context.contextVariable("CBPipe." & b.name)[] = Empty
+    res
 
   chainblock CBWritePipe, "WritePipe"
 
@@ -202,14 +208,14 @@ when true:
         overlapped*: W32OVERLAPPED
 
   template inputTypes*(b: CBReadPipe): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBReadPipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, BoolOp }
+  template outputTypes*(b: CBReadPipe): CBTypesInfo = { None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }
   template parameters*(b: CBReadPipe): CBParametersInfo = @[("Name", { String, ContextVar })]
   template consumedVariables*(b: CBReadPipe): CBParametersInfo = @[("CBPipe." & b.name, @[PipeInfo])]
   template setParam*(b: CBReadPipe; index: int; val: CBVar) = b.name = val.stringValue
   template getParam*(b: CBReadPipe; index: int): CBVar = b.name
   template activate*(b: var CBReadPipe; context: CBContext; input: CBVar): CBVar =
     var
-      pipeInt = context.variables.getOrDefault("CBPipe." & b.name)
+      pipeInt = context.contextVariable("CBPipe." & b.name)[]
       res = RestartChain
     if pipeInt.isPipeObject():
       var pipe = cast[ptr NamedPipe](pipeInt.objectValue)
@@ -225,8 +231,9 @@ when true:
             assert bytesTransfered == sizeof(CBVar)
           else:
             var cs = cast[cstring](addr b.payload[sizeof(CBVar)])
-            output.stringValue = $cs
-            assert bytesTransfered == sizeof(CBVar) + output.stringValue.len
+            cs[cs.len] = '\0'
+            output.stringValue = cs.CBString
+            assert bytesTransfered == sizeof(CBVar) + cs.len
           res = output[]
         else:
           static:
@@ -249,7 +256,7 @@ when true:
               # Close the pipe so server/client might re-open it eventually
               global.CloseHandle(pipe.namedPipe).to(void)
               pipe.namedPipe = invalidHandle
-              context.variables.del("CBPipe." & b.name)
+              context.contextVariable("CBPipe." & b.name)[] = Empty
     
     res
 
@@ -257,7 +264,6 @@ when true:
 
 when isMainModule:
   import os
-  chainblocks.init()
   proc run() =
     withChain server:
       PipeServer "AutomaPipe"
