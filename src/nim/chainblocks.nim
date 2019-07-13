@@ -931,7 +931,7 @@ when isMainModule:
     If:
       Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
       Operand: 10
-      True: addr subChain1
+      True: subChain1
     Sleep 0.0
     Const 11
     ToString()

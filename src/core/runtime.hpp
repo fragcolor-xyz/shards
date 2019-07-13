@@ -22,6 +22,21 @@ struct CBMathStub
   CBVar operand;
   CBSeq seqCache;
 };
+struct CBCoreRepeat
+{
+  CBRuntimeBlock header;
+  int32_t times;
+  CBChainPtr* chain;
+};
+struct CBCoreIf
+{
+  CBRuntimeBlock header;
+  uint8_t boolOp;
+  CBVar match;
+  CBVar* matchCtx;
+  CBChainPtr* trueChain;
+  CBChainPtr* falseChain;
+};
 
 // Since we build the runtime we are free to use any std and lib
 #include <vector>
@@ -371,6 +386,14 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
     }
+    else if(name == "Repeat")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
+    }
+    else if(name == "If")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreIf;
+    }
     else if(name == "Math.Add")
     {
       blkp->inlineBlockId = CBInlineBlocks::MathAdd;
@@ -614,6 +637,19 @@ namespace chainblocks
       __runChainINLINE_INT_MATH(__op, input, previousOutput)\
     }
 
+    #define runChainQUICKRUN(__chain)\
+    auto chainRes = runChain(__chain, context, input);\
+    if(unlikely(!std::get<0>(chainRes)))\
+    { \
+      previousOutput.valueType = None;\
+      previousOutput.chainState = Stop;\
+    }\
+    else if(unlikely(context->restarted))\
+    {\
+      previousOutput.valueType = None;\
+      previousOutput.chainState = Restart;\
+    }
+
     for(auto blk : chain->blocks)
     {
       try
@@ -638,6 +674,151 @@ namespace chainblocks
             auto suspendRes = suspend(cblock->sleepTime);
             if(suspendRes.chainState != Continue)
               previousOutput = suspendRes;
+            break;
+          }
+          case CoreRepeat:
+          {
+            auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
+            if(likely(cblock->chain and *cblock->chain))
+            {
+              for(auto i = 0; i < cblock->times; i++)
+              {
+                runChainQUICKRUN(*cblock->chain)
+              }
+            }
+            else if(unlikely(cblock->chain and !(*cblock->chain)))
+            {
+              throw CBException("A required sub-chain was not found, stopping!");
+            }
+            break;
+          }
+          case CoreIf:
+          {
+            // We only do it quick in certain cases!
+            auto cblock = reinterpret_cast<CBCoreIf*>(blk);
+            auto match = cblock->match;
+            auto result = false;
+            if(cblock->match.valueType == ContextVar)
+            {
+              if(likely(cblock->matchCtx != nullptr))
+              {
+                match = *cblock->matchCtx;
+              }
+              else
+              {
+                // First run, or before cleanup, anyway let's run normally once
+                previousOutput = blk->activate(blk, context, input);
+                goto ifdone;
+              }
+            }
+
+            if(unlikely(input.valueType != match.valueType))
+            {
+              // Always fail the test when different types
+              if(likely(cblock->falseChain and *cblock->falseChain))
+              {
+                runChainQUICKRUN(*cblock->falseChain)
+              }
+              else
+              {
+                throw CBException("A required sub-chain was not found, stopping!");
+              }
+            }
+            else
+            {
+              switch(input.valueType)
+              {
+                case Int:
+                  switch(cblock->boolOp)
+                  {
+                    case 0:
+                      result = input.intValue == match.intValue;
+                      break;
+                    case 1:
+                      result = input.intValue > match.intValue;
+                      break;
+                    case 2:
+                      result = input.intValue < match.intValue;
+                      break;
+                    case 3:
+                      result = input.intValue >= match.intValue;
+                      break;
+                    case 4:
+                      result = input.intValue <= match.intValue;
+                      break;
+                  }
+                  break;
+                case Float:
+                  switch(cblock->boolOp)
+                  {
+                    case 0:
+                      result = input.floatValue == match.floatValue;
+                      break;
+                    case 1:
+                      result = input.floatValue > match.floatValue;
+                      break;
+                    case 2:
+                      result = input.floatValue < match.floatValue;
+                      break;
+                    case 3:
+                      result = input.floatValue >= match.floatValue;
+                      break;
+                    case 4:
+                      result = input.floatValue <= match.floatValue;
+                      break;
+                  }
+                  break;
+                case String:
+                  // http://www.cplusplus.com/reference/string/string/operators/
+                  switch(cblock->boolOp)
+                  {
+                    case 0:
+                      result = input.stringValue == match.stringValue;
+                      break;
+                    case 1:
+                      result = input.stringValue > match.stringValue;
+                      break;
+                    case 2:
+                      result = input.stringValue < match.stringValue;
+                      break;
+                    case 3:
+                      result = input.stringValue >= match.stringValue;
+                      break;
+                    case 4:
+                      result = input.stringValue <= match.stringValue;
+                      break;
+                  }
+                  break;
+                default:
+                  // too complex let's just make the activation call!
+                  previousOutput = blk->activate(blk, context, input);
+                  goto ifdone;
+              }
+              if(result)
+              {
+                if(likely(cblock->trueChain and *cblock->trueChain))
+                {
+                  runChainQUICKRUN(*cblock->trueChain)
+                }
+                else
+                {
+                  throw CBException("A required sub-chain was not found, stopping!");
+                }
+              }
+              else
+              {
+                if(likely(cblock->falseChain and *cblock->falseChain))
+                {
+                  runChainQUICKRUN(*cblock->falseChain)
+                }
+                else
+                {
+                  throw CBException("A required sub-chain was not found, stopping!");
+                }
+              }
+              ifdone:
+                if(0) {}
+            }
             break;
           }
           case MathAdd:
@@ -749,13 +930,14 @@ namespace chainblocks
     return { true, previousOutput };
   }
 
-  static void start(CBChain* chain, bool loop = false)
+  static void start(CBChain* chain, bool loop = false, bool unsafe = false)
   {
-    chain->coro = new CBCoro(boost::context::callcc([&chain, &loop](boost::context::continuation&& sink)
+    chain->coro = new CBCoro(boost::context::callcc([&chain, &loop, &unsafe](boost::context::continuation&& sink)
     {
       // Need to copy those in this stack!
       CBChain* thisChain = chain;
       bool looped = loop;
+      bool unsafeLoop = unsafe;
       // Reset return state
       thisChain->returned = false;
       // Create a new context and copy the sink in
@@ -782,7 +964,7 @@ namespace chainblocks
           break;
         }
         
-        if(looped) 
+        if(!unsafeLoop && looped) 
         {
           // Ensure no while(true), yield anyway every run
           thisChain->sleepSeconds = 0.0;

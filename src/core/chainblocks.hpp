@@ -49,6 +49,8 @@ enum CBInlineBlocks : uint8_t
   NotInline,
   CoreConst,
   CoreSleep,
+  CoreRepeat,
+  CoreIf,
   MathAdd,
   MathSubtract,
   MathMultiply,

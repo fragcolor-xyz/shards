@@ -1,3 +1,125 @@
+# SetVariable - sets a context variable
+when true:
+  type
+    CBSetVariable* = object
+      name*: string
+      target*: ptr CBVar
+  
+  template cleanup*(b: CBSetVariable) =
+    b.target = nil
+  template inputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBSetVariable): CBParametersInfo = @[("Name", { String })]
+  template setParam*(b: CBSetVariable; index: int; val: CBVar) =
+    b.name = val.stringValue
+    cleanup(b)
+  template getParam*(b: CBSetVariable; index: int): CBVar = b.name
+  template activate*(b: var CBSetVariable; context: CBContext; input: CBVar): CBVar =
+    if b.target == nil:
+      b.target = context.contextVariable(b.name)
+
+    if b.target[].valueType == Seq and input == Empty:
+      b.target[].seqValue.clear() # quick clean, no deallocations!
+    else:
+      b.target[] = input
+    input
+
+  chainblock CBSetVariable, "SetVariable"
+
+# GetVariable - sets a context variable
+when true:
+  type
+    CBGetVariable* = object
+      name*: string
+      target*: ptr CBVar
+  
+  template cleanup*(b: CBGetVariable) =
+    b.target = nil
+  template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBGetVariable): CBParametersInfo = @[("Name", { String })]
+  template setParam*(b: CBGetVariable; index: int; val: CBVar) =
+    b.name = val.stringValue
+    cleanup(b)
+  template getParam*(b: CBGetVariable; index: int): CBVar = b.name
+  template activate*(b: var CBGetVariable; context: CBContext; input: CBVar): CBVar =
+    if b.target == nil:
+      b.target = context.contextVariable(b.name)
+    b.target[]
+
+  chainblock CBGetVariable, "GetVariable"
+
+# AddVariable - adds a variable to a context variable
+when true:
+  type
+    CBAddVariable* = object
+      name*: string
+      target*: ptr CBVar
+  
+  template cleanup*(b: CBAddVariable) =
+    if b.target != nil:
+      # also we turned the target into a sequence, so we are responsible for the memory
+      if b.target[].valueType == Seq:
+        freeSeq(b.target[].seqValue)
+    b.target = nil
+  template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
+  template setParam*(b: CBAddVariable; index: int; val: CBVar) =
+    b.name = val.stringValue
+    cleanup(b)
+  template getParam*(b: CBAddVariable; index: int): CBVar = b.name
+  template activate*(b: var CBAddVariable; context: CBContext; input: CBVar): CBVar =
+    if b.target == nil:
+      b.target = context.contextVariable(b.name)
+    
+    if b.target[].valueType != Seq:
+      b.target[].valueType = Seq
+      initSeq(b.target[].seqValue)
+
+    if input.valueType == Seq:
+      for item in input.seqValue.items:
+        b.target[].seqValue.push(item)
+    else:
+      b.target[].seqValue.push(input)
+    
+    input
+
+  chainblock CBAddVariable, "AddVariable"
+
+# GetItems - gets an item from a Seq
+when true:
+  type
+    CBGetItems* = object
+      indices*: CBVar
+      cachedResult*: CBSeq
+  
+  template setup*(b: CBGetItems) = initSeq(b.cachedResult)
+  template destroy*(b: CBGetItems) = freeSeq(b.cachedResult)
+  template inputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBGetItems): CBParametersInfo = @[("Index", ({ Int }, true #[seq]#), false #[context]#)]
+  template setParam*(b: CBGetItems; index: int; val: CBVar) = b.indices = val
+  template getParam*(b: CBGetItems; index: int): CBVar = b.indices
+  template activate*(b: var CBGetItems; context: CBContext; input: CBVar): CBVar =
+    if input.valueType != Seq:
+      halt(context, "GetItems expected a sequence!")
+    elif b.indices.valueType == Int:
+      if b.indices.intValue.int >= input.seqValue.len.int:
+        halt(context, "GetItems out of range! len: " & $input.seqValue.len & " wanted index: " & $b.indices.intValue)
+      else:
+        input.seqValue[b.indices.intValue.int]
+    elif b.indices.valueType == Seq:
+      b.cachedResult.clear()
+      for index in b.indices.seqValue:
+        b.cachedResult.push(input.seqValue[index.intValue.int])
+      b.cachedResult
+    else:
+      assert(false)
+      Empty
+
+  chainblock CBGetItems, "GetItems"
+
 # RunChain - runs a sub chain, ends the parent chain if the sub chain fails
 when true:
   type
@@ -489,7 +611,8 @@ when true:
   registerEnumType(FragCC, BoolOpCC, CBEnumInfo(name: "Boolean operation", labels: boolOpLabels))
 
   type
-    CBBoolOp* = enum
+    CBBoolOp* {.size: sizeof(uint8).} = enum
+      # INLINE BLOCK, CORE STUB PRESENT
       Equal,
       More,
       Less,
@@ -498,11 +621,13 @@ when true:
 
   type
     CBlockIf* = object
-      cache*: CachedVarValues
+      # INLINE BLOCK, CORE STUB PRESENT
       Op: CBBoolOp
       Match: CBVar
+      matchCtx: ptr CBVar
       True: ptr CBChainPtr
       False: ptr CBChainPtr
+      cache*: CachedVarValues
   
   template cleanup*(b: CBlockIf) =
     if b.True != nil and b.True[] != nil:
@@ -526,6 +651,7 @@ when true:
     of 1:
       b.cache.destroy()
       b.Match = val.clone(b.cache)
+      b.matchCtx = nil
     of 2:
       b.True = val.chainValue
     of 3:
@@ -545,8 +671,13 @@ when true:
     else:
       Empty
   template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
+    # PARTIALLY HANDLED INLINE!
+    
+    if b.Match.valueType == ContextVar and b.matchCtx == nil:
+      b.matchCtx = context.contextVariable(b.Match.stringValue)
+    
     let
-      match = if b.Match.valueType == ContextVar: context.contextVariable(b.Match.stringValue)[] else: b.Match
+      match = if b.Match.valueType == ContextVar: b.matchCtx[] else: b.Match
     var
       noerrors = false
       res: CBVar
@@ -587,13 +718,31 @@ when true:
 
     input
 
-  chainblock CBlockIf, "If"
+  chainblock CBlockIf, "If", "":
+    withChain trueChain:
+      Const true
+      SetVariable "result"
+    withChain falseChain:
+      Const false
+      SetVariable "result"
+    withChain ifTest:
+      Const 2.0
+      If:
+        Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+        Operand: 1.5
+        True: trueChain
+        False: falseChain
+      GetVariable "result"
+    
+    ifTest.start()
+    doAssert ifTest.stop()
 
 # Repeat - repeats the Chain parameter Times n
 when true:
   type
     CBRepeat* = object
-      times: int64
+      # INLINE BLOCK, CORE STUB PRESENT
+      times: int32
       chain: ptr CBChainPtr
   
   template cleanup*(b: CBRepeat) =
@@ -609,7 +758,7 @@ when true:
   template setParam*(b: CBRepeat; index: int; val: CBVar) =
     case index
     of 0:
-      b.times = val.intValue
+      b.times = val.intValue.int32
     of 1:
       b.chain = val.chainValue
     else:
@@ -617,12 +766,14 @@ when true:
   proc getParam*(b: CBRepeat; index: int): CBVar {.inline.} =
     case index
     of 0:
-      b.times.CBVar
+      b.times.int64.CBVar
     of 1:
       b.chain.CBVar
     else:
       Empty
   template activate*(b: var CBRepeat; context: CBContext; input: CBVar): CBVar =
+    # THIS CODE WON'T BE EXECUTED
+    # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
     if b.chain == nil:
       input
     elif b.chain[] == nil:
@@ -639,7 +790,19 @@ when true:
           return RestartChain
       input
 
-  chainblock CBRepeat, "Repeat"
+  chainblock CBRepeat, "Repeat", "":
+    withChain repeatedChain:
+      Log()
+    withChain testRepeat:
+      Const "Repeating..."
+      Repeat:
+        Times: 5
+        Chain: repeatedChain
+    
+    testRepeat.start()
+    discard testRepeat.stop()
+    destroy testRepeat
+    destroy repeatedChain
 
 # ToString - converts the input to a string
 when true:
@@ -858,125 +1021,3 @@ when true:
       CBVar(valueType: CBType.Image, imageValue: blk.imgCache)
 
   chainblock CBToImage, "ToImage"
-
-# SetVariable - sets a context variable
-when true:
-  type
-    CBSetVariable* = object
-      name*: string
-      target*: ptr CBVar
-  
-  template cleanup*(b: CBSetVariable) =
-    b.target = nil
-  template inputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBSetVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBSetVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBSetVariable; index: int): CBVar = b.name
-  template activate*(b: var CBSetVariable; context: CBContext; input: CBVar): CBVar =
-    if b.target == nil:
-      b.target = context.contextVariable(b.name)
-
-    if b.target[].valueType == Seq and input == Empty:
-      b.target[].seqValue.clear() # quick clean, no deallocations!
-    else:
-      b.target[] = input
-    input
-
-  chainblock CBSetVariable, "SetVariable"
-
-# GetVariable - sets a context variable
-when true:
-  type
-    CBGetVariable* = object
-      name*: string
-      target*: ptr CBVar
-  
-  template cleanup*(b: CBGetVariable) =
-    b.target = nil
-  template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBGetVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBGetVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBGetVariable; index: int): CBVar = b.name
-  template activate*(b: var CBGetVariable; context: CBContext; input: CBVar): CBVar =
-    if b.target == nil:
-      b.target = context.contextVariable(b.name)
-    b.target[]
-
-  chainblock CBGetVariable, "GetVariable"
-
-# AddVariable - adds a variable to a context variable
-when true:
-  type
-    CBAddVariable* = object
-      name*: string
-      target*: ptr CBVar
-  
-  template cleanup*(b: CBAddVariable) =
-    if b.target != nil:
-      # also we turned the target into a sequence, so we are responsible for the memory
-      if b.target[].valueType == Seq:
-        freeSeq(b.target[].seqValue)
-    b.target = nil
-  template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBAddVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBAddVariable; index: int): CBVar = b.name
-  template activate*(b: var CBAddVariable; context: CBContext; input: CBVar): CBVar =
-    if b.target == nil:
-      b.target = context.contextVariable(b.name)
-    
-    if b.target[].valueType != Seq:
-      b.target[].valueType = Seq
-      initSeq(b.target[].seqValue)
-
-    if input.valueType == Seq:
-      for item in input.seqValue.items:
-        b.target[].seqValue.push(item)
-    else:
-      b.target[].seqValue.push(input)
-    
-    input
-
-  chainblock CBAddVariable, "AddVariable"
-
-# GetItems - gets an item from a Seq
-when true:
-  type
-    CBGetItems* = object
-      indices*: CBVar
-      cachedResult*: CBSeq
-  
-  template setup*(b: CBGetItems) = initSeq(b.cachedResult)
-  template destroy*(b: CBGetItems) = freeSeq(b.cachedResult)
-  template inputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBGetItems): CBParametersInfo = @[("Index", ({ Int }, true #[seq]#), false #[context]#)]
-  template setParam*(b: CBGetItems; index: int; val: CBVar) = b.indices = val
-  template getParam*(b: CBGetItems; index: int): CBVar = b.indices
-  template activate*(b: var CBGetItems; context: CBContext; input: CBVar): CBVar =
-    if input.valueType != Seq:
-      halt(context, "GetItems expected a sequence!")
-    elif b.indices.valueType == Int:
-      if b.indices.intValue.int >= input.seqValue.len.int:
-        halt(context, "GetItems out of range! len: " & $input.seqValue.len & " wanted index: " & $b.indices.intValue)
-      else:
-        input.seqValue[b.indices.intValue.int]
-    elif b.indices.valueType == Seq:
-      b.cachedResult.clear()
-      for index in b.indices.seqValue:
-        b.cachedResult.push(input.seqValue[index.intValue.int])
-      b.cachedResult
-    else:
-      assert(false)
-      Empty
-
-  chainblock CBGetItems, "GetItems"
