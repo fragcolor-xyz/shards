@@ -9,6 +9,7 @@ when true:
         ctxOperand*: ptr CBVar
         seqCache*: CBSeq
     
+    template cleanup*(b: typeName) = b.ctxOperand = nil
     template setup*(b: typename) = initSeq(b.seqCache)
     template destroy*(b: typename) = freeSeq(b.seqCache)
     template inputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color}, true)
@@ -17,12 +18,14 @@ when true:
       @[("Operand", { Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color }, true #[usesContext]#)]
     template setParam*(b: typeName; index: int; val: CBVar) =
       b.operand = val
-      b.ctxOperand = nil
-    template getParam*(b: typeName; index: int): CBVar = b.operand
-    template preChain*(b: typename; context: CBContext) =
+      # will refresh on next activate
+      cleanup(b)
+    template getParam*(b: typeName; index: int): CBVar =
+      b.operand  
+    template activate*(b: typeName; context: CBContext; input: CBVar): CBVar =
       if b.operand.valueType == ContextVar and b.ctxOperand == nil:
         b.ctxOperand = context.contextVariable(b.operand.stringValue)
-    template activate*(b: typeName; context: CBContext; input: CBVar): CBVar =
+
       # THIS CODE WON'T BE EXECUTED
       # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
       let operand = if b.operand.valueType == ContextVar: b.ctxOperand[] else: b.operand

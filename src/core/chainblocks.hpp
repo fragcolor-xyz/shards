@@ -48,10 +48,14 @@ enum CBChainState : uint8_t
 enum CBInlineBlocks : uint8_t
 {
   NotInline,
+
   CoreConst,
   CoreSleep,
   CoreRepeat,
   CoreIf,
+  CoreSetVariable,
+  CoreGetVariable,
+  CoreSwapVariables,  
   MathAdd,
   MathSubtract,
   MathMultiply,

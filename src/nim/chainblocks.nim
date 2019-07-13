@@ -985,19 +985,14 @@ when isMainModule:
             Chain: fibChainInit
             Once: true
           
-          GetVariable "b"
-          Stack.Push
+          GetVariable "a"
+          Log()         
+          
+          SwapVariables:
+            Name1: "a"
+            Name2: "b"
 
           GetVariable "a"
-          Log()
-          Stack.Push
-          
-          Stack.Pop
-          SetVariable "b"
-
-          Stack.Pop
-          SetVariable "a"
-
           Math.Add ~~"b"
           SetVariable "b"
         

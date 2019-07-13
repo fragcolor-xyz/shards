@@ -39,6 +39,18 @@ struct CBCoreIf
   CBChainPtr* falseChain;
   bool passthrough;
 };
+struct CBCoreSetVariable
+{
+  // Also Get and Add
+  CBRuntimeBlock header;
+  CBVar* target;
+};
+struct CBCoreSwapVariables
+{
+  CBRuntimeBlock header;
+  CBVar* target1;
+  CBVar* target2;
+};
 
 // Since we build the runtime we are free to use any std and lib
 #include <vector>
@@ -396,6 +408,18 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
     }
+    else if(name == "SetVariable")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
+    }
+    else if(name == "GetVariable")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreGetVariable;
+    }
+    else if(name == "SwapVariables")
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreSwapVariables;
+    }
     else if(name == "Math.Add")
     {
       blkp->inlineBlockId = CBInlineBlocks::MathAdd;
@@ -520,7 +544,9 @@ namespace chainblocks
     }
 
     #define _runChainINLINEMATH(__op, __op_str, __input, __output)\
-    auto operand = cblock->operand.valueType == ContextVar ? *cblock->ctxOperand : cblock->operand;\
+    auto operand = cblock->operand.valueType == ContextVar ?\
+      cblock->ctxOperand ? *cblock->ctxOperand : *(cblock->ctxOperand = contextVariable(context, cblock->operand.stringValue)) :\
+        cblock->operand;\
     if(unlikely(__input.valueType != operand.valueType))\
     {\
       throw CBException(__op_str " not supported between different types!");\
@@ -596,7 +622,9 @@ namespace chainblocks
     }
 
     #define __runChainINLINE_INT_MATH(__op, __op_str, __input, __output)\
-    auto operand = cblock->operand.valueType == ContextVar ? *cblock->ctxOperand : cblock->operand;\
+    auto operand = cblock->operand.valueType == ContextVar ?\
+      cblock->ctxOperand ? *cblock->ctxOperand : *(cblock->ctxOperand = contextVariable(context, cblock->operand.stringValue)) :\
+        cblock->operand;\
     if(unlikely(__input.valueType != operand.valueType))\
     {\
       throw CBException(__op_str " not supported between different types!");\
@@ -713,8 +741,10 @@ namespace chainblocks
           case CoreIf:
           {
             // We only do it quick in certain cases!
-            auto cblock = reinterpret_cast<CBCoreIf*>(blk);
-            auto match = cblock->match.valueType == ContextVar ? *cblock->matchCtx : cblock->match;
+            auto cblock = reinterpret_cast<CBCoreIf*>(blk);            
+            auto match = cblock->match.valueType == ContextVar ?
+              cblock->matchCtx ? *cblock->matchCtx : *(cblock->matchCtx = contextVariable(context, cblock->match.stringValue)) :
+                cblock->match;
             auto result = false;
             if(unlikely(input.valueType != match.valueType))
             {
@@ -834,6 +864,55 @@ namespace chainblocks
               }
               ifdone:
                 if(0) {}
+            }
+            break;
+          }
+          case CoreSetVariable:
+          {
+            auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
+            if(unlikely(!cblock->target)) // call first if we have no target
+            {
+              blk->activate(blk, context, input); // ignore previousOutput since we pass input
+            }
+            else
+            {
+              // Handle the special case of a seq that might need reset every run
+              if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
+              {
+                stbds_arrsetlen((*cblock->target).seqValue, 0);
+              }
+              else
+              {
+                *cblock->target = input;
+              }
+            }
+            break;
+          }
+          case CoreGetVariable:
+          {
+            auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
+            if(unlikely(!cblock->target)) // call first if we have no target
+            {
+              previousOutput = blk->activate(blk, context, input);
+            }
+            else
+            {
+              previousOutput = *cblock->target;
+            }
+            break;
+          }
+          case CoreSwapVariables:
+          {
+            auto cblock = reinterpret_cast<CBCoreSwapVariables*>(blk);
+            if(unlikely(!cblock->target1 || !cblock->target2)) // call first if we have no targets
+            {
+              blk->activate(blk, context, input); // ignore previousOutput since we pass input
+            }
+            else
+            {
+              auto tmp = *cblock->target1;
+              *cblock->target1 = *cblock->target2;
+              *cblock->target2 = tmp;
             }
             break;
           }

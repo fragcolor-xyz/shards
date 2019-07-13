@@ -2,8 +2,8 @@
 when true:
   type
     CBSetVariable* = object
-      name*: string
       target*: ptr CBVar
+      name*: string
   
   template cleanup*(b: CBSetVariable) =
     b.target = nil
@@ -13,11 +13,11 @@ when true:
   template setParam*(b: CBSetVariable; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
-  template getParam*(b: CBSetVariable; index: int): CBVar = b.name
-  template activate*(b: var CBSetVariable; context: CBContext; input: CBVar): CBVar =
+  template getParam*(b: CBSetVariable; index: int): CBVar = b.name  
+  template activate*(b: CBSetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
-
+    
     if b.target[].valueType == Seq and input == Empty:
       b.target[].seqValue.clear() # quick clean, no deallocations!
     else:
@@ -30,8 +30,8 @@ when true:
 when true:
   type
     CBGetVariable* = object
-      name*: string
       target*: ptr CBVar
+      name*: string
   
   template cleanup*(b: CBGetVariable) =
     b.target = nil
@@ -41,20 +41,64 @@ when true:
   template setParam*(b: CBGetVariable; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
-  template getParam*(b: CBGetVariable; index: int): CBVar = b.name
-  template activate*(b: var CBGetVariable; context: CBContext; input: CBVar): CBVar =
+  template getParam*(b: CBGetVariable; index: int): CBVar = b.name    
+  template activate*(b: CBGetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
+    
     b.target[]
 
   chainblock CBGetVariable, "GetVariable"
+
+# SwapVariables - sets a context variable
+when true:
+  type
+    CBSwapVariables* = object
+      targeta*: ptr CBVar
+      targetb*: ptr CBVar
+      name1*: string
+      name2*: string
+  
+  template cleanup*(b: CBSwapVariables) =
+    b.targeta = nil
+    b.targetb = nil
+  template inputTypes*(b: CBSwapVariables): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBSwapVariables): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBSwapVariables): CBParametersInfo =
+    @[
+      ("Name1", { String }),
+      ("Name2", { String })
+    ]
+  template setParam*(b: CBSwapVariables; index: int; val: CBVar) =
+    case index
+    of 0: b.name1 = val.stringValue
+    of 1: b.name2 = val.stringValue
+    else: assert(false)
+    cleanup(b)
+  template getParam*(b: CBSwapVariables; index: int): CBVar =
+    case index
+    of 0: b.name1.CBVar
+    of 1: b.name2
+    else: assert(false); Empty  
+  template activate*(b: CBSwapVariables; context: CBContext; input: CBVar): CBVar =
+    if b.targeta == nil:
+      b.targeta = context.contextVariable(b.name1)
+    if b.targetb == nil:
+      b.targetb = context.contextVariable(b.name2)
+    
+    let tmp = b.targeta[]
+    b.targeta[] = b.targetb[]
+    b.targetb[] = tmp
+    input
+
+  chainblock CBSwapVariables, "SwapVariables"
 
 # AddVariable - adds a variable to a context variable
 when true:
   type
     CBAddVariable* = object
-      name*: string
       target*: ptr CBVar
+      name*: string
   
   template cleanup*(b: CBAddVariable) =
     if b.target != nil:
@@ -68,7 +112,7 @@ when true:
   template setParam*(b: CBAddVariable; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
-  template getParam*(b: CBAddVariable; index: int): CBVar = b.name
+  template getParam*(b: CBAddVariable; index: int): CBVar = b.name    
   template activate*(b: var CBAddVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
@@ -76,7 +120,7 @@ when true:
     if b.target[].valueType != Seq:
       b.target[].valueType = Seq
       initSeq(b.target[].seqValue)
-
+    
     if input.valueType == Seq:
       for item in input.seqValue.items:
         b.target[].seqValue.push(item)
@@ -675,11 +719,11 @@ when true:
     of 4:
       b.passthrough
     else:
-      Empty
-  template preChain*(b: CBlockIf; context: CBContext) =
+      Empty  
+  template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
     if b.Match.valueType == ContextVar and b.matchCtx == nil:
       b.matchCtx = context.contextVariable(b.Match.stringValue)
-  template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
+
     # PARTIALLY HANDLED INLINE!    
     let
       match = if b.Match.valueType == ContextVar: b.matchCtx[] else: b.Match
