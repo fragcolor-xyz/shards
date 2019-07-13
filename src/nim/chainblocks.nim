@@ -848,7 +848,7 @@ when appType != "lib":
 assert sizeof(CBVar) == 48
 
 when isMainModule:
-  import os
+  import os, times
   
   type
     CBPow2Block = object
@@ -951,13 +951,13 @@ when isMainModule:
 
     let
       jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
 
     echo sizeof(CBVar)
 
@@ -969,6 +969,56 @@ when isMainModule:
     prepareCompileTimeChain()
     discard synthesizeCompileTimeChain(Empty)
     clearCompileTimeChain()
+
+    withChain fibChainInit:
+      Const 0
+      SetVariable "a"
+      Const 1
+      SetVariable "b"
+
+    withChain fibChain:
+      RunChain:
+        Chain: fibChainInit
+        Once: true
+      
+      GetVariable "b"
+      Stack.Push
+
+      GetVariable "a"
+      Log()
+      Stack.Push
+      
+      Stack.Pop
+      SetVariable "b"
+
+      Stack.Pop
+      SetVariable "a"
+
+      Math.Add ~~"b"
+      SetVariable "b"
+    
+    let cbStart = cpuTime()
+    fibChain.start(true)
+    for _ in 0..10:
+      fibChain.tick()
+    echo "CB took: ", cpuTime() - cbStart
+    discard fibChain.stop()
+    destroy fibChain
+    destroy fibChainInit
+
+    iterator fib: int {.closure.} =
+      var a = 0
+      var b = 1
+      while true:
+        yield a
+        swap a, b
+        b = a + b
+    
+    let nimStart = cpuTime()
+    var f = fib
+    for i in 0..11:
+      echo f()
+    echo "Nim took: ", cpuTime() - nimStart
   
   run()
   

@@ -627,6 +627,7 @@ when true:
       matchCtx: ptr CBVar
       True: ptr CBChainPtr
       False: ptr CBChainPtr
+      passthrough: bool
       cache*: CachedVarValues
   
   template cleanup*(b: CBlockIf) =
@@ -641,8 +642,9 @@ when true:
     @[
       ("Operator", @[boolOpInfo].toCBTypesInfo(), false),
       ("Operand", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
-      ("True", ({ Chain, None }, false).toCBTypesInfo(), false),
-      ("False", ({ Chain, None }, false).toCBTypesInfo(), false)
+      ("True", ({ Chain }, false).toCBTypesInfo(), false),
+      ("False", ({ Chain }, false).toCBTypesInfo(), false),
+      ("Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
     ]
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
@@ -656,6 +658,8 @@ when true:
       b.True = val.chainValue
     of 3:
       b.False = val.chainValue
+    of 4:
+      b.passthrough = val.boolValue
     else:
       assert(false)
   template getParam*(b: CBlockIf; index: int): CBVar =
@@ -668,14 +672,15 @@ when true:
       b.True
     of 3:
       b.False
+    of 4:
+      b.passthrough
     else:
       Empty
-  template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
-    # PARTIALLY HANDLED INLINE!
-    
+  template preChain*(b: CBlockIf; context: CBContext) =
     if b.Match.valueType == ContextVar and b.matchCtx == nil:
       b.matchCtx = context.contextVariable(b.Match.stringValue)
-    
+  template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
+    # PARTIALLY HANDLED INLINE!    
     let
       match = if b.Match.valueType == ContextVar: b.matchCtx[] else: b.Match
     var
@@ -685,57 +690,85 @@ when true:
       if operator(input, match):
         if b.True != nil:
           if b.True[] == nil:
-            return halt(context, "A required sub-chain was not found, stopping!")
-          let
-            resTuple = runChain(b.True[], context, input)
-            noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-            res = cppTupleGet[CBVar](1, resTuple.toCpp)
-          # While we ignore the results from the chain we need to check for global cancelation
-          if not noerrors or context[].aborted:
-            return StopChain
-          elif context[].restarted:
-            return RestartChain
+            halt(context, "A required sub-chain was not found, stopping!")
+          else:
+            let
+              resTuple = runChain(b.True[], context, input)
+              noerrors = cppTupleGet[bool](0, resTuple.toCpp)
+              results = cppTupleGet[CBVar](1, resTuple.toCpp)
+            # While we ignore the results from the chain we need to check for global cancelation
+            if not noerrors or context[].aborted:
+              StopChain
+            elif context[].restarted:
+              RestartChain
+            elif b.passthrough:
+              input
+            else:
+              results
+        else:
+          input
       else:
         if b.False != nil:
           if b.False[] == nil:
-            return halt(context, "A required sub-chain was not found, stopping!")
-          let
-            resTuple = runChain(b.False[], context, input)
-            noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-            res = cppTupleGet[CBVar](1, resTuple.toCpp)
-          # While we ignore the results from the chain we need to check for global cancelation
-          if not noerrors or context[].aborted:
-            return StopChain
-          elif context[].restarted:
-            return RestartChain
-
+            halt(context, "A required sub-chain was not found, stopping!")
+          else:
+            let
+              resTuple = runChain(b.False[], context, input)
+              noerrors = cppTupleGet[bool](0, resTuple.toCpp)
+              results = cppTupleGet[CBVar](1, resTuple.toCpp)
+            # While we ignore the results from the chain we need to check for global cancelation
+            if not noerrors or context[].aborted:
+              StopChain
+            elif context[].restarted:
+              RestartChain
+            elif b.passthrough:
+              input
+            else:
+              results
+        else:
+          input
+    
     case b.Op
-    of Equal: operation(`==`)
-    of More: operation(`>`)
-    of Less: operation(`<`)
-    of MoreEqual: operation(`>=`)
-    of LessEqual: operation(`<=`)
-
-    input
+    of Equal: res = operation(`==`)
+    of More: res = operation(`>`)
+    of Less: res = operation(`<`)
+    of MoreEqual: res = operation(`>=`)
+    of LessEqual: res = operation(`<=`)
+    res
 
   chainblock CBlockIf, "If", "":
-    withChain trueChain:
-      Const true
-      SetVariable "result"
-    withChain falseChain:
-      Const false
-      SetVariable "result"
-    withChain ifTest:
-      Const 2.0
-      If:
-        Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
-        Operand: 1.5
-        True: trueChain
-        False: falseChain
-      GetVariable "result"
+    block:
+      withChain trueChain:
+        Const true
+      withChain falseChain:
+        Const false
+      withChain ifTest:
+        Const 2.0
+        If:
+          Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+          Operand: 1.5
+          True: trueChain
+          False: falseChain
+      
+      ifTest.start()
+      doAssert ifTest.stop()
     
-    ifTest.start()
-    doAssert ifTest.stop()
+    block:
+      withChain trueChain:
+        Const true
+      withChain falseChain:
+        Const false
+      withChain ifTest:
+        Const 2.0
+        If:
+          Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+          Operand: 1.5
+          True: trueChain
+          False: falseChain
+          Passthrough: true
+      
+      ifTest.start()
+      doAssert ifTest.stop() == 2.0
 
 # Repeat - repeats the Chain parameter Times n
 when true:

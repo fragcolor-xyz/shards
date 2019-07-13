@@ -20,6 +20,7 @@ struct CBMathStub
 {
   CBRuntimeBlock header;
   CBVar operand;
+  CBVar* ctxOperand;
   CBSeq seqCache;
 };
 struct CBCoreRepeat
@@ -36,6 +37,7 @@ struct CBCoreIf
   CBVar* matchCtx;
   CBChainPtr* trueChain;
   CBChainPtr* falseChain;
+  bool passthrough;
 };
 
 // Since we build the runtime we are free to use any std and lib
@@ -517,64 +519,72 @@ namespace chainblocks
       }\
     }
 
-    #define _runChainINLINEMATH(__op, __input, __output)\
-    if(unlikely(__input.valueType != cblock->operand.valueType))\
+    #define _runChainINLINEMATH(__op, __op_str, __input, __output)\
+    auto operand = cblock->operand.valueType == ContextVar ? *cblock->ctxOperand : cblock->operand;\
+    if(unlikely(__input.valueType != operand.valueType))\
     {\
-      throw CBException("__op not supported between different types!");\
+      throw CBException(__op_str " not supported between different types!");\
     }\
-    switch(__input.valueType)\
+    else if(unlikely(operand.valueType == None))\
     {\
-      case Int:\
-        __output.valueType = Int;\
-        __output.intValue = __input.intValue __op cblock->operand.intValue;\
-        break;\
-      case Int2:\
-        __output.valueType = Int2;\
-        __output.int2Value = __input.int2Value __op cblock->operand.int2Value;\
-        break;\
-      case Int3:\
-        __output.valueType = Int3;\
-        __output.int3Value = __input.int3Value __op cblock->operand.int3Value;\
-        break;\
-      case Int4:\
-        __output.valueType = Int4;\
-        __output.int4Value = __input.int4Value __op cblock->operand.int4Value;\
-        break;\
-      case Float:\
-        __output.valueType = Float;\
-        __output.floatValue = __input.floatValue __op cblock->operand.floatValue;\
-        break;\
-      case Float2:\
-        __output.valueType = Float2;\
-        __output.float2Value = __input.float2Value __op cblock->operand.float2Value;\
-        break;\
-      case Float3:\
-        __output.valueType = Float3;\
-        __output.float3Value = __input.float3Value __op cblock->operand.float3Value;\
-        break;\
-      case Float4:\
-        __output.valueType = Float4;\
-        __output.float4Value = __input.float4Value __op cblock->operand.float4Value;\
-        break;\
-      case Color:\
-        __output.valueType = Color;\
-        __output.colorValue.r = __input.colorValue.r __op cblock->operand.colorValue.r;\
-        __output.colorValue.g = __input.colorValue.g __op cblock->operand.colorValue.g;\
-        __output.colorValue.b = __input.colorValue.b __op cblock->operand.colorValue.b;\
-        __output.colorValue.a = __input.colorValue.a __op cblock->operand.colorValue.a;\
-        break;\
-      default:\
-        throw CBException("__op operation not supported between given types!");\
+      throw CBException("Could not find the operand variable!");\
+    }\
+    else\
+    {\
+      switch(__input.valueType)\
+      {\
+        case Int:\
+          __output.valueType = Int;\
+          __output.intValue = __input.intValue __op operand.intValue;\
+          break;\
+        case Int2:\
+          __output.valueType = Int2;\
+          __output.int2Value = __input.int2Value __op operand.int2Value;\
+          break;\
+        case Int3:\
+          __output.valueType = Int3;\
+          __output.int3Value = __input.int3Value __op operand.int3Value;\
+          break;\
+        case Int4:\
+          __output.valueType = Int4;\
+          __output.int4Value = __input.int4Value __op operand.int4Value;\
+          break;\
+        case Float:\
+          __output.valueType = Float;\
+          __output.floatValue = __input.floatValue __op operand.floatValue;\
+          break;\
+        case Float2:\
+          __output.valueType = Float2;\
+          __output.float2Value = __input.float2Value __op operand.float2Value;\
+          break;\
+        case Float3:\
+          __output.valueType = Float3;\
+          __output.float3Value = __input.float3Value __op operand.float3Value;\
+          break;\
+        case Float4:\
+          __output.valueType = Float4;\
+          __output.float4Value = __input.float4Value __op operand.float4Value;\
+          break;\
+        case Color:\
+          __output.valueType = Color;\
+          __output.colorValue.r = __input.colorValue.r __op operand.colorValue.r;\
+          __output.colorValue.g = __input.colorValue.g __op operand.colorValue.g;\
+          __output.colorValue.b = __input.colorValue.b __op operand.colorValue.b;\
+          __output.colorValue.a = __input.colorValue.a __op operand.colorValue.a;\
+          break;\
+        default:\
+          throw CBException(__op_str " operation not supported between given types!");\
+      }\
     }
 
-    #define runChainINLINEMATH(__op)\
+    #define runChainINLINEMATH(__op, __op_str)\
     if(unlikely(input.valueType == Seq))\
     {\
       stbds_arrsetlen(cblock->seqCache, 0);\
       for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
       {\
         CBVar tmp;\
-        _runChainINLINEMATH(__op, input.seqValue[i], tmp)\
+        _runChainINLINEMATH(__op, __op_str, input.seqValue[i], tmp)\
         stbds_arrpush(cblock->seqCache, tmp);\
       }\
       previousOutput.valueType = Seq;\
@@ -582,51 +592,59 @@ namespace chainblocks
     }\
     else\
     {\
-      _runChainINLINEMATH(__op, input, previousOutput)\
+      _runChainINLINEMATH(__op, __op_str, input, previousOutput)\
     }
 
-    #define __runChainINLINE_INT_MATH(__op, __input, __output)\
-    if(unlikely(__input.valueType != cblock->operand.valueType))\
+    #define __runChainINLINE_INT_MATH(__op, __op_str, __input, __output)\
+    auto operand = cblock->operand.valueType == ContextVar ? *cblock->ctxOperand : cblock->operand;\
+    if(unlikely(__input.valueType != operand.valueType))\
     {\
-      throw CBException("__op not supported between different types!");\
+      throw CBException(__op_str " not supported between different types!");\
     }\
-    switch(__input.valueType)\
+    else if(unlikely(operand.valueType == None))\
     {\
-      case Int:\
-        __output.valueType = Int;\
-        __output.intValue = __input.intValue __op cblock->operand.intValue;\
-        break;\
-      case Int2:\
-        __output.valueType = Int2;\
-        __output.int2Value = __input.int2Value __op cblock->operand.int2Value;\
-        break;\
-      case Int3:\
-        __output.valueType = Int3;\
-        __output.int3Value = __input.int3Value __op cblock->operand.int3Value;\
-        break;\
-      case Int4:\
-        __output.valueType = Int4;\
-        __output.int4Value = __input.int4Value __op cblock->operand.int4Value;\
-        break;\
-      case Color:\
-        __output.valueType = Color;\
-        __output.colorValue.r = __input.colorValue.r __op cblock->operand.colorValue.r;\
-        __output.colorValue.g = __input.colorValue.g __op cblock->operand.colorValue.g;\
-        __output.colorValue.b = __input.colorValue.b __op cblock->operand.colorValue.b;\
-        __output.colorValue.a = __input.colorValue.a __op cblock->operand.colorValue.a;\
-        break;\
-      default:\
-        throw CBException("__op operation not supported between given types!");\
+      throw CBException("Could not find the operand variable!");\
+    }\
+    else\
+    {\
+      switch(__input.valueType)\
+      {\
+        case Int:\
+          __output.valueType = Int;\
+          __output.intValue = __input.intValue __op operand.intValue;\
+          break;\
+        case Int2:\
+          __output.valueType = Int2;\
+          __output.int2Value = __input.int2Value __op operand.int2Value;\
+          break;\
+        case Int3:\
+          __output.valueType = Int3;\
+          __output.int3Value = __input.int3Value __op operand.int3Value;\
+          break;\
+        case Int4:\
+          __output.valueType = Int4;\
+          __output.int4Value = __input.int4Value __op operand.int4Value;\
+          break;\
+        case Color:\
+          __output.valueType = Color;\
+          __output.colorValue.r = __input.colorValue.r __op operand.colorValue.r;\
+          __output.colorValue.g = __input.colorValue.g __op operand.colorValue.g;\
+          __output.colorValue.b = __input.colorValue.b __op operand.colorValue.b;\
+          __output.colorValue.a = __input.colorValue.a __op operand.colorValue.a;\
+          break;\
+        default:\
+          throw CBException(__op_str " operation not supported between given types!");\
+      }\
     }
 
-    #define runChainINLINE_INT_MATH(__op)\
+    #define runChainINLINE_INT_MATH(__op, __op_str)\
     if(unlikely(input.valueType == Seq))\
     {\
       stbds_arrsetlen(cblock->seqCache, 0);\
       for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
       {\
         CBVar tmp;\
-        __runChainINLINE_INT_MATH(__op, input.seqValue[i], tmp)\
+        __runChainINLINE_INT_MATH(__op, __op_str, input.seqValue[i], tmp)\
         stbds_arrpush(cblock->seqCache, tmp);\
       }\
       previousOutput.valueType = Seq;\
@@ -634,7 +652,7 @@ namespace chainblocks
     }\
     else\
     {\
-      __runChainINLINE_INT_MATH(__op, input, previousOutput)\
+      __runChainINLINE_INT_MATH(__op, __op_str, input, previousOutput)\
     }
 
     #define runChainQUICKRUN(__chain)\
@@ -696,28 +714,18 @@ namespace chainblocks
           {
             // We only do it quick in certain cases!
             auto cblock = reinterpret_cast<CBCoreIf*>(blk);
-            auto match = cblock->match;
+            auto match = cblock->match.valueType == ContextVar ? *cblock->matchCtx : cblock->match;
             auto result = false;
-            if(cblock->match.valueType == ContextVar)
-            {
-              if(likely(cblock->matchCtx != nullptr))
-              {
-                match = *cblock->matchCtx;
-              }
-              else
-              {
-                // First run, or before cleanup, anyway let's run normally once
-                previousOutput = blk->activate(blk, context, input);
-                goto ifdone;
-              }
-            }
-
             if(unlikely(input.valueType != match.valueType))
             {
               // Always fail the test when different types
               if(likely(cblock->falseChain and *cblock->falseChain))
               {
                 runChainQUICKRUN(*cblock->falseChain)
+                if(!cblock->passthrough)
+                {
+                  previousOutput = std::get<1>(chainRes);
+                }
               }
               else
               {
@@ -799,6 +807,10 @@ namespace chainblocks
                 if(likely(cblock->trueChain and *cblock->trueChain))
                 {
                   runChainQUICKRUN(*cblock->trueChain)
+                  if(!cblock->passthrough)
+                  {
+                    previousOutput = std::get<1>(chainRes);
+                  }
                 }
                 else
                 {
@@ -810,6 +822,10 @@ namespace chainblocks
                 if(likely(cblock->falseChain and *cblock->falseChain))
                 {
                   runChainQUICKRUN(*cblock->falseChain)
+                  if(!cblock->passthrough)
+                  {
+                    previousOutput = std::get<1>(chainRes);
+                  }
                 }
                 else
                 {
@@ -824,61 +840,61 @@ namespace chainblocks
           case MathAdd:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(+)
+            runChainINLINEMATH(+, "+")
             break;
           }
           case MathSubtract:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(-)
+            runChainINLINEMATH(-, "-")
             break;
           }
           case MathMultiply:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(*)
+            runChainINLINEMATH(*, "*")
             break;
           }
           case MathDivide:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(/)
+            runChainINLINEMATH(/, "/")
             break;
           }
           case MathXor:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(^)
+            runChainINLINE_INT_MATH(^, "^")
             break;
           }
           case MathAnd:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(&)
+            runChainINLINE_INT_MATH(&, "&")
             break;
           }
           case MathOr:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(|)
+            runChainINLINE_INT_MATH(|, "|")
             break;
           }
           case MathMod:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(%)
+            runChainINLINE_INT_MATH(%, "%")
             break;
           }
           case MathLShift:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(<<)
+            runChainINLINE_INT_MATH(<<, "<<")
             break;
           }
           case MathRShift:
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(>>)
+            runChainINLINE_INT_MATH(>>, ">>")
             break;
           }
           default: // NotInline

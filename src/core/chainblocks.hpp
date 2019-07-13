@@ -34,6 +34,7 @@ enum CBType : uint8_t
   Table,
   Chain, // sub chains, e.g. IF/ELSE
   Block, // a block, useful for future introspection blocks!
+  Type,
   ContextVar, // A string label to find from CBContext variables
 };
 

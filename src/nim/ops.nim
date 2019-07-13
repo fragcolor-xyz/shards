@@ -25,6 +25,8 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
   of Table: throwCBException("Table " & astToStr(`/`) & " Not supported")
   of Chain: throwCBException("Chain " & astToStr(`/`) & " Not supported")
   of Enum: throwCBException("Enum " & astToStr(`/`) & " Not supported")
+  of Block: throwCBException("Block " & astToStr(`/`) & " Not supported")
+  of Type: throwCBException("Type " & astToStr(`/`) & " Not supported")
 
 template mathBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
@@ -54,6 +56,8 @@ template mathBinaryOp(op: untyped): untyped =
     of Table: throwCBException("Table " & astToStr(op) & " Not supported")
     of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
     of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
+    of Block: throwCBException("Block " & astToStr(op) & " Not supported")
+    of Type: throwCBException("Type " & astToStr(op) & " Not supported")
 
 template mathIntBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
@@ -83,6 +87,8 @@ template mathIntBinaryOp(op: untyped): untyped =
     of Table: throwCBException("Table " & astToStr(op) & " Not supported")
     of Chain: throwCBException("Chain " & astToStr(op) & " Not supported")
     of Enum: throwCBException("Enum " & astToStr(op) & " Not supported")
+    of Block: throwCBException("Block " & astToStr(op) & " Not supported")
+    of Type: throwCBException("Type " & astToStr(op) & " Not supported")
 
 mathBinaryOp(`+`)
 mathBinaryOp(`-`)
@@ -115,6 +121,8 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Chain: throwCBException("Chain `>=` Not supported")
   of Enum: throwCBException("Enum `>=` Not supported")
   of Object: throwCBException("Object `>=` Not supported")
+  of Block: throwCBException("Block `>=` Not supported")
+  of Type: throwCBException("Type `>=` Not supported")
 
 proc `>`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: throwCBException("`>` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -137,6 +145,8 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of Chain: throwCBException("Chain `>` Not supported")
   of Enum: throwCBException("Enum `>` Not supported")
   of Object: throwCBException("Object `>` Not supported")
+  of Block: throwCBException("Block `>` Not supported")
+  of Type: throwCBException("Type `>` Not supported")
 
 proc `<`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: throwCBException("`<` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -159,6 +169,8 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of Chain: throwCBException("Chain `<` Not supported")
   of Enum: throwCBException("Enum `<` Not supported")
   of Object: throwCBException("Object `<` Not supported")
+  of Block: throwCBException("Block `<` Not supported")
+  of Type: throwCBException("Type `<` Not supported")
 
 proc `<=`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: throwCBException("`<=` Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -181,6 +193,8 @@ proc `<=`*(a,b: CBVar): bool {.inline.} =
   of Chain: throwCBException("Chain `<=` Not supported")
   of Enum: throwCBException("Enum `<=` Not supported")
   of Object: throwCBException("Object `<=` Not supported")
+  of Block: throwCBException("Block `<=` Not supported")
+  of Type: throwCBException("Type `<=` Not supported")
 
 proc `==`*(a,b: CBVar): bool {.inline.} =
   if a.valueType != b.valueType: return false
@@ -223,6 +237,7 @@ proc `==`*(a,b: CBVar): bool {.inline.} =
         a.objectTypeId.int32 != b.objectTypeId.int32 or
         a.objectValue != b.objectValue: return false
     return true
+  of Block, Type: assert(false) # TODO
 
 proc `$`*(a: CBVar): string {.inline.} =
   case a.valueType
@@ -265,4 +280,7 @@ proc `$`*(a: CBVar): string {.inline.} =
       inc idx
   of Chain: return $a.chainValue
   of Enum:  return $a.enumValue.int32
-  of Object: return "Object - addr: 0x" & $cast[int](a.objectValue).toHex() & " vendorId: 0x" & a.objectVendorId.toHex() & " typeId: 0x" & a.objectTypeId.toHex() 
+  of Object:
+    return "Object - addr: 0x" & $cast[int](a.objectValue).toHex() & 
+    " vendorId: 0x" & a.objectVendorId.toHex() & " typeId: 0x" & a.objectTypeId.toHex() 
+  of Block, Type: assert(false) # TODO
