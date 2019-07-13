@@ -970,7 +970,7 @@ when isMainModule:
     discard synthesizeCompileTimeChain(Empty)
     clearCompileTimeChain()
     
-    when true:
+    when false:
       # Useless benchmark... without Logging both would be 0
       # Used just to measure inline optimizations
       for _ in 0..9:
@@ -1013,8 +1013,8 @@ when isMainModule:
             swap a, b
             b = a + b
         
-        var f = fib
         let nimStart = cpuTime()
+        var f = fib
         for i in 0..11:
           echo f()
         echo "Nim took: ", cpuTime() - nimStart

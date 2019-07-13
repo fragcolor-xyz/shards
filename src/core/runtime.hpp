@@ -392,71 +392,71 @@ namespace chainblocks
     auto blkp = it->second();
 
     // Hook inline blocks to override activation in runChain
-    if(name == "Const")
+    if(strcmp(name, "Const") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreConst;
     }
-    else if(name == "Sleep")
+    else if(strcmp(name, "Sleep") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
     }
-    else if(name == "Repeat")
+    else if(strcmp(name, "Repeat") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
     }
-    else if(name == "If")
+    else if(strcmp(name, "If") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
     }
-    else if(name == "SetVariable")
+    else if(strcmp(name, "SetVariable") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
     }
-    else if(name == "GetVariable")
+    else if(strcmp(name, "GetVariable") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreGetVariable;
     }
-    else if(name == "SwapVariables")
+    else if(strcmp(name, "SwapVariables") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSwapVariables;
     }
-    else if(name == "Math.Add")
+    else if(strcmp(name, "Math.Add") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathAdd;
     }
-    else if(name == "Math.Subtract")
+    else if(strcmp(name, "Math.Subtract") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathSubtract;
     }
-    else if(name == "Math.Multiply")
+    else if(strcmp(name, "Math.Multiply") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathMultiply;
     }
-    else if(name == "Math.Divide")
+    else if(strcmp(name, "Math.Divide") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathDivide;
     }
-    else if(name == "Math.Xor")
+    else if(strcmp(name, "Math.Xor") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathXor;
     }
-    else if(name == "Math.And")
+    else if(strcmp(name, "Math.And") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathAnd;
     }
-    else if(name == "Math.Or")
+    else if(strcmp(name, "Math.Or") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathOr;
     }
-    else if(name == "Math.Mod")
+    else if(strcmp(name, "Math.Mod") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathMod;
     }
-    else if(name == "Math.LShift")
+    else if(strcmp(name, "Math.LShift") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathLShift;
     }
-    else if(name == "Math.RShift")
+    else if(strcmp(name, "Math.RShift") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::MathRShift;
     }
