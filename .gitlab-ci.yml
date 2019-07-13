@@ -34,6 +34,11 @@ buildAndRun:win:release:
 
 buildAndRun:linux:debug:
   script:
+    # clean up docker - make sure we got space
+    - docker rm $(docker ps -q -f status=exited) || true
+    - docker volume rm $(docker volume ls -qf dangling=true) || true
+    - docker rmi $(docker images --filter "dangling=true" -q --no-trunc) || true
+    # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
     - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:blocksTesting -r -f chainblocks.nim"
@@ -42,6 +47,11 @@ buildAndRun:linux:debug:
 
 buildAndRun:linux:release:
   script:
+    # clean up docker - make sure we got space
+    - docker rm $(docker ps -q -f status=exited) || true
+    - docker volume rm $(docker volume ls -qf dangling=true) || true
+    - docker rmi $(docker images --filter "dangling=true" -q --no-trunc) || true
+    # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
     - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:release -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"

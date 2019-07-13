@@ -141,3 +141,31 @@ when true:
     doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
 
     destroy testToUppercase
+
+# ToLowercase
+when true:
+  type
+    CBToLowercase* = object
+      strCache*: string
+  
+  template inputTypes*(b: CBToLowercase): CBTypesInfo = ({ String }, false #[seq]#)
+  template outputTypes*(b: CBToLowercase): CBTypesInfo = ({ String }, false #[seq]#)
+  template activate*(b: CBToLowercase; context: CBContext; input: CBVar): CBVar =
+    b.strCache.setLen(0)
+    b.strCache &= input.stringValue.string.toLower
+    b.strCache
+
+  chainblock CBToLowercase, "ToLowercase", "":
+    withChain testToUppercase:
+      Const "QUICK BROWN FOX"
+      ToLowercase
+      Log()
+    
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "quick brown fox"
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "quick brown fox"
+    testToUppercase.start()
+    doAssert $testToUppercase.stop() == "quick brown fox"
+
+    destroy testToUppercase
