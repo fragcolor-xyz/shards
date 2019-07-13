@@ -377,8 +377,8 @@ when appType != "lib":
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc startInternal(chain: CBChainPtr; loop: bool = false) {.importcpp: "chainblocks::start(#, #)", header: "runtime.hpp".}
-  proc start*(chain: CBChainPtr; loop: bool = false) {.inline.} =
+  proc startInternal(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.importcpp: "chainblocks::start(#, #, #)", header: "runtime.hpp".}
+  proc start*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
     var frame = getFrameState()
     startInternal(chain, loop)
     setFrameState(frame)
@@ -969,56 +969,60 @@ when isMainModule:
     prepareCompileTimeChain()
     discard synthesizeCompileTimeChain(Empty)
     clearCompileTimeChain()
-
-    withChain fibChainInit:
-      Const 0
-      SetVariable "a"
-      Const 1
-      SetVariable "b"
-
-    withChain fibChain:
-      RunChain:
-        Chain: fibChainInit
-        Once: true
-      
-      GetVariable "b"
-      Stack.Push
-
-      GetVariable "a"
-      Log()
-      Stack.Push
-      
-      Stack.Pop
-      SetVariable "b"
-
-      Stack.Pop
-      SetVariable "a"
-
-      Math.Add ~~"b"
-      SetVariable "b"
     
-    let cbStart = cpuTime()
-    fibChain.start(true)
-    for _ in 0..10:
-      fibChain.tick()
-    echo "CB took: ", cpuTime() - cbStart
-    discard fibChain.stop()
-    destroy fibChain
-    destroy fibChainInit
+    when true:
+      # Useless benchmark... without Logging both would be 0
+      # Used just to measure inline optimizations
+      for _ in 0..9:
+        withChain fibChainInit:
+          Const 0
+          SetVariable "a"
+          Const 1
+          SetVariable "b"
 
-    iterator fib: int {.closure.} =
-      var a = 0
-      var b = 1
-      while true:
-        yield a
-        swap a, b
-        b = a + b
-    
-    let nimStart = cpuTime()
-    var f = fib
-    for i in 0..11:
-      echo f()
-    echo "Nim took: ", cpuTime() - nimStart
+        withChain fibChain:
+          RunChain:
+            Chain: fibChainInit
+            Once: true
+          
+          GetVariable "b"
+          Stack.Push
+
+          GetVariable "a"
+          Log()
+          Stack.Push
+          
+          Stack.Pop
+          SetVariable "b"
+
+          Stack.Pop
+          SetVariable "a"
+
+          Math.Add ~~"b"
+          SetVariable "b"
+        
+        let cbStart = cpuTime()
+        fibChain.start(true, true)
+        for _ in 0..10:
+          fibChain.tick()
+        echo "CB took: ", cpuTime() - cbStart
+        discard fibChain.stop()
+        destroy fibChain
+        destroy fibChainInit
+
+        iterator fib: int {.closure.} =
+          var a = 0
+          var b = 1
+          while true:
+            yield a
+            swap a, b
+            b = a + b
+        
+        var f = fib
+        let nimStart = cpuTime()
+        for i in 0..11:
+          echo f()
+        echo "Nim took: ", cpuTime() - nimStart
   
   run()
   
