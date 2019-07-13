@@ -23,6 +23,8 @@ else:
 #define STB_DS_IMPLEMENTATION 1
 """.}
 
+{.passC: "-ffast-math".}
+
 const
   FragCC* = toFourCC("frag")
 
@@ -894,6 +896,8 @@ when isMainModule:
     withChain inlineTesting2:
       Const f4seq
       Math.Add (0.1, 0.2, 0.3, 0.4)
+      Log()
+      Math.Sqrt
       Log()
     inlineTesting2.start()
     

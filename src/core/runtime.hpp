@@ -23,6 +23,11 @@ struct CBMathStub
   CBVar* ctxOperand;
   CBSeq seqCache;
 };
+struct CBMathUnaryStub
+{
+  CBRuntimeBlock header;
+  CBSeq seqCache;
+};
 struct CBCoreRepeat
 {
   CBRuntimeBlock header;
@@ -460,6 +465,126 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::MathRShift;
     }
+    else if(strcmp(name, "Math.Abs") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAbs;
+    }
+    else if(strcmp(name, "Math.Exp") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathExp;
+    }
+    else if(strcmp(name, "Math.Exp2") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathExp2;
+    }
+    else if(strcmp(name, "Math.Expm1") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathExpm1;
+    }
+    else if(strcmp(name, "Math.Log") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLog;
+    }
+    else if(strcmp(name, "Math.Log10") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLog10;
+    }
+    else if(strcmp(name, "Math.Log2") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLog2;
+    }
+    else if(strcmp(name, "Math.Log1p") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLog1p;
+    }
+    else if(strcmp(name, "Math.Sqrt") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathSqrt;
+    }
+    else if(strcmp(name, "Math.Cbrt") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathCbrt;
+    }
+    else if(strcmp(name, "Math.Sin") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathSin;
+    }
+    else if(strcmp(name, "Math.Cos") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathCos;
+    }
+    else if(strcmp(name, "Math.Tan") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathTan;
+    }
+    else if(strcmp(name, "Math.Asin") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAsin;
+    }
+    else if(strcmp(name, "Math.Acos") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAcos;
+    }
+    else if(strcmp(name, "Math.Atan") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAtan;
+    }
+    else if(strcmp(name, "Math.Sinh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathSinh;
+    }
+    else if(strcmp(name, "Math.Cosh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathCosh;
+    }
+    else if(strcmp(name, "Math.Tanh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathTanh;
+    }
+    else if(strcmp(name, "Math.Asinh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAsinh;
+    }
+    else if(strcmp(name, "Math.Acosh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAcosh;
+    }
+    else if(strcmp(name, "Math.Atanh") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathAtanh;
+    }
+    else if(strcmp(name, "Math.Erf") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathErf;
+    }
+    else if(strcmp(name, "Math.Erfc") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathErfc;
+    }
+    else if(strcmp(name, "Math.TGamma") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathTGamma;
+    }
+    else if(strcmp(name, "Math.LGamma") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathLGamma;
+    }
+    else if(strcmp(name, "Math.Ceil") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathCeil;
+    }
+    else if(strcmp(name, "Math.Floor") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathFloor;
+    }
+    else if(strcmp(name, "Math.Trunc") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathTrunc;
+    }
+    else if(strcmp(name, "Math.Round") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::MathRound;
+    }
 
     return blkp;
   }
@@ -520,181 +645,7 @@ namespace chainblocks
       }
     }
 
-    #define runChainPOSTCHAIN for(auto blk : chain->blocks)\
-    {\
-      try\
-      {\
-        blk->postChain(blk, context);\
-      }\
-      catch(const std::exception& e)\
-      {\
-        std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-        if(context->error.length() > 0)\
-          std::cerr << "Last error: " << std::string(context->error) << "\n";\
-        std::cerr << e.what() << "\n";\
-        return { false, previousOutput };\
-      }\
-      catch(...)\
-      {\
-        std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-        if(context->error.length() > 0)\
-          std::cerr << "Last error: " << std::string(context->error) << "\n";\
-        return { false, previousOutput };\
-      }\
-    }
-
-    #define _runChainINLINEMATH(__op, __op_str, __input, __output)\
-    auto operand = cblock->operand.valueType == ContextVar ?\
-      cblock->ctxOperand ? *cblock->ctxOperand : *(cblock->ctxOperand = contextVariable(context, cblock->operand.stringValue)) :\
-        cblock->operand;\
-    if(unlikely(__input.valueType != operand.valueType))\
-    {\
-      throw CBException(__op_str " not supported between different types!");\
-    }\
-    else if(unlikely(operand.valueType == None))\
-    {\
-      throw CBException("Could not find the operand variable!");\
-    }\
-    else\
-    {\
-      switch(__input.valueType)\
-      {\
-        case Int:\
-          __output.valueType = Int;\
-          __output.intValue = __input.intValue __op operand.intValue;\
-          break;\
-        case Int2:\
-          __output.valueType = Int2;\
-          __output.int2Value = __input.int2Value __op operand.int2Value;\
-          break;\
-        case Int3:\
-          __output.valueType = Int3;\
-          __output.int3Value = __input.int3Value __op operand.int3Value;\
-          break;\
-        case Int4:\
-          __output.valueType = Int4;\
-          __output.int4Value = __input.int4Value __op operand.int4Value;\
-          break;\
-        case Float:\
-          __output.valueType = Float;\
-          __output.floatValue = __input.floatValue __op operand.floatValue;\
-          break;\
-        case Float2:\
-          __output.valueType = Float2;\
-          __output.float2Value = __input.float2Value __op operand.float2Value;\
-          break;\
-        case Float3:\
-          __output.valueType = Float3;\
-          __output.float3Value = __input.float3Value __op operand.float3Value;\
-          break;\
-        case Float4:\
-          __output.valueType = Float4;\
-          __output.float4Value = __input.float4Value __op operand.float4Value;\
-          break;\
-        case Color:\
-          __output.valueType = Color;\
-          __output.colorValue.r = __input.colorValue.r __op operand.colorValue.r;\
-          __output.colorValue.g = __input.colorValue.g __op operand.colorValue.g;\
-          __output.colorValue.b = __input.colorValue.b __op operand.colorValue.b;\
-          __output.colorValue.a = __input.colorValue.a __op operand.colorValue.a;\
-          break;\
-        default:\
-          throw CBException(__op_str " operation not supported between given types!");\
-      }\
-    }
-
-    #define runChainINLINEMATH(__op, __op_str)\
-    if(unlikely(input.valueType == Seq))\
-    {\
-      stbds_arrsetlen(cblock->seqCache, 0);\
-      for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
-      {\
-        CBVar tmp;\
-        _runChainINLINEMATH(__op, __op_str, input.seqValue[i], tmp)\
-        stbds_arrpush(cblock->seqCache, tmp);\
-      }\
-      previousOutput.valueType = Seq;\
-      previousOutput.seqValue = cblock->seqCache;\
-    }\
-    else\
-    {\
-      _runChainINLINEMATH(__op, __op_str, input, previousOutput)\
-    }
-
-    #define __runChainINLINE_INT_MATH(__op, __op_str, __input, __output)\
-    auto operand = cblock->operand.valueType == ContextVar ?\
-      cblock->ctxOperand ? *cblock->ctxOperand : *(cblock->ctxOperand = contextVariable(context, cblock->operand.stringValue)) :\
-        cblock->operand;\
-    if(unlikely(__input.valueType != operand.valueType))\
-    {\
-      throw CBException(__op_str " not supported between different types!");\
-    }\
-    else if(unlikely(operand.valueType == None))\
-    {\
-      throw CBException("Could not find the operand variable!");\
-    }\
-    else\
-    {\
-      switch(__input.valueType)\
-      {\
-        case Int:\
-          __output.valueType = Int;\
-          __output.intValue = __input.intValue __op operand.intValue;\
-          break;\
-        case Int2:\
-          __output.valueType = Int2;\
-          __output.int2Value = __input.int2Value __op operand.int2Value;\
-          break;\
-        case Int3:\
-          __output.valueType = Int3;\
-          __output.int3Value = __input.int3Value __op operand.int3Value;\
-          break;\
-        case Int4:\
-          __output.valueType = Int4;\
-          __output.int4Value = __input.int4Value __op operand.int4Value;\
-          break;\
-        case Color:\
-          __output.valueType = Color;\
-          __output.colorValue.r = __input.colorValue.r __op operand.colorValue.r;\
-          __output.colorValue.g = __input.colorValue.g __op operand.colorValue.g;\
-          __output.colorValue.b = __input.colorValue.b __op operand.colorValue.b;\
-          __output.colorValue.a = __input.colorValue.a __op operand.colorValue.a;\
-          break;\
-        default:\
-          throw CBException(__op_str " operation not supported between given types!");\
-      }\
-    }
-
-    #define runChainINLINE_INT_MATH(__op, __op_str)\
-    if(unlikely(input.valueType == Seq))\
-    {\
-      stbds_arrsetlen(cblock->seqCache, 0);\
-      for(auto i = 0; i < stbds_arrlen(input.seqValue); i++)\
-      {\
-        CBVar tmp;\
-        __runChainINLINE_INT_MATH(__op, __op_str, input.seqValue[i], tmp)\
-        stbds_arrpush(cblock->seqCache, tmp);\
-      }\
-      previousOutput.valueType = Seq;\
-      previousOutput.seqValue = cblock->seqCache;\
-    }\
-    else\
-    {\
-      __runChainINLINE_INT_MATH(__op, __op_str, input, previousOutput)\
-    }
-
-    #define runChainQUICKRUN(__chain)\
-    auto chainRes = runChain(__chain, context, input);\
-    if(unlikely(!std::get<0>(chainRes)))\
-    { \
-      previousOutput.valueType = None;\
-      previousOutput.chainState = Stop;\
-    }\
-    else if(unlikely(context->restarted))\
-    {\
-      previousOutput.valueType = None;\
-      previousOutput.chainState = Restart;\
-    }
+    #include "runtime_macros.hpp"
 
     for(auto blk : chain->blocks)
     {
@@ -974,6 +925,186 @@ namespace chainblocks
           {
             auto cblock = reinterpret_cast<CBMathStub*>(blk);
             runChainINLINE_INT_MATH(>>, ">>")
+            break;
+          }
+          case MathAbs:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(fabs, fabsf, "Abs")
+            break;
+          }
+          case MathExp:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(exp, expf, "Exp")
+            break;
+          }
+          case MathExp2:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(exp2, exp2f, "Exp2")
+            break;
+          }
+          case MathExpm1:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(expm1, expm1f, "Expm1")
+            break;
+          }
+          case MathLog:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(log, logf, "Log")
+            break;
+          }
+          case MathLog10:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(log10, log10f, "Log10")
+            break;
+          }
+          case MathLog2:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(log2, log2f, "Log2")
+            break;
+          }
+          case MathLog1p:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(log1p, log1pf, "Log1p")
+            break;
+          }
+          case MathSqrt:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(sqrt, sqrtf, "Sqrt")
+            break;
+          }
+          case MathCbrt:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(cbrt, cbrtf, "Cbrt")
+            break;
+          }
+          case MathSin:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(sin, sinf, "Sin")
+            break;
+          }
+          case MathCos:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(cos, cosf, "Cos")
+            break;
+          }
+          case MathTan:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(tan, tanf, "Tan")
+            break;
+          }
+          case MathAsin:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(asin, asinf, "Asin")
+            break;
+          }
+          case MathAcos:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(acos, acosf, "Acos")
+            break;
+          }
+          case MathAtan:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(atan, atanf, "Atan")
+            break;
+          }
+          case MathSinh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(sinh, sinhf, "Sinh")
+            break;
+          }
+          case MathCosh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(cosh, coshf, "Cosh")
+            break;
+          }
+          case MathTanh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(tanh, tanhf, "Tanh")
+            break;
+          }
+          case MathAsinh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(asinh, asinhf, "Asinh")
+            break;
+          }
+          case MathAcosh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(acosh, acoshf, "Acosh")
+            break;
+          }
+          case MathAtanh:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(atanh, atanhf, "Atanh")
+            break;
+          }
+          case MathErf:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(erf, erff, "Erf")
+            break;
+          }
+          case MathErfc:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(erfc, erfcf, "Erfc")
+            break;
+          }
+          case MathTGamma:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(tgamma, tgammaf, "TGamma")
+            break;
+          }
+          case MathLGamma:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(lgamma, lgammaf, "LGamma")
+            break;
+          }
+          case MathCeil:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(ceil, ceilf, "Ceil")
+            break;
+          }
+          case MathFloor:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(floor, floorf, "Floor")
+            break;
+          }
+          case MathTrunc:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(trunc, truncf, "Trunc")
+            break;
+          }
+          case MathRound:
+          {
+            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+            runChainINLINECMATH(round, roundf, "Round")
             break;
           }
           default: // NotInline

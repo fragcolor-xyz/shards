@@ -59,6 +59,10 @@ template mathBinaryOp(op: untyped): untyped =
     of Block: throwCBException("Block " & astToStr(op) & " Not supported")
     of Type: throwCBException("Type " & astToStr(op) & " Not supported")
 
+mathBinaryOp(`+`)
+mathBinaryOp(`-`)
+mathBinaryOp(`*`)
+
 template mathIntBinaryOp(op: untyped): untyped =
   proc op*(a,b: CBVar): CBVar {.inline.} =
     if a.valueType != b.valueType: throwCBException(astToStr(op) & " Not supported between different types " & $a.valueType & " and " & $b.valueType)
@@ -90,9 +94,6 @@ template mathIntBinaryOp(op: untyped): untyped =
     of Block: throwCBException("Block " & astToStr(op) & " Not supported")
     of Type: throwCBException("Type " & astToStr(op) & " Not supported")
 
-mathBinaryOp(`+`)
-mathBinaryOp(`-`)
-mathBinaryOp(`*`)
 mathIntBinaryOp(`xor`)
 mathIntBinaryOp(`and`)
 mathIntBinaryOp(`or`)
