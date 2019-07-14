@@ -156,7 +156,6 @@ struct CBChain
     name(chain_name),
     coro(nullptr),
     next(0),
-    sleepSeconds(0.0),
     started(false),
     finished(false),
     returned(false),
@@ -179,7 +178,6 @@ struct CBChain
 
   CBCoro* coro;
   clock_t next;
-  double sleepSeconds;
   
   // we could simply null check coro but actually some chains (sub chains), will run without a coro within the root coro so we need this too
   bool started;
@@ -592,7 +590,10 @@ namespace chainblocks
   static CBVar suspend(double seconds)
   {
     auto current = chainblocks::CurrentChain;
-    current->sleepSeconds = seconds;
+    if(seconds <= 0)
+      current->next = 0;
+    else  
+      current->next = std::clock() + clock_t(seconds * double(CLOCKS_PER_SEC));
     current->context->continuation = current->context->continuation.resume();
     if(current->context->restarted)
     {
@@ -1193,7 +1194,7 @@ namespace chainblocks
         if(!unsafeLoop && looped) 
         {
           // Ensure no while(true), yield anyway every run
-          thisChain->sleepSeconds = 0.0;
+          thisChain->next = 0;
           context.continuation = context.continuation.resume();
           // This is delayed upon continuation!!
           if(context.aborted)
@@ -1284,15 +1285,6 @@ namespace chainblocks
       *chain->coro = chain->coro->resume();
       
       chainblocks::CurrentChain = previousChain;
-      
-      if(chain->sleepSeconds <= 0)
-      {
-        chain->next = now; //Ensure it will execute exactly the next tick
-      }
-      else
-      {
-        chain->next = now + clock_t(chain->sleepSeconds * double(CLOCKS_PER_SEC));
-      }
     }
   } 
 

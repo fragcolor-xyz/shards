@@ -440,13 +440,8 @@ when true:
   template inputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBlockSleep): CBParametersInfo = @[("Time", { Float })]
-  template setParam*(b: CBlockSleep; index: int; val: CBVar) =
-    assert index == 0
-    assert val.valueType == Float
-    b.time = val.floatValue
-  template getParam*(b: CBlockSleep; index: int): CBVar =
-    assert index == 0
-    CBVar(valueType: Float, floatValue: b.time)
+  template setParam*(b: CBlockSleep; index: int; val: CBVar) = b.time = val.floatValue
+  template getParam*(b: CBlockSleep; index: int): CBVar = b.time.CBVar
   template activate*(b: CBlockSleep; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
