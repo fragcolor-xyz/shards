@@ -911,6 +911,17 @@ when isMainModule:
       Math.Sqrt
       Log()
     inlineTesting2.start()
+
+    var nimcall = proc(input: CBVar): CBVar {.closure.} =
+      echo input
+      input
+    
+    withChain closureTest:
+      Const 77
+      NimClosure nimcall
+      Log()
+    
+    closureTest.start()
     
     var
       mainChain = newChain("mainChain")

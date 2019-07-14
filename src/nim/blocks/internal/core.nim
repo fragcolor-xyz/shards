@@ -1,3 +1,31 @@
+# NimClosure - kinda internal/compile time module to call a nim closure
+when true:
+  const
+    NimClosureCC* = toFourCC("nimc")
+  let
+    NimClosureInfo* = CBTypeInfo(basicType: Object, objectVendorId: FragCC.int32, objectTypeId: NimClosureCC.int32)
+  
+  # DON'T Register it actually
+  # registerObjectType(FragCC, NimClosureCC, CBObjectInfo(name: "Nim Closure"))
+
+  type
+    CBNimClosureObj = proc(input: CBVar): CBVar
+    CBNimClosure* = object
+      call: CBVar
+
+  converter toCBVar*(c: var CBNimClosureObj): CBVar {.inline.} = (addr c).pointer.asCBVar(FragCC, NimClosureCC)
+
+  template inputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBNimClosure): CBParametersInfo = @[("Closure", @[NimClosureInfo])]
+  template setParam*(b: CBNimClosure; index: int; val: CBVar) = b.call = val
+  template getParam*(b: CBNimClosure; index: int): CBVar = b.call
+  template activate*(b: CBNimClosure; context: CBContext; input: CBVar): CBVar =
+    let call = cast[ptr CBNimClosureObj](b.call.objectValue)
+    call[](input)
+
+  chainblock CBNimClosure, "NimClosure"
+
 # SetVariable - sets a context variable
 when true:
   type
