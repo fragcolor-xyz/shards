@@ -630,7 +630,11 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       b.sb.getParam(index)
     proc `activateProc`*(b: `rtName`; context: CBContext; input: CBVar): CBVar {.cdecl.} =
       updateStackBottom()
-      b.sb.activate(context, input)
+      try:
+        b.sb.activate(context, input)
+      except:
+        context.setError(getCurrentExceptionMsg())
+        raise
     proc `cleanupProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.cleanup()
