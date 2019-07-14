@@ -725,9 +725,9 @@ when appType != "lib":
   proc unregisterRunLoopCallback*(name: string) =
     invokeFunction("chainblocks::unregisterRunLoopCallback", name).to(void)
 
-  proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "chainblocks.hpp".}
+  proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "runtime.hpp".}
 
-  proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "chainblocks.hpp".}
+  proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "runtime.hpp".}
 
   proc newChain*(name: string): CBChainPtr {.inline.} =
     newCBChain(result, CBChain, name.cstring)
@@ -737,14 +737,14 @@ when appType != "lib":
     unregisterChain(chain)
     delCPP(chain)
   
-  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "chainblocks.hpp".}
-  proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "chainblocks.hpp".}
+  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
+  proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "runtime.hpp".}
   proc suspend*(seconds: float64): CBVar {.inline.} =
     var frame = getFrameState()
     result = suspendInternal(seconds)
     setFrameState(frame)
 
-  proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "chainblocks.hpp".}
+  proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "runtime.hpp".}
   
 else:
   # When we are a dll with a collection of blocks!
