@@ -16,7 +16,7 @@ when appType != "lib" or defined(forceCBRuntime):
   when defined windows:
     {.passL: "-static -lboost_context-mt -lboost_thread-mt".}
   else:
-    {.passL: "-static -lboost_context -lboost_thread-mt".}
+    {.passL: "-static -lboost_context -lboost_thread".}
   {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
 else:
   {.emit: """/*INCLUDESECTION*/
