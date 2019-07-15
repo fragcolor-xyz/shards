@@ -76,11 +76,13 @@ struct CBCoreSwapVariables
 #include <memory>
 #include <iostream>
 #include <ctime>
-#include <thread>
-#include <chrono>
 
-// Required external dependency!
+// Required external dependencies
+// For coroutines/context switches
 #include <boost/context/continuation.hpp>
+// For sleep
+#include <boost/chrono/chrono.hpp> 
+#include <boost/thread/thread.hpp>
 
 // Included 3rdparty
 #include "3rdparty/json.hpp"
@@ -1337,7 +1339,7 @@ namespace chainblocks
     //negative = no sleep, just run callbacks
     if(seconds >= 0)
     {
-      std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
+      boost::this_thread::sleep_for(boost::chrono::duration<double>(seconds));
     }
 
     // Run loop callbacks after sleeping

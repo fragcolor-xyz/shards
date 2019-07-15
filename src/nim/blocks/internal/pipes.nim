@@ -241,7 +241,7 @@ when true:
           
           # reset our buffer
           zeroMem(addr b.payload[0], sizeof(b.payload))
-
+          
           # queue a read
           if global.ReadFile(pipe.namedPipe, addr b.payload[0], sizeof(b.payload), addr b.read, addr b.overlapped).to(bool):
             var output = cast[ptr CBVar](addr b.payload[0])

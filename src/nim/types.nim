@@ -306,9 +306,12 @@ proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
 
 # Exception
 {.emit: "#include <runtime.hpp>".}
-proc throwCBException*(msg: string) = {.emit: ["""throw chainblocks::CBException(""", msg.cstring, """);"""].}
+
+proc throwCBException*(msg: string) = emitc("throw chainblocks::CBException(", msg.cstring, ");")
 
 # Allocators using cpp to properly construct in C++ fashion (we have some blocks that need this)
-template newCBRuntimeBlock*(p, t: untyped) = {.emit: [`p`, """ = (""", `CBRuntimeBlock`, """*) (new """, `t`, """());"""].}
-template newCBChain*(p, t, a1: untyped) = {.emit: [`p`, """ = (""", `CBChain`, """*) (new """, `t`, """(""", `a1`, """));"""].}
-template delCPP*(p: untyped) = {.emit: ["""delete """, `p`, """;"""].}
+template cppnew*(pt, typ1, typ2: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "());")
+template cppnew*(pt, typ1, typ2, a1: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "(", `a1`, "));")
+template cppnew*(pt, typ1, typ2, a1, a2: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "(", `a1`, ", ", `a2`, "));")
+template cppnew*(pt, typ1, typ2, a1, a2, a3: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "(", `a1`, ", ", `a2`, ", ", `a3`, "));")
+template cppdel*(pt: untyped): untyped = emitc("delete ", `pt`, ";")

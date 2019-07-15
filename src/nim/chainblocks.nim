@@ -14,10 +14,10 @@ import nimline
 when appType != "lib" or defined(forceCBRuntime):
   {.compile: "../core/runtime.cpp".}
   when defined windows:
-    {.passL: "-lboost_context-mt".}
+    {.passL: "-static -lboost_context-mt -lboost_thread-mt".}
   else:
-    {.passL: "-lboost_context".}
-  {.passC: "-DCHAINBLOCKS_RUNTIME".}
+    {.passL: "-static -lboost_context -lboost_thread-mt".}
+  {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
 else:
   {.emit: """/*INCLUDESECTION*/
 #define STB_DS_IMPLEMENTATION 1
@@ -625,7 +625,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
             freeSeq(item.valueTypes)
           freeSeq(b.cacheParameters[])
           dispose(b.cacheParameters)
-      delCPP(b)
+      cppdel(b)
     proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
       updateStackBottom()
       b.sb.preChain(context)
@@ -679,7 +679,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       updateStackBottom()
       b.sb.cleanup()
     registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
-      newCBRuntimeBlock(result, `rtNameValue`)
+      cppnew(result, CBRuntimeBlock, `rtNameValue`)
       # DO NOT CHANGE THE FOLLOWING, this sorcery is needed to build with msvc 19ish
       # Moreover it's kinda nim's fault, as it won't generate a C cast without `.pointer`
       result.name = cast[CBNameProc](`nameProc`.pointer)
@@ -774,15 +774,15 @@ when appType != "lib" or defined(forceCBRuntime):
   proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "runtime.hpp".}
 
   proc newChain*(name: string): CBChainPtr {.inline.} =
-    newCBChain(result, CBChain, name.cstring)
+    cppnew(result, CBChain, CBChain, name.cstring)
     registerChain(result)
   proc cbCreateChain*(name: cstring): CBChainPtr {.cdecl, exportc, dynlib.} =
-    newCBChain(result, CBChain, name)
+    cppnew(result, CBChain, CBChain, name)
     registerChain(result)
   
   proc destroy*(chain: CBChainPtr) {.inline.} =
     unregisterChain(chain)
-    delCPP(chain)
+    cppdel(chain)
   proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = destroy(chain)
   
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}

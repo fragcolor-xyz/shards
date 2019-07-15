@@ -9,6 +9,8 @@
 // Cannot afford to use any C++ std as any block maker should be free to use their versions
 
 #include <stdint.h>
+
+// Included 3rdparty
 #include "3rdparty/stb_ds.h"
 
 // All the available types
@@ -196,7 +198,13 @@ struct CBTypeInfo
       int32_t enumVendorId;
       int32_t enumTypeId;
     };
+
+    // Currently not so much used, sequenced makes it easier but might be useful too
+    CBTypesInfo seqTypes;
   };
+
+  // this is a way to express in a simpler way that this type might also be an array
+  // instead of basically using seqTypes, populate it and make this Seq as basicType
   bool sequenced;
 };
 
