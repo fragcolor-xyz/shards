@@ -15,9 +15,9 @@ when appType != "lib" or defined(forceCBRuntime):
   {.compile: "../core/runtime.cpp".}
   
   when defined windows:
-    {.passL: "-static -lboost_context-mt -lboost_thread-mt".}
+    {.passL: "-static -lboost_context-mt".}
   else:
-    {.passL: "-static -pthread -lboost_context -lboost_thread".}
+    {.passL: "-static -lboost_context".}
   
   {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
 else:

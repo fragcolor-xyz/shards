@@ -81,8 +81,11 @@ struct CBCoreSwapVariables
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
 // For sleep
-#include <boost/chrono/chrono.hpp> 
-#include <boost/thread/thread.hpp>
+#if _WIN32
+#include <Windows.h>
+#else
+#include <time.h>
+#endif
 
 // Included 3rdparty
 #include "3rdparty/json.hpp"
@@ -1339,7 +1342,18 @@ namespace chainblocks
     //negative = no sleep, just run callbacks
     if(seconds >= 0)
     {
-      boost::this_thread::sleep_for(boost::chrono::duration<double>(seconds));
+#ifdef _WIN32
+      HANDLE timer;
+      LARGE_INTEGER ft;
+      ft.QuadPart = -(int64_t(seconds * 10000000));
+      timer = CreateWaitableTimer(NULL, TRUE, NULL);
+      SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+      WaitForSingleObject(timer, INFINITE);
+      CloseHandle(timer);
+#else
+      struct timespec delay = {0, int64_t(seconds * 1000000000)}
+      while(nanosleep(&delay, &delay));
+#endif
     }
 
     // Run loop callbacks after sleeping
