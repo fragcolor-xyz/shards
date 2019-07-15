@@ -19,16 +19,16 @@ enum CBType : uint8_t
   Object,
   Enum,
   Bool,
-  Int,
-  Int2, // A vector of 2 ints
-  Int3, // A vector of 3 ints
-  Int4, // A vector of 4 ints
-  Float,
-  Float2, // A vector of 2 floats
-  Float3, // A vector of 3 floats
-  Float4, // A vector of 4 floats
+  Int,    // A 64bits int
+  Int2,   // A vector of 2 64bits ints
+  Int3,   // A vector of 3 32bits int
+  Int4,   // A vector of 4 32bits int
+  Float,  // A 64bits float
+  Float2, // A vector of 2 64bits floats
+  Float3, // A vector of 3 32bits floats
+  Float4, // A vector of 4 32bits floats
   String,
-  Color, // A vector of 4 uint8
+  Color,  // A vector of 4 uint8
   Image,
   Seq,
   Table,

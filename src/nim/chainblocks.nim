@@ -247,6 +247,9 @@ converter imageTypesConv*(cbImg: Image[uint8]): CBImage {.inline, noinit.} =
   result.channels = cbImg.channels.int32
   result.data = cbImg.data
 
+converter toCBVar*(v: CBImage): CBVar {.inline.} =
+  return CBVar(valueType: CBType.Image, imageValue: v)
+
 proc asCBVar*(v: pointer; vendorId, typeId: FourCC): CBVar {.inline.} =
   return CBVar(valueType: Object, objectValue: v, objectVendorId: vendorId.int32, objectTypeId: typeId.int32)
 
