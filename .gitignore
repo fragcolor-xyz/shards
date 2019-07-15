@@ -6,3 +6,4 @@
 *.exp
 *.lib
 *.hpp.gch
+*.pyd

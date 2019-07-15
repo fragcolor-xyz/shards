@@ -11,7 +11,7 @@ export types
 
 import nimline
 
-when appType != "lib":
+when appType != "lib" or defined(forceCBRuntime):
   {.compile: "../core/runtime.cpp".}
   when defined windows:
     {.passL: "-lboost_context-mt".}
@@ -377,7 +377,7 @@ template setParam*(b: auto; index: int; val: CBVar) = discard
 template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
 
-when appType != "lib":
+when appType != "lib" or defined(forceCBRuntime):
   proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
 
   proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "runtime.hpp".}
@@ -671,7 +671,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     static:
       echo "Registered chainblock: " & `namespace` & `blockName`
   
-  when appType != "lib":
+  when appType != "lib" or defined(forceCBRuntime):
     if $namespaceStr != "":
       var nameSpaceType = ident($namespaceStr)
       # DSL Utilities
@@ -721,7 +721,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
             `testCode`
           `testName`()
 
-when appType != "lib":
+when appType != "lib" or defined(forceCBRuntime):
   # When building the runtime!
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) =
@@ -815,7 +815,7 @@ when not defined(skipCoreBlocks):
   import unicode
   include blocks/internal/[core, strings, stack, calculate]
 
-when appType != "lib":
+when appType != "lib" or defined(forceCBRuntime):
   # Swaps from compile time chain mode on/off
   macro setCompileTimeChain*(enabled: bool) = compileTimeMode = enabled.boolVal
 
