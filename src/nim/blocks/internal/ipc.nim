@@ -27,37 +27,67 @@ when true:
     # also force ensure removal!
     # this might crash any current user if existing btw
     removeShmObject(b.name)
+  
   template inputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template outputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template parameters*(b: CBIpcPush): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBIpcPush; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
+  template setParam*(b: CBIpcPush; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPush; index: int): CBVar = b.name
-  template activate*(b: var CBIpcPush; context: CBContext; input: CBVar): CBVar =
+
+  proc outgoingString(b: var CBIpcPush; input: CBVar): CBVar {.inline.} =
+    result = input
+
+    # Borrow memory from the shared region and copy the string there
+    let strlen = input.stringValue.cstring.len
+    var stringBuffer = b.segment[].allocate(strlen + 1).to(ptr UncheckedArray[uint8])
+    copyMem(stringBuffer, input.stringValue.cstring, strlen)
+    stringBuffer[strlen] = 0
+
+    # swap the buffer pointer to point to shared memory
+    result.stringValue = cast[CBString](stringBuffer)
+    
+    # also we need to write the handle to this memory in order to free it on the consumer side, we use reserved bytes in the CBVar
+    var handle = b.segment[].get_handle_from_address(stringBuffer).to(MemHandle)
+    copyMem(addr result.reserved[0], addr handle, sizeof(MemHandle))
+  
+  proc outgoingSeq(b: var CBIpcPush; input: CBVar): CBVar {.inline.} =
+    result = input
+
+    # Borrow memory from the shared region and copy the while array there
+    let seqlen = input.seqValue.len
+    var seqBuffer = b.segment[].allocate(seqlen * sizeof(CBVar)).to(ptr UncheckedArray[CBVar])
+    copyMem(seqBuffer, input.seqValue, seqlen * sizeof(CBVar))
+
+    # swap the buffer pointer to point to shared memory
+    result.seqValue = cast[CBSeq](seqBuffer)
+
+    # set manually the len of the seq
+    result.seqLen = seqlen.int32
+
+    # fix up any possible string var
+    for i in 0..<result.seqLen:
+      var item = result.seqValue[i]
+      if item.valueType == String:
+        result.seqValue[i] = outgoingString(b, item)
+    
+    # also we need to write the handle to this memory in order to free it on the consumer side, we use reserved bytes in the CBVar
+    var handle = b.segment[].get_handle_from_address(seqBuffer).to(MemHandle)
+    copyMem(addr result.reserved[0], addr handle, sizeof(MemHandle))
+
+  template activate*(b: CBIpcPush; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, create_only, b.name.cstring, 1048576) # 1MB of data, 500 vars queue
       b.buffer = b.segment[].invoke("find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<500>>>(\"queue\")").to(ptr LockFreeRingbuffer)
     
     case input.valueType
     of String:
-      let strlen = input.stringValue.cstring.len
-      # Borrow memory from the shared region and copy the string there
-      var
-        newInput = input
-        stringBuffer = b.segment[].allocate(strlen + 1).to(ptr UncheckedArray[uint8])
-      copyMem(stringBuffer, input.stringValue.cstring, strlen)
-      stringBuffer[strlen] = 0
-      # swap the buffer pointer to point to shared memory
-      newInput.stringValue = cast[CBString](stringBuffer)
-      # also we need to write the handle to this memory in order to free it on the consumer side, we use reserved bytes in the CBVar
-      var handle = b.segment[].get_handle_from_address(stringBuffer).to(MemHandle)
-      copyMem(addr newInput.reserved[0], addr handle, sizeof(MemHandle))
-      while not b.buffer[].invoke("push", newInput).to(bool):
+      while not b.buffer[].invoke("push", outgoingString(b, input)).to(bool):
         # Pause a if the queue is full
         pause(0.0)
     of Seq:
-      discard
+      while not b.buffer[].invoke("push", outgoingSeq(b, input)).to(bool):
+        # Pause a if the queue is full
+        pause(0.0)
     else:
       while not b.buffer[].invoke("push", input).to(bool):
         # Pause a if the queue is full
@@ -74,20 +104,62 @@ when true:
       name: string
       segment: ptr ManagedSharedMem
       buffer: ptr LockFreeRingbuffer
-      stringCache: string
+      seqCache: CBSeq
+      stringsCache: seq[string]
   
-  template cleanup*(b: CBIpcPush) =
+  template setup*(b: CBIpcPop) =
+    initSeq(b.seqCache)
+  template cleanup*(b: CBIpcPop) =
     if b.segment != nil:
       cppdel b.segment
       b.segment = nil
+  
   template inputTypes*(b: CBIpcPop): CBTypesInfo = { Any }
   template outputTypes*(b: CBIpcPop): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template parameters*(b: CBIpcPop): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBIpcPop; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
+  template setParam*(b: CBIpcPop; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name
-  template activate*(b: var CBIpcPop; context: CBContext; input: CBVar): CBVar =
+
+  proc incomingString(b: var CBIpcPop; stringCache: var string; output: var CBVar) {.inline.} =
+    # This is a shared piece of memory, let's use our cache from now
+    stringCache.setLen(0)
+    stringCache &= $output.stringValue.cstring
+
+    # Replace the string memory with the local cache
+    output.stringValue = stringCache.cstring.CBString
+
+    # Fetch the handle of the mem
+    var handle: MemHandle
+    copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
+    
+    # Free up the shared memory
+    b.segment[].deallocate(b.segment[].get_address_from_handle(handle)).to(void)
+  
+  proc incomingSeq(b: var CBIpcPop; output: var CBVar) {.inline.} =
+    # resets cache
+    b.seqCache.clear()
+    b.stringsCache.setLen(output.seqLen)
+    
+    # copy the cache seq
+    for i in 0..<output.seqLen:
+      var item = output.seqValue[i]
+      if item.valueType == String:
+        incomingString(b, b.stringsCache[i], item)
+      b.seqCache.push(item)
+
+    # Fetch the handle of the mem
+    var handle: MemHandle
+    copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
+
+    # Free up the shared memory
+    b.segment[].deallocate(b.segment[].get_address_from_handle(handle)).to(void)
+
+    # Replace the seq withour cache
+    output.seqValue = b.seqCache
+    # also flag it as dynamic
+    output.seqLen = -1 
+  
+  template activate*(b: CBIpcPop; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:
       # given that our CBVar is 48, this allows us to buffer 2500 (actually 2450 due to other mem used internally) of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, open_only, b.name.cstring)
@@ -100,16 +172,10 @@ when true:
     
     case output.valueType
     of String:
-      # This is a shared piece of memory, let's use our cache from now
-      b.stringCache.setLen(0)
-      b.stringCache &= $output.stringValue.cstring
-      # Fetch the handle of the mem
-      var handle: MemHandle
-      copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
-      # Free up the shared memory
-      b.segment[].deallocate(b.segment[].get_address_from_handle(handle)).to(void)
-      # Replace the string memory with the local cache
-      output.stringValue = b.stringCache.cstring.CBString
+      b.stringsCache.setLen(1)
+      incomingString(b, b.stringsCache[0], output)
+    of Seq:
+      incomingSeq(b, output)
     else:
       discard
     
@@ -117,9 +183,18 @@ when true:
   
   chainblock CBIpcPop, "Pop", "IPC"
 
-when isMainModule:
+when isMainModule or defined(blocksTesting):
+  var
+    str = "Hello world"
+    stringSeq: CBSeq
+  stringSeq.push(str)
+  stringSeq.push(str)
+  stringSeq.push(str)
+  stringSeq.push(str)
+  stringSeq.push(str)
+
   withChain testProd:
-    Const "Hello world"
+    Const stringSeq
     IPC.Push "ipctest"
     Sleep 0.2
   

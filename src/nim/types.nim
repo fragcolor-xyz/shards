@@ -126,7 +126,9 @@ type
     colorValue*: CBColor
     imageValue*: CBImage
     seqValue*: CBSeq
+    seqLen*: int32
     tableValue*: CBTable
+    tableLen*: int32
     chainValue*: ptr CBChainPtr
     enumValue*: CBEnum
     enumVendorId*: int32

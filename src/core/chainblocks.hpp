@@ -200,11 +200,13 @@ struct CBTypeInfo
     };
 
     // Currently not so much used, sequenced makes it easier but might be useful too
+    // This allows multiple depth levels of arrays
     CBTypesInfo seqTypes;
   };
 
-  // this is a way to express in a simpler way that this type might also be an array
+  // this is a way to express in a simpler manner that this type might also be an array
   // instead of basically using seqTypes, populate it and make this Seq as basicType
+  // Usually this represents a flat single dimentional arrays of CBTypes, and generally basicType == Seq and sequenced == true is discouraged
   bool sequenced;
 };
 
@@ -261,7 +263,8 @@ __declspec(align(16))
 #endif
 struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 {
-  CBVar() : intValue(0), valueType(None) {}
+  // this should be the best construction pattern, since it will 0 the first ptrsize
+  CBVar() : objectValue(nullptr), objectVendorId(-1), objectTypeId(-1), valueType(None) {}
   
   union
   {
@@ -285,9 +288,17 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
     CBFloat3 float3Value;
     CBFloat4 float4Value;
 
-    CBSeq seqValue;
+    struct {
+      CBSeq seqValue;
+      // If seqLen is -1, use stbds_arrlen, assume it's a stb dynamic array
+      int32_t seqLen;
+    };
 
-    CBTable tableValue;
+    struct {
+      CBTable tableValue;
+      // If tableLen is -1, use stbds_shlen, assume it's a stb string map
+      int32_t tableLen;
+    };
 
     CBString stringValue;
 
