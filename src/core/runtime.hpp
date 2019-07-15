@@ -2,6 +2,18 @@
 
 #ifdef CHAINBLOCKS_RUNTIME
 
+// ONLY CLANG AND GCC SUPPORTED FOR NOW
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wswitch"
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wtype-limits"
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wswitch"
+#endif
+
 #include "chainblocks.hpp"
 // C++ Mandatory from now!
 
@@ -254,16 +266,18 @@ namespace chainblocks
 
   static CBRuntimeBlock* createBlock(const char* name);
 
-  struct CBException : public std::exception
+  class CBException : public std::exception
   {
-    CBException(const char* errmsg) : errorMessage(errmsg) {}
+    public:
+      CBException(const char* errmsg) : errorMessage(errmsg) {}
 
-    const char * what () const throw ()
-    {
-      return errorMessage;
-    }
+      const char * what () const noexcept
+      {
+        return errorMessage;
+      }
 
-    const char* errorMessage;
+    private:
+      const char* errorMessage;
   };
 };
 
@@ -635,6 +649,7 @@ namespace chainblocks
         if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";
+        CurrentChain = previousChain;
         return { false, {} };
       }
       catch(...)
@@ -642,6 +657,7 @@ namespace chainblocks
         std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
         if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
+        CurrentChain = previousChain;
         return { false, {} };
       }
     }
@@ -831,7 +847,7 @@ namespace chainblocks
               // Handle the special case of a seq that might need reset every run
               if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
               {
-                stbds_arrsetlen((*cblock->target).seqValue, 0);
+                stbds_arrsetlen((*cblock->target).seqValue, size_t(0));
               }
               else
               {
@@ -1129,6 +1145,7 @@ namespace chainblocks
               if(context->error.length() > 0)
                 std::cerr << "Last error: " << std::string(context->error) << "\n";
               runChainPOSTCHAIN
+              CurrentChain = previousChain;
               return { false, previousOutput };
             }
           }
@@ -1141,6 +1158,7 @@ namespace chainblocks
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         std::cerr << e.what() << "\n";;
         runChainPOSTCHAIN
+        CurrentChain = previousChain;
         return { false, previousOutput };
       }
       catch(...)
@@ -1149,11 +1167,13 @@ namespace chainblocks
         if(context->error.length() > 0)
           std::cerr << "Last error: " << std::string(context->error) << "\n";
         runChainPOSTCHAIN
+        CurrentChain = previousChain;
         return { false, previousOutput };
       }
     }
 
     runChainPOSTCHAIN
+    CurrentChain = previousChain;
     return { true, previousOutput };
   }
 

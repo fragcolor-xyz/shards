@@ -253,7 +253,7 @@ __declspec(align(16))
 #endif
 struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 {
-  CBVar() : valueType(None), intValue(0) {}
+  CBVar() : intValue(0), valueType(None) {}
   
   union
   {
