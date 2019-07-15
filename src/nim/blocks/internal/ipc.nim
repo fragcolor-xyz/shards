@@ -20,9 +20,6 @@ when true:
       buffer: ptr LockFreeRingbuffer
   
   template cleanup*(b: CBIpcPush) =
-    if b.buffer != nil:
-      cppdel b.buffer
-      b.buffer = nil
     if b.segment != nil:
       cppdel b.segment
       b.segment = nil
@@ -31,7 +28,7 @@ when true:
     removeShmObject(b.name)
   template inputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template outputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
-  template parameters*(b: CBIpcPush): CBParametersInfo = @[("Name", { String, ContextVar })]
+  template parameters*(b: CBIpcPush): CBParametersInfo = @[("Name", { String })]
   template setParam*(b: CBIpcPush; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
@@ -40,12 +37,11 @@ when true:
     if b.segment == nil:
       # given that our CBVar is 48, this allows us to buffer 2500 (actually 2450 due to other mem used internally) of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, create_only, b.name.cstring, 120_000)
-      var
-        buffer = b.buffer
-        segment = b.segment
-      emitc(`buffer`, " = ", `segment`, "->find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<2450>>>(\"queue\")();")
+      b.buffer = b.segment[].invoke("find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<2450>>>(\"queue\")").to(ptr LockFreeRingbuffer)
     
-    b.buffer[].invoke("push", input).to(void)
+    while not b.buffer[].invoke("push", input).to(bool):
+      # Pause a if the queue is full
+      pause(0.0)
     
     input
   
@@ -60,27 +56,21 @@ when true:
       buffer: ptr LockFreeRingbuffer
   
   template cleanup*(b: CBIpcPush) =
-    if b.buffer != nil:
-      cppdel b.buffer
-      b.buffer = nil
     if b.segment != nil:
       cppdel b.segment
       b.segment = nil
   template inputTypes*(b: CBIpcPop): CBTypesInfo = { Any }
   template outputTypes*(b: CBIpcPop): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
-  template parameters*(b: CBIpcPop): CBParametersInfo = @[("Name", { String, ContextVar })]
+  template parameters*(b: CBIpcPop): CBParametersInfo = @[("Name", { String })]
   template setParam*(b: CBIpcPop; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name
   template activate*(b: var CBIpcPop; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:
-      # given that our CBVar is 48, this allows us to buffer 2500 of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
+      # given that our CBVar is 48, this allows us to buffer 2500 (actually 2450 due to other mem used internally) of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, open_only, b.name.cstring)
-      var
-        buffer = b.buffer
-        segment = b.segment
-      emitc(`buffer`, " = ", `segment`, "->find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<2450>>>(\"queue\")();")
+      b.buffer = b.segment[].invoke("find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<2450>>>(\"queue\")").to(ptr LockFreeRingbuffer)
     
     var output: CBVar
     while b.buffer[].invoke("pop", output).to(int) == 0:
@@ -95,7 +85,7 @@ when isMainModule:
   withChain testProd:
     Const 10
     IPC.Push "ipctest"
-    Sleep 0.5
+    Sleep 0.2
   
   withChain testCons:
     IPC.Pop "ipctest"
@@ -107,6 +97,7 @@ when isMainModule:
   for _ in 0..50:
     testProd.tick()
     testCons.tick()
+    sleep 0.015
   
   discard testProd.stop()
   discard testCons.stop()
