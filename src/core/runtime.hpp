@@ -1351,7 +1351,7 @@ namespace chainblocks
       WaitForSingleObject(timer, INFINITE);
       CloseHandle(timer);
 #else
-      struct timespec delay = {0, int64_t(seconds * 1000000000)}
+      struct timespec delay = {0, int64_t(seconds * 1000000000)};
       while(nanosleep(&delay, &delay));
 #endif
     }
