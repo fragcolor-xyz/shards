@@ -132,6 +132,7 @@ type
     enumVendorId*: int32
     enumTypeId*: int32
     valueType*: CBType
+    reserved*: array[15, uint8]
 
   CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
   CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
