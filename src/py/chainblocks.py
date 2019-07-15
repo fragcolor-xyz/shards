@@ -39,7 +39,7 @@ def chain(func):
   def createChain():
     previousChain = chainblocks.getCurrentChain()
     
-    chain = chainblocks.newChain(func.__name__)
+    chain = chainblocks.createChain(func.__name__)
     chainblocks.setCurrentChain(chain)
     
     _source = getsource(func)
@@ -71,5 +71,9 @@ if __name__ == '__main__':
 
   # TODO, from this generate all stub classes with proper documented arguments
   # Also this allows runtime checks for input/output/params!
+  print("Blocks:")
   for blk in chainblocks.blocks():
     print(blk)
+  
+  logblock = chainblocks.createBlock("Log")
+  

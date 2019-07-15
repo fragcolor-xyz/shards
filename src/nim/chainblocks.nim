@@ -388,10 +388,9 @@ when appType != "lib" or defined(forceCBRuntime):
   proc cbSetCurrentChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = setCurrentChain(chain)
   
   proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "runtime.hpp".}
-  proc cbRegisterChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = registerChain(chain)
   
   proc unregisterChain*(chain: CBChainPtr) {.importcpp: "chainblocks::unregisterChain(#)", header: "runtime.hpp".}
-  proc cbUnregisterChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = unregisterChain(chain)
+
   proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "runtime.hpp".}
   proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, exportc, dynlib.} = add(chain, blk)
 
@@ -435,18 +434,20 @@ when appType != "lib" or defined(forceCBRuntime):
 
   var
     blocksRegister {.importcpp: "chainblocks::BlocksRegister", header: "runtime.hpp", nodecl.}: BlocksMap
-    availCache: seq[string]
+    blockNamesCache: seq[string]
+    blockNamesCacheSeq: CBStrings
   
+  initSeq(blockNamesCacheSeq)
+
   proc cbBlocks*(): CBStrings {.cdecl, exportc, dynlib.} =
-    initSeq(result)
-    availCache.setLen(0)
+    blockNamesCache.setLen(0)
+    blockNamesCacheSeq.clear()
     for item in cppItems[BlocksMap, BlocksPair](blocksRegister):
       let itemName = item.first.c_str().to(cstring)
-      availCache.add($itemName)
-      result.push(availCache[^1].cstring)
-
-  proc cbFreeSeq*(seqp: pointer) {.cdecl, exportc, dynlib.} = invokeFunction("stbds_arrfree", seqp).to(void)
-  
+      blockNamesCache.add($itemName)
+      blockNamesCacheSeq.push(blockNamesCache[^1].cstring)
+    return blockNamesCacheSeq
+    
   var
     compileTimeMode {.compileTime.}: bool = false
     staticChainBlocks {.compileTime.}: seq[tuple[blk: NimNode; params: seq[NimNode]]]

@@ -7,18 +7,19 @@ import dynlib
 pyExportModuleName("chainblocks")
 
 proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, importc, dynlib: "chainblocks".}
+proc cbBlocks*(): CBStrings {.cdecl, importc, dynlib: "chainblocks".}
+
 proc cbGetCurrentChain*(): CBChainPtr {.cdecl, importc, dynlib: "chainblocks".}
 proc cbSetCurrentChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
-proc cbRegisterChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
-proc cbUnregisterChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
-proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, importc, dynlib: "chainblocks".}
+
 proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbTick*(chain: CBChainPtr; rootInput: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbSleep*(secs: float64) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbStop*(chain: CBChainPtr): CBVar {.cdecl, importc, dynlib: "chainblocks".}
+
 proc cbCreateChain*(name: cstring): CBChainPtr {.cdecl, importc, dynlib: "chainblocks".}
 proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
-proc cbSleep*(secs: float64) {.cdecl, importc, dynlib: "chainblocks".}
-proc cbBlocks*(): CBStrings {.cdecl, importc, dynlib: "chainblocks".}
-proc cbFreeSeq*(seqp: pointer) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, importc, dynlib: "chainblocks".}
 
 proc getCurrentChain(): PPyObject {.exportpy.} =
   let current = cbGetCurrentChain()
@@ -31,7 +32,7 @@ proc setCurrentChain(chain: PPyObject) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
   cbSetCurrentChain(cast[CBChainPtr](p))
 
-proc newChain(name: string): PPyObject {.exportpy.} =
+proc createChain(name: string): PPyObject {.exportpy.} =
   py_lib.pyLib.PyCapsule_New(cast[pointer](cbCreateChain(name)), nil, nil)
 
 proc createBlock(name: string): PPyObject {.exportpy.} =
@@ -41,7 +42,6 @@ proc blocks(): seq[string] {.exportpy.} =
   var blocksSeq = cbBlocks()
   for blockName in blocksSeq.mitems:
     result.add($blockName)
-  cbFreeSeq(blocksSeq)
 
 proc addBlock(chain, blk: PPyObject) {.exportpy.} =
   if not chain.isNil and not blk.isNil:
