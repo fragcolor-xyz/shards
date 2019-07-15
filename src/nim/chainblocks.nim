@@ -379,12 +379,21 @@ template cleanup*(b: auto) = discard
 
 when appType != "lib" or defined(forceCBRuntime):
   proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
+  proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, exportc, dynlib.} = createBlock(name)
 
   proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "runtime.hpp".}
+  proc cbGetCurrentChain*(): CBChainPtr {.cdecl, exportc, dynlib.} = getCurrentChain()
+
   proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "runtime.hpp".}
+  proc cbSetCurrentChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = setCurrentChain(chain)
+  
   proc registerChain*(chain: CBChainPtr) {.importcpp: "chainblocks::registerChain(#)", header: "runtime.hpp".}
+  proc cbRegisterChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = registerChain(chain)
+  
   proc unregisterChain*(chain: CBChainPtr) {.importcpp: "chainblocks::unregisterChain(#)", header: "runtime.hpp".}
+  proc cbUnregisterChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = unregisterChain(chain)
   proc add*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.importcpp: "#.addBlock(#)", header: "runtime.hpp".}
+  proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, exportc, dynlib.} = add(chain, blk)
 
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
@@ -394,18 +403,21 @@ when appType != "lib" or defined(forceCBRuntime):
     var frame = getFrameState()
     startInternal(chain, loop)
     setFrameState(frame)
+  proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool)
   
   proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "runtime.hpp".}
   proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
     var frame = getFrameState()
     tickInternal(chain, rootInput)
     setFrameState(frame)
+  proc cbTick*(chain: CBChainPtr; rootInput: CBVar) {.cdecl, exportc, dynlib.} = tick(chain, rootInput)
   
   proc stopInternal(chain: CBChainPtr): CBVar {.importcpp: "chainblocks::stop(#)", header: "runtime.hpp".}
   proc stop*(chain: CBChainPtr): CBVar {.inline.} =
     var frame = getFrameState()
     result = stopInternal(chain)
     setFrameState(frame)
+  proc cbStop*(chain: CBChainPtr): CBVar {.cdecl, exportc, dynlib.} = stop(chain)
 
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
@@ -418,10 +430,27 @@ when appType != "lib" or defined(forceCBRuntime):
   proc load*(chain: var CBChainPtr; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
   proc load*(chain: var CBVar; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
 
+  defineCppType(BlocksMap, "std::unordered_map<std::string, CBBlockConstructor>", "runtime.hpp")
+  defineCppType(BlocksPair, "std::pair<std::string, CBBlockConstructor>", "runtime.hpp")
+
+  var
+    blocksRegister {.importcpp: "chainblocks::BlocksRegister", header: "runtime.hpp", nodecl.}: BlocksMap
+    availCache: seq[string]
+  
+  proc cbBlocks*(): CBStrings {.cdecl, exportc, dynlib.} =
+    initSeq(result)
+    availCache.setLen(0)
+    for item in cppItems[BlocksMap, BlocksPair](blocksRegister):
+      let itemName = item.first.c_str().to(cstring)
+      availCache.add($itemName)
+      result.push(availCache[^1].cstring)
+
+  proc cbFreeSeq*(seqp: pointer) {.cdecl, exportc, dynlib.} = invokeFunction("stbds_arrfree", seqp).to(void)
+  
   var
     compileTimeMode {.compileTime.}: bool = false
     staticChainBlocks {.compileTime.}: seq[tuple[blk: NimNode; params: seq[NimNode]]]
-
+  
   proc generateInitMultiple*(rtName: string; ctName: typedesc; args: seq[tuple[label, value: NimNode]]): NimNode {.compileTime.} =
     if not compileTimeMode:
       # Generate vars
@@ -746,10 +775,14 @@ when appType != "lib" or defined(forceCBRuntime):
   proc newChain*(name: string): CBChainPtr {.inline.} =
     newCBChain(result, CBChain, name.cstring)
     registerChain(result)
+  proc cbCreateChain*(name: cstring): CBChainPtr {.cdecl, exportc, dynlib.} =
+    newCBChain(result, CBChain, name)
+    registerChain(result)
   
   proc destroy*(chain: CBChainPtr) {.inline.} =
     unregisterChain(chain)
     delCPP(chain)
+  proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = destroy(chain)
   
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "runtime.hpp".}
@@ -759,6 +792,7 @@ when appType != "lib" or defined(forceCBRuntime):
     setFrameState(frame)
 
   proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "runtime.hpp".}
+  proc cbSleep*(secs: float64) {.cdecl, exportc, dynlib.} = sleep(secs)
   
 else:
   # When we are a dll with a collection of blocks!
@@ -863,7 +897,7 @@ when appType != "lib" or defined(forceCBRuntime):
 # always try this for safety
 assert sizeof(CBVar) == 48
 
-when isMainModule:
+when isMainModule and appType != "lib":
   import os, times
   
   type

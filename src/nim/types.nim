@@ -236,6 +236,9 @@ iterator mitems*(s: CBTypesInfo): var CBTypeInfo {.inline.} =
 iterator mitems*(s: CBParametersInfo): var CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
+iterator mitems*(s: CBStrings): var CBString {.inline.} =
+  for i in 0..<s.len:
+    yield s[i]
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc pop*(cbs: CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
@@ -245,6 +248,9 @@ iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
 iterator items*(s: CBSeq): CBVar {.inline.} =
+  for i in 0..<s.len:
+    yield s[i]
+iterator items*(s: CBStrings): CBString {.inline.} =
   for i in 0..<s.len:
     yield s[i]
 
