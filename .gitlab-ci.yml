@@ -15,7 +15,7 @@ buildAndRun:win:debug:
     - nim cpp --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
     - cd $currentDir
     - cd src/py
-    - nim cpp chainblockspy.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -f chainblockspy.nim
     - python cblocks_generator.py
     - python chainblocks.py
   tags:
