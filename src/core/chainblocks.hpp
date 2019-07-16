@@ -262,8 +262,10 @@ __declspec(align(16))
 #endif
 struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 {
+#ifdef __cplusplus
   // this should be the best construction pattern, since it will 0 the first ptrsize
   CBVar() : objectValue(nullptr), objectVendorId(-1), objectTypeId(-1), valueType(None) {}
+#endif
   
   union
   {
@@ -320,8 +322,10 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
 
   uint8_t reserved[15];
 
+#ifdef __cplusplus
   // Use with care, mostly internal (json) and only if you know you own the memory, this is just utility
   void releaseMemory();
+#endif
 };
 
 struct CBNamedVar
