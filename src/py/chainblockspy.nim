@@ -116,20 +116,14 @@ proc blockInputTypes(blk: PPyObject): PPyObject {.exportpy.} =
     p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
     cblk = cast[ptr CBRuntimeBlock](p)
   var payload = cblk[].inputTypes(cblk)
-  if payload != nil:
-    return py_lib.pyLib.PyCapsule_New(cast[pointer](payload), nil, nil)
-  else:
-    return newPyNone()
+  return py_lib.pyLib.PyCapsule_New(cast[pointer](payload), nil, nil)
 
 proc blockOutputTypes(blk: PPyObject): PPyObject {.exportpy.} =
   let
     p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
     cblk = cast[ptr CBRuntimeBlock](p)
   var payload = cblk[].outputTypes(cblk)
-  if payload != nil:
-    return py_lib.pyLib.PyCapsule_New(cast[pointer](payload), nil, nil)
-  else:
-    return newPyNone()
+  return py_lib.pyLib.PyCapsule_New(cast[pointer](payload), nil, nil)
 
 proc blockExposedVariables(blk: PPyObject): PPyObject {.exportpy.} =
   let
