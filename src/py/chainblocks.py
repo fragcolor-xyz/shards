@@ -21,6 +21,6 @@ def MainChain():
 mainChain = MainChain()
 mainChain.start(True)
 
-while True:
+for _ in range(10):
   mainChain.tick()
   Chain.sleep(0.1)
