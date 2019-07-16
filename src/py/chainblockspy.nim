@@ -5,6 +5,18 @@ import nimline
 import dynlib, tables, sets
 import varspy
 
+var
+  inputSeqCache: seq[PPyObject]
+  inputTableCache = initTable[string, PPyObject]()
+  stringStorage: string
+  stringsStorage: seq[string]
+  seqStorage: CBSeq
+  tableStorage: CBTable
+  outputTableKeyCache = initHashSet[cstring]()
+
+initSeq(seqStorage)
+initTable(tableStorage)
+
 pyExportModuleName("chainblocks")
 
 proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, importc, dynlib: "chainblocks".}
@@ -44,7 +56,7 @@ proc blocks(): seq[string] {.exportpy.} =
   for blockName in blocksSeq.mitems:
     result.add($blockName)
 
-proc addBlock(chain, blk: PPyObject) {.exportpy.} =
+proc chainAddBlock(chain, blk: PPyObject) {.exportpy.} =
   if not chain.isNil and not blk.isNil:
     let
       p1 = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
@@ -54,9 +66,26 @@ proc addBlock(chain, blk: PPyObject) {.exportpy.} =
       nblk = cast[ptr CBRuntimeBlock](p2)
     nchain.cbAddBlock(nblk)
 
-proc start(chain: PPyObject; looped: bool; unsafe: bool) {.exportpy.} =
+proc chainStart(chain: PPyObject; looped: bool; unsafe: bool) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
   cbStart(cast[CBChainPtr](p), looped.cint, unsafe.cint)
+
+proc chainTick(chain: PPyObject; input: PyObject) {.exportpy.} =
+  let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
+  var value = py2Var(input, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+  cbTick(cast[CBChainPtr](p), value)
+
+proc chainTick2(chain: PPyObject) {.exportpy.} =
+  let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
+  cbTick(cast[CBChainPtr](p), Empty)
+
+proc chainStop(chain: PPyObject): PPyObject {.exportpy.} =
+  let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
+  var2Py(cbStop(cast[CBChainPtr](p)), inputSeqCache, inputTableCache)
+
+proc chainStop2(chain: PPyObject) {.exportpy.} =
+  let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
+  discard cbStop(cast[CBChainPtr](p))
 
 proc blockName(blk: PPyObject): string {.exportpy.} =
   let
@@ -132,26 +161,12 @@ proc blockParameters(blk: PPyObject): PPyObject {.exportpy.} =
   else:
     return newPyNone()
 
-var
-  inputSeqCache: seq[PPyObject]
-  inputTableCache = initTable[string, PPyObject]()
-
 proc blockGetParam(blk: PPyObject; index: int): PPyObject {.exportpy.} =
   let
     p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
     cblk = cast[ptr CBRuntimeBlock](p)
   var cbvar = cblk[].getParam(cblk, index)
   return var2Py(cbvar, inputSeqCache, inputTableCache)
-
-var
-  stringStorage: string
-  stringsStorage: seq[string]
-  seqStorage: CBSeq
-  tableStorage: CBTable
-  outputTableKeyCache = initHashSet[cstring]()
-
-initSeq(seqStorage)
-initTable(tableStorage)
 
 proc blockSetParam(blk: PPyObject; index: int; val: PyObject) {.exportpy.} =
   seqStorage.clear()
@@ -160,3 +175,17 @@ proc blockSetParam(blk: PPyObject; index: int; val: PyObject) {.exportpy.} =
     cblk = cast[ptr CBRuntimeBlock](p)
     value = py2Var(val, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
   cblk[].setParam(cblk, index, value)
+
+proc unpackTypesInfo(tysInfo: PPyObject): seq[tuple[basicType: int; sequenced: bool]] {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(tysInfo, nil)
+    ctys = cast[CBTypesInfo](p)
+  for ty in ctys.mitems:
+    result.add((ty.basicType.int, ty.sequenced))
+
+proc unpackParametersInfo(paramsInfo: PPyObject): seq[tuple[name, help: string; valueTypes: PPyObject; allowContext: bool]] {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(paramsInfo, nil)
+    psinfo = cast[CBParametersInfo](p)
+  for pi in psinfo.mitems:
+    result.add(($pi.name, $pi.help, py_lib.pyLib.PyCapsule_New(cast[pointer](pi.valueTypes), nil, nil), pi.allowContext))
