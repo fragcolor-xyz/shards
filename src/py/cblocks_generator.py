@@ -29,9 +29,19 @@ def processBlock(name, hasNamespace, fullName):
         paramsString += ", {} = None".format(pname)
   
   result =  "{}def {}({}):\n".format(indent, name, paramsString)
-  
+
   # Create and setup
   result += "{}  blk = chainblocks.createBlock(\"{}\")\n".format(indent, fullName)
+  
+  # Check first if we can connect with the previous block
+  result += "{}  global _previousBlock\n".format(indent)
+  result += "{}  if _previousBlock != None:\n".format(indent)
+  result += "{}    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))\n".format(indent)
+  result += "{}    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))\n".format(indent)
+  result += "{}    if not validateConnection(prevOutInfo, currInInfo):\n".format(indent)
+  result += "{}      raise Exception(\"Blocks do not connect, output: \" + chainblocks.blockName(_previousBlock) + \", input: {}\")\n".format(indent, fullName)
+  
+  # Setup
   result += "{}  chainblocks.blockSetup(blk)\n".format(indent, fullName)
   
   # Evaluate params
@@ -45,6 +55,7 @@ def processBlock(name, hasNamespace, fullName):
   
   # After setting initial params add to the chain
   result += "{}  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)\n".format(indent)
+  result += "{}  _previousBlock = blk\n".format(indent)
   result += "{}\n".format(indent)
   return result
 
@@ -69,7 +80,9 @@ for name in blocks():
 
 f = open("cblocks.py", "w")
 f.write("# This file was automatically generated.\n\n")
-f.write("import chainblocks\n\n")
+f.write("import chainblocks\n")
+f.write("from cbtypes import *\n\n")
+f.write("_previousBlock = None\n\n")
 for name, code in cbNamespaces.items():
   if name != "":
     f.write("class {}:\n".format(name))

@@ -22,3 +22,15 @@ class CBType(IntEnum):
   Chain = auto()
   Block = auto()
   ContextVar = auto()
+
+def validateConnection(outputInfo, inputInfo):
+  for iinfo in inputInfo:
+    if iinfo[0] == CBType.Any:
+      return True
+    else:
+      for oinfo in outputInfo:
+        if oinfo[0] == CBType.Any:
+          return True
+        else:
+          if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
+            return True
