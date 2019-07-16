@@ -33,6 +33,7 @@ class Transformer(NodeTransformer):
       blockName = call.func.id
 
     blk = chainblocks.createBlock(blockName)
+    print("Created block: " + chainblocks.blockName(blk))
     chainblocks.addBlock(self.chain, blk)
 
 def chain(func):
@@ -71,9 +72,9 @@ if __name__ == '__main__':
 
   # TODO, from this generate all stub classes with proper documented arguments
   # Also this allows runtime checks for input/output/params!
-  print("Blocks:")
-  for blk in chainblocks.blocks():
-    print(blk)
+  # print("Blocks:")
+  # for blk in chainblocks.blocks():
+  #   print(blk)
   
   logblock = chainblocks.createBlock("Log")
   

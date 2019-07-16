@@ -79,7 +79,6 @@ type
     Table,
     Chain, # sub chains, e.g. IF/ELSE
     Block,
-    Type,
     ContextVar, # A string label to find from CBContext variables
 
   CBTypeInfo* {.importcpp: "CBTypeInfo", header: "chainblocks.hpp".} = object

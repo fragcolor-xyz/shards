@@ -3,6 +3,7 @@ import nimpy/[py_lib, py_types]
 import ../nim/chainblocks
 import nimline
 import dynlib
+import varspy
 
 pyExportModuleName("chainblocks")
 
@@ -56,3 +57,28 @@ proc addBlock(chain, blk: PPyObject) {.exportpy.} =
 proc start(chain: PPyObject; looped: bool; unsafe: bool) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
   cbStart(cast[CBChainPtr](p), looped.cint, unsafe.cint)
+
+proc blockName(blk: PPyObject): string {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
+    cblk = cast[ptr CBRuntimeBlock](p)
+  $cblk[].name(cblk)
+
+proc blockHelp(blk: PPyObject): string {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
+    cblk = cast[ptr CBRuntimeBlock](p)
+  $cblk[].help(cblk)
+
+proc blockSetup(blk: PPyObject) {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
+    cblk = cast[ptr CBRuntimeBlock](p)
+  cblk[].setup(cblk)
+
+proc blockDestroy(blk: PPyObject) {.exportpy.} =
+  let
+    p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
+    cblk = cast[ptr CBRuntimeBlock](p)
+  cblk[].destroy(cblk)
+
