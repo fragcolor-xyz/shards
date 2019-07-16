@@ -811,8 +811,15 @@ else:
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
     SuspendProc = proc(seconds: float64): CBVar {.cdecl.}
   
-  var
-    exeLib = loadLib()
+  const cbRuntimeDll {.strdefine.} = ""
+  when cbRuntimeDll != "":
+    let exeLib = loadLib(cbRuntimeDll)
+    static:
+      echo "Using cb runtime: ", cbRuntimeDll
+  else:
+    let exeLib = loadLib()
+  
+  let
     cbRegisterBlock = cast[RegisterBlkProc](exeLib.symAddr("chainblocks_RegisterBlock"))
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
     cbRegisterLoopCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterRunLoopCallback"))

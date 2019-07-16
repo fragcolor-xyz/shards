@@ -4,6 +4,7 @@ import ../nim/chainblocks
 import nimline
 import dynlib, tables, sets
 import varspy
+import fragments/serialization
 
 var
   inputSeqCache: seq[PPyObject]
@@ -34,6 +35,60 @@ proc cbCreateChain*(name: cstring): CBChainPtr {.cdecl, importc, dynlib: "chainb
 proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, importc, dynlib: "chainblocks".}
 
+# Py - python interop
+when true:
+  const
+    PyCallCC* = toFourCC("pyPy")
+  
+  let
+    PyCallInfo* = CBTypeInfo(basicType: Object, objectVendorId: FragCC.int32, objectTypeId: PyCallCC.int32)
+
+  static:
+    echo FragCC.int32, " ", PyCallCC.int32
+  
+  # DON'T Register it actually
+  # registerObjectType(FragCC, PyCallCC, CBObjectInfo(name: "Python interop"))
+
+  type
+    CBPyCallObj = object
+      call: proc(input: PPyObject): PyObject {.closure.}
+    
+    CBPyCallRef = ref CBPyCallObj
+
+    CBPyCall* = object
+      call: CBVar
+      callObj: CBPyCallRef
+      inputSeqCache: seq[PPyObject]
+      inputTableCache: Table[string, PPyObject]
+      stringStorage: string
+      stringsStorage: seq[string]
+      seqStorage: CBSeq
+      tableStorage: CBTable
+      outputTableKeyCache: HashSet[cstring]
+      currentResult: PyObject
+  
+  template setup*(b: CBPyCall) =
+    initSeq(seqStorage)
+    initTable(tableStorage)
+    b.inputTableCache = initTable[string, PPyObject]()
+    b.outputTableKeyCache = initHashSet[cstring]()
+  template destroy*(b: CBPyCall) =
+    freeSeq(seqStorage)
+    freeTable(tableStorage)
+  template inputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
+  template outputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
+  template parameters*(b: CBPyCall): CBParametersInfo = @[("Closure", @[PyCallInfo])]
+  template setParam*(b: CBPyCall; index: int; val: CBVar) =
+    b.call = val
+    var callObj = cast[ref CBPyCallObj](val.objectValue)
+    b.callObj = callObj
+  template getParam*(b: CBPyCall; index: int): CBVar = b.call
+  template activate*(b: CBPyCall; context: CBContext; input: CBVar): CBVar =
+    b.currentResult = b.callObj.call(var2Py(input, b.inputSeqCache, b.inputTableCache))
+    py2Var(b.currentResult, b.stringStorage, b.stringsStorage, b.seqStorage, b.tableStorage, b.outputTableKeyCache)
+
+  chainblock CBPyCall, "Py"
+
 proc getCurrentChain(): PPyObject {.exportpy.} =
   let current = cbGetCurrentChain()
   if current != nil:
@@ -55,6 +110,8 @@ proc blocks(): seq[string] {.exportpy.} =
   var blocksSeq = cbBlocks()
   for blockName in blocksSeq.mitems:
     result.add($blockName)
+
+proc chainSleep(seconds: float64) {.exportpy.} = cbSleep(seconds)
 
 proc chainAddBlock(chain, blk: PPyObject) {.exportpy.} =
   if not chain.isNil and not blk.isNil:
@@ -167,8 +224,20 @@ proc blockSetParam(blk: PPyObject; index: int; val: PyObject) {.exportpy.} =
   let
     p = py_lib.pyLib.PyCapsule_GetPointer(blk, nil)
     cblk = cast[ptr CBRuntimeBlock](p)
-    value = py2Var(val, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
-  cblk[].setParam(cblk, index, value)
+    name = cblk[].name(cblk)
+  if name == "Py": # special case!
+    var
+      fullVal = val.to(tuple[valueType: int; value: PyObject])
+    if fullVal.valueType.CBType == CBType.Object:
+      var
+        objValue = fullVal.value.to(tuple[closure: proc(input: PPyObject): PyObject; vendor, typeid: int32])
+      if objValue.vendor == FragCC.int32 and objValue.typeId == PyCallCC.int32:
+        var callObj = new CBPyCallRef
+        callObj[].call = objValue.closure
+        cblk[].setParam(cblk, index, CBVar(valueType: Object, objectVendorId: FragCC.int32, objectTypeId: PyCallCC.int32, objectValue: cast[pointer](callObj)))
+  else:
+    var value = py2Var(val, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+    cblk[].setParam(cblk, index, value)
 
 proc unpackTypesInfo(tysInfo: PPyObject): seq[tuple[basicType: int; sequenced: bool]] {.exportpy.} =
   let

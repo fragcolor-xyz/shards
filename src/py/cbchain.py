@@ -10,12 +10,14 @@ class Chain:
   def stop(self):
     return chainStop(self.chain)
   
-  def tick(self):
-    chainTick2(self.chain)
-  
-  def tick(self, inputVar):
-    chainTick(self.chain, inputVar)
+  def tick(self, inputVar = None):
+    if inputVar != None:
+      chainTick(self.chain, inputVar)
+    else:
+      chainTick2(self.chain)
 
+  def sleep(seconds):
+    chainSleep(seconds)
 
 def chain(func):
   def emitChain():

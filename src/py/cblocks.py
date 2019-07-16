@@ -5,6 +5,404 @@ from cbtypes import *
 
 _previousBlock = None
 
+def Py(closure = None):
+  blk = chainblocks.createBlock("Py")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Py")
+  chainblocks.blockSetup(blk)
+  if closure != None:
+    chainblocks.blockSetParam(blk, 0, closure)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ReplaceText(regex = None, replacement = None):
+  blk = chainblocks.createBlock("ReplaceText")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ReplaceText")
+  chainblocks.blockSetup(blk)
+  if regex != None:
+    chainblocks.blockSetParam(blk, 0, regex)
+  if replacement != None:
+    chainblocks.blockSetParam(blk, 1, replacement)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ToUppercase():
+  blk = chainblocks.createBlock("ToUppercase")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToUppercase")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def RunChain(chain = None, once = None, passthrough = None):
+  blk = chainblocks.createBlock("RunChain")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: RunChain")
+  chainblocks.blockSetup(blk)
+  if chain != None:
+    chainblocks.blockSetParam(blk, 0, chain)
+  if once != None:
+    chainblocks.blockSetParam(blk, 1, once)
+  if passthrough != None:
+    chainblocks.blockSetParam(blk, 2, passthrough)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ToImage(width = None, height = None, alpha = None):
+  blk = chainblocks.createBlock("ToImage")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToImage")
+  chainblocks.blockSetup(blk)
+  if width != None:
+    chainblocks.blockSetParam(blk, 0, width)
+  if height != None:
+    chainblocks.blockSetParam(blk, 1, height)
+  if alpha != None:
+    chainblocks.blockSetParam(blk, 2, alpha)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def MatchText(regex = None):
+  blk = chainblocks.createBlock("MatchText")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: MatchText")
+  chainblocks.blockSetup(blk)
+  if regex != None:
+    chainblocks.blockSetParam(blk, 0, regex)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def Repeat(times = None, chain = None):
+  blk = chainblocks.createBlock("Repeat")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Repeat")
+  chainblocks.blockSetup(blk)
+  if times != None:
+    chainblocks.blockSetParam(blk, 0, times)
+  if chain != None:
+    chainblocks.blockSetParam(blk, 1, chain)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def WhenNot(reject = None, isregex = None, all = None):
+  blk = chainblocks.createBlock("WhenNot")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WhenNot")
+  chainblocks.blockSetup(blk)
+  if reject != None:
+    chainblocks.blockSetParam(blk, 0, reject)
+  if isregex != None:
+    chainblocks.blockSetParam(blk, 1, isregex)
+  if all != None:
+    chainblocks.blockSetParam(blk, 2, all)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def AddVariable(name = None):
+  blk = chainblocks.createBlock("AddVariable")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: AddVariable")
+  chainblocks.blockSetup(blk)
+  if name != None:
+    chainblocks.blockSetParam(blk, 0, name)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ToLowercase():
+  blk = chainblocks.createBlock("ToLowercase")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToLowercase")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def SwapVariables(name1 = None, name2 = None):
+  blk = chainblocks.createBlock("SwapVariables")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SwapVariables")
+  chainblocks.blockSetup(blk)
+  if name1 != None:
+    chainblocks.blockSetParam(blk, 0, name1)
+  if name2 != None:
+    chainblocks.blockSetParam(blk, 1, name2)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ToFloat():
+  blk = chainblocks.createBlock("ToFloat")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToFloat")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def When(accept = None, isregex = None, all = None):
+  blk = chainblocks.createBlock("When")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: When")
+  chainblocks.blockSetup(blk)
+  if accept != None:
+    chainblocks.blockSetParam(blk, 0, accept)
+  if isregex != None:
+    chainblocks.blockSetParam(blk, 1, isregex)
+  if all != None:
+    chainblocks.blockSetParam(blk, 2, all)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def GetVariable(name = None):
+  blk = chainblocks.createBlock("GetVariable")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetVariable")
+  chainblocks.blockSetup(blk)
+  if name != None:
+    chainblocks.blockSetParam(blk, 0, name)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def GetItems(index = None):
+  blk = chainblocks.createBlock("GetItems")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetItems")
+  chainblocks.blockSetup(blk)
+  if index != None:
+    chainblocks.blockSetParam(blk, 0, index)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def SetVariable(name = None):
+  blk = chainblocks.createBlock("SetVariable")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetVariable")
+  chainblocks.blockSetup(blk)
+  if name != None:
+    chainblocks.blockSetParam(blk, 0, name)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ChainRestart():
+  blk = chainblocks.createBlock("ChainRestart")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ChainRestart")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def WaitGlobal(name = None):
+  blk = chainblocks.createBlock("WaitGlobal")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitGlobal")
+  chainblocks.blockSetup(blk)
+  if name != None:
+    chainblocks.blockSetParam(blk, 0, name)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def If(operator = None, operand = None, true = None, false = None, passthrough = None):
+  blk = chainblocks.createBlock("If")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: If")
+  chainblocks.blockSetup(blk)
+  if operator != None:
+    chainblocks.blockSetParam(blk, 0, operator)
+  if operand != None:
+    chainblocks.blockSetParam(blk, 1, operand)
+  if true != None:
+    chainblocks.blockSetParam(blk, 2, true)
+  if false != None:
+    chainblocks.blockSetParam(blk, 3, false)
+  if passthrough != None:
+    chainblocks.blockSetParam(blk, 4, passthrough)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def Const(value = None):
+  blk = chainblocks.createBlock("Const")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Const")
+  chainblocks.blockSetup(blk)
+  if value != None:
+    chainblocks.blockSetParam(blk, 0, value)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def WaitChain(chain = None, once = None, passthrough = None):
+  blk = chainblocks.createBlock("WaitChain")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitChain")
+  chainblocks.blockSetup(blk)
+  if chain != None:
+    chainblocks.blockSetParam(blk, 0, chain)
+  if once != None:
+    chainblocks.blockSetParam(blk, 1, once)
+  if passthrough != None:
+    chainblocks.blockSetParam(blk, 2, passthrough)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ChainStop():
+  blk = chainblocks.createBlock("ChainStop")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ChainStop")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def ToString():
+  blk = chainblocks.createBlock("ToString")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToString")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def Log():
+  blk = chainblocks.createBlock("Log")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Log")
+  chainblocks.blockSetup(blk)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def Msg(message = None):
+  blk = chainblocks.createBlock("Msg")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Msg")
+  chainblocks.blockSetup(blk)
+  if message != None:
+    chainblocks.blockSetParam(blk, 0, message)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def SetGlobal(name = None):
+  blk = chainblocks.createBlock("SetGlobal")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetGlobal")
+  chainblocks.blockSetup(blk)
+  if name != None:
+    chainblocks.blockSetParam(blk, 0, name)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
+def Sleep(time = None):
+  blk = chainblocks.createBlock("Sleep")
+  global _previousBlock
+  if _previousBlock != None:
+    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+    if not validateConnection(prevOutInfo, currInInfo):
+      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Sleep")
+  chainblocks.blockSetup(blk)
+  if time != None:
+    chainblocks.blockSetParam(blk, 0, time)
+  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+  _previousBlock = blk
+
 class Math:
   def Round():
     blk = chainblocks.createBlock("Math.Round")
@@ -677,387 +1075,3 @@ class Stack:
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
-def ReplaceText(regex = None, replacement = None):
-  blk = chainblocks.createBlock("ReplaceText")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ReplaceText")
-  chainblocks.blockSetup(blk)
-  if regex != None:
-    chainblocks.blockSetParam(blk, 0, regex)
-  if replacement != None:
-    chainblocks.blockSetParam(blk, 1, replacement)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ToUppercase():
-  blk = chainblocks.createBlock("ToUppercase")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToUppercase")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def RunChain(chain = None, once = None, passthrough = None):
-  blk = chainblocks.createBlock("RunChain")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: RunChain")
-  chainblocks.blockSetup(blk)
-  if chain != None:
-    chainblocks.blockSetParam(blk, 0, chain)
-  if once != None:
-    chainblocks.blockSetParam(blk, 1, once)
-  if passthrough != None:
-    chainblocks.blockSetParam(blk, 2, passthrough)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ToImage(width = None, height = None, alpha = None):
-  blk = chainblocks.createBlock("ToImage")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToImage")
-  chainblocks.blockSetup(blk)
-  if width != None:
-    chainblocks.blockSetParam(blk, 0, width)
-  if height != None:
-    chainblocks.blockSetParam(blk, 1, height)
-  if alpha != None:
-    chainblocks.blockSetParam(blk, 2, alpha)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def MatchText(regex = None):
-  blk = chainblocks.createBlock("MatchText")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: MatchText")
-  chainblocks.blockSetup(blk)
-  if regex != None:
-    chainblocks.blockSetParam(blk, 0, regex)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def Repeat(times = None, chain = None):
-  blk = chainblocks.createBlock("Repeat")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Repeat")
-  chainblocks.blockSetup(blk)
-  if times != None:
-    chainblocks.blockSetParam(blk, 0, times)
-  if chain != None:
-    chainblocks.blockSetParam(blk, 1, chain)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def WhenNot(reject = None, isregex = None, all = None):
-  blk = chainblocks.createBlock("WhenNot")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WhenNot")
-  chainblocks.blockSetup(blk)
-  if reject != None:
-    chainblocks.blockSetParam(blk, 0, reject)
-  if isregex != None:
-    chainblocks.blockSetParam(blk, 1, isregex)
-  if all != None:
-    chainblocks.blockSetParam(blk, 2, all)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def AddVariable(name = None):
-  blk = chainblocks.createBlock("AddVariable")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: AddVariable")
-  chainblocks.blockSetup(blk)
-  if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ToLowercase():
-  blk = chainblocks.createBlock("ToLowercase")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToLowercase")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def SwapVariables(name1 = None, name2 = None):
-  blk = chainblocks.createBlock("SwapVariables")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SwapVariables")
-  chainblocks.blockSetup(blk)
-  if name1 != None:
-    chainblocks.blockSetParam(blk, 0, name1)
-  if name2 != None:
-    chainblocks.blockSetParam(blk, 1, name2)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ToFloat():
-  blk = chainblocks.createBlock("ToFloat")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToFloat")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def When(accept = None, isregex = None, all = None):
-  blk = chainblocks.createBlock("When")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: When")
-  chainblocks.blockSetup(blk)
-  if accept != None:
-    chainblocks.blockSetParam(blk, 0, accept)
-  if isregex != None:
-    chainblocks.blockSetParam(blk, 1, isregex)
-  if all != None:
-    chainblocks.blockSetParam(blk, 2, all)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def GetVariable(name = None):
-  blk = chainblocks.createBlock("GetVariable")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetVariable")
-  chainblocks.blockSetup(blk)
-  if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def GetItems(index = None):
-  blk = chainblocks.createBlock("GetItems")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetItems")
-  chainblocks.blockSetup(blk)
-  if index != None:
-    chainblocks.blockSetParam(blk, 0, index)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def SetVariable(name = None):
-  blk = chainblocks.createBlock("SetVariable")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetVariable")
-  chainblocks.blockSetup(blk)
-  if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ChainRestart():
-  blk = chainblocks.createBlock("ChainRestart")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ChainRestart")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def WaitGlobal(name = None):
-  blk = chainblocks.createBlock("WaitGlobal")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitGlobal")
-  chainblocks.blockSetup(blk)
-  if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def If(operator = None, operand = None, true = None, false = None, passthrough = None):
-  blk = chainblocks.createBlock("If")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: If")
-  chainblocks.blockSetup(blk)
-  if operator != None:
-    chainblocks.blockSetParam(blk, 0, operator)
-  if operand != None:
-    chainblocks.blockSetParam(blk, 1, operand)
-  if true != None:
-    chainblocks.blockSetParam(blk, 2, true)
-  if false != None:
-    chainblocks.blockSetParam(blk, 3, false)
-  if passthrough != None:
-    chainblocks.blockSetParam(blk, 4, passthrough)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def Const(value = None):
-  blk = chainblocks.createBlock("Const")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Const")
-  chainblocks.blockSetup(blk)
-  if value != None:
-    chainblocks.blockSetParam(blk, 0, value)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def WaitChain(chain = None, once = None, passthrough = None):
-  blk = chainblocks.createBlock("WaitChain")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitChain")
-  chainblocks.blockSetup(blk)
-  if chain != None:
-    chainblocks.blockSetParam(blk, 0, chain)
-  if once != None:
-    chainblocks.blockSetParam(blk, 1, once)
-  if passthrough != None:
-    chainblocks.blockSetParam(blk, 2, passthrough)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ChainStop():
-  blk = chainblocks.createBlock("ChainStop")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ChainStop")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def ToString():
-  blk = chainblocks.createBlock("ToString")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToString")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def Log():
-  blk = chainblocks.createBlock("Log")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Log")
-  chainblocks.blockSetup(blk)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def Msg(message = None):
-  blk = chainblocks.createBlock("Msg")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Msg")
-  chainblocks.blockSetup(blk)
-  if message != None:
-    chainblocks.blockSetParam(blk, 0, message)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def SetGlobal(name = None):
-  blk = chainblocks.createBlock("SetGlobal")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetGlobal")
-  chainblocks.blockSetup(blk)
-  if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
-def Sleep(time = None):
-  blk = chainblocks.createBlock("Sleep")
-  global _previousBlock
-  if _previousBlock != None:
-    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
-    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
-    if not validateConnection(prevOutInfo, currInInfo):
-      raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Sleep")
-  chainblocks.blockSetup(blk)
-  if time != None:
-    chainblocks.blockSetParam(blk, 0, time)
-  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
-  _previousBlock = blk
-
