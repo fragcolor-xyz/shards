@@ -1,5 +1,5 @@
 import nimline
-import ../../chainblocks
+# import ../../chainblocks
 
 type IPC* = object
 
@@ -121,21 +121,32 @@ when true:
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name
 
   proc incomingString(b: var CBIpcPop; stringCache: var string; output: var CBVar) {.inline.} =
+    # Fetch the handle of the mem
+    var handle: MemHandle
+    copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
+
+    # Find the address in the local process space
+    var address = b.segment[].get_address_from_handle(handle).to(pointer)
+
     # This is a shared piece of memory, let's use our cache from now
     stringCache.setLen(0)
-    stringCache &= $output.stringValue.cstring
+    stringCache &= $cast[cstring](address)
 
     # Replace the string memory with the local cache
     output.stringValue = stringCache.cstring.CBString
 
+    # Free up the shared memory
+    b.segment[].deallocate(address).to(void)
+  
+  proc incomingSeq(b: var CBIpcPop; output: var CBVar) {.inline.} =
     # Fetch the handle of the mem
     var handle: MemHandle
     copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
     
-    # Free up the shared memory
-    b.segment[].deallocate(b.segment[].get_address_from_handle(handle)).to(void)
-  
-  proc incomingSeq(b: var CBIpcPop; output: var CBVar) {.inline.} =
+    # Find the address in the local process space
+    var address = b.segment[].get_address_from_handle(handle).to(pointer)
+    output.seqValue = cast[CBSeq](address)
+
     # resets cache
     b.seqCache.clear()
     b.stringsCache.setLen(output.seqLen)
@@ -147,12 +158,8 @@ when true:
         incomingString(b, b.stringsCache[i], item)
       b.seqCache.push(item)
 
-    # Fetch the handle of the mem
-    var handle: MemHandle
-    copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
-
     # Free up the shared memory
-    b.segment[].deallocate(b.segment[].get_address_from_handle(handle)).to(void)
+    b.segment[].deallocate(address).to(void)
 
     # Replace the seq withour cache
     output.seqValue = b.seqCache
@@ -183,7 +190,8 @@ when true:
   
   chainblock CBIpcPop, "Pop", "IPC"
 
-when isMainModule or defined(blocksTesting):
+when defined(blocksTesting):
+# when isMainModule:
   var
     str = "Hello world"
     stringSeq: CBSeq
@@ -206,6 +214,7 @@ when isMainModule or defined(blocksTesting):
   testCons.start(true)
 
   for _ in 0..50:
+  # while true:
     testProd.tick()
     testCons.tick()
     sleep 0.015

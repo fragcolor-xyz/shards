@@ -857,7 +857,7 @@ defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
 
 when not defined(skipCoreBlocks):
   import unicode
-  include blocks/internal/[core, strings, stack, calculate]
+  include blocks/internal/[core, strings, stack, calculate, ipc]
 
 when appType != "lib" or defined(forceCBRuntime):
   # Swaps from compile time chain mode on/off

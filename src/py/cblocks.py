@@ -1075,3 +1075,32 @@ class Stack:
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
+class IPC:
+  def Push(name = None):
+    blk = chainblocks.createBlock("IPC.Push")
+    global _previousBlock
+    if _previousBlock != None:
+      prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+      currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+      if not validateConnection(prevOutInfo, currInInfo):
+        raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: IPC.Push")
+    chainblocks.blockSetup(blk)
+    if name != None:
+      chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+    _previousBlock = blk
+  
+  def Pop(name = None):
+    blk = chainblocks.createBlock("IPC.Pop")
+    global _previousBlock
+    if _previousBlock != None:
+      prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))
+      currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))
+      if not validateConnection(prevOutInfo, currInInfo):
+        raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: IPC.Pop")
+    chainblocks.blockSetup(blk)
+    if name != None:
+      chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
+    _previousBlock = blk
+  
