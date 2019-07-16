@@ -2,20 +2,25 @@ from cblocks import *
 from cbtypes import *
 from cbchain import*
 
-def pycall(input):
+@cbcall
+def pycall(state, input):
   print("Yep.. worked!")
-  return (CBType.String, "Yep.. worked indeed...")
+  return cbstring("Yep.. worked indeed...")
 
 @chain
 def MainChain():
-  Const(value = (CBType.String, "Hello world!"))
+  Const(cbint2(2, 3))
   Log()
-  Const(value = (CBType.Float4, (1.0, 2.0, 3.0, 4.0)))
+  Const(value = cbstring("Hello world!"))
+  Log()
+  Const(value = cbfloat4(1.0, 2.0, 3.0, 4.0))
   Math.Sqrt()
   Log()
-  Py(closure = (CBType.Object, (pycall, 1734439526, 2035317104)))
-  Py(closure = (CBType.Object, (pycall, 1734439526, 2035317104)))
-  Py(closure = (CBType.Object, (pycall, 1734439526, 2035317104)))
+  Py(closure = pycall)
+  Py(closure = pycall)
+  Py(closure = pycall)
+  Log()
+  Const(cbcolor(100, 200, 200, 255))
   Log()
 
 mainChain = MainChain()

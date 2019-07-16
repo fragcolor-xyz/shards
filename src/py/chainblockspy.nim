@@ -20,6 +20,9 @@ initTable(tableStorage)
 
 pyExportModuleName("chainblocks")
 
+let
+  py = pyBuiltinsModule()
+
 proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, importc, dynlib: "chainblocks".}
 proc cbBlocks*(): CBStrings {.cdecl, importc, dynlib: "chainblocks".}
 
@@ -51,13 +54,14 @@ when true:
 
   type
     CBPyCallObj = object
-      call: proc(input: PPyObject): PyObject {.closure.}
+      call: proc(state: PyObject, input: PPyObject): PyObject {.closure.}
     
     CBPyCallRef = ref CBPyCallObj
 
     CBPyCall* = object
       call: CBVar
       callObj: CBPyCallRef
+      state: PyObject
       inputSeqCache: seq[PPyObject]
       inputTableCache: Table[string, PPyObject]
       stringStorage: string
@@ -72,9 +76,12 @@ when true:
     initTable(tableStorage)
     b.inputTableCache = initTable[string, PPyObject]()
     b.outputTableKeyCache = initHashSet[cstring]()
+    b.state = py.dict()
   template destroy*(b: CBPyCall) =
     freeSeq(seqStorage)
     freeTable(tableStorage)
+  template cleanup*(b: CBPyCall) =
+    b.state = py.dict()
   template inputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBPyCall): CBParametersInfo = @[("Closure", @[PyCallInfo])]
@@ -84,7 +91,7 @@ when true:
     b.callObj = callObj
   template getParam*(b: CBPyCall; index: int): CBVar = b.call
   template activate*(b: CBPyCall; context: CBContext; input: CBVar): CBVar =
-    b.currentResult = b.callObj.call(var2Py(input, b.inputSeqCache, b.inputTableCache))
+    b.currentResult = b.callObj.call(b.state, var2Py(input, b.inputSeqCache, b.inputTableCache))
     py2Var(b.currentResult, b.stringStorage, b.stringsStorage, b.seqStorage, b.tableStorage, b.outputTableKeyCache)
 
   chainblock CBPyCall, "Py"
@@ -230,7 +237,7 @@ proc blockSetParam(blk: PPyObject; index: int; val: PyObject) {.exportpy.} =
       fullVal = val.to(tuple[valueType: int; value: PyObject])
     if fullVal.valueType.CBType == CBType.Object:
       var
-        objValue = fullVal.value.to(tuple[closure: proc(input: PPyObject): PyObject; vendor, typeid: int32])
+        objValue = fullVal.value.to(tuple[closure: proc(state: PyObject, input: PPyObject): PyObject; vendor, typeid: int32])
       if objValue.vendor == FragCC.int32 and objValue.typeId == PyCallCC.int32:
         var callObj = new CBPyCallRef
         callObj[].call = objValue.closure
