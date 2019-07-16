@@ -25,6 +25,7 @@ when true:
       inputSeqCache*: seq[PPyObject]
       inputTableCache*: Table[string, PPyObject]
       stringStorage*: string
+      stringsStorage*: seq[string]
       seqStorage*: CBSeq
       tableStorage*: CBTable
       outputTableKeyCache*: HashSet[cstring]
@@ -36,6 +37,7 @@ when true:
   template setup*(b: CBPython) =
     initSeq(b.seqStorage)
     initTable(b.tableStorage)
+    b.outputTableKeyCache = initHashSet[cstring]()
     b.inputTableCache = initTable[string, PPyObject]()
   template destroy*(b: CBPython) =
     freeSeq(b.seqStorage)
@@ -94,7 +96,7 @@ when true:
             res = blk.pySuspendRes
           else:
             blk.seqStorage.clear()
-            res = py2Var(blk.pyresult, blk.stringStorage, blk.seqStorage, blk.tableStorage, blk.outputTableKeyCache)
+            res = py2Var(blk.pyresult, blk.stringStorage, blk.stringsStorage, blk.seqStorage, blk.tableStorage, blk.outputTableKeyCache)
     except:
       context.setError(getCurrentExceptionMsg())
     res

@@ -70,6 +70,13 @@ if __name__ == '__main__':
   start(main)
   print("Stopping chain!")
 
+  blk = chainblocks.createBlock("Const")
+  print("Created block: " + chainblocks.blockName(blk))
+  chainblocks.blockSetParam(blk, 0, (13, "Hello world"))
+  print(chainblocks.blockGetParam(blk, 0))
+  chainblocks.blockSetParam(blk, 0, (16, [(13, "Hello world 1"), (13, "Hello world 2")]))
+  print(chainblocks.blockGetParam(blk, 0))
+
   # TODO, from this generate all stub classes with proper documented arguments
   # Also this allows runtime checks for input/output/params!
   # print("Blocks:")

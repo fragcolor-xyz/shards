@@ -44,7 +44,7 @@ proc var2Py*(input: CBVar; inputSeqCache: var seq[PPyObject]; inputTableCache: v
   of Chain: result = py_lib.pyLib.PyCapsule_New(cast[pointer](input.chainValue), nil, nil)
   of Block: assert(false) # TODO
 
-proc py2Var*(input: PyObject; stringStorage: var string; seqStorage: var CBSeq; tableStorage: var CBTable; outputTableKeyCache: var HashSet[cstring]): CBVar =
+proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq[string]; seqStorage: var CBSeq; tableStorage: var CBTable; outputTableKeyCache: var HashSet[cstring]): CBVar =
   let
     tupRes = input.to(tuple[valueType: int; value: PyObject])
     valueType = tupRes.valueType.CBType
@@ -85,9 +85,13 @@ proc py2Var*(input: PyObject; stringStorage: var string; seqStorage: var CBSeq; 
     result.enumVendorId = enumTup.vendor
     result.enumTypeId = enumTup.typeId
   of Seq:
-    var pyseq = tupRes.value.to(seq[PyObject])   
+    var
+      pyseq = tupRes.value.to(seq[PyObject])
+      idx = 0
+    stringsStorage.setLen(pyseq.len)
     for pyvar in pyseq.mitems:
-      let sub = py2Var(pyvar, stringStorage, seqStorage, tableStorage, outputTableKeyCache)
+      var sub = py2Var(pyvar, stringsStorage[idx], stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+      inc idx
       seqStorage.push(sub)
     result = seqStorage
   of CBType.Table:
@@ -95,10 +99,14 @@ proc py2Var*(input: PyObject; stringStorage: var string; seqStorage: var CBSeq; 
     outputTableKeyCache.clear()
     for item in tableStorage.mitems:
       outputTableKeyCache.incl(item.key)
-
-    var pytab = tupRes.value.to(tables.Table[string, PyObject])
+    
+    var
+      pytab = tupRes.value.to(tables.Table[string, PyObject])
+      idx = 0
+    stringsStorage.setLen(pytab.len)
     for k, v in pytab.mpairs:
-      let sub = py2Var(v, stringStorage, seqStorage, tableStorage, outputTableKeyCache)
+      let sub = py2Var(v, stringsStorage[idx], stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+      inc idx
       tableStorage.incl(k.cstring, sub)
       outputTableKeyCache.excl(k.cstring)
     
