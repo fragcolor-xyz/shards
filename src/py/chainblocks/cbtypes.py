@@ -10,6 +10,8 @@ class CBType(IntEnum):
   Int2 = auto()
   Int3 = auto()
   Int4 = auto()
+  Int8 = auto()
+  Int16 = auto()
   Float = auto()
   Float2 = auto()
   Float3 = auto()
