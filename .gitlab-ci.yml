@@ -5,7 +5,6 @@ buildAndRun:win:debug:
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
     - nim cpp --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
-    - nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -r -f chainblocks.nim
     - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs --app:lib -d:forceCBRuntime -f -o:../py/chainblocks.dll chainblocks.nim # Builds for py test
     - cd blocks/external/py
     - nim cpp --NimblePath:$nimbleDir/pkgs -f py.nim
@@ -28,7 +27,6 @@ buildAndRun:win:release:
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
-    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -d:blocksTesting -r -f chainblocks.nim
     - cd blocks/external/py
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f py.nim
     - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
@@ -47,7 +45,7 @@ buildAndRun:linux:debug:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:blocksTesting -r -f chainblocks.nim"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim"
   tags:
     - LINUX, DOCKER
 
@@ -60,6 +58,6 @@ buildAndRun:linux:release:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release -d:danger --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:release -d:danger -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release -d:danger --newruntime -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
   tags:
     - LINUX, DOCKER
