@@ -1,4 +1,4 @@
-from chainblocks import *
+from .chainblocks import *
 
 class Chain:
   def __init__(self, nativeChain):
@@ -16,6 +16,7 @@ class Chain:
     else:
       chainTick2(self.chain)
 
+  @staticmethod
   def sleep(seconds):
     chainSleep(seconds)
 

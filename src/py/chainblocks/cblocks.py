@@ -1,7 +1,7 @@
 # This file was automatically generated.
 
 import chainblocks
-from cbtypes import *
+from .cbtypes import *
 
 _previousBlock = None
 

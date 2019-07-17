@@ -1,6 +1,4 @@
-from cblocks import *
-from cbtypes import *
-from cbchain import*
+from chainblocks import *
 
 @cbcall
 def pycall(state, input):

@@ -7,3 +7,5 @@
 *.lib
 *.hpp.gch
 *.pyd
+Chainblocks.egg-info
+src/py/MANIFEST

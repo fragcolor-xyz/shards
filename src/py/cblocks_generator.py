@@ -1,5 +1,5 @@
-from cbtypes import CBType
-from chainblocks import *
+from chainblocks.cbtypes import CBType
+from chainblocks.chainblocks import *
 
 cbNamespaces = dict()
 blacklist = ["NimClosure"]
@@ -9,8 +9,6 @@ def processBlock(name, hasNamespace, fullName):
   # Create a reflection block
   blk = createBlock(fullName)
   # Grab all info
-  inputTypes = unpackTypesInfo(blockInputTypes(blk))
-  outputTypes = unpackTypesInfo(blockOutputTypes(blk))
   parametersp = blockParameters(blk)
   parameters = None
   if parametersp != None:
@@ -28,6 +26,7 @@ def processBlock(name, hasNamespace, fullName):
       else:
         paramsString += ", {} = None".format(pname)
   
+  result =  "{}@staticmethod\n".format(indent)
   result =  "{}def {}({}):\n".format(indent, name, paramsString)
 
   # Create and setup
@@ -42,7 +41,7 @@ def processBlock(name, hasNamespace, fullName):
   result += "{}      raise Exception(\"Blocks do not connect, output: \" + chainblocks.blockName(_previousBlock) + \", input: {}\")\n".format(indent, fullName)
   
   # Setup
-  result += "{}  chainblocks.blockSetup(blk)\n".format(indent, fullName)
+  result += "{}  chainblocks.blockSetup(blk)\n".format(indent)
   
   # Evaluate params
   if parametersp != None:
@@ -81,7 +80,7 @@ for name in blocks():
 f = open("cblocks.py", "w")
 f.write("# This file was automatically generated.\n\n")
 f.write("import chainblocks\n")
-f.write("from cbtypes import *\n\n")
+f.write("from .cbtypes import *\n\n")
 f.write("_previousBlock = None\n\n")
 for name, code in cbNamespaces.items():
   if name != "":
