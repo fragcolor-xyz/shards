@@ -35,7 +35,8 @@ when true:
       b.segment = nil
     # also force ensure removal!
     # this might crash any current user if existing btw
-    removeShmObject(b.name)
+    if b.name != "":
+      removeShmObject(b.name)
   
   template inputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template outputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
