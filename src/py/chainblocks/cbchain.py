@@ -1,6 +1,6 @@
 from .chainblocks import *
 
-class Chain:
+class CBChain:
   def __init__(self, nativeChain):
     self.chain = nativeChain
   
@@ -16,10 +16,6 @@ class Chain:
     else:
       chainTick2(self.chain)
 
-  @staticmethod
-  def sleep(seconds):
-    chainSleep(seconds)
-
 def chain(func):
   def emitChain():
     previousChain = getCurrentChain()
@@ -32,5 +28,8 @@ def chain(func):
     if previousChain != None:
       setCurrentChain(previousChain)
     
-    return Chain(chain)
+    return CBChain(chain)
   return emitChain
+
+def cbsleep(seconds):
+  chainSleep(seconds)

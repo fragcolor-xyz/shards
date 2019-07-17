@@ -15,7 +15,7 @@ def Py(closure = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Py")
   chainblocks.blockSetup(blk)
   if closure != None:
-    chainblocks.blockSetParam(blk, 0, closure)
+    chainblocks.blockSetParam(blk, 0, CBVar(closure).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -29,9 +29,9 @@ def ReplaceText(regex = None, replacement = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ReplaceText")
   chainblocks.blockSetup(blk)
   if regex != None:
-    chainblocks.blockSetParam(blk, 0, regex)
+    chainblocks.blockSetParam(blk, 0, CBVar(regex).value)
   if replacement != None:
-    chainblocks.blockSetParam(blk, 1, replacement)
+    chainblocks.blockSetParam(blk, 1, CBVar(replacement).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -57,11 +57,11 @@ def RunChain(chain = None, once = None, passthrough = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: RunChain")
   chainblocks.blockSetup(blk)
   if chain != None:
-    chainblocks.blockSetParam(blk, 0, chain)
+    chainblocks.blockSetParam(blk, 0, CBVar(chain).value)
   if once != None:
-    chainblocks.blockSetParam(blk, 1, once)
+    chainblocks.blockSetParam(blk, 1, CBVar(once).value)
   if passthrough != None:
-    chainblocks.blockSetParam(blk, 2, passthrough)
+    chainblocks.blockSetParam(blk, 2, CBVar(passthrough).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -75,11 +75,11 @@ def ToImage(width = None, height = None, alpha = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: ToImage")
   chainblocks.blockSetup(blk)
   if width != None:
-    chainblocks.blockSetParam(blk, 0, width)
+    chainblocks.blockSetParam(blk, 0, CBVar(width).value)
   if height != None:
-    chainblocks.blockSetParam(blk, 1, height)
+    chainblocks.blockSetParam(blk, 1, CBVar(height).value)
   if alpha != None:
-    chainblocks.blockSetParam(blk, 2, alpha)
+    chainblocks.blockSetParam(blk, 2, CBVar(alpha).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -93,7 +93,7 @@ def MatchText(regex = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: MatchText")
   chainblocks.blockSetup(blk)
   if regex != None:
-    chainblocks.blockSetParam(blk, 0, regex)
+    chainblocks.blockSetParam(blk, 0, CBVar(regex).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -107,9 +107,9 @@ def Repeat(times = None, chain = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Repeat")
   chainblocks.blockSetup(blk)
   if times != None:
-    chainblocks.blockSetParam(blk, 0, times)
+    chainblocks.blockSetParam(blk, 0, CBVar(times).value)
   if chain != None:
-    chainblocks.blockSetParam(blk, 1, chain)
+    chainblocks.blockSetParam(blk, 1, CBVar(chain).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -123,11 +123,11 @@ def WhenNot(reject = None, isregex = None, all = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WhenNot")
   chainblocks.blockSetup(blk)
   if reject != None:
-    chainblocks.blockSetParam(blk, 0, reject)
+    chainblocks.blockSetParam(blk, 0, CBVar(reject).value)
   if isregex != None:
-    chainblocks.blockSetParam(blk, 1, isregex)
+    chainblocks.blockSetParam(blk, 1, CBVar(isregex).value)
   if all != None:
-    chainblocks.blockSetParam(blk, 2, all)
+    chainblocks.blockSetParam(blk, 2, CBVar(all).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -141,7 +141,7 @@ def AddVariable(name = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: AddVariable")
   chainblocks.blockSetup(blk)
   if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.blockSetParam(blk, 0, CBVar(name).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -167,9 +167,9 @@ def SwapVariables(name1 = None, name2 = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SwapVariables")
   chainblocks.blockSetup(blk)
   if name1 != None:
-    chainblocks.blockSetParam(blk, 0, name1)
+    chainblocks.blockSetParam(blk, 0, CBVar(name1).value)
   if name2 != None:
-    chainblocks.blockSetParam(blk, 1, name2)
+    chainblocks.blockSetParam(blk, 1, CBVar(name2).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -195,11 +195,11 @@ def When(accept = None, isregex = None, all = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: When")
   chainblocks.blockSetup(blk)
   if accept != None:
-    chainblocks.blockSetParam(blk, 0, accept)
+    chainblocks.blockSetParam(blk, 0, CBVar(accept).value)
   if isregex != None:
-    chainblocks.blockSetParam(blk, 1, isregex)
+    chainblocks.blockSetParam(blk, 1, CBVar(isregex).value)
   if all != None:
-    chainblocks.blockSetParam(blk, 2, all)
+    chainblocks.blockSetParam(blk, 2, CBVar(all).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -213,7 +213,7 @@ def GetVariable(name = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetVariable")
   chainblocks.blockSetup(blk)
   if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.blockSetParam(blk, 0, CBVar(name).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -227,7 +227,7 @@ def GetItems(index = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: GetItems")
   chainblocks.blockSetup(blk)
   if index != None:
-    chainblocks.blockSetParam(blk, 0, index)
+    chainblocks.blockSetParam(blk, 0, CBVar(index).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -241,7 +241,7 @@ def SetVariable(name = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetVariable")
   chainblocks.blockSetup(blk)
   if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.blockSetParam(blk, 0, CBVar(name).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -267,7 +267,7 @@ def WaitGlobal(name = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitGlobal")
   chainblocks.blockSetup(blk)
   if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.blockSetParam(blk, 0, CBVar(name).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -281,15 +281,15 @@ def If(operator = None, operand = None, true = None, false = None, passthrough =
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: If")
   chainblocks.blockSetup(blk)
   if operator != None:
-    chainblocks.blockSetParam(blk, 0, operator)
+    chainblocks.blockSetParam(blk, 0, CBVar(operator).value)
   if operand != None:
-    chainblocks.blockSetParam(blk, 1, operand)
+    chainblocks.blockSetParam(blk, 1, CBVar(operand).value)
   if true != None:
-    chainblocks.blockSetParam(blk, 2, true)
+    chainblocks.blockSetParam(blk, 2, CBVar(true).value)
   if false != None:
-    chainblocks.blockSetParam(blk, 3, false)
+    chainblocks.blockSetParam(blk, 3, CBVar(false).value)
   if passthrough != None:
-    chainblocks.blockSetParam(blk, 4, passthrough)
+    chainblocks.blockSetParam(blk, 4, CBVar(passthrough).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -303,7 +303,7 @@ def Const(value = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Const")
   chainblocks.blockSetup(blk)
   if value != None:
-    chainblocks.blockSetParam(blk, 0, value)
+    chainblocks.blockSetParam(blk, 0, CBVar(value).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -317,11 +317,11 @@ def WaitChain(chain = None, once = None, passthrough = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: WaitChain")
   chainblocks.blockSetup(blk)
   if chain != None:
-    chainblocks.blockSetParam(blk, 0, chain)
+    chainblocks.blockSetParam(blk, 0, CBVar(chain).value)
   if once != None:
-    chainblocks.blockSetParam(blk, 1, once)
+    chainblocks.blockSetParam(blk, 1, CBVar(once).value)
   if passthrough != None:
-    chainblocks.blockSetParam(blk, 2, passthrough)
+    chainblocks.blockSetParam(blk, 2, CBVar(passthrough).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -371,7 +371,7 @@ def Msg(message = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Msg")
   chainblocks.blockSetup(blk)
   if message != None:
-    chainblocks.blockSetParam(blk, 0, message)
+    chainblocks.blockSetParam(blk, 0, CBVar(message).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -385,7 +385,7 @@ def SetGlobal(name = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: SetGlobal")
   chainblocks.blockSetup(blk)
   if name != None:
-    chainblocks.blockSetParam(blk, 0, name)
+    chainblocks.blockSetParam(blk, 0, CBVar(name).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -399,7 +399,7 @@ def Sleep(time = None):
       raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Sleep")
   chainblocks.blockSetup(blk)
   if time != None:
-    chainblocks.blockSetParam(blk, 0, time)
+    chainblocks.blockSetParam(blk, 0, CBVar(time).value)
   chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
   _previousBlock = blk
 
@@ -462,7 +462,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Subtract")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -476,7 +476,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.RShift")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -514,7 +514,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Multiply")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -540,7 +540,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.And")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -554,7 +554,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Or")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -592,7 +592,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.LShift")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -678,7 +678,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Add")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -692,7 +692,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Divide")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -706,7 +706,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Xor")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -732,7 +732,7 @@ class Math:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Math.Mod")
     chainblocks.blockSetup(blk)
     if operand != None:
-      chainblocks.blockSetParam(blk, 0, operand)
+      chainblocks.blockSetParam(blk, 0, CBVar(operand).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -1071,7 +1071,7 @@ class Stack:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: Stack.Peek")
     chainblocks.blockSetup(blk)
     if index != None:
-      chainblocks.blockSetParam(blk, 0, index)
+      chainblocks.blockSetParam(blk, 0, CBVar(index).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -1086,7 +1086,7 @@ class IPC:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: IPC.Push")
     chainblocks.blockSetup(blk)
     if name != None:
-      chainblocks.blockSetParam(blk, 0, name)
+      chainblocks.blockSetParam(blk, 0, CBVar(name).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   
@@ -1100,7 +1100,7 @@ class IPC:
         raise Exception("Blocks do not connect, output: " + chainblocks.blockName(_previousBlock) + ", input: IPC.Pop")
     chainblocks.blockSetup(blk)
     if name != None:
-      chainblocks.blockSetParam(blk, 0, name)
+      chainblocks.blockSetParam(blk, 0, CBVar(name).value)
     chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)
     _previousBlock = blk
   

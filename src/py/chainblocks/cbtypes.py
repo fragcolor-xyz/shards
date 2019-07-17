@@ -1,4 +1,5 @@
 from enum import IntEnum, auto
+from .cbchain import CBChain
 
 class CBType(IntEnum):
   NoType = 0
@@ -37,66 +38,70 @@ def validateConnection(outputInfo, inputInfo):
           if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
             return True
 
-def cbcall(func):
-  assert(callable(func))
-  return (CBType.Object, (func, 1734439526, 2035317104))
+class CBVar:
+  def __init__(self, value):
+    if value == None:
+      self.value = (CBType.NoType, None)
+    elif type(value) is bool:
+      self.value = (CBType.Bool, value)
+    elif type(value) is int:
+      self.value = (CBType.Int, value)
+    elif type(value) is float:
+      self.value = (CBType.Float, value)
+    elif type(value) is str:
+      self.value = (CBType.String, value)
+    elif type(value) is CBChain:
+      self.value = (CBType.Chain, value.chain)
+    elif callable(value):
+      self.value = (CBType.Object, (value, 1734439526, 2035317104))
+    elif type(value) is tuple:
+      if type(value[0]) is CBType:
+        # e.g. cbcolor!
+        self.value = value
+      else:
+        hasFloats = False
+        valueLen = len(value)
+        for val in value:
+          valType = type(val)
+          if valType is float:
+            hasFloats = True
+          elif valType is not int:
+            raise Exception("CBVar from tuple must be int or float")
+        
+        if hasFloats and valueLen > 4:
+          raise Exception("CBVar from a tuple of float values max length is 4")
+        elif valueLen > 16:
+          raise Exception("CBVar from a tuple of int values max length is 16")
+        
+        if hasFloats and valueLen == 1:
+          self.value = (CBType.Float, value[0])
+        elif hasFloats and valueLen == 2:
+          self.value = (CBType.Float2, value)
+        elif hasFloats and valueLen == 3:
+          self.value = (CBType.Float3, value)
+        elif hasFloats and valueLen == 4:
+          self.value = (CBType.Float4, value)
+        elif valueLen == 1:
+          self.value = (CBType.Int, value[0])
+        elif valueLen == 2:
+          self.value = (CBType.Int2, value)
+        elif valueLen == 3:
+          self.value = (CBType.Int3, value)
+        elif valueLen == 4:
+          self.value = (CBType.Int4, value)
+        elif valueLen == 8:
+          self.value = (CBType.Int8, value)
+        elif valueLen == 16:
+          self.value = (CBType.Int16, value)
+        else:
+          raise Exception("CBVar from a tuple has an invalid length, must be 1, 2, 3, 4, 8 (int only), 16 (int only)")
 
-def cbstring(v):
-  assert(type(v) is str)
-  return (CBType.String, v)
+    else:
+      raise Exception("CBVar value not handled!")
 
-def cbbool(v):
-  assert(type(v) is bool)
-  return (CBType.Bool, v)
-
-def cbint(v):
-  assert(type(v) is int)
-  return (CBType.Int, v)
-
-def cbint2(v1, v2):
-  assert(type(v1) is int and type(v2) is int)
-  return (CBType.Int2, (v1, v2))
-
-def cbint3(v1, v2, v3):
-  assert(type(v1) is int and type(v2) is int and type(v3) is int)
-  # TODO add range checks
-  return (CBType.Int3, (v1, v2, v3))
-
-def cbint4(v1, v2, v3, v4):
-  assert(type(v1) is int and type(v2) is int and type(v3) is int and type(v4) is int)
-  # TODO add range checks
-  return (CBType.Int4, (v1, v2, v3, v4))
-
-def cbint8(v1, v2, v3, v4, v5, v6, v7, v8):
-  assert( type(v1) is int and type(v2) is int and type(v3) is int and type(v4) is int and
-          type(v5) is int and type(v6) is int and type(v7) is int and type(v8) is int)
-  # TODO add range checks
-  return (CBType.Int8, (v1, v2, v3, v4, v5, v6, v7, v8))
-
-def cbint16(v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16):
-  assert( type(v1) is int and type(v2) is int and type(v3) is int and type(v4) is int and
-          type(v5) is int and type(v6) is int and type(v7) is int and type(v8) is int and
-          type(v9) is int and type(v10) is int and type(v11) is int and type(v12) is int and
-          type(v13) is int and type(v14) is int and type(v15) is int and type(v16) is int)
-  # TODO add range checks
-  return (CBType.Int16, (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16))
+def cbvar(value):
+  return CBVar(value).value
 
 def cbcolor(v1, v2, v3, v4):
   assert(type(v1) is int and type(v2) is int and type(v3) is int and type(v4) is int)
   return (CBType.Color, (v1, v2, v3, v4))
-
-def cbfloat(v):
-  assert(type(v) is float)
-  return (CBType.Float, v)
-
-def cbfloat2(v1, v2):
-  assert(type(v1) is float and type(v2) is float)
-  return (CBType.Float2, (v1, v2))
-
-def cbfloat3(v1, v2, v3):
-  assert(type(v1) is float and type(v2) is float and type(v3) is float)
-  return (CBType.Float3, (v1, v2, v3))
-
-def cbfloat4(v1, v2, v3, v4):
-  assert(type(v1) is float and type(v2) is float and type(v3) is float and type(v4) is float)
-  return (CBType.Float4, (v1, v2, v3, v4))

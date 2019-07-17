@@ -1,17 +1,16 @@
 from chainblocks import *
 
-@cbcall
 def pycall(state, input):
   print("Yep.. worked!")
-  return cbstring("Yep.. worked indeed...")
+  return cbvar("Yep.. worked indeed...")
 
 @chain
 def MainChain():
-  Const(cbint2(2, 3))
+  Const((2, 3))
   Log()
-  Const(value = cbstring("Hello world!"))
+  Const(value = "Hello world!")
   Log()
-  Const(value = cbfloat4(1.0, 2.0, 3.0, 4.0))
+  Const(value = (1.0, 2.0, 3.0, 4.0))
   Math.Sqrt()
   Log()
   Py(closure = pycall)
@@ -26,4 +25,4 @@ mainChain.start(True)
 
 for _ in range(10):
   mainChain.tick()
-  Chain.sleep(0.1)
+  cbsleep(0.1)

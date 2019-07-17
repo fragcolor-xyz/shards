@@ -49,7 +49,7 @@ def processBlock(name, hasNamespace, fullName):
     for param in parameters:
       pname = param[0].lower()
       result += "{}  if {} != None:\n".format(indent, pname)
-      result += "{}    chainblocks.blockSetParam(blk, {}, {})\n".format(indent, str(pindex), pname)     
+      result += "{}    chainblocks.blockSetParam(blk, {}, CBVar({}).value)\n".format(indent, str(pindex), pname)     
       pindex = pindex + 1
   
   # After setting initial params add to the chain
