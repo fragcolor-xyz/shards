@@ -25,6 +25,10 @@ when true:
       segment: ptr ManagedSharedMem
       buffer: ptr SPSCQueue
   
+  template setup*(b: CBIpcPush) =
+    b.segment = nil
+    b.buffer = nil
+
   template cleanup*(b: CBIpcPush) =
     if b.segment != nil:
       cppdel b.segment
@@ -116,6 +120,9 @@ when true:
   
   template setup*(b: CBIpcPop) =
     initSeq(b.seqCache)
+    b.segment = nil
+    b.buffer = nil
+  
   template cleanup*(b: CBIpcPop) =
     if b.segment != nil:
       cppdel b.segment
