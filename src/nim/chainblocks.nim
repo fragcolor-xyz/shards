@@ -302,6 +302,22 @@ converter toCBVar*(v: tuple[a,b,c,d: int32]): CBVar {.inline.} =
   result.valueType = Int4
   iterateTuple(v, result.int4Value, int32)
 
+converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h: int]): CBVar {.inline.} =
+  result.valueType = Int8
+  iterateTuple(v, result.int8Value, int16)
+
+converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h: int16]): CBVar {.inline.} =
+  result.valueType = Int8
+  iterateTuple(v, result.int8Value, int16)
+
+converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h, a1, b1, c1, d1, e1, f1, g1, h1: int]): CBVar {.inline.} =
+  result.valueType = Int16
+  iterateTuple(v, result.int8Value, int8)
+
+converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h, a1, b1, c1, d1, e1, f1, g1, h1: int8]): CBVar {.inline.} =
+  result.valueType = Int16
+  iterateTuple(v, result.int8Value, int8)
+
 converter toCBVar*(v: bool): CBVar {.inline.} =
   return CBVar(valueType: Bool, boolValue: v)
 

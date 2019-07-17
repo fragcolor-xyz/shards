@@ -15,6 +15,16 @@ proc var2Py*(input: CBVar; inputSeqCache: var seq[PPyObject]; inputTableCache: v
   of Int2: result = toPyObjectArgument (input.int2Value[0], input.int2Value[1])
   of Int3: result = toPyObjectArgument (input.int3Value[0], input.int3Value[1], input.int3Value[2])
   of Int4: result = toPyObjectArgument (input.int4Value[0], input.int4Value[1], input.int4Value[2], input.int4Value[3])
+  of Int8: result = toPyObjectArgument(
+      ( input.int8Value[0], input.int8Value[1], input.int8Value[2], input.int8Value[3],
+        input.int8Value[4], input.int8Value[5], input.int8Value[6], input.int8Value[7])
+    )
+  of Int16: result = toPyObjectArgument(
+      ( input.int16Value[0], input.int16Value[1], input.int16Value[2], input.int16Value[3],
+        input.int16Value[4], input.int16Value[5], input.int16Value[6], input.int16Value[7],
+        input.int16Value[8], input.int16Value[9], input.int16Value[10], input.int16Value[11],
+        input.int16Value[12], input.int16Value[13], input.int16Value[14], input.int16Value[15])
+    )
   of Float: result = toPyObjectArgument input.floatValue
   of Float2: result = toPyObjectArgument (input.float2Value[0], input.float2Value[1])
   of Float3: result = toPyObjectArgument (input.float3Value[0], input.float3Value[1], input.float3Value[2])
@@ -62,6 +72,8 @@ proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq
   of Int2: result = tupRes.value.to(tuple[a, b: int64])
   of Int3: result = tupRes.value.to(tuple[a, b, c: int32])
   of Int4: result = tupRes.value.to(tuple[a, b, c, d: int32])
+  of Int8: result = tupRes.value.to(tuple[a, b, c, d, e, f, g, h: int16])
+  of Int16: result = tupRes.value.to(tuple[a, b, c, d, e, f, g, h, a1, b1, c1, d1, e1, f1, g1, h1: int8])
   of Float: result = tupRes.value.to(float64)
   of Float2: result = tupRes.value.to(tuple[a, b: float64])
   of Float3: result = tupRes.value.to(tuple[a, b, c: float32])
@@ -74,9 +86,9 @@ proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq
   of Image:
     let
       img = tupRes.value.to(tuple[w,h,c: int; data: PPyObject])
-    result.imageValue.width = img.w.int32
-    result.imageValue.height = img.h.int32
-    result.imageValue.channels = img.c.int32
+    result.imageValue.width = img.w.uint16
+    result.imageValue.height = img.h.uint16
+    result.imageValue.channels = img.c.uint8
     result.imageValue.data = cast[ptr UncheckedArray[uint8]](py_lib.pyLib.PyCapsule_GetPointer(img.data, nil))
   of Enum:
     let

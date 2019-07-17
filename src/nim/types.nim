@@ -193,7 +193,7 @@ type
   CBOnRunLoopTick* {.importcpp: "CBOnRunLoopTick", header: "chainblocks.hpp".} = proc(): void {.cdecl.}
 
   CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo | CBStrings
-  CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4
+  CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
 registerCppType CBChain
