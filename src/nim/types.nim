@@ -201,6 +201,8 @@ registerCppType CBContextObj
 registerCppType CBInt2
 registerCppType CBInt3
 registerCppType CBInt4
+registerCppType CBInt8
+registerCppType CBInt16
 registerCppType CBFloat2
 registerCppType CBFloat3
 registerCppType CBFloat4
