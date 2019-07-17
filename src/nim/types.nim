@@ -19,6 +19,8 @@ type
   CBInt2* {.importcpp: "CBInt2", header: "chainblocks.hpp".} = object
   CBInt3* {.importcpp: "CBInt3", header: "chainblocks.hpp".} = object 
   CBInt4* {.importcpp: "CBInt4", header: "chainblocks.hpp".} = object 
+  CBInt8* {.importcpp: "CBInt8", header: "chainblocks.hpp".} = object 
+  CBInt16* {.importcpp: "CBInt16", header: "chainblocks.hpp".} = object 
   CBFloat* {.importcpp: "CBFloat", header: "chainblocks.hpp".} = float64
   CBFloat2* {.importcpp: "CBFloat2", header: "chainblocks.hpp".} = object 
   CBFloat3* {.importcpp: "CBFloat3", header: "chainblocks.hpp".} = object 
@@ -53,9 +55,9 @@ type
     labels*: CBStrings
 
   CBImage* {.importcpp: "CBImage", header: "chainblocks.hpp".} = object
-    width*: int32
-    height*: int32
-    channels*: int32
+    width*: uint16
+    height*: uint16
+    channels*: uint8
     data*: ptr UncheckedArray[uint8]
 
   CBType* {.importcpp: "CBType", header: "chainblocks.hpp", size: sizeof(uint8).} = enum
@@ -68,6 +70,8 @@ type
     Int2, # A vector of 2 ints
     Int3, # A vector of 3 ints
     Int4, # A vector of 4 ints
+    Int8,
+    Int16,
     Float,
     Float2, # A vector of 2 floats
     Float3, # A vector of 3 floats
@@ -117,6 +121,8 @@ type
     int2Value*: CBInt2
     int3Value*: CBInt3
     int4Value*: CBInt4
+    int8Value*: CBInt8
+    int16Value*: CBInt16
     floatValue*: CBFloat
     float2Value*: CBFloat2
     float3Value*: CBFloat3

@@ -14,35 +14,55 @@ namespace chainblocks
   thread_local CBChain* CurrentChain;
 };
 
-void CBVar::releaseMemory()
+// Utility
+void dealloc(CBImage& self)
 {
-  if((valueType == String || valueType == ContextVar) && stringValue != nullptr)
+  if(self.data)
   {
-    delete[] stringValue;
-    stringValue = nullptr;
+    delete[] self.data;
+    self.data = nullptr;
   }
-  else if(valueType == Seq && seqValue)
+}
+
+// Utility
+void alloc(CBImage& self)
+{
+  if(self.data)
+    dealloc(self);
+  
+  auto binsize = self.width * self.height * self.channels;
+  self.data = new uint8_t[binsize];
+}
+
+void releaseMemory(CBVar& self)
+{
+  if((self.valueType == String || self.valueType == ContextVar) && self.stringValue != nullptr)
   {
-    for(auto i = 0; i < stbds_arrlen(seqValue); i++)
+    delete[] self.stringValue;
+    self.stringValue = nullptr;
+  }
+  else if(self.valueType == Seq && self.seqValue)
+  {
+    for(auto i = 0; i < stbds_arrlen(self.seqValue); i++)
     {
-      seqValue[i].releaseMemory();
+      releaseMemory(self.seqValue[i]);
     }
-    stbds_arrfree(seqValue);
-    seqValue = nullptr;
+    stbds_arrfree(self.seqValue);
+    self.seqValue = nullptr;
   }
-  else if(valueType == Table && tableValue)
+  else if(self.valueType == Table && self.tableValue)
   {
-    for(auto i = 0; i < stbds_shlen(tableValue); i++)
+    for(auto i = 0; i < stbds_shlen(self.tableValue); i++)
     {
-      delete[] tableValue[i].key;
-      tableValue[i].value.releaseMemory();
+      delete[] self.tableValue[i].key;
+      releaseMemory(self.tableValue[i].value);
     }
-    stbds_shfree(tableValue);
-    tableValue = nullptr;
+    stbds_shfree(self.tableValue);
+    self.tableValue = nullptr;
   }
-  else if(valueType == Image)
+  else if(self.valueType == Image)
   {
-    imageValue.dealloc();
+    dealloc(self.imageValue);
   }
 }
 
@@ -452,7 +472,7 @@ void from_json(const json& j, CBVar& var)
       var.imageValue.height = j.at("height").get<int32_t>();
       var.imageValue.channels = j.at("channels").get<int32_t>();
       var.imageValue.data = nullptr;
-      var.imageValue.alloc();
+      alloc(var.imageValue);
       auto buffer = j.at("data").get<std::vector<uint8_t>>();
       auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
       memcpy(var.imageValue.data, &buffer[0], binsize);
@@ -586,7 +606,7 @@ void from_json(const json& j, CBChainPtr& chain)
       }
 
       // Assume block copied memory internally so we can clean up here!!!
-      value.releaseMemory();
+      releaseMemory(value);
     }
 
     // From now on this chain owns the block

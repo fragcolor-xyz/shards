@@ -8,6 +8,8 @@ proc `/`*(a,b: CBVar): CBVar {.inline.} =
   of Int2: return `/`(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
   of Int3: return `/`(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
   of Int4: return `/`(a.int4Value.toCpp, b.int4Value.toCpp).to(CBInt4).toCBVar()
+  of Int8: return `/`(a.int8Value.toCpp, b.int8Value.toCpp).to(CBInt4).toCBVar()
+  of Int16: return `/`(a.int16Value.toCpp, b.int16Value.toCpp).to(CBInt4).toCBVar()
   of Float: return `/`(a.floatValue, b.floatValue).toCBVar()
   of Float2: return `/`(a.float2Value.toCpp, b.float2Value.toCpp).to(CBFloat2).toCBVar()
   of Float3: return `/`(a.float3Value.toCpp, b.float3Value.toCpp).to(CBFloat3).toCBVar()
@@ -38,6 +40,8 @@ template mathBinaryOp(op: untyped): untyped =
     of Int2: return op(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
     of Int3: return op(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
     of Int4: return op(a.int4Value.toCpp, b.int4Value.toCpp).to(CBInt4).toCBVar()
+    of Int8: return op(a.int8Value.toCpp, b.int8Value.toCpp).to(CBInt4).toCBVar()
+    of Int16: return op(a.int16Value.toCpp, b.int16Value.toCpp).to(CBInt4).toCBVar()
     of Float:  return op(a.floatValue, b.floatValue).toCBVar()
     of Float2: return op(a.float2Value.toCpp, b.float2Value.toCpp).to(CBFloat2).toCBVar()
     of Float3: return op(a.float3Value.toCpp, b.float3Value.toCpp).to(CBFloat3).toCBVar()
@@ -72,6 +76,8 @@ template mathIntBinaryOp(op: untyped): untyped =
     of Int2: return op(a.int2Value.toCpp, b.int2Value.toCpp).to(CBInt2).toCBVar()
     of Int3: return op(a.int3Value.toCpp, b.int3Value.toCpp).to(CBInt3).toCBVar()
     of Int4: return op(a.int4Value.toCpp, b.int4Value.toCpp).to(CBInt4).toCBVar()
+    of Int8: return op(a.int8Value.toCpp, b.int8Value.toCpp).to(CBInt4).toCBVar()
+    of Int16: return op(a.int16Value.toCpp, b.int16Value.toCpp).to(CBInt4).toCBVar()
     of Float:  throwCBException("Float " & astToStr(op) & " Not supported")
     of Float2: throwCBException("Float2 " & astToStr(op) & " Not supported")
     of Float3: throwCBException("Float3 " & astToStr(op) & " Not supported")
@@ -107,6 +113,8 @@ proc `>=`*(a,b: CBVar): bool {.inline.} =
   of Int2: return (a.int2Value.toCpp >= b.int2Value.toCpp).to(CBInt2).elems.allit(it != 0)
   of Int3: return (a.int3Value.toCpp >= b.int3Value.toCpp).to(CBInt3).elems.allit(it != 0)
   of Int4: return (a.int4Value.toCpp >= b.int4Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int8: return (a.int8Value.toCpp >= b.int8Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int16: return (a.int16Value.toCpp >= b.int16Value.toCpp).to(CBInt4).elems.allit(it != 0)
   of Float: return a.floatValue >= b.floatValue
   of Float2: return (a.float2Value.toCpp >= b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp >= b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
@@ -130,6 +138,8 @@ proc `>`*(a,b: CBVar): bool {.inline.} =
   of Int2: return (a.int2Value.toCpp > b.int2Value.toCpp).to(CBInt2).elems.allit(it != 0)
   of Int3: return (a.int3Value.toCpp > b.int3Value.toCpp).to(CBInt3).elems.allit(it != 0)
   of Int4: return (a.int4Value.toCpp > b.int4Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int8: return (a.int8Value.toCpp > b.int8Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int16: return (a.int16Value.toCpp > b.int16Value.toCpp).to(CBInt4).elems.allit(it != 0)
   of Float: return a.floatValue > b.floatValue
   of Float2: return (a.float2Value.toCpp > b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp > b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
@@ -153,6 +163,8 @@ proc `<`*(a,b: CBVar): bool {.inline.} =
   of Int2: return (a.int2Value.toCpp < b.int2Value.toCpp).to(CBInt2).elems.allit(it != 0)
   of Int3: return (a.int3Value.toCpp < b.int3Value.toCpp).to(CBInt3).elems.allit(it != 0)
   of Int4: return (a.int4Value.toCpp < b.int4Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int8: return (a.int8Value.toCpp < b.int8Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int16: return (a.int16Value.toCpp < b.int16Value.toCpp).to(CBInt4).elems.allit(it != 0)
   of Float: return a.floatValue < b.floatValue
   of Float2: return (a.float2Value.toCpp < b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp < b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
@@ -176,6 +188,8 @@ proc `<=`*(a,b: CBVar): bool {.inline.} =
   of Int2: return (a.int2Value.toCpp <= b.int2Value.toCpp).to(CBInt2).elems.allit(it != 0)
   of Int3: return (a.int3Value.toCpp <= b.int3Value.toCpp).to(CBInt3).elems.allit(it != 0)
   of Int4: return (a.int4Value.toCpp <= b.int4Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int8: return (a.int8Value.toCpp <= b.int8Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int16: return (a.int16Value.toCpp <= b.int16Value.toCpp).to(CBInt4).elems.allit(it != 0)
   of Float: return a.floatValue <= b.floatValue
   of Float2: return (a.float2Value.toCpp <= b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp <= b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
@@ -199,6 +213,8 @@ proc `==`*(a,b: CBVar): bool {.inline.} =
   of Int2: return (a.int2Value.toCpp == b.int2Value.toCpp).to(CBInt2).elems.allit(it != 0)
   of Int3: return (a.int3Value.toCpp == b.int3Value.toCpp).to(CBInt3).elems.allit(it != 0)
   of Int4: return (a.int4Value.toCpp == b.int4Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int8: return (a.int8Value.toCpp == b.int8Value.toCpp).to(CBInt4).elems.allit(it != 0)
+  of Int16: return (a.int16Value.toCpp == b.int16Value.toCpp).to(CBInt4).elems.allit(it != 0)
   of Float: return a.floatValue == b.floatValue
   of Float2: return (a.float2Value.toCpp == b.float2Value.toCpp).to(CBFloat2).elems.allit(it != 0)
   of Float3: return (a.float3Value.toCpp == b.float3Value.toCpp).to(CBFloat3).elems.allit(it != 0)
@@ -238,13 +254,15 @@ proc `$`*(a: CBVar): string {.inline.} =
   of None, Any: return $a.valueType
   of Bool: return $a.boolValue
   of Int: return $a.intValue
-  of Int2: return $a.int2Value.toCpp[0].to(int64) & ", " & $a.int2Value.toCpp[1].to(int64)
-  of Int3: return $a.int3Value.toCpp[0].to(int64) & ", " & $a.int3Value.toCpp[1].to(int64) & ", " & $a.int3Value.toCpp[2].to(int64)
-  of Int4: return $a.int4Value.toCpp[0].to(int64) & ", " & $a.int4Value.toCpp[1].to(int64) & ", " & $a.int4Value.toCpp[2].to(int64) & ", " & $a.int4Value.toCpp[3].to(int64)
+  of Int2: return $a.int2Value.elems
+  of Int3: return $a.int3Value.elems
+  of Int4: return $a.int4Value.elems
+  of Int8: return $a.int8Value.elems
+  of Int16: return $a.int16Value.elems
   of Float: return $a.floatValue
-  of Float2: return $a.float2Value.toCpp[0].to(float64) & ", " & $a.float2Value.toCpp[1].to(float64)
-  of Float3: return $a.float3Value.toCpp[0].to(float64) & ", " & $a.float3Value.toCpp[1].to(float64) & ", " & $a.float3Value.toCpp[2].to(float64)
-  of Float4: return $a.float4Value.toCpp[0].to(float64) & ", " & $a.float4Value.toCpp[1].to(float64) & ", " & $a.float4Value.toCpp[2].to(float64) & ", " & $a.float4Value.toCpp[3].to(float64)
+  of Float2: return $a.float2Value.elems
+  of Float3: return $a.float3Value.elems
+  of Float4: return $a.float4Value.elems
   of String, ContextVar:
     if a.stringValue.pointer != nil:
       return a.stringValue

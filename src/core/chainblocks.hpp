@@ -23,8 +23,10 @@ enum CBType : uint8_t
   Bool,
   Int,    // A 64bits int
   Int2,   // A vector of 2 64bits ints
-  Int3,   // A vector of 3 32bits int
-  Int4,   // A vector of 4 32bits int
+  Int3,   // A vector of 3 32bits ints
+  Int4,   // A vector of 4 32bits ints
+  Int8,   // A vector of 8 16bits ints
+  Int16,  // A vector of 16 8bits ints
   Float,  // A 64bits float
   Float2, // A vector of 2 64bits floats
   Float3, // A vector of 3 32bits floats
@@ -127,13 +129,15 @@ typedef CBString* CBStrings;
   #define likely(x)       __builtin_expect((x),1)
   #define unlikely(x)     __builtin_expect((x),0)
   
-  typedef int64_t CBInt2 __attribute__((vector_size(16)));
-  typedef int32_t CBInt3 __attribute__((vector_size(16)));
-  typedef int32_t CBInt4 __attribute__((vector_size(16)));
+  typedef int64_t CBInt2  __attribute__((vector_size(16)));
+  typedef int32_t CBInt3  __attribute__((vector_size(16)));
+  typedef int32_t CBInt4  __attribute__((vector_size(16)));
+  typedef int16_t CBInt8  __attribute__((vector_size(16)));
+  typedef int8_t CBInt16  __attribute__((vector_size(16)));
 
   typedef double CBFloat2 __attribute__((vector_size(16)));
-  typedef float CBFloat3 __attribute__((vector_size(16)));
-  typedef float CBFloat4 __attribute__((vector_size(16)));
+  typedef float CBFloat3  __attribute__((vector_size(16)));
+  typedef float CBFloat4  __attribute__((vector_size(16)));
 #else
   typedef int64_t CBInt2[2];
   typedef int32_t CBInt3[3];
@@ -158,31 +162,12 @@ struct CBColor
 
 struct CBImage
 {
-  int32_t width;
-  int32_t height;
-  int32_t channels;
+  uint16_t width;
+  uint16_t height;
+  uint8_t channels;
   uint8_t* data;
-
-  // Utility
-  void alloc()
-  {
-    if(data)
-      dealloc();
-
-    auto binsize = width * height * channels;
-    data = new uint8_t[binsize];
-  }
-
-  // Utility
-  void dealloc()
-  {
-    if(data)
-    {
-      delete[] data;
-      data = nullptr;
-    }
-  }
 };
+
 struct CBTypeInfo
 {
   CBType basicType;
@@ -260,13 +245,8 @@ struct CBParameterInfo
 #ifdef _MSC_VER
 __declspec(align(16))
 #endif
-struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
-{
-#ifdef __cplusplus
-  // this should be the best construction pattern, since it will 0 the first ptrsize
-  CBVar() : objectValue(nullptr), objectVendorId(-1), objectTypeId(-1), valueType(None) {}
-#endif
-  
+struct CBVar // will be 32 bytes, must be 16 aligned due to vectors
+{  
   union
   {
     CBChainState chainState;
@@ -283,50 +263,54 @@ struct CBVar // will be 48 bytes, must be 16 aligned due to vectors
     CBInt2 int2Value;
     CBInt3 int3Value;
     CBInt4 int4Value;
-
+    CBInt8 int8Value;
+    CBInt16 int16Value;
+    
     CBFloat floatValue;
     CBFloat2 float2Value;
     CBFloat3 float3Value;
     CBFloat4 float4Value;
-
+    
     struct {
       CBSeq seqValue;
       // If seqLen is -1, use stbds_arrlen, assume it's a stb dynamic array
       int32_t seqLen;
     };
-
+    
     struct {
       CBTable tableValue;
       // If tableLen is -1, use stbds_shlen, assume it's a stb string map
       int32_t tableLen;
     };
-
+    
     CBString stringValue;
-
+    
     CBColor colorValue;
     
     CBImage imageValue;
-
+    
     CBChainPtr* chainValue;
-
+    
     CBRuntimeBlock* blockValue;
-
+    
     struct {
       CBEnum enumValue;
       int32_t enumVendorId;
       int32_t enumTypeId;
     };
   };
-
+  
   CBType valueType;
-
+  
   uint8_t reserved[15];
 
-#ifdef __cplusplus
-  // Use with care, mostly internal (json) and only if you know you own the memory, this is just utility
-  void releaseMemory();
-#endif
+// #ifdef __cplusplus
+//   // Use with care, mostly internal (json) and only if you know you own the memory, this is just utility
+//   void releaseMemory();
+// #endif
 };
+
+
 
 struct CBNamedVar
 {

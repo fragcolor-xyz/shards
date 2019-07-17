@@ -214,7 +214,6 @@ when true:
   
   template activate*(b: CBIpcPop; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:
-      # given that our CBVar is 48, this allows us to buffer 2500 (actually 2450 due to other mem used internally) of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, open_only, b.name.cstring)
       b.buffer = b.segment[].invoke("find_or_construct<rigtorp::SPSCQueue<CBVar>>(\"queue\")", 500).to(ptr SPSCQueue)
     

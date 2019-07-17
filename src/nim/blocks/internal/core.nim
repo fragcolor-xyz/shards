@@ -972,10 +972,10 @@ when true:
       b.cachedSeq.CBVar
     elif input.valueType == CBType.Image:
       b.cachedSeq.clear()
-      for y in 0..<input.imageValue.height:
-        for x in 0..<input.imageValue.width:
+      for y in 0..<input.imageValue.height.int:
+        for x in 0..<input.imageValue.width.int:
           var storage: array[4, uint8]
-          input.imageValue.getPixel(x, y, storage, 0, input.imageValue.channels - 1)
+          input.imageValue.getPixel(x, y, storage, 0, input.imageValue.channels.int - 1)
           case input.imageValue.channels
           of 1:
             b.cachedSeq.push storage[0].float64.CBVar

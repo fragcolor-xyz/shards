@@ -33,6 +33,14 @@ const
 proc elems*(v: CBInt2): array[2, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64)]
 proc elems*(v: CBInt3): array[3, int32] {.inline.} = [v.toCpp[0].to(int32), v.toCpp[1].to(int32), v.toCpp[2].to(int32)]
 proc elems*(v: CBInt4): array[4, int32] {.inline.} = [v.toCpp[0].to(int32), v.toCpp[1].to(int32), v.toCpp[2].to(int32), v.toCpp[3].to(int32)]
+proc elems*(v: CBInt8): array[8, int16] {.inline.} = [v.toCpp[0].to(int16), v.toCpp[1].to(int16), v.toCpp[2].to(int16), v.toCpp[3].to(int16), v.toCpp[4].to(int16), v.toCpp[5].to(int16), v.toCpp[6].to(int16), v.toCpp[7].to(int16)]
+proc elems*(v: CBInt16): array[16, int8] {.inline.} = 
+  [ 
+    v.toCpp[0].to(int8),  v.toCpp[1].to(int8),  v.toCpp[2].to(int8),  v.toCpp[3].to(int8), 
+    v.toCpp[4].to(int8),  v.toCpp[5].to(int8),  v.toCpp[6].to(int8),  v.toCpp[7].to(int8),
+    v.toCpp[8].to(int8),  v.toCpp[9].to(int8),  v.toCpp[10].to(int8), v.toCpp[11].to(int8),
+    v.toCpp[12].to(int8), v.toCpp[13].to(int8), v.toCpp[14].to(int8), v.toCpp[15].to(int8)
+  ]
 proc elems*(v: CBFloat2): array[2, float64] {.inline.} = [v.toCpp[0].to(float64), v.toCpp[1].to(float64)]
 proc elems*(v: CBFloat3): array[3, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32)]
 proc elems*(v: CBFloat4): array[4, float32] {.inline.} = [v.toCpp[0].to(float32), v.toCpp[1].to(float32), v.toCpp[2].to(float32), v.toCpp[3].to(float32)]
@@ -238,15 +246,15 @@ converter toCBVar*(cbStr: CBString): CBVar {.inline.} =
 converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring](cbStr)
 
 converter imageTypesConv*(cbImg: CBImage): Image[uint8] {.inline, noinit.} =
-  result.width = cbImg.width
-  result.height = cbImg.height
-  result.channels = cbImg.channels
+  result.width = cbImg.width.int
+  result.height = cbImg.height.int
+  result.channels = cbImg.channels.int
   result.data = cbImg.data
 
 converter imageTypesConv*(cbImg: Image[uint8]): CBImage {.inline, noinit.} =
-  result.width = cbImg.width.int32
-  result.height = cbImg.height.int32
-  result.channels = cbImg.channels.int32
+  result.width = cbImg.width.uint16
+  result.height = cbImg.height.uint16
+  result.channels = cbImg.channels.uint8
   result.data = cbImg.data
 
 converter toCBVar*(v: CBImage): CBVar {.inline.} =
@@ -905,7 +913,7 @@ when appType != "lib" or defined(forceCBRuntime):
   macro clearCompileTimeChain*() = staticChainBlocks.setLen(0) # consume all
 
 # always try this for safety
-assert sizeof(CBVar) == 48
+assert sizeof(CBVar) == 32
 
 when isMainModule and appType != "lib":
   import os, times
@@ -1024,13 +1032,13 @@ when isMainModule and appType != "lib":
 
     let
       jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":13,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":18}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":9,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
 
     echo sizeof(CBVar)
 
