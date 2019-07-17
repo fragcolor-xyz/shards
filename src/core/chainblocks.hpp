@@ -142,8 +142,8 @@ typedef CBString* CBStrings;
   typedef int64_t CBInt2[2];
   typedef int32_t CBInt3[3];
   typedef int32_t CBInt4[4];
-  typedef int16_t CBInt4[8];
-  typedef int8_t CBInt16[16];
+  typedef int16_t CBInt8[8];
+  typedef int8_t  CBInt16[16];
 
   typedef double CBFloat2[2];
   typedef float CBFloat3[3];
