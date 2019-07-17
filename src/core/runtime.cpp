@@ -5,12 +5,12 @@
 
 namespace chainblocks
 {
-  std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-  std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
-  std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
-  std::unordered_map<std::string, CBVar> GlobalVariables;
-  std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
-  std::unordered_map<std::string, CBChain*> GlobalChains;
+  phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
+  phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
+  phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
+  phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+  phmap::node_hash_map<std::string, CBOnRunLoopTick> RunLoopHooks;
+  phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
 };
 

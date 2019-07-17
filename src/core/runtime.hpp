@@ -72,7 +72,6 @@ struct CBCoreSwapVariables
 // Since we build the runtime we are free to use any std and lib
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <memory>
 #include <iostream>
 #include <chrono>
@@ -92,6 +91,7 @@ using Time = std::chrono::time_point<Clock, Duration>;
 
 // Included 3rdparty
 #include "3rdparty/json.hpp"
+#include "3rdparty/parallel_hashmap/phmap.h"
 
 #include <tuple>
 namespace std{
@@ -152,7 +152,7 @@ struct CBContext
   {
   }
 
-  std::unordered_map<std::string, CBVar> variables;
+  phmap::node_hash_map<std::string, CBVar> variables;
   CBSeq stack;
   std::string error;
 
@@ -264,12 +264,12 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
 namespace chainblocks
 {
-  extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-  extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
-  extern std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
-  extern std::unordered_map<std::string, CBVar> GlobalVariables;
-  extern std::unordered_map<std::string, CBOnRunLoopTick> RunLoopHooks;
-  extern std::unordered_map<std::string, CBChain*> GlobalChains;
+  extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
+  extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
+  extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
+  extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+  extern phmap::node_hash_map<std::string, CBOnRunLoopTick> RunLoopHooks;
+  extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
 
   static CBRuntimeBlock* createBlock(const char* name);

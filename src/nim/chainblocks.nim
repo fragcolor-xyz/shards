@@ -455,7 +455,7 @@ when appType != "lib" or defined(forceCBRuntime):
   proc load*(chain: var CBChainPtr; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
   proc load*(chain: var CBVar; jsonString: cstring) {.importcpp: "chainblocks::load(#, #)", header: "runtime.hpp".}
 
-  defineCppType(BlocksMap, "std::unordered_map<std::string, CBBlockConstructor>", "runtime.hpp")
+  defineCppType(BlocksMap, "phmap::node_hash_map<std::string, CBBlockConstructor>", "runtime.hpp")
   defineCppType(BlocksPair, "std::pair<std::string, CBBlockConstructor>", "runtime.hpp")
 
   var
