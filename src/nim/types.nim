@@ -111,7 +111,7 @@ type
     Restart, # Restart the chain from the top
     Stop # Stop the chain execution
 
-  CBVar* {.importcpp: "CBVar", header: "chainblocks.hpp".} = object
+  CBVarPayload* {.importcpp: "CBVarPayload", header: "chainblocks.hpp".} = object
     chainState*: CBChainState
     objectValue*: CBPointer
     objectVendorId*: int32
@@ -138,6 +138,9 @@ type
     enumValue*: CBEnum
     enumVendorId*: int32
     enumTypeId*: int32
+
+  CBVar* {.importcpp: "CBVar", header: "chainblocks.hpp".} = object
+    payload*: CBVarPayload
     valueType*: CBType
     reserved*: array[15, uint8]
 
@@ -196,6 +199,60 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
+template chainState*(v: CBVar): auto = v.payload.chainState
+template objectValue*(v: CBVar): auto = v.payload.objectValue
+template objectVendorId*(v: CBVar): auto = v.payload.objectVendorId
+template objectTypeId*(v: CBVar): auto = v.payload.objectTypeId
+template boolValue*(v: CBVar): auto = v.payload.boolValue
+template intValue*(v: CBVar): auto = v.payload.intValue
+template int2Value*(v: CBVar): auto = v.payload.int2Value
+template int3Value*(v: CBVar): auto = v.payload.int3Value
+template int4Value*(v: CBVar): auto = v.payload.int4Value
+template int8Value*(v: CBVar): auto = v.payload.int8Value
+template int16Value*(v: CBVar): auto = v.payload.int16Value
+template floatValue*(v: CBVar): auto = v.payload.floatValue
+template float2Value*(v: CBVar): auto = v.payload.float2Value
+template float3Value*(v: CBVar): auto = v.payload.float3Value
+template float4Value*(v: CBVar): auto = v.payload.float4Value
+template stringValue*(v: CBVar): auto = v.payload.stringValue
+template colorValue*(v: CBVar): auto = v.payload.colorValue
+template imageValue*(v: CBVar): auto = v.payload.imageValue
+template seqValue*(v: CBVar): auto = v.payload.seqValue
+template seqLen*(v: CBVar): auto = v.payload.seqLen
+template tableValue*(v: CBVar): auto = v.payload.tableValue
+template tableLen*(v: CBVar): auto = v.payload.tableLen
+template chainValue*(v: CBVar): auto = v.payload.chainValue
+template enumValue*(v: CBVar): auto = v.payload.enumValue
+template enumVendorId*(v: CBVar): auto = v.payload.enumVendorId
+template enumTypeId*(v: CBVar): auto = v.payload.enumTypeId
+
+template `chainState=`*(v: CBVar, val: auto) = v.payload.chainState = val
+template `objectValue=`*(v: CBVar, val: auto) = v.payload.objectValue = val
+template `objectVendorId=`*(v: CBVar, val: auto) = v.payload.objectVendorId = val
+template `objectTypeId=`*(v: CBVar, val: auto) = v.payload.objectTypeId = val
+template `boolValue=`*(v: CBVar, val: auto) = v.payload.boolValue = val
+template `intValue=`*(v: CBVar, val: auto) = v.payload.intValue = val
+template `int2Value=`*(v: CBVar, val: auto) = v.payload.int2Value = val
+template `int3Value=`*(v: CBVar, val: auto) = v.payload.int3Value = val
+template `int4Value=`*(v: CBVar, val: auto) = v.payload.int4Value = val
+template `int8Value=`*(v: CBVar, val: auto) = v.payload.int8Value = val
+template `int16Value=`*(v: CBVar, val: auto) = v.payload.int16Value = val
+template `floatValue=`*(v: CBVar, val: auto) = v.payload.floatValue = val
+template `float2Value=`*(v: CBVar, val: auto) = v.payload.float2Value = val
+template `float3Value=`*(v: CBVar, val: auto) = v.payload.float3Value = val
+template `float4Value=`*(v: CBVar, val: auto) = v.payload.float4Value = val
+template `stringValue=`*(v: CBVar, val: auto) = v.payload.stringValue = val
+template `colorValue=`*(v: CBVar, val: auto) = v.payload.colorValue = val
+template `imageValue=`*(v: CBVar, val: auto) = v.payload.imageValue = val
+template `seqValue=`*(v: CBVar, val: auto) = v.payload.seqValue = val
+template `seqLen=`*(v: CBVar, val: auto) = v.payload.seqLen = val
+template `tableValue=`*(v: CBVar, val: auto) = v.payload.tableValue = val
+template `tableLen=`*(v: CBVar, val: auto) = v.payload.tableLen = val
+template `chainValue=`*(v: CBVar, val: auto) = v.payload.chainValue = val
+template `enumValue=`*(v: CBVar, val: auto) = v.payload.enumValue = val
+template `enumVendorId=`*(v: CBVar, val: auto) = v.payload.enumVendorId = val
+template `enumTypeId=`*(v: CBVar, val: auto) = v.payload.enumTypeId = val
+
 registerCppType CBChain
 registerCppType CBContextObj
 registerCppType CBInt2
@@ -208,9 +265,9 @@ registerCppType CBFloat3
 registerCppType CBFloat4
 
 var
-  Empty* = CBVar(valueType: None, chainState: Continue)
-  RestartChain* = CBVar(valueType: None, chainState: Restart)
-  StopChain* = CBVar(valueType: None, chainState: Stop)
+  Empty* = CBVar(valueType: None, payload: CBVarPayload(chainState: Continue))
+  RestartChain* = CBVar(valueType: None, payload: CBVarPayload(chainState: Restart))
+  StopChain* = CBVar(valueType: None, payload: CBVarPayload(chainState: Stop))
 
 # Vectors
 proc `[]`*(v: CBIntVectorsLike; index: int): int64 {.inline, noinit.} = v.toCpp[index].to(int64)
@@ -231,7 +288,7 @@ proc incl*(t: CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shpu
 proc incl*(t: CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
 proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
 proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
-converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, tableValue: t)
+converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, payload: CBVarPayload(tableValue: t))
 
 # CBSeqLikes
 proc initSeq*(s: var CBSeqLike) {.inline.} = s = nil
@@ -276,7 +333,7 @@ converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
 converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
 converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
-  result.stringValue = cast[CBString](s.cstring)
+  result.payload.stringValue = cast[CBString](s.cstring)
 
 # Memory utilities to cache stuff around
 type
@@ -297,7 +354,7 @@ proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
   if v.valueType == String:
     result.valueType = String
     cache.strings.add(v.stringValue)
-    result.stringValue = cache.strings[^1].cstring.CBString
+    result.payload.stringValue = cache.strings[^1].cstring.CBString
   elif v.valueType == Seq:
     result.valueType = Seq
     initSeq(result.seqValue)

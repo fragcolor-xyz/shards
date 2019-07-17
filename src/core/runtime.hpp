@@ -625,19 +625,19 @@ namespace chainblocks
     {
       CBVar restart = {};
       restart.valueType = None;
-      restart.chainState = Restart;
+      restart.payload.chainState = Restart;
       return restart;
     }
     else if(current->context->aborted)
     {
       CBVar stop = {};
       stop.valueType = None;
-      stop.chainState = Stop;
+      stop.payload.chainState = Stop;
       return stop;
     }
     CBVar cont = {};
     cont.valueType = None;
-    cont.chainState = Continue;
+    cont.payload.chainState = Continue;
     return cont;
   }
 
@@ -698,7 +698,7 @@ namespace chainblocks
           {
             auto cblock = reinterpret_cast<CBSleepStub*>(blk);
             auto suspendRes = suspend(cblock->sleepTime);
-            if(suspendRes.chainState != Continue)
+            if(suspendRes.payload.chainState != Continue)
               previousOutput = suspendRes;
             break;
           }
@@ -723,7 +723,7 @@ namespace chainblocks
             // We only do it quick in certain cases!
             auto cblock = reinterpret_cast<CBCoreIf*>(blk);            
             auto match = cblock->match.valueType == ContextVar ?
-              cblock->matchCtx ? *cblock->matchCtx : *(cblock->matchCtx = contextVariable(context, cblock->match.stringValue)) :
+              cblock->matchCtx ? *cblock->matchCtx : *(cblock->matchCtx = contextVariable(context, cblock->match.payload.stringValue)) :
                 cblock->match;
             auto result = false;
             if(unlikely(input.valueType != match.valueType))
@@ -750,19 +750,19 @@ namespace chainblocks
                   switch(cblock->boolOp)
                   {
                     case 0:
-                      result = input.intValue == match.intValue;
+                      result = input.payload.intValue == match.payload.intValue;
                       break;
                     case 1:
-                      result = input.intValue > match.intValue;
+                      result = input.payload.intValue > match.payload.intValue;
                       break;
                     case 2:
-                      result = input.intValue < match.intValue;
+                      result = input.payload.intValue < match.payload.intValue;
                       break;
                     case 3:
-                      result = input.intValue >= match.intValue;
+                      result = input.payload.intValue >= match.payload.intValue;
                       break;
                     case 4:
-                      result = input.intValue <= match.intValue;
+                      result = input.payload.intValue <= match.payload.intValue;
                       break;
                   }
                   break;
@@ -770,19 +770,19 @@ namespace chainblocks
                   switch(cblock->boolOp)
                   {
                     case 0:
-                      result = input.floatValue == match.floatValue;
+                      result = input.payload.floatValue == match.payload.floatValue;
                       break;
                     case 1:
-                      result = input.floatValue > match.floatValue;
+                      result = input.payload.floatValue > match.payload.floatValue;
                       break;
                     case 2:
-                      result = input.floatValue < match.floatValue;
+                      result = input.payload.floatValue < match.payload.floatValue;
                       break;
                     case 3:
-                      result = input.floatValue >= match.floatValue;
+                      result = input.payload.floatValue >= match.payload.floatValue;
                       break;
                     case 4:
-                      result = input.floatValue <= match.floatValue;
+                      result = input.payload.floatValue <= match.payload.floatValue;
                       break;
                   }
                   break;
@@ -791,19 +791,19 @@ namespace chainblocks
                   switch(cblock->boolOp)
                   {
                     case 0:
-                      result = input.stringValue == match.stringValue;
+                      result = input.payload.stringValue == match.payload.stringValue;
                       break;
                     case 1:
-                      result = input.stringValue > match.stringValue;
+                      result = input.payload.stringValue > match.payload.stringValue;
                       break;
                     case 2:
-                      result = input.stringValue < match.stringValue;
+                      result = input.payload.stringValue < match.payload.stringValue;
                       break;
                     case 3:
-                      result = input.stringValue >= match.stringValue;
+                      result = input.payload.stringValue >= match.payload.stringValue;
                       break;
                     case 4:
-                      result = input.stringValue <= match.stringValue;
+                      result = input.payload.stringValue <= match.payload.stringValue;
                       break;
                   }
                   break;
@@ -859,7 +859,7 @@ namespace chainblocks
               // Handle the special case of a seq that might need reset every run
               if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
               {
-                stbds_arrsetlen((*cblock->target).seqValue, size_t(0));
+                stbds_arrsetlen((*cblock->target).payload.seqValue, size_t(0));
               }
               else
               {
@@ -1144,7 +1144,7 @@ namespace chainblocks
 
         if(previousOutput.valueType == None)
         {
-          switch(previousOutput.chainState)
+          switch(previousOutput.payload.chainState)
           {
             case Restart:
             {

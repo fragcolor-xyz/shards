@@ -247,7 +247,7 @@ struct CBParameterInfo
 #ifdef _MSC_VER
 __declspec(align(16))
 #endif
-struct CBVar // will be 32 bytes, must be 16 aligned due to vectors
+struct CBVarPayload // will be 32 bytes, must be 16 aligned due to vectors
 {  
   union
   {
@@ -301,23 +301,25 @@ struct CBVar // will be 32 bytes, must be 16 aligned due to vectors
       int32_t enumTypeId;
     };
   };
-  
-  CBType valueType;
-  
-  uint8_t reserved[15];
-
-// #ifdef __cplusplus
-//   // Use with care, mostly internal (json) and only if you know you own the memory, this is just utility
-//   void releaseMemory();
-// #endif
 };
 
+#ifdef _MSC_VER
+__declspec(align(16))
+#endif
+struct CBVar
+{
+  CBVarPayload payload;
+  CBType valueType;
+  uint8_t reserved[15];
+};
 
-
+#ifdef _MSC_VER
+__declspec(align(16))
+#endif
 struct CBNamedVar
 {
-  const char* key;
   CBVar value;
+  const char* key;
 };
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();

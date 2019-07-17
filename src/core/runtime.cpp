@@ -36,33 +36,33 @@ void alloc(CBImage& self)
 
 void releaseMemory(CBVar& self)
 {
-  if((self.valueType == String || self.valueType == ContextVar) && self.stringValue != nullptr)
+  if((self.valueType == String || self.valueType == ContextVar) && self.payload.stringValue != nullptr)
   {
-    delete[] self.stringValue;
-    self.stringValue = nullptr;
+    delete[] self.payload.stringValue;
+    self.payload.stringValue = nullptr;
   }
-  else if(self.valueType == Seq && self.seqValue)
+  else if(self.valueType == Seq && self.payload.seqValue)
   {
-    for(auto i = 0; i < stbds_arrlen(self.seqValue); i++)
+    for(auto i = 0; i < stbds_arrlen(self.payload.seqValue); i++)
     {
-      releaseMemory(self.seqValue[i]);
+      releaseMemory(self.payload.seqValue[i]);
     }
-    stbds_arrfree(self.seqValue);
-    self.seqValue = nullptr;
+    stbds_arrfree(self.payload.seqValue);
+    self.payload.seqValue = nullptr;
   }
-  else if(self.valueType == Table && self.tableValue)
+  else if(self.valueType == Table && self.payload.tableValue)
   {
-    for(auto i = 0; i < stbds_shlen(self.tableValue); i++)
+    for(auto i = 0; i < stbds_shlen(self.payload.tableValue); i++)
     {
-      delete[] self.tableValue[i].key;
-      releaseMemory(self.tableValue[i].value);
+      delete[] self.payload.tableValue[i].key;
+      releaseMemory(self.payload.tableValue[i].value);
     }
-    stbds_shfree(self.tableValue);
-    self.tableValue = nullptr;
+    stbds_shfree(self.payload.tableValue);
+    self.payload.tableValue = nullptr;
   }
   else if(self.valueType == Image)
   {
-    dealloc(self.imageValue);
+    dealloc(self.payload.imageValue);
   }
 }
 
@@ -123,28 +123,28 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", 0 },
-        { "value", int(var.chainState) }
+        { "value", int(var.payload.chainState) }
       };
       break;
     }
     case Object:
     {
-      auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(var.objectVendorId, var.objectTypeId));
+      auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(var.payload.objectVendorId, var.payload.objectTypeId));
       if(findIt != chainblocks::ObjectTypesRegister.end() && findIt->second.serialize)
       {
         j = json{
           { "type", valType },
-          { "vendorId", var.objectVendorId },
-          { "typeId", var.objectTypeId },
-          { "value", findIt->second.serialize(var.objectValue) }
+          { "vendorId", var.payload.objectVendorId },
+          { "typeId", var.payload.objectTypeId },
+          { "value", findIt->second.serialize(var.payload.objectValue) }
         };
       }
       else
       {
         j = json{
           { "type", valType },
-          { "vendorId", var.objectVendorId },
-          { "typeId", var.objectTypeId },
+          { "vendorId", var.payload.objectVendorId },
+          { "typeId", var.payload.objectTypeId },
           { "value", nullptr }
         };
       }
@@ -154,7 +154,7 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", var.boolValue }
+        { "value", var.payload.boolValue }
       };
       break;
     }
@@ -162,13 +162,13 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", var.intValue }
+        { "value", var.payload.intValue }
       };
       break;
     }
     case Int2:
     {
-      auto vec = { var.int2Value[0], var.int2Value[1] };
+      auto vec = { var.payload.int2Value[0], var.payload.int2Value[1] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -177,7 +177,7 @@ void to_json(json& j, const CBVar& var)
     }
     case Int3:
     {
-      auto vec = { var.int3Value[0], var.int3Value[1], var.int3Value[2] };
+      auto vec = { var.payload.int3Value[0], var.payload.int3Value[1], var.payload.int3Value[2] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -186,7 +186,7 @@ void to_json(json& j, const CBVar& var)
     }
     case Int4:
     {
-      auto vec = { var.int4Value[0], var.int4Value[1], var.int4Value[2], var.int4Value[3] };
+      auto vec = { var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2], var.payload.int4Value[3] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -197,13 +197,13 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", var.intValue }
+        { "value", var.payload.intValue }
       };
       break;
     }
     case Float2:
     {
-      auto vec = { var.float2Value[0], var.float2Value[1] };
+      auto vec = { var.payload.float2Value[0], var.payload.float2Value[1] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -212,7 +212,7 @@ void to_json(json& j, const CBVar& var)
     }
     case Float3:
     {
-      auto vec = { var.float3Value[0], var.float3Value[1], var.float3Value[2] };
+      auto vec = { var.payload.float3Value[0], var.payload.float3Value[1], var.payload.float3Value[2] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -221,7 +221,7 @@ void to_json(json& j, const CBVar& var)
     }
     case Float4:
     {
-      auto vec = { var.float4Value[0], var.float4Value[1], var.float4Value[2], var.float4Value[3] };
+      auto vec = { var.payload.float4Value[0], var.payload.float4Value[1], var.payload.float4Value[2], var.payload.float4Value[3] };
       j = json{
         { "type", valType },
         { "value", vec }
@@ -233,7 +233,7 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", var.stringValue }
+        { "value", var.payload.stringValue }
       };
       break;
     }
@@ -241,22 +241,22 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", { var.colorValue.r, var.colorValue.g, var.colorValue.b, var.colorValue.a } }
+        { "value", { var.payload.colorValue.r, var.payload.colorValue.g, var.payload.colorValue.b, var.payload.colorValue.a } }
       };
       break;
     }
     case Image:
     {
-      if(var.imageValue.data)
+      if(var.payload.imageValue.data)
       {
-        auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
+        auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels;
         std::vector<uint8_t> buffer(binsize);
-        memcpy(&buffer[0], var.imageValue.data, binsize);
+        memcpy(&buffer[0], var.payload.imageValue.data, binsize);
         j = json{
           { "type", valType },
-          { "width", var.imageValue.width },
-          { "height", var.imageValue.height },
-          { "channels", var.imageValue.channels },
+          { "width", var.payload.imageValue.width },
+          { "height", var.payload.imageValue.height },
+          { "channels", var.payload.imageValue.channels },
           { "data", buffer }
         };
       }
@@ -273,18 +273,18 @@ void to_json(json& j, const CBVar& var)
     {
       j = json{
         { "type", valType },
-        { "value", int32_t(var.enumValue) },
-        { "vendorId", var.enumVendorId },
-        { "typeId", var.enumTypeId }
+        { "value", int32_t(var.payload.enumValue) },
+        { "vendorId", var.payload.enumVendorId },
+        { "typeId", var.payload.enumTypeId }
       };
       break;
     }
     case Seq:
     {
       std::vector<json> items;
-      for(int i = 0; i < stbds_arrlen(var.seqValue); i++)
+      for(int i = 0; i < stbds_arrlen(var.payload.seqValue); i++)
       {
-        auto& v = var.seqValue[i];
+        auto& v = var.payload.seqValue[i];
         items.push_back(v);
       }
       j = json{
@@ -296,9 +296,9 @@ void to_json(json& j, const CBVar& var)
     case Table:
     {
       std::vector<json> items;
-      for(int i = 0; i < stbds_arrlen(var.tableValue); i++)
+      for(int i = 0; i < stbds_arrlen(var.payload.tableValue); i++)
       {
-        auto& v = var.tableValue[i];
+        auto& v = var.payload.tableValue[i];
         items.push_back(json{
           { "key", v.key },
           { "value", v.value }
@@ -312,11 +312,11 @@ void to_json(json& j, const CBVar& var)
     }
     case Chain:
     {
-      if(var.chainValue && *var.chainValue)
+      if(var.payload.chainValue && *var.payload.chainValue)
       {
         j = json{
           { "type", valType },
-          { "name", (*var.chainValue)->name }
+          { "name", (*var.payload.chainValue)->name }
         };
       }
       else
@@ -346,7 +346,7 @@ void from_json(const json& j, CBVar& var)
     case None:
     {
       var.valueType = None;
-      var.chainState = CBChainState(j.at("value").get<int>());
+      var.payload.chainState = CBChainState(j.at("value").get<int>());
       break;
     }
     case Object:
@@ -359,7 +359,7 @@ void from_json(const json& j, CBVar& var)
         auto findIt = chainblocks::ObjectTypesRegister.find(std::make_tuple(vendorId, typeId));
         if(findIt != chainblocks::ObjectTypesRegister.end() && findIt->second.deserialize)
         {
-          var.objectValue = findIt->second.deserialize(const_cast<CBString>(value.c_str()));
+          var.payload.objectValue = findIt->second.deserialize(const_cast<CBString>(value.c_str()));
         }
         else
         {
@@ -368,132 +368,132 @@ void from_json(const json& j, CBVar& var)
       }
       else
       {
-        var.objectValue = nullptr;
+        var.payload.objectValue = nullptr;
       }
-      var.objectVendorId = vendorId;
-      var.objectTypeId = typeId;
+      var.payload.objectVendorId = vendorId;
+      var.payload.objectTypeId = typeId;
       break;
     }
     case Bool:
     {
       var.valueType = Bool;
-      var.boolValue = j.at("value").get<bool>();
+      var.payload.boolValue = j.at("value").get<bool>();
       break;
     }
     case Int:
     {
       var.valueType = Int;
-      var.intValue = j.at("value").get<int64_t>();
+      var.payload.intValue = j.at("value").get<int64_t>();
       break;
     }
     case Int2:
     {
       var.valueType = Int2;
-      var.int2Value[0] = j.at("value")[0].get<int64_t>();
-      var.int2Value[1] = j.at("value")[1].get<int64_t>();
+      var.payload.int2Value[0] = j.at("value")[0].get<int64_t>();
+      var.payload.int2Value[1] = j.at("value")[1].get<int64_t>();
       break;
     }
     case Int3:
     {
       var.valueType = Int3;
-      var.int3Value[0] = j.at("value")[0].get<int32_t>();
-      var.int3Value[1] = j.at("value")[1].get<int32_t>();
-      var.int3Value[2] = j.at("value")[2].get<int32_t>();
+      var.payload.int3Value[0] = j.at("value")[0].get<int32_t>();
+      var.payload.int3Value[1] = j.at("value")[1].get<int32_t>();
+      var.payload.int3Value[2] = j.at("value")[2].get<int32_t>();
       break;
     }
     case Int4:
     {
       var.valueType = Int4;
-      var.int4Value[0] = j.at("value")[0].get<int32_t>();
-      var.int4Value[1] = j.at("value")[1].get<int32_t>();
-      var.int4Value[2] = j.at("value")[2].get<int32_t>();
-      var.int4Value[3] = j.at("value")[3].get<int32_t>();
+      var.payload.int4Value[0] = j.at("value")[0].get<int32_t>();
+      var.payload.int4Value[1] = j.at("value")[1].get<int32_t>();
+      var.payload.int4Value[2] = j.at("value")[2].get<int32_t>();
+      var.payload.int4Value[3] = j.at("value")[3].get<int32_t>();
       break;
     }
     case Float:
     {
       var.valueType = Float;
-      var.intValue = j.at("value").get<double>();
+      var.payload.intValue = j.at("value").get<double>();
       break;
     }
     case Float2:
     {
       var.valueType = Float2;
-      var.float2Value[0] = j.at("value")[0].get<double>();
-      var.float2Value[1] = j.at("value")[1].get<double>();
+      var.payload.float2Value[0] = j.at("value")[0].get<double>();
+      var.payload.float2Value[1] = j.at("value")[1].get<double>();
       break;
     }
     case Float3:
     {
       var.valueType = Float3;
-      var.float3Value[0] = j.at("value")[0].get<float>();
-      var.float3Value[1] = j.at("value")[1].get<float>();
-      var.float3Value[2] = j.at("value")[2].get<float>();
+      var.payload.float3Value[0] = j.at("value")[0].get<float>();
+      var.payload.float3Value[1] = j.at("value")[1].get<float>();
+      var.payload.float3Value[2] = j.at("value")[2].get<float>();
       break;
     }
     case Float4:
     {
       var.valueType = Float4;
-      var.float4Value[0] = j.at("value")[0].get<float>();
-      var.float4Value[1] = j.at("value")[1].get<float>();
-      var.float4Value[2] = j.at("value")[2].get<float>();
-      var.float4Value[3] = j.at("value")[3].get<float>();
+      var.payload.float4Value[0] = j.at("value")[0].get<float>();
+      var.payload.float4Value[1] = j.at("value")[1].get<float>();
+      var.payload.float4Value[2] = j.at("value")[2].get<float>();
+      var.payload.float4Value[3] = j.at("value")[3].get<float>();
       break;
     }
     case ContextVar:
     {
       var.valueType = ContextVar;
       auto strVal = j.at("value").get<std::string>();
-      var.stringValue = new char[strVal.length() + 1];
-      strcpy((char*)var.stringValue, strVal.c_str());
+      var.payload.stringValue = new char[strVal.length() + 1];
+      strcpy((char*)var.payload.stringValue, strVal.c_str());
       break;
     }
     case String:
     {
       var.valueType = String;
       auto strVal = j.at("value").get<std::string>();
-      var.stringValue = new char[strVal.length() + 1];
-      strcpy((char*)var.stringValue, strVal.c_str());
+      var.payload.stringValue = new char[strVal.length() + 1];
+      strcpy((char*)var.payload.stringValue, strVal.c_str());
       break;
     }
     case Color:
     {
       var.valueType = Color;
-      var.colorValue.r = j.at("value")[0].get<uint8_t>();
-      var.colorValue.g = j.at("value")[1].get<uint8_t>();
-      var.colorValue.b = j.at("value")[2].get<uint8_t>();
-      var.colorValue.a = j.at("value")[3].get<uint8_t>();
+      var.payload.colorValue.r = j.at("value")[0].get<uint8_t>();
+      var.payload.colorValue.g = j.at("value")[1].get<uint8_t>();
+      var.payload.colorValue.b = j.at("value")[2].get<uint8_t>();
+      var.payload.colorValue.a = j.at("value")[3].get<uint8_t>();
       break;
     }
     case Image:
     {
       var.valueType = Image;
-      var.imageValue.width = j.at("width").get<int32_t>();
-      var.imageValue.height = j.at("height").get<int32_t>();
-      var.imageValue.channels = j.at("channels").get<int32_t>();
-      var.imageValue.data = nullptr;
-      alloc(var.imageValue);
+      var.payload.imageValue.width = j.at("width").get<int32_t>();
+      var.payload.imageValue.height = j.at("height").get<int32_t>();
+      var.payload.imageValue.channels = j.at("channels").get<int32_t>();
+      var.payload.imageValue.data = nullptr;
+      alloc(var.payload.imageValue);
       auto buffer = j.at("data").get<std::vector<uint8_t>>();
-      auto binsize = var.imageValue.width * var.imageValue.height * var.imageValue.channels;
-      memcpy(var.imageValue.data, &buffer[0], binsize);
+      auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels;
+      memcpy(var.payload.imageValue.data, &buffer[0], binsize);
       break;
     }
     case Enum:
     {
       var.valueType = Enum;
-      var.enumValue = CBEnum(j.at("value").get<int32_t>());
-      var.enumVendorId = CBEnum(j.at("vendorId").get<int32_t>());
-      var.enumTypeId = CBEnum(j.at("typeId").get<int32_t>());
+      var.payload.enumValue = CBEnum(j.at("value").get<int32_t>());
+      var.payload.enumVendorId = CBEnum(j.at("vendorId").get<int32_t>());
+      var.payload.enumTypeId = CBEnum(j.at("typeId").get<int32_t>());
       break;
     }
     case Seq:
     {
       var.valueType = Seq;
       auto items = j.at("values").get<std::vector<json>>();
-      var.seqValue = nullptr;
+      var.payload.seqValue = nullptr;
       for(auto item : items)
       {
-        stbds_arrpush(var.seqValue, item.get<CBVar>());
+        stbds_arrpush(var.payload.seqValue, item.get<CBVar>());
       }
       break;
     }
@@ -501,8 +501,8 @@ void from_json(const json& j, CBVar& var)
     {
       var.valueType = Seq;
       auto items = j.at("values").get<std::vector<json>>();
-      var.tableValue = nullptr;
-      stbds_shdefault(var.tableValue, CBVar());
+      var.payload.tableValue = nullptr;
+      stbds_shdefault(var.payload.tableValue, CBVar());
       for(auto item : items)
       {
         auto key = item.at("key").get<std::string>();
@@ -511,7 +511,7 @@ void from_json(const json& j, CBVar& var)
         named.key = new char[key.length() + 1];
         strcpy((char*)named.key, key.c_str());
         named.value = value;
-        stbds_shputs(var.tableValue, named);
+        stbds_shputs(var.payload.tableValue, named);
       }
       break;
     }
@@ -519,12 +519,12 @@ void from_json(const json& j, CBVar& var)
     {
       var.valueType = Chain;
       auto chainName = j.at("name").get<std::string>();
-      var.chainValue = &chainblocks::GlobalChains[chainName]; // might be null now, but might get filled after
+      var.payload.chainValue = &chainblocks::GlobalChains[chainName]; // might be null now, but might get filled after
       break;
     }
     default:
     {
-      var = CBVar();
+      var = {};
     }
   }
 }

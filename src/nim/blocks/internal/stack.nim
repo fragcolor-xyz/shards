@@ -38,10 +38,8 @@ when true:
   template inputTypes*(b: CBStack): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBStack): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBStack): CBParametersInfo = @[("Index", { Int })]
-  template setParam*(b: CBStack; index: int; val: CBVar) =
-    b.index = val.intValue.int
-  template getParam*(b: CBStack; index: int): CBVar =
-    CBVar(valueType: Int, intValue: b.index)
+  template setParam*(b: CBStack; index: int; val: CBVar) = b.index = val.intValue.int
+  template getParam*(b: CBStack; index: int): CBVar = b.index
   template activate*(b: var CBStack; context: CBContext; input: CBVar): CBVar =
     context.stack[(context.stack.len - 1) - b.index]
 

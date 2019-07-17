@@ -221,27 +221,27 @@ template iterateTuple(t: tuple; storage: untyped; castType: untyped): untyped =
 
 converter toInt64Value*(v: CBVar): int64 {.inline.} =
   assert v.valueType == Int
-  return v.intValue
+  return v.payload.intValue
 
 converter toIntValue*(v: CBVar): int {.inline.} =
   assert v.valueType == Int
-  return v.intValue.int
+  return v.payload.intValue.int
 
 converter toFloatValue*(v: CBVar): float64 {.inline.} =
   assert v.valueType == Float
-  return v.floatValue
+  return v.payload.floatValue
 
 converter toBoolValue*(v: CBVar): bool {.inline.} =
   assert v.valueType == Bool
-  return v.boolValue
+  return v.payload.boolValue
 
 converter toCBVar*(cbSeq: CBSeq): CBVar {.inline.} =
   result.valueType = Seq
-  result.seqValue = cbSeq
+  result.payload.seqValue = cbSeq
 
 converter toCBVar*(cbStr: CBString): CBVar {.inline.} =
   result.valueType = String
-  result.stringValue = cbStr
+  result.payload.stringValue = cbStr
 
 converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring](cbStr)
 
@@ -258,119 +258,119 @@ converter imageTypesConv*(cbImg: Image[uint8]): CBImage {.inline, noinit.} =
   result.data = cbImg.data
 
 converter toCBVar*(v: CBImage): CBVar {.inline.} =
-  return CBVar(valueType: CBType.Image, imageValue: v)
+  return CBVar(valueType: CBType.Image, payload: CBVarPayload(imageValue: v))
 
 proc asCBVar*(v: pointer; vendorId, typeId: FourCC): CBVar {.inline.} =
-  return CBVar(valueType: Object, objectValue: v, objectVendorId: vendorId.int32, objectTypeId: typeId.int32)
+  return CBVar(valueType: Object, payload: CBVarPayload(objectValue: v, objectVendorId: vendorId.int32, objectTypeId: typeId.int32))
 
 converter toCBVar*(v: int): CBVar {.inline.} =
-  return CBVar(valueType: Int, intValue: v)
+  return CBVar(valueType: Int, payload: CBVarPayload(intValue: v))
 
 converter toCBVar*(v: int64): CBVar {.inline.} =
-  return CBVar(valueType: Int, intValue: v)
+  return CBVar(valueType: Int, payload: CBVarPayload(intValue: v))
 
 converter toCBVar*(v: CBInt2): CBVar {.inline.} =
-  return CBVar(valueType: Int2, int2Value: v)
+  return CBVar(valueType: Int2, payload: CBVarPayload(int2Value: v))
 
 converter toCBVar*(v: CBInt3): CBVar {.inline.} =
-  return CBVar(valueType: Int3, int3Value: v)
+  return CBVar(valueType: Int3, payload: CBVarPayload(int3Value: v))
 
 converter toCBVar*(v: CBInt4): CBVar {.inline.} =
-  return CBVar(valueType: Int4, int4Value: v)
+  return CBVar(valueType: Int4, payload: CBVarPayload(int4Value: v))
 
 converter toCBVar*(v: tuple[a,b: int]): CBVar {.inline.} =
   result.valueType = Int2
-  iterateTuple(v, result.int2Value, int64)
+  iterateTuple(v, result.payload.int2Value, int64)
 
 converter toCBVar*(v: tuple[a,b: int64]): CBVar {.inline.} =
   result.valueType = Int2
-  iterateTuple(v, result.int2Value, int64)
+  iterateTuple(v, result.payload.int2Value, int64)
 
 converter toCBVar*(v: tuple[a,b,c: int]): CBVar {.inline.} =
   result.valueType = Int3
-  iterateTuple(v, result.int3Value, int32)
+  iterateTuple(v, result.payload.int3Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c: int32]): CBVar {.inline.} =
   result.valueType = Int3
-  iterateTuple(v, result.int3Value, int32)
+  iterateTuple(v, result.payload.int3Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c,d: int]): CBVar {.inline.} =
   result.valueType = Int4
-  iterateTuple(v, result.int4Value, int32)
+  iterateTuple(v, result.payload.int4Value, int32)
 
 converter toCBVar*(v: tuple[a,b,c,d: int32]): CBVar {.inline.} =
   result.valueType = Int4
-  iterateTuple(v, result.int4Value, int32)
+  iterateTuple(v, result.payload.int4Value, int32)
 
 converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h: int]): CBVar {.inline.} =
   result.valueType = Int8
-  iterateTuple(v, result.int8Value, int16)
+  iterateTuple(v, result.payload.int8Value, int16)
 
 converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h: int16]): CBVar {.inline.} =
   result.valueType = Int8
-  iterateTuple(v, result.int8Value, int16)
+  iterateTuple(v, result.payload.int8Value, int16)
 
 converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h, a1, b1, c1, d1, e1, f1, g1, h1: int]): CBVar {.inline.} =
   result.valueType = Int16
-  iterateTuple(v, result.int8Value, int8)
+  iterateTuple(v, result.payload.int16Value, int8)
 
 converter toCBVar*(v: tuple[a, b, c, d, e, f, g, h, a1, b1, c1, d1, e1, f1, g1, h1: int8]): CBVar {.inline.} =
   result.valueType = Int16
-  iterateTuple(v, result.int8Value, int8)
+  iterateTuple(v, result.payload.int16Value, int8)
 
 converter toCBVar*(v: bool): CBVar {.inline.} =
-  return CBVar(valueType: Bool, boolValue: v)
+  return CBVar(valueType: Bool, payload: CBVarPayload(boolValue: v))
 
 converter toCBVar*(v: float32): CBVar {.inline.} =
-  return CBVar(valueType: Float, floatValue: v)
+  return CBVar(valueType: Float, payload: CBVarPayload(floatValue: v))
 
 converter toCBVar*(v: float64): CBVar {.inline.} =
-  return CBVar(valueType: Float, floatValue: v)
+  return CBVar(valueType: Float, payload: CBVarPayload(floatValue: v))
 
 converter toCBVar*(v: CBFloat2): CBVar {.inline.} =
-  return CBVar(valueType: Float2, float2Value: v)
+  return CBVar(valueType: Float2, payload: CBVarPayload(float2Value: v))
 
 converter toCBVar*(v: CBFloat3): CBVar {.inline.} =
-  return CBVar(valueType: Float3, float3Value: v)
+  return CBVar(valueType: Float3, payload: CBVarPayload(float3Value: v))
 
 converter toCBVar*(v: CBFloat4): CBVar {.inline.} =
-  return CBVar(valueType: Float4, float4Value: v)
+  return CBVar(valueType: Float4, payload: CBVarPayload(float4Value: v))
 
 converter toCBVar*(v: tuple[a,b: float64]): CBVar {.inline.} =
   result.valueType = Float2
-  iterateTuple(v, result.float2Value, float64)
+  iterateTuple(v, result.payload.float2Value, float64)
 
 converter toCBVar*(v: tuple[a,b,c: float]): CBVar {.inline.} =
   result.valueType = Float3
-  iterateTuple(v, result.float3Value, float32)
+  iterateTuple(v, result.payload.float3Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c: float32]): CBVar {.inline.} =
   result.valueType = Float3
-  iterateTuple(v, result.float3Value, float32)
+  iterateTuple(v, result.payload.float3Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c,d: float]): CBVar {.inline.} =
   result.valueType = Float4
-  iterateTuple(v, result.float4Value, float32)
+  iterateTuple(v, result.payload.float4Value, float32)
 
 converter toCBVar*(v: tuple[a,b,c,d: float32]): CBVar {.inline.} =
   result.valueType = Float4
-  iterateTuple(v, result.float4Value, float32)
+  iterateTuple(v, result.payload.float4Value, float32)
 
 converter toCBVar*(v: tuple[r,g,b,a: uint8]): CBVar {.inline.} =
-  return CBVar(valueType: Color, colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a))
+  return CBVar(valueType: Color, payload: CBVarPayload(colorValue: CBColor(r: v.r, g: v.g, b: v.b, a: v.a)))
 
 converter toCBVar*(v: CBColor): CBVar {.inline.} =
-  return CBVar(valueType: Color, colorValue: v)
+  return CBVar(valueType: Color, payload: CBVarPayload(colorValue: v))
 
 converter toCBVar*(v: ptr CBChainPtr): CBVar {.inline.} =
-  return CBVar(valueType: Chain, chainValue: v)
+  return CBVar(valueType: Chain, payload: CBVarPayload(chainValue: v))
 
 converter toCBVar*(v: var CBChainPtr): CBVar {.inline.} =
-  return CBVar(valueType: Chain, chainValue: addr v)
+  return CBVar(valueType: Chain, payload: CBVarPayload(chainValue: addr v))
 
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
   if container.valueType == ContextVar:
-    var foundVar = context.contextVariable(container.stringValue)
+    var foundVar = context.contextVariable(container.payload.stringValue)
     if foundVar[].valueType == wantedType:
       subject = foundVar[].typeGetter
   else:
@@ -379,7 +379,7 @@ template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGet
 include ops
 
 proc contextVariable*(name: string): CBVar {.inline.} =
-  return CBVar(valueType: ContextVar, stringValue: name)
+  return CBVar(valueType: ContextVar, payload: CBVarPayload(stringValue: name))
 
 template `~~`*(name: string): CBVar = contextVariable(name)
 
@@ -930,6 +930,7 @@ when appType != "lib" or defined(forceCBRuntime):
 
 # always try this for safety
 assert sizeof(CBVar) == 32
+assert sizeof(CBVarPayload) == 16
 
 when isMainModule and appType != "lib":
   import os, times
@@ -944,7 +945,7 @@ when isMainModule and appType != "lib":
   template parameters*(b: CBPow2Block): CBParametersInfo = @[("test", { Int })]
   template setParam*(b: CBPow2Block; index: int; val: CBVar) = b.params[0] = val
   template getParam*(b: CBPow2Block; index: int): CBVar = b.params[0]
-  template activate*(b: CBPow2Block; context: CBContext; input: CBVar): CBVar = (input.floatValue * input.floatValue).CBVar
+  template activate*(b: CBPow2Block; context: CBContext; input: CBVar): CBVar = (input.payload.floatValue * input.payload.floatValue).CBVar
 
   chainblock CBPow2Block, "Pow2StaticBlock"
 
@@ -1026,7 +1027,7 @@ when isMainModule and appType != "lib":
     Msg "World"
     Const 15
     If:
-      Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+      Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
       Operand: 10
       True: subChain1
     Sleep 0.0

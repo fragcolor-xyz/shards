@@ -85,7 +85,7 @@ when true:
     stringBuffer[strlen] = 0
 
     # swap the buffer pointer to point to shared memory
-    result.stringValue = cast[CBString](stringBuffer)
+    result.payload.stringValue = cast[CBString](stringBuffer)
     
     # also we need to write the handle to this memory in order to free it on the consumer side, we use reserved bytes in the CBVar
     var handle = b.segment[].get_handle_from_address(stringBuffer).to(MemHandle)
@@ -100,10 +100,10 @@ when true:
     copyMem(seqBuffer, input.seqValue, seqlen * sizeof(CBVar))
 
     # swap the buffer pointer to point to shared memory
-    result.seqValue = cast[CBSeq](seqBuffer)
+    result.payload.seqValue = cast[CBSeq](seqBuffer)
 
     # set manually the len of the seq
-    result.seqLen = seqlen.int32
+    result.payload.seqLen = seqlen.int32
 
     # fix up any possible string var
     for i in 0..<result.seqLen:
@@ -179,7 +179,7 @@ when true:
     stringCache &= $cast[cstring](address)
 
     # Replace the string memory with the local cache
-    output.stringValue = stringCache.cstring.CBString
+    output.payload.stringValue = stringCache.cstring.CBString
 
     # Free up the shared memory
     b.segment[].deallocate(address).to(void)
@@ -191,7 +191,7 @@ when true:
     
     # Find the address in the local process space
     var address = b.segment[].get_address_from_handle(handle).to(pointer)
-    output.seqValue = cast[CBSeq](address)
+    output.payload.seqValue = cast[CBSeq](address)
 
     # resets cache
     b.seqCache.clear()
@@ -208,9 +208,9 @@ when true:
     b.segment[].deallocate(address).to(void)
 
     # Replace the seq withour cache
-    output.seqValue = b.seqCache
+    output.payload.seqValue = b.seqCache
     # also flag it as dynamic
-    output.seqLen = -1 
+    output.payload.seqLen = -1 
   
   template activate*(b: CBIpcPop; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:

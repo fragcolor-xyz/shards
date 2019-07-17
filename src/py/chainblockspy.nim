@@ -241,7 +241,7 @@ proc blockSetParam(blk: PPyObject; index: int; val: PyObject) {.exportpy.} =
       if objValue.vendor == FragCC.int32 and objValue.typeId == PyCallCC.int32:
         var callObj = new CBPyCallRef
         callObj[].call = objValue.closure
-        cblk[].setParam(cblk, index, CBVar(valueType: Object, objectVendorId: FragCC.int32, objectTypeId: PyCallCC.int32, objectValue: cast[pointer](callObj)))
+        cblk[].setParam(cblk, index, CBVar(valueType: Object, payload: CBVarPayload(objectVendorId: FragCC.int32, objectTypeId: PyCallCC.int32, objectValue: cast[pointer](callObj))))
   else:
     var value = py2Var(val, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
     cblk[].setParam(cblk, index, value)

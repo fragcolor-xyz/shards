@@ -227,9 +227,9 @@ when true:
     of 0:
       b.chain.CBVar
     of 1:
-      CBVar(valueType: Bool, boolValue: b.once)
+      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.once))
     of 2:
-      CBVar(valueType: Bool, boolValue: b.passthrough)
+      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.passthrough))
     else:
       CBVar(valueType: None)
   template activate*(b: CBRunChain; context: CBContext; input: CBVar): CBVar =
@@ -292,9 +292,9 @@ when true:
     of 0:
       b.chain.CBVar
     of 1:
-      CBVar(valueType: Bool, boolValue: b.once)
+      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.once))
     of 2:
-      CBVar(valueType: Bool, boolValue: b.passthrough)
+      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.passthrough))
     else:
       CBVar(valueType: None)
   template activate*(b: var CBWaitChain; context: CBContext; input: CBVar): CBVar =
@@ -404,7 +404,7 @@ when true:
   template outputTypes*(b: CBEndChain): CBTypesInfo = { None }
   template activate*(b: var CBEndChain; context: CBContext; input: CBVar): CBVar =
     context.restarted = true
-    CBVar(valueType: None, chainState: Restart)
+    RestartChain
 
   chainblock CBEndChain, "ChainRestart"
 
@@ -417,7 +417,7 @@ when true:
   template outputTypes*(b: CBStopChain): CBTypesInfo = { None }
   template activate*(b: var CBStopChain; context: CBContext; input: CBVar): CBVar =
     context.aborted = true
-    CBVar(valueType: None, chainState: Stop)
+    StopChain
 
   chainblock CBStopChain, "ChainStop"
 
@@ -732,7 +732,7 @@ when true:
   template getParam*(b: CBlockIf; index: int): CBVar =
     case index
     of 0:
-      CBVar(valueType: Enum, enumValue: b.Op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+      CBVar(valueType: Enum, payload: CBVarPayload(enumValue: b.Op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
     of 1:
       b.Match
     of 2:
@@ -812,7 +812,7 @@ when true:
       withChain ifTest:
         Const 2.0
         If:
-          Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+          Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
           Operand: 1.5
           True: trueChain
           False: falseChain
@@ -828,7 +828,7 @@ when true:
       withChain ifTest:
         Const 2.0
         If:
-          Operator: CBVar(valueType: Enum, enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+          Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
           Operand: 1.5
           True: trueChain
           False: falseChain
@@ -1118,6 +1118,6 @@ when true:
         else:
           assert(false)
 
-      CBVar(valueType: CBType.Image, imageValue: blk.imgCache)
+      CBVar(valueType: CBType.Image, payload: CBVarPayload(imageValue: blk.imgCache))
 
   chainblock CBToImage, "ToImage"
