@@ -1,11 +1,16 @@
+import os
 import nimline
 # import ../../chainblocks
 
 type IPC* = object
 
+const
+  modulePath = currentSourcePath().splitPath().head
+cppincludes(modulePath & "")
+
 defineCppType(ManagedSharedMem, "boost::interprocess::managed_shared_memory", "<boost/interprocess/managed_shared_memory.hpp>")
-defineCppType(LockFreeRingbuffer, "boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<500>>", "<boost/lockfree/spsc_queue.hpp>")
 defineCppType(MemHandle, "boost::interprocess::managed_shared_memory::handle_t", "<boost/interprocess/managed_shared_memory.hpp>")
+defineCppType(SPSCQueue, "rigtorp::SPSCQueue<CBVar>", "SPSCQueue.h")
 
 template removeShmObject(name: string) = invokeFunction("boost::interprocess::shared_memory_object::remove", name.cstring).to(void)
 
@@ -18,7 +23,7 @@ when true:
     CBIpcPush* = object
       name: string
       segment: ptr ManagedSharedMem
-      buffer: ptr LockFreeRingbuffer
+      buffer: ptr SPSCQueue
   
   template cleanup*(b: CBIpcPush) =
     if b.segment != nil:
@@ -77,19 +82,21 @@ when true:
   template activate*(b: CBIpcPush; context: CBContext; input: CBVar): CBVar =
     if b.segment == nil:
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, create_only, b.name.cstring, 1048576) # 1MB of data, 500 vars queue
-      b.buffer = b.segment[].invoke("find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<500>>>(\"queue\")").to(ptr LockFreeRingbuffer)
+      b.buffer = b.segment[].invoke("find_or_construct<rigtorp::SPSCQueue<CBVar>>(\"queue\")", 500).to(ptr SPSCQueue)
     
     case input.valueType
     of String:
-      while not b.buffer[].invoke("push", outgoingString(b, input)).to(bool):
+      var newInput = outgoingString(b, input)
+      while not b.buffer[].invoke("try_push", newInput).to(bool):
         # Pause a if the queue is full
         pause(0.0)
     of Seq:
-      while not b.buffer[].invoke("push", outgoingSeq(b, input)).to(bool):
+      var newInput = outgoingSeq(b, input)
+      while not b.buffer[].invoke("try_push", newInput).to(bool):
         # Pause a if the queue is full
         pause(0.0)
     else:
-      while not b.buffer[].invoke("push", input).to(bool):
+      while not b.buffer[].invoke("try_push", input).to(bool):
         # Pause a if the queue is full
         pause(0.0)
     
@@ -103,7 +110,7 @@ when true:
     CBIpcPop* = object
       name: string
       segment: ptr ManagedSharedMem
-      buffer: ptr LockFreeRingbuffer
+      buffer: ptr SPSCQueue
       seqCache: CBSeq
       stringsCache: seq[string]
   
@@ -170,12 +177,19 @@ when true:
     if b.segment == nil:
       # given that our CBVar is 48, this allows us to buffer 2500 (actually 2450 due to other mem used internally) of them (see LockFreeRingbuffer), of course roughly, given strings might use more mem
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, open_only, b.name.cstring)
-      b.buffer = b.segment[].invoke("find_or_construct<boost::lockfree::spsc_queue<CBVar, boost::lockfree::capacity<500>>>(\"queue\")").to(ptr LockFreeRingbuffer)
+      b.buffer = b.segment[].invoke("find_or_construct<rigtorp::SPSCQueue<CBVar>>(\"queue\")", 500).to(ptr SPSCQueue)
     
     var output: CBVar
-    while b.buffer[].invoke("pop", output).to(int) == 0:
-      # Pause if not avail yet
-      pause(0.0)
+    while true:
+      var outputPtr = b.buffer[].invoke("front").to(ptr CBVar)
+      
+      if outputPtr == nil:
+        # not ready, yield
+        pause(0.0)
+      else:
+        output = outputPtr[]
+        b.buffer[].invoke("pop").to(void)
+        break
     
     case output.valueType
     of String:

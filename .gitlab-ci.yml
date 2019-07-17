@@ -27,14 +27,14 @@ buildAndRun:win:release:
     - $nimbleDir = "$currentDir/nimbledir"
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
-    - nim cpp -d:release --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
-    - nim cpp -d:release --NimblePath:$nimbleDir/pkgs -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -d:blocksTesting -r -f chainblocks.nim
     - cd blocks/external/py
-    - nim cpp -d:release --NimblePath:$nimbleDir/pkgs -f py.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f py.nim
     - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
     - cd ../dummy
-    - nim cpp -d:release --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
-    - nim cpp -d:release --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
   tags:
     - WIN, NIM, BOOST, MINGW
 
@@ -60,6 +60,6 @@ buildAndRun:linux:release:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:release -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release -d:danger --newruntime -d:blocksTesting -r -f chainblocks.nim && nim cpp -d:release -d:danger -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
   tags:
     - LINUX, DOCKER

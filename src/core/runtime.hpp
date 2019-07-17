@@ -250,7 +250,7 @@ EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typ
 EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback);
 EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName);
 
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name);
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name); // remember those are valid only inside preChain, activate, postChain!
 EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
 
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
