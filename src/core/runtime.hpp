@@ -75,7 +75,10 @@ struct CBCoreSwapVariables
 #include <unordered_map>
 #include <memory>
 #include <iostream>
-#include <ctime>
+#include <chrono>
+using Clock = std::chrono::high_resolution_clock;
+using Duration = std::chrono::duration<double>;
+using Time = std::chrono::time_point<Clock, Duration>;
 
 // Required external dependencies
 // For coroutines/context switches
@@ -194,7 +197,7 @@ struct CBChain
   std::string name;
 
   CBCoro* coro;
-  clock_t next;
+  Duration next;
   
   // we could simply null check coro but actually some chains (sub chains), will run without a coro within the root coro so we need this too
   bool started;
@@ -610,9 +613,13 @@ namespace chainblocks
   {
     auto current = chainblocks::CurrentChain;
     if(seconds <= 0)
-      current->next = 0;
-    else  
-      current->next = std::clock() + clock_t(seconds * double(CLOCKS_PER_SEC));
+    {
+      current->next = Duration(0);
+    }
+    else
+    {
+      current->next = Clock::now().time_since_epoch() + Duration(seconds);
+    }
     current->context->continuation = current->context->continuation.resume();
     if(current->context->restarted)
     {
@@ -1219,7 +1226,7 @@ namespace chainblocks
         if(!unsafeLoop && looped) 
         {
           // Ensure no while(true), yield anyway every run
-          thisChain->next = 0;
+          thisChain->next = Duration(0);
           context.continuation = context.continuation.resume();
           // This is delayed upon continuation!!
           if(context.aborted)
@@ -1300,7 +1307,7 @@ namespace chainblocks
     if(!chain->coro || !(*chain->coro) || chain->returned)
       return; // check if not null and bool operator also to see if alive!
     
-    auto now = std::clock();
+    Duration now = Clock::now().time_since_epoch();
     if(now >= chain->next)
     {
       auto previousChain = chainblocks::CurrentChain;

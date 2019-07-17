@@ -2,6 +2,37 @@ import os
 import nimline
 # import ../../chainblocks
 
+when defined linux:
+  # LINUX WORKAROUND FOR -static build and pthread
+  # Might need this on other OSes too maybe
+  # https://stackoverflow.com/questions/47905554/segmentation-fault-appears-when-i-use-shared-memory-only-from-statically-build-p
+  emitc("""
+  extern "C" {
+    #include <stdlib.h>
+    #include <string.h>
+
+    /* This avoids a segfault when code using shm_open()
+      is compiled statically. (For some reason, compiling
+      the code statically causes the __shm_directory()
+      function calls in librt.a to not reach the implementation
+      in libpthread.a. Implementing the function ourselves
+      fixes this issue.)
+    */
+
+    #ifndef  SHM_MOUNT
+    #define  SHM_MOUNT "/dev/shm/"
+    #endif
+    static const char  shm_mount[] = SHM_MOUNT;
+
+    const char *__shm_directory(size_t *len)
+    {
+        if (len)
+            *len = strlen(shm_mount);
+        return shm_mount;
+    }
+  };
+  """)
+
 type IPC* = object
 
 const
@@ -33,13 +64,10 @@ when true:
     if b.segment != nil:
       cppdel b.segment
       b.segment = nil
+    
     # also force ensure removal!
-    # this might crash any current user if existing btw
     if b.name != "":
-      try:
-        removeShmObject(b.name)
-      except:
-        discard
+      removeShmObject(b.name)
   
   template inputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
   template outputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
@@ -107,7 +135,7 @@ when true:
       while not b.buffer[].invoke("try_push", input).to(bool):
         # Pause a if the queue is full
         pause(0.0)
-    
+      
     input
   
   chainblock CBIpcPush, "Push", "IPC"
