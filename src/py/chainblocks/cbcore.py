@@ -1,5 +1,4 @@
 from enum import IntEnum, auto
-from .cbchain import CBChain
 from .chainblocks import *
 
 class CBChain:
