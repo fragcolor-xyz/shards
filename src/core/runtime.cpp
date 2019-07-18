@@ -193,6 +193,30 @@ void to_json(json& j, const CBVar& var)
       };
       break;
     }
+    case Int8:
+    {
+      auto vec = { var.payload.int8Value[0], var.payload.int8Value[1], var.payload.int8Value[2], var.payload.int8Value[3],
+        var.payload.int8Value[4], var.payload.int8Value[5], var.payload.int8Value[6], var.payload.int8Value[7]
+      };
+      j = json{
+        { "type", valType },
+        { "value", vec }
+      };
+      break;
+    }
+    case Int16:
+    {
+      auto vec = { var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2], var.payload.int4Value[3],
+        var.payload.int4Value[4], var.payload.int4Value[5], var.payload.int4Value[6], var.payload.int4Value[7],
+        var.payload.int4Value[8], var.payload.int4Value[9], var.payload.int4Value[10], var.payload.int4Value[11],
+        var.payload.int4Value[12], var.payload.int4Value[13], var.payload.int4Value[14], var.payload.int4Value[15]
+      };
+      j = json{
+        { "type", valType },
+        { "value", vec }
+      };
+      break;
+    }
     case Float:
     {
       j = json{
@@ -408,6 +432,24 @@ void from_json(const json& j, CBVar& var)
       var.payload.int4Value[1] = j.at("value")[1].get<int32_t>();
       var.payload.int4Value[2] = j.at("value")[2].get<int32_t>();
       var.payload.int4Value[3] = j.at("value")[3].get<int32_t>();
+      break;
+    }
+    case Int8:
+    {
+      var.valueType = Int8;
+      for(auto i = 0; i < 8; i++)
+      {
+        var.payload.int8Value[i] = j.at("value")[i].get<int16_t>();  
+      }
+      break;
+    }
+    case Int16:
+    {
+      var.valueType = Int16;
+      for(auto i = 0; i < 16; i++)
+      {
+        var.payload.int16Value[i] = j.at("value")[i].get<int8_t>();  
+      }
       break;
     }
     case Float:

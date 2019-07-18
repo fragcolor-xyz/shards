@@ -69,8 +69,8 @@ when true:
     if b.name != "":
       removeShmObject(b.name)
   
-  template inputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
-  template outputTypes*(b: CBIpcPush): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
+  template inputTypes*(b: CBIpcPush): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
+  template outputTypes*(b: CBIpcPush): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
   template parameters*(b: CBIpcPush): CBParametersInfo = @[("Name", { String })]
   template setParam*(b: CBIpcPush; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPush; index: int): CBVar = b.name
@@ -161,7 +161,7 @@ when true:
       b.segment = nil
   
   template inputTypes*(b: CBIpcPop): CBTypesInfo = { Any }
-  template outputTypes*(b: CBIpcPop): CBTypesInfo = ({ None, Bool, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color, Enum }, true #[seq]#)
+  template outputTypes*(b: CBIpcPop): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
   template parameters*(b: CBIpcPop): CBParametersInfo = @[("Name", { String })]
   template setParam*(b: CBIpcPop; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name

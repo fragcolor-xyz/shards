@@ -199,6 +199,9 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
+var AllIntTypes* = { Int, Int2, Int3, Int4, Int8, Int16 }
+var AllFloatTypes* = { Float, Float2, Float3, Float4 }
+
 template chainState*(v: CBVar): auto = v.payload.chainState
 template objectValue*(v: CBVar): auto = v.payload.objectValue
 template objectVendorId*(v: CBVar): auto = v.payload.objectVendorId

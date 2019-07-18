@@ -381,9 +381,9 @@ when true:
   
   template destroy*(b: CBlockConst) = b.cache.destroy()
   template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
-  template outputTypes*(b: CBlockConst): CBTypesInfo = ({ None, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true)
+  template outputTypes*(b: CBlockConst): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, String, Color }, true)
   template parameters*(b: CBlockConst): CBParametersInfo = 
-    @[("Value", ({ None, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#))]
+    @[("Value", (AllIntTypes + AllFloatTypes + { None, String, Color }, true #[seq]#))]
   template setParam*(b: CBlockConst; index: int; val: CBVar) =
     b.cache.destroy()
     b.value = val.clone(b.cache)
@@ -496,7 +496,7 @@ when true:
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
     @[
-      ("Accept", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#),
+      ("Accept", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
       ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
       ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
     ]
@@ -594,7 +594,7 @@ when true:
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
     @[
-      ("Reject", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#), true #[context]#),
+      ("Reject", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
       ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
       ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
     ]
@@ -703,12 +703,12 @@ when true:
     if b.False != nil and b.False[] != nil:
       discard b.False[].stop()
   template destroy*(b: CBlockIf) = b.cache.destroy()
-  template inputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
-  template outputTypes*(b: CBlockIf): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#)
+  template inputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
+  template outputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
     @[
       ("Operator", @[boolOpInfo].toCBTypesInfo(), false),
-      ("Operand", ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
+      ("Operand", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
       ("True", ({ Chain }, false).toCBTypesInfo(), false),
       ("False", ({ Chain }, false).toCBTypesInfo(), false),
       ("Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
@@ -995,21 +995,26 @@ when true:
 when true:
   type
     CBToImage* = object
-      w*,h*: int
-      alpha*: bool
+      w*,h*,c*: int
       imgCache*: Image[uint8]
 
+  template setup*(b: CBToImage) =
+    b.w = 256
+    b.h = 256
+    b.c = 3
+  
   template destroy*(b: CBToImage) =
     if b.imgCache.data != nil:
       dealloc(b.imgCache.data)
       b.imgCache.data = nil
+  
   template inputTypes*(b: CBToImage): CBTypesInfo = ({ Float, Float2, Float3, Float4, Int, Int2, Int3, Int4, Color }, true)
   template outputTypes*(b: CBToImage): CBTypesInfo = { CBType.Image }
   template parameters*(b: CBToImage): CBParametersInfo =
     @[
       ("Width", { Int }),
       ("Height", { Int }),
-      ("Alpha", { Bool })
+      ("Channels", { Bool })
     ]
   template setParam*(b: CBToImage; index: int; val: CBVar) =
     case index
@@ -1018,7 +1023,7 @@ when true:
     of 1:
       b.h = val.intValue.int
     of 2:
-      b.alpha = val.boolValue
+      b.c = val.intValue.int
     else:
       assert(false)
   template getParam*(b: CBToImage; index: int): CBVar =
@@ -1028,28 +1033,27 @@ when true:
     of 1:
       b.h.CBVar
     of 2:
-      b.alpha.CBVar
+      b.c.CBVar
     else:
       Empty
   template activate*(blk: var CBToImage; context: CBContext; input: CBVar): CBVar =
     if  blk.imgCache.data == nil or 
         blk.imgCache.width != blk.w or 
         blk.imgCache.height != blk.h or
-        (blk.alpha and blk.imgCache.channels == 3) or
-        (not blk.alpha and blk.imgCache.channels == 4):
+        blk.imgCache.channels != blk.c:
       if blk.imgCache.data != nil:
         dealloc(blk.imgCache.data)
       
-      blk.imgCache.channels = if blk.alpha: 4 else: 3
-      let size = blk.w * blk.h * blk.imgCache.channels
-      blk.imgCache.data = cast[ptr UncheckedArray[uint8]](alloc0(size))
       blk.imgCache.width = blk.w
       blk.imgCache.height = blk.h
+      blk.imgCache.channels = blk.c
+      let size = blk.w * blk.h * blk.c
+      blk.imgCache.data = cast[ptr UncheckedArray[uint8]](alloc0(size))
     
     let maxLen = blk.imgCache.width * blk.imgCache.height * blk.imgCache.channels
 
     if input.valueType != Seq:
-      halt(context, "ToImage always expects a sequence.")
+      halt(context, "ToImage always expects values in a sequence.")
     else:
       var index = 0
       for i in 0..min(maxLen - 1, input.seqValue.len - 1):
@@ -1059,59 +1063,41 @@ when true:
           blk.imgCache.data[index] = val.floatValue.clamp(0, 255).uint8
           inc index
         of Float2:
-          blk.imgCache.data[index] = val.float2Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.float2Value[1].clamp(0, 255).uint8
-          inc index
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.float2Value[i].clamp(0, 255).uint8
+            inc index
         of Float3:
-          blk.imgCache.data[index] = val.float3Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.float3Value[1].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.float3Value[2].clamp(0, 255).uint8
-          inc index
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.float3Value[i].clamp(0, 255).uint8
+            inc index
         of Float4:
-          blk.imgCache.data[index] = val.float4Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.float4Value[1].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.float4Value[2].clamp(0, 255).uint8
-          inc index
-          if blk.imgCache.channels > 3:
-            blk.imgCache.data[index] = val.float4Value[3].clamp(0, 255).uint8
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.float4Value[i].clamp(0, 255).uint8
             inc index
         of Int:
           blk.imgCache.data[index] = val.intValue.clamp(0, 255).uint8
           inc index
         of Int2:
-          blk.imgCache.data[index] = val.int2Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.int2Value[1].clamp(0, 255).uint8
-          inc index
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.int2Value[i].clamp(0, 255).uint8
+            inc index
         of Int3:
-          blk.imgCache.data[index] = val.int3Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.int3Value[1].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.int3Value[2].clamp(0, 255).uint8
-          inc index
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.int3Value[i].clamp(0, 255).uint8
+            inc index
         of Int4:
-          blk.imgCache.data[index] = val.int4Value[0].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.int4Value[1].clamp(0, 255).uint8
-          inc index
-          blk.imgCache.data[index] = val.int4Value[2].clamp(0, 255).uint8
-          inc index
-          if blk.imgCache.channels > 3:
-            blk.imgCache.data[index] = val.int4Value[3].clamp(0, 255).uint8
+          for i in 0..blk.imgCache.channels:
+            blk.imgCache.data[index] = val.int4Value[i].clamp(0, 255).uint8
             inc index
         of Color:
           blk.imgCache.data[index] = val.colorValue.r
           inc index
-          blk.imgCache.data[index] = val.colorValue.g
-          inc index
-          blk.imgCache.data[index] = val.colorValue.b
-          inc index
+          if blk.imgCache.channels > 1:
+            blk.imgCache.data[index] = val.colorValue.g
+            inc index
+          if blk.imgCache.channels > 2:
+            blk.imgCache.data[index] = val.colorValue.b
+            inc index
           if blk.imgCache.channels > 3:
             blk.imgCache.data[index] = val.colorValue.a
             inc index

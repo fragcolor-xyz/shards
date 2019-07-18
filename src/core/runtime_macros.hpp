@@ -100,6 +100,14 @@ else\
       __output.valueType = Int4;\
       __output.payload.int4Value = __input.payload.int4Value __op operand.payload.int4Value;\
       break;\
+    case Int8:\
+      __output.valueType = Int8;\
+      __output.payload.int8Value = __input.payload.int8Value __op operand.payload.int8Value;\
+      break;\
+    case Int16:\
+      __output.valueType = Int16;\
+      __output.payload.int16Value = __input.payload.int16Value __op operand.payload.int16Value;\
+      break;\
     case Float:\
       __output.valueType = Float;\
       __output.payload.floatValue = __input.payload.floatValue __op operand.payload.floatValue;\
@@ -177,6 +185,14 @@ else\
     case Int4:\
       __output.valueType = Int4;\
       __output.payload.int4Value = __input.payload.int4Value __op operand.payload.int4Value;\
+      break;\
+    case Int8:\
+      __output.valueType = Int8;\
+      __output.payload.int8Value = __input.payload.int8Value __op operand.payload.int8Value;\
+      break;\
+    case Int16:\
+      __output.valueType = Int16;\
+      __output.payload.int16Value = __input.payload.int16Value __op operand.payload.int16Value;\
       break;\
     case Color:\
       __output.valueType = Color;\

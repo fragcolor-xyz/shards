@@ -13,10 +13,10 @@ when true:
     template cleanup*(b: typeName) = b.ctxOperand = nil
     template setup*(b: typename) = initSeq(b.seqCache)
     template destroy*(b: typename) = freeSeq(b.seqCache)
-    template inputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color}, true)
-    template outputTypes*(b: typeName): CBTypesInfo = ({ Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color }, true)
+    template inputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
+    template outputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     template parameters*(b: typeName): CBParametersInfo =
-      @[("Operand", { Int, Int2, Int3, Int4, Float, Float2, Float3, Float4, Color }, true #[usesContext]#)]
+      @[("Operand", AllIntTypes + AllFloatTypes + { Color }, true #[usesContext]#)]
     template setParam*(b: typeName; index: int; val: CBVar) =
       b.operand = val
       # will refresh on next activate
