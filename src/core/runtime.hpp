@@ -1189,14 +1189,16 @@ namespace chainblocks
     return { true, previousOutput };
   }
 
-  static void start(CBChain* chain, bool loop = false, bool unsafe = false)
+  static void start(CBChain* chain, bool loop = false, bool unsafe = false, CBVar input = {})
   {
-    chain->coro = new CBCoro(boost::context::callcc([&chain, &loop, &unsafe](boost::context::continuation&& sink)
+    chain->coro = new CBCoro(boost::context::callcc([&chain, &loop, &unsafe, &input](boost::context::continuation&& sink)
     {
       // Need to copy those in this stack!
       CBChain* thisChain = chain;
       bool looped = loop;
       bool unsafeLoop = unsafe;
+      // Copy root input
+      thisChain->rootTickInput = input;
       // Reset return state
       thisChain->returned = false;
       // Create a new context and copy the sink in

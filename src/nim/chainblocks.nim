@@ -424,11 +424,11 @@ when appType != "lib" or defined(forceCBRuntime):
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
   proc startInternal(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.importcpp: "chainblocks::start(#, #, #)", header: "runtime.hpp".}
-  proc start*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
+  proc start*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false; input: CBVar = Empty) {.inline.} =
     var frame = getFrameState()
     startInternal(chain, loop)
     setFrameState(frame)
-  proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool)
+  proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool)
   
   proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "runtime.hpp".}
   proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
