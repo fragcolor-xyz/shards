@@ -426,10 +426,10 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
     }
-    else if(strcmp(name, "SetVariable") == 0)
-    {
-      blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
-    }
+    // else if(strcmp(name, "SetVariable") == 0)
+    // {
+    //   // blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
+    // }
     else if(strcmp(name, "GetVariable") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreGetVariable;
@@ -693,6 +693,8 @@ namespace chainblocks
             auto suspendRes = suspend(cblock->sleepTime);
             if(suspendRes.payload.chainState != Continue)
               previousOutput = suspendRes;
+            else
+              previousOutput = input;
             break;
           }
           case CoreRepeat:
@@ -709,6 +711,7 @@ namespace chainblocks
             {
               throw CBException("A required sub-chain was not found, stopping!");
             }
+            previousOutput = input;
             break;
           }
           case CoreIf:
@@ -840,27 +843,27 @@ namespace chainblocks
             }
             break;
           }
-          case CoreSetVariable:
-          {
-            auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
-            if(unlikely(!cblock->target)) // call first if we have no target
-            {
-              blk->activate(blk, context, input); // ignore previousOutput since we pass input
-            }
-            else
-            {
-              // Handle the special case of a seq that might need reset every run
-              if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
-              {
-                stbds_arrsetlen((*cblock->target).payload.seqValue, size_t(0));
-              }
-              else
-              {
-                *cblock->target = input;
-              }
-            }
-            break;
-          }
+          // case CoreSetVariable:
+          // {
+          //   auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
+          //   if(unlikely(!cblock->target)) // call first if we have no target
+          //   {
+          //     previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
+          //   }
+          //   else
+          //   {
+          //     // Handle the special case of a seq that might need reset every run
+          //     if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
+          //     {
+          //       stbds_arrsetlen((*cblock->target).payload.seqValue, size_t(0));
+          //     }
+          //     else
+          //     {
+          //       previousOutput = *cblock->target = input;
+          //     }
+          //   }
+          //   break;
+          // }
           case CoreGetVariable:
           {
             auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
@@ -879,13 +882,14 @@ namespace chainblocks
             auto cblock = reinterpret_cast<CBCoreSwapVariables*>(blk);
             if(unlikely(!cblock->target1 || !cblock->target2)) // call first if we have no targets
             {
-              blk->activate(blk, context, input); // ignore previousOutput since we pass input
+              previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
             }
             else
             {
               auto tmp = *cblock->target1;
               *cblock->target1 = *cblock->target2;
               *cblock->target2 = tmp;
+              previousOutput = input;
             }
             break;
           }

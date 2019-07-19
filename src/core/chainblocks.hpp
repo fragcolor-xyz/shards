@@ -56,7 +56,7 @@ enum CBInlineBlocks : uint8_t
   CoreSleep,
   CoreRepeat,
   CoreIf,
-  CoreSetVariable,
+  // CoreSetVariable,
   CoreGetVariable,
   CoreSwapVariables,
 
@@ -276,12 +276,16 @@ struct CBVarPayload // will be 32 bytes, must be 16 aligned due to vectors
     struct {
       CBSeq seqValue;
       // If seqLen is -1, use stbds_arrlen, assume it's a stb dynamic array
+      // Operations between blocks are always using dynamic arrays
+      // Len should be used only internally
       int32_t seqLen;
     };
     
     struct {
       CBTable tableValue;
       // If tableLen is -1, use stbds_shlen, assume it's a stb string map
+      // Operations between blocks are always using dynamic arrays
+      // Len should be used only internally
       int32_t tableLen;
     };
     
@@ -310,6 +314,7 @@ struct CBVar
 {
   CBVarPayload payload;
   CBType valueType;
+  // reserved to the owner of the var, cloner, block etc to do whatever they need to do :)
   uint8_t reserved[15];
 };
 

@@ -238,6 +238,7 @@ converter toBoolValue*(v: CBVar): bool {.inline.} =
 converter toCBVar*(cbSeq: CBSeq): CBVar {.inline.} =
   result.valueType = Seq
   result.payload.seqValue = cbSeq
+  result.payload.seqLen = -1
 
 converter toCBVar*(cbStr: CBString): CBVar {.inline.} =
   result.valueType = String
@@ -963,127 +964,130 @@ when isMainModule and appType != "lib":
   chainblock CBPow2Block, "Pow2StaticBlock"
 
   proc run() =
-    var
-      pblock1: CBPow2Block
-    pblock1.setup()
-    var res1 = pblock1.activate(nil, 2.0)
-    echo res1.float
-    
-    var pblock2 = createBlock("Pow2StaticBlock")
-    assert pblock2 != nil
-    var param0Var = 10.CBVar
-    echo param0Var.valueType
-    pblock2.setParam(pblock2, 0, param0Var)
-    echo pblock2.getParam(pblock2, 0).valueType
-    var res2 = pblock2.activate(pblock2, nil, 2.0)
-    echo res2.float
+    when false:
+      var
+        pblock1: CBPow2Block
+      pblock1.setup()
+      var res1 = pblock1.activate(nil, 2.0)
+      echo res1.float
+      
+      var pblock2 = createBlock("Pow2StaticBlock")
+      assert pblock2 != nil
+      var param0Var = 10.CBVar
+      echo param0Var.valueType
+      pblock2.setParam(pblock2, 0, param0Var)
+      echo pblock2.getParam(pblock2, 0).valueType
+      var res2 = pblock2.activate(pblock2, nil, 2.0)
+      echo res2.float
 
-    withChain inlineTesting:
-      Const 10
-      Math.Add 10
+      withChain inlineTesting:
+        Const 10
+        Math.Add 10
+        Log()
+      inlineTesting.start()
+      assert inlineTesting.stop() == 20.CBVar
+      
+      var f4seq: CBSeq
+      initSeq(f4seq)
+      f4seq.push (2.0, 3.0, 4.0, 5.0).CBVar
+      f4seq.push (6.0, 7.0, 8.0, 9.0).CBVar
+      withChain inlineTesting2:
+        Const f4seq
+        Math.Add (0.1, 0.2, 0.3, 0.4)
+        Log()
+        Math.Sqrt
+        Log()
+      inlineTesting2.start()
+
+      var nimcall = proc(input: CBVar): CBVar {.closure.} =
+        echo input
+        input
+      
+      withChain closureTest:
+        Const 77
+        NimClosure nimcall
+        Log()
+      
+      closureTest.start()
+      
+      var
+        mainChain = newChain("mainChain")
+      setCurrentChain(mainChain)
+
+      withChain chain1:
+        Msg "SubChain!"
+        Sleep 0.2
+
+      chain1.start(true)
+      for i in 0..3:
+        echo "Iteration ", i
+        chain1.tick()
+        sleep(500)
+      discard chain1.stop()
+      echo "Stopped"
+      chain1.tick() # should do nothing
+      echo "Done"
+
+      var
+        subChain1 = newChain("subChain1")
+      setCurrentChain(subChain1)
+      
+      Const "Hey hey"
       Log()
-    inlineTesting.start()
-    assert inlineTesting.stop() == 20.CBVar
-    
-    var f4seq: CBSeq
-    initSeq(f4seq)
-    f4seq.push (2.0, 3.0, 4.0, 5.0).CBVar
-    f4seq.push (6.0, 7.0, 8.0, 9.0).CBVar
-    withChain inlineTesting2:
-      Const f4seq
-      Math.Add (0.1, 0.2, 0.3, 0.4)
+      
+      setCurrentChain(mainChain)
+      
       Log()
-      Math.Sqrt
+      Msg "Hello"
+      Msg "World"
+      Const 15
+      If:
+        Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
+        Operand: 10
+        True: subChain1
+      Sleep 0.0
+      Const 11
+      ToString()
       Log()
-    inlineTesting2.start()
+      
+      mainChain.start(true)
+      for i in 0..10:
+        var idx = i.CBVar
+        mainChain.tick(idx)
+      
+      discard mainChain.stop()
 
-    var nimcall = proc(input: CBVar): CBVar {.closure.} =
-      echo input
-      input
+      mainChain.start(true)
+      for i in 0..10:
+        var idx = i.CBVar
+        mainChain.tick(idx)
+      
+      let
+        jstr = mainChain.store()
+      assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+      echo jstr
+      var jchain: CBChainPtr
+      load(jchain, jstr)
+      let
+        jstr2 = jchain.store()
+      assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     
-    withChain closureTest:
-      Const 77
-      NimClosure nimcall
-      Log()
-    
-    closureTest.start()
-    
-    var
-      mainChain = newChain("mainChain")
-    setCurrentChain(mainChain)
-
-    withChain chain1:
-      Msg "SubChain!"
-      Sleep 0.2
-
-    chain1.start(true)
-    for i in 0..3:
-      echo "Iteration ", i
-      chain1.tick()
-      sleep(500)
-    discard chain1.stop()
-    echo "Stopped"
-    chain1.tick() # should do nothing
-    echo "Done"
-
-    var
-      subChain1 = newChain("subChain1")
-    setCurrentChain(subChain1)
-    
-    Const "Hey hey"
-    Log()
-    
-    setCurrentChain(mainChain)
-    
-    Log()
-    Msg "Hello"
-    Msg "World"
-    Const 15
-    If:
-      Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
-      Operand: 10
-      True: subChain1
-    Sleep 0.0
-    Const 11
-    ToString()
-    Log()
-    
-    mainChain.start(true)
-    for i in 0..10:
-      var idx = i.CBVar
-      mainChain.tick(idx)
-    
-    discard mainChain.stop()
-
-    mainChain.start(true)
-    for i in 0..10:
-      var idx = i.CBVar
-      mainChain.tick(idx)
-
-    let
-      jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
-    echo jstr
-    var jchain: CBChainPtr
-    load(jchain, jstr)
-    let
-      jstr2 = jchain.store()
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
-
     var
       sm1 = ~@[0.1, 0.2, 0.3]
       sm2 = ~@[1.1, 1.2, 1.3]
-      sm3 = ~@[5.1, 5.2, 5.3]
+      sm3 = ~@[6.1, 6.2, 6.3]
+      sm4 = ~@[1, 2, 3]
+    
     withChain testSeqMath:
       Const sm1
       Math.Add 1.0
       Log()
-
+    
     testSeqMath.start()
     assert testSeqMath.stop() == sm2
     testSeqMath.start()
     assert testSeqMath.stop() == sm2
-
+    
     withChain prepare:
       Const sm1
       SetVariable "v1"
@@ -1098,12 +1102,34 @@ when isMainModule and appType != "lib":
       SetVariable "v1"
       Log()
     
-    consume.start()
+    consume.start(true)
     for _ in 0..4: consume.tick()
-    # assert consume.stop() == sm3
-    consume.start()
+    assert consume.stop() == sm3
+    consume.start(true)
     for _ in 0..4: consume.tick()
-    # assert consume.stop() == sm3
+    assert consume.stop() == sm3
+
+    withChain testAdding:
+      Const Empty
+      AddVariable "v1"
+      
+      Const 1
+      AddVariable "v1"
+      Const 2
+      AddVariable "v1"
+      Const 3
+      AddVariable "v1"
+      
+      GetVariable "v1"
+      Log()
+    
+    testAdding.start(true)
+    for _ in 0..4: testAdding.tick()
+    assert testAdding.stop() == sm4
+    echo "Restarting"
+    testAdding.start(true)
+    for _ in 0..4: testAdding.tick()
+    assert testAdding.stop() == sm4
 
     compileTimeChain:
       Msg "Hello"

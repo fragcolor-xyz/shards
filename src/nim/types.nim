@@ -287,8 +287,8 @@ proc len*(t: CBTable): int {.inline.} = invokeFunction("stbds_shlen", t).to(int)
 iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
   for i in 0..<t.len:
     yield t[i]
-proc incl*(t: CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
-proc incl*(t: CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
+proc incl*(t: var CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
+proc incl*(t: var CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
 proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
 proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
 converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, payload: CBVarPayload(tableValue: t))
@@ -311,9 +311,10 @@ iterator mitems*(s: CBStrings): var CBString {.inline.} =
     yield s[i]
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
-proc pop*(cbs: CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
+proc pop*(cbs: var CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
 proc clear*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
 proc clear*(cbs: var CBSeq) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
+proc setLen*(cbs: var CBSeq; newLen: int) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, newLen).to(void)
 iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
@@ -342,39 +343,111 @@ converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
   result.payload.stringValue = cast[CBString](s.cstring)
 
-# Memory utilities to cache stuff around
-type
-  CachedVarValues* = object
-    strings: seq[string]
-    seqs: seq[CBSeq]
+const
+  blittableVarTypes = { 
+    None, Any, Object, Enum, Bool, 
+    Int, Int2, Int3, Int4, Int8, Int16, 
+    Float, Float2, Float3, Float4, 
+    Color, Block, Chain 
+  }
 
-proc destroy*(cache: var CachedVarValues) =
-  for s in cache.seqs.mitems:
-    freeSeq(s)
-  # Force deallocs
-  when defined nimV2:
-    cache.strings = @[]
-    cache.seqs = @[]
+proc `~quickcopy`*(clonedVar: var CBVar): int {.inline, discardable.} =
+  case clonedVar.valueType
+  of Seq:
+    for val in clonedVar.seqValue.mitems:
+      result += `~quickcopy` val
+    freeSeq(clonedVar.seqValue)
+    inc result
+  
+  of String, ContextVar:
+    dealloc(clonedVar.stringValue.pointer)
+    inc result
+  
+  of Image:
+    dealloc(clonedVar.imageValue.data)
+    inc result
 
-proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
-  # Need to add image support if we ever have image parameters! TODO
-  if v.valueType == String:
-    result.valueType = String
-    cache.strings.add(v.stringValue)
-    result.payload.stringValue = cache.strings[^1].cstring.CBString
-  elif v.valueType == Seq:
-    result.valueType = Seq
-    initSeq(result.seqValue)
-    for item in v.seqValue.mitems:
-      result.seqValue.push item.clone(cache)
-    cache.seqs.add(result.seqValue)
+  of Table:
+    for val in clonedVar.tableValue.mitems:
+      result += `~quickcopy` val.value
+    freeTable(clonedVar.tableValue)
+    inc result
+  
   else:
-    result = v
+    discard
+  
+  clonedVar = Empty
 
-proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
-  initSeq(result)
-  for item in v.mitems:
-    result.push item.clone(cache)
+proc quickcopy*(dst: var CBVar; src: var CBvar): int {.inline, discardable.} =
+  # returns the number of destructions it did to copy for diagnostics
+
+  if dst.valueType in blittableVarTypes and src.valueType in blittableVarTypes:
+    copyMem(addr dst, addr src, sizeof(CBVar))
+  
+  elif src.valueType in blittableVarTypes: # dst has some complex/allocated things...
+    `~quickcopy` dst
+    inc result
+    copyMem(addr dst, addr src, sizeof(CBVar))
+  
+  else: # need to copy complex
+    case src.valueType
+    of Seq:
+      if dst.valueType != Seq or dst.seqValue.len != src.seqValue.len:
+        # tough luck, need to reallocate
+        `~quickcopy` dst
+        inc result
+        dst.valueType = Seq
+        initSeq(dst.seqValue)
+        dst.seqLen = -1
+      
+      let srcLen = src.seqValue.len
+      dst.seqValue.setLen(srcLen) # will trigger allocations if capacity < len
+      for i in 0..<srcLen:
+        result += quickcopy(dst.seqValue[i], src.seqValue[i])
+    
+    of String, ContextVar:      
+      if  dst.valueType != String or 
+          dst.valueType != ContextVar or 
+          dst.stringValue.len >= src.stringValue.len:
+        # tough luck, need to reallocate
+        `~quickcopy` dst
+        inc result
+        dst.stringValue = cast[CBString](alloc(src.stringValue.len + 1))
+      
+      dst.valueType = src.valueType # could be both
+      copyMem(dst.stringValue.pointer, src.stringValue.pointer, src.stringValue.len + 1)
+    
+    of Image:
+      let imgSize = dst.imageValue.height * dst.imageValue.width * dst.imageValue.channels
+      if  dst.valueType != Image or 
+          dst.imageValue.height != src.imageValue.height or
+          dst.imageValue.width != src.imageValue.width or
+          dst.imageValue.channels != src.imageValue.channels:
+        # tough luck, need to reallocate
+        `~quickcopy` dst
+        inc result
+        dst.valueType = Image
+        dst.imageValue.height = src.imageValue.height
+        dst.imageValue.width = src.imageValue.width
+        dst.imageValue.channels = src.imageValue.channels
+        dst.imageValue.data = cast[ptr UncheckedArray[uint8]](alloc(imgSize))
+      
+      copyMem(dst.imageValue.data, src.imageValue.data, imgSize)
+    
+    of Table:
+      # well this is the slowest
+      `~quickcopy` dst
+      inc result
+      dst.valueType = Table
+      invokeFunction("stbds_sh_new_arena", dst.tableValue).to(void)
+      for val in src.tableValue.mitems:
+        var cpVal: CBVar
+        result += quickcopy(cpVal, val.value)
+        invokeFunction("stbds_shput", dst.tableValue, val.key, cpVal).to(void)
+      dst.tableLen = -1
+    
+    else:
+      discard
 
 # Leave them last cos VScode highlight will freak out..
 

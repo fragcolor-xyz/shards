@@ -271,7 +271,7 @@ proc `$`*(a: CBVar): string {.inline.} =
   of Color: return $a.colorValue
   of CBType.Image: return $a.imageValue
   of Seq:
-    result = ""
+    result = "["
     let len = a.seqValue.len
     var idx = 0
     for item in a.seqValue.mitems:
@@ -280,8 +280,9 @@ proc `$`*(a: CBVar): string {.inline.} =
       else:
         result &= $item & ", "
       inc idx
+    result &= "]"
   of Table:
-    result = ""
+    result = "{"
     let len = a.tableValue.len
     var idx = 0
     for item in a.tableValue.mitems:
@@ -290,6 +291,7 @@ proc `$`*(a: CBVar): string {.inline.} =
       else:
         result &= $item.key & ": " & $item.value & ", "
       inc idx
+    result &= "}"
   of Chain: return $a.chainValue
   of Enum:  return $a.enumValue.int32
   of Object:
