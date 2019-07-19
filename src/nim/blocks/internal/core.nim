@@ -204,6 +204,7 @@ when true:
   template cleanup*(b: CBRunChain) =
     if b.chain != nil and b.chain[] != nil:
       discard b.chain[].stop()
+    b.done = false # reset this on stop/cleanup
   template inputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRunChain): CBParametersInfo =

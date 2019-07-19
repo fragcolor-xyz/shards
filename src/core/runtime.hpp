@@ -1146,10 +1146,12 @@ namespace chainblocks
             }
             case Stop:
             {
-              std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
               // Print errors if any, we might have stopped because of some error!
               if(context->error.length() > 0)
+              {
+                std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
                 std::cerr << "Last error: " << std::string(context->error) << "\n";
+              }
               runChainPOSTCHAIN
               CurrentChain = previousChain;
               return { false, previousOutput };
