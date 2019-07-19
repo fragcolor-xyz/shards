@@ -30,6 +30,7 @@ when true:
 when true:
   type
     CBSetVariable* = object
+      # INLINE BLOCK, CORE STUB PRESENT
       target*: ptr CBVar
       name*: string
   
@@ -58,6 +59,7 @@ when true:
 when true:
   type
     CBGetVariable* = object
+      # INLINE BLOCK, CORE STUB PRESENT
       target*: ptr CBVar
       name*: string
   
@@ -82,6 +84,7 @@ when true:
 when true:
   type
     CBSwapVariables* = object
+      # INLINE BLOCK, CORE STUB PRESENT
       targeta*: ptr CBVar
       targetb*: ptr CBVar
       name1*: string

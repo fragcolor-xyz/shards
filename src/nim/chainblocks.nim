@@ -2,7 +2,7 @@
 # Inspired by apple Shortcuts actually..
 # Simply define a program by chaining blocks (black boxes), that have input and output/s
 
-import sequtils, times, macros, strutils
+import sequtils, macros, strutils
 import fragments/[serialization]
 import images
 
@@ -946,7 +946,7 @@ assert sizeof(CBVar) == 32
 assert sizeof(CBVarPayload) == 16
 
 when isMainModule and appType != "lib":
-  import os, times
+  import os
   
   type
     CBPow2Block = object
@@ -1070,7 +1070,40 @@ when isMainModule and appType != "lib":
       jstr2 = jchain.store()
     assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
 
-    echo sizeof(CBVar)
+    var
+      sm1 = ~@[0.1, 0.2, 0.3]
+      sm2 = ~@[1.1, 1.2, 1.3]
+      sm3 = ~@[5.1, 5.2, 5.3]
+    withChain testSeqMath:
+      Const sm1
+      Math.Add 1.0
+      Log()
+
+    testSeqMath.start()
+    assert testSeqMath.stop() == sm2
+    testSeqMath.start()
+    assert testSeqMath.stop() == sm2
+
+    withChain prepare:
+      Const sm1
+      SetVariable "v1"
+    
+    withChain consume:
+      RunChain:
+        Once: true
+        Chain: prepare
+      
+      GetVariable "v1"
+      Math.Add 1.0
+      SetVariable "v1"
+      Log()
+    
+    consume.start()
+    for _ in 0..4: consume.tick()
+    # assert consume.stop() == sm3
+    consume.start()
+    for _ in 0..4: consume.tick()
+    # assert consume.stop() == sm3
 
     compileTimeChain:
       Msg "Hello"

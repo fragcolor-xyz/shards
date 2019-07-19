@@ -323,6 +323,10 @@ iterator items*(s: CBSeq): CBVar {.inline.} =
 iterator items*(s: CBStrings): CBString {.inline.} =
   for i in 0..<s.len:
     yield s[i]
+proc `~@`*[IDX, CBVar](a: array[IDX, CBVar]): CBSeq =
+  initSeq(result)
+  for v in a:
+    result.push v
 
 # Strings
 converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
