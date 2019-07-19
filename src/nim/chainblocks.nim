@@ -789,11 +789,20 @@ when appType != "lib" or defined(forceCBRuntime):
   proc registerEnumType*(vendorId, typeId: FourCC; info: CBEnumInfo) =
     invokeFunction("chainblocks::registerEnumType", vendorId, typeId, info).to(void)
 
-  proc registerRunLoopCallback*(name: string; callback: CBOnRunLoopTick) =
+  proc registerRunLoopCallback*(name: string; callback: CBCallback) =
     invokeFunction("chainblocks::registerRunLoopCallback", name, callback).to(void)
 
   proc unregisterRunLoopCallback*(name: string) =
     invokeFunction("chainblocks::unregisterRunLoopCallback", name).to(void)
+
+  proc registerExitCallback*(name: string; callback: CBCallback) =
+    invokeFunction("chainblocks::registerExitCallback", name, callback).to(void)
+
+  proc unregisterExitCallback*(name: string) =
+    invokeFunction("chainblocks::unregisterExitCallback", name).to(void)
+
+  proc callExitCallbacks*() =
+    invokeFunction("chainblocks::callExitCallbacks").to(void)
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.importcpp: "chainblocks::contextVariable(#, #)", header: "runtime.hpp".}
 
@@ -829,7 +838,7 @@ else:
   type
     RegisterBlkProc = proc(name: cstring; initProc: CBBlockConstructor) {.cdecl.}
     RegisterTypeProc = proc(vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
-    RegisterLoopCb = proc(name: cstring; cb: CBOnRunLoopTick) {.cdecl.}
+    RegisterLoopCb = proc(name: cstring; cb: CBCallback) {.cdecl.}
     UnregisterLoopCb = proc(name: cstring) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
@@ -848,14 +857,18 @@ else:
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
     cbRegisterLoopCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterRunLoopCallback"))
     cbUnregisterLoopCb = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_UnregisterRunLoopCallback"))
+    cbRegisterExitCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterExitCallback"))
+    cbUnregisterExitCb = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_UnregisterExitCallback"))
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
     cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
     cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) = cbRegisterBlock(name, initProc)
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) = cbRegisterObjectType(vendorId, typeId, info)
-  proc registerRunLoopCallback*(name: string; callback: CBOnRunLoopTick) = cbRegisterLoopCb(name, callback)
+  proc registerRunLoopCallback*(name: string; callback: CBCallback) = cbRegisterLoopCb(name, callback)
   proc unregisterRunLoopCallback*(name: string) = cbUnregisterLoopCb(name)
+  proc registerExitCallback*(name: string; callback: CBCallback) = cbRegisterExitCb(name, callback)
+  proc unregisterExitCallback*(name: string) = cbUnregisterExitCb(name)
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)

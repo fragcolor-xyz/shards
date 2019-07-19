@@ -9,7 +9,8 @@ namespace chainblocks
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  phmap::node_hash_map<std::string, CBOnRunLoopTick> RunLoopHooks;
+  phmap::node_hash_map<std::string, CBCallback> RunLoopHooks;
+  phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
 };
@@ -85,7 +86,7 @@ EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typ
   chainblocks::registerEnumType(vendorId, typeId, info);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback)
+EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBCallback callback)
 {
   chainblocks::registerRunLoopCallback(eventName, callback);
 }
@@ -93,6 +94,16 @@ EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName,
 EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName)
 {
   chainblocks::unregisterRunLoopCallback(eventName);
+}
+
+EXPORTED void __cdecl chainblocks_RegisterExitCallback(const char* eventName, CBCallback callback)
+{
+  chainblocks::registerExitCallback(eventName, callback);
+}
+
+EXPORTED void __cdecl chainblocks_UnregisterExitCallback(const char* eventName)
+{
+  chainblocks::unregisterExitCallback(eventName);
 }
 
 EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name)

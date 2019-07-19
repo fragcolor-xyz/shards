@@ -323,7 +323,7 @@ struct CBNamedVar
 };
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
-typedef void (__cdecl *CBOnRunLoopTick)();
+typedef void (__cdecl *CBCallback)();
 
 typedef const char* (__cdecl *CBNameProc)(CBRuntimeBlock*);
 typedef const char* (__cdecl *CBHelpProc)(CBRuntimeBlock*);
@@ -384,3 +384,46 @@ struct CBRuntimeBlock
   CBActivateProc activate;
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes internally to clean up the block state
 };
+
+#ifdef _WIN32
+# ifdef DLL_EXPORT
+  #define EXPORTED  __declspec(dllexport)
+# else
+  #define EXPORTED  __declspec(dllimport)
+# endif
+#else
+  #define EXPORTED
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// The runtime (even if it is an exe), will export the following, they need to be available in order to load and work with blocks collections within dlls
+
+// Adds a block to the runtime database
+EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockConstructor constructor);
+// Adds a custom object type to the runtime database
+EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
+// Adds a custom enumeration type to the runtime database
+EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
+// Adds a custom call to call every chainblocks sleep internally (basically every frame)
+EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBCallback callback);
+// Adds a custom call to be called on final application exit
+EXPORTED void __cdecl chainblocks_RegisterExitCallback(const char* eventName, CBCallback callback);
+// Removes a previously added run loop callback
+EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName);
+// Removes a previously added exit callback
+EXPORTED void __cdecl chainblocks_UnregisterExitCallback(const char* eventName);
+
+// To be used within blocks, to fetch context variables
+EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name); // remember those are valid only inside preChain, activate, postChain!
+// To be used within blocks, to set error message
+EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
+
+// To be used within blocks, to suspend the coroutine
+EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
+
+#ifdef __cplusplus
+};
+#endif

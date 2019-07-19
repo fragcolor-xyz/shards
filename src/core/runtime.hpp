@@ -231,44 +231,14 @@ struct CBChain
   }
 };
 
-#ifdef _WIN32
-# ifdef DLL_EXPORT
-  #define EXPORTED  __declspec(dllexport)
-# else
-  #define EXPORTED  __declspec(dllimport)
-# endif
-#else
-  #define EXPORTED
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// The runtime (even if it is an exe), will export the following, they need to be available in order to load and work with blocks collections within dlls
-
-EXPORTED void __cdecl chainblocks_RegisterBlock(const char* fullName, CBBlockConstructor constructor);
-EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
-EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
-EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char* eventName, CBOnRunLoopTick callback);
-EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(const char* eventName);
-
-EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name); // remember those are valid only inside preChain, activate, postChain!
-EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
-
-EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
-
-#ifdef __cplusplus
-};
-#endif
-
 namespace chainblocks
 {
   extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  extern phmap::node_hash_map<std::string, CBOnRunLoopTick> RunLoopHooks;
+  extern phmap::node_hash_map<std::string, CBCallback> RunLoopHooks;
+  extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
 
@@ -372,7 +342,7 @@ namespace chainblocks
     }
   }
 
-  static void registerRunLoopCallback(const char* eventName, CBOnRunLoopTick callback)
+  static void registerRunLoopCallback(const char* eventName, CBCallback callback)
   {
     chainblocks::RunLoopHooks[eventName] = callback;
   }
@@ -383,6 +353,29 @@ namespace chainblocks
     if(findIt != chainblocks::RunLoopHooks.end())
     {
       chainblocks::RunLoopHooks.erase(findIt);
+    }
+  }
+
+  static void registerExitCallback(const char* eventName, CBCallback callback)
+  {
+    chainblocks::ExitHooks[eventName] = callback;
+  }
+
+  static void unregisterExitCallback(const char* eventName)
+  {
+    auto findIt = chainblocks::ExitHooks.find(eventName);
+    if(findIt != chainblocks::ExitHooks.end())
+    {
+      chainblocks::ExitHooks.erase(findIt);
+    }
+  }
+
+  static void callExitCallbacks()
+  {
+    // Iterate backwards
+    for(auto it = chainblocks::ExitHooks.begin(); it != chainblocks::ExitHooks.end(); ++it)
+    {
+      it->second();
     }
   }
 
@@ -1153,6 +1146,7 @@ namespace chainblocks
             }
             case Stop:
             {
+              std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
               // Print errors if any, we might have stopped because of some error!
               if(context->error.length() > 0)
                 std::cerr << "Last error: " << std::string(context->error) << "\n";
