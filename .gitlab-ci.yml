@@ -36,7 +36,7 @@ buildAndRun:win:release:
     # Run unit tests
     - cd $currentDir
     - cd src/nim/tests
-    - nim cpp --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
+    - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
   tags:
     - WIN, NIM, BOOST, MINGW
   # artifacts:
