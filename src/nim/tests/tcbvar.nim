@@ -4,10 +4,10 @@ import ../chainblocks
 import unittest, streams
 
 proc run() =
-  var
-    junitStream = openFileStream("tcbvar.xml", fmWrite)
-    formatter = newJUnitOutputFormatter(junitStream)
-  addOutputFormatter(formatter)
+  # var
+  #   junitStream = openFileStream("tcbvar.xml", fmWrite)
+  #   formatter = newJUnitOutputFormatter(junitStream)
+  # addOutputFormatter(formatter)
 
   suite "CBVar converters and ops":
     test "Float":
@@ -246,6 +246,6 @@ proc run() =
       check d1 != s1
       check `~quickcopy`(d1) == 9 # will do 9 ops, 1 seq, 8 strs
 
-  formatter.close()
+  # formatter.close()
 
 run()
