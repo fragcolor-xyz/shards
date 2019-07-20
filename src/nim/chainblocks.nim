@@ -862,6 +862,9 @@ else:
     CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
     SuspendProc = proc(seconds: float64): CBVar {.cdecl.}
+    StartTickChainProc = proc(chain: CBChainPtr; val: CBVar) {.cdecl.}
+    StopChainProc = proc(chain: CBChainPtr; val: ptr CBVar) {.cdecl.}
+    PrepareChainProc = proc(chain: CBChainPtr; looped, unsafe: bool) {.cdecl.}
   
   const cbRuntimeDll {.strdefine.} = ""
   when cbRuntimeDll != "":
@@ -881,13 +884,17 @@ else:
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
     cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
     cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
+    cbPrepare = cast[PrepareChainProc](exeLib.symAddr("chainblocks_Prepare"))
+    cbStart = cast[StartTickChainProc](exeLib.symAddr("chainblocks_Start"))
+    cbTick = cast[StartTickChainProc](exeLib.symAddr("chainblocks_Tick"))
+    cbStop = cast[StopChainProc](exeLib.symAddr("chainblocks_Stop"))
 
-  proc registerBlock*(name: string; initProc: CBBlockConstructor) = cbRegisterBlock(name, initProc)
-  proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) = cbRegisterObjectType(vendorId, typeId, info)
-  proc registerRunLoopCallback*(name: string; callback: CBCallback) = cbRegisterLoopCb(name, callback)
-  proc unregisterRunLoopCallback*(name: string) = cbUnregisterLoopCb(name)
-  proc registerExitCallback*(name: string; callback: CBCallback) = cbRegisterExitCb(name, callback)
-  proc unregisterExitCallback*(name: string) = cbUnregisterExitCb(name)
+  proc registerBlock*(name: string; initProc: CBBlockConstructor) {.inline.} = cbRegisterBlock(name, initProc)
+  proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) {.inline.} = cbRegisterObjectType(vendorId, typeId, info)
+  proc registerRunLoopCallback*(name: string; callback: CBCallback) {.inline.} = cbRegisterLoopCb(name, callback)
+  proc unregisterRunLoopCallback*(name: string) {.inline.} = cbUnregisterLoopCb(name)
+  proc registerExitCallback*(name: string; callback: CBCallback) {.inline.} = cbRegisterExitCb(name, callback)
+  proc unregisterExitCallback*(name: string) {.inline.} = cbUnregisterExitCb(name)
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)
@@ -896,6 +903,11 @@ else:
     var frame = getFrameState()
     result = cbSuspend(seconds)
     setFrameState(frame)
+
+  proc prepare*(chain: CBChainPtr; looped, unsafe: bool) {.inline.} = cbPrepare(chain, looped, unsafe)
+  proc start*(chain: CBChainPtr; input: CBVar) {.inline.} = cbStart(chain, input)
+  proc tick*(chain: CBChainPtr; input: CBVar) {.inline.} = cbTick(chain, input)
+  proc stop*(chain: CBChainPtr; output: ptr CBVar) {.inline.} = cbStop(chain, output)
 
 # This template is inteded to be used inside blocks activations
 template pause*(secs: float): untyped =

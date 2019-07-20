@@ -9,6 +9,7 @@
 // Cannot afford to use any C++ std as any block maker should be free to use their versions
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Included 3rdparty
 #include "3rdparty/stb_ds.h"
@@ -435,6 +436,12 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 // Utility to deal with CBVars
 EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src);
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
+
+// Run and deal with chains
+EXPORTED void __cdecl chainblocks_Prepare(CBChain* chain, bool looped, bool unsafe);
+EXPORTED void __cdecl chainblocks_Start(CBChain* chain, CBVar input);
+EXPORTED void __cdecl chainblocks_Tick(CBChain* chain, CBVar input);
+EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output);
 
 #ifdef __cplusplus
 };
