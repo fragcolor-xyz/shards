@@ -205,7 +205,8 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
-proc `~quickcopy`*(clonedVar: var CBVar): int {.inline, discardable.}
+proc `~quickcopy`*(clonedVar: var CBVar): int {.importcpp: "chainblocks::destroyVar(#)", header: "runtime.hpp".}
+proc quickcopy*(dst: var CBVar; src: var CBvar): int {.importcpp: "chainblocks::cloneVar(#, #)", header: "runtime.hpp".}
 proc `=destroy`*(v: var CBVarConst) {.inline.} = discard `~quickcopy` v.value
 
 var AllIntTypes* = { Int, Int2, Int3, Int4, Int8, Int16 }
@@ -380,12 +381,6 @@ converter toString*(s: string): CBString {.inline.} = s.cstring.CBString
 converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
   result.payload.stringValue = s.cstring.CBString
-
-proc `~quickcopy`*(clonedVar: var CBVar): int =
-  invokeFunction("chainblocks::destroyVar", clonedVar).to(int)
-
-proc quickcopy*(dst: var CBVar; src: var CBvar): int {.inline, discardable.} =
-  invokeFunction("chainblocks::cloneVar", dst, src).to(int)
 
 # Exception
 {.emit: "#include <runtime.hpp>".}

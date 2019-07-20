@@ -169,10 +169,82 @@ proc run() =
     test "Blittable":
       var
         src: CBVar = 1.0
-        dst: CBVar
+        dst: CBVar = Empty
       check quickcopy(dst, src) == 0
       check src == dst
       check src.floatValue == 1.0'f64
+      check `~quickcopy`(dst) == 0
+    
+    test "String":
+      var
+        src:  CBVar = "Hello world"
+        dst:  CBVar = Empty
+        src2: CBVar = "Hello world 2"
+        src3: CBVar = "Hello"
+      check quickcopy(dst, src) == 0
+      check src == dst
+      check src2 != dst
+      check dst.stringValue == "Hello world"
+      check quickcopy(dst, src2) == 1 # its longer so will realloc
+      check src2 == dst
+      check dst.stringValue == "Hello world 2"
+      check quickcopy(dst, src3) == 0 # its longer so will realloc
+      check src3 == dst
+      check dst.stringValue == "Hello"
+      check `~quickcopy`(dst) == 1
+
+    test "Seq of blit":
+      var
+        d1: CBVar = Empty
+        s1: CBVar = ~@[1.0, 2.0, 3.0]
+        s2: CBVar = ~@[9.0, 9.0, 9.0]
+        s3: CBVar = ~@[8.0, 9.0, 9.0, 10.0, 8.0, 9.0, 9.0, 10.0]
+      check quickcopy(d1, s1) == 0
+      check d1 == s1
+      check d1.seqValue[0] == s1.seqValue[0]
+      check d1 != s2
+      check quickcopy(d1, s2) == 0 # make sure this is just a blit internally basically, reusing current seq
+      check d1 == s2
+      check d1.seqValue[0] == s2.seqValue[0]
+      check d1 != s1
+      check quickcopy(d1, s3) == 1 # bigger source will trigger allocations
+      check d1 == s3
+      check d1.seqValue[0] == s3.seqValue[0]
+      check d1 != s2
+      check quickcopy(d1, s1) == 0 # will reuse current seq
+      check d1 == s1
+      check d1.seqValue[0] == s1.seqValue[0]
+      check d1 != s3
+      check `~quickcopy`(d1) == 1 # will do 1 op
+    
+    test "Seq of strings":
+      var
+        d1: CBVar = Empty
+        s1: CBVar = ~@["1.0", "2.0", "3.0"]
+        s2: CBVar = ~@["9.0", "9.0", "9.0"]
+        s3: CBVar = ~@["8.0", "9.0", "9.0", "10.0", "8.0", "9.0", "9.0", "10.0"]
+        s4: CBVar = ~@["8.0", "9.0", "9.0", "10.0", "8.0", "9.0", "9.0", "Hello world"]
+      check quickcopy(d1, s1) == 0
+      check d1 == s1
+      check d1.seqValue[0] == s1.seqValue[0]
+      check d1 != s2
+      check quickcopy(d1, s2) == 0 # make sure this is just a blit internally basically, reusing current seq
+      check d1 == s2
+      check d1.seqValue[0] == s2.seqValue[0]
+      check d1 != s1
+      check quickcopy(d1, s3) == 4 # bigger source will trigger allocations, also 1 str
+      check d1 == s3
+      check d1.seqValue[0] == s3.seqValue[0]
+      check d1 != s2
+      check quickcopy(d1, s1) == 0 # will reuse current seq
+      check d1 == s1
+      check d1.seqValue[0] == s1.seqValue[0]
+      check d1 != s3
+      check quickcopy(d1, s4) == 1 # will reuse current seq but changes 1 string!
+      check d1 == s4
+      check d1.seqValue[7] == s4.seqValue[7]
+      check d1 != s1
+      check `~quickcopy`(d1) == 9 # will do 9 ops, 1 seq, 8 strs
 
   formatter.close()
 

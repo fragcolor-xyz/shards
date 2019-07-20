@@ -364,7 +364,7 @@ namespace chainblocks
         case ContextVar:
         {
           auto srcLen = strlen(src.payload.stringValue);
-          if(dst.valueType != String || dst.valueType != ContextVar || strlen(dst.payload.stringValue) < srcLen)
+          if((dst.valueType != String && dst.valueType != ContextVar) || strlen(dst.payload.stringValue) < srcLen)
           {
             freeCount += destroyVar(dst);
             dst.valueType = String;
