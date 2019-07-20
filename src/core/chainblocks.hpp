@@ -56,7 +56,6 @@ enum CBInlineBlocks : uint8_t
   CoreSleep,
   CoreRepeat,
   CoreIf,
-  // CoreSetVariable,
   CoreGetVariable,
   CoreSwapVariables,
 

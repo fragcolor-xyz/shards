@@ -52,11 +52,11 @@ when true:
       Log()
     
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.stop() == "[baz.dat, baz, dat]"
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.stop() == "[baz.dat, baz, dat]"
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.stop() == "[baz.dat, baz, dat]"
 
     destroy testMatchText
 

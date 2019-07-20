@@ -964,113 +964,112 @@ when isMainModule and appType != "lib":
   chainblock CBPow2Block, "Pow2StaticBlock"
 
   proc run() =
-    when false:
-      var
-        pblock1: CBPow2Block
-      pblock1.setup()
-      var res1 = pblock1.activate(nil, 2.0)
-      echo res1.float
-      
-      var pblock2 = createBlock("Pow2StaticBlock")
-      assert pblock2 != nil
-      var param0Var = 10.CBVar
-      echo param0Var.valueType
-      pblock2.setParam(pblock2, 0, param0Var)
-      echo pblock2.getParam(pblock2, 0).valueType
-      var res2 = pblock2.activate(pblock2, nil, 2.0)
-      echo res2.float
+    var
+      pblock1: CBPow2Block
+    pblock1.setup()
+    var res1 = pblock1.activate(nil, 2.0)
+    echo res1.float
+    
+    var pblock2 = createBlock("Pow2StaticBlock")
+    assert pblock2 != nil
+    var param0Var = 10.CBVar
+    echo param0Var.valueType
+    pblock2.setParam(pblock2, 0, param0Var)
+    echo pblock2.getParam(pblock2, 0).valueType
+    var res2 = pblock2.activate(pblock2, nil, 2.0)
+    echo res2.float
 
-      withChain inlineTesting:
-        Const 10
-        Math.Add 10
-        Log()
-      inlineTesting.start()
-      assert inlineTesting.stop() == 20.CBVar
-      
-      var f4seq: CBSeq
-      initSeq(f4seq)
-      f4seq.push (2.0, 3.0, 4.0, 5.0).CBVar
-      f4seq.push (6.0, 7.0, 8.0, 9.0).CBVar
-      withChain inlineTesting2:
-        Const f4seq
-        Math.Add (0.1, 0.2, 0.3, 0.4)
-        Log()
-        Math.Sqrt
-        Log()
-      inlineTesting2.start()
-
-      var nimcall = proc(input: CBVar): CBVar {.closure.} =
-        echo input
-        input
-      
-      withChain closureTest:
-        Const 77
-        NimClosure nimcall
-        Log()
-      
-      closureTest.start()
-      
-      var
-        mainChain = newChain("mainChain")
-      setCurrentChain(mainChain)
-
-      withChain chain1:
-        Msg "SubChain!"
-        Sleep 0.2
-
-      chain1.start(true)
-      for i in 0..3:
-        echo "Iteration ", i
-        chain1.tick()
-        sleep(500)
-      discard chain1.stop()
-      echo "Stopped"
-      chain1.tick() # should do nothing
-      echo "Done"
-
-      var
-        subChain1 = newChain("subChain1")
-      setCurrentChain(subChain1)
-      
-      Const "Hey hey"
+    withChain inlineTesting:
+      Const 10
+      Math.Add 10
       Log()
-      
-      setCurrentChain(mainChain)
-      
+    inlineTesting.start()
+    assert inlineTesting.stop() == 20.CBVar
+    
+    var f4seq: CBSeq
+    initSeq(f4seq)
+    f4seq.push (2.0, 3.0, 4.0, 5.0).CBVar
+    f4seq.push (6.0, 7.0, 8.0, 9.0).CBVar
+    withChain inlineTesting2:
+      Const f4seq
+      Math.Add (0.1, 0.2, 0.3, 0.4)
       Log()
-      Msg "Hello"
-      Msg "World"
-      Const 15
-      If:
-        Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
-        Operand: 10
-        True: subChain1
-      Sleep 0.0
-      Const 11
-      ToString()
+      Math.Sqrt
       Log()
-      
-      mainChain.start(true)
-      for i in 0..10:
-        var idx = i.CBVar
-        mainChain.tick(idx)
-      
-      discard mainChain.stop()
+    inlineTesting2.start()
 
-      mainChain.start(true)
-      for i in 0..10:
-        var idx = i.CBVar
-        mainChain.tick(idx)
-      
-      let
-        jstr = mainChain.store()
-      assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
-      echo jstr
-      var jchain: CBChainPtr
-      load(jchain, jstr)
-      let
-        jstr2 = jchain.store()
-      assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    var nimcall = proc(input: CBVar): CBVar {.closure.} =
+      echo input
+      input
+    
+    withChain closureTest:
+      Const 77
+      NimClosure nimcall
+      Log()
+    
+    closureTest.start()
+    
+    var
+      mainChain = newChain("mainChain")
+    setCurrentChain(mainChain)
+
+    withChain chain1:
+      Msg "SubChain!"
+      Sleep 0.2
+
+    chain1.start(true)
+    for i in 0..3:
+      echo "Iteration ", i
+      chain1.tick()
+      sleep(500)
+    discard chain1.stop()
+    echo "Stopped"
+    chain1.tick() # should do nothing
+    echo "Done"
+
+    var
+      subChain1 = newChain("subChain1")
+    setCurrentChain(subChain1)
+    
+    Const "Hey hey"
+    Log()
+    
+    setCurrentChain(mainChain)
+    
+    Log()
+    Msg "Hello"
+    Msg "World"
+    Const 15
+    If:
+      Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
+      Operand: 10
+      True: subChain1
+    Sleep 0.0
+    Const 11
+    ToString()
+    Log()
+    
+    mainChain.start(true)
+    for i in 0..10:
+      var idx = i.CBVar
+      mainChain.tick(idx)
+    
+    discard mainChain.stop()
+
+    mainChain.start(true)
+    for i in 0..10:
+      var idx = i.CBVar
+      mainChain.tick(idx)
+    
+    let
+      jstr = mainChain.store()
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    echo jstr
+    var jchain: CBChainPtr
+    load(jchain, jstr)
+    let
+      jstr2 = jchain.store()
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":15,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":20}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     
     var
       sm1 = ~@[0.1, 0.2, 0.3]

@@ -94,7 +94,9 @@ using Time = std::chrono::time_point<Clock, Duration>;
 #include "3rdparty/parallel_hashmap/phmap.h"
 
 #include <tuple>
-namespace std{
+// Tuple hashing
+namespace std
+{
   namespace
   {
 
@@ -426,10 +428,6 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
     }
-    // else if(strcmp(name, "SetVariable") == 0)
-    // {
-    //   // blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
-    // }
     else if(strcmp(name, "GetVariable") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreGetVariable;
@@ -843,27 +841,6 @@ namespace chainblocks
             }
             break;
           }
-          // case CoreSetVariable:
-          // {
-          //   auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
-          //   if(unlikely(!cblock->target)) // call first if we have no target
-          //   {
-          //     previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
-          //   }
-          //   else
-          //   {
-          //     // Handle the special case of a seq that might need reset every run
-          //     if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
-          //     {
-          //       stbds_arrsetlen((*cblock->target).payload.seqValue, size_t(0));
-          //     }
-          //     else
-          //     {
-          //       previousOutput = *cblock->target = input;
-          //     }
-          //   }
-          //   break;
-          // }
           case CoreGetVariable:
           {
             auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
