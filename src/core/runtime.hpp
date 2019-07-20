@@ -279,7 +279,10 @@ namespace chainblocks
     {
       case Seq:
       {
-        auto len = stbds_arrlen(var.payload.seqValue);
+        // Notice we use capacity rather then len!
+        // Assuming memory is nicely memset
+        // We do that because we try our best to recycle memory
+        auto len = stbds_arrcap(var.payload.seqValue);
         for(auto i = 0; i < len; i++)
         {
           freeCount += destroyVar(var.payload.seqValue[i]);
@@ -340,7 +343,8 @@ namespace chainblocks
         case Seq:
         {
           auto srcLen = stbds_arrlen(src.payload.seqValue);
-          if(dst.valueType != Seq || stbds_arrlen(dst.payload.seqValue) != srcLen)
+          // reuse if seq and we got enough capacity
+          if(dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen)
           {
             freeCount += destroyVar(dst);
             dst.valueType = Seq;
@@ -390,6 +394,7 @@ namespace chainblocks
         break;
         case Table:
         {
+          // Slowest case, it's a full copy using arena tho
           freeCount += destroyVar(dst);
           dst.valueType = Table;
           dst.payload.tableLen = -1;
