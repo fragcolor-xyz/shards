@@ -1337,6 +1337,7 @@ namespace chainblocks
 
   static boost::context::continuation run(CBChain* chain, bool looped, bool unsafe, boost::context::continuation&& sink)
   {
+    auto running = true;
     // Reset return state
     chain->returned = false;
     // Create a new context and copy the sink in
@@ -1345,19 +1346,20 @@ namespace chainblocks
     // We prerolled our coro, suspend here before actually starting.
     // This allows us to allocate the stack ahead of time.
     context.continuation = context.continuation.resume();
-
-    auto running = true;
+    if(context.aborted) // We might have stopped before even starting!
+      goto endOfChain;
+    
     while(running)
     {
       running = looped;
       context.restarted = false; // Remove restarted flag
-
+      
       // Reset len to 0 of the stack
       if(context.stack)
         stbds_arrsetlen(context.stack, 0);
       
       chain->finished = false; // Reset finished flag
-
+      
       auto runRes = runChain(chain, &context, chain->rootTickInput);
       chain->finished = true;
       chain->finishedOutput = std::get<1>(runRes);
@@ -1377,14 +1379,15 @@ namespace chainblocks
           break;
       }
     }
-
+    
+  endOfChain:
     // Completely free the stack
     if(context.stack)
       stbds_arrfree(context.stack);
-
+    
     // run cleanup on all the blocks
     cleanup(chain);
-
+    
     // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
     chain->returned = true;
     return std::move(context.continuation);
@@ -1404,7 +1407,7 @@ namespace chainblocks
 
   static void start(CBChain* chain, CBVar input = {})
   {
-    if(!chain->coro || !(*chain->coro) || chain->returned)
+    if(!chain->coro || !(*chain->coro) || chain->started)
       return; // check if not null and bool operator also to see if alive!
     
     auto previousChain = chainblocks::CurrentChain;
@@ -1418,50 +1421,46 @@ namespace chainblocks
 
   static void stop(CBChain* chain, CBVar* result = nullptr)
   {
-    // notice if we called start, started is going to happen before any suspensions
-    if(chain->started) 
+    // Clone the results if we need them
+    if(result)
+      cloneVar(*result, chain->finishedOutput);
+    
+    if(chain->coro)
     {
-      // Clone the results if we need them
-      if(result)
-        cloneVar(*result, chain->finishedOutput);
-      
-      if(chain->coro)
+      // Run until exit if alive, need to propagate to all suspended blocks!
+      if((*chain->coro) && !chain->returned)
       {
-        // Run until exit if alive, need to propagate to all suspended blocks!
-        if((*chain->coro) && !chain->returned)
-        {
-          // Push current chain
-          auto previous = chainblocks::CurrentChain;
-          chainblocks::CurrentChain = chain;
-          
-          // set abortion flag, we always have a context in this case
-          chain->context->aborted = true;
-          
-          // BIG Warning: chain->context existed in the coro stack!!!
-          // after this resume chain->context is trash!
-          chain->coro->resume();
-          
-          // Pop current chain
-          chainblocks::CurrentChain = previous;
-        }
+        // Push current chain
+        auto previous = chainblocks::CurrentChain;
+        chainblocks::CurrentChain = chain;
         
-        // delete also the coro ptr
-        delete chain->coro;
-        chain->coro = nullptr;
-      }
-      else
-      {
-        // if we had a coro this will run inside it!
-        cleanup(chain);
+        // set abortion flag, we always have a context in this case
+        chain->context->aborted = true;
+        
+        // BIG Warning: chain->context existed in the coro stack!!!
+        // after this resume chain->context is trash!
+        chain->coro->resume();
+        
+        // Pop current chain
+        chainblocks::CurrentChain = previous;
       }
       
-      chain->started = false;
+      // delete also the coro ptr
+      delete chain->coro;
+      chain->coro = nullptr;
     }
+    else
+    {
+      // if we had a coro this will run inside it!
+      cleanup(chain);
+    }
+    
+    chain->started = false;
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())
   {
-    if(!chain->coro || !(*chain->coro) || chain->returned)
+    if(!chain->coro || !(*chain->coro) || chain->returned || !chain->started)
       return; // check if not null and bool operator also to see if alive!
     
     Duration now = Clock::now().time_since_epoch();

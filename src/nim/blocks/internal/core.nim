@@ -689,10 +689,10 @@ when true:
   type
     CBBoolOp* {.size: sizeof(uint8).} = enum
       # INLINE BLOCK, CORE STUB PRESENT
-      Equal,
-      More,
-      Less,
-      MoreEqual,
+      Equal
+      More
+      Less
+      MoreEqual
       LessEqual
 
   type

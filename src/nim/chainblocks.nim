@@ -621,6 +621,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     cleanupProc = ident($blk & "_cleanup")
   
   result = quote do:
+    import macros # used!
+
     type
       `rtNameValue` = object
         pre: CBRuntimeBlock
@@ -724,6 +726,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       updateStackBottom()
       b.sb.cleanup()
     registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
+      # https://stackoverflow.com/questions/7546620/operator-new-initializes-memory-to-zero
+      # Memory will be memset to 0x0, because we call T()
       cppnew(result, CBRuntimeBlock, `rtNameValue`)
       # DO NOT CHANGE THE FOLLOWING, this sorcery is needed to build with msvc 19ish
       # Moreover it's kinda nim's fault, as it won't generate a C cast without `.pointer`
