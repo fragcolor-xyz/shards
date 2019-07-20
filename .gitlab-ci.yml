@@ -33,8 +33,15 @@ buildAndRun:win:release:
     - cd ../dummy
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
+    # Run unit tests
+    - cd $currentDir
+    - cd src/nim/tests
+    - nim cpp -r tcbvar.nim
   tags:
     - WIN, NIM, BOOST, MINGW
+  artifacts:
+    reports:
+      junit: src/nim/tests/tcbvar.xml
 
 buildAndRun:linux:debug:
   script:

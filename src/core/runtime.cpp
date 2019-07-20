@@ -121,6 +121,16 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
   return chainblocks::suspend(seconds);
 }
 
+EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src)
+{
+  chainblocks::cloneVar(*dst, *src);
+}
+
+EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var)
+{
+  chainblocks::destroyVar(*var);
+}
+
 #ifdef __cplusplus
 };
 #endif

@@ -31,14 +31,17 @@ enum CBType : uint8_t
   Float2, // A vector of 2 64bits floats
   Float3, // A vector of 3 32bits floats
   Float4, // A vector of 4 32bits floats
-  String,
   Color,  // A vector of 4 uint8
-  Image,
-  Seq,
-  Table,
   Chain, // sub chains, e.g. IF/ELSE
   Block, // a block, useful for future introspection blocks!
+  
+  EndOfBlittableTypes, // anything below this is not blittable
+  
+  String,
   ContextVar, // A string label to find from CBContext variables
+  Image,
+  Seq,
+  Table
 };
 
 enum CBChainState : uint8_t
@@ -48,6 +51,7 @@ enum CBChainState : uint8_t
   Stop // Stop the chain execution
 };
 
+// These blocks exist in nim too but they are actually implemented here inline into runchain
 enum CBInlineBlocks : uint8_t
 {
   NotInline,
@@ -428,6 +432,11 @@ EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* error
 // To be used within blocks, to suspend the coroutine
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
+// Utility to deal with CBVars
+EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src);
+EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
+
 #ifdef __cplusplus
 };
 #endif
+

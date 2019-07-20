@@ -271,8 +271,8 @@ when defined(blocksTesting):
     testCons.tick()
     sleep 0.015
   
-  discard testProd.stop()
-  discard testCons.stop()
+  testProd.stop()
+  testCons.stop()
 
   destroy testCons
   destroy testProd

@@ -61,29 +61,32 @@ type
     data*: ptr UncheckedArray[uint8]
 
   CBType* {.importcpp: "CBType", header: "chainblocks.hpp", size: sizeof(uint8).} = enum
-    None,
-    Any,
-    Object,
-    Enum,
-    Bool,
-    Int,
-    Int2, # A vector of 2 ints
-    Int3, # A vector of 3 ints
-    Int4, # A vector of 4 ints
-    Int8,
-    Int16,
-    Float,
-    Float2, # A vector of 2 floats
-    Float3, # A vector of 3 floats
-    Float4, # A vector of 4 floats
-    String,
-    Color, # A vector of 4 uint8
-    Image,
-    Seq,
-    Table,
-    Chain, # sub chains, e.g. IF/ELSE
-    Block,
-    ContextVar, # A string label to find from CBContext variables
+    None
+    Any
+    Object
+    Enum
+    Bool
+    Int
+    Int2 # A vector of 2 ints
+    Int3 # A vector of 3 ints
+    Int4 # A vector of 4 ints
+    Int8
+    Int16
+    Float
+    Float2 # A vector of 2 floats
+    Float3 # A vector of 3 floats
+    Float4 # A vector of 4 floats
+    Color # A vector of 4 uint8
+    Chain # sub chains, e.g. IF/ELSE
+    Block
+    
+    EndOfBlittableTypes
+    
+    String
+    ContextVar # A string label to find from CBContext variables
+    Image
+    Seq
+    Table
 
   CBTypeInfo* {.importcpp: "CBTypeInfo", header: "chainblocks.hpp".} = object
     sequenced*: bool # This type can be in a sequence of itself
@@ -144,6 +147,9 @@ type
     valueType*: CBType
     reserved*: array[15, uint8]
 
+  CBVarConst* = object
+    value*: CBVar
+
   CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
   CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
 
@@ -199,6 +205,9 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
+proc `~quickcopy`*(clonedVar: var CBVar): int {.inline, discardable.}
+proc `=destroy`*(v: var CBVarConst) {.inline.} = discard `~quickcopy` v.value
+
 var AllIntTypes* = { Int, Int2, Int3, Int4, Int8, Int16 }
 var AllFloatTypes* = { Float, Float2, Float3, Float4 }
 
@@ -228,6 +237,34 @@ template chainValue*(v: CBVar): auto = v.payload.chainValue
 template enumValue*(v: CBVar): auto = v.payload.enumValue
 template enumVendorId*(v: CBVar): auto = v.payload.enumVendorId
 template enumTypeId*(v: CBVar): auto = v.payload.enumTypeId
+
+template valueType*(v: CBVarConst): auto = v.value.valueType
+template chainState*(v: CBVarConst): auto = v.value.payload.chainState
+template objectValue*(v: CBVarConst): auto = v.value.payload.objectValue
+template objectVendorId*(v: CBVarConst): auto = v.value.payload.objectVendorId
+template objectTypeId*(v: CBVarConst): auto = v.value.payload.objectTypeId
+template boolValue*(v: CBVarConst): auto = v.value.payload.boolValue
+template intValue*(v: CBVarConst): auto = v.value.payload.intValue
+template int2Value*(v: CBVarConst): auto = v.value.payload.int2Value
+template int3Value*(v: CBVarConst): auto = v.value.payload.int3Value
+template int4Value*(v: CBVarConst): auto = v.value.payload.int4Value
+template int8Value*(v: CBVarConst): auto = v.value.payload.int8Value
+template int16Value*(v: CBVarConst): auto = v.value.payload.int16Value
+template floatValue*(v: CBVarConst): auto = v.value.payload.floatValue
+template float2Value*(v: CBVarConst): auto = v.value.payload.float2Value
+template float3Value*(v: CBVarConst): auto = v.value.payload.float3Value
+template float4Value*(v: CBVarConst): auto = v.value.payload.float4Value
+template stringValue*(v: CBVarConst): auto = v.value.payload.stringValue
+template colorValue*(v: CBVarConst): auto = v.value.payload.colorValue
+template imageValue*(v: CBVarConst): auto = v.value.payload.imageValue
+template seqValue*(v: CBVarConst): auto = v.value.payload.seqValue
+template seqLen*(v: CBVarConst): auto = value.v.payload.seqLen
+template tableValue*(v: CBVarConst): auto = v.value.payload.tableValue
+template tableLen*(v: CBVarConst): auto = v.value.payload.tableLen
+template chainValue*(v: CBVarConst): auto = v.value.payload.chainValue
+template enumValue*(v: CBVarConst): auto = v.value.payload.enumValue
+template enumVendorId*(v: CBVarConst): auto = v.value.payload.enumVendorId
+template enumTypeId*(v: CBVarConst): auto = v.value.payload.enumTypeId
 
 template `chainState=`*(v: CBVar, val: auto) = v.payload.chainState = val
 template `objectValue=`*(v: CBVar, val: auto) = v.payload.objectValue = val
@@ -337,119 +374,17 @@ converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
     result.push str.cstring
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
+converter toString*(s: CBString): string {.inline.} = $s.cstring
+converter toString*(s: string): CBString {.inline.} = s.cstring.CBString
 converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
-  result.payload.stringValue = cast[CBString](s.cstring)
+  result.payload.stringValue = s.cstring.CBString
 
-const
-  blittableVarTypes = { 
-    None, Any, Object, Enum, Bool, 
-    Int, Int2, Int3, Int4, Int8, Int16, 
-    Float, Float2, Float3, Float4, 
-    Color, Block, Chain 
-  }
-
-proc `~quickcopy`*(clonedVar: var CBVar): int {.inline, discardable.} =
-  case clonedVar.valueType
-  of Seq:
-    for val in clonedVar.seqValue.mitems:
-      result += `~quickcopy` val
-    freeSeq(clonedVar.seqValue)
-    inc result
-  
-  of String, ContextVar:
-    dealloc(clonedVar.stringValue.pointer)
-    inc result
-  
-  of Image:
-    dealloc(clonedVar.imageValue.data)
-    inc result
-
-  of Table:
-    for val in clonedVar.tableValue.mitems:
-      result += `~quickcopy` val.value
-    freeTable(clonedVar.tableValue)
-    inc result
-  
-  else:
-    discard
-  
-  clonedVar = Empty
+proc `~quickcopy`*(clonedVar: var CBVar): int =
+  invokeFunction("chainblocks::destroyVar", clonedVar).to(int)
 
 proc quickcopy*(dst: var CBVar; src: var CBvar): int {.inline, discardable.} =
-  # returns the number of destructions it did to copy for diagnostics
-
-  if dst.valueType in blittableVarTypes and src.valueType in blittableVarTypes:
-    copyMem(addr dst, addr src, sizeof(CBVar))
-  
-  elif src.valueType in blittableVarTypes: # dst has some complex/allocated things...
-    `~quickcopy` dst
-    inc result
-    copyMem(addr dst, addr src, sizeof(CBVar))
-  
-  else: # need to copy complex
-    case src.valueType
-    of Seq:
-      if dst.valueType != Seq or dst.seqValue.len != src.seqValue.len:
-        # tough luck, need to reallocate
-        `~quickcopy` dst
-        inc result
-        dst.valueType = Seq
-        initSeq(dst.seqValue)
-        dst.seqLen = -1
-      
-      let srcLen = src.seqValue.len
-      dst.seqValue.setLen(srcLen) # will trigger allocations if capacity < len
-      for i in 0..<srcLen:
-        result += quickcopy(dst.seqValue[i], src.seqValue[i])
-    
-    of String, ContextVar:      
-      if  dst.valueType != String or 
-          dst.valueType != ContextVar or 
-          dst.stringValue.len >= src.stringValue.len:
-        # tough luck, need to reallocate
-        `~quickcopy` dst
-        inc result
-        dst.stringValue = cast[CBString](alloc(src.stringValue.len + 1))
-      
-      dst.valueType = src.valueType # could be both
-      copyMem(dst.stringValue.pointer, src.stringValue.pointer, src.stringValue.len + 1)
-    
-    of Image:
-      let imgSize = dst.imageValue.height * dst.imageValue.width * dst.imageValue.channels
-      if  dst.valueType != Image or 
-          dst.imageValue.height != src.imageValue.height or
-          dst.imageValue.width != src.imageValue.width or
-          dst.imageValue.channels != src.imageValue.channels:
-        # tough luck, need to reallocate
-        `~quickcopy` dst
-        inc result
-        dst.valueType = Image
-        dst.imageValue.height = src.imageValue.height
-        dst.imageValue.width = src.imageValue.width
-        dst.imageValue.channels = src.imageValue.channels
-        dst.imageValue.data = cast[ptr UncheckedArray[uint8]](alloc(imgSize))
-      
-      copyMem(dst.imageValue.data, src.imageValue.data, imgSize)
-    
-    of Table:
-      # well this is the slowest
-      `~quickcopy` dst
-      inc result
-      dst.valueType = Table
-      invokeFunction("stbds_sh_new_arena", dst.tableValue).to(void)
-      for val in src.tableValue.mitems:
-        var cpVal: CBVar
-        result += quickcopy(cpVal, val.value)
-        invokeFunction("stbds_shput", dst.tableValue, val.key, cpVal).to(void)
-      dst.tableLen = -1
-    
-    else:
-      discard
-
-# Leave them last cos VScode highlight will freak out..
+  invokeFunction("chainblocks::cloneVar", dst, src).to(int)
 
 # Exception
 {.emit: "#include <runtime.hpp>".}
