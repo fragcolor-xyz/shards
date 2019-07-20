@@ -16,14 +16,15 @@ class CBType(IntEnum):
   Float2 = auto()
   Float3 = auto()
   Float4 = auto()
-  String = auto()
   Color = auto()
+  Chain = auto()
+  Block = auto()
+  EndOfBlittableTypes = auto()
+  String = auto()
+  ContextVar = auto()
   Image = auto()
   Seq = auto()
   Table = auto()
-  Chain = auto()
-  Block = auto()
-  ContextVar = auto()
 
 def activate(self, input):
   if "i" in self:
