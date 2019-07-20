@@ -76,6 +76,9 @@ def validateConnection(outputInfo, inputInfo):
           if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
             return True
 
+# TODO rules
+# expose/consume, make sure there is only 1 expose, any overwrite to expose should trigger error, we might want to have parameters for those tho to allow it?
+
 class CBVar:
   def __init__(self, value):
     if value == None:
