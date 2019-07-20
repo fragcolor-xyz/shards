@@ -430,12 +430,25 @@ when appType != "lib" or defined(forceCBRuntime):
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc startInternal(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.importcpp: "chainblocks::start(#, #, #)", header: "runtime.hpp".}
+  proc prepareInternal(chain: CBChainPtr; loop: bool; unsafe: bool) {.importcpp: "chainblocks::prepare(#, #, #)", header: "runtime.hpp".}
+  proc prepare*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
+    var frame = getFrameState()
+    prepareInternal(chain, loop, unsafe)
+    setFrameState(frame)
+  proc cbPrepare*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = prepare(chain, loop.bool, unsafe.bool)
+
+  proc startInternal(chain: CBChainPtr; input: CBVar) {.importcpp: "chainblocks::start(#, #)", header: "runtime.hpp".}
   proc start*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false; input: CBVar = Empty) {.inline.} =
     var frame = getFrameState()
-    startInternal(chain, loop)
+    prepareInternal(chain, loop, unsafe)
+    startInternal(chain, input)
     setFrameState(frame)
-  proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool)
+  proc start*(chain: CBChainPtr; input: CBVar) {.inline.} =
+    var frame = getFrameState()
+    startInternal(chain, input)
+    setFrameState(frame)
+  proc cbQuickStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool, input)
+  proc cbStart*(chain: CBChainPtr; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, input)
   
   proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "runtime.hpp".}
   proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
@@ -608,8 +621,6 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     cleanupProc = ident($blk & "_cleanup")
   
   result = quote do:
-    import macros, strutils, sequtils
-
     type
       `rtNameValue` = object
         pre: CBRuntimeBlock

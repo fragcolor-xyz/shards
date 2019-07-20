@@ -1335,64 +1335,85 @@ namespace chainblocks
     }
   }
 
-  static void start(CBChain* chain, bool loop = false, bool unsafe = false, CBVar input = {})
+  static boost::context::continuation run(CBChain* chain, bool looped, bool unsafe, boost::context::continuation&& sink)
   {
-    chain->coro = new CBCoro(boost::context::callcc([&chain, &loop, &unsafe, &input](boost::context::continuation&& sink)
+    // Reset return state
+    chain->returned = false;
+    // Create a new context and copy the sink in
+    CBContext context(std::move(sink));
+
+    // We prerolled our coro, suspend here before actually starting.
+    // This allows us to allocate the stack ahead of time.
+    context.continuation = context.continuation.resume();
+
+    auto running = true;
+    while(running)
     {
-      // Need to copy those in this stack!
-      CBChain* thisChain = chain;
-      bool looped = loop;
-      bool unsafeLoop = unsafe;
-      // Copy root input
-      thisChain->rootTickInput = input;
-      // Reset return state
-      thisChain->returned = false;
-      // Create a new context and copy the sink in
-      CBContext context(std::move(sink));
+      running = looped;
+      context.restarted = false; // Remove restarted flag
 
-      auto running = true;
-      while(running)
-      {
-        running = looped;
-        context.restarted = false; // Remove restarted flag
-
-        // Reset len to 0 of the stack
-        if(context.stack)
-          stbds_arrfree(context.stack);
-        
-        thisChain->finished = false; // Reset finished flag
-
-        auto runRes = runChain(thisChain, &context, thisChain->rootTickInput);
-        thisChain->finished = true;
-        thisChain->finishedOutput = std::get<1>(runRes);
-        if(!std::get<0>(runRes))
-        {
-          context.aborted = true;
-          break;
-        }
-        
-        if(!unsafeLoop && looped) 
-        {
-          // Ensure no while(true), yield anyway every run
-          thisChain->next = Duration(0);
-          context.continuation = context.continuation.resume();
-          // This is delayed upon continuation!!
-          if(context.aborted)
-            break;
-        }
-      }
-
-      // Completely free the stack
+      // Reset len to 0 of the stack
       if(context.stack)
-        stbds_arrfree(context.stack);
+        stbds_arrsetlen(context.stack, 0);
+      
+      chain->finished = false; // Reset finished flag
 
-      // run cleanup on all the blocks
-      cleanup(thisChain);
+      auto runRes = runChain(chain, &context, chain->rootTickInput);
+      chain->finished = true;
+      chain->finishedOutput = std::get<1>(runRes);
+      if(!std::get<0>(runRes))
+      {
+        context.aborted = true;
+        break;
+      }
+      
+      if(!unsafe && looped) 
+      {
+        // Ensure no while(true), yield anyway every run
+        chain->next = Duration(0);
+        context.continuation = context.continuation.resume();
+        // This is delayed upon continuation!!
+        if(context.aborted)
+          break;
+      }
+    }
 
-      // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
-      thisChain->returned = true;
-      return std::move(context.continuation);
+    // Completely free the stack
+    if(context.stack)
+      stbds_arrfree(context.stack);
+
+    // run cleanup on all the blocks
+    cleanup(chain);
+
+    // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
+    chain->returned = true;
+    return std::move(context.continuation);
+  }
+
+  static void prepare(CBChain* chain, bool loop = false, bool unsafe = false)
+  {
+    if(chain->coro)
+      return;
+    
+    chain->coro = new CBCoro(boost::context::callcc(
+        [&chain, &loop, &unsafe](boost::context::continuation&& sink)
+    {
+      return run(chain, loop, unsafe, std::move(sink));
     }));
+  }
+
+  static void start(CBChain* chain, CBVar input = {})
+  {
+    if(!chain->coro || !(*chain->coro) || chain->returned)
+      return; // check if not null and bool operator also to see if alive!
+    
+    auto previousChain = chainblocks::CurrentChain;
+    chainblocks::CurrentChain = chain;
+    
+    chain->rootTickInput = input;
+    *chain->coro = chain->coro->resume();
+    
+    chainblocks::CurrentChain = previousChain;
   }
 
   static void stop(CBChain* chain, CBVar* result = nullptr)

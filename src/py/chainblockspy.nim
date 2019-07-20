@@ -2,7 +2,7 @@ import nimpy
 import nimpy/[py_lib, py_types]
 import ../nim/chainblocks
 import nimline
-import dynlib, tables, sets
+import tables, sets
 import varspy
 import fragments/serialization
 
@@ -29,7 +29,9 @@ proc cbBlocks*(): CBStrings {.cdecl, importc, dynlib: "chainblocks".}
 proc cbGetCurrentChain*(): CBChainPtr {.cdecl, importc, dynlib: "chainblocks".}
 proc cbSetCurrentChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
 
-proc cbStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbQuickStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbPrepare*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbStart*(chain: CBChainPtr; input: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbTick*(chain: CBChainPtr; rootInput: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbSleep*(secs: float64) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbStop*(chain: CBChainPtr): CBVar {.cdecl, importc, dynlib: "chainblocks".}
@@ -132,11 +134,11 @@ proc chainAddBlock(chain, blk: PPyObject) {.exportpy.} =
 
 proc chainStart(chain: PPyObject; looped: bool; unsafe: bool) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
-  cbStart(cast[CBChainPtr](p), looped.cint, unsafe.cint, Empty)
+  cbQuickStart(cast[CBChainPtr](p), looped.cint, unsafe.cint, Empty)
 
 proc chainStart2(chain: PPyObject; looped: bool; unsafe: bool; input: PyObject) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
-  cbStart(cast[CBChainPtr](p), looped.cint, unsafe.cint, py2Var(input, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache))
+  cbQuickStart(cast[CBChainPtr](p), looped.cint, unsafe.cint, py2Var(input, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache))
 
 proc chainTick(chain: PPyObject; input: PyObject) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
