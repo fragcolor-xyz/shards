@@ -333,6 +333,7 @@ converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, paylo
 # CBSeqLikes
 proc initSeq*(s: var CBSeqLike) {.inline.} = s = nil
 proc freeSeq*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrfree", cbs).to(void)
+proc freeSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("stbds_arrfree", cbs).to(void)
 proc len*(s: CBSeqLike): int {.inline.} = invokeFunction("stbds_arrlen", s).to(int)
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:

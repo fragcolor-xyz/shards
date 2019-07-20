@@ -4,7 +4,7 @@ import ../../../../py/varspy
 import nimpy/py_types
 import nimpy/py_lib
 import nimpy
-import dynlib, tables, os, times, sets
+import tables, os, sets
 
 type
   Scripting* = object
