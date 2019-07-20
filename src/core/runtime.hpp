@@ -43,7 +43,7 @@ struct CBMathUnaryStub
 struct CBCoreRepeat
 {
   CBRuntimeBlock header;
-  bool forever;
+  bool doForever;
   int32_t times;
   CBSeq blocks;
 };
@@ -808,7 +808,7 @@ namespace chainblocks
       case CoreRepeat:
       {
         auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
-        auto repeats = cblock->forever ? 1 : cblock->times;
+        auto repeats = cblock->doForever ? 1 : cblock->times;
         while(repeats)
         {
           for(auto i = 0; i < stbds_arrlen(cblock->blocks); i++)
@@ -828,7 +828,7 @@ namespace chainblocks
             return;
           }
 
-          if(!cblock->forever)
+          if(!cblock->doForever)
             repeats--;
         }
         previousOutput = input;
