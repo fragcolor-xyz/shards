@@ -62,6 +62,7 @@ if(unlikely(input.valueType == Seq))\
   }\
   previousOutput.valueType = Seq;\
   previousOutput.payload.seqValue = cblock->seqCache;\
+  previousOutput.payload.seqLen = -1;\
 }\
 else\
 {\
@@ -148,6 +149,7 @@ if(unlikely(input.valueType == Seq))\
   }\
   previousOutput.valueType = Seq;\
   previousOutput.payload.seqValue = cblock->seqCache;\
+  previousOutput.payload.seqLen = -1;\
 }\
 else\
 {\
@@ -218,6 +220,7 @@ if(unlikely(input.valueType == Seq))\
   }\
   previousOutput.valueType = Seq;\
   previousOutput.payload.seqValue = cblock->seqCache;\
+  previousOutput.payload.seqLen = -1;\
 }\
 else\
 {\

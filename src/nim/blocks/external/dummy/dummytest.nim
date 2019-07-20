@@ -25,7 +25,7 @@ proc run() =
   getCurrentChain().tick()
   
   echo "Stop"
-  discard getCurrentChain().stop()
+  getCurrentChain().stop()
   
   echo "Start again"
   getCurrentChain().start(true)

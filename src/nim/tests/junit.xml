@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+	<testsuite name="CBVar converters and ops">
+		<testcase name="Float" time="0.00000000">
+		</testcase>
+		<testcase name="Float2" time="0.00000000">
+		</testcase>
+		<testcase name="Float3" time="0.00000000">
+		</testcase>
+		<testcase name="Float4" time="0.00000000">
+		</testcase>
+		<testcase name="Int" time="0.00000000">
+		</testcase>
+		<testcase name="Int2" time="0.00000000">
+		</testcase>
+		<testcase name="Int3" time="0.00000000">
+		</testcase>
+		<testcase name="Int4" time="0.00000000">
+		</testcase>
+		<testcase name="Int8" time="0.00000000">
+		</testcase>
+		<testcase name="Int16" time="0.00000000">
+		</testcase>
+		<testcase name="Color" time="0.00000000">
+		</testcase>
+		<testcase name="String const" time="0.00000000">
+		</testcase>
+	</testsuite>
+	<testsuite name="Quick deepcopy and `~deepcopy`">

@@ -5,7 +5,7 @@ import tables, sets
 
 proc var2Py*(input: CBVar; inputSeqCache: var seq[PPyObject]; inputTableCache: var Table[string, PPyObject]): PPyObject =
   case input.valueType
-  of None, Any, ContextVar: result = newPyNone()
+  of None, Any, ContextVar, EndOfBlittableTypes: result = newPyNone()
   of Object:
     result = toPyObjectArgument(
       (py_lib.pyLib.PyCapsule_New(cast[pointer](input.objectValue), nil, nil), input.objectVendorId, input.objectTypeId)
@@ -60,7 +60,7 @@ proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq
     valueType = tupRes.valueType.CBType
   result.valueType = valueType
   case valueType
-  of None, Any, ContextVar: result = Empty
+  of None, Any, ContextVar, EndOfBlittableTypes: result = Empty
   of Object:
     let
       objValue = tupRes.value.to(tuple[capsule: PPyObject; vendor, typeid: int32])

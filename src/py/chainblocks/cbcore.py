@@ -54,14 +54,15 @@ class CBType(IntEnum):
   Float2 = auto()
   Float3 = auto()
   Float4 = auto()
-  String = auto()
   Color = auto()
+  Chain = auto()
+  Block = auto()
+  EndOfBlittableTypes = auto()
+  String = auto()
+  ContextVar = auto()
   Image = auto()
   Seq = auto()
   Table = auto()
-  Chain = auto()
-  Block = auto()
-  ContextVar = auto()
 
 def validateConnection(outputInfo, inputInfo):
   for iinfo in inputInfo:
@@ -74,6 +75,9 @@ def validateConnection(outputInfo, inputInfo):
         else:
           if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
             return True
+
+# TODO rules
+# expose/consume, make sure there is only 1 expose, any overwrite to expose should trigger error, we might want to have parameters for those tho to allow it?
 
 class CBVar:
   def __init__(self, value):

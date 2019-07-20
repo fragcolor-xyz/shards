@@ -61,29 +61,32 @@ type
     data*: ptr UncheckedArray[uint8]
 
   CBType* {.importcpp: "CBType", header: "chainblocks.hpp", size: sizeof(uint8).} = enum
-    None,
-    Any,
-    Object,
-    Enum,
-    Bool,
-    Int,
-    Int2, # A vector of 2 ints
-    Int3, # A vector of 3 ints
-    Int4, # A vector of 4 ints
-    Int8,
-    Int16,
-    Float,
-    Float2, # A vector of 2 floats
-    Float3, # A vector of 3 floats
-    Float4, # A vector of 4 floats
-    String,
-    Color, # A vector of 4 uint8
-    Image,
-    Seq,
-    Table,
-    Chain, # sub chains, e.g. IF/ELSE
-    Block,
-    ContextVar, # A string label to find from CBContext variables
+    None
+    Any
+    Object
+    Enum
+    Bool
+    Int
+    Int2 # A vector of 2 ints
+    Int3 # A vector of 3 ints
+    Int4 # A vector of 4 ints
+    Int8
+    Int16
+    Float
+    Float2 # A vector of 2 floats
+    Float3 # A vector of 3 floats
+    Float4 # A vector of 4 floats
+    Color # A vector of 4 uint8
+    Chain # sub chains, e.g. IF/ELSE
+    Block
+    
+    EndOfBlittableTypes
+    
+    String
+    ContextVar # A string label to find from CBContext variables
+    Image
+    Seq
+    Table
 
   CBTypeInfo* {.importcpp: "CBTypeInfo", header: "chainblocks.hpp".} = object
     sequenced*: bool # This type can be in a sequence of itself
@@ -144,6 +147,9 @@ type
     valueType*: CBType
     reserved*: array[15, uint8]
 
+  CBVarConst* = object
+    value*: CBVar
+
   CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
   CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
 
@@ -199,6 +205,10 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
+proc `~quickcopy`*(clonedVar: var CBVar): int {.importcpp: "chainblocks::destroyVar(#)", header: "runtime.hpp", discardable.}
+proc quickcopy*(dst: var CBVar; src: var CBvar): int {.importcpp: "chainblocks::cloneVar(#, #)", header: "runtime.hpp", discardable.}
+proc `=destroy`*(v: var CBVarConst) {.inline.} = discard `~quickcopy` v.value
+
 var AllIntTypes* = { Int, Int2, Int3, Int4, Int8, Int16 }
 var AllFloatTypes* = { Float, Float2, Float3, Float4 }
 
@@ -228,6 +238,34 @@ template chainValue*(v: CBVar): auto = v.payload.chainValue
 template enumValue*(v: CBVar): auto = v.payload.enumValue
 template enumVendorId*(v: CBVar): auto = v.payload.enumVendorId
 template enumTypeId*(v: CBVar): auto = v.payload.enumTypeId
+
+template valueType*(v: CBVarConst): auto = v.value.valueType
+template chainState*(v: CBVarConst): auto = v.value.payload.chainState
+template objectValue*(v: CBVarConst): auto = v.value.payload.objectValue
+template objectVendorId*(v: CBVarConst): auto = v.value.payload.objectVendorId
+template objectTypeId*(v: CBVarConst): auto = v.value.payload.objectTypeId
+template boolValue*(v: CBVarConst): auto = v.value.payload.boolValue
+template intValue*(v: CBVarConst): auto = v.value.payload.intValue
+template int2Value*(v: CBVarConst): auto = v.value.payload.int2Value
+template int3Value*(v: CBVarConst): auto = v.value.payload.int3Value
+template int4Value*(v: CBVarConst): auto = v.value.payload.int4Value
+template int8Value*(v: CBVarConst): auto = v.value.payload.int8Value
+template int16Value*(v: CBVarConst): auto = v.value.payload.int16Value
+template floatValue*(v: CBVarConst): auto = v.value.payload.floatValue
+template float2Value*(v: CBVarConst): auto = v.value.payload.float2Value
+template float3Value*(v: CBVarConst): auto = v.value.payload.float3Value
+template float4Value*(v: CBVarConst): auto = v.value.payload.float4Value
+template stringValue*(v: CBVarConst): auto = v.value.payload.stringValue
+template colorValue*(v: CBVarConst): auto = v.value.payload.colorValue
+template imageValue*(v: CBVarConst): auto = v.value.payload.imageValue
+template seqValue*(v: CBVarConst): auto = v.value.payload.seqValue
+template seqLen*(v: CBVarConst): auto = value.v.payload.seqLen
+template tableValue*(v: CBVarConst): auto = v.value.payload.tableValue
+template tableLen*(v: CBVarConst): auto = v.value.payload.tableLen
+template chainValue*(v: CBVarConst): auto = v.value.payload.chainValue
+template enumValue*(v: CBVarConst): auto = v.value.payload.enumValue
+template enumVendorId*(v: CBVarConst): auto = v.value.payload.enumVendorId
+template enumTypeId*(v: CBVarConst): auto = v.value.payload.enumTypeId
 
 template `chainState=`*(v: CBVar, val: auto) = v.payload.chainState = val
 template `objectValue=`*(v: CBVar, val: auto) = v.payload.objectValue = val
@@ -287,8 +325,8 @@ proc len*(t: CBTable): int {.inline.} = invokeFunction("stbds_shlen", t).to(int)
 iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
   for i in 0..<t.len:
     yield t[i]
-proc incl*(t: CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
-proc incl*(t: CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
+proc incl*(t: var CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
+proc incl*(t: var CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
 proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
 proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
 converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, payload: CBVarPayload(tableValue: t))
@@ -296,6 +334,7 @@ converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, paylo
 # CBSeqLikes
 proc initSeq*(s: var CBSeqLike) {.inline.} = s = nil
 proc freeSeq*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrfree", cbs).to(void)
+proc freeSeq*(cbs: var CBSeq) {.inline.} = invokeFunction("stbds_arrfree", cbs).to(void)
 proc len*(s: CBSeqLike): int {.inline.} = invokeFunction("stbds_arrlen", s).to(int)
 iterator mitems*(s: CBSeq): var CBVar {.inline.} =
   for i in 0..<s.len:
@@ -311,9 +350,10 @@ iterator mitems*(s: CBStrings): var CBString {.inline.} =
     yield s[i]
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
 proc push*(cbs: var CBSeq, val: CBVar) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)
-proc pop*(cbs: CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
+proc pop*(cbs: var CBSeq): CBVar {.inline.} = invokeFunction("stbds_arrpop", cbs).to(CBVar)
 proc clear*(cbs: var CBSeqLike) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
 proc clear*(cbs: var CBSeq) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, 0).to(void)
+proc setLen*(cbs: var CBSeq; newLen: int) {.inline.} = invokeFunction("stbds_arrsetlen", cbs, newLen).to(void)
 iterator items*(s: CBParametersInfo): CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
@@ -336,47 +376,11 @@ converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
     result.push str.cstring
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: CBString): string {.inline.} = $cast[cstring](s)
-converter toString*(s: string): CBString {.inline.} = cast[CBString](s.cstring)
+converter toString*(s: CBString): string {.inline.} = $s.cstring
+converter toString*(s: string): CBString {.inline.} = s.cstring.CBString
 converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
-  result.payload.stringValue = cast[CBString](s.cstring)
-
-# Memory utilities to cache stuff around
-type
-  CachedVarValues* = object
-    strings: seq[string]
-    seqs: seq[CBSeq]
-
-proc destroy*(cache: var CachedVarValues) =
-  for s in cache.seqs.mitems:
-    freeSeq(s)
-  # Force deallocs
-  when defined nimV2:
-    cache.strings = @[]
-    cache.seqs = @[]
-
-proc clone*(v: CBVar; cache: var CachedVarValues): CBVar {.inline.} =
-  # Need to add image support if we ever have image parameters! TODO
-  if v.valueType == String:
-    result.valueType = String
-    cache.strings.add(v.stringValue)
-    result.payload.stringValue = cache.strings[^1].cstring.CBString
-  elif v.valueType == Seq:
-    result.valueType = Seq
-    initSeq(result.seqValue)
-    for item in v.seqValue.mitems:
-      result.seqValue.push item.clone(cache)
-    cache.seqs.add(result.seqValue)
-  else:
-    result = v
-
-proc clone*(v: CBSeq; cache: var CachedVarValues): CBSeq {.inline.} =
-  initSeq(result)
-  for item in v.mitems:
-    result.push item.clone(cache)
-
-# Leave them last cos VScode highlight will freak out..
+  result.payload.stringValue = s.cstring.CBString
 
 # Exception
 {.emit: "#include <runtime.hpp>".}

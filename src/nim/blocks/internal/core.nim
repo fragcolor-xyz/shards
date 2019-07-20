@@ -35,22 +35,22 @@ when true:
       name*: string
   
   template cleanup*(b: CBSetVariable) =
+    if b.target != nil:
+      `~quickcopy` b.target[]
     b.target = nil
   template inputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBSetVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBSetVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBSetVariable; index: int): CBVar = b.name  
+  template setParam*(b: CBSetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
+  template getParam*(b: CBSetVariable; index: int): CBVar = b.name
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
   template activate*(b: CBSetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
+      
+    var src = input
+    quickcopy(b.target[], src)
     
-    if b.target[].valueType == Seq and input == Empty:
-      b.target[].seqValue.clear() # quick clean, no deallocations!
-    else:
-      b.target[] = input
     input
 
   chainblock CBSetVariable, "SetVariable"
@@ -63,18 +63,15 @@ when true:
       target*: ptr CBVar
       name*: string
   
-  template cleanup*(b: CBGetVariable) =
-    b.target = nil
+  template cleanup*(b: CBGetVariable) = b.target = nil
   template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBGetVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBGetVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBGetVariable; index: int): CBVar = b.name    
+  template setParam*(b: CBGetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
+  template getParam*(b: CBGetVariable; index: int): CBVar = b.name
+  template consumedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
   template activate*(b: CBGetVariable; context: CBContext; input: CBVar): CBVar =
-    if b.target == nil:
-      b.target = context.contextVariable(b.name)
+    if b.target == nil: b.target = context.contextVariable(b.name)
     
     b.target[]
 
@@ -110,56 +107,76 @@ when true:
     case index
     of 0: b.name1.CBVar
     of 1: b.name2
-    else: assert(false); Empty  
+    else: assert(false); Empty
+  template consumedVariables*(b: CBSetVariable): CBParametersInfo = 
+    @[
+      (b.name1, { String }),
+      (b.name2, { String })
+    ]
   template activate*(b: CBSwapVariables; context: CBContext; input: CBVar): CBVar =
-    if b.targeta == nil:
-      b.targeta = context.contextVariable(b.name1)
-    if b.targetb == nil:
-      b.targetb = context.contextVariable(b.name2)
+    if b.targeta == nil: b.targeta = context.contextVariable(b.name1)
+    if b.targetb == nil: b.targetb = context.contextVariable(b.name2)
     
     let tmp = b.targeta[]
     b.targeta[] = b.targetb[]
     b.targetb[] = tmp
+
     input
 
   chainblock CBSwapVariables, "SwapVariables"
 
-# AddVariable - adds a variable to a context variable
+# AddVariable - creates or adds to Seq a variable, send Empty/None as input to reset!
 when true:
   type
     CBAddVariable* = object
       target*: ptr CBVar
       name*: string
+      maxSize: int
   
   template cleanup*(b: CBAddVariable) =
-    if b.target != nil:
-      # also we turned the target into a sequence, so we are responsible for the memory
-      if b.target[].valueType == Seq:
-        freeSeq(b.target[].seqValue)
+    if b.target != nil and b.target[].valueType == Seq:
+      # Reset to max size to avoid leaking any var that might passed by
+      b.target[].seqValue.setLen(b.maxSize)
+      for val in b.target[].seqValue.mitems:
+        `~quickcopy` val
+      freeSeq(b.target[].seqValue)
+    
     b.target = nil
   template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
-  template setParam*(b: CBAddVariable; index: int; val: CBVar) =
-    b.name = val.stringValue
-    cleanup(b)
-  template getParam*(b: CBAddVariable; index: int): CBVar = b.name    
-  template activate*(b: var CBAddVariable; context: CBContext; input: CBVar): CBVar =
-    if b.target == nil:
-      b.target = context.contextVariable(b.name)
+  template setParam*(b: CBAddVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
+  template getParam*(b: CBAddVariable; index: int): CBVar = b.name
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
+  template activate*(b: CBAddVariable; context: CBContext; input: CBVar): CBVar =
+    if b.target == nil: b.target = context.contextVariable(b.name)
     
-    if b.target[].valueType != Seq:
+    # Init the seq in this case/beginning
+    if b.target[].valueType == None:
       b.target[].valueType = Seq
+      b.target[].seqLen = -1
       initSeq(b.target[].seqValue)
-    
-    if input.valueType == Seq:
-      for item in input.seqValue.items:
-        b.target[].seqValue.push(item)
+
+    if input.valueType == None:
+      # Store max size in order to be able to clean properly
+      b.maxSize = max(b.maxSize, b.target[].seqValue.len)
+      b.target[].seqValue.clear()
     else:
-      b.target[].seqValue.push(input)
+      # Update values etc
+      if input.valueType == Seq:
+        for item in input.seqValue.mitems:
+          var cp: CBVar
+          quickcopy(cp, item)
+          b.target[].seqValue.push(cp)
+      else:
+        var
+          inpt = input
+          cp: CBVar
+        quickcopy(cp, inpt)
+        b.target[].seqValue.push(cp)
     
     input
-
+  
   chainblock CBAddVariable, "AddVariable"
 
 # GetItems - gets an item from a Seq
@@ -206,7 +223,7 @@ when true:
 
   template cleanup*(b: CBRunChain) =
     if b.chain != nil and b.chain[] != nil:
-      discard b.chain[].stop()
+      b.chain[].stop()
     b.done = false # reset this on stop/cleanup
   template inputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
@@ -381,16 +398,16 @@ when true:
     CBlockConst* = object
       # INLINE BLOCK, CORE STUB PRESENT
       value*: CBVar
-      cache*: CachedVarValues
   
-  template destroy*(b: CBlockConst) = b.cache.destroy()
+  template destroy*(b: CBlockConst) = `~quickcopy` b.value
   template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
   template outputTypes*(b: CBlockConst): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, String, Color }, true)
   template parameters*(b: CBlockConst): CBParametersInfo = 
     @[("Value", (AllIntTypes + AllFloatTypes + { None, String, Color }, true #[seq]#))]
   template setParam*(b: CBlockConst; index: int; val: CBVar) =
-    b.cache.destroy()
-    b.value = val.clone(b.cache)
+    `~quickcopy` b.value
+    var inval = val
+    quickcopy(b.value, inval)
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
@@ -445,16 +462,16 @@ when true:
 when true:
   type
     CBlockMsg* = object
-      cache*: CachedVarValues
       msg*: CBVar
 
-  template destroy*(b: CBlockMsg) = b.cache.destroy()
+  template destroy*(b: CBlockMsg) = `~quickcopy` b.msg
   template inputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBlockMsg): CBParametersInfo = @[("Message", { String })]
   template setParam*(b: CBlockMsg; index: int; val: CBVar) =
-    b.cache.destroy()
-    b.msg = val.clone(b.cache)
+    `~quickcopy` b.msg
+    var inval = val
+    quickcopy(b.msg, inval)
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
     echo b.msg
@@ -486,16 +503,11 @@ when true:
 when true:
   type
     CBWhen* = object
-      cache*: CachedVarValues
-      acceptedValues*: CBSeq
+      acceptedValues*: CBVar
       isregex*: bool
       all*: bool
   
-  template setup*(b: CBWhen) =
-    initSeq(b.acceptedValues)
-  template destroy*(b: CBWhen) =
-    freeSeq(b.acceptedValues)
-    b.cache.destroy()
+  template destroy*(b: CBWhen) = `~quickcopy` b.acceptedValues
   template inputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
@@ -507,11 +519,15 @@ when true:
   template setParam*(b: CBWhen; index: int; val: CBVar) =
     case index
     of 0:
-      b.cache.destroy()
+      `~quickcopy` b.acceptedValues
       if val.valueType == Seq:
-        b.acceptedValues = val.seqValue.clone(b.cache)
+        var inval = val
+        quickcopy(b.acceptedValues, inval)
       else:
-        b.acceptedValues.push(val.clone(b.cache))
+        var
+          inseq = ~@[val]
+          inval: CBVar = inseq
+        quickcopy(b.acceptedValues, inval)
     of 1:
       b.isregex = val.boolValue
     of 2:
@@ -521,12 +537,7 @@ when true:
   template getParam*(b: CBWhen; index: int): CBVar =
     case index
     of 0:
-      if b.acceptedValues.len == 1:
-        b.acceptedValues[0]
-      elif b.acceptedValues.len > 1:
         b.acceptedValues
-      else:
-        CBVar(valueType: None)
     of 1:
       b.isregex
     of 2:
@@ -537,7 +548,7 @@ when true:
   template activate*(b: CBWhen; context: CBContext; input: CBVar): CBVar =
     var res = RestartChain
     var matches = 0
-    for accepted in b.acceptedValues:
+    for accepted in b.acceptedValues.seqValue:
       let val = if accepted.valueType == ContextVar: context.contextVariable(accepted.stringValue)[] else: accepted
       if b.isregex and val.valueType == String and input.valueType == String:
         let regex = StdRegex.cppinit(val.stringValue.cstring)
@@ -553,7 +564,7 @@ when true:
           break
         else:
           inc matches
-    if b.all and matches == b.acceptedValues.len:
+    if b.all and matches == b.acceptedValues.seqValue.len:
       res = input
     res
 
@@ -566,7 +577,7 @@ when true:
       Msg "Yes! Regex!"
     
     regexMatchTest.start()
-    doAssert regexMatchTest.stop() == """j["hello"] =""".CBVar
+    doAssert regexMatchTest.get() == """j["hello"] =""".CBVar
     destroy regexMatchTest
 
     withChain regexWontMatchTest:
@@ -577,23 +588,18 @@ when true:
       Msg "Yes! Regex!"
     
     regexWontMatchTest.start()
-    doAssert regexWontMatchTest.stop() == RestartChain
+    doAssert regexWontMatchTest.get() == RestartChain
     destroy regexWontMatchTest
 
 # WhenNot - a filter block, that let's inputs pass only when the condition is false
 when true:
   type
     CBWhenNot* = object
-      cache*: CachedVarValues
-      acceptedValues*: CBSeq
+      acceptedValues*: CBVar
       isregex*: bool
       all*: bool
   
-  template setup*(b: CBWhenNot) =
-    initSeq(b.acceptedValues)
-  template destroy*(b: CBWhenNot) =
-    freeSeq(b.acceptedValues)
-    b.cache.destroy()
+  template destroy*(b: CBWhenNot) = `~quickcopy` b.acceptedValues
   template inputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
@@ -605,11 +611,15 @@ when true:
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
     case index
     of 0:
-      b.cache.destroy()
+      `~quickcopy` b.acceptedValues
       if val.valueType == Seq:
-        b.acceptedValues = val.seqValue.clone(b.cache)
+        var inval = val
+        quickcopy(b.acceptedValues, inval)
       else:
-        b.acceptedValues.push(val.clone(b.cache))
+        var
+          inseq = ~@[val]
+          inval: CBVar = inseq
+        quickcopy(b.acceptedValues, inval)
     of 1:
       b.isregex = val.boolValue
     of 2:
@@ -619,12 +629,7 @@ when true:
   template getParam*(b: CBWhenNot; index: int): CBVar =
     case index
     of 0:
-      if b.acceptedValues.len == 1:
-        b.acceptedValues[0]
-      elif b.acceptedValues.len > 1:
         b.acceptedValues
-      else:
-        CBVar(valueType: None)
     of 1:
       b.isregex
     of 2:
@@ -635,7 +640,7 @@ when true:
   template activate*(b: CBWhenNot; context: CBContext; input: CBVar): CBVar =
     var res = input
     var matches = 0
-    for accepted in b.acceptedValues:
+    for accepted in b.acceptedValues.seqValue:
       let val = if accepted.valueType == ContextVar: context.contextVariable(accepted.stringValue)[] else: accepted
       if b.isregex and val.valueType == String and input.valueType == String:
         let regex = StdRegex.cppinit(val.stringValue.cstring)
@@ -651,7 +656,7 @@ when true:
           break
         else:
           inc matches
-    if b.all and matches == b.acceptedValues.len:
+    if b.all and matches == b.acceptedValues.seqValue.len:
       res = RestartChain
     res
 
@@ -664,7 +669,7 @@ when true:
       Msg "No! Regex!"
     
     regexMatchNotTest.start()
-    doAssert regexMatchNotTest.stop() == """j["hello] =""".CBVar
+    doAssert regexMatchNotTest.get() == """j["hello] =""".CBVar
     destroy regexMatchNotTest
 
 # If
@@ -699,14 +704,13 @@ when true:
       True: ptr CBChainPtr
       False: ptr CBChainPtr
       passthrough: bool
-      cache*: CachedVarValues
   
   template cleanup*(b: CBlockIf) =
     if b.True != nil and b.True[] != nil:
-      discard b.True[].stop()
+      b.True[].stop()
     if b.False != nil and b.False[] != nil:
-      discard b.False[].stop()
-  template destroy*(b: CBlockIf) = b.cache.destroy()
+      b.False[].stop()
+  template destroy*(b: CBlockIf) = `~quickcopy` b.Match
   template inputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template outputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
@@ -722,8 +726,9 @@ when true:
     of 0:
       b.Op = val.enumValue.CBBoolOp
     of 1:
-      b.cache.destroy()
-      b.Match = val.clone(b.cache)
+      `~quickcopy` b.Match
+      var inval = val
+      quickcopy(b.Match, inval)
       b.matchCtx = nil
     of 2:
       b.True = val.chainValue
@@ -822,7 +827,7 @@ when true:
           False: falseChain
       
       ifTest.start()
-      doAssert ifTest.stop()
+      doAssert ifTest.get() == true
     
     block:
       withChain trueChain:
@@ -839,7 +844,7 @@ when true:
           Passthrough: true
       
       ifTest.start()
-      doAssert ifTest.stop() == 2.0
+      doAssert ifTest.get() == 2.0
 
 # Repeat - repeats the Chain parameter Times n
 when true:
@@ -851,7 +856,7 @@ when true:
   
   template cleanup*(b: CBRepeat) =
     if b.chain != nil and b.chain[] != nil:
-      discard b.chain[].stop()
+      b.chain[].stop()
   template inputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
@@ -904,7 +909,7 @@ when true:
         Chain: repeatedChain
     
     testRepeat.start()
-    discard testRepeat.stop()
+    testRepeat.stop()
     destroy testRepeat
     destroy repeatedChain
 

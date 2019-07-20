@@ -52,11 +52,11 @@ when true:
       Log()
     
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.get() == "[baz.dat, baz, dat]"
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.get() == "[baz.dat, baz, dat]"
     testMatchText.start()
-    doAssert $testMatchText.stop() == "baz.dat, baz, dat"
+    doAssert $testMatchText.get() == "[baz.dat, baz, dat]"
 
     destroy testMatchText
 
@@ -106,11 +106,11 @@ when true:
       Log()
     
     testReplaceText.start()
-    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+    doAssert $testReplaceText.get() == "Q[u][i]ck br[o]wn f[o]x"
     testReplaceText.start()
-    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+    doAssert $testReplaceText.get() == "Q[u][i]ck br[o]wn f[o]x"
     testReplaceText.start()
-    doAssert $testReplaceText.stop() == "Q[u][i]ck br[o]wn f[o]x"
+    doAssert $testReplaceText.get() == "Q[u][i]ck br[o]wn f[o]x"
 
     destroy testReplaceText
 
@@ -134,11 +134,11 @@ when true:
       Log()
     
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+    doAssert $testToUppercase.get() == "QUICK BROWN FOX"
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+    doAssert $testToUppercase.get() == "QUICK BROWN FOX"
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "QUICK BROWN FOX"
+    doAssert $testToUppercase.get() == "QUICK BROWN FOX"
 
     destroy testToUppercase
 
@@ -162,10 +162,10 @@ when true:
       Log()
     
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "quick brown fox"
+    doAssert $testToUppercase.get() == "quick brown fox"
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "quick brown fox"
+    doAssert $testToUppercase.get() == "quick brown fox"
     testToUppercase.start()
-    doAssert $testToUppercase.stop() == "quick brown fox"
+    doAssert $testToUppercase.get() == "quick brown fox"
 
     destroy testToUppercase

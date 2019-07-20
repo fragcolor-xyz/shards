@@ -14,6 +14,8 @@
 #pragma clang diagnostic ignored "-Wswitch"
 #endif
 
+#include <string.h> // memset
+
 #include "chainblocks.hpp"
 // C++ Mandatory from now!
 
@@ -94,7 +96,9 @@ using Time = std::chrono::time_point<Clock, Duration>;
 #include "3rdparty/parallel_hashmap/phmap.h"
 
 #include <tuple>
-namespace std{
+// Tuple hashing
+namespace std
+{
   namespace
   {
 
@@ -268,6 +272,150 @@ void from_json(const json& j, CBChainPtr& chain);
 
 namespace chainblocks
 {
+  static int destroyVar(CBVar& var)
+  {
+    int freeCount = 0;
+    switch(var.valueType)
+    {
+      case Seq:
+      {
+        // Notice we use capacity rather then len!
+        // Assuming memory is nicely memset
+        // We do that because we try our best to recycle memory
+        auto len = stbds_arrcap(var.payload.seqValue);
+        for(auto i = 0; i < len; i++)
+        {
+          freeCount += destroyVar(var.payload.seqValue[i]);
+        }
+        stbds_arrfree(var.payload.seqValue);
+        freeCount++;
+      }
+      break;
+      case String:
+      case ContextVar:
+      {
+        delete[] var.payload.stringValue;
+        freeCount++;
+      }
+      break;
+      case Image:
+      {
+        delete[] var.payload.imageValue.data;
+        freeCount++;
+      }
+      break;
+      case Table:
+      {
+        auto len = stbds_shlen(var.payload.tableValue);
+        for(auto i = 0; i < len; i++)
+        {
+          freeCount += destroyVar(var.payload.tableValue[i].value);
+        }
+        stbds_shfree(var.payload.tableValue);
+        freeCount++;
+      }
+      break;
+      default:
+      break;
+    };
+    
+    memset((void*)&var, 0x0, sizeof(CBVar));
+
+    return freeCount;
+  }
+  
+  static int cloneVar(CBVar& dst, const CBVar& src)
+  {
+    int freeCount = 0;
+    if(src.valueType < EndOfBlittableTypes && src.valueType < EndOfBlittableTypes)
+    {
+      memcpy((void*)&dst, (const void*)&src, sizeof(CBVar));
+    }
+    else if(src.valueType < EndOfBlittableTypes)
+    {
+      freeCount += destroyVar(dst);
+      memcpy((void*)&dst, (const void*)&src, sizeof(CBVar));
+    }
+    else
+    {
+      switch(src.valueType)
+      {
+        case Seq:
+        {
+          auto srcLen = stbds_arrlen(src.payload.seqValue);
+          // reuse if seq and we got enough capacity
+          if(dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen)
+          {
+            freeCount += destroyVar(dst);
+            dst.valueType = Seq;
+            dst.payload.seqLen = -1;
+            dst.payload.seqValue = nullptr;
+          }
+          
+          stbds_arrsetlen(dst.payload.seqValue, srcLen);
+          for(auto i = 0; i < srcLen; i++)
+          {
+            auto& subsrc = src.payload.seqValue[i];
+            freeCount += cloneVar(dst.payload.seqValue[i], subsrc);
+          }
+        }
+        break;
+        case String:
+        case ContextVar:
+        {
+          auto srcLen = strlen(src.payload.stringValue);
+          if((dst.valueType != String && dst.valueType != ContextVar) || strlen(dst.payload.stringValue) < srcLen)
+          {
+            freeCount += destroyVar(dst);
+            dst.valueType = String;
+            dst.payload.stringValue = new char[srcLen + 1];
+          }
+          
+          dst.valueType = src.valueType;
+          strcpy((char*)dst.payload.stringValue, (char*)src.payload.stringValue);
+        }
+        break;
+        case Image:
+        {
+          auto srcImgSize = src.payload.imageValue.height * src.payload.imageValue.width * src.payload.imageValue.channels;
+          auto dstImgSize = dst.payload.imageValue.height * dst.payload.imageValue.width * dst.payload.imageValue.channels;
+          if(dst.valueType != Image || srcImgSize > dstImgSize)
+          {
+            freeCount += destroyVar(dst);
+            dst.valueType = Image;
+            dst.payload.imageValue.height = src.payload.imageValue.height;
+            dst.payload.imageValue.width = src.payload.imageValue.width;
+            dst.payload.imageValue.channels = src.payload.imageValue.channels;
+            dst.payload.imageValue.data = new uint8_t[dstImgSize];
+          }
+          
+          memcpy(dst.payload.imageValue.data, src.payload.imageValue.data, srcImgSize);
+        }
+        break;
+        case Table:
+        {
+          // Slowest case, it's a full copy using arena tho
+          freeCount += destroyVar(dst);
+          dst.valueType = Table;
+          dst.payload.tableLen = -1;
+          dst.payload.tableValue = nullptr;
+          stbds_sh_new_arena(dst.payload.tableValue);
+          auto srcLen = stbds_shlen(src.payload.tableValue);
+          for(auto i = 0; i < srcLen; i++)
+          {
+            CBVar clone;
+            freeCount += cloneVar(clone, src.payload.tableValue[i].value);
+            stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
+          }
+        }
+        break;
+        default:
+        break;
+      };
+    }
+    return freeCount;
+  }
+
   static void setCurrentChain(CBChain* chain)
   {
     CurrentChain = chain;
@@ -425,10 +573,6 @@ namespace chainblocks
     else if(strcmp(name, "If") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
-    }
-    else if(strcmp(name, "SetVariable") == 0)
-    {
-      blkp->inlineBlockId = CBInlineBlocks::CoreSetVariable;
     }
     else if(strcmp(name, "GetVariable") == 0)
     {
@@ -693,6 +837,8 @@ namespace chainblocks
             auto suspendRes = suspend(cblock->sleepTime);
             if(suspendRes.payload.chainState != Continue)
               previousOutput = suspendRes;
+            else
+              previousOutput = input;
             break;
           }
           case CoreRepeat:
@@ -709,6 +855,7 @@ namespace chainblocks
             {
               throw CBException("A required sub-chain was not found, stopping!");
             }
+            previousOutput = input;
             break;
           }
           case CoreIf:
@@ -840,27 +987,6 @@ namespace chainblocks
             }
             break;
           }
-          case CoreSetVariable:
-          {
-            auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
-            if(unlikely(!cblock->target)) // call first if we have no target
-            {
-              blk->activate(blk, context, input); // ignore previousOutput since we pass input
-            }
-            else
-            {
-              // Handle the special case of a seq that might need reset every run
-              if(unlikely((*cblock->target).valueType == Seq && input.valueType == None))
-              {
-                stbds_arrsetlen((*cblock->target).payload.seqValue, size_t(0));
-              }
-              else
-              {
-                *cblock->target = input;
-              }
-            }
-            break;
-          }
           case CoreGetVariable:
           {
             auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
@@ -879,13 +1005,14 @@ namespace chainblocks
             auto cblock = reinterpret_cast<CBCoreSwapVariables*>(blk);
             if(unlikely(!cblock->target1 || !cblock->target2)) // call first if we have no targets
             {
-              blk->activate(blk, context, input); // ignore previousOutput since we pass input
+              previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
             }
             else
             {
               auto tmp = *cblock->target1;
               *cblock->target1 = *cblock->target2;
               *cblock->target2 = tmp;
+              previousOutput = input;
             }
             break;
           }
@@ -1185,6 +1312,29 @@ namespace chainblocks
     return { true, previousOutput };
   }
 
+  static void cleanup(CBChain* chain)
+  {
+    // Run cleanup on all blocks, prepare them for a new start if necessary
+    // Do this in reverse to allow a safer cleanup
+    for (auto it = chain->blocks.rbegin(); it != chain->blocks.rend(); ++it)
+    {
+      auto blk = *it;
+      try
+      {
+        blk->cleanup(blk);
+      }
+      catch(const std::exception& e)
+      {
+        std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
+        std::cerr << e.what() << '\n';
+      }
+      catch(...)
+      {
+        std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
+      }
+    }
+  }
+
   static void start(CBChain* chain, bool loop = false, bool unsafe = false, CBVar input = {})
   {
     chain->coro = new CBCoro(boost::context::callcc([&chain, &loop, &unsafe, &input](boost::context::continuation&& sink)
@@ -1236,17 +1386,24 @@ namespace chainblocks
       if(context.stack)
         stbds_arrfree(context.stack);
 
+      // run cleanup on all the blocks
+      cleanup(thisChain);
+
       // Need to take care that we might have stopped the chain very early due to errors and the next eventual stop() should avoid resuming
       thisChain->returned = true;
       return std::move(context.continuation);
     }));
   }
 
-  static CBVar stop(CBChain* chain)
+  static void stop(CBChain* chain, CBVar* result = nullptr)
   {
     // notice if we called start, started is going to happen before any suspensions
     if(chain->started) 
     {
+      // Clone the results if we need them
+      if(result)
+        cloneVar(*result, chain->finishedOutput);
+      
       if(chain->coro)
       {
         // Run until exit if alive, need to propagate to all suspended blocks!
@@ -1255,7 +1412,7 @@ namespace chainblocks
           // Push current chain
           auto previous = chainblocks::CurrentChain;
           chainblocks::CurrentChain = chain;
-
+          
           // set abortion flag, we always have a context in this case
           chain->context->aborted = true;
           
@@ -1266,38 +1423,19 @@ namespace chainblocks
           // Pop current chain
           chainblocks::CurrentChain = previous;
         }
-
+        
         // delete also the coro ptr
         delete chain->coro;
         chain->coro = nullptr;
       }
-
-      // Run cleanup on all blocks, prepare them for a new start if necessary
-      // Do this in reverse to allow a safer cleanup
-      for (auto it = chain->blocks.rbegin(); it != chain->blocks.rend(); ++it)
+      else
       {
-        auto blk = *it;
-        try
-        {
-          blk->cleanup(blk);
-        }
-        catch(const std::exception& e)
-        {
-          std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
-          std::cerr << e.what() << '\n';
-        }
-        catch(...)
-        {
-          std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
-        }
+        // if we had a coro this will run inside it!
+        cleanup(chain);
       }
-
+      
       chain->started = false;
-
-      return chain->finishedOutput;
     }
-
-    return CBVar();
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())
@@ -1316,7 +1454,7 @@ namespace chainblocks
       
       chainblocks::CurrentChain = previousChain;
     }
-  } 
+  }
 
   static std::string store(CBVar var) 
   { 
