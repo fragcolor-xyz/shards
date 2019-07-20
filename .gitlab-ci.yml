@@ -40,6 +40,8 @@ buildAndRun:win:release:
   tags:
     - WIN, NIM, BOOST, MINGW
   artifacts:
+    paths:
+      - src/nim/tests/tcbvar.xml
     reports:
       junit: src/nim/tests/tcbvar.xml
 
