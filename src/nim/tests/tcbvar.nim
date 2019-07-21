@@ -1,7 +1,7 @@
 import ../types
 import ../chainblocks
 
-import unittest, streams
+import unittest
 
 proc run() =
   # var

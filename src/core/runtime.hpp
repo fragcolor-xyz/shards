@@ -1405,7 +1405,7 @@ namespace chainblocks
     }));
   }
 
-  static void start(CBChain* chain, CBVar input = {})
+  static void start(CBChain* chain, CBVar input = {}, bool autoStop = false)
   {
     if(!chain->coro || !(*chain->coro) || chain->started)
       return; // check if not null and bool operator also to see if alive!
@@ -1474,6 +1474,11 @@ namespace chainblocks
       
       chainblocks::CurrentChain = previousChain;
     }
+  }
+
+  static bool isRunning(CBChain* chain)
+  {
+    return chain->started && !chain->returned;
   }
 
   static std::string store(CBVar var) 

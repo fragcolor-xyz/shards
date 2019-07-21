@@ -151,6 +151,11 @@ EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output)
   chainblocks::stop(chain, output);
 }
 
+EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain)
+{
+  return chainblocks::isRunning(chain);
+}
+
 #ifdef __cplusplus
 };
 #endif
