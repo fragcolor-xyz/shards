@@ -430,6 +430,15 @@ when appType != "lib" or defined(forceCBRuntime):
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
+  proc newNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
+  proc deleteNode*(node: ptr CBNode) {.inline.} = cppdel(node)
+  proc schedule*(node: ptr CBNode, chain: CBChainPtr;  input: CBVar = Empty; loop: bool = false; unsafe: bool = false) {.inline.} =
+    node[].invoke("schedule", chain, input, loop, unsafe).to(void)
+  proc tick*(node: ptr CBNode, input: CBVar = Empty) {.inline.} =
+    node[].invoke("tick", input).to(void)
+  proc stop*(node: ptr CBNode) {.inline.} =
+    node[].invoke("stop").to(void)
+
   proc prepareInternal(chain: CBChainPtr; loop: bool; unsafe: bool) {.importcpp: "chainblocks::prepare(#, #, #)", header: "runtime.hpp".}
   proc prepare*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
     var frame = getFrameState()
@@ -854,6 +863,8 @@ when appType != "lib" or defined(forceCBRuntime):
     setFrameState(frame)
 
   proc blocks*(chain: CBChainPtr): CBSeq {.importcpp: "chainblocks::blocks(#)", header: "runtime.hpp".}
+
+  proc isRunning*(chain: CBChainPtr): bool {.importcpp: "chainblocks::isRunning(#)", header: "runtime.hpp".}
 
   proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "runtime.hpp".}
   proc cbSleep*(secs: float64) {.cdecl, exportc, dynlib.} = sleep(secs)

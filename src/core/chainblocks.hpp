@@ -114,6 +114,7 @@ struct CBNamedVar;
 typedef CBNamedVar* CBTable;
 struct CBChain;
 typedef CBChain* CBChainPtr;
+struct CBNode;
 struct CBRuntimeBlock;
 struct CBTypeInfo;
 typedef CBTypeInfo* CBTypesInfo;

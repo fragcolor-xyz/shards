@@ -220,6 +220,7 @@ when true:
       once: bool
       done: bool
       passthrough: bool
+      detach: bool
 
   template cleanup*(b: CBRunChain) =
     if b.chain != nil:
@@ -229,9 +230,10 @@ when true:
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRunChain): CBParametersInfo =
     @[
-      ("Chain", { Chain, None }),
-      ("Once", { Bool }),
-      ("Passthrough", { Bool })
+      ("Chain", "The chain to run.", { Chain, None }),
+      ("Once", "Runs this sub-chain only once within the parent chain execution cycle.", { Bool }),
+      ("Passthrough", "The input of this block will be the output. Always on if Detached.", { Bool }),
+      ("Detached", "Runs the sub-chain as a completely separate parallel chain without interrupting the flow of the parent when sleeping.", { Bool })
     ]
   template setParam*(b: CBRunChain; index: int; val: CBVar) =
     case index
@@ -244,6 +246,12 @@ when true:
       b.once = val.boolValue
     of 2:
       b.passthrough = val.boolValue
+      if b.detach: # force when detached
+        b.passthrough = true
+    of 3:
+      b.detach = val.boolValue
+      if b.detach: # force when detached
+        b.passthrough = true
     else:
       assert(false)
   template getParam*(b: CBRunChain; index: int): CBVar =
@@ -254,31 +262,40 @@ when true:
       else:
         CBVar(valueType: None)  
     of 1:
-      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.once))
+      b.once
     of 2:
-      CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.passthrough))
+      b.passthrough
+    of 3:
+      b.detach
     else:
       CBVar(valueType: None)
   template activate*(b: CBRunChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
     elif not b.done:
-      if b.once:
-        b.done = true
-      b.chain[].finished = false
-      let
-        resTuple = runChain(b.chain, context, input)
-        noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-        output = cppTupleGet[CBVar](1, resTuple.toCpp)
-      b.chain[].finishedOutput = output
-      b.chain[].finished = true
-      if not noerrors or context[].aborted:
-        b.chain[].finishedOutput = StopChain
-        b.chain[].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
-      elif b.passthrough: # Second priority to passthru property
+      if b.once: # flag immediately in this case, easy
+          b.done = true
+      
+      if b.detach:
+        if not b.chain.isRunning():
+          getCurrentChain().node.schedule(b.chain, input, false, false)
         input
-      else: # Finally process the actual output
-        output
+      else:
+        # Run within the root flow, just call runChain
+        b.chain[].finished = false
+        let
+          resTuple = runChain(b.chain, context, input)
+          noerrors = cppTupleGet[bool](0, resTuple.toCpp)
+          output = cppTupleGet[CBVar](1, resTuple.toCpp)
+        b.chain[].finishedOutput = output
+        b.chain[].finished = true
+        if not noerrors or context[].aborted:
+          b.chain[].finishedOutput = StopChain
+          b.chain[].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
+        elif b.passthrough: # Second priority to passthru property
+          input
+        else: # Finally process the actual output
+          output
     else:
       input
 

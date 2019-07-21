@@ -42,7 +42,11 @@ type
     finishedOutput*: CBVar
     started*: bool
     finished*: bool
+    returned*: bool
+    node*: ptr CBNode
   CBChainPtr* = ptr CBChain
+
+  CBNode* {.importcpp: "CBNode", header: "chainblocks.hpp".} = object
 
   CBContextObj* {.importcpp: "CBContext", header: "chainblocks.hpp".} = object
     aborted*: bool
@@ -299,6 +303,7 @@ template `enumVendorId=`*(v: CBVar, val: auto) = v.payload.enumVendorId = val
 template `enumTypeId=`*(v: CBVar, val: auto) = v.payload.enumTypeId = val
 
 registerCppType CBChain
+registerCppType CBNode
 registerCppType CBContextObj
 registerCppType CBInt2
 registerCppType CBInt3

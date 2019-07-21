@@ -77,6 +77,8 @@ struct CBCoreSwapVariables
 #include <iostream>
 #include <chrono>
 #include <atomic>
+#include <map>
+#include <list>
 using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<double>;
 using Time = std::chrono::time_point<Clock, Duration>;
@@ -185,7 +187,8 @@ struct CBChain
     returned(false),
     rootTickInput(CBVar()),
     finishedOutput(CBVar()),
-    context(nullptr)
+    context(nullptr),
+    node(nullptr)
   {}
 
   ~CBChain()
@@ -222,6 +225,7 @@ struct CBChain
   CBVar finishedOutput;
   
   CBContext* context;
+  CBNode* node;
   std::vector<CBRuntimeBlock*> blocks;
 
   // Also the chain takes ownership of the block!
@@ -247,7 +251,7 @@ namespace chainblocks
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  extern phmap::node_hash_map<std::string, CBCallback> RunLoopHooks;
+  extern std::map<std::string, CBCallback> RunLoopHooks;
   extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
@@ -1443,7 +1447,7 @@ namespace chainblocks
     }));
   }
 
-  static void start(CBChain* chain, CBVar input = {}, bool autoStop = false)
+  static void start(CBChain* chain, CBVar input = {})
   {
     if(!chain->coro || !(*chain->coro) || chain->started)
       return; // check if not null and bool operator also to see if alive!
@@ -1576,6 +1580,43 @@ namespace chainblocks
       }
     }
   }
+};
+
+struct CBNode
+{
+  void schedule(CBChain* chain, CBVar input = {}, bool loop = false, bool unsafe = false)
+  {
+    chains.push_back(chain);
+    chain->node = this;
+    chainblocks::prepare(chain, loop, unsafe);
+    chainblocks::start(chain, input);
+  }
+  
+  void tick(CBVar input = {})
+  {
+    chainsTicking = chains;
+    for(auto chain : chainsTicking)
+    {
+      chainblocks::tick(chain, input);
+      if(!chainblocks::isRunning(chain))
+      {
+        chainblocks::stop(chain);
+        chains.remove(chain);
+      }
+    }
+  }
+  
+  void stop()
+  {
+    for(auto chain : chains)
+    {
+      chainblocks::stop(chain);
+    }
+  }
+  
+private:
+  std::list<CBChain*> chains;
+  std::list<CBChain*> chainsTicking;
 };
 
 #endif //CHAINBLOCKS_RUNTIME

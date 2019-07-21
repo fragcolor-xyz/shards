@@ -9,7 +9,7 @@ namespace chainblocks
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  phmap::node_hash_map<std::string, CBCallback> RunLoopHooks;
+  std::map<std::string, CBCallback> RunLoopHooks;
   phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   thread_local CBChain* CurrentChain;
