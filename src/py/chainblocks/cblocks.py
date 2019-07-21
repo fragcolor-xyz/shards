@@ -3,7 +3,7 @@
 import chainblocks
 from .cbcore import *
 
-_previousBlock = None
+
 
 def Py(closure = None):
   blk = chainblocks.createBlock("Py")

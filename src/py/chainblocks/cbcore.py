@@ -20,12 +20,17 @@ class CBChain:
     else:
       chainTick2(self.chain)
 
+_previousBlock = None
+
 def chain(func):
   def emitChain():
     previousChain = getCurrentChain()
     
     chain = createChain(func.__name__)
     setCurrentChain(chain)
+
+    global _previousBlock
+    _previousBlock = None
     
     func()
     

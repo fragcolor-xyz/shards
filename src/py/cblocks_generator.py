@@ -81,7 +81,6 @@ f = open("cblocks.py", "w")
 f.write("# This file was automatically generated.\n\n")
 f.write("import chainblocks\n")
 f.write("from .cbcore import *\n\n")
-f.write("_previousBlock = None\n\n")
 for name, code in cbNamespaces.items():
   if name != "":
     f.write("class {}:\n".format(name))
