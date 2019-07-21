@@ -375,6 +375,9 @@ converter toCBVar*(v: ptr CBChainPtr): CBVar {.inline.} =
 converter toCBVar*(v: var CBChainPtr): CBVar {.inline.} =
   return CBVar(valueType: Chain, payload: CBVarPayload(chainValue: addr v))
 
+converter toCBVar*(v: ptr CBRuntimeBlock): CBVar {.inline.} =
+  return CBVar(valueType: Block, payload: CBVarPayload(blockValue: v))
+
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
   if container.valueType == ContextVar:
     var foundVar = context.contextVariable(container.payload.stringValue)
@@ -844,6 +847,9 @@ when appType != "lib" or defined(forceCBRuntime):
   proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = destroy(chain)
   
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
+
+  proc activateBlock*(chain: ptr CBRuntimeBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
+  
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "runtime.hpp".}
   proc suspend*(seconds: float64): CBVar {.inline.} =
     var frame = getFrameState()
@@ -1070,6 +1076,13 @@ when isMainModule and appType != "lib":
     
     setCurrentChain(mainChain)
     
+    var ifConst = createBlock("Const")
+    ifConst[].setup(ifConst)
+    ifConst[].setParam(ifConst, 0, "Hey hey")
+    var ifLog = createBlock("Log")
+    ifLog[].setup(ifLog)
+    var ifBlocks = ~@[ifConst, ifLog]
+
     Log()
     Msg "Hello"
     Msg "World"
@@ -1077,7 +1090,7 @@ when isMainModule and appType != "lib":
     If:
       Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
       Operand: 10
-      True: subChain1
+      True: ifBlocks
     Sleep 0.0
     Const 11
     ToString()
@@ -1097,13 +1110,13 @@ when isMainModule and appType != "lib":
     
     let
       jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":16}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    # assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":16}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":16}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    # assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"name":"subChain1","type":16}},{"name":"False","value":{"type":0,"value":0}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     
     var
       sm1 = ~@[0.1, 0.2, 0.3]

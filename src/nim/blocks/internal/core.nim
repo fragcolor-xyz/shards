@@ -698,42 +698,78 @@ when true:
   type
     CBlockIf* = object
       # INLINE BLOCK, CORE STUB PRESENT
-      Op: CBBoolOp
-      Match: CBVar
+      op: CBBoolOp
+      match: CBVar
       matchCtx: ptr CBVar
-      True: ptr CBChainPtr
-      False: ptr CBChainPtr
-      passthrough: bool
+      trueBlocks: CBSeq
+      falseBlocks: CBSeq
+      passthrough: bool      
   
+  template setup*(b: CBlockIf) = 
+    initSeq(b.trueBlocks)
+    initSeq(b.falseBlocks)
+  template destroy*(b: CBlockIf) =
+    for blk in b.trueBlocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
+      blk.blockValue.destroy(blk.blockValue)
+    freeSeq(b.trueBlocks)
+    for blk in b.falseBlocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
+      blk.blockValue.destroy(blk.blockValue)
+    freeSeq(b.falseBlocks)
   template cleanup*(b: CBlockIf) =
-    if b.True != nil and b.True[] != nil:
-      b.True[].stop()
-    if b.False != nil and b.False[] != nil:
-      b.False[].stop()
-  template destroy*(b: CBlockIf) = `~quickcopy` b.Match
+    for blk in b.trueBlocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
+    for blk in b.falseBlocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
+  template destroy*(b: CBlockIf) = `~quickcopy` b.match
   template inputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template outputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
     @[
       ("Operator", @[boolOpInfo].toCBTypesInfo(), false),
       ("Operand", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
-      ("True", ({ Chain }, false).toCBTypesInfo(), false),
-      ("False", ({ Chain }, false).toCBTypesInfo(), false),
+      ("True", ({ Block, None }, true).toCBTypesInfo(), false),
+      ("False", ({ Block, None }, true).toCBTypesInfo(), false),
       ("Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
     ]
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
     of 0:
-      b.Op = val.enumValue.CBBoolOp
+      b.op = val.enumValue.CBBoolOp
     of 1:
-      `~quickcopy` b.Match
+      `~quickcopy` b.match
       var inval = val
-      quickcopy(b.Match, inval)
+      quickcopy(b.match, inval)
       b.matchCtx = nil
     of 2:
-      b.True = val.chainValue
+      for blk in b.trueBlocks.mitems:
+        blk.blockValue.cleanup(blk.blockValue)
+        blk.blockValue.destroy(blk.blockValue)
+      b.trueBlocks.clear()
+
+      case val.valueType
+      of Block:
+        b.trueBlocks.push(val.blockValue)
+      of Seq:
+        for blk in val.seqValue:
+          b.trueBlocks.push(blk.blockValue)
+      else:
+        discard
     of 3:
-      b.False = val.chainValue
+      for blk in b.falseBlocks.mitems:
+        blk.blockValue.cleanup(blk.blockValue)
+        blk.blockValue.destroy(blk.blockValue)
+      b.falseBlocks.clear()
+
+      case val.valueType
+      of Block:
+        b.falseBlocks.push(val.blockValue)
+      of Seq:
+        for blk in val.seqValue:
+          b.falseBlocks.push(blk.blockValue)
+      else:
+        discard
     of 4:
       b.passthrough = val.boolValue
     else:
@@ -741,70 +777,55 @@ when true:
   template getParam*(b: CBlockIf; index: int): CBVar =
     case index
     of 0:
-      CBVar(valueType: Enum, payload: CBVarPayload(enumValue: b.Op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
+      CBVar(valueType: Enum, payload: CBVarPayload(enumValue: b.op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
     of 1:
-      b.Match
+      b.match
     of 2:
-      b.True
+      b.trueBlocks
     of 3:
-      b.False
+      b.falseBlocks
     of 4:
       b.passthrough
     else:
       Empty  
   template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
-    if b.Match.valueType == ContextVar and b.matchCtx == nil:
-      b.matchCtx = context.contextVariable(b.Match.stringValue)
+    if b.match.valueType == ContextVar and b.matchCtx == nil:
+      b.matchCtx = context.contextVariable(b.match.stringValue)
 
     # PARTIALLY HANDLED INLINE!    
     let
-      match = if b.Match.valueType == ContextVar: b.matchCtx[] else: b.Match
+      match = if b.match.valueType == ContextVar: b.matchCtx[] else: b.match
     var
-      noerrors = false
-      res: CBVar
+      res = false
     template operation(operator: untyped): untyped =
       if operator(input, match):
-        if b.True != nil:
-          if b.True[] == nil:
-            halt(context, "A required sub-chain was not found, stopping!")
-          else:
-            let
-              resTuple = runChain(b.True[], context, input)
-              noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-              results = cppTupleGet[CBVar](1, resTuple.toCpp)
-            # While we ignore the results from the chain we need to check for global cancelation
-            if not noerrors or context[].aborted:
-              StopChain
-            elif context[].restarted:
-              RestartChain
-            elif b.passthrough:
-              input
-            else:
-              results
-        else:
+        var output = Empty
+        for blk in b.trueBlocks.mitems:
+          var activationInput = if output.valueType == None: input else: output
+          activateBlock(blk.blockValue, context, activationInput, output)
+        
+        if context.aborted:
+          # We need to check and propagate abort signal as first priority
+          StopChain
+        elif b.passthrough:
           input
+        else:
+          output
       else:
-        if b.False != nil:
-          if b.False[] == nil:
-            halt(context, "A required sub-chain was not found, stopping!")
-          else:
-            let
-              resTuple = runChain(b.False[], context, input)
-              noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-              results = cppTupleGet[CBVar](1, resTuple.toCpp)
-            # While we ignore the results from the chain we need to check for global cancelation
-            if not noerrors or context[].aborted:
-              StopChain
-            elif context[].restarted:
-              RestartChain
-            elif b.passthrough:
-              input
-            else:
-              results
-        else:
+        var output = Empty
+        for blk in b.falseBlocks.mitems:
+          var activationInput = if output.valueType == None: input else: output
+          activateBlock(blk.blockValue, context, activationInput, output)
+        
+        if context.aborted:
+          # We need to check and propagate abort signal as first priority
+          StopChain
+        elif b.passthrough:
           input
+        else:
+          output
     
-    case b.Op
+    case b.op
     of Equal: res = operation(`==`)
     of More: res = operation(`>`)
     of Less: res = operation(`<`)
@@ -814,33 +835,35 @@ when true:
 
   chainblock CBlockIf, "If", "":
     block:
-      withChain trueChain:
-        Const true
-      withChain falseChain:
-        Const false
+      var constTrue = createBlock("Const")
+      constTrue[].setParam(constTrue, 0, true)
+      var constFalse = createBlock("Const")
+      constFalse[].setParam(constFalse, 0, false)
+      
       withChain ifTest:
         Const 2.0
         If:
           Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
           Operand: 1.5
-          True: trueChain
-          False: falseChain
+          True: constTrue
+          False: constFalse
       
       ifTest.start()
       doAssert ifTest.get() == true
     
     block:
-      withChain trueChain:
-        Const true
-      withChain falseChain:
-        Const false
+      var constTrue = createBlock("Const")
+      constTrue[].setParam(constTrue, 0, true)
+      var constFalse = createBlock("Const")
+      constFalse[].setParam(constFalse, 0, false)
+
       withChain ifTest:
         Const 2.0
         If:
           Operator: CBVar(valueType: Enum, payload: CBVarPayload(enumValue: MoreEqual.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
           Operand: 1.5
-          True: trueChain
-          False: falseChain
+          True: constTrue
+          False: constFalse
           Passthrough: true
       
       ifTest.start()
@@ -851,67 +874,93 @@ when true:
   type
     CBRepeat* = object
       # INLINE BLOCK, CORE STUB PRESENT
+      forever: bool
       times: int32
-      chain: ptr CBChainPtr
+      blocks: CBSeq
   
+  template setup*(b: CBRepeat) = 
+    initSeq(b.blocks)
+  template destroy*(b: CBRepeat) =
+    for blk in b.blocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
+      blk.blockValue.destroy(blk.blockValue)
+    freeSeq(b.blocks)
   template cleanup*(b: CBRepeat) =
-    if b.chain != nil and b.chain[] != nil:
-      b.chain[].stop()
+    for blk in b.blocks.mitems:
+      blk.blockValue.cleanup(blk.blockValue)
   template inputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
     @[
-      ("Times", { Int }),
-      ("Chain", { Chain })
+      ("Forever", ({ Bool }).toCBTypesInfo(), false),
+      ("Times", ({ Int }).toCBTypesInfo(), false),
+      ("Action", ({ Block, None }, true).toCBTypesInfo(), false),
     ]
   template setParam*(b: CBRepeat; index: int; val: CBVar) =
     case index
     of 0:
-      b.times = val.intValue.int32
+      b.forever = val.boolValue
     of 1:
-      b.chain = val.chainValue
+      b.times = val.intValue.int32
+    of 2:
+      for blk in b.blocks.mitems:
+        blk.blockValue.cleanup(blk.blockValue)
+        blk.blockValue.destroy(blk.blockValue)
+      b.blocks.clear()
+
+      case val.valueType
+      of Block:
+        b.blocks.push(val.blockValue)
+      of Seq:
+        for blk in val.seqValue:
+          b.blocks.push(blk.blockValue)
+      else:
+        discard
     else:
       assert(false)
   proc getParam*(b: CBRepeat; index: int): CBVar {.inline.} =
     case index
     of 0:
-      b.times.int64.CBVar
+      b.forever.CBVar
     of 1:
-      b.chain.CBVar
+      b.times.int64.CBVar
+    of 2:
+      b.blocks
     else:
       Empty
   template activate*(b: var CBRepeat; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
-    if b.chain == nil:
-      input
-    elif b.chain[] == nil:
-      halt(context, "A required sub-chain was not found, stopping!")
-    else:
-      for i in 0..<b.times:
-        let
-          resTuple = runChain(b.chain[], context, input)
-          noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-        # While we ignore the results from the chain we need to check for global cancelation
-        if not noerrors or context[].aborted:
-          return StopChain
-        elif context[].restarted:
-          return RestartChain
-      input
+    var
+      res = input
+      repeats = if b.forever: 1 else: b.times
+    while repeats > 0:
+      var output = Empty
+      for blk in b.blocks.mitems:
+        var activationInput = if output.valueType == None: input else: output
+        activateBlock(blk.blockValue, context, activationInput, output)
+      
+      if context.aborted:
+        # We need to check and propagate abort signal as first priority
+        res = StopChain
+      # rest we ignore
+      
+      if not b.forever:
+        dec repeats
+    
+    res
 
   chainblock CBRepeat, "Repeat", "":
-    withChain repeatedChain:
-      Log()
+    var repLog = createBlock("Log")
     withChain testRepeat:
       Const "Repeating..."
       Repeat:
         Times: 5
-        Chain: repeatedChain
+        Action: repLog
     
     testRepeat.start()
     testRepeat.stop()
     destroy testRepeat
-    destroy repeatedChain
 
 # ToString - converts the input to a string
 when true:

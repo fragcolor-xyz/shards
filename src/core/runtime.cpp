@@ -156,6 +156,11 @@ EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain)
   return chainblocks::isRunning(chain);
 }
 
+EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context)
+{
+  return chainblocks::isCanceled(context);
+}
+
 #ifdef __cplusplus
 };
 #endif
@@ -165,6 +170,15 @@ void to_json(json& j, const CBVar& var)
   auto valType = int(var.valueType);
   switch(var.valueType)
   {
+    case Any:
+    case EndOfBlittableTypes:
+    {
+      j = json{
+        { "type", 0 },
+        { "value", int(Continue) }
+      };
+      break;
+    }
     case None:
     {
       j = json{
@@ -252,10 +266,10 @@ void to_json(json& j, const CBVar& var)
     }
     case Int16:
     {
-      auto vec = { var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2], var.payload.int4Value[3],
-        var.payload.int4Value[4], var.payload.int4Value[5], var.payload.int4Value[6], var.payload.int4Value[7],
-        var.payload.int4Value[8], var.payload.int4Value[9], var.payload.int4Value[10], var.payload.int4Value[11],
-        var.payload.int4Value[12], var.payload.int4Value[13], var.payload.int4Value[14], var.payload.int4Value[15]
+      auto vec = { var.payload.int16Value[0], var.payload.int16Value[1], var.payload.int16Value[2], var.payload.int16Value[3],
+        var.payload.int16Value[4], var.payload.int16Value[5], var.payload.int16Value[6], var.payload.int16Value[7],
+        var.payload.int16Value[8], var.payload.int16Value[9], var.payload.int16Value[10], var.payload.int16Value[11],
+        var.payload.int16Value[12], var.payload.int16Value[13], var.payload.int16Value[14], var.payload.int16Value[15]
       };
       j = json{
         { "type", valType },
@@ -398,12 +412,30 @@ void to_json(json& j, const CBVar& var)
       }
       break;
     }
-    default:
+    case Block:
     {
-      j = json{
-        { "type", 0 },
-        { "value", int(Continue) }
+      auto blk = var.payload.blockValue;
+      std::vector<json> params;
+      auto paramsDesc = blk->parameters(blk);
+      for(int i = 0; i < stbds_arrlen(paramsDesc); i++)
+      {
+        auto& desc = paramsDesc[i];
+        auto value = blk->getParam(blk, i);
+        
+        json param_obj = {
+          { "name", desc.name },
+          { "value", value }
+        };
+        
+        params.push_back(param_obj);
+      }
+      
+      j = {
+        { "type", valType },
+        { "name", blk->name(blk) },
+        { "params", params }
       };
+      break;
     }
   };
 }
@@ -413,6 +445,12 @@ void from_json(const json& j, CBVar& var)
   auto valType = CBType(j.at("type").get<int>());
   switch (valType)
   {
+    case Any:
+    case EndOfBlittableTypes:
+    {
+      var = {};
+      break;
+    }
     case None:
     {
       var.valueType = None;
@@ -610,9 +648,46 @@ void from_json(const json& j, CBVar& var)
       var.payload.chainValue = &chainblocks::GlobalChains[chainName]; // might be null now, but might get filled after
       break;
     }
-    default:
+    case Block:
     {
-      var = {};
+      var.valueType = Block;
+      auto blkname = j.at("name").get<std::string>();
+      auto blk = chainblocks::createBlock(blkname.c_str());
+      if(!blk)
+      {
+        auto errmsg = "Failed to create block of type: " + std::string("blkname");
+        throw chainblocks::CBException(errmsg.c_str());
+      }
+      var.payload.blockValue = blk;
+    
+      // Setup
+      blk->setup(blk);
+      
+      // Set params
+      auto jparams = j.at("params");
+      auto blkParams = blk->parameters(blk);
+      for(auto jparam : jparams)
+      {
+        auto paramName = jparam.at("name").get<std::string>();
+        auto value = jparam.at("value").get<CBVar>();
+        
+        if(value.valueType != None)
+        {
+          for(auto i = 0; i < stbds_arrlen(blkParams); i++)
+          {
+            auto& paramInfo = blkParams[i];
+            if(paramName == paramInfo.name)
+            {
+              blk->setParam(blk, i, value);
+              break;
+            }
+          }
+        }
+
+        // Assume block copied memory internally so we can clean up here!!!
+        releaseMemory(value);
+      }
+      break;
     }
   }
 }

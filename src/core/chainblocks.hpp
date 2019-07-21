@@ -448,6 +448,8 @@ EXPORTED void __cdecl chainblocks_Tick(CBChain* chain, CBVar input);
 EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output);
 // Checks if the chain is running
 EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain);
+// Checks if the context is being canceled
+EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context);
 
 #ifdef __cplusplus
 };

@@ -7,11 +7,9 @@
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wtype-limits"
 #pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wswitch"
 #elif defined(__clang__)
 #pragma clang diagnostic ignored "-Wtype-limits"
 #pragma clang diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wswitch"
 #endif
 
 #include <string.h> // memset
@@ -45,8 +43,9 @@ struct CBMathUnaryStub
 struct CBCoreRepeat
 {
   CBRuntimeBlock header;
+  bool forever;
   int32_t times;
-  CBChainPtr* chain;
+  CBSeq blocks;
 };
 struct CBCoreIf
 {
@@ -54,8 +53,8 @@ struct CBCoreIf
   uint8_t boolOp;
   CBVar match;
   CBVar* matchCtx;
-  CBChainPtr* trueChain;
-  CBChainPtr* falseChain;
+  CBSeq trueBlocks;
+  CBSeq falseBlocks;
   bool passthrough;
 };
 struct CBCoreSetVariable
@@ -282,8 +281,8 @@ namespace chainblocks
         // Notice we use capacity rather then len!
         // Assuming memory is nicely memset
         // We do that because we try our best to recycle memory
-        auto len = stbds_arrcap(var.payload.seqValue);
-        for(auto i = 0; i < len; i++)
+        int len = stbds_arrcap(var.payload.seqValue);
+        for(int i = 0; i < len; i++)
         {
           freeCount += destroyVar(var.payload.seqValue[i]);
         }
@@ -342,9 +341,9 @@ namespace chainblocks
       {
         case Seq:
         {
-          auto srcLen = stbds_arrlen(src.payload.seqValue);
+          int srcLen = stbds_arrlen(src.payload.seqValue);
           // reuse if seq and we got enough capacity
-          if(dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen)
+          if(dst.valueType != Seq || (int)stbds_arrcap(dst.payload.seqValue) < srcLen)
           {
             freeCount += destroyVar(dst);
             dst.valueType = Seq;
@@ -352,7 +351,7 @@ namespace chainblocks
             dst.payload.seqValue = nullptr;
           }
           
-          stbds_arrsetlen(dst.payload.seqValue, srcLen);
+          stbds_arrsetlen(dst.payload.seqValue, (unsigned)srcLen);
           for(auto i = 0; i < srcLen; i++)
           {
             auto& subsrc = src.payload.seqValue[i];
@@ -566,10 +565,10 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
     }
-    else if(strcmp(name, "Repeat") == 0)
-    {
-      blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
-    }
+    // else if(strcmp(name, "Repeat") == 0)
+    // {
+    //   blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
+    // }
     else if(strcmp(name, "If") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;
@@ -778,7 +777,463 @@ namespace chainblocks
     return cont;
   }
 
-  static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
+  #include "runtime_macros.hpp"
+
+  inline static void activateBlock(CBRuntimeBlock* blk, CBContext* context, const CBVar& input, CBVar& previousOutput)
+  {
+    switch(blk->inlineBlockId)
+    {
+      case CoreConst:
+      {
+        auto cblock = reinterpret_cast<CBConstStub*>(blk);
+        previousOutput = cblock->constValue;
+        return;
+      }
+      case CoreSleep:
+      {
+        auto cblock = reinterpret_cast<CBSleepStub*>(blk);
+        auto suspendRes = suspend(cblock->sleepTime);
+        if(suspendRes.payload.chainState != Continue)
+          previousOutput = suspendRes;
+        else
+          previousOutput = input;
+        return;
+      }
+      case CoreRepeat:
+      {
+        auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
+        auto repeats = cblock->forever ? 1 : cblock->times;
+        while(repeats)
+        {
+          for(auto i = 0; i < stbds_arrlen(cblock->blocks); i++)
+          {
+            // This looks dangerous and error prone but the reality of chainblocks is that
+            // a chain is expected to be evaluated using blocks reflection before running!
+            auto subBlk = cblock->blocks[i].payload.blockValue;
+            activateBlock(subBlk, context, input, previousOutput);
+          }
+
+          // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
+          if(context->aborted)
+          {
+            previousOutput.valueType = None;
+            previousOutput.payload.chainState = Stop;
+            // Quick immediately
+            return;
+          }
+
+          if(!cblock->forever)
+            repeats--;
+        }
+        previousOutput = input;
+        return;
+      }
+      case CoreIf:
+      {
+        // We only do it quick in certain cases!
+        auto cblock = reinterpret_cast<CBCoreIf*>(blk);            
+        auto match = cblock->match.valueType == ContextVar ?
+          cblock->matchCtx ? *cblock->matchCtx : *(cblock->matchCtx = contextVariable(context, cblock->match.payload.stringValue)) :
+            cblock->match;
+        auto result = false;
+        if(unlikely(input.valueType != match.valueType))
+        {
+          goto ifFalsePath;
+        }
+        else
+        {
+          switch(input.valueType)
+          {
+            case Int:
+              switch(cblock->boolOp)
+              {
+                case 0:
+                  result = input.payload.intValue == match.payload.intValue;
+                  break;
+                case 1:
+                  result = input.payload.intValue > match.payload.intValue;
+                  break;
+                case 2:
+                  result = input.payload.intValue < match.payload.intValue;
+                  break;
+                case 3:
+                  result = input.payload.intValue >= match.payload.intValue;
+                  break;
+                case 4:
+                  result = input.payload.intValue <= match.payload.intValue;
+                  break;
+              }
+              break;
+            case Float:
+              switch(cblock->boolOp)
+              {
+                case 0:
+                  result = input.payload.floatValue == match.payload.floatValue;
+                  break;
+                case 1:
+                  result = input.payload.floatValue > match.payload.floatValue;
+                  break;
+                case 2:
+                  result = input.payload.floatValue < match.payload.floatValue;
+                  break;
+                case 3:
+                  result = input.payload.floatValue >= match.payload.floatValue;
+                  break;
+                case 4:
+                  result = input.payload.floatValue <= match.payload.floatValue;
+                  break;
+              }
+              break;
+            case String:
+              // http://www.cplusplus.com/reference/string/string/operators/
+              switch(cblock->boolOp)
+              {
+                case 0:
+                  result = input.payload.stringValue == match.payload.stringValue;
+                  break;
+                case 1:
+                  result = input.payload.stringValue > match.payload.stringValue;
+                  break;
+                case 2:
+                  result = input.payload.stringValue < match.payload.stringValue;
+                  break;
+                case 3:
+                  result = input.payload.stringValue >= match.payload.stringValue;
+                  break;
+                case 4:
+                  result = input.payload.stringValue <= match.payload.stringValue;
+                  break;
+              }
+              break;
+            default:
+              // too complex let's just make the activation call into nim
+              previousOutput = blk->activate(blk, context, input);
+              return;
+          }
+          if(result)
+          {
+            for(auto i = 0; i < stbds_arrlen(cblock->trueBlocks); i++)
+            {
+              // This looks dangerous and error prone but the reality of chainblocks is that
+              // a chain is expected to be evaluated using blocks reflection before running!
+              auto subBlk = cblock->trueBlocks[i].payload.blockValue;
+              activateBlock(subBlk, context, input, previousOutput);
+            }       
+            // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
+            if(context->aborted)
+            {
+              previousOutput.valueType = None;
+              previousOutput.payload.chainState = Stop;
+            }
+            else if(cblock->passthrough)
+            {
+              previousOutput = input;
+            }
+            return;
+          }
+          else
+          {
+          ifFalsePath:
+            for(auto i = 0; i < stbds_arrlen(cblock->falseBlocks); i++)
+            {
+              // This looks dangerous and error prone but the reality of chainblocks is that
+              // a chain is expected to be evaluated using blocks reflection before running!
+              auto subBlk = cblock->falseBlocks[i].payload.blockValue;
+              activateBlock(subBlk, context, input, previousOutput);
+            }       
+            // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
+            if(context->aborted)
+            {
+              previousOutput.valueType = None;
+              previousOutput.payload.chainState = Stop;
+            }
+            else if(cblock->passthrough)
+            {
+              previousOutput = input;
+            }
+            return;
+          }
+        }
+        break;
+      }
+      case CoreGetVariable:
+      {
+        auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
+        if(unlikely(!cblock->target)) // call first if we have no target
+        {
+          previousOutput = blk->activate(blk, context, input);
+        }
+        else
+        {
+          previousOutput = *cblock->target;
+        }
+        return;
+      }
+      case CoreSwapVariables:
+      {
+        auto cblock = reinterpret_cast<CBCoreSwapVariables*>(blk);
+        if(unlikely(!cblock->target1 || !cblock->target2)) // call first if we have no targets
+        {
+          previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
+        }
+        else
+        {
+          auto tmp = *cblock->target1;
+          *cblock->target1 = *cblock->target2;
+          *cblock->target2 = tmp;
+          previousOutput = input;
+        }
+        return;
+      }
+      case MathAdd:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINEMATH(+, "+")
+        return;
+      }
+      case MathSubtract:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINEMATH(-, "-")
+        return;
+      }
+      case MathMultiply:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINEMATH(*, "*")
+        return;
+      }
+      case MathDivide:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINEMATH(/, "/")
+        return;
+      }
+      case MathXor:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(^, "^")
+        return;
+      }
+      case MathAnd:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(&, "&")
+        return;
+      }
+      case MathOr:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(|, "|")
+        return;
+      }
+      case MathMod:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(%, "%")
+        return;
+      }
+      case MathLShift:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(<<, "<<")
+        return;
+      }
+      case MathRShift:
+      {
+        auto cblock = reinterpret_cast<CBMathStub*>(blk);
+        runChainINLINE_INT_MATH(>>, ">>")
+        return;
+      }
+      case MathAbs:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(fabs, fabsf, "Abs")
+        return;
+      }
+      case MathExp:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(exp, expf, "Exp")
+        return;
+      }
+      case MathExp2:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(exp2, exp2f, "Exp2")
+        return;
+      }
+      case MathExpm1:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(expm1, expm1f, "Expm1")
+        return;
+      }
+      case MathLog:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(log, logf, "Log")
+        return;
+      }
+      case MathLog10:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(log10, log10f, "Log10")
+        return;
+      }
+      case MathLog2:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(log2, log2f, "Log2")
+        return;
+      }
+      case MathLog1p:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(log1p, log1pf, "Log1p")
+        return;
+      }
+      case MathSqrt:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(sqrt, sqrtf, "Sqrt")
+        return;
+      }
+      case MathCbrt:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(cbrt, cbrtf, "Cbrt")
+        return;
+      }
+      case MathSin:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(sin, sinf, "Sin")
+        return;
+      }
+      case MathCos:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(cos, cosf, "Cos")
+        return;
+      }
+      case MathTan:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(tan, tanf, "Tan")
+        return;
+      }
+      case MathAsin:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(asin, asinf, "Asin")
+        return;
+      }
+      case MathAcos:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(acos, acosf, "Acos")
+        return;
+      }
+      case MathAtan:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(atan, atanf, "Atan")
+        return;
+      }
+      case MathSinh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(sinh, sinhf, "Sinh")
+        return;
+      }
+      case MathCosh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(cosh, coshf, "Cosh")
+        return;
+      }
+      case MathTanh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(tanh, tanhf, "Tanh")
+        return;
+      }
+      case MathAsinh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(asinh, asinhf, "Asinh")
+        return;
+      }
+      case MathAcosh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(acosh, acoshf, "Acosh")
+        return;
+      }
+      case MathAtanh:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(atanh, atanhf, "Atanh")
+        return;
+      }
+      case MathErf:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(erf, erff, "Erf")
+        return;
+      }
+      case MathErfc:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(erfc, erfcf, "Erfc")
+        return;
+      }
+      case MathTGamma:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(tgamma, tgammaf, "TGamma")
+        return;
+      }
+      case MathLGamma:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(lgamma, lgammaf, "LGamma")
+        return;
+      }
+      case MathCeil:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(ceil, ceilf, "Ceil")
+        return;
+      }
+      case MathFloor:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(floor, floorf, "Floor")
+        return;
+      }
+      case MathTrunc:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(trunc, truncf, "Trunc")
+        return;
+      }
+      case MathRound:
+      {
+        auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
+        runChainINLINECMATH(round, roundf, "Round")
+        return;
+      }
+      default: // NotInline
+      {
+        previousOutput = blk->activate(blk, context, input);
+        return;
+      }
+    }
+  }
+
+  inline static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
     chain->started = true;
     chain->context = context;
@@ -810,9 +1265,7 @@ namespace chainblocks
         return { false, {} };
       }
     }
-
-    #include "runtime_macros.hpp"
-
+    
     for(auto blk : chain->blocks)
     {
       try
@@ -823,444 +1276,7 @@ namespace chainblocks
 
         // Pass chain root input every time we find None, this allows a long chain to re-process the root input if wanted!
         auto input = previousOutput.valueType == None ? chainInput : previousOutput;
-        switch(blk->inlineBlockId)
-        {
-          case CoreConst:
-          {
-            auto cblock = reinterpret_cast<CBConstStub*>(blk);
-            previousOutput = cblock->constValue;
-            break;
-          }
-          case CoreSleep:
-          {
-            auto cblock = reinterpret_cast<CBSleepStub*>(blk);
-            auto suspendRes = suspend(cblock->sleepTime);
-            if(suspendRes.payload.chainState != Continue)
-              previousOutput = suspendRes;
-            else
-              previousOutput = input;
-            break;
-          }
-          case CoreRepeat:
-          {
-            auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
-            if(likely(cblock->chain and *cblock->chain))
-            {
-              for(auto i = 0; i < cblock->times; i++)
-              {
-                runChainQUICKRUN(*cblock->chain)
-              }
-            }
-            else if(unlikely(cblock->chain and !(*cblock->chain)))
-            {
-              throw CBException("A required sub-chain was not found, stopping!");
-            }
-            previousOutput = input;
-            break;
-          }
-          case CoreIf:
-          {
-            // We only do it quick in certain cases!
-            auto cblock = reinterpret_cast<CBCoreIf*>(blk);            
-            auto match = cblock->match.valueType == ContextVar ?
-              cblock->matchCtx ? *cblock->matchCtx : *(cblock->matchCtx = contextVariable(context, cblock->match.payload.stringValue)) :
-                cblock->match;
-            auto result = false;
-            if(unlikely(input.valueType != match.valueType))
-            {
-              // Always fail the test when different types
-              if(likely(cblock->falseChain and *cblock->falseChain))
-              {
-                runChainQUICKRUN(*cblock->falseChain)
-                if(!cblock->passthrough)
-                {
-                  previousOutput = std::get<1>(chainRes);
-                }
-              }
-              else
-              {
-                throw CBException("A required sub-chain was not found, stopping!");
-              }
-            }
-            else
-            {
-              switch(input.valueType)
-              {
-                case Int:
-                  switch(cblock->boolOp)
-                  {
-                    case 0:
-                      result = input.payload.intValue == match.payload.intValue;
-                      break;
-                    case 1:
-                      result = input.payload.intValue > match.payload.intValue;
-                      break;
-                    case 2:
-                      result = input.payload.intValue < match.payload.intValue;
-                      break;
-                    case 3:
-                      result = input.payload.intValue >= match.payload.intValue;
-                      break;
-                    case 4:
-                      result = input.payload.intValue <= match.payload.intValue;
-                      break;
-                  }
-                  break;
-                case Float:
-                  switch(cblock->boolOp)
-                  {
-                    case 0:
-                      result = input.payload.floatValue == match.payload.floatValue;
-                      break;
-                    case 1:
-                      result = input.payload.floatValue > match.payload.floatValue;
-                      break;
-                    case 2:
-                      result = input.payload.floatValue < match.payload.floatValue;
-                      break;
-                    case 3:
-                      result = input.payload.floatValue >= match.payload.floatValue;
-                      break;
-                    case 4:
-                      result = input.payload.floatValue <= match.payload.floatValue;
-                      break;
-                  }
-                  break;
-                case String:
-                  // http://www.cplusplus.com/reference/string/string/operators/
-                  switch(cblock->boolOp)
-                  {
-                    case 0:
-                      result = input.payload.stringValue == match.payload.stringValue;
-                      break;
-                    case 1:
-                      result = input.payload.stringValue > match.payload.stringValue;
-                      break;
-                    case 2:
-                      result = input.payload.stringValue < match.payload.stringValue;
-                      break;
-                    case 3:
-                      result = input.payload.stringValue >= match.payload.stringValue;
-                      break;
-                    case 4:
-                      result = input.payload.stringValue <= match.payload.stringValue;
-                      break;
-                  }
-                  break;
-                default:
-                  // too complex let's just make the activation call!
-                  previousOutput = blk->activate(blk, context, input);
-                  goto ifdone;
-              }
-              if(result)
-              {
-                if(likely(cblock->trueChain and *cblock->trueChain))
-                {
-                  runChainQUICKRUN(*cblock->trueChain)
-                  if(!cblock->passthrough)
-                  {
-                    previousOutput = std::get<1>(chainRes);
-                  }
-                }
-                else
-                {
-                  throw CBException("A required sub-chain was not found, stopping!");
-                }
-              }
-              else
-              {
-                if(likely(cblock->falseChain and *cblock->falseChain))
-                {
-                  runChainQUICKRUN(*cblock->falseChain)
-                  if(!cblock->passthrough)
-                  {
-                    previousOutput = std::get<1>(chainRes);
-                  }
-                }
-                else
-                {
-                  throw CBException("A required sub-chain was not found, stopping!");
-                }
-              }
-              ifdone:
-                if(0) {}
-            }
-            break;
-          }
-          case CoreGetVariable:
-          {
-            auto cblock = reinterpret_cast<CBCoreSetVariable*>(blk);
-            if(unlikely(!cblock->target)) // call first if we have no target
-            {
-              previousOutput = blk->activate(blk, context, input);
-            }
-            else
-            {
-              previousOutput = *cblock->target;
-            }
-            break;
-          }
-          case CoreSwapVariables:
-          {
-            auto cblock = reinterpret_cast<CBCoreSwapVariables*>(blk);
-            if(unlikely(!cblock->target1 || !cblock->target2)) // call first if we have no targets
-            {
-              previousOutput = blk->activate(blk, context, input); // ignore previousOutput since we pass input
-            }
-            else
-            {
-              auto tmp = *cblock->target1;
-              *cblock->target1 = *cblock->target2;
-              *cblock->target2 = tmp;
-              previousOutput = input;
-            }
-            break;
-          }
-          case MathAdd:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(+, "+")
-            break;
-          }
-          case MathSubtract:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(-, "-")
-            break;
-          }
-          case MathMultiply:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(*, "*")
-            break;
-          }
-          case MathDivide:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINEMATH(/, "/")
-            break;
-          }
-          case MathXor:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(^, "^")
-            break;
-          }
-          case MathAnd:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(&, "&")
-            break;
-          }
-          case MathOr:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(|, "|")
-            break;
-          }
-          case MathMod:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(%, "%")
-            break;
-          }
-          case MathLShift:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(<<, "<<")
-            break;
-          }
-          case MathRShift:
-          {
-            auto cblock = reinterpret_cast<CBMathStub*>(blk);
-            runChainINLINE_INT_MATH(>>, ">>")
-            break;
-          }
-          case MathAbs:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(fabs, fabsf, "Abs")
-            break;
-          }
-          case MathExp:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(exp, expf, "Exp")
-            break;
-          }
-          case MathExp2:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(exp2, exp2f, "Exp2")
-            break;
-          }
-          case MathExpm1:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(expm1, expm1f, "Expm1")
-            break;
-          }
-          case MathLog:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(log, logf, "Log")
-            break;
-          }
-          case MathLog10:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(log10, log10f, "Log10")
-            break;
-          }
-          case MathLog2:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(log2, log2f, "Log2")
-            break;
-          }
-          case MathLog1p:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(log1p, log1pf, "Log1p")
-            break;
-          }
-          case MathSqrt:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(sqrt, sqrtf, "Sqrt")
-            break;
-          }
-          case MathCbrt:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(cbrt, cbrtf, "Cbrt")
-            break;
-          }
-          case MathSin:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(sin, sinf, "Sin")
-            break;
-          }
-          case MathCos:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(cos, cosf, "Cos")
-            break;
-          }
-          case MathTan:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(tan, tanf, "Tan")
-            break;
-          }
-          case MathAsin:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(asin, asinf, "Asin")
-            break;
-          }
-          case MathAcos:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(acos, acosf, "Acos")
-            break;
-          }
-          case MathAtan:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(atan, atanf, "Atan")
-            break;
-          }
-          case MathSinh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(sinh, sinhf, "Sinh")
-            break;
-          }
-          case MathCosh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(cosh, coshf, "Cosh")
-            break;
-          }
-          case MathTanh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(tanh, tanhf, "Tanh")
-            break;
-          }
-          case MathAsinh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(asinh, asinhf, "Asinh")
-            break;
-          }
-          case MathAcosh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(acosh, acoshf, "Acosh")
-            break;
-          }
-          case MathAtanh:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(atanh, atanhf, "Atanh")
-            break;
-          }
-          case MathErf:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(erf, erff, "Erf")
-            break;
-          }
-          case MathErfc:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(erfc, erfcf, "Erfc")
-            break;
-          }
-          case MathTGamma:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(tgamma, tgammaf, "TGamma")
-            break;
-          }
-          case MathLGamma:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(lgamma, lgammaf, "LGamma")
-            break;
-          }
-          case MathCeil:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(ceil, ceilf, "Ceil")
-            break;
-          }
-          case MathFloor:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(floor, floorf, "Floor")
-            break;
-          }
-          case MathTrunc:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(trunc, truncf, "Trunc")
-            break;
-          }
-          case MathRound:
-          {
-            auto cblock = reinterpret_cast<CBMathUnaryStub*>(blk);
-            runChainINLINECMATH(round, roundf, "Round")
-            break;
-          }
-          default: // NotInline
-          {
-            previousOutput = blk->activate(blk, context, input);
-          }
-        }
+        activateBlock(blk, context, input, previousOutput);
 
         if(previousOutput.valueType == None)
         {
@@ -1283,6 +1299,8 @@ namespace chainblocks
               CurrentChain = previousChain;
               return { false, previousOutput };
             }
+            case Continue:
+              continue;
           }
         }
       }
@@ -1479,6 +1497,11 @@ namespace chainblocks
   static bool isRunning(CBChain* chain)
   {
     return chain->started && !chain->returned;
+  }
+
+  static bool isCanceled(CBContext* context)
+  {
+    return context->aborted;
   }
 
   static std::string store(CBVar var) 

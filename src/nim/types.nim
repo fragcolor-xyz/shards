@@ -138,6 +138,7 @@ type
     tableValue*: CBTable
     tableLen*: int32
     chainValue*: ptr CBChainPtr
+    blockValue*: ptr CBRuntimeBlock
     enumValue*: CBEnum
     enumVendorId*: int32
     enumTypeId*: int32
@@ -235,6 +236,7 @@ template seqLen*(v: CBVar): auto = v.payload.seqLen
 template tableValue*(v: CBVar): auto = v.payload.tableValue
 template tableLen*(v: CBVar): auto = v.payload.tableLen
 template chainValue*(v: CBVar): auto = v.payload.chainValue
+template blockValue*(v: CBVar): auto = v.payload.blockValue
 template enumValue*(v: CBVar): auto = v.payload.enumValue
 template enumVendorId*(v: CBVar): auto = v.payload.enumVendorId
 template enumTypeId*(v: CBVar): auto = v.payload.enumTypeId
@@ -263,6 +265,7 @@ template seqLen*(v: CBVarConst): auto = value.v.payload.seqLen
 template tableValue*(v: CBVarConst): auto = v.value.payload.tableValue
 template tableLen*(v: CBVarConst): auto = v.value.payload.tableLen
 template chainValue*(v: CBVarConst): auto = v.value.payload.chainValue
+template blockValue*(v: CBVar): auto = v.value.payload.blockValue
 template enumValue*(v: CBVarConst): auto = v.value.payload.enumValue
 template enumVendorId*(v: CBVarConst): auto = v.value.payload.enumVendorId
 template enumTypeId*(v: CBVarConst): auto = v.value.payload.enumTypeId
@@ -290,6 +293,7 @@ template `seqLen=`*(v: CBVar, val: auto) = v.payload.seqLen = val
 template `tableValue=`*(v: CBVar, val: auto) = v.payload.tableValue = val
 template `tableLen=`*(v: CBVar, val: auto) = v.payload.tableLen = val
 template `chainValue=`*(v: CBVar, val: auto) = v.payload.chainValue = val
+template `blockValue=`*(v: CBVar, val: auto) = v.payload.blockValue = val
 template `enumValue=`*(v: CBVar, val: auto) = v.payload.enumValue = val
 template `enumVendorId=`*(v: CBVar, val: auto) = v.payload.enumVendorId = val
 template `enumTypeId=`*(v: CBVar, val: auto) = v.payload.enumTypeId = val
