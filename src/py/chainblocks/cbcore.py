@@ -22,6 +22,14 @@ class CBChain:
 
 _previousBlock = None
 
+def setPreviousBlock(blk):
+  global _previousBlock
+  _previousBlock = blk
+
+def getPreviousBlock():
+  global _previousBlock
+  return _previousBlock
+
 def chain(func):
   def emitChain():
     previousChain = getCurrentChain()

@@ -33,12 +33,11 @@ def processBlock(name, hasNamespace, fullName):
   result += "{}  blk = chainblocks.createBlock(\"{}\")\n".format(indent, fullName)
   
   # Check first if we can connect with the previous block
-  result += "{}  global _previousBlock\n".format(indent)
-  result += "{}  if _previousBlock != None:\n".format(indent)
-  result += "{}    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(_previousBlock))\n".format(indent)
+  result += "{}  if getPreviousBlock() != None:\n".format(indent)
+  result += "{}    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(getPreviousBlock()))\n".format(indent)
   result += "{}    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk))\n".format(indent)
   result += "{}    if not validateConnection(prevOutInfo, currInInfo):\n".format(indent)
-  result += "{}      raise Exception(\"Blocks do not connect, output: \" + chainblocks.blockName(_previousBlock) + \", input: {}\")\n".format(indent, fullName)
+  result += "{}      raise Exception(\"Blocks do not connect, output: \" + chainblocks.blockName(getPreviousBlock()) + \", input: {}\")\n".format(indent, fullName)
   
   # Setup
   result += "{}  chainblocks.blockSetup(blk)\n".format(indent)
@@ -54,7 +53,7 @@ def processBlock(name, hasNamespace, fullName):
   
   # After setting initial params add to the chain
   result += "{}  chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk)\n".format(indent)
-  result += "{}  _previousBlock = blk\n".format(indent)
+  result += "{}  setPreviousBlock(blk)\n".format(indent)
   result += "{}\n".format(indent)
   return result
 
