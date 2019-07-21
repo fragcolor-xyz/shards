@@ -127,5 +127,5 @@ proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq
       outputTableKeyCache.excl(key)
 
     result = tableStorage
-  of Chain: result = cast[ptr CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
+  of Chain: result = cast[CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
   of Block: assert(false) # TODO
