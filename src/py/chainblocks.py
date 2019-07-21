@@ -1,4 +1,5 @@
 from chainblocks import *
+import inspect
 
 def pycall(state, input):
   print("Yep.. worked!")
@@ -19,10 +20,15 @@ def MainChain():
   Log()
   Const(cbcolor(100, 200, 200, 255))
   Log()
+  Repeat(times = 5, action = Msg("Hello repeating..."))
+  print(dir())
 
+node = CBNode()
 mainChain = MainChain()
-mainChain.start(True)
+node.schedule(mainChain, looped = True)
 
 for _ in range(10):
-  mainChain.tick()
+  node.tick()
   cbsleep(0.1)
+
+node.stop()

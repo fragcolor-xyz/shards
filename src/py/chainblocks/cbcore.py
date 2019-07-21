@@ -1,6 +1,10 @@
 from enum import IntEnum, auto
 from .chainblocks import *
 
+class CBRuntimeBlock:
+  def __init__(self, nativeBlock):
+    self.block = nativeBlock
+
 class CBChain:
   def __init__(self, nativeChain):
     self.chain = nativeChain
@@ -19,6 +23,25 @@ class CBChain:
       chainTick(self.chain, inputVar)
     else:
       chainTick2(self.chain)
+
+class CBNode:
+  def __init__(self):
+    self.node = createNode()
+  
+  def schedule(self, chain, inputVar = None, looped = False, unsafe = False):
+    if inputVar == None:
+      nodeSchedule(self.node, chain.chain, (0, None), looped, unsafe)
+    else:
+      nodeSchedule(self.node, chain.chain, inputVar, looped, unsafe)
+
+  def tick(self, inputVar = None):
+    if inputVar != None:
+      nodeTick2(self.node, inputVar)
+    else:
+      nodeTick(self.node)
+  
+  def stop(self):
+    nodeStop(self.node)
 
 _previousBlock = None
 
@@ -106,12 +129,21 @@ class CBVar:
       self.value = (CBType.String, value)
     elif type(value) is CBChain:
       self.value = (CBType.Chain, value.chain)
+    elif type(value) is CBRuntimeBlock:
+      self.value = (CBType.Block, value.block)
+    elif type(value) is list:
+      self.value = (CBType.Seq, [CBVar(x) for x in value])
     elif callable(value):
       self.value = (CBType.Object, (value, 1734439526, 2035317104))
     elif type(value) is tuple:
       if type(value[0]) is CBType:
         # e.g. cbcolor!
         self.value = value
+      elif type(value[0]) is CBRuntimeBlock:
+        currentChain = getCurrentChain()
+        setCurrentChain(None)
+        self.value = (CBType.Seq, [CBVar(x) for x in list(value)])
+        setCurrentChain(currentChain)
       else:
         hasFloats = False
         valueLen = len(value)
@@ -151,7 +183,7 @@ class CBVar:
           raise Exception("CBVar from a tuple has an invalid length, must be 1, 2, 3, 4, 8 (int only), 16 (int only)")
 
     else:
-      raise Exception("CBVar value not handled!")
+      raise Exception("CBVar value not handled! " + str(type(value)))
 
 def cbvar(value):
   return CBVar(value).value

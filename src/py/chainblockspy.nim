@@ -40,6 +40,12 @@ proc cbCreateChain*(name: cstring): CBChainPtr {.cdecl, importc, dynlib: "chainb
 proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbAddBlock*(chain: CBChainPtr; blk: ptr CBRuntimeBlock) {.cdecl, importc, dynlib: "chainblocks".}
 
+proc cbCreateNode*(): ptr CBNode {.cdecl, importc, dynlib: "chainblocks".}
+proc cbDestroyNode*(node: ptr CBNode) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbSchedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar; loop: cint; unsafe: cint) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
+proc cbNodeStop*(node: ptr CBNode) {.cdecl, importc, dynlib: "chainblocks".}
+
 # Py - python interop
 when true:
   const
@@ -106,11 +112,25 @@ proc getCurrentChain(): PPyObject {.exportpy.} =
     return newPyNone()
 
 proc setCurrentChain(chain: PPyObject) {.exportpy.} =
+  if chain.pointer == newPyNone().pointer:
+    cbSetCurrentChain(nil)
+  else:
+    let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
+    cbSetCurrentChain(cast[CBChainPtr](p))
+
+proc pyChainDestroy(chain: PPyObject) {.cdecl.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
-  cbSetCurrentChain(cast[CBChainPtr](p))
+  cbDestroyChain(cast[CBChainPtr](p))
 
 proc createChain(name: string): PPyObject {.exportpy.} =
-  py_lib.pyLib.PyCapsule_New(cast[pointer](cbCreateChain(name)), nil, nil)
+  py_lib.pyLib.PyCapsule_New(cast[pointer](cbCreateChain(name)), nil, pyChainDestroy)
+
+proc pyNodeDestroy(node: PPyObject) {.cdecl.} =
+  let p = py_lib.pyLib.PyCapsule_GetPointer(node, nil)
+  cbDestroyNode(cast[ptr CBNode](p))
+
+proc createNode(): PPyObject {.exportpy.} =
+  py_lib.pyLib.PyCapsule_New(cast[pointer](cbCreateNode()), nil, pyNodeDestroy)
 
 proc createBlock(name: string): PPyObject {.exportpy.} =
   py_lib.pyLib.PyCapsule_New(cast[pointer](cbCreateBlock(name)), nil, nil)
@@ -156,6 +176,30 @@ proc chainStop(chain: PPyObject): PPyObject {.exportpy.} =
 proc chainStop2(chain: PPyObject) {.exportpy.} =
   let p = py_lib.pyLib.PyCapsule_GetPointer(chain, nil)
   discard cbStop(cast[CBChainPtr](p))
+
+proc nodeSchedule(node, chain: PPyObject; input: PyObject; looped, unsafe: bool) {.exportpy.} =
+  let
+    pnode = cast[ptr CBNode](py_lib.pyLib.PyCapsule_GetPointer(node, nil))
+    pchain = cast[CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(chain, nil))
+    value = py2Var(input, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+  cbSchedule(pnode, pchain, value, looped.cint, unsafe.cint)
+
+proc nodeTick(node: PPyObject) {.exportpy.} =
+  let
+    pnode = cast[ptr CBNode](py_lib.pyLib.PyCapsule_GetPointer(node, nil))
+    value = Empty
+  cbNodeTick(pnode, value)
+
+proc nodeTick2(node: PPyObject; input: PyObject) {.exportpy.} =
+  let
+    pnode = cast[ptr CBNode](py_lib.pyLib.PyCapsule_GetPointer(node, nil))
+    value = py2Var(input, stringStorage, stringsStorage, seqStorage, tableStorage, outputTableKeyCache)
+  cbNodeTick(pnode, value)
+
+proc nodeStop(node: PPyObject) {.exportpy.} =
+  let
+    pnode = cast[ptr CBNode](py_lib.pyLib.PyCapsule_GetPointer(node, nil))
+  cbNodeStop(pnode)
 
 proc blockName(blk: PPyObject): string {.exportpy.} =
   let

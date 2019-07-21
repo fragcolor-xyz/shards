@@ -52,7 +52,7 @@ proc var2Py*(input: CBVar; inputSeqCache: var seq[PPyObject]; inputTableCache: v
       inputTableCache.add($item.key, var2Py(item.value, inputSeqCache,inputTableCache))
     result = toPyObjectArgument inputTableCache
   of Chain: result = py_lib.pyLib.PyCapsule_New(cast[pointer](input.chainValue), nil, nil)
-  of Block: assert(false) # TODO
+  of Block: result = py_lib.pyLib.PyCapsule_New(cast[pointer](input.blockValue), nil, nil)
 
 proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq[string]; seqStorage: var CBSeq; tableStorage: var CBTable; outputTableKeyCache: var HashSet[cstring]): CBVar =
   let
@@ -128,4 +128,4 @@ proc py2Var*(input: PyObject; stringStorage: var string; stringsStorage: var seq
 
     result = tableStorage
   of Chain: result = cast[CBChainPtr](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))
-  of Block: assert(false) # TODO
+  of Block: result = cast[ptr CBRuntimeBlock](py_lib.pyLib.PyCapsule_GetPointer(tupRes.value.to(PPyObject), nil))

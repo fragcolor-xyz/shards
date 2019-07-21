@@ -431,13 +431,18 @@ when appType != "lib" or defined(forceCBRuntime):
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
   proc newNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
+  proc cbCreateNode*(): ptr CBNode {.cdecl, exportc, dynlib.} = newNode()
   proc deleteNode*(node: ptr CBNode) {.inline.} = cppdel(node)
-  proc schedule*(node: ptr CBNode, chain: CBChainPtr;  input: CBVar = Empty; loop: bool = false; unsafe: bool = false) {.inline.} =
+  proc cbDestroyNode*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = deleteNode(node)
+  proc schedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar = Empty; loop: bool = false; unsafe: bool = false) {.inline.} =
     node[].invoke("schedule", chain, input, loop, unsafe).to(void)
+  proc cbSchedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = schedule(node, chain, input, loop.bool, unsafe.bool)
   proc tick*(node: ptr CBNode, input: CBVar = Empty) {.inline.} =
     node[].invoke("tick", input).to(void)
+  proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, exportc, dynlib.} = tick(node, input)
   proc stop*(node: ptr CBNode) {.inline.} =
     node[].invoke("stop").to(void)
+  proc cbNodeStop*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = stop(node)
 
   proc prepareInternal(chain: CBChainPtr; loop: bool; unsafe: bool) {.importcpp: "chainblocks::prepare(#, #, #)", header: "runtime.hpp".}
   proc prepare*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
