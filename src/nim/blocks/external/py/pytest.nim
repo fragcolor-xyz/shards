@@ -39,4 +39,3 @@ proc run() =
     sleep 30
   
 run()
-GC_fullCollect()
