@@ -8,7 +8,7 @@ buildAndRun:win:debug:
     - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs --app:lib -d:forceCBRuntime -f -o:../py/chainblocks/chainblocks.dll chainblocks.nim # Builds for py test
     - cd blocks/external/py
     - nim cpp --NimblePath:$nimbleDir/pkgs -f py.nim
-    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
+    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
     - cd ../dummy
     - nim cpp --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
     - nim cpp --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
