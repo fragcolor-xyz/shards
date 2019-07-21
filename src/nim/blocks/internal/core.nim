@@ -216,27 +216,30 @@ when true:
 when true:
   type
     CBRunChain* = object
-      chain: ptr CBChainPtr
+      chain: CBChainPtr
       once: bool
       done: bool
       passthrough: bool
 
   template cleanup*(b: CBRunChain) =
-    if b.chain != nil and b.chain[] != nil:
-      b.chain[].stop()
+    if b.chain != nil:
+      b.chain.stop()
     b.done = false # reset this on stop/cleanup
   template inputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRunChain): CBParametersInfo =
     @[
-      ("Chain", { Chain }), 
+      ("Chain", { Chain, None }),
       ("Once", { Bool }),
       ("Passthrough", { Bool })
     ]
   template setParam*(b: CBRunChain; index: int; val: CBVar) =
     case index
     of 0:
-      b.chain = val.chainValue
+      if val.valueType == None:
+        b.chain = nil
+      else:
+        b.chain = val.chainValue
     of 1:
       b.once = val.boolValue
     of 2:
@@ -246,7 +249,10 @@ when true:
   template getParam*(b: CBRunChain; index: int): CBVar =
     case index
     of 0:
-      b.chain.CBVar
+      if b.chain != nil:
+        b.chain.CBVar
+      else:
+        CBVar(valueType: None)  
     of 1:
       CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.once))
     of 2:
@@ -256,25 +262,23 @@ when true:
   template activate*(b: CBRunChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
-    elif b.chain[] == nil: # Chain is required but not avai! , stop!
-      halt(context, "A required sub-chain was not found, stopping!")
     elif not b.done:
       if b.once:
         b.done = true
-      b.chain[][].finished = false
+      b.chain[].finished = false
       let
-        resTuple = runChain(b.chain[], context, input)
+        resTuple = runChain(b.chain, context, input)
         noerrors = cppTupleGet[bool](0, resTuple.toCpp)
         output = cppTupleGet[CBVar](1, resTuple.toCpp)
-      b.chain[][].finished = true
+      b.chain[].finished = true
       if not noerrors or context[].aborted:
-        b.chain[][].finishedOutput = StopChain
-        b.chain[][].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
+        b.chain[].finishedOutput = StopChain
+        b.chain[].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
       elif b.passthrough: # Second priority to passthru property
-        b.chain[][].finishedOutput = output
+        b.chain[].finishedOutput = output
         input
       else: # Finally process the actual output
-        b.chain[][].finishedOutput = output
+        b.chain[].finishedOutput = output
         output
     else:
       input
@@ -285,7 +289,7 @@ when true:
 when true:
   type
     CBWaitChain* = object
-      chain: ptr CBChainPtr
+      chain: CBChainPtr
       once: bool
       done: bool
       passthrough: bool
@@ -321,13 +325,11 @@ when true:
   template activate*(b: var CBWaitChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
-    elif b.chain[] == nil: # Chain is required but not avai! , stop!
-      halt(context, "A required sub-chain was not found, stopping!")
     elif not b.done:
       if b.once:
         b.done = true
       
-      while not b.chain[][].finished:
+      while not b.chain[].finished:
         pause(0.0)
       
       if b.passthrough:

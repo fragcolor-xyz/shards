@@ -299,7 +299,7 @@ struct CBVarPayload // will be 32 bytes, must be 16 aligned due to vectors
     
     CBImage imageValue;
     
-    CBChainPtr* chainValue;
+    CBChainPtr chainValue;
     
     CBRuntimeBlock* blockValue;
     

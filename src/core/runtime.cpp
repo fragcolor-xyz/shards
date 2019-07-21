@@ -396,20 +396,10 @@ void to_json(json& j, const CBVar& var)
     }
     case Chain:
     {
-      if(var.payload.chainValue && *var.payload.chainValue)
-      {
-        j = json{
-          { "type", valType },
-          { "name", (*var.payload.chainValue)->name }
-        };
-      }
-      else
-      {
-        j = json{
-          { "type", 0 },
-          { "value", int(Continue) }
-        };
-      }
+      j = json{
+        { "type", valType },
+        { "name", (var.payload.chainValue)->name }
+      };
       break;
     }
     case Block:
@@ -645,7 +635,17 @@ void from_json(const json& j, CBVar& var)
     {
       var.valueType = Chain;
       auto chainName = j.at("name").get<std::string>();
-      var.payload.chainValue = &chainblocks::GlobalChains[chainName]; // might be null now, but might get filled after
+      auto findIt = chainblocks::GlobalChains.find(chainName);
+      if(findIt != chainblocks::GlobalChains.end())
+      {
+        var.payload.chainValue = findIt->second;
+      }
+      else
+      {
+        // create it anyway, deserialize when we can
+        var.payload.chainValue = new CBChain(chainName.c_str());
+        chainblocks::GlobalChains[chainName] = var.payload.chainValue;
+      }
       break;
     }
     case Block:
@@ -730,8 +730,18 @@ void to_json(json& j, const CBChainPtr& chain)
 void from_json(const json& j, CBChainPtr& chain)
 {
   auto chainName = j.at("name").get<std::string>();
-  chain = new CBChain(chainName.c_str());
-  chainblocks::GlobalChains["chainName"] = chain;
+  auto findIt = chainblocks::GlobalChains.find(chainName);
+  if(findIt != chainblocks::GlobalChains.end())
+  {
+    chain = findIt->second;
+    // Need to clean it up for rewrite!
+    chain->cleanup();
+  }
+  else
+  {
+    chain = new CBChain(chainName.c_str());
+    chainblocks::GlobalChains["chainName"] = chain;
+  }
 
   auto jblocks = j.at("blocks");
   for(auto jblock : jblocks)

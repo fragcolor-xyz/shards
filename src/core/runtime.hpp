@@ -189,12 +189,18 @@ struct CBChain
 
   ~CBChain()
   {
+    cleanup();
+  }
+
+  void cleanup()
+  {
     for(auto blk : blocks)
     {
       blk->cleanup(blk);
       blk->destroy(blk);
       //blk is responsible to free itself, as they might use any allocation strategy they wish!
     }
+    blocks.clear();
   }
 
   std::string name;
@@ -565,10 +571,10 @@ namespace chainblocks
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
     }
-    // else if(strcmp(name, "Repeat") == 0)
-    // {
-    //   blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
-    // }
+    else if(strcmp(name, "Repeat") == 0)
+    {
+      blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
+    }
     else if(strcmp(name, "If") == 0)
     {
       blkp->inlineBlockId = CBInlineBlocks::CoreIf;

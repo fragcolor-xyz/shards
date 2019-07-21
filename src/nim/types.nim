@@ -137,7 +137,7 @@ type
     seqLen*: int32
     tableValue*: CBTable
     tableLen*: int32
-    chainValue*: ptr CBChainPtr
+    chainValue*: CBChainPtr
     blockValue*: ptr CBRuntimeBlock
     enumValue*: CBEnum
     enumVendorId*: int32
