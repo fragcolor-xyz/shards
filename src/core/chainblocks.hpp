@@ -450,6 +450,8 @@ EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output);
 EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain);
 // Checks if the context is being canceled
 EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context);
+// Gets a CBSeq containing the blocks currently in the specified chain, you must free the sequence when done with stbds_arrfree
+EXPORTED CBSeq __cdecl chainblocks_Blocks(CBChain* chain);
 
 #ifdef __cplusplus
 };

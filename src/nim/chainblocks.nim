@@ -853,6 +853,8 @@ when appType != "lib" or defined(forceCBRuntime):
     result = suspendInternal(seconds)
     setFrameState(frame)
 
+  proc blocks*(chain: CBChainPtr): CBSeq {.importcpp: "chainblocks::blocks(#)", header: "runtime.hpp".}
+
   proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "runtime.hpp".}
   proc cbSleep*(secs: float64) {.cdecl, exportc, dynlib.} = sleep(secs)
   

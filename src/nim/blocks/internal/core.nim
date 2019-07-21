@@ -270,15 +270,14 @@ when true:
         resTuple = runChain(b.chain, context, input)
         noerrors = cppTupleGet[bool](0, resTuple.toCpp)
         output = cppTupleGet[CBVar](1, resTuple.toCpp)
+      b.chain[].finishedOutput = output
       b.chain[].finished = true
       if not noerrors or context[].aborted:
         b.chain[].finishedOutput = StopChain
         b.chain[].finishedOutput # not succeeded means Stop/Exception/Error so we propagate the stop
       elif b.passthrough: # Second priority to passthru property
-        b.chain[].finishedOutput = output
         input
       else: # Finally process the actual output
-        b.chain[].finishedOutput = output
         output
     else:
       input
@@ -322,7 +321,7 @@ when true:
       CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.passthrough))
     else:
       CBVar(valueType: None)
-  template activate*(b: var CBWaitChain; context: CBContext; input: CBVar): CBVar =
+  template activate*(b: CBWaitChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
     elif not b.done:

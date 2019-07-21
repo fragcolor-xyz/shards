@@ -76,6 +76,7 @@ struct CBCoreSwapVariables
 #include <memory>
 #include <iostream>
 #include <chrono>
+#include <atomic>
 using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<double>;
 using Time = std::chrono::time_point<Clock, Duration>;
@@ -212,7 +213,7 @@ struct CBChain
   bool started;
   
   // this gets cleared before every runChain and set after every runChain
-  bool finished;
+  std::atomic_bool finished;
   
   // when running as coro if actually the coro lambda exited
   bool returned;
@@ -781,6 +782,20 @@ namespace chainblocks
     cont.valueType = None;
     cont.payload.chainState = Continue;
     return cont;
+  }
+
+  static CBSeq blocks(CBChain* chain)
+  {
+    CBSeq result = nullptr;
+    stbds_arrsetlen(result, chain->blocks.size());
+    for(auto i = 0; i < chain->blocks.size(); i++)
+    {
+      CBVar blk;
+      blk.valueType = Block;
+      blk.payload.blockValue = chain->blocks[i];
+      result[i] = blk;
+    }
+    return result;
   }
 
   #include "runtime_macros.hpp"
@@ -1382,11 +1397,10 @@ namespace chainblocks
       if(context.stack)
         stbds_arrsetlen(context.stack, 0);
       
-      chain->finished = false; // Reset finished flag
-      
+      chain->finished = false; // Reset finished flag (atomic)
       auto runRes = runChain(chain, &context, chain->rootTickInput);
-      chain->finished = true;
-      chain->finishedOutput = std::get<1>(runRes);
+      chain->finishedOutput = std::get<1>(runRes); // Write result before setting flag
+      chain->finished = true; // Set finished flag (atomic)
       if(!std::get<0>(runRes))
       {
         context.aborted = true;

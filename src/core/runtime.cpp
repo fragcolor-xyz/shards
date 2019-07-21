@@ -161,6 +161,11 @@ EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context)
   return chainblocks::isCanceled(context);
 }
 
+EXPORTED CBSeq __cdecl chainblocks_Blocks(CBChain* chain)
+{
+  return chainblocks::blocks(chain);
+}
+
 #ifdef __cplusplus
 };
 #endif
