@@ -51,7 +51,7 @@ proc `[]`*[T](s: StbSeq[T]; index: int): T {.inline, noinit.} = s.stbSeq[index]
 
 proc `[]=`*[T](s: var StbSeq[T]; index: int; value: T) {.inline.} = s.stbSeq[index] = value
 
-proc pop*[T](s: var StbSeq[T]): var T {.inline, noinit.} = invokeFunction("stbds_arrpop", s.stbSeq).to(T)
+proc pop*[T](s: var StbSeq[T]): T {.inline, noinit.} = invokeFunction("stbds_arrpop", s.stbSeq).to(T)
 
 proc len*(s: StbSeq): int {.inline.} = invokeFunction("stbds_arrlen", s.stbSeq).to(int)
 
