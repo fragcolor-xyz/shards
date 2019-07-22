@@ -244,8 +244,6 @@ converter toCBVar*(cbStr: CBString): CBVar {.inline.} =
   result.valueType = String
   result.payload.stringValue = cbStr
 
-converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring](cbStr)
-
 converter imageTypesConv*(cbImg: CBImage): Image[uint8] {.inline, noinit.} =
   result.width = cbImg.width.int
   result.height = cbImg.height.int
@@ -257,6 +255,8 @@ converter imageTypesConv*(cbImg: Image[uint8]): CBImage {.inline, noinit.} =
   result.height = cbImg.height.uint16
   result.channels = cbImg.channels.uint8
   result.data = cbImg.data
+
+converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring](cbStr)
 
 converter toCBVar*(v: CBImage): CBVar {.inline.} =
   return CBVar(valueType: CBType.Image, payload: CBVarPayload(imageValue: v))
@@ -962,9 +962,10 @@ defineCppType(StdRegex, "std::regex", "<regex>")
 defineCppType(StdSmatch, "std::smatch", "<regex>")
 defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
 
+include ops
+
 when not defined(skipCoreBlocks):
   import unicode
-  include ops
   include blocks/internal/[core, strings, stack, calculate, ipc]
 
 when appType != "lib" or defined(forceCBRuntime):
