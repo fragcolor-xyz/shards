@@ -39,6 +39,8 @@ type
     value*: CBVar
 
   CBChain* {.importcpp: "CBChain", header: "chainblocks.hpp".} = object
+    looped: bool
+    unsafe: bool
     finishedOutput*: CBVar
     started*: bool
     finished*: bool

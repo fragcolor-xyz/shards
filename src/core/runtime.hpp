@@ -178,7 +178,9 @@ struct CBContext
 
 struct CBChain
 {
-  CBChain(const char* chain_name) : 
+  CBChain(const char* chain_name) :
+    looped(false),
+    unsafe(false),
     name(chain_name),
     coro(nullptr),
     next(0),
@@ -207,6 +209,26 @@ struct CBChain
     blocks.clear();
   }
 
+  // Also the chain takes ownership of the block!
+  void addBlock(CBRuntimeBlock* blk)
+  {
+    blocks.push_back(blk);
+  }
+
+  // Also removes ownership of the block
+  void removeBlock(CBRuntimeBlock* blk)
+  {
+    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
+    if(findIt != blocks.end())
+    {
+      blocks.erase(findIt);
+    }
+  }
+
+  // Attributes
+  bool looped;
+  bool unsafe;
+
   std::string name;
 
   CBCoro* coro;
@@ -227,22 +249,6 @@ struct CBChain
   CBContext* context;
   CBNode* node;
   std::vector<CBRuntimeBlock*> blocks;
-
-  // Also the chain takes ownership of the block!
-  void addBlock(CBRuntimeBlock* blk)
-  {
-    blocks.push_back(blk);
-  }
-
-  // Also removes ownership of the block
-  void removeBlock(CBRuntimeBlock* blk)
-  {
-    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
-    if(findIt != blocks.end())
-    {
-      blocks.erase(findIt);
-    }
-  }
 };
 
 namespace chainblocks
@@ -1378,7 +1384,7 @@ namespace chainblocks
     }
   }
 
-  static boost::context::continuation run(CBChain* chain, bool looped, bool unsafe, boost::context::continuation&& sink)
+  static boost::context::continuation run(CBChain* chain, boost::context::continuation&& sink)
   {
     auto running = true;
     // Reset return state
@@ -1394,7 +1400,7 @@ namespace chainblocks
     
     while(running)
     {
-      running = looped;
+      running = chain->looped;
       context.restarted = false; // Remove restarted flag
       
       // Reset len to 0 of the stack
@@ -1411,7 +1417,7 @@ namespace chainblocks
         break;
       }
       
-      if(!unsafe && looped) 
+      if(!chain->unsafe && chain->looped) 
       {
         // Ensure no while(true), yield anyway every run
         chain->next = Duration(0);
@@ -1435,15 +1441,15 @@ namespace chainblocks
     return std::move(context.continuation);
   }
 
-  static void prepare(CBChain* chain, bool loop = false, bool unsafe = false)
+  static void prepare(CBChain* chain)
   {
     if(chain->coro)
       return;
     
     chain->coro = new CBCoro(boost::context::callcc(
-        [&chain, &loop, &unsafe](boost::context::continuation&& sink)
+        [&chain](boost::context::continuation&& sink)
     {
-      return run(chain, loop, unsafe, std::move(sink));
+      return run(chain, std::move(sink));
     }));
   }
 
@@ -1584,11 +1590,11 @@ namespace chainblocks
 
 struct CBNode
 {
-  void schedule(CBChain* chain, CBVar input = {}, bool loop = false, bool unsafe = false)
+  void schedule(CBChain* chain, CBVar input = {})
   {
     chains.push_back(chain);
     chain->node = this;
-    chainblocks::prepare(chain, loop, unsafe);
+    chainblocks::prepare(chain);
     chainblocks::start(chain, input);
   }
   

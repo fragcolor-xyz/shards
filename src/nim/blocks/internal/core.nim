@@ -212,7 +212,7 @@ when true:
 
   chainblock CBGetItems, "GetItems"
 
-# RunChain - runs a sub chain, ends the parent chain if the sub chain fails
+# RunChain - Runs a sub chain, ends the parent chain if the sub chain fails
 when true:
   type
     CBRunChain* = object
@@ -233,7 +233,7 @@ when true:
       ("Chain", "The chain to run.", { Chain, None }),
       ("Once", "Runs this sub-chain only once within the parent chain execution cycle.", { Bool }),
       ("Passthrough", "The input of this block will be the output. Always on if Detached.", { Bool }),
-      ("Detached", "Runs the sub-chain as a completely separate parallel chain without interrupting the flow of the parent when sleeping.", { Bool })
+      ("Detached", "Runs the sub-chain as a completely separate parallel chain in the same node.", { Bool })
     ]
   template setParam*(b: CBRunChain; index: int; val: CBVar) =
     case index
@@ -278,7 +278,7 @@ when true:
       
       if b.detach:
         if not b.chain.isRunning():
-          getCurrentChain().node.schedule(b.chain, input, false, false)
+          getCurrentChain().node.schedule(b.chain, input)
         input
       else:
         # Run within the root flow, just call runChain
@@ -301,7 +301,7 @@ when true:
 
   chainblock CBRunChain, "RunChain"
 
-# WaitChain - Waits a chain executed with RunChain, returns the output of that chain or Stop/End signals
+# WaitChain
 when true:
   type
     CBWaitChain* = object
@@ -309,7 +309,8 @@ when true:
       once: bool
       done: bool
       passthrough: bool
-
+  
+  template help*(b: CBWaitChain): cstring = "Waits a chain executed with RunChain, returns the output of that chain or Stop/Restart signals."
   template inputTypes*(b: CBWaitChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWaitChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWaitChain): CBParametersInfo =

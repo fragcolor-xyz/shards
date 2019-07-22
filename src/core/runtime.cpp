@@ -693,6 +693,8 @@ void to_json(json& j, const CBChainPtr& chain)
   j = {
     { "blocks", blocks },
     { "name", chain->name },
+    { "looped", chain->looped },
+    { "unsafe", chain->unsafe },
     { "version", 0.1 },
   };
 }
@@ -712,6 +714,9 @@ void from_json(const json& j, CBChainPtr& chain)
     chain = new CBChain(chainName.c_str());
     chainblocks::GlobalChains["chainName"] = chain;
   }
+
+  chain->looped = j.at("looped").get<bool>();
+  chain->unsafe = j.at("unsafe").get<bool>();
 
   auto jblocks = j.at("blocks");
   for(auto jblock : jblocks)

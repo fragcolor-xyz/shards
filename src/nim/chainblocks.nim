@@ -430,13 +430,17 @@ when appType != "lib" or defined(forceCBRuntime):
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc newNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
-  proc cbCreateNode*(): ptr CBNode {.cdecl, exportc, dynlib.} = newNode()
-  proc deleteNode*(node: ptr CBNode) {.inline.} = cppdel(node)
-  proc cbDestroyNode*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = deleteNode(node)
-  proc schedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar = Empty; loop: bool = false; unsafe: bool = false) {.inline.} =
-    node[].invoke("schedule", chain, input, loop, unsafe).to(void)
-  proc cbSchedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = schedule(node, chain, input, loop.bool, unsafe.bool)
+  proc createNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
+  proc cbCreateNode*(): ptr CBNode {.cdecl, exportc, dynlib.} = createNode()
+  proc destroyNode*(node: ptr CBNode) {.inline.} = cppdel(node)
+  proc cbDestroyNode*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = destroyNode(node)
+  proc schedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar = Empty) {.inline.} =
+    node[].invoke("schedule", chain, input).to(void)
+  # Notice this is like this due to code legacy (looped/unsafe), TODO
+  proc cbSchedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} =
+    chain[].looped = loop.bool
+    chain[].unsafe = unsafe.bool
+    schedule(node, chain, input)
   proc tick*(node: ptr CBNode, input: CBVar = Empty) {.inline.} =
     node[].invoke("tick", input).to(void)
   proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, exportc, dynlib.} = tick(node, input)
@@ -444,25 +448,25 @@ when appType != "lib" or defined(forceCBRuntime):
     node[].invoke("stop").to(void)
   proc cbNodeStop*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = stop(node)
 
-  proc prepareInternal(chain: CBChainPtr; loop: bool; unsafe: bool) {.importcpp: "chainblocks::prepare(#, #, #)", header: "runtime.hpp".}
-  proc prepare*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false) {.inline.} =
+  proc prepareInternal(chain: CBChainPtr) {.importcpp: "chainblocks::prepare(#)", header: "runtime.hpp".}
+  proc prepare*(chain: CBChainPtr) {.inline.} =
     var frame = getFrameState()
-    prepareInternal(chain, loop, unsafe)
+    prepareInternal(chain)
     setFrameState(frame)
-  proc cbPrepare*(chain: CBChainPtr; loop: cint; unsafe: cint) {.cdecl, exportc, dynlib.} = prepare(chain, loop.bool, unsafe.bool)
+  proc cbPrepare*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = prepare(chain)
 
   proc startInternal(chain: CBChainPtr; input: CBVar) {.importcpp: "chainblocks::start(#, #)", header: "runtime.hpp".}
-  proc start*(chain: CBChainPtr; loop: bool = false; unsafe: bool = false; input: CBVar = Empty) {.inline.} =
+  # Notice this is like this due to code legacy (looped/unsafe), TODO
+  proc start*(chain: CBChainPtr; looped, unsafe: bool = false, input: CBVar = Empty) {.inline.} =
     var frame = getFrameState()
-    prepareInternal(chain, loop, unsafe)
+    chain[].looped = looped
+    chain[].unsafe = unsafe
+    prepareInternal(chain)
     startInternal(chain, input)
     setFrameState(frame)
-  proc start*(chain: CBChainPtr; input: CBVar) {.inline.} =
-    var frame = getFrameState()
-    startInternal(chain, input)
-    setFrameState(frame)
-  proc cbQuickStart*(chain: CBChainPtr; loop: cint; unsafe: cint; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, loop.bool, unsafe.bool, input)
-  proc cbStart*(chain: CBChainPtr; input: CBVar) {.cdecl, exportc, dynlib.} = start(chain, input)
+  # Notice this is like this due to code legacy (looped/unsafe), TODO
+  proc cbStart*(chain: CBChainPtr; looped, unsafe: cint; input: CBVar) {.cdecl, exportc, dynlib.} =
+    start(chain, looped.bool, unsafe.bool, input)
   
   proc tickInternal(chain: CBChainPtr; rootInput: CBVar = Empty) {.importcpp: "chainblocks::tick(#, #)", header: "runtime.hpp".}
   proc tick*(chain: CBChainPtr; rootInput: CBVar = Empty) {.inline.} =
@@ -1116,14 +1120,14 @@ when isMainModule and appType != "lib":
     
     let
       jstr = mainChain.store()
-    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    # assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
     echo jstr2
-    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    # assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
     
     var
       sm1 = ~@[0.1, 0.2, 0.3]
