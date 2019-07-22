@@ -3,6 +3,7 @@ from chainblocks.chainblocks import *
 
 cbNamespaces = dict()
 blacklist = ["NimClosure"]
+reservedWords = ["global", "class"]
 
 def processBlock(name, hasNamespace, fullName):
   indent = "  " if hasNamespace else ""
@@ -21,6 +22,8 @@ def processBlock(name, hasNamespace, fullName):
   if parametersp != None:
     for param in parameters:
       pname = param[0].lower()
+      if pname in reservedWords:
+        pname = "_" + pname
       if paramsString == "":
         paramsString = "{} = None".format(pname)
       else:
@@ -39,6 +42,8 @@ def processBlock(name, hasNamespace, fullName):
     pindex = 0
     for param in parameters:
       pname = param[0].lower()
+      if pname in reservedWords:
+        pname = "_" + pname
       result += "{}  if {} != None:\n".format(indent, pname)
       result += "{}    chainblocks.blockSetParam(blk.block, {}, CBVar({}).value)\n".format(indent, str(pindex), pname)     
       pindex = pindex + 1

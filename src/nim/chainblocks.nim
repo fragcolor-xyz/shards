@@ -924,8 +924,8 @@ else:
     cbThrowException = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_ThrowException"))
     cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
     cbActivateBlock = cast[ActivateBlockProc](exeLib.symAddr("chainblocks_ActivateBlock"))
-    cbCloneVar* {.exportc.} = cast[CloneVarProc](exeLib.symAddr("chainblocks_CloneVar"))
-    cbDestroyVar* {.exportc.} = cast[DestroyVarProc](exeLib.symAddr("chainblocks_DestroyVar"))
+    cbCloneVarProc = cast[CloneVarProc](exeLib.symAddr("chainblocks_CloneVar"))
+    cbDestroyVarProc = cast[DestroyVarProc](exeLib.symAddr("chainblocks_DestroyVar"))
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) {.inline.} = cbRegisterBlock(name, initProc)
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) {.inline.} = cbRegisterObjectType(vendorId, typeId, info)
@@ -947,6 +947,9 @@ else:
 
   proc activateBlock*(chain: ptr CBRuntimeBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.inline.} =
     cbActivateBlock(chain, context, addr input, addr output)
+
+  proc cbCloneVar*(dst: var CBVar; src: var CBvar): int {.cdecl, dynlib, exportc.} = cbCloneVarProc(addr dst, addr src)
+  proc cbDestroyVar*(dst: var CBVar): int {.cdecl, dynlib, exportc.} = cbDestroyVarProc(addr dst)
 
 # This template is inteded to be used inside blocks activations
 template pause*(secs: float): untyped =
