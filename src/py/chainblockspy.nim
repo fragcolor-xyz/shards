@@ -45,7 +45,7 @@ proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, importc, dynlib: "chai
 proc cbNodeStop*(node: ptr CBNode) {.cdecl, importc, dynlib: "chainblocks".}
 
 # Import any other blocks dll
-let fragPrivateBlocks {.used.} = loadLib("fragblocks")
+# let fragPrivateBlocks {.used.} = loadLib("fragblocks")
 
 # Py - python interop
 when true:
