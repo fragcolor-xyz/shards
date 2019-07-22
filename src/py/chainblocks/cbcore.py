@@ -1,79 +1,6 @@
 from enum import IntEnum, auto
 from .chainblocks import *
 
-class CBRuntimeBlock:
-  def __init__(self, nativeBlock):
-    self.block = nativeBlock
-
-class CBChain:
-  def __init__(self, nativeChain):
-    self.chain = nativeChain
-  
-  def start(self, looped = False, unsafe = False, inputVar = None):
-    if inputVar != None:
-      chainStart2(self.chain, looped, unsafe, CBVar(inputVar).value)
-    else:
-      chainStart(self.chain, looped, unsafe)
-  
-  def stop(self):
-    return chainStop(self.chain)
-  
-  def tick(self, inputVar = None):
-    if inputVar != None:
-      chainTick(self.chain, inputVar)
-    else:
-      chainTick2(self.chain)
-
-class CBNode:
-  def __init__(self):
-    self.node = createNode()
-  
-  def schedule(self, chain, inputVar = None, looped = False, unsafe = False):
-    if inputVar == None:
-      nodeSchedule(self.node, chain.chain, (0, None), looped, unsafe)
-    else:
-      nodeSchedule(self.node, chain.chain, inputVar, looped, unsafe)
-
-  def tick(self, inputVar = None):
-    if inputVar != None:
-      nodeTick2(self.node, inputVar)
-    else:
-      nodeTick(self.node)
-  
-  def stop(self):
-    nodeStop(self.node)
-
-_previousBlock = None
-
-def setPreviousBlock(blk):
-  global _previousBlock
-  _previousBlock = blk
-
-def getPreviousBlock():
-  global _previousBlock
-  return _previousBlock
-
-def chain(func):
-  def emitChain():
-    previousChain = getCurrentChain()
-    
-    chain = createChain(func.__name__)
-    setCurrentChain(chain)
-
-    global _previousBlock
-    _previousBlock = None
-    
-    func()
-    
-    if previousChain != None:
-      setCurrentChain(previousChain)
-    
-    return CBChain(chain)
-  return emitChain
-
-def cbsleep(seconds):
-  chainSleep(seconds)
-
 class CBType(IntEnum):
   NoType = 0
   Any = auto()
@@ -100,21 +27,6 @@ class CBType(IntEnum):
   Seq = auto()
   Table = auto()
 
-def validateConnection(outputInfo, inputInfo):
-  for iinfo in inputInfo:
-    if iinfo[0] == CBType.Any:
-      return True
-    else:
-      for oinfo in outputInfo:
-        if oinfo[0] == CBType.Any:
-          return True
-        else:
-          if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
-            return True
-
-# TODO rules
-# expose/consume, make sure there is only 1 expose, any overwrite to expose should trigger error, we might want to have parameters for those tho to allow it?
-
 class CBVar:
   def __init__(self, value):
     if value == None:
@@ -140,10 +52,7 @@ class CBVar:
         # e.g. cbcolor!
         self.value = value
       elif type(value[0]) is CBRuntimeBlock:
-        currentChain = getCurrentChain()
-        setCurrentChain(None)
-        self.value = (CBType.Seq, [CBVar(x) for x in list(value)])
-        setCurrentChain(currentChain)
+        self.value = (CBType.Seq, [CBVar(x).value for x in list(value)])
       else:
         hasFloats = False
         valueLen = len(value)
@@ -191,3 +100,76 @@ def cbvar(value):
 def cbcolor(v1, v2, v3, v4):
   assert(type(v1) is int and type(v2) is int and type(v3) is int and type(v4) is int)
   return (CBType.Color, (v1, v2, v3, v4))
+
+def validateConnection(outputInfo, inputInfo):
+  for iinfo in inputInfo:
+    if iinfo[0] == CBType.Any:
+      return True
+    else:
+      for oinfo in outputInfo:
+        if oinfo[0] == CBType.Any:
+          return True
+        else:
+          if iinfo[0] == oinfo[0] and iinfo[1] == oinfo[1]: # Types match, also sequenced
+            return True
+
+# TODO rules
+# expose/consume, make sure there is only 1 expose, any overwrite to expose should trigger error, we might want to have parameters for those tho to allow it?
+
+class CBRuntimeBlock:
+  def __init__(self, nativeBlock):
+    self.block = nativeBlock
+
+class CBChain:
+  def __init__(self, name, **args):
+    self.chain = createChain(name)
+    self.looped = False
+    self.unsafe = False
+    
+    if args.get("looped"):
+      self.looped = True
+    
+    if args.get("unsafe"):
+      self.unsafe = True
+    
+    blocks = args.get("blocks")
+    if blocks == None:
+      raise Exception("blocks missing from chain declaration!")
+    previousBlock = None
+    for block in blocks:
+      if previousBlock != None:
+        # Validate connection
+        prevOutInfo = unpackTypesInfo(blockOutputTypes(previousBlock.block))
+        currInInfo = unpackTypesInfo(blockInputTypes(block.block))
+        if not validateConnection(prevOutInfo, currInInfo):
+          raise Exception("Blocks do not connect, output: {}, input: {}".format(
+            blockName(previousBlock.block), 
+            blockName(block.block)))
+        # Validate expose/consume
+        # TODO
+      
+      # Finally add to the chain and continue
+      chainAddBlock(self.chain, block.block)
+      previousBlock = block
+
+class CBNode:
+  def __init__(self):
+    self.node = createNode()
+  
+  def schedule(self, chain, inputVar = None):
+    if inputVar == None:
+      nodeSchedule(self.node, chain.chain, (0, None), chain.looped, chain.unsafe)
+    else:
+      nodeSchedule(self.node, chain.chain, inputVar, chain.looped, chain.unsafe)
+
+  def tick(self, inputVar = None):
+    if inputVar != None:
+      nodeTick2(self.node, inputVar)
+    else:
+      nodeTick(self.node)
+  
+  def stop(self):
+    nodeStop(self.node)
+
+def cbsleep(seconds):
+  chainSleep(seconds)

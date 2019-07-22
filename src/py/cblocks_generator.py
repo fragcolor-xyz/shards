@@ -29,16 +29,8 @@ def processBlock(name, hasNamespace, fullName):
   result =  "{}@staticmethod\n".format(indent)
   result =  "{}def {}({}):\n".format(indent, name, paramsString)
 
-  # Create and setup
+  # Create
   result += "{}  blk = CBRuntimeBlock(chainblocks.createBlock(\"{}\"))\n".format(indent, fullName)
-  
-  # Check first if we can connect with the previous block
-  result += "{}  if getPreviousBlock() != None:\n".format(indent)
-  result += "{}    prevOutInfo = chainblocks.unpackTypesInfo(chainblocks.blockOutputTypes(getPreviousBlock().block))\n".format(indent)
-  result += "{}    currInInfo = chainblocks.unpackTypesInfo(chainblocks.blockInputTypes(blk.block))\n".format(indent)
-  result += "{}    if not validateConnection(prevOutInfo, currInInfo):\n".format(indent)
-  result += "{}      raise Exception(\"Blocks do not connect, output: \" + chainblocks.blockName(getPreviousBlock()) + \", input: {}\")\n".format(indent, fullName)
-  
   # Setup
   result += "{}  chainblocks.blockSetup(blk.block)\n".format(indent)
   
@@ -52,9 +44,6 @@ def processBlock(name, hasNamespace, fullName):
       pindex = pindex + 1
   
   # After setting initial params add to the chain
-  result += "{}  if chainblocks.getCurrentChain() != None:\n".format(indent)
-  result += "{}    chainblocks.chainAddBlock(chainblocks.getCurrentChain(), blk.block)\n".format(indent)
-  result += "{}  setPreviousBlock(blk)\n".format(indent)
   result += "{}  return blk\n".format(indent)
   result += "{}\n".format(indent)
   return result
