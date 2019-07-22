@@ -428,15 +428,23 @@ EXPORTED void __cdecl chainblocks_UnregisterExitCallback(const char* eventName);
 
 // To be used within blocks, to fetch context variables
 EXPORTED CBVar* __cdecl chainblocks_ContextVariable(CBContext* context, const char* name); // remember those are valid only inside preChain, activate, postChain!
-// To be used within blocks, to set error message
+
+// To be used within blocks, to set error messages and exceptions
 EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* errorText);
+EXPORTED void __cdecl chainblocks_ThrowException(const char* errorText);
+
+// To check if we aborted/canceled in this context, 0 = running, 1 = canceled, might add more flags in the future
+EXPORTED int __cdecl chainblocks_ContextState(CBContext* context);
 
 // To be used within blocks, to suspend the coroutine
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 
 // Utility to deal with CBVars
-EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src);
+EXPORTED void __cdecl chainblocks_CloneVar(CBVar* dst, const CBVar* src);
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
+
+// Utility to use blocks within blocks
+EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output);
 
 #ifdef __cplusplus
 };

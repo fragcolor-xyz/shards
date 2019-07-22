@@ -383,8 +383,6 @@ template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGet
   else:
     subject = container.typeGetter
 
-include ops
-
 proc contextVariable*(name: string): CBVar {.inline.} =
   return CBVar(valueType: ContextVar, payload: CBVarPayload(stringValue: name.cstring.CBString))
 
@@ -411,6 +409,8 @@ template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
 
 when appType != "lib" or defined(forceCBRuntime):
+  proc throwCBException*(msg: string) = emitc("throw chainblocks::CBException(", msg.cstring, ");")
+
   proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
   proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, exportc, dynlib.} = createBlock(name)
 
@@ -877,6 +877,8 @@ when appType != "lib" or defined(forceCBRuntime):
 
   proc sleep*(secs: float64) {.importcpp: "chainblocks::sleep(#)", header: "runtime.hpp".}
   proc cbSleep*(secs: float64) {.cdecl, exportc, dynlib.} = sleep(secs)
+
+  proc canceled*(ctx: CBContext): bool {.inline.} = ctx.aborted
   
 else:
   # When we are a dll with a collection of blocks!
@@ -886,14 +888,19 @@ else:
   type
     RegisterBlkProc = proc(name: cstring; initProc: CBBlockConstructor) {.cdecl.}
     RegisterTypeProc = proc(vendorId, typeId: FourCC; info: CBObjectInfo) {.cdecl.}
+    RegisterEnumProc = proc(vendorId, typeId: FourCC; info: CBEnumInfo) {.cdecl.}
     RegisterLoopCb = proc(name: cstring; cb: CBCallback) {.cdecl.}
     UnregisterLoopCb = proc(name: cstring) {.cdecl.}
     CtxVariableProc = proc(ctx: CBContext; name: cstring): ptr CBVar {.cdecl.}
     CtxSetErrorProc = proc(ctx: CBContext; errorTxt: cstring) {.cdecl.}
+    CtxStateProc = proc(ctx: CBContext): cint {.cdecl.}
     SuspendProc = proc(seconds: float64): CBVar {.cdecl.}
     StartTickChainProc = proc(chain: CBChainPtr; val: CBVar) {.cdecl.}
     StopChainProc = proc(chain: CBChainPtr; val: ptr CBVar) {.cdecl.}
     PrepareChainProc = proc(chain: CBChainPtr; looped, unsafe: bool) {.cdecl.}
+    ActivateBlockProc = proc(blk: ptr CBRuntimeBlock; ctx: CBContext; input, output: ptr CBVar) {.cdecl.}
+    CloneVarProc = proc(dst: ptr CBVar; src: ptr CBVar): int {.cdecl.}
+    DestroyVarProc = proc(dst: ptr CBVar): int {.cdecl.}
   
   const cbRuntimeDll {.strdefine.} = ""
   when cbRuntimeDll != "":
@@ -906,16 +913,23 @@ else:
   let
     cbRegisterBlock = cast[RegisterBlkProc](exeLib.symAddr("chainblocks_RegisterBlock"))
     cbRegisterObjectType = cast[RegisterTypeProc](exeLib.symAddr("chainblocks_RegisterObjectType"))
+    cbRegisterEnumType = cast[RegisterEnumProc](exeLib.symAddr("chainblocks_RegisterEnumType"))
     cbRegisterLoopCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterRunLoopCallback"))
     cbUnregisterLoopCb = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_UnregisterRunLoopCallback"))
     cbRegisterExitCb = cast[RegisterLoopCb](exeLib.symAddr("chainblocks_RegisterExitCallback"))
     cbUnregisterExitCb = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_UnregisterExitCallback"))
     cbContextVar = cast[CtxVariableProc](exeLib.symAddr("chainblocks_ContextVariable"))
+    cbContextState = cast[CtxStateProc](exeLib.symAddr("chainblocks_ContextState"))
     cbSetError = cast[CtxSetErrorProc](exeLib.symAddr("chainblocks_SetError"))
+    cbThrowException = cast[UnregisterLoopCb](exeLib.symAddr("chainblocks_ThrowException"))
     cbSuspend = cast[SuspendProc](exeLib.symAddr("chainblocks_Suspend"))
+    cbActivateBlock = cast[ActivateBlockProc](exeLib.symAddr("chainblocks_ActivateBlock"))
+    cbCloneVar* {.exportc.} = cast[CloneVarProc](exeLib.symAddr("chainblocks_CloneVar"))
+    cbDestroyVar* {.exportc.} = cast[DestroyVarProc](exeLib.symAddr("chainblocks_DestroyVar"))
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) {.inline.} = cbRegisterBlock(name, initProc)
   proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) {.inline.} = cbRegisterObjectType(vendorId, typeId, info)
+  proc registerEnumType*(vendorId, typeId: FourCC; info: CBEnumInfo) {.inline.} = cbRegisterEnumType(vendorId, typeId, info)
   proc registerRunLoopCallback*(name: string; callback: CBCallback) {.inline.} = cbRegisterLoopCb(name, callback)
   proc unregisterRunLoopCallback*(name: string) {.inline.} = cbUnregisterLoopCb(name)
   proc registerExitCallback*(name: string; callback: CBCallback) {.inline.} = cbRegisterExitCb(name, callback)
@@ -923,11 +937,16 @@ else:
 
   proc contextVariable*(ctx: CBContext; name: cstring): ptr CBVar {.inline.} = cbContextVar(ctx, name)
   proc setError*(ctx: CBContext; errorTxt: cstring) {.inline.} = cbSetError(ctx, errorTxt)
+  proc throwCBException*(msg: string) = cbThrowException(msg.cstring)
+  proc canceled*(ctx: CBContext): bool {.inline.} = cbContextState(ctx) == 1
   
   proc suspend*(seconds: float64): CBVar {.inline.} =
     var frame = getFrameState()
     result = cbSuspend(seconds)
     setFrameState(frame)
+
+  proc activateBlock*(chain: ptr CBRuntimeBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.inline.} =
+    cbActivateBlock(chain, context, addr input, addr output)
 
 # This template is inteded to be used inside blocks activations
 template pause*(secs: float): untyped =
@@ -945,6 +964,7 @@ defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
 
 when not defined(skipCoreBlocks):
   import unicode
+  include ops
   include blocks/internal/[core, strings, stack, calculate, ipc]
 
 when appType != "lib" or defined(forceCBRuntime):

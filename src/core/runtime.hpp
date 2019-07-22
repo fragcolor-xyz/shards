@@ -257,7 +257,7 @@ namespace chainblocks
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  extern std::map<std::string, CBCallback> RunLoopHooks;
+  extern thread_local std::map<std::string, CBCallback> RunLoopHooks;
   extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
@@ -463,7 +463,7 @@ namespace chainblocks
     if(findIt == BlocksRegister.end())
     {
       BlocksRegister.insert(std::make_pair(cname, constructor));
-      std::cout << "added block: " << cname << "\n";
+      // std::cout << "added block: " << cname << "\n";
     }
     else
     {

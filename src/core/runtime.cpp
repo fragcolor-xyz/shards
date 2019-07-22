@@ -9,9 +9,9 @@ namespace chainblocks
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
   phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-  std::map<std::string, CBCallback> RunLoopHooks;
   phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   phmap::node_hash_map<std::string, CBChain*> GlobalChains;
+  thread_local std::map<std::string, CBCallback> RunLoopHooks;
   thread_local CBChain* CurrentChain;
 };
 
@@ -116,12 +116,24 @@ EXPORTED void __cdecl chainblocks_SetError(CBContext* context, const char* error
   context->setError(errorText);
 }
 
+EXPORTED void __cdecl chainblocks_ThrowException(const char* errorText)
+{
+  throw chainblocks::CBException(errorText);
+}
+
+EXPORTED int __cdecl chainblocks_ContextState(CBContext* context)
+{
+  if(context->aborted)
+    return 1;
+  return 0;
+}
+
 EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds)
 {
   return chainblocks::suspend(seconds);
 }
 
-EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src)
+EXPORTED void __cdecl chainblocks_CloneVar(CBVar* dst, const CBVar* src)
 {
   chainblocks::cloneVar(*dst, *src);
 }
@@ -129,6 +141,11 @@ EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src)
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var)
 {
   chainblocks::destroyVar(*var);
+}
+
+EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output)
+{
+  chainblocks::activateBlock(block, context, *input, *output);
 }
 
 #ifdef __cplusplus

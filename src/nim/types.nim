@@ -1,5 +1,7 @@
 import nimline
 import os
+import stbseq
+export stbseq
 
 #[ 
   Since we will be used and consumed by many GC flavors of nim, no GC at all, other languages and what not
@@ -212,8 +214,14 @@ type
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
-proc `~quickcopy`*(clonedVar: var CBVar): int {.importcpp: "chainblocks::destroyVar(#)", header: "runtime.hpp", discardable.}
-proc quickcopy*(dst: var CBVar; src: var CBvar): int {.importcpp: "chainblocks::cloneVar(#, #)", header: "runtime.hpp", discardable.}
+when appType != "lib" or defined(forceCBRuntime):
+  proc `~quickcopy`*(clonedVar: var CBVar): int {.importcpp: "chainblocks::destroyVar(#)", header: "runtime.hpp", discardable.}
+  proc quickcopy*(dst: var CBVar; src: var CBvar): int {.importcpp: "chainblocks::cloneVar(#, #)", header: "runtime.hpp", discardable.}
+else:
+  # they exist in chainblocks.nim
+  proc `~quickcopy`*(clonedVar: var CBVar): int {.importc: "cbDestroyVar", cdecl, discardable.}
+  proc quickcopy*(dst: var CBVar; src: var CBvar): int {.importc: "cbCloneVar", cdecl, discardable.}
+
 proc `=destroy`*(v: var CBVarConst) {.inline.} = discard `~quickcopy` v.value
 
 var AllIntTypes* = { Int, Int2, Int3, Int4, Int8, Int16 }
@@ -392,11 +400,6 @@ converter toString*(s: string): CBString {.inline.} = s.cstring.CBString
 converter toStringVar*(s: string): CBVar {.inline.} =
   result.valueType = String
   result.payload.stringValue = s.cstring.CBString
-
-# Exception
-{.emit: "#include <runtime.hpp>".}
-
-proc throwCBException*(msg: string) = emitc("throw chainblocks::CBException(", msg.cstring, ");")
 
 # Allocators using cpp to properly construct in C++ fashion (we have some blocks that need this)
 template cppnew*(pt, typ1, typ2: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "());")

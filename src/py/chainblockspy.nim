@@ -2,7 +2,7 @@ import nimpy
 import nimpy/[py_lib, py_types]
 import ../nim/chainblocks
 import nimline
-import tables, sets
+import tables, sets, dynlib
 import varspy
 import fragments/serialization
 
@@ -43,6 +43,9 @@ proc cbDestroyNode*(node: ptr CBNode) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbSchedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar; loop: cint; unsafe: cint) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, importc, dynlib: "chainblocks".}
 proc cbNodeStop*(node: ptr CBNode) {.cdecl, importc, dynlib: "chainblocks".}
+
+# Import any other blocks dll
+let fragPrivateBlocks {.used.} = loadLib("fragblocks")
 
 # Py - python interop
 when true:
