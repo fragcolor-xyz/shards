@@ -438,22 +438,6 @@ EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
 EXPORTED void __cdecl chainblocks_VarCopy(CBVar* dst, const CBVar* src);
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
 
-// Run and deal with chains
-// Will prepare a chain for running, sets if the chan is meant to be looped (restart after ending) and if should run in unsafe mode (no yield at end of chain iteration)
-EXPORTED void __cdecl chainblocks_Prepare(CBChain* chain, bool looped, bool unsafe);
-// Will start a previously prepared chain, you can pass a root input
-EXPORTED void __cdecl chainblocks_Start(CBChain* chain, CBVar input);
-// Advances the chain one frame/tick
-EXPORTED void __cdecl chainblocks_Tick(CBChain* chain, CBVar input);
-// Stops and cleanups the chain, ready to be executed again
-EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output);
-// Checks if the chain is running
-EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain);
-// Checks if the context is being canceled
-EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context);
-// Gets a CBSeq containing the blocks currently in the specified chain, you must free the sequence when done with stbds_arrfree
-EXPORTED CBSeq __cdecl chainblocks_Blocks(CBChain* chain);
-
 #ifdef __cplusplus
 };
 #endif

@@ -131,41 +131,6 @@ EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var)
   chainblocks::destroyVar(*var);
 }
 
-EXPORTED void __cdecl chainblocks_Prepare(CBChain* chain, bool looped, bool unsafe)
-{
-  chainblocks::prepare(chain, looped, unsafe);
-}
-
-EXPORTED void __cdecl chainblocks_Start(CBChain* chain, CBVar input)
-{
-  chainblocks::start(chain, input);
-}
-
-EXPORTED void __cdecl chainblocks_Tick(CBChain* chain, CBVar input)
-{
-  chainblocks::tick(chain, input);
-}
-
-EXPORTED void __cdecl chainblocks_Stop(CBChain* chain, CBVar* output)
-{
-  chainblocks::stop(chain, output);
-}
-
-EXPORTED bool __cdecl chainblocks_IsRunning(CBChain* chain)
-{
-  return chainblocks::isRunning(chain);
-}
-
-EXPORTED bool __cdecl chainblocks_IsCanceled(CBContext* context)
-{
-  return chainblocks::isCanceled(context);
-}
-
-EXPORTED CBSeq __cdecl chainblocks_Blocks(CBChain* chain)
-{
-  return chainblocks::blocks(chain);
-}
-
 #ifdef __cplusplus
 };
 #endif
