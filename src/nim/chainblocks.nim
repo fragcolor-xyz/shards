@@ -21,6 +21,13 @@ when appType != "lib" or defined(forceCBRuntime):
     {.passL: "-static -pthread -lboost_context".}
     {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
 else:
+  when defined windows:
+    {.passL: "-static".}
+    {.passC: "-static".}
+  else:
+    {.passL: "-static -pthread".}
+    {.passC: "-static -pthread".}
+  
   {.emit: """/*INCLUDESECTION*/
 #define STB_DS_IMPLEMENTATION 1
 """.}
