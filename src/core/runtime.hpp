@@ -154,7 +154,13 @@ typedef boost::context::continuation CBCoro;
 
 struct CBContext
 {
-  CBContext(CBCoro&& sink) : stack(nullptr), restarted(false), aborted(false), continuation(std::move(sink))
+  CBContext(CBCoro&& sink) :
+    stack(nullptr), 
+    restarted(false), 
+    aborted(false),
+    shouldPause(false),
+    paused(false),
+    continuation(std::move(sink))
   {
   }
 
@@ -1270,7 +1276,7 @@ namespace chainblocks
   inline static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
     CBVar previousOutput;
-    
+
     // Detect and pause if we need to here
     // avoid pausing in the middle or so, that is for a proper debug mode runner, 
     // here we care about performance
