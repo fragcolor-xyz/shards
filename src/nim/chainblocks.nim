@@ -406,8 +406,8 @@ template withChain*(chain, body: untyped): untyped =
 template help*(b: auto): cstring = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
-template preChain*(b: auto; context: CBContext) = discard
-template postChain*(b: auto; context: CBContext) = discard
+# template preChain*(b: auto; context: CBContext) = discard
+# template postChain*(b: auto; context: CBContext) = discard
 template exposedVariables*(b: auto): CBParametersInfo = @[]
 template consumedVariables*(b: auto): CBParametersInfo = @[]
 template parameters*(b: auto): CBParametersInfo = @[]
@@ -698,12 +698,14 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
           freeSeq(b.cacheParameters[])
           dispose(b.cacheParameters)
       cppdel(b)
-    proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
-      updateStackBottom()
-      b.sb.preChain(context)
-    proc `postChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
-      updateStackBottom()
-      b.sb.postChain(context)
+    when compiles((var x: `blk`; x.preChain(nil))):
+      proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
+        updateStackBottom()
+        b.sb.preChain(context)
+    when compiles((var x: `blk`; x.postChain(nil))):
+      proc `postChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
+        updateStackBottom()
+        b.sb.postChain(context)
     proc `inputTypesProc`*(b: `rtName`): CBTypesInfo {.cdecl.} =
       updateStackBottom()
       if b.cacheInputTypes == nil:
@@ -760,8 +762,13 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       result.help = cast[CBHelpProc](`helpProc`.pointer)
       result.setup = cast[CBSetupProc](`setupProc`.pointer)
       result.destroy = cast[CBDestroyProc](`destroyProc`.pointer)
-      result.preChain = cast[CBPreChainProc](`preChainProc`.pointer)
-      result.postChain = cast[CBPostChainProc](`postChainProc`.pointer)
+      
+      # pre post are optional!
+      when compiles((var x: `blk`; x.preChain(nil))):
+        result.preChain = cast[CBPreChainProc](`preChainProc`.pointer)
+      when compiles((var x: `blk`; x.postChain(nil))):
+        result.postChain = cast[CBPostChainProc](`postChainProc`.pointer)
+      
       result.inputTypes = cast[CBInputTypesProc](`inputTypesProc`.pointer)
       result.outputTypes = cast[CBOutputTypesProc](`outputTypesProc`.pointer)
       result.exposedVariables = cast[CBExposedVariablesProc](`exposedVariablesProc`.pointer)
@@ -771,7 +778,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       result.getParam = cast[CBGetParamProc](`getParamProc`.pointer)
       result.activate = cast[CBActivateProc](`activateProc`.pointer)
       result.cleanup = cast[CBCleanupProc](`cleanupProc`.pointer)
-
+    
     static:
       echo "Registered chainblock: " & `namespace` & `blockName`
   
@@ -1040,6 +1047,8 @@ when isMainModule and appType != "lib":
   template parameters*(b: CBPow2Block): CBParametersInfo = @[("test", { Int })]
   template setParam*(b: CBPow2Block; index: int; val: CBVar) = b.params[0] = val
   template getParam*(b: CBPow2Block; index: int): CBVar = b.params[0]
+  template preChain*(b: CBPow2Block; context: CBContext) = echo "PreChain works if needed"
+  template postChain*(b: CBPow2Block; context: CBContext) = echo "PostChain works if needed"
   template activate*(b: CBPow2Block; context: CBContext; input: CBVar): CBVar = (input.payload.floatValue * input.payload.floatValue).CBVar
 
   chainblock CBPow2Block, "Pow2StaticBlock"
@@ -1059,6 +1068,8 @@ when isMainModule and appType != "lib":
     echo pblock2.getParam(pblock2, 0).valueType
     var res2 = pblock2.activate(pblock2, nil, 2.0)
     echo res2.float
+    pblock2.preChain(pblock2, nil)
+    pblock2.postChain(pblock2, nil)
 
     withChain inlineTesting:
       Const 10

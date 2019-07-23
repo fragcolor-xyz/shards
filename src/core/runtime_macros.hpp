@@ -1,23 +1,26 @@
 #define runChainPOSTCHAIN for(auto blk : chain->blocks)\
 {\
-  try\
+  if(blk->postChain)\
   {\
-    blk->postChain(blk, context);\
-  }\
-  catch(const std::exception& e)\
-  {\
-    std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-    if(context->error.length() > 0)\
-      std::cerr << "Last error: " << std::string(context->error) << "\n";\
-    std::cerr << e.what() << "\n";\
-    return { false, previousOutput };\
-  }\
-  catch(...)\
-  {\
-    std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
-    if(context->error.length() > 0)\
-      std::cerr << "Last error: " << std::string(context->error) << "\n";\
-    return { false, previousOutput };\
+    try\
+    {\
+      blk->postChain(blk, context);\
+    }\
+    catch(const std::exception& e)\
+    {\
+      std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+      if(context->error.length() > 0)\
+        std::cerr << "Last error: " << std::string(context->error) << "\n";\
+      std::cerr << e.what() << "\n";\
+      return { false, previousOutput };\
+    }\
+    catch(...)\
+    {\
+      std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+      if(context->error.length() > 0)\
+        std::cerr << "Last error: " << std::string(context->error) << "\n";\
+      return { false, previousOutput };\
+    }\
   }\
 }
 

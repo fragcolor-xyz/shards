@@ -166,6 +166,9 @@ struct CBContext
   bool restarted;
   // Also used to cancel a chain
   bool aborted;
+  // Used internally to pause a chain execution
+  std::atomic_bool shouldPause;
+  std::atomic_bool paused;
 
   // Used within the coro stack! (suspend, etc)
   CBCoro&& continuation;
@@ -1266,34 +1269,62 @@ namespace chainblocks
 
   inline static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
+    // Detect and pause if we need to here
+    // avoid pausing in the middle or so, that is for a proper debug mode runner, 
+    // here we care about performance
+    while(context->shouldPause)
+    {
+      context->paused = true;
+      
+      auto suspendRes = suspend(0.0);
+      // Since we suspended we need to make sure we should continue when resuming
+      switch(suspendRes.payload.chainState)
+      {
+        case Restart:
+        { 
+          return { true, previousOutput };
+        }
+        case Stop:
+        {
+          return { false, previousOutput };
+        }
+        case Continue:
+          continue;
+      }
+    }
+    
     chain->started = true;
+    context->paused = false;
     chain->context = context;
     CBVar previousOutput;
     auto previousChain = CurrentChain;
     CurrentChain = chain;
-
+    
     for(auto blk : chain->blocks)
     {
-      try
+      if(blk->preChain)
       {
-        blk->preChain(blk, context);
-      }
-      catch(const std::exception& e)
-      {
-        std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error.length() > 0)
-          std::cerr << "Last error: " << std::string(context->error) << "\n";
-        std::cerr << e.what() << "\n";
-        CurrentChain = previousChain;
-        return { false, {} };
-      }
-      catch(...)
-      {
-        std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
-        if(context->error.length() > 0)
-          std::cerr << "Last error: " << std::string(context->error) << "\n";
-        CurrentChain = previousChain;
-        return { false, {} };
+        try
+        {
+          blk->preChain(blk, context);
+        }
+        catch(const std::exception& e)
+        {
+          std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+          if(context->error.length() > 0)
+            std::cerr << "Last error: " << std::string(context->error) << "\n";
+          std::cerr << e.what() << "\n";
+          CurrentChain = previousChain;
+          return { false, {} };
+        }
+        catch(...)
+        {
+          std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+          if(context->error.length() > 0)
+            std::cerr << "Last error: " << std::string(context->error) << "\n";
+          CurrentChain = previousChain;
+          return { false, {} };
+        }
       }
     }
     
@@ -1304,11 +1335,11 @@ namespace chainblocks
         #if 0
           std::cout << "Activating block: " << std::string(blk->name(blk)) << "\n";
         #endif
-
+        
         // Pass chain root input every time we find None, this allows a long chain to re-process the root input if wanted!
         auto input = previousOutput.valueType == None ? chainInput : previousOutput;
         activateBlock(blk, context, input, previousOutput);
-
+        
         if(previousOutput.valueType == None)
         {
           switch(previousOutput.payload.chainState)
@@ -1316,6 +1347,7 @@ namespace chainblocks
             case Restart:
             {
               runChainPOSTCHAIN
+              CurrentChain = previousChain;
               return { true, previousOutput };
             }
             case Stop:
@@ -1355,7 +1387,7 @@ namespace chainblocks
         return { false, previousOutput };
       }
     }
-
+    
     runChainPOSTCHAIN
     CurrentChain = previousChain;
     return { true, previousOutput };
