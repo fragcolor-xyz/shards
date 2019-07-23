@@ -1269,6 +1269,8 @@ namespace chainblocks
 
   inline static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
+    CBVar previousOutput;
+    
     // Detect and pause if we need to here
     // avoid pausing in the middle or so, that is for a proper debug mode runner, 
     // here we care about performance
@@ -1296,7 +1298,6 @@ namespace chainblocks
     chain->started = true;
     context->paused = false;
     chain->context = context;
-    CBVar previousOutput;
     auto previousChain = CurrentChain;
     CurrentChain = chain;
     
