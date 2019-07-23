@@ -437,9 +437,9 @@ when appType != "lib" or defined(forceCBRuntime):
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc createNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
+  proc createNode*(): ptr CBNode {.noinline.} = cppnew(result, CBNode, CBNode)
   proc cbCreateNode*(): ptr CBNode {.cdecl, exportc, dynlib.} = createNode()
-  proc destroyNode*(node: ptr CBNode) {.inline.} = cppdel(node)
+  proc destroyNode*(node: ptr CBNode) {.noinline.} = cppdel(node)
   proc cbDestroyNode*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = destroyNode(node)
   proc schedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar = Empty) {.inline.} =
     node[].invoke("schedule", chain, input).to(void)
