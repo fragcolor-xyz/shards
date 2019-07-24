@@ -37,11 +37,9 @@ buildAndRun:win:release:
     - cd $currentDir
     - cd src/nim/tests
     - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
-    # Test 32 bits build
+    # Test 32 bits build - needs MSYS2_PATH_TYPE = inherit as system windows env
     - $msysCurrent = $msysCurrent -replace "\\", "\\\\"
-    - $nimExe = where.exe nim.exe
-    - $nimExe = $nimExe -replace "\\", "\\\\"
-    - c:\msys64\usr\bin\env MSYSTEM=MINGW32 c:\msys64\usr\bin\bash -l -c "cd $msysCurrent && export MINGW=/c/msys64/mingw32 && $nimExe cpp --cpu:i386 -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f src/nim/chainblocks.nim"
+    - c:\msys64\usr\bin\env MSYSTEM=MINGW32 c:\msys64\usr\bin\bash -l -c "cd $msysCurrent && export MINGW=/c/msys64/mingw32 && nim cpp --cpu:i386 -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f src/nim/chainblocks.nim"
   tags:
     - WIN, NIM, BOOST, MINGW
   # artifacts:
