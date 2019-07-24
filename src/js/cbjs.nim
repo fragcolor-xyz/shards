@@ -33,12 +33,14 @@ var JsCBRuntimeBlock = JsClass(
       blk[].destroy(blk),
   
   constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
-    let name = argv[0].getStr(jsContext)
-    if name == nil:
+    if not argv[0].isStr:
       self = throwTypeError(jsContext, "Block constructor requires a name")
       return
-
-    var blk = createBlock($name)
+    
+    let
+      name = argv[0].getStr(jsContext)
+      blk = createBlock($name)
+    
     if blk == nil:
       self = throwTypeError(jsContext, "Block construction failed, this block does not exist.")
       return
@@ -57,12 +59,13 @@ var JsCBChain = JsClass(
       destroy(chain),
   
   constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
-    let name = argv[0].getStr(jsContext)
-    if name == nil:
+    if not argv[0].isStr:
       self = throwTypeError(jsContext, "Chain constructor requires a name")
       return
     
-    var chain = newChain($name)
+    let
+      name = argv[0].getStr(jsContext)
+      chain = newChain($name)
     self.attachPtr(chain),
   
   constructorMinArgs: 1
@@ -159,10 +162,9 @@ when true:
         
         elif argv[0].isStr:
           let strVar = argv[0].getStr(jsContext)
-          if strVar != nil:
-            var strTemp: CBVar = strVar.CBString
-            newVar[].storage = JsVarStorage.Copy
-            quickcopy(newVar[].value, strTemp)
+          var strTemp: CBVar = strVar.CBString
+          newVar[].storage = JsVarStorage.Copy
+          quickcopy(newVar[].value, strTemp)
         
         elif argv[0].isInt:
           newVar[].value.valueType = Int
@@ -410,10 +412,81 @@ when true:
   )
 
 when isMainModule:
-  import parseopt
+  import parseopt, strutils, sets
+
+  const reservedWords = ["break", "case", "catch", "class", "const", "continue",
+    "debugger", "default", "delete", "do", "else", "export", "extends",
+    "finally", "for", "function", "if", "import", "in", "instanceof", "new",
+    "return", "super", "switch", "this", "throw", "try", "typeof", "var",
+    "void", "while", "with", "yield", "enum", "implements", "interface",
+    "let", "package", "private", "protected", "public", "static", "await",
+    "abstract", "boolean", "byte", "char", "double", "final", "float", "goto",
+    "int", "long", "native", "short", "synchronized", "throws", "transient",
+    "volatile", "null", "true", "false"]
   
   proc writeHelp() = discard
+  
   proc writeVersion() = discard
+
+  proc processBlock(namespace, name, fullName: string): string =
+    let
+      blk = createBlock(fullName)
+      params = blk.parameters(blk)
+    
+    var paramsString = ""
+    for param in params:
+      var pname = ($param.name).toLowerAscii
+      if pname in reservedWords:
+        pname = pname & "_"
+      if paramsString == "":
+        paramsString &= pname
+      else:
+        paramsString &= ", " & pname
+    
+    result &= "$#.$# = function($#) {\n" % [namespace, name, paramsString]
+    result &= "  let blk = new Block(\"$#\")\n" % [fullName]
+
+    var pindex = 0
+    for param in params:
+      var pname = ($param.name).toLowerAscii
+      if pname in reservedWords:
+        pname = pname & "_"
+      result &= "  if($# !== undefined) {\n" % [pname]
+      result &= "    blk.setParam($#, new Var($#))\n" % [$pindex, pname]
+      result &= "  }\n"
+      inc pindex
+    
+    result &= "  return blk\n"
+    result &= "}\n\n"
+
+    blk.cleanup(blk)
+    blk.destroy(blk)
+
+  proc generateSugar(): string =
+    var
+      output = "var Core = new Object()\n\n"
+      blocks = cbBlocks()
+      namespaces = initHashSet[string]()
+
+    for blkName in blocks:
+      let
+        namesplit = blkName.split(".")
+      if namesplit.len == 1: # No namespace
+        output &= processBlock("Core", namesplit[0], blkName)
+      elif namesplit.len == 2:
+        if namesplit[0] notin namespaces:
+          var namespaceName = namesplit[0]
+          if namespaceName in reservedWords:
+            namespaceName = namespaceName & "_"
+          output &= "var $# = new Object()\n" % [namespaceName]
+          namespaces.incl(namesplit[0])
+        output &= processBlock(namesplit[0], namesplit[1], blkName)
+      
+    freeSeq(blocks)
+
+    return output
+  
+  eval(jsContext, generateSugar())
   
   var filename: string
   
@@ -425,6 +498,7 @@ when isMainModule:
       case key
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
+      of "dump", "d": writeFile("blocks.js", generateSugar())
     of cmdEnd: assert(false) # cannot happen
   if filename == "":
     # no filename has been given, so we show the help
