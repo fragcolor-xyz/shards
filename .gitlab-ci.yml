@@ -37,6 +37,9 @@ buildAndRun:win:release:
     - cd $currentDir
     - cd src/nim/tests
     - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
+    # Test 32 bits build
+    - $msysCurrent = $msysCurrent -replace "\\", "\\\\"
+    - c:\msys64\usr\bin\env MSYSTEM=MINGW32 c:\msys64\usr\bin\bash -l -c "cd $msysCurrent && export MINGW=/c/msys64/mingw32 && nim cpp --cpu:i386 -d:release -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f src/nim/chainblocks.nim"
   tags:
     - WIN, NIM, BOOST, MINGW
   # artifacts:

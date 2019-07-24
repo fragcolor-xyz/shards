@@ -15,6 +15,13 @@ proc loadBuiltIns() =
     return Undefined
   , "echo", 1)
   jsContext.Global.setProperty(jsContext, "echo", echoProc)
+
+  var sleepProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
+    let sleepTime = argv[0].toFloat(jsContext)
+    sleep(sleepTime)
+    return Undefined
+  , "sleep", 1)
+  jsContext.Global.setProperty(jsContext, "sleep", sleepProc)
 loadBuiltIns()
 
 # Forwarding those here
