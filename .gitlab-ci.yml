@@ -37,7 +37,8 @@ buildAndRun:win:release:
     - cd $currentDir
     - cd src/nim/tests
     - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
-    # Test 32 bits build 
+    # Test 32 bits build
+    - cd $currentDir
     - nim cpp --gcc.path=C:\msys64\mingw32\bin\ --cpu:i386 -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f src/nim/chainblocks.nim
   tags:
     - WIN, NIM, BOOST, MINGW
