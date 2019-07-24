@@ -489,9 +489,30 @@ when appType != "lib" or defined(forceCBRuntime):
   proc cbStop*(chain: CBChainPtr; results: ptr CBVar) {.cdecl, exportc, dynlib.} = stop(chain, results)
   
   type 
-    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.}
-  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback) {.importcpp: "validateConnections(#, #)", header: "runtime.hpp".}
-  proc validateSetParam*(blk: ptr CBRuntimeBlock; index: cint;  value: var CBVar; callback: CBValidationCallback) {.importcpp: "validateSetParam(#, #. #)", header: "runtime.hpp".}
+    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.}
+    ValidationResults* = seq[tuple[error: bool; message: string]]
+  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateConnections(#, #, #)", header: "runtime.hpp".}
+  proc validateSetParam*(blk: ptr CBRuntimeBlock; index: cint;  value: var CBVar; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateSetParam(#, #, #, #, #)", header: "runtime.hpp".}
+  
+  proc validate*(chain: CBChainPtr): ValidationResults =
+    validateConnections(
+      chain,
+      proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+        var resp = cast[ptr ValidationResults](userData)
+        resp[].add((not nonfatalWarning, $error)),
+      addr result
+    )
+  
+  proc validate*(blk: ptr CBRuntimeBlock; index: int;  value: var CBVar): ValidationResults =
+    validateSetParam(
+      blk,
+      index.cint,
+      value,
+      proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+        var resp = cast[ptr ValidationResults](userData)
+        resp[].add((not nonfatalWarning, $error)),
+      addr result
+    )
   
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
@@ -1150,11 +1171,8 @@ when isMainModule and appType != "lib":
     Const 11
     ToString()
     Log()
-
-    validateConnections(mainChain, proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.} =
-      if not warningOnly:
-        echo "Validation error: ", error, " block: ", blk.name(blk)
-    )
+    
+    assert mainChain.validate().len == 0
     
     mainChain.start(true)
     for i in 0..10:
@@ -1170,14 +1188,14 @@ when isMainModule and appType != "lib":
     
     let
       jstr = mainChain.store()
-    # assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"looped":true,"name":"mainChain","unsafe":false,"version":0.1}"""
     echo jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
     echo jstr2
-    # assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"name":"mainChain","version":0.1}"""
+    assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"looped":true,"name":"mainChain","unsafe":false,"version":0.1}"""
     
     var
       sm1 = ~@[0.1, 0.2, 0.3]

@@ -825,7 +825,7 @@ bool matchTypes(CBTypeInfo& exposedType, CBTypeInfo& consumedType)
   return true;
 }
 
-void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& exposed, CBValidationCallback cb, CBRuntimeBlock* top, CBRuntimeBlock* bottom)
+void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& exposed, CBValidationCallback cb, CBRuntimeBlock* top, CBRuntimeBlock* bottom, void* userData)
 {
   auto outputInfo = top->outputTypes(top);
   auto inputInfo = bottom->inputTypes(bottom);
@@ -841,7 +841,7 @@ void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& expo
     if(findIt == exposed.end())
     {
       std::string err("Required consumed variable not found: " + name);
-      cb(bottom, err.c_str(), false);
+      cb(bottom, err.c_str(), false, userData);
     }
     
     // Validate types!
@@ -851,7 +851,7 @@ void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& expo
     if(stbds_arrlen(exposedTypes) != stbds_arrlen(requiredTyes))
     {
       std::string err("Required consumed types do not match currently exposed ones: " + name);
-      cb(bottom, err.c_str(), false);
+      cb(bottom, err.c_str(), false, userData);
     }
     auto len = stbds_arrlen(exposedTypes);
     for(auto i = 0; i < len; i++)
@@ -862,7 +862,7 @@ void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& expo
       if(!matchTypes(exposedType, consumedType))
       {
         std::string err("Required consumed types do not match currently exposed ones: " + name);
-        cb(bottom, err.c_str(), false);
+        cb(bottom, err.c_str(), false, userData);
       }
     }
   }
@@ -877,7 +877,7 @@ void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& expo
     {
       // do we want to override it?, warn at least
       std::string err("Overriding already exposed variable: " + name);
-      cb(bottom, err.c_str(), true);
+      cb(bottom, err.c_str(), true, userData);
     }
 
     exposed[name] = exposed_param;
@@ -899,10 +899,10 @@ void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& expo
   }
 
   std::string err("Could not find a matching output type");
-  cb(bottom, err.c_str(), false);
+  cb(bottom, err.c_str(), false, userData);
 }
 
-void validateConnections(const CBChain* chain, CBValidationCallback callback)
+void validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData)
 {
   phmap::flat_hash_map<std::string, CBParameterInfo> exposedVars;
   CBRuntimeBlock* previousBlock = nullptr;
@@ -910,19 +910,19 @@ void validateConnections(const CBChain* chain, CBValidationCallback callback)
   {
     if(previousBlock)
     {
-      validateConnection(exposedVars, callback, previousBlock, blk);
+      validateConnection(exposedVars, callback, previousBlock, blk, userData);
     }
     previousBlock = blk;
   }
 }
 
-void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback)
+void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData)
 {
   auto params = block->parameters(block);
   if(stbds_arrlen(params) <= index)
   {
     std::string err("Parameter index out of range");
-    callback(block, err.c_str(), false);
+    callback(block, err.c_str(), false, userData);
     return;
   }
   
@@ -963,7 +963,7 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
   }
   
   std::string err("Parameter not accepting this kind of variable");
-  callback(block, err.c_str(), false);
+  callback(block, err.c_str(), false, userData);
 }
 
 #ifdef TESTING

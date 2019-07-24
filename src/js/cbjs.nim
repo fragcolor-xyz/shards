@@ -286,6 +286,12 @@ when true:
         return throwTypeError(jsContext, "Invalid Var value passed")
       
       if blk != nil:
+        let errors = blk.validate(idx, inVar[])
+        for error in errors:
+          if error.error:
+            echo $blk[].name(blk), " setParam failed with error: ", error.message
+            return throwInternalError(jsContext, "setParam failed")
+        
         blk[].setParam(blk, idx, inVar[])
       
       return Undefined,

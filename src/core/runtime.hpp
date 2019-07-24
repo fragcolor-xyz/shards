@@ -260,8 +260,9 @@ struct CBChain
   std::vector<CBRuntimeBlock*> blocks;
 };
 
-typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool warningOnly);
-void validateConnections(const CBChain* chain, CBValidationCallback callback);
+typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData);
+void validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData);
+void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData);
 
 namespace chainblocks
 {
@@ -1635,13 +1636,16 @@ struct CBNode
   void schedule(CBChain* chain, CBVar input = {})
   {
     // Validate the chain
-    validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool warningOnly)
+    validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
     {
-      if(!warningOnly)
+      auto node = reinterpret_cast<CBNode*>(userData);
+      if(!nonfatalWarning)
       {
-        throw chainblocks::CBException(errorTxt);
+        node->errorMsg.assign(errorTxt);
+        node->errorMsg += ", input block: " + std::string(errorBlock->name(errorBlock));
+        throw chainblocks::CBException(node->errorMsg.c_str());
       }
-    });
+    }, this);
     
     chains.push_back(chain);
     chain->node = this;
@@ -1674,6 +1678,7 @@ struct CBNode
 private:
   std::list<CBChain*> chains;
   std::list<CBChain*> chainsTicking;
+  std::string errorMsg;
 };
 
 #endif //CHAINBLOCKS_RUNTIME
