@@ -437,9 +437,9 @@ when appType != "lib" or defined(forceCBRuntime):
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
 
-  proc createNode*(): ptr CBNode {.inline.} = cppnew(result, CBNode, CBNode)
+  proc createNode*(): ptr CBNode {.noinline.} = cppnew(result, CBNode, CBNode)
   proc cbCreateNode*(): ptr CBNode {.cdecl, exportc, dynlib.} = createNode()
-  proc destroyNode*(node: ptr CBNode) {.inline.} = cppdel(node)
+  proc destroyNode*(node: ptr CBNode) {.noinline.} = cppdel(node)
   proc cbDestroyNode*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = destroyNode(node)
   proc schedule*(node: ptr CBNode, chain: CBChainPtr; input: CBVar = Empty) {.inline.} =
     node[].invoke("schedule", chain, input).to(void)
@@ -489,6 +489,10 @@ when appType != "lib" or defined(forceCBRuntime):
     setFrameState(frame)
   proc get*(chain: CBChainPtr): CBVarConst {.inline.} = stop(chain, addr result.value)
   proc cbStop*(chain: CBChainPtr; results: ptr CBVar) {.cdecl, exportc, dynlib.} = stop(chain, results)
+  
+  type 
+    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.}
+  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback) {.importcpp: "validateConnections(#, #)", header: "runtime.hpp".}
 
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
@@ -1147,6 +1151,11 @@ when isMainModule and appType != "lib":
     Const 11
     ToString()
     Log()
+
+    validateConnections(mainChain, proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.} =
+      if not warningOnly:
+        echo "Validation error: ", error, " block: ", blk.name(blk)
+    )
     
     mainChain.start(true)
     for i in 0..10:
