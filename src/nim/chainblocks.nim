@@ -489,6 +489,10 @@ when appType != "lib" or defined(forceCBRuntime):
     setFrameState(frame)
   proc get*(chain: CBChainPtr): CBVarConst {.inline.} = stop(chain, addr result.value)
   proc cbStop*(chain: CBChainPtr; results: ptr CBVar) {.cdecl, exportc, dynlib.} = stop(chain, results)
+  
+  type 
+    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.}
+  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback) {.importcpp: "validateConnections(#, #)", header: "runtime.hpp".}
 
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
@@ -1147,6 +1151,11 @@ when isMainModule and appType != "lib":
     Const 11
     ToString()
     Log()
+
+    validateConnections(mainChain, proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.} =
+      if not warningOnly:
+        echo "Validation error: ", error, " block: ", blk.name(blk)
+    )
     
     mainChain.start(true)
     for i in 0..10:

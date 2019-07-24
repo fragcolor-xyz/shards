@@ -260,6 +260,9 @@ struct CBChain
   std::vector<CBRuntimeBlock*> blocks;
 };
 
+typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool warningOnly);
+void validateConnections(const CBChain* chain, CBValidationCallback callback);
+
 namespace chainblocks
 {
   extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
@@ -1631,6 +1634,15 @@ struct CBNode
 {
   void schedule(CBChain* chain, CBVar input = {})
   {
+    // Validate the chain
+    validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool warningOnly)
+    {
+      if(!warningOnly)
+      {
+        throw chainblocks::CBException(errorTxt);
+      }
+    });
+    
     chains.push_back(chain);
     chain->node = this;
     chainblocks::prepare(chain);
