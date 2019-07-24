@@ -1641,8 +1641,9 @@ struct CBNode
       auto node = reinterpret_cast<CBNode*>(userData);
       if(!nonfatalWarning)
       {
+        auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
         node->errorMsg.assign(errorTxt);
-        node->errorMsg += ", input block: " + std::string(errorBlock->name(errorBlock));
+        node->errorMsg += ", input block: " + std::string(blk->name(blk));
         throw chainblocks::CBException(node->errorMsg.c_str());
       }
     }, this);
