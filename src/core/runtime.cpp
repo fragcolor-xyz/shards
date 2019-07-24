@@ -916,6 +916,56 @@ void validateConnections(const CBChain* chain, CBValidationCallback callback)
   }
 }
 
+void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback)
+{
+  auto params = block->parameters(block);
+  if(stbds_arrlen(params) <= index)
+  {
+    std::string err("Parameter index out of range");
+    callback(block, err.c_str(), false);
+    return;
+  }
+  
+  auto param = params[index];
+  
+  // Build a CBTypeInfo for the var
+  CBTypeInfo varType;
+  varType.basicType = value.valueType;
+  switch(value.valueType)
+  {
+    case Object:
+    {
+      varType.objectVendorId = value.payload.objectVendorId;
+      varType.objectTypeId = value.payload.objectTypeId;
+      break;
+    }
+    case Enum:
+    {
+      varType.enumVendorId = value.payload.enumVendorId;
+      varType.enumTypeId = value.payload.enumTypeId;
+      break;
+    }
+    case Seq:
+    {
+      // TODO
+      break;
+    }
+    default:
+      break;
+  };
+  
+  for(auto i = 0; i < stbds_arrlen(param.valueTypes); i++)
+  {
+    if(matchTypes(varType, param.valueTypes[i]))
+    {
+      return; // we are good just exit
+    }
+  }
+  
+  std::string err("Parameter not accepting this kind of variable");
+  callback(block, err.c_str(), false);
+}
+
 #ifdef TESTING
   static CBChain mainChain("MainChain");
 

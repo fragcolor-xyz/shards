@@ -406,8 +406,6 @@ template withChain*(chain, body: untyped): untyped =
 template help*(b: auto): cstring = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
-# template preChain*(b: auto; context: CBContext) = discard
-# template postChain*(b: auto; context: CBContext) = discard
 template exposedVariables*(b: auto): CBParametersInfo = @[]
 template consumedVariables*(b: auto): CBParametersInfo = @[]
 template parameters*(b: auto): CBParametersInfo = @[]
@@ -493,7 +491,8 @@ when appType != "lib" or defined(forceCBRuntime):
   type 
     CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; warningOnly: bool) {.cdecl.}
   proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback) {.importcpp: "validateConnections(#, #)", header: "runtime.hpp".}
-
+  proc validateSetParam*(blk: ptr CBRuntimeBlock; index: cint;  value: var CBVar; callback: CBValidationCallback) {.importcpp: "validateSetParam(#, #. #)", header: "runtime.hpp".}
+  
   proc store*(chain: CBChainPtr): string =
     let str = invokeFunction("chainblocks::store", chain).to(StdString)
     $(str.c_str().to(cstring))
