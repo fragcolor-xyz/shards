@@ -446,6 +446,27 @@ EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
 // Utility to use blocks within blocks
 EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output);
 
+// Logging
+EXPORTED void __cdecl chainblocks_Log(int level, const char* msg, ...);
+
+#define CB_DEBUG 1
+#define CB_INFO 2
+#define CB_TRACE 3
+
+#ifdef NDEBUG
+  #define CB_LOG_DEBUG(...) (void)0
+#else
+  #define CB_LOG_DEBUG(...) chainblocks_Log(CB_DEBUG, __VA_ARGS__)
+#endif
+
+#ifdef CB_TRACING
+  #define CB_LOG_TRACE(...) chainblocks_Log(CB_TRACE, __VA_ARGS__)
+#else
+  #define CB_LOG_TRACE(...) (void)0
+#endif
+
+#define CB_LOG(...) chainblocks_Log(CB_INFO, __VA_ARGS__)
+
 #ifdef __cplusplus
 };
 #endif

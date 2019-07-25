@@ -9,10 +9,16 @@ import images
 import types
 export types
 
+import logging
+export logging
+
 import nimline
 
 when appType != "lib" or defined(forceCBRuntime):
   {.compile: "../core/runtime.cpp".}
+  {.compile: "../core/3rdparty/easylogging++.cc".}
+
+  cppdefines("ELPP_FEATURE_CRASH_LOG")
   
   when defined windows:
     {.passL: "-static -lboost_context-mt".}
@@ -1071,8 +1077,8 @@ when isMainModule and appType != "lib":
   template parameters*(b: CBPow2Block): CBParametersInfo = @[("test", { Int })]
   template setParam*(b: CBPow2Block; index: int; val: CBVar) = b.params[0] = val
   template getParam*(b: CBPow2Block; index: int): CBVar = b.params[0]
-  template preChain*(b: CBPow2Block; context: CBContext) = echo "PreChain works if needed"
-  template postChain*(b: CBPow2Block; context: CBContext) = echo "PostChain works if needed"
+  template preChain*(b: CBPow2Block; context: CBContext) = log "PreChain works if needed"
+  template postChain*(b: CBPow2Block; context: CBContext) = log "PostChain works if needed"
   template activate*(b: CBPow2Block; context: CBContext; input: CBVar): CBVar = (input.payload.floatValue * input.payload.floatValue).CBVar
 
   chainblock CBPow2Block, "Pow2StaticBlock"
@@ -1082,16 +1088,16 @@ when isMainModule and appType != "lib":
       pblock1: CBPow2Block
     pblock1.setup()
     var res1 = pblock1.activate(nil, 2.0)
-    echo res1.float
+    log res1.float
     
     var pblock2 = createBlock("Pow2StaticBlock")
     assert pblock2 != nil
     var param0Var = 10.CBVar
-    echo param0Var.valueType
+    log param0Var.valueType
     pblock2.setParam(pblock2, 0, param0Var)
-    echo pblock2.getParam(pblock2, 0).valueType
+    log pblock2.getParam(pblock2, 0).valueType
     var res2 = pblock2.activate(pblock2, nil, 2.0)
-    echo res2.float
+    log res2.float
     pblock2.preChain(pblock2, nil)
     pblock2.postChain(pblock2, nil)
 
@@ -1115,7 +1121,7 @@ when isMainModule and appType != "lib":
     inlineTesting2.start()
 
     var nimcall = proc(input: CBVar): CBVar {.closure.} =
-      echo input
+      log input
       input
     
     withChain closureTest:
@@ -1135,13 +1141,13 @@ when isMainModule and appType != "lib":
 
     chain1.start(true)
     for i in 0..3:
-      echo "Iteration ", i
+      log "Iteration ", i
       chain1.tick()
       sleep(500)
     discard chain1.get()
-    echo "Stopped"
+    log "Stopped"
     chain1.tick() # should do nothing
-    echo "Done"
+    log "Done"
 
     var
       subChain1 = newChain("subChain1")
@@ -1189,12 +1195,12 @@ when isMainModule and appType != "lib":
     let
       jstr = mainChain.store()
     assert jstr == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"looped":true,"name":"mainChain","unsafe":false,"version":0.1}"""
-    echo jstr
+    log jstr
     var jchain: CBChainPtr
     load(jchain, jstr)
     let
       jstr2 = jchain.store()
-    echo jstr2
+    log jstr2
     assert jstr2 == """{"blocks":[{"name":"Log","params":[]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"Hello"}}]},{"name":"Msg","params":[{"name":"Message","value":{"type":19,"value":"World"}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":15}}]},{"name":"If","params":[{"name":"Operator","value":{"type":3,"typeId":1819242338,"value":3,"vendorId":1734439526}},{"name":"Operand","value":{"type":5,"value":10}},{"name":"True","value":{"type":22,"values":[{"name":"Const","params":[{"name":"Value","value":{"type":19,"value":"Hey hey"}}],"type":17},{"name":"Log","params":[],"type":17}]}},{"name":"False","value":{"type":22,"values":[]}},{"name":"Passthrough","value":{"type":4,"value":false}}]},{"name":"Sleep","params":[{"name":"Time","value":{"type":11,"value":0}}]},{"name":"Const","params":[{"name":"Value","value":{"type":5,"value":11}}]},{"name":"ToString","params":[]},{"name":"Log","params":[]}],"looped":true,"name":"mainChain","unsafe":false,"version":0.1}"""
     
     var
@@ -1251,7 +1257,7 @@ when isMainModule and appType != "lib":
     testAdding.start(true)
     for _ in 0..4: testAdding.tick()
     assert testAdding.get() == sm4
-    echo "Restarting"
+    log "Restarting"
     testAdding.start(true)
     for _ in 0..4: testAdding.tick()
     assert testAdding.get() == sm4
@@ -1295,7 +1301,7 @@ when isMainModule and appType != "lib":
         fibChain.start(true, true)
         for _ in 0..10:
           fibChain.tick()
-        echo "CB took: ", cpuTime() - cbStart
+        log "CB took: ", cpuTime() - cbStart
         discard fibChain.stop()
         destroy fibChain
         destroy fibChainInit
@@ -1311,9 +1317,9 @@ when isMainModule and appType != "lib":
         let nimStart = cpuTime()
         var f = fib
         for i in 0..11:
-          echo f()
-        echo "Nim took: ", cpuTime() - nimStart
+          log f()
+        log "Nim took: ", cpuTime() - nimStart
   
   run()
   
-  echo "Done"
+  log "Done"

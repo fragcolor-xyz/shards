@@ -9,12 +9,13 @@ var
   jsContext = newJSContext(jsRuntime)
 
 proc loadBuiltIns() =
-  var echoProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
+  var logProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
     for i in 0..<argc:
-      echo argv[i].toStr(jsContext).getStr(jsContext)
+      # Any JS object -> JS string -> Nim string -> cstring pointer
+      logs(argv[i].asJsStr(jsContext).getStr(jsContext).cstring)
     return Undefined
-  , "echo", 1)
-  jsContext.Global.setProperty(jsContext, "echo", echoProc)
+  , "log", 1)
+  jsContext.Global.setProperty(jsContext, "log", logProc)
 
   var sleepProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
     let sleepTime = argv[0].toFloat(jsContext)
@@ -289,7 +290,7 @@ when true:
         let errors = blk.validate(idx, inVar[])
         for error in errors:
           if error.error:
-            echo $blk[].name(blk), " setParam failed with error: ", error.message
+            log $blk[].name(blk), " setParam failed with error: ", error.message
             return throwInternalError(jsContext, "setParam failed")
         
         blk[].setParam(blk, idx, inVar[])
@@ -487,9 +488,7 @@ when isMainModule:
           output &= "var $# = new Object()\n" % [namespaceName]
           namespaces.incl(namesplit[0])
         output &= processBlock(namesplit[0], namesplit[1], blkName)
-      
-    freeSeq(blocks)
-
+    
     return output
   
   eval(jsContext, generateSugar())

@@ -2,6 +2,9 @@
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "runtime.hpp"
+#include <cstdarg>
+
+INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks
 {
@@ -146,6 +149,37 @@ EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var)
 EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output)
 {
   chainblocks::activateBlock(block, context, *input, *output);
+}
+
+EXPORTED void __cdecl chainblocks_Log(int level, const char* format, ...)
+{
+  auto temp = std::vector<char> {};
+  auto length = std::size_t {63};
+  std::va_list args;
+  while (temp.size() <= length)
+  {
+    temp.resize(length + 1);
+    va_start(args, format);
+    const auto status = std::vsnprintf(temp.data(), temp.size(), format, args);
+    va_end(args);
+    if (status < 0)
+      throw std::runtime_error {"string formatting error"};
+    length = static_cast<std::size_t>(status);
+  }
+  std::string str(temp.data(), length);
+
+  switch(level)
+  {
+    case CB_INFO:
+    LOG(INFO) << "Info: " << str;
+    break;
+    case CB_DEBUG:
+    LOG(INFO) << "Debug: " << str;
+    break;
+    case CB_TRACE:
+    LOG(INFO) << "Trace: " << str;
+    break;
+  }
 }
 
 #ifdef __cplusplus

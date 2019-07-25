@@ -18,16 +18,16 @@ proc run() =
   
   Log()
   
-  echo "Start"
+  log "Start"
   getCurrentChain().start(true)
 
-  echo "First tick"
+  log "First tick"
   getCurrentChain().tick()
   
-  echo "Stop"
+  log "Stop"
   getCurrentChain().stop()
   
-  echo "Start again"
+  log "Start again"
   getCurrentChain().start(true)
 
   for _ in 0..100:

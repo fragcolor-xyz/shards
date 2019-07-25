@@ -470,14 +470,18 @@ when true:
   template outputTypes*(b: CBlockLog): CBTypesInfo = ({ Any }, true #[seq]#)
   template activate*(b: var CBlockLog; context: CBContext; input: CBVar): CBVar =
     if input.valueType == ContextVar:
-      echo context.contextVariable(input.stringValue)[]
+      let
+        strVal = $context.contextVariable(input.stringValue)[]
+      logs(strVal.cstring)
     else:
-      echo input
+      let
+        strVal = $input
+      logs(strVal.cstring)
     input
 
   chainblock CBlockLog, "Log"
 
-# Msg - a debug log echo
+# Msg - a debug log log
 when true:
   type
     CBlockMsg* = object
@@ -493,7 +497,7 @@ when true:
     quickcopy(b.msg, inval)
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
-    echo b.msg
+    log b.msg
     input
 
   chainblock CBlockMsg, "Msg"

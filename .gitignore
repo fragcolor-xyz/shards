@@ -11,3 +11,4 @@ Chainblocks.egg-info
 src/py/MANIFEST
 src/nim/tests/tcbvar.xml
 src/nim/tcbvar.xml
+*.log
