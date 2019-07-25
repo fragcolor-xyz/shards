@@ -1,17 +1,19 @@
 import nimline
 
-proc dlog*[T](args: varargs[T]) {.inline.} =
+proc dlog*(args: varargs[string, `$`]) {.inline.} =
   when not defined(release):
-    for arg in args:
-      let carg = ($arg).cstring
-      emitc("(DLOG(DEBUG) << ", `carg`, ");")
+    var msg = ""
+    for arg in args: msg &= arg
+    let cmsg = msg.cstring
+    emitc("(DLOG(DEBUG) << ", `cmsg`, ");")
   else:
     discard
 
-proc log*[T](args: varargs[T]) {.inline.} =
-  for arg in args:
-    let carg = ($arg).cstring
-    emitc("(LOG(INFO) << ", `carg`, ");")
+proc log*(args: varargs[string, `$`]) {.inline.} =
+  var msg = ""
+  for arg in args: msg &= arg
+  let cmsg = msg.cstring
+  emitc("(LOG(INFO) << ", `cmsg`, ");")
 
 proc dlogs*(msg: cstring) {.inline.} =
   when not defined(release):
