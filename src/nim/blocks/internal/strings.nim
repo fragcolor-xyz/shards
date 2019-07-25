@@ -118,12 +118,12 @@ when true:
 when true:
   type
     CBToUppercase* = object
-      strCache*: string
+      strCache*: GbString
   
   template inputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template activate*(b: CBToUppercase; context: CBContext; input: CBVar): CBVar =
-    b.strCache.setLen(0)
+    b.strCache.clear()
     b.strCache &= input.stringValue.string.toUpper
     b.strCache
 

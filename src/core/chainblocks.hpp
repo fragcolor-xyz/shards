@@ -13,6 +13,7 @@
 
 // Included 3rdparty
 #include "3rdparty/stb_ds.h"
+#include "3rdparty/gb_string.h"
 
 // All the available types
 enum CBType : uint8_t
