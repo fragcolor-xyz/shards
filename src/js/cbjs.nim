@@ -450,9 +450,13 @@ when isMainModule:
       else:
         paramsString &= ", " & pname
     
-    result &= "$#.$# = function($#) {\n" % [namespace, name, paramsString]
+    if namespace != "":
+      result &= "$#.$# = function($#) {\n" % [namespace, name, paramsString]
+    else:
+      result &= "export var $# = function($#) {\n" % [name, paramsString]
+    
     result &= "  let blk = new Block(\"$#\")\n" % [fullName]
-
+    
     var pindex = 0
     for param in params:
       var pname = ($param.name).toLowerAscii
@@ -471,15 +475,15 @@ when isMainModule:
 
   proc generateSugar(): string =
     var
-      output = "var Core = new Object()\n\n"
+      output = ""
       blocks = cbBlocks()
       namespaces = initHashSet[string]()
-
+    
     for blkName in blocks:
       let
         namesplit = blkName.split(".")
       if namesplit.len == 1: # No namespace
-        output &= processBlock("Core", namesplit[0], blkName)
+        output &= processBlock("", namesplit[0], blkName)
       elif namesplit.len == 2:
         if namesplit[0] notin namespaces:
           var namespaceName = namesplit[0]
@@ -489,9 +493,26 @@ when isMainModule:
           namespaces.incl(namesplit[0])
         output &= processBlock(namesplit[0], namesplit[1], blkName)
     
+    output &= "export { "
+    var first = true
+    for namespace in namespaces:
+      if first:
+        output &= "$#" % [namespace]
+        first = false
+      else:
+        output &= ", $#" % [namespace]
+    output &= " };\n\n"
+    
     return output
   
-  eval(jsContext, generateSugar())
+  proc loadBlocks() =
+    # Load blocks as module
+    let
+      res = eval(jsContext, generateSugar(), "blocks", true)
+      resStr = res.asJsStr(jsContext).getStr(jsContext)
+    if resStr != "": log(resStr.cstring)
+  
+  loadBlocks()
   
   var filename: string
   
@@ -509,5 +530,8 @@ when isMainModule:
     # no filename has been given, so we show the help
     writeHelp()
   else:
-    let fileText = readFile(filename)
-    eval(jsContext, fileText)
+    let
+      fileText = readFile(filename)
+      res = eval(jsContext, fileText, filename, true)
+      resStr = res.asJsStr(jsContext).getStr(jsContext)
+    if resStr != "": log(resStr.cstring)
