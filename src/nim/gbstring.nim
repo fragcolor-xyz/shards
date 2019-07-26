@@ -1,15 +1,11 @@
 import nimline
-import os
 
-const
-  modulePath = currentSourcePath().splitPath().head
-cppincludes(modulePath & "")
+{.experimental.}
 
 emitc("/*INCLUDESECTION*/#define GB_STRING_IMPLEMENTATION")
-emitc("/*INCLUDESECTION*/#include <cstdlib>")
 
 type
-  NativeGBString {.importcpp: "gbString", header: "gb_string.h".} = distinct cstring
+  NativeGBString {.importcpp: "gbString", header: "chainblocks.hpp".} = distinct cstring
   GbString* = object
     gbstr: NativeGBString
 
@@ -71,15 +67,23 @@ proc `&`*(a: GbString, b: GbString): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_duplicate_string", a.gbstr).to(NativeGBString)
   result.gbstr = invokeFunction("gb_append_string", result.gbstr, b.gbstr).to(NativeGBString)
 
-template gb*(s: string): GbString = s.toGbString()
+proc gb*(s: string): GbString {.inline.} = s.toGbString()
+
+template constGbString*{gb(pattern)}(pattern: string{lit}): GbString =
+  let constStr {.global, gensym.} = pattern.GbString
+  constStr
 
 when isMainModule:
   var
     gs: GbString = "Hello world"
     g1: GbString = " and "
     g2: GbString = "Buonanotte"
+    cg = gb"Const string"
   
   echo gs
   echo gs & g1 & g2
+  echo cg
+  cg = gs
+  echo cg
   gs &= g1
   gs &= g2
