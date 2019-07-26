@@ -1,7 +1,3 @@
-import os
-import nimline
-# import ../../chainblocks
-
 when defined linux:
   # LINUX WORKAROUND FOR -static build and pthread
   # Might need this on other OSes too maybe
@@ -43,7 +39,7 @@ defineCppType(ManagedSharedMem, "boost::interprocess::managed_shared_memory", "<
 defineCppType(MemHandle, "boost::interprocess::managed_shared_memory::handle_t", "<boost/interprocess/managed_shared_memory.hpp>")
 defineCppType(SPSCQueue, "rigtorp::SPSCQueue<CBVar>", "SPSCQueue.h")
 
-template removeShmObject(name: string) = invokeFunction("boost::interprocess::shared_memory_object::remove", name.cstring).to(void)
+template removeShmObject(name: cstring) = invokeFunction("boost::interprocess::shared_memory_object::remove", name).to(void)
 
 var create_only {.importc: "boost::interprocess::create_only", nodecl.}: int
 var open_only {.importc: "boost::interprocess::open_only", nodecl.}: int
@@ -52,7 +48,7 @@ var open_only {.importc: "boost::interprocess::open_only", nodecl.}: int
 when true:
   type
     CBIpcPush* = object
-      name: string
+      name: GbString
       segment: ptr ManagedSharedMem
       buffer: ptr SPSCQueue
   
@@ -148,7 +144,7 @@ when true:
       segment: ptr ManagedSharedMem
       buffer: ptr SPSCQueue
       seqCache: CBSeq
-      stringsCache: seq[string]
+      stringsCache: seq[GbString]
   
   template setup*(b: CBIpcPop) =
     initSeq(b.seqCache)
@@ -166,7 +162,7 @@ when true:
   template setParam*(b: CBIpcPop; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name
 
-  proc incomingString(b: var CBIpcPop; stringCache: var string; output: var CBVar) {.inline.} =
+  proc incomingString(b: var CBIpcPop; stringCache: var GbString; output: var CBVar) {.inline.} =
     # Fetch the handle of the mem
     var handle: MemHandle
     copyMem(addr handle, addr output.reserved[0], sizeof(MemHandle))
@@ -175,8 +171,8 @@ when true:
     var address = b.segment[].get_address_from_handle(handle).to(pointer)
 
     # This is a shared piece of memory, let's use our cache from now
-    stringCache.setLen(0)
-    stringCache &= $cast[cstring](address)
+    stringCache.clear()
+    stringCache &= cast[cstring](address)
 
     # Replace the string memory with the local cache
     output.payload.stringValue = stringCache.cstring.CBString

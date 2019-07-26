@@ -1012,7 +1012,8 @@ defineCppType(StdSSubMatch, "std::ssub_match", "<regex>")
 include ops
 
 when not defined(skipCoreBlocks):
-  import unicode
+  import os
+  import nimline
   include blocks/internal/[core, strings, stack, calculate, ipc]
 
 when appType != "lib" or defined(forceCBRuntime):

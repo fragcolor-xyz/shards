@@ -989,7 +989,7 @@ when true:
 when true:
   type
     CBToString* = object
-      cachedStr*: string
+      cachedStr*: GbString
   
   template inputTypes*(b: CBToString): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBToString): CBTypesInfo = { String }

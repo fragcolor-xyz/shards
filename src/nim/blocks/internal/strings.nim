@@ -1,10 +1,16 @@
+const
+  stringsModulePath = currentSourcePath().splitPath().head
+cppincludes(stringsModulePath & "")
+
+emitc("#include \"utf8.h\"")
+
 # MatchText
 when true:
   type
     CBMatchText* = object
       results*: CBSeq
-      stringPool*: seq[string]
-      regexStr*: string
+      stringPool*: StbSeq[GbString]
+      regexStr*: GbString
       regex*: StdRegex
   
   template setup*(b: CBMatchText) = initSeq(b.results)
@@ -39,7 +45,7 @@ when true:
           str = subm.str().c_str().to(cstring)
         
         b.stringPool[i].setLen(0)
-        b.stringPool[i] &= $str
+        b.stringPool[i] &= str
         b.results.push(b.stringPool[i])
       
       res = b.results
@@ -64,10 +70,10 @@ when true:
 when true:
   type
     CBReplaceText* = object
-      strCache*: string
-      regexStr*: string
+      strCache*: GbString
+      regexStr*: GbString
       regex*: StdRegex
-      replacement*: string
+      replacement*: GbString
   
   template inputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
@@ -93,9 +99,9 @@ when true:
     else: assert(false); Empty
   template activate*(b: CBReplaceText; context: CBContext; input: CBVar): CBVar =
     let replaced = invokeFunction("std::regex_replace", input.stringValue, b.regex, b.replacement.cstring).to(StdString)
-    b.strCache.setLen(0)
-    b.strCache &= $replaced.c_str().to(cstring)
-    b.strCache.CBVar
+    b.strCache.clear()
+    b.strCache &= replaced.c_str().to(cstring)
+    b.strCache
 
   chainblock CBReplaceText, "ReplaceText", "":
     withChain testReplaceText:
@@ -118,13 +124,14 @@ when true:
 when true:
   type
     CBToUppercase* = object
-      strCache*: string
+      strCache*: GbString
   
   template inputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBToUppercase): CBTypesInfo = ({ String }, false #[seq]#)
   template activate*(b: CBToUppercase; context: CBContext; input: CBVar): CBVar =
-    b.strCache.setLen(0)
-    b.strCache &= input.stringValue.string.toUpper
+    b.strCache.clear()
+    b.strCache &= input.stringValue.cstring
+    global.utf8upr(b.strCache.cstring).to(void)
     b.strCache
 
   chainblock CBToUppercase, "ToUppercase", "":
@@ -146,13 +153,14 @@ when true:
 when true:
   type
     CBToLowercase* = object
-      strCache*: string
+      strCache*: GbString
   
   template inputTypes*(b: CBToLowercase): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBToLowercase): CBTypesInfo = ({ String }, false #[seq]#)
   template activate*(b: CBToLowercase; context: CBContext; input: CBVar): CBVar =
-    b.strCache.setLen(0)
-    b.strCache &= input.stringValue.string.toLower
+    b.strCache.clear()
+    b.strCache &= input.stringValue.cstring
+    global.utf8lwr(b.strCache.cstring).to(void)
     b.strCache
 
   chainblock CBToLowercase, "ToLowercase", "":
