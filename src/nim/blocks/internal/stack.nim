@@ -37,7 +37,7 @@ when true:
 
   template inputTypes*(b: CBStack): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBStack): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBStack): CBParametersInfo = @[("Index", { Int })]
+  template parameters*(b: CBStack): CBParametersInfo = *@[(cs"Index", { Int })]
   template setParam*(b: CBStack; index: int; val: CBVar) = b.index = val.intValue.int
   template getParam*(b: CBStack; index: int): CBVar = b.index
   template activate*(b: var CBStack; context: CBContext; input: CBVar): CBVar =

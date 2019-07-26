@@ -70,12 +70,16 @@ converter toCBTypeInfo*(s: tuple[ty: CBType, isSeq: bool]): CBTypeInfo {.inline,
 
 converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = (s, false)
 
-converter toCBTypesInfo*(s: seq[CBTypeInfo]): CBTypesInfo {.inline, noinit.} =
+converter toCBTypesInfo*(s: CBTypeInfo): CBTypesInfo {.inline, noinit.} =
+  initSeq(result)
+  result.push(s)
+
+converter toCBTypesInfo*(s: StbSeq[CBTypeInfo]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for ti in s:
-    result.push ti
+    result.push(ti)
 
-converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline.} =
+converter toCBParameterInfo*(record: tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline.} =
   # This relies on const strings!! will crash if not!
   result.valueTypes = record.actualTypes.toCBTypesInfo()
   let
@@ -85,7 +89,7 @@ converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; 
   result.help = help
   result.allowContext = record.usesContext
 
-converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; actualTypes: CBTypesInfo; usesContext: bool]): CBParameterInfo {.inline.} =
+converter toCBParameterInfo*(record: tuple[paramName: cstring; helpText: cstring; actualTypes: CBTypesInfo; usesContext: bool]): CBParameterInfo {.inline.} =
   # This relies on const strings!! will crash if not!
   result.valueTypes = record.actualTypes
   let
@@ -95,87 +99,101 @@ converter toCBParameterInfo*(record: tuple[paramName: string; helpText: string; 
   result.help = help
   result.allowContext = record.usesContext
 
-converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes, false), false)
-converter toCBParameterInfo*(s: tuple[paramName: string; helpText: string; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), false)
-converter toCBParameterInfo*(s: tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes.types, s.actualTypes.canBeSeq), false)
-converter toCBParameterInfo*(s: tuple[paramName: string; helpText: string; actualTypes: set[CBType]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), s.usesContext)
-converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: set[CBType], usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes, false), s.usesContext)
-converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: CBTypesInfo, usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", s.actualTypes, s.usesContext)
-converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes.types, s.actualTypes.canBeSeq), false)
-converter toCBParameterInfo*(s: tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "", (s.actualTypes.types, s.actualTypes.canBeSeq), s.usesContext)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes, false), false)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), false)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes.types, s.actualTypes.canBeSeq), false)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false), s.usesContext)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: set[CBType], usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes, false), s.usesContext)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: CBTypesInfo, usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, s.actualTypes, s.usesContext)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: CBTypesInfo]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, s.actualTypes, false)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes.types, s.actualTypes.canBeSeq), false)
+converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes.types, s.actualTypes.canBeSeq), s.usesContext)
 
-converter cbParamsToSeq*(params: var CBParametersInfo): seq[CBParameterInfo] =
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: set[CBType]]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, (s.actualTypes, false), false).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, s.helpText, (s.actualTypes, false), false).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, s.helpText, (s.actualTypes.types, s.actualTypes.canBeSeq), false).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]; usesContext: bool]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, s.helpText, (s.actualTypes, false), s.usesContext).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: set[CBType], usesContext: bool]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, (s.actualTypes, false), s.usesContext).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: CBTypesInfo, usesContext: bool]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, s.actualTypes, s.usesContext).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: CBTypesInfo]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, s.actualTypes, false).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, (s.actualTypes.types, s.actualTypes.canBeSeq), false).toCBParameterInfo())
+converter toCBParametersInfo*(s: tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]): CBParametersInfo {.inline, noinit.} = result.push((s.paramName, "".cstring, (s.actualTypes.types, s.actualTypes.canBeSeq), s.usesContext).toCBParameterInfo())
+
+converter cbParamsToSeq*(params: var CBParametersInfo): StbSeq[CBParameterInfo] =
   for item in params.items:
-    result.add item
+    result.push(item)
 
-converter toCBTypesInfoTuple*(s: tuple[a: string; b: set[CBType]]): tuple[c: string; d: CBTypesInfo] {.inline, noinit.} =
+converter toCBTypesInfoTuple*(s: tuple[a: cstring; b: set[CBType]]): tuple[c: cstring; d: CBTypesInfo] {.inline, noinit.} =
   result[0] = s.a
   result[1] = s.b
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; helpText: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]]): CBParametersInfo {.inline, noinit.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]]): CBParametersInfo {.inline, noinit.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: set[CBType]]]): CBParametersInfo {.inline, noinit.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: set[CBType]]]): CBParametersInfo {.inline, noinit.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; helpText: string; actualTypes: set[CBType]]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: set[CBType]; usesContext: bool]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: set[CBType]; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: CBTypesInfo; usesContext: bool]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: CBTypesInfo; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; helpText: string; actualTypes: set[CBType]; usesContext: bool]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]; usesContext: bool]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var record = s[i]
     result.push(record.toCBParameterInfo())
 
-converter toCBParametersInfo*(s: seq[tuple[paramName: string; actualTypes: seq[CBTypeInfo]]]): CBParametersInfo {.inline.} =
+converter toCBParametersInfo*(s: StbSeq[tuple[paramName: cstring; actualTypes: StbSeq[CBTypeInfo]]]): CBParametersInfo {.inline.} =
   initSeq(result)
   for i in 0..s.high:
     var
       record = s[i]
       pinfo = CBParameterInfo(name: record.paramName)
     initSeq(pinfo.valueTypes)
-    for at in record.actualTypes:
+    for at in record.actualTypes.mitems:
       pinfo.valueTypes.push(at)
     result.push(pinfo)
+
+# template ti*(proxy: untyped): CBTypesInfo = proxy.toCBTypesInfo()
+# template pi*(proxy: untyped): CBParametersInfo = proxy.toCBParametersInfo()
 
 when isMainModule:
   var
@@ -195,33 +213,33 @@ when isMainModule:
   assert vtys2[0].sequenced
 
   var
-    pi1 = ("Param1", { Int, Int4 }).toCBParameterInfo()
+    pi1 = (cs"Param1", { Int, Int4 }).toCBParameterInfo()
   assert pi1.name == "Param1"
   assert pi1.valueTypes[0].basicType == Int
   assert pi1.valueTypes[1].basicType == Int4
   assert not pi1.allowContext
 
   var
-    pi2 = ("Param2", { Int, Int4 }, true).toCBParameterInfo()
+    pi2 = (cs"Param2", { Int, Int4 }, true).toCBParameterInfo()
   assert pi2.name == "Param2"
   assert pi2.valueTypes[0].basicType == Int
   assert pi2.valueTypes[1].basicType == Int4
   assert pi2.allowContext
 
   var
-    pis1 = @[
-      ("Key", { Int }),
-      ("Ctrl", { Bool }),
-      ("Alt", { Bool }),
-      ("Shift", { Bool }),
-    ].toCBParametersInfo()
+    pis1 = toCBParametersInfo(*@[
+      (cs"Key", { Int }),
+      (cs"Ctrl", { Bool }),
+      (cs"Alt", { Bool }),
+      (cs"Shift", { Bool }),
+    ])
   assert pis1[0].name == "Key"
   assert pis1[0].valueTypes[0].basicType == Int
   assert pis1[1].name == "Ctrl"
   assert pis1[1].valueTypes[0].basicType == Bool
 
   var
-    pis2 = @[("Window", "A window name or variable if we wish to send the event only to a target window.", { String })].toCBParametersInfo()
+    pis2 = toCBParametersInfo(*@[(cs"Window", cs"A window name or variable if we wish to send the event only to a target window.", { String })])
   assert pis2[0].name == "Window"
   assert pis2[0].help == "A window name or variable if we wish to send the event only to a target window."
   assert pis2[0].valueTypes[0].basicType == String
@@ -408,13 +426,15 @@ template withChain*(chain, body: untyped): untyped =
   body
   setCurrentChain(prev)
 
+let noParams: CBParametersInfo = nil
+
 # Make those optional
 template help*(b: auto): cstring = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
-template exposedVariables*(b: auto): CBParametersInfo = @[]
-template consumedVariables*(b: auto): CBParametersInfo = @[]
-template parameters*(b: auto): CBParametersInfo = @[]
+template exposedVariables*(b: auto): CBParametersInfo = noParams
+template consumedVariables*(b: auto): CBParametersInfo = noParams
+template parameters*(b: auto): CBParametersInfo = noParams
 template setParam*(b: auto; index: int; val: CBVar) = discard
 template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
 template cleanup*(b: auto) = discard
@@ -564,16 +584,16 @@ when appType != "lib" or defined(forceCBRuntime):
       var
         sym = gensym(nskVar)
         paramNames = gensym(nskVar)
-        paramSets = gensym(nskVar)
       result = quote do:
         var
           `sym` = createBlock(`rtName`)
         `sym`.setup(`sym`)
         var
-          cparams = `sym`.parameters(`sym`)
-          paramsSeq = cparams.cbParamsToSeq()
-          `paramNames` = paramsSeq.map do (x: CBParameterInfo) -> string: ($x.name).toLowerAscii
-          `paramSets` = paramsSeq.map do (x: CBParameterInfo) -> CBTypesInfo: x.valueTypes
+          params = `sym`.parameters(`sym`)
+          `paramNames`: StbSeq[cstring]
+        
+        for param in params.mitems:
+          `paramNames`.push(param.name)
       
       for i in 0..`args`.high:
         var
@@ -582,11 +602,9 @@ when appType != "lib" or defined(forceCBRuntime):
         result.add quote do:
           var
             cbVar: CBVar = `val`
-            label = `lab`.toLowerAscii
+            label = `lab`.cstring
             idx = `paramNames`.find(label)
-          assert idx != -1, "Could not find parameter: " & label
-          # TODO
-          # assert cbVar.valueType in `paramSets`[idx]
+          assert idx != -1, "Could not find parameter: " & $label
           `sym`.setParam(`sym`, idx, cbVar)
       
       result.add quote do:
@@ -1075,7 +1093,7 @@ when isMainModule and appType != "lib":
   
   template inputTypes*(b: CBPow2Block): CBTypesInfo = { Float }
   template outputTypes*(b: CBPow2Block): CBTypesInfo = { Float }
-  template parameters*(b: CBPow2Block): CBParametersInfo = @[("test", { Int })]
+  template parameters*(b: CBPow2Block): CBParametersInfo = *@[(cs"test", { Int })]
   template setParam*(b: CBPow2Block; index: int; val: CBVar) = b.params[0] = val
   template getParam*(b: CBPow2Block; index: int): CBVar = b.params[0]
   template preChain*(b: CBPow2Block; context: CBContext) = log "PreChain works if needed"

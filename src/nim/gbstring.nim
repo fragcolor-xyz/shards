@@ -1,6 +1,7 @@
 import nimline
+import stbseq
 
-{.experimental.}
+# {.experimental.}
 
 emitc("/*INCLUDESECTION*/#define GB_STRING_IMPLEMENTATION")
 
@@ -55,9 +56,9 @@ proc clear*(s: var GbString) {.inline.} =
   if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
   else: invokeFunction("gb_clear_string", s.gbstr).to(void)
 
-proc setLen*(s: var GbString; len: int) {.inline.} =
-  if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
-  s.gbstr = invokeFunction("gb_string_make_space_for", s.gbstr, len).to(NativeGBString)
+# proc setLen*(s: var GbString; len: int) {.inline.} =
+#   if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
+#   s.gbstr = invokeFunction("gb_string_make_space_for", s.gbstr, len).to(NativeGBString)
 
 proc `&=`*(a: var GbString, b: GbString) {.inline.} =
   if a.gbstr.pointer == nil: a.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
@@ -69,9 +70,22 @@ proc `&`*(a: GbString, b: GbString): GbString {.inline.} =
 
 proc gb*(s: string): GbString {.inline.} = s.toGbString()
 
-template constGbString*{gb(pattern)}(pattern: string{lit}): GbString =
-  let constStr {.global, gensym.} = pattern.GbString
-  constStr
+# template constGbString*{gb(pattern)}(pattern: string{lit}): GbString =
+#   let constStr {.global, gensym.} = pattern.GbString
+#   constStr
+
+# proc cs*(s: string): cstring {.inline.} = assert(false) # make sure we never call this actually
+
+var constStrings {.threadvar.}: StbSeq[GbString]
+
+template cs*(s: string): cstring =
+  # Creates a global const string out of a string
+  constStrings.push(s.GbString)
+  constStrings[constStrings.len - 1].cstring
+
+# template constCsString*{cs(pattern)}(pattern: string{lit}): cstring =
+#   let constStr {.global, gensym.} = pattern.GbString
+#   constStr.cstring
 
 when isMainModule:
   var
@@ -79,6 +93,7 @@ when isMainModule:
     g1: GbString = " and "
     g2: GbString = "Buonanotte"
     cg = gb"Const string"
+    cstr = cs"Const cstring"
   
   echo gs
   echo gs & g1 & g2
@@ -87,3 +102,4 @@ when isMainModule:
   echo cg
   gs &= g1
   gs &= g2
+  echo cstr

@@ -16,7 +16,7 @@ when true:
     template inputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     template outputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     template parameters*(b: typeName): CBParametersInfo =
-      @[("Operand", AllIntTypes + AllFloatTypes + { Color }, true #[usesContext]#)]
+      *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color }, true #[usesContext]#)]
     template setParam*(b: typeName; index: int; val: CBVar) =
       b.operand = val
       # will refresh on next activate
