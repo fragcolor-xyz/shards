@@ -994,7 +994,7 @@ when true:
   template inputTypes*(b: CBToString): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBToString): CBTypesInfo = { String }
   template activate*(b: var CBToString; context: CBContext; input: CBVar): CBVar =
-    b.cachedStr.setLen(0)
+    b.cachedStr.clear()
     if input.valueType == ContextVar:
       b.cachedStr &= $(context.contextVariable(input.stringValue)[])
     else:

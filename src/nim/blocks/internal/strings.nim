@@ -44,7 +44,7 @@ when true:
           subm = matches[i].to(StdSSubMatch)
           str = subm.str().c_str().to(cstring)
         
-        b.stringPool[i].setLen(0)
+        b.stringPool[i].clear()
         b.stringPool[i] &= str
         b.results.push(b.stringPool[i])
       

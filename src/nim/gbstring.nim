@@ -55,9 +55,9 @@ proc clear*(s: var GbString) {.inline.} =
   if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
   else: invokeFunction("gb_clear_string", s.gbstr).to(void)
 
-proc setLen*(s: var GbString; len: int) {.inline.} =
-  if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
-  s.gbstr = invokeFunction("gb_string_make_space_for", s.gbstr, len).to(NativeGBString)
+# proc setLen*(s: var GbString; len: int) {.inline.} =
+#   if s.gbstr.pointer == nil: s.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
+#   s.gbstr = invokeFunction("gb_string_make_space_for", s.gbstr, len).to(NativeGBString)
 
 proc `&=`*(a: var GbString, b: GbString) {.inline.} =
   if a.gbstr.pointer == nil: a.gbstr = invokeFunction("gb_make_string", "").to(NativeGBString)
