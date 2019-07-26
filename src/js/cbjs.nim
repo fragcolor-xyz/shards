@@ -12,9 +12,11 @@ proc loadBuiltIns() =
   var logProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
     for i in 0..<argc:
       # Any JS object -> JS string -> Nim string -> cstring pointer
-      let msg = argv[i].asJsStr(jsContext).getCStr(jsContext)
-      logs(msg)
-      msg.freeCStr(jsContext)
+      let
+        jsStr = argv[i].asJsStr(jsContext)
+        cstr = jsStr.getCStr(jsContext)
+      logs(cstr)
+      cstr.freeCStr(jsContext)
     return Undefined
   , "log", 1)
   jsContext.Global.setProperty(jsContext, "log", logProc)
@@ -41,8 +43,9 @@ var JsCBRuntimeBlock = JsClass(
       return
     
     let
-      name = argv[0].getStr(jsContext)
+      name = argv[0].getCStr(jsContext)
       blk = createBlock($name)
+    name.freeCStr(jsContext)
     
     if blk == nil:
       self = throwTypeError(jsContext, "Block construction failed, this block does not exist.")
@@ -67,9 +70,11 @@ var JsCBChain = JsClass(
       return
     
     let
-      name = argv[0].getStr(jsContext)
+      name = argv[0].getCStr(jsContext)
       chain = newChain($name)
+    name.freeCStr(jsContext)
     self.attachPtr(chain),
+    
   
   constructorMinArgs: 1
 )
@@ -164,7 +169,8 @@ when true:
               break
         
         elif argv[0].isStr:
-          let strVar = argv[0].getCStr(jsContext)
+          let
+            strVar = argv[0].getCStr(jsContext)
           var strTemp: CBVar = strVar.CBString
           newVar[].storage = JsVarStorage.Copy
           quickcopy(newVar[].value, strTemp)
@@ -512,8 +518,9 @@ when isMainModule:
     # Load blocks as module
     let
       res = eval(jsContext, generateSugar(), "blocks", true)
-      resStr = res.asJsStr(jsContext).getStr(jsContext)
-    if resStr != "": log(resStr.cstring)
+      resStr = res.asJsStr(jsContext).getCStr(jsContext)
+    if resStr != "": log(resStr)
+    resStr.freeCStr(jsContext)
   
   loadBlocks()
   
@@ -536,5 +543,6 @@ when isMainModule:
     let
       fileText = readFile(filename)
       res = eval(jsContext, fileText, filename, true)
-      resStr = res.asJsStr(jsContext).getStr(jsContext)
-    if resStr != "": log(resStr.cstring)
+      resStr = res.asJsStr(jsContext).getCStr(jsContext)
+    if resStr != "": log(resStr)
+    resStr.freeCStr(jsContext)
