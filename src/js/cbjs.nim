@@ -12,7 +12,9 @@ proc loadBuiltIns() =
   var logProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
     for i in 0..<argc:
       # Any JS object -> JS string -> Nim string -> cstring pointer
-      logs(argv[i].asJsStr(jsContext).getStr(jsContext).cstring)
+      let msg = argv[i].asJsStr(jsContext).getCStr(jsContext)
+      logs(msg)
+      msg.freeCStr(jsContext)
     return Undefined
   , "log", 1)
   jsContext.Global.setProperty(jsContext, "log", logProc)
@@ -162,10 +164,11 @@ when true:
               break
         
         elif argv[0].isStr:
-          let strVar = argv[0].getStr(jsContext)
+          let strVar = argv[0].getCStr(jsContext)
           var strTemp: CBVar = strVar.CBString
           newVar[].storage = JsVarStorage.Copy
           quickcopy(newVar[].value, strTemp)
+          strVar.freeCStr(jsContext)
         
         elif argv[0].isInt:
           newVar[].value.valueType = Int

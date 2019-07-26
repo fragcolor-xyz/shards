@@ -407,7 +407,10 @@ converter toStringVar*(s: string): CBVar {.inline.} =
 
 converter toCBVar*(s: GbString): CBVar {.inline.} =
   result.valueType = String
-  result.payload.stringValue = s.gbstr.CBString
+  result.payload.stringValue = s.cstring.CBString
+
+converter toCBString*(s: GbString): CBString {.inline.} = s.cstring.CBString
+converter toGbString*(s: CBString): GbString {.inline.} = s.cstring.GbString
 
 # Allocators using cpp to properly construct in C++ fashion (we have some blocks that need this)
 template cppnew*(pt, typ1, typ2: untyped): untyped = emitc(`pt`, " = reinterpret_cast<", `typ1`, "*>(new ", `typ2`, "());")
