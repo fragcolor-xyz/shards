@@ -996,9 +996,9 @@ when true:
   template activate*(b: var CBToString; context: CBContext; input: CBVar): CBVar =
     b.cachedStr.setLen(0)
     if input.valueType == ContextVar:
-      b.cachedStr &= (context.contextVariable(input.stringValue)[])
+      b.cachedStr &= $(context.contextVariable(input.stringValue)[])
     else:
-      b.cachedStr &= input
+      b.cachedStr &= $input
     b.cachedStr
 
   chainblock CBToString, "ToString"
