@@ -1007,6 +1007,7 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
   int main()
   {
     auto msg = Core::createBlockMsg();
+    LOG(INFO) << msg->name(msg);
     CBVar strVar;
     strVar.valueType = String;
     strVar.payload.stringValue = "well yeah cool.";

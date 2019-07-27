@@ -15,7 +15,8 @@ proc setCapacity*(s: var StbSeq; newCap: int) {.inline.} =
   invokeFunction("stbds_arrsetcap", s.stbSeq, newCap).to(void)
 
 proc push*[T](s: var StbSeq[T]; val: sink T) {.inline.} =
-  invokeFunction("stbds_arrpush", s.stbSeq, val).to(void)
+  proc consume(x: sink T): CppProxy {.importcpp: "#".}
+  invokeFunction("stbds_arrpush", s.stbSeq, consume(val)).to(void)
 
 proc `=destroy`*[T](s: var StbSeq[T]) =
   when defined(testing): echo "=destroy called on: ", s
@@ -54,11 +55,11 @@ proc setLen*[T](s: var StbSeq[T]; newLen: int) {.inline.} =
   invokeFunction("stbds_arrsetlen", s.stbSeq, newLen).to(void)
   zeroMem(addr s.stbSeq[0], sizeof(T) * newLen)
 
-proc `[]`*[T](s: var StbSeq[T]; index: int): var T {.inline, noinit.} =
+proc `[]`*[T](s: var StbSeq[T]; index: int): var T {.inline,.} =
   assert index < s.len
   s.stbSeq[index]
 
-proc `[]`*[T](s: StbSeq[T]; index: int): T {.inline, noinit.} =
+proc `[]`*[T](s: StbSeq[T]; index: int): T {.inline.} =
   assert index < s.len
   s.stbSeq[index]
 
@@ -66,7 +67,7 @@ proc `[]=`*[T](s: var StbSeq[T]; index: int; value: sink T) {.inline.} =
   assert index < s.len
   s.stbSeq[index] = value
 
-proc pop*[T](s: var StbSeq[T]): T {.inline, noinit.} = invokeFunction("stbds_arrpop", s.stbSeq).to(T)
+proc pop*[T](s: var StbSeq[T]): T {.inline.} = invokeFunction("stbds_arrpop", s.stbSeq).to(T)
 
 proc len*(s: StbSeq): int {.inline.} = invokeFunction("stbds_arrlen", s.stbSeq).to(int)
 
@@ -84,7 +85,7 @@ iterator items*[T](s: StbSeq[T]): T {.inline.} =
   for i in 0..<s.len:
     yield s.stbSeq[i]
 
-proc `*@`*[IDX, T](a: array[IDX, T]): StbSeq[T] =
+proc `*@`*[IDX, T](a: array[IDX, T]): StbSeq[T] {.inline.} =
   result.setCapacity(a.len)
   for v in a:
     result.push(v)

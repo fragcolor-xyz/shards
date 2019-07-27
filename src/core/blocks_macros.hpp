@@ -4,9 +4,13 @@
     _typename_ core;\
   };\
   __cdecl CBRuntimeBlock* createBlock##_name_() {\
-    CBRuntimeBlock* result = reinterpret_cast<CBRuntimeBlock*>(new _name_##Runtime());
+    CBRuntimeBlock* result = reinterpret_cast<CBRuntimeBlock*>(new _name_##Runtime());\
+    result->name = static_cast<CBNameProc>([] (CBRuntimeBlock* block) { return #_namespace_ "." #_name_ ; });\
+    result->help = static_cast<CBHelpProc>([] (CBRuntimeBlock* block) { return ""; });\
+    result->setup = static_cast<CBSetupProc>([] (CBRuntimeBlock* block) {});\
+    result->destroy = static_cast<CBDestroyProc>([] (CBRuntimeBlock* block) {});
 
-#define RUNTIME_BLOCK_name(_x_, _y_) "\""#_x_"\""
+#define RUNTIME_BLOCK_name(_x_, _y_) 
 #define RUNTIME_BLOCK_help(_x_, _y_)
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root of the call if the block is all inline

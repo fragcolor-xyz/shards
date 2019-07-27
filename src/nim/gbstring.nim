@@ -39,13 +39,13 @@ proc `=sink`*(a: var GbString; b: GbString) =
 
 proc zap*(s: var GbString) {.inline.} = s.gbstr = nil
 
-converter toGbString*(nstr: string): GbString {.inline, noinit.} =
+converter toGbString*(nstr: string): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr.cstring, nstr.len).to(NativeGBString)
 
-converter toGbString*(nstr: cstring): GbString {.inline, noinit.} =
+converter toGbString*(nstr: cstring): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr, nstr.len).to(NativeGBString)
 
-converter asCString*(gstr: GbString): cstring {.inline, noinit.} = gstr.gbstr.cstring
+converter asCString*(gstr: GbString): cstring {.inline.} = gstr.gbstr.cstring
 
 proc len*(s: GbString): int {.inline.} =
   if s.gbstr.pointer == nil: return 0
