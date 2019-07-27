@@ -83,7 +83,8 @@ jsClass(jsContext, "Chain", JsCBChain)
 type 
   JsVarStorage {.pure.} = enum
     None,
-    Copy
+    Copy,
+    Seq
   
   JsCBVarBox = object
     value: CBVar
@@ -139,6 +140,10 @@ when true:
           discard
         of JsVarStorage.Copy:
           `~quickcopy` cbvar[].value
+        of JsVarStorage.Seq:
+          for val in cbvar[].value.seqValue.mitems:
+            `~quickcopy` val
+          freeSeq(cbvar[].value.seqValue)
         
         cppdel(cbvar),
     
@@ -148,7 +153,39 @@ when true:
       
       # Add logic to init var from any value...
       if argc == 1:
-        if argv[0].isObj:
+        if argv[0].isStr:
+          let
+            strVar = argv[0].getCStr(jsContext)
+          var strTemp: CBVar = strVar.CBString
+          newVar[].storage = JsVarStorage.Copy
+          quickcopy(newVar[].value, strTemp)
+          strVar.freeCStr(jsContext)
+        
+        elif argv[0].isInt:
+          newVar[].value.valueType = Int
+          newVar[].value.intValue = argv[0].toInt(jsContext)
+        
+        elif argv[0].isFloat:
+          newVar[].value.valueType = Float
+          newVar[].value.floatValue = argv[0].toFloat(jsContext)
+        
+        elif argv[0].isArray(jsContext):
+          newVar[].value.valueType = Seq
+          newVar[].storage = JsVarStorage.Seq
+          initSeq(newVar[].value.seqValue)
+          
+          let
+            jlen = argv[0].getProperty(jsContext, "length")
+            len = jlen.toInt32(jsContext)
+          
+          for i in 0..<len:
+            let val = argv[0].getProperty(jsContext, i)
+            
+            let blockValue = cast[ptr CBRuntimeBlock](val.getPtr(JsCBRuntimeBlock.classId))
+            if blockValue != nil:
+              newVar[].value.seqValue.push(blockValue)
+        
+        elif argv[0].isObj:
           block findObj:
             let constVar = cast[ptr CBVar](argv[0].getPtr(JsCBVarConst.classId))
             if constVar != nil:
@@ -167,22 +204,6 @@ when true:
               newVar[].value.valueType = Chain
               newVar[].value.chainValue = chainValue
               break
-        
-        elif argv[0].isStr:
-          let
-            strVar = argv[0].getCStr(jsContext)
-          var strTemp: CBVar = strVar.CBString
-          newVar[].storage = JsVarStorage.Copy
-          quickcopy(newVar[].value, strTemp)
-          strVar.freeCStr(jsContext)
-        
-        elif argv[0].isInt:
-          newVar[].value.valueType = Int
-          newVar[].value.intValue = argv[0].toInt(jsContext)
-        
-        elif argv[0].isFloat:
-          newVar[].value.valueType = Float
-          newVar[].value.floatValue = argv[0].toFloat(jsContext)
       
       elif argc > 1:
         if argv[0].isInt: # infer from first arg
@@ -406,11 +427,14 @@ when true:
       if node == nil: return throwTypeError(ctx, "schedule invalid node")
       if chain == nil: return throwTypeError(ctx, "schedule invalid chain")
       
+      # Store a reference to the chain as well!
+      this_val.setProperty(jsContext, "_chain_" & chain[].name.c_str().to(cstring), argv[0].incRef(jsContext))
+      
       try:
         node.schedule(chain)
       except StdException as e:
         return throwInternalError(jsContext, e.what())
-
+      
       return Undefined,
     1
   )
@@ -422,7 +446,7 @@ when true:
       if node == nil: return throwTypeError(ctx, "schedule invalid node")
       
       node.tick()
-
+      
       return Undefined,
     0
   )
@@ -459,16 +483,17 @@ when isMainModule:
       else:
         paramsString &= ", " & pname
     
-    if namespace != "":
-      result &= "  $# = function($#) {\n" % [name, paramsString]
-    else:
-      result &= "export var $# = function($#) {\n" % [name, paramsString]
-    
-    result &= "  let blk = new Block(\"$#\")\n" % [fullName]
-    
     var extraSpace = ""
     if namespace != "":
       extraSpace = "  "
+    
+    if namespace != "":
+      result &= "  static $#($#) {\n" % [name, paramsString]
+    else:
+      result &= "export var $# = function($#) {\n" % [name, paramsString]
+    
+    result &= "$#  let blk = new Block(\"$#\")\n" % [extraSpace, fullName]
+    
     var pindex = 0
     for param in params:
       var pname = ($param.name).toLowerAscii
@@ -480,7 +505,7 @@ when isMainModule:
       inc pindex
     
     result &= "$#  return blk\n" % [extraSpace]
-    result &= "$#}\n" % [extraSpace]
+    result &= "$#}\n\n" % [extraSpace]
 
     blk.cleanup(blk)
     blk.destroy(blk)
@@ -501,21 +526,56 @@ when isMainModule:
           var namespaceName = namesplit[0]
           if namespaceName in reservedWords:
             namespaceName = namespaceName & "_"
-          namespaces[namesplit[0]] = "export class $# {\n" % [namespaceName]
+          namespaces[namesplit[0]] = "class $# {\n" % [namespaceName]
         namespaces[namesplit[0]] &= processBlock(namesplit[0], namesplit[1], blkName)
     
     for _, definition in namespaces.mpairs:
       definition &= "}\n\n"
       output &= definition
 
-    output &= "export { "
-    var first = true
+    output &= """
+function chain(blocks, name, looped, unsafe) {
+  if(name === undefined) {
+    name = "unnamed chain"
+  }
+  
+  let newChain = new Chain(name)
+  
+  if(looped === undefined) {
+    looped = false
+  }
+  newChain.looped = looped
+
+  if(unsafe === undefined) {
+    unsafe = false
+  }
+  newChain.unsafe = unsafe
+
+  blocks.forEach(function(block) {
+    newChain.addBlock(block)
+  })
+
+  return newChain
+}
+
+//var hiddenMainNode = new Node()
+//
+//Chain.start = function() {
+//  hiddenMainNode.schedule(this)
+//  return this
+//}
+//
+//Chain.start = function() {
+//  this.looped = true
+//  hiddenMainNode.schedule(this)
+//  return this
+//}
+
+"""
+
+    output &= "export { chain"
     for namespace, _ in namespaces.mpairs:
-      if first:
-        output &= "$#" % [namespace]
-        first = false
-      else:
-        output &= ", $#" % [namespace]
+      output &= ", $#" % [namespace]
     output &= " };\n\n"
     
     return output
@@ -524,9 +584,12 @@ when isMainModule:
     # Load blocks as module
     let
       res = eval(jsContext, generateSugar(), "blocks", true)
-      resStr = res.asJsStr(jsContext).getCStr(jsContext)
-    if resStr != "": log(resStr)
-    resStr.freeCStr(jsContext)
+    if res.isException:
+      let
+        ex = getLastException(jsContext)
+        exStr = ex.asJsStr(jsContext).getCStr(jsContext)
+      if exStr != "": logs(exStr)
+      exStr.freeCStr(jsContext)
   
   loadBlocks()
   
@@ -547,8 +610,10 @@ when isMainModule:
     writeHelp()
   else:
     let
-      fileText = readFile(filename)
-      res = eval(jsContext, fileText, filename, true)
-      resStr = res.asJsStr(jsContext).getCStr(jsContext)
-    if resStr != "": log(resStr)
-    resStr.freeCStr(jsContext)
+      res = eval(jsContext, readFile(filename), filename, true)
+    if res.isException:
+      let
+        ex = getLastException(jsContext)
+        exStr = ex.asJsStr(jsContext).getCStr(jsContext)
+      if exStr != "": logs(exStr)
+      exStr.freeCStr(jsContext)
