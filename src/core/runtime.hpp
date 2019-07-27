@@ -15,6 +15,7 @@
 #include <string.h> // memset
 
 #include "chainblocks.hpp"
+#include "blocks_macros.hpp"
 // C++ Mandatory from now!
 
 // Stub inline blocks, actually implemented in respective nim code!
