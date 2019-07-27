@@ -33,10 +33,10 @@ buildAndRun:win:release:
     - cd ../dummy
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f -r --newruntime -d:useMalloc dummytest.nim
-    # Run unit tests
-    - cd $currentDir
-    - cd src/nim/tests
-    - nim cpp --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
+    # # Run unit tests
+    # - cd $currentDir
+    # - cd src/nim/tests
+    # - nim cpp --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
     # Test 32 bits build
     - cd $currentDir
     - cd src/nim
