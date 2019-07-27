@@ -93,7 +93,7 @@ when true:
     b.state = py.dict()
   template inputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBPyCall): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBPyCall): CBParametersInfo = @[("Closure", @[PyCallInfo])]
+  template parameters*(b: CBPyCall): CBParametersInfo = *@[(cs"Closure", *@[PyCallInfo])]
   template setParam*(b: CBPyCall; index: int; val: CBVar) =
     b.call = val
     var callObj = cast[ref CBPyCallObj](val.objectValue)
