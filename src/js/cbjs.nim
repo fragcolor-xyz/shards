@@ -428,7 +428,7 @@ when true:
   )
 
 when isMainModule:
-  import parseopt, strutils, sets
+  import parseopt, strutils, tables
 
   const reservedWords = ["break", "case", "catch", "class", "const", "continue",
     "debugger", "default", "delete", "do", "else", "export", "extends",
@@ -460,24 +460,27 @@ when isMainModule:
         paramsString &= ", " & pname
     
     if namespace != "":
-      result &= "$#.$# = function($#) {\n" % [namespace, name, paramsString]
+      result &= "  $# = function($#) {\n" % [name, paramsString]
     else:
       result &= "export var $# = function($#) {\n" % [name, paramsString]
     
     result &= "  let blk = new Block(\"$#\")\n" % [fullName]
     
+    var extraSpace = ""
+    if namespace != "":
+      extraSpace = "  "
     var pindex = 0
     for param in params:
       var pname = ($param.name).toLowerAscii
       if pname in reservedWords:
         pname = pname & "_"
-      result &= "  if($# !== undefined) {\n" % [pname]
-      result &= "    blk.setParam($#, new Var($#))\n" % [$pindex, pname]
-      result &= "  }\n"
+      result &= "$#  if($# !== undefined) {\n" % [extraSpace, pname]
+      result &= "$#    blk.setParam($#, new Var($#))\n" % [extraSpace, $pindex, pname]
+      result &= "$#  }\n" % [extraSpace]
       inc pindex
     
-    result &= "  return blk\n"
-    result &= "}\n\n"
+    result &= "$#  return blk\n" % [extraSpace]
+    result &= "$#}\n" % [extraSpace]
 
     blk.cleanup(blk)
     blk.destroy(blk)
@@ -486,7 +489,7 @@ when isMainModule:
     var
       output = ""
       blocks = cbBlocks()
-      namespaces = initHashSet[string]()
+      namespaces = initTable[string, string]()
     
     for blkName in blocks:
       let
@@ -498,13 +501,16 @@ when isMainModule:
           var namespaceName = namesplit[0]
           if namespaceName in reservedWords:
             namespaceName = namespaceName & "_"
-          output &= "var $# = new Object()\n" % [namespaceName]
-          namespaces.incl(namesplit[0])
-        output &= processBlock(namesplit[0], namesplit[1], blkName)
+          namespaces[namesplit[0]] = "export class $# {\n" % [namespaceName]
+        namespaces[namesplit[0]] &= processBlock(namesplit[0], namesplit[1], blkName)
     
+    for _, definition in namespaces.mpairs:
+      definition &= "}\n\n"
+      output &= definition
+
     output &= "export { "
     var first = true
-    for namespace in namespaces:
+    for namespace, _ in namespaces.mpairs:
       if first:
         output &= "$#" % [namespace]
         first = false
