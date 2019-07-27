@@ -5,6 +5,7 @@ import nimpy/py_types
 import nimpy/py_lib
 import nimpy
 import tables, os, sets
+import nimline
 
 type
   Scripting* = object
@@ -44,7 +45,7 @@ when true:
     freeTable(b.tableStorage)
   template inputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
   template outputTypes*(b: CBPython): CBTypesInfo = ({ Any }, true)
-  template parameters*(b: CBPython): CBParametersInfo = @[("File", { String })]
+  template parameters*(b: CBPython): CBParametersInfo = *@[(cs"File", { String })]
   template setParam*(b: CBPython; index: int; val: CBVar) =
     cleanup(b) # force reload of python module
     b.filename = val.stringValue
