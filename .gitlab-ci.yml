@@ -4,14 +4,14 @@ buildAndRun:win:debug:
     - $nimbleDir = "$currentDir/nimbledir"
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
-    - nim cpp --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
-    - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs --app:lib -d:forceCBRuntime -f -o:../py/chainblocks/chainblocks.dll chainblocks.nim # Builds for py test
+    - nim cpp --NimblePath:$nimbleDir/pkgs --newruntime -d:useMalloc -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs --app:lib -d:forceCBRuntime -f -o:../py/chainblocks/chainblocks.dll chainblocks.nim # Builds for py test
     - cd blocks/external/py
     - nim cpp --NimblePath:$nimbleDir/pkgs -f py.nim
-    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp -d:useWinAnsi --newruntime --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
+    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp -d:useWinAnsi --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
     - cd ../dummy
     - nim cpp --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
-    - nim cpp --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
+    - nim cpp --NimblePath:$nimbleDir/pkgs -f -r --newruntime -d:useMalloc dummytest.nim
     - cd $currentDir
     - cd src/py
     - nim cpp --NimblePath:$nimbleDir/pkgs -f chainblockspy.nim
@@ -26,21 +26,21 @@ buildAndRun:win:release:
     - $nimbleDir = "$currentDir/nimbledir"
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
-    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting -r -f chainblocks.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:useMalloc -d:blocksTesting -r -f chainblocks.nim
     - cd blocks/external/py
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f py.nim
-    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp -d:useWinAnsi --newruntime --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
+    - powershell.exe -ExecutionPolicy ByPass -NoExit -Command "& 'C:\ProgramData\Miniconda3\shell\condabin\conda-hook.ps1' ; conda activate 'C:\ProgramData\Miniconda3'; nim cpp -d:useWinAnsi --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs -d:blocksTesting -f -r pytest.nim "
     - cd ../dummy
     - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f --cc:vcc dummy.nim
-    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f -r --newruntime dummytest.nim
+    - nim cpp -d:release -d:danger --NimblePath:$nimbleDir/pkgs -f -r --newruntime -d:useMalloc dummytest.nim
     # Run unit tests
     - cd $currentDir
     - cd src/nim/tests
-    - nim cpp --newruntime --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
+    - nim cpp --newruntime -d:useMalloc --NimblePath:$nimbleDir/pkgs -f -r tcbvar.nim
     # Test 32 bits build
     - cd $currentDir
     - cd src/nim
-    - nim cpp --putEnv:PATH=C:\msys64\mingw32\bin\ --gcc.path=C:\msys64\mingw32\bin\ --cpu:i386 -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:blocksTesting --nimcache:./cache32 -r -f chainblocks.nim
+    - nim cpp --putEnv:PATH=C:\msys64\mingw32\bin\ --gcc.path=C:\msys64\mingw32\bin\ --cpu:i386 -d:danger --NimblePath:$nimbleDir/pkgs --newruntime -d:useMalloc -d:blocksTesting --nimcache:./cache32 -r -f chainblocks.nim
   tags:
     - WIN, NIM, BOOST, MINGW
   # artifacts:
@@ -58,7 +58,7 @@ buildAndRun:linux:debug:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp --newruntime -d:blocksTesting -r -f chainblocks.nim"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp --newruntime -d:useMalloc -d:blocksTesting -r -f chainblocks.nim"
   tags:
     - LINUX, DOCKER
 
@@ -71,6 +71,6 @@ buildAndRun:linux:release:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # gcc
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release -d:danger --newruntime -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "cd src/nim && nimble install --depsOnly -y && nim cpp -d:release -d:danger --newruntime -d:useMalloc -d:blocksTesting -r -f chainblocks.nim && clang++ -c ../core/runtime.cpp"
   tags:
     - LINUX, DOCKER
