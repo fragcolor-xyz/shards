@@ -37,8 +37,6 @@ proc `=sink`*(a: var GbString; b: GbString) =
   `=destroy`(a)
   a.gbstr = b.gbstr
 
-proc zap*(s: var GbString) {.inline.} = s.gbstr = nil
-
 converter toGbString*(nstr: string): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr.cstring, nstr.len).to(NativeGBString)
 
@@ -85,7 +83,6 @@ template cs*(s: string): cstring =
   # Creates a global const string out of a string
   var gbstr = s.GbString
   constStrings.push(gbstr)
-  gbstr.zap()
   constStrings[constStrings.len - 1].cstring
 
 # template constCsString*{cs(pattern)}(pattern: string{lit}): cstring =
