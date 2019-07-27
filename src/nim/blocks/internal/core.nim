@@ -915,17 +915,13 @@ when true:
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
     *@[
-      (cs"Forever", ({ Bool }).toCBTypesInfo(), false),
-      (cs"Times", ({ Int }).toCBTypesInfo(), false),
       (cs"Action", ({ Block, None }, true).toCBTypesInfo(), false),
+      (cs"Times", ({ Int }).toCBTypesInfo(), false),
+      (cs"Forever", ({ Bool }).toCBTypesInfo(), false),
     ]
   template setParam*(b: CBRepeat; index: int; val: CBVar) =
     case index
     of 0:
-      b.forever = val.boolValue
-    of 1:
-      b.times = val.intValue.int32
-    of 2:
       for blk in b.blocks.mitems:
         blk.blockValue.cleanup(blk.blockValue)
         blk.blockValue.destroy(blk.blockValue)
@@ -939,16 +935,20 @@ when true:
           b.blocks.push(blk.blockValue)
       else:
         discard
+    of 1:
+      b.times = val.intValue.int32
+    of 2:
+      b.forever = val.boolValue  
     else:
       assert(false)
   proc getParam*(b: CBRepeat; index: int): CBVar {.inline.} =
     case index
     of 0:
-      b.forever.CBVar
+      b.blocks.CBVar
     of 1:
       b.times.int64.CBVar
     of 2:
-      b.blocks
+      b.forever.CBVar
     else:
       Empty
   template activate*(b: var CBRepeat; context: CBContext; input: CBVar): CBVar =
