@@ -1,6 +1,7 @@
 import nimline
+import stbseq
 
-{.experimental.}
+# {.experimental.}
 
 emitc("/*INCLUDESECTION*/#define GB_STRING_IMPLEMENTATION")
 
@@ -28,6 +29,7 @@ proc `=move`*(a, b: var GbString) =
   if a.gbstr.pointer == b.gbstr.pointer: return
   `=destroy`(a)
   a.gbstr = b.gbstr
+  b.gbstr = nil
 
 proc `=sink`*(a: var GbString; b: GbString) =
   when defined(testing): echo "=sink called on: ", a
@@ -35,13 +37,13 @@ proc `=sink`*(a: var GbString; b: GbString) =
   `=destroy`(a)
   a.gbstr = b.gbstr
 
-converter toGbString*(nstr: string): GbString {.inline, noinit.} =
+converter toGbString*(nstr: string): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr.cstring, nstr.len).to(NativeGBString)
 
-converter toGbString*(nstr: cstring): GbString {.inline, noinit.} =
+converter toGbString*(nstr: cstring): GbString {.inline.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr, nstr.len).to(NativeGBString)
 
-converter asCString*(gstr: GbString): cstring {.inline, noinit.} = gstr.gbstr.cstring
+converter asCString*(gstr: GbString): cstring {.inline.} = gstr.gbstr.cstring
 
 proc len*(s: GbString): int {.inline.} =
   if s.gbstr.pointer == nil: return 0
@@ -69,9 +71,23 @@ proc `&`*(a: GbString, b: GbString): GbString {.inline.} =
 
 proc gb*(s: string): GbString {.inline.} = s.toGbString()
 
-template constGbString*{gb(pattern)}(pattern: string{lit}): GbString =
-  let constStr {.global, gensym.} = pattern.GbString
-  constStr
+# template constGbString*{gb(pattern)}(pattern: string{lit}): GbString =
+#   let constStr {.global, gensym.} = pattern.GbString
+#   constStr
+
+# proc cs*(s: string): cstring {.inline.} = assert(false) # make sure we never call this actually
+
+var constStrings {.threadvar.}: StbSeq[GbString]
+
+template cs*(s: string): cstring =
+  # Creates a global const string out of a string
+  var gbstr = s.GbString
+  constStrings.push(gbstr)
+  constStrings[constStrings.len - 1].cstring
+
+# template constCsString*{cs(pattern)}(pattern: string{lit}): cstring =
+#   let constStr {.global, gensym.} = pattern.GbString
+#   constStr.cstring
 
 when isMainModule:
   var
@@ -79,6 +95,7 @@ when isMainModule:
     g1: GbString = " and "
     g2: GbString = "Buonanotte"
     cg = gb"Const string"
+    cstr = cs"Const cstring"
   
   echo gs
   echo gs & g1 & g2
@@ -87,3 +104,4 @@ when isMainModule:
   echo cg
   gs &= g1
   gs &= g2
+  echo cstr

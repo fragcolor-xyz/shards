@@ -392,11 +392,11 @@ proc `~@`*[IDX, CBVar](a: array[IDX, CBVar]): CBSeq =
     result.push v
 
 # Strings
-converter toCBStrings*(strings: var seq[string]): CBStrings {.inline.} =
+converter toCBStrings*(strings: var StbSeq[cstring]): CBStrings {.inline.} =
   # strings must be kept alive!
   initSeq(result)
   for str in strings.mitems:
-    result.push str.cstring
+    result.push str
 
 proc `$`*(s: CBString): string {.inline.} = $cast[cstring](s)
 converter toString*(s: CBString): string {.inline.} = $s.cstring

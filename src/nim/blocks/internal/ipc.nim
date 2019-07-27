@@ -62,12 +62,12 @@ when true:
       b.segment = nil
     
     # also force ensure removal!
-    if b.name != "":
+    if b.name.len > 0:
       removeShmObject(b.name)
   
   template inputTypes*(b: CBIpcPush): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
   template outputTypes*(b: CBIpcPush): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
-  template parameters*(b: CBIpcPush): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBIpcPush): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBIpcPush; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPush; index: int): CBVar = b.name
 
@@ -158,7 +158,7 @@ when true:
   
   template inputTypes*(b: CBIpcPop): CBTypesInfo = { Any }
   template outputTypes*(b: CBIpcPop): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, Bool, String, Color, Enum }, true #[seq]#)
-  template parameters*(b: CBIpcPop): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBIpcPop): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBIpcPop; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBIpcPop; index: int): CBVar = b.name
 

@@ -2,6 +2,7 @@
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "runtime.hpp"
+#include "blocks/core.hpp"
 #include <cstdarg>
 
 INITIALIZE_EASYLOGGINGPP
@@ -1005,33 +1006,13 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
 
   int main()
   {
-    {
-      CBRuntimeBlock blk = {};
-    }
-    
-    {
-      auto ublk = std::make_unique<CBRuntimeBlock>();
-    }
-    
-    chainblocks::CurrentChain = &mainChain;
-    chainblocks::start(chainblocks::CurrentChain, true);
-    chainblocks::tick(chainblocks::CurrentChain);
-    chainblocks::tick(chainblocks::CurrentChain);
-    chainblocks::stop(chainblocks::CurrentChain);
-
-    chainblocks::GlobalVariables.insert(std::make_pair("TestVar", CBVar(Restart)));
-    auto tv = chainblocks::globalVariable(u8"TestVar");
-    if(tv->valueType == None && tv->chainState == Restart)
-    {
-      printf("Map ok!\n");
-    }
-
-    auto tv2 = chainblocks::globalVariable("TestVar2");
-    if(tv2->valueType == None && tv2->chainState == Continue)
-    {
-      printf("Map ok2!\n");
-    }
-
-    printf("Size: %d\n", sizeof(CBVar));
+    auto msg = Core::createBlockMsg();
+    LOG(INFO) << msg->name(msg);
+    CBVar strVar;
+    strVar.valueType = String;
+    strVar.payload.stringValue = "well yeah cool.";
+    msg->setParam(msg, 0, strVar);
+    auto res = msg->activate(msg, nullptr, CBVar());
+    LOG(INFO) << res.payload.stringValue;
   }
 #endif

@@ -20,7 +20,7 @@ when true:
       b.fstream = openFileStream(b.filename, fmAppend)
   template inputTypes*(b: CBWriteLine): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWriteLine): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBWriteLine): CBParametersInfo = @[("Filename", { String })]
+  template parameters*(b: CBWriteLine): CBParametersInfo = *@[("Filename", { String })]
   template setParam*(b: CBWriteLine; index: int; val: CBVar) =
     b.filename = val.stringValue
     cleanup(b) # also reset
@@ -57,7 +57,7 @@ when true:
   template inputTypes*(b: CBReadLine): CBTypesInfo = { None }
   template outputTypes*(b: CBReadLine): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBReadLine): CBParametersInfo =
-    @[
+    *@[
       ("Filename", { String }),
       ("Looped", { Bool })
     ]

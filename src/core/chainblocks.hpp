@@ -179,6 +179,12 @@ struct CBImage
 struct CBTypeInfo
 {
   CBType basicType;
+
+  // this is a way to express in a simpler manner that this type might also be an array
+  // instead of basically using seqTypes, populate it and make this Seq as basicType
+  // Usually this represents a flat single dimentional arrays of CBTypes, and generally basicType == Seq and sequenced == true is discouraged
+  bool sequenced;
+  
   union
   {
     struct {
@@ -195,11 +201,6 @@ struct CBTypeInfo
     // This allows multiple depth levels of arrays
     CBTypesInfo seqTypes;
   };
-
-  // this is a way to express in a simpler manner that this type might also be an array
-  // instead of basically using seqTypes, populate it and make this Seq as basicType
-  // Usually this represents a flat single dimentional arrays of CBTypes, and generally basicType == Seq and sequenced == true is discouraged
-  bool sequenced;
 };
 
 typedef const char* (__cdecl *CBObjectSerializer)(CBPointer);

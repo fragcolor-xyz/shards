@@ -17,7 +17,7 @@ when true:
 
   template inputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBNimClosure): CBParametersInfo = @[("Closure", @[NimClosureInfo])]
+  template parameters*(b: CBNimClosure): CBParametersInfo = *@[(cs"Closure", *@[NimClosureInfo])]
   template setParam*(b: CBNimClosure; index: int; val: CBVar) = b.call = val
   template getParam*(b: CBNimClosure; index: int): CBVar = b.call
   template activate*(b: CBNimClosure; context: CBContext; input: CBVar): CBVar =
@@ -32,7 +32,7 @@ when true:
     CBSetVariable* = object
       # INLINE BLOCK, CORE STUB PRESENT
       target*: ptr CBVar
-      name*: string
+      name*: GbString
   
   template cleanup*(b: CBSetVariable) =
     if b.target != nil:
@@ -40,10 +40,10 @@ when true:
     b.target = nil
   template inputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBSetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBSetVariable): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBSetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBSetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBSetVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { String })]
   template activate*(b: CBSetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
@@ -61,15 +61,15 @@ when true:
     CBGetVariable* = object
       # INLINE BLOCK, CORE STUB PRESENT
       target*: ptr CBVar
-      name*: string
+      name*: GbString
   
   template cleanup*(b: CBGetVariable) = b.target = nil
   template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBGetVariable): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBGetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBGetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBGetVariable; index: int): CBVar = b.name
-  template consumedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
+  template consumedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { String })]
   template activate*(b: CBGetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
     
@@ -84,8 +84,8 @@ when true:
       # INLINE BLOCK, CORE STUB PRESENT
       targeta*: ptr CBVar
       targetb*: ptr CBVar
-      name1*: string
-      name2*: string
+      name1*: GbString
+      name2*: GbString
   
   template cleanup*(b: CBSwapVariables) =
     b.targeta = nil
@@ -93,9 +93,9 @@ when true:
   template inputTypes*(b: CBSwapVariables): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBSwapVariables): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBSwapVariables): CBParametersInfo =
-    @[
-      ("Name1", { String }),
-      ("Name2", { String })
+    *@[
+      (cs"Name1", { String }),
+      (cs"Name2", { String })
     ]
   template setParam*(b: CBSwapVariables; index: int; val: CBVar) =
     case index
@@ -109,7 +109,7 @@ when true:
     of 1: b.name2
     else: assert(false); Empty
   template consumedVariables*(b: CBSetVariable): CBParametersInfo = 
-    @[
+    *@[
       (b.name1, { String }),
       (b.name2, { String })
     ]
@@ -130,7 +130,7 @@ when true:
   type
     CBAddVariable* = object
       target*: ptr CBVar
-      name*: string
+      name*: GbString
       maxSize: int
   
   template cleanup*(b: CBAddVariable) =
@@ -144,10 +144,10 @@ when true:
     b.target = nil
   template inputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBAddVariable): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBAddVariable): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBAddVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBAddVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBAddVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = @[(b.name, { String })]
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name, { String })]
   template activate*(b: CBAddVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
     
@@ -190,7 +190,7 @@ when true:
   template destroy*(b: CBGetItems) = freeSeq(b.cachedResult)
   template inputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBGetItems): CBParametersInfo = @[("Index", ({ Int }, true #[seq]#), false #[context]#)]
+  template parameters*(b: CBGetItems): CBParametersInfo = *@[(cs"Index", ({ Int }, true #[seq]#), false #[context]#)]
   template setParam*(b: CBGetItems; index: int; val: CBVar) = b.indices = val
   template getParam*(b: CBGetItems; index: int): CBVar = b.indices
   template activate*(b: var CBGetItems; context: CBContext; input: CBVar): CBVar =
@@ -229,11 +229,11 @@ when true:
   template inputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRunChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRunChain): CBParametersInfo =
-    @[
-      ("Chain", "The chain to run.", { Chain, None }),
-      ("Once", "Runs this sub-chain only once within the parent chain execution cycle.", { Bool }),
-      ("Passthrough", "The input of this block will be the output. Always on if Detached.", { Bool }),
-      ("Detached", "Runs the sub-chain as a completely separate parallel chain in the same node.", { Bool })
+    *@[
+      (cs"Chain", cs"The chain to run.", { Chain, None }),
+      (cs"Once", cs"Runs this sub-chain only once within the parent chain execution cycle.", { Bool }),
+      (cs"Passthrough", cs"The input of this block will be the output. Always on if Detached.", { Bool }),
+      (cs"Detached", cs"Runs the sub-chain as a completely separate parallel chain in the same node.", { Bool })
     ]
   template setParam*(b: CBRunChain; index: int; val: CBVar) =
     case index
@@ -314,10 +314,10 @@ when true:
   template inputTypes*(b: CBWaitChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWaitChain): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWaitChain): CBParametersInfo =
-    @[
-      ("Chain", { Chain }), 
-      ("Once", { Bool }),
-      ("Passthrough", { Bool })
+    *@[
+      (cs"Chain", { Chain }), 
+      (cs"Once", { Bool }),
+      (cs"Passthrough", { Bool })
     ]
   template setParam*(b: CBWaitChain; index: int; val: CBVar) =
     case index
@@ -362,14 +362,14 @@ when true:
 when true:
   type
     CBSetGlobal* = object
-      name*: string
+      name*: GbString
       target*: ptr CBVar
   
   template cleanup*(b: CBSetGlobal) =
     b.target = nil
   template inputTypes*(b: CBSetGlobal): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBSetGlobal): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBSetGlobal): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBSetGlobal): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBSetGlobal; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
@@ -386,7 +386,7 @@ when true:
 when true:
   type
     CBUseGlobal* = object
-      name*: string
+      name*: GbString
       ctarget*, gtarget*: ptr CBVar
   
   template cleanup*(b: CBUseGlobal) =
@@ -394,7 +394,7 @@ when true:
     b.gtarget = nil
   template inputTypes*(b: CBUseGlobal): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBUseGlobal): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBUseGlobal): CBParametersInfo = @[("Name", { String })]
+  template parameters*(b: CBUseGlobal): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBUseGlobal; index: int; val: CBVar) =
     b.name = val.stringValue
     cleanup(b)
@@ -422,7 +422,7 @@ when true:
   template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
   template outputTypes*(b: CBlockConst): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, String, Color }, true)
   template parameters*(b: CBlockConst): CBParametersInfo = 
-    @[("Value", (AllIntTypes + AllFloatTypes + { None, String, Color }, true #[seq]#))]
+    *@[(cs"Value", (AllIntTypes + AllFloatTypes + { None, String, Color }, true #[seq]#))]
   template setParam*(b: CBlockConst; index: int; val: CBVar) =
     `~quickcopy` b.value
     var inval = val
@@ -490,14 +490,14 @@ when true:
   template destroy*(b: CBlockMsg) = `~quickcopy` b.msg
   template inputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockMsg): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBlockMsg): CBParametersInfo = @[("Message", { String })]
+  template parameters*(b: CBlockMsg): CBParametersInfo = *@[(cs"Message", { String })]
   template setParam*(b: CBlockMsg; index: int; val: CBVar) =
     `~quickcopy` b.msg
     var inval = val
     quickcopy(b.msg, inval)
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
-    log b.msg
+    logs($b.msg)
     input
 
   chainblock CBlockMsg, "Msg"
@@ -511,7 +511,7 @@ when true:
 
   template inputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBlockSleep): CBParametersInfo = @[("Time", { Float })]
+  template parameters*(b: CBlockSleep): CBParametersInfo = *@[(cs"Time", { Float })]
   template setParam*(b: CBlockSleep; index: int; val: CBVar) = b.time = val.floatValue
   template getParam*(b: CBlockSleep; index: int): CBVar = b.time.CBVar
   template activate*(b: CBlockSleep; context: CBContext; input: CBVar): CBVar =
@@ -534,10 +534,10 @@ when true:
   template inputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
-    @[
-      ("Accept", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
-      ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
-      ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+    *@[
+      (cs"Accept", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
+      (cs"IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
+      (cs"All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
     ]
   template setParam*(b: CBWhen; index: int; val: CBVar) =
     case index
@@ -626,10 +626,10 @@ when true:
   template inputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
-    @[
-      ("Reject", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
-      ("IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
-      ("All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+    *@[
+      (cs"Reject", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
+      (cs"IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
+      (cs"All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
     ]
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
     case index
@@ -701,7 +701,7 @@ when true:
     BoolOpCC* = toFourCC("bool")
   
   var
-    boolOpLabelsSeq = @["Equal", "More", "Less", "MoreEqual", "LessEqual"]
+    boolOpLabelsSeq = *@[cs"Equal", cs"More", cs"Less", cs"MoreEqual", cs"LessEqual"]
     boolOpLabels = boolOpLabelsSeq.toCBStrings()
   
   let
@@ -749,12 +749,12 @@ when true:
   template inputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template outputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
-    @[
-      ("Operator", @[boolOpInfo].toCBTypesInfo(), false),
-      ("Operand", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
-      ("True", ({ Block, None }, true).toCBTypesInfo(), false),
-      ("False", ({ Block, None }, true).toCBTypesInfo(), false),
-      ("Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
+    *@[
+      (cs"Operator", toCBTypesInfo(*@[boolOpInfo]), false),
+      (cs"Operand", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
+      (cs"True", ({ Block, None }, true).toCBTypesInfo(), false),
+      (cs"False", ({ Block, None }, true).toCBTypesInfo(), false),
+      (cs"Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
     ]
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
@@ -914,10 +914,10 @@ when true:
   template inputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
-    @[
-      ("Forever", ({ Bool }).toCBTypesInfo(), false),
-      ("Times", ({ Int }).toCBTypesInfo(), false),
-      ("Action", ({ Block, None }, true).toCBTypesInfo(), false),
+    *@[
+      (cs"Forever", ({ Bool }).toCBTypesInfo(), false),
+      (cs"Times", ({ Int }).toCBTypesInfo(), false),
+      (cs"Action", ({ Block, None }, true).toCBTypesInfo(), false),
     ]
   template setParam*(b: CBRepeat; index: int; val: CBVar) =
     case index
@@ -1094,10 +1094,10 @@ when true:
   template inputTypes*(b: CBToImage): CBTypesInfo = ({ Float, Float2, Float3, Float4, Int, Int2, Int3, Int4, Color }, true)
   template outputTypes*(b: CBToImage): CBTypesInfo = { CBType.Image }
   template parameters*(b: CBToImage): CBParametersInfo =
-    @[
-      ("Width", { Int }),
-      ("Height", { Int }),
-      ("Channels", { Bool })
+    *@[
+      (cs"Width", { Int }),
+      (cs"Height", { Int }),
+      (cs"Channels", { Bool })
     ]
   template setParam*(b: CBToImage; index: int; val: CBVar) =
     case index

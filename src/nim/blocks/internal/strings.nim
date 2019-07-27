@@ -18,8 +18,8 @@ when true:
   template inputTypes*(b: CBMatchText): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBMatchText): CBTypesInfo = ({ String }, true #[seq]#)
   template parameters*(b: CBMatchText): CBParametersInfo = 
-    @[
-      ("Regex", ({ String }, false #[seq]#), false #[context]#)
+    *@[
+      (cs"Regex", ({ String }, false #[seq]#), false #[context]#)
     ]
   template setParam*(b: CBMatchText; index: int; val: CBVar) =
     b.regexStr = val.stringValue
@@ -78,9 +78,9 @@ when true:
   template inputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
   template outputTypes*(b: CBReplaceText): CBTypesInfo = ({ String }, false #[seq]#)
   template parameters*(b: CBReplaceText): CBParametersInfo = 
-    @[
-      ("Regex", ({ String }, false #[seq]#), false #[context]#),
-      ("Replacement", ({ String }, false #[seq]#), false #[context]#)
+    *@[
+      (cs"Regex", ({ String }, false #[seq]#), false #[context]#),
+      (cs"Replacement", ({ String }, false #[seq]#), false #[context]#)
     ]
   template setParam*(b: CBReplaceText; index: int; val: CBVar) =
     case index
