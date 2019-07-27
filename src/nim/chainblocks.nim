@@ -1140,7 +1140,7 @@ when isMainModule and appType != "lib":
     inlineTesting2.start()
 
     var nimcall = proc(input: CBVar): CBVar {.closure.} =
-      log input
+      logs($input)
       input
     
     withChain closureTest:

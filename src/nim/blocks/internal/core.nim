@@ -497,7 +497,7 @@ when true:
     quickcopy(b.msg, inval)
   template getParam*(b: CBlockMsg; index: int): CBVar = b.msg
   template activate*(b: CBlockMsg; context: CBContext; input: CBVar): CBVar =
-    log b.msg
+    logs($b.msg)
     input
 
   chainblock CBlockMsg, "Msg"

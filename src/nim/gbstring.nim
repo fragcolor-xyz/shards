@@ -29,12 +29,15 @@ proc `=move`*(a, b: var GbString) =
   if a.gbstr.pointer == b.gbstr.pointer: return
   `=destroy`(a)
   a.gbstr = b.gbstr
+  b.gbstr = nil
 
 proc `=sink`*(a: var GbString; b: GbString) =
   when defined(testing): echo "=sink called on: ", a
   if a.gbstr.pointer == b.gbstr.pointer: return
   `=destroy`(a)
   a.gbstr = b.gbstr
+
+proc zap*(s: var GbString) {.inline.} = s.gbstr = nil
 
 converter toGbString*(nstr: string): GbString {.inline, noinit.} =
   result.gbstr = invokeFunction("gb_make_string_length", nstr.cstring, nstr.len).to(NativeGBString)
@@ -80,7 +83,9 @@ var constStrings {.threadvar.}: StbSeq[GbString]
 
 template cs*(s: string): cstring =
   # Creates a global const string out of a string
-  constStrings.push(s.GbString)
+  var gbstr = s.GbString
+  constStrings.push(gbstr)
+  gbstr.zap()
   constStrings[constStrings.len - 1].cstring
 
 # template constCsString*{cs(pattern)}(pattern: string{lit}): cstring =

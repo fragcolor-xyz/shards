@@ -208,7 +208,7 @@ proc `==`*(a,b: CBVar): bool {.inline.} =
         a.objectTypeId.int32 != b.objectTypeId.int32 or
         a.objectValue != b.objectValue: return false
     return true
-  of Block: assert(false) # TODO
+  of Block: return a.blockValue.pointer == b.blockValue.pointer
 
 proc `$`*(a: CBVar): string {.inline.} =
   case a.valueType
@@ -258,7 +258,7 @@ proc `$`*(a: CBVar): string {.inline.} =
   of Object:
     return "Object - addr: 0x" & $cast[int](a.objectValue).toHex() & 
     " vendorId: 0x" & a.objectVendorId.toHex() & " typeId: 0x" & a.objectTypeId.toHex() 
-  of Block: assert(false) # TODO
+  of Block: return "Block: " & $a.blockValue[].name(a.blockValue)
 
 proc `==`*(a: CBVar, b: CBVarConst): bool {.inline.} = a == b.value
 proc `<=`*(a: CBVar, b: CBVarConst): bool {.inline.} = a <= b.value
