@@ -981,7 +981,7 @@ namespace chainblocks
               activateBlock(subBlk, context, ifInput, ifOutput);
             }       
             // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
-            if(context->aborted)
+            if(unlikely(context->aborted))
             {
               previousOutput.valueType = None;
               previousOutput.payload.chainState = Stop;
@@ -989,6 +989,10 @@ namespace chainblocks
             else if(cblock->passthrough)
             {
               previousOutput = input;
+            }
+            else
+            {
+              previousOutput = ifOutput;
             }
             return;
           }
@@ -1005,7 +1009,7 @@ namespace chainblocks
               activateBlock(subBlk, context, ifInput, ifOutput);
             }       
             // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
-            if(context->aborted)
+            if(unlikely(context->aborted))
             {
               previousOutput.valueType = None;
               previousOutput.payload.chainState = Stop;
@@ -1013,6 +1017,10 @@ namespace chainblocks
             else if(cblock->passthrough)
             {
               previousOutput = input;
+            }
+            else
+            {
+              previousOutput = ifOutput;
             }
             return;
           }

@@ -826,9 +826,6 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       result.getParam = cast[CBGetParamProc](`getParamProc`.pointer)
       result.activate = cast[CBActivateProc](`activateProc`.pointer)
       result.cleanup = cast[CBCleanupProc](`cleanupProc`.pointer)
-    
-    static:
-      echo "Registered chainblock: " & `namespace` & `blockName`
   
   when appType != "lib" or defined(forceCBRuntime):
     if $namespaceStr != "":
