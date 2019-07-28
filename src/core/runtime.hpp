@@ -849,6 +849,9 @@ namespace chainblocks
       {
         auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
         auto repeats = cblock->doForever ? 1 : cblock->times;
+        CBVar repeatOutput;
+        repeatOutput.valueType = None;
+        repeatOutput.payload.chainState = Continue;
         while(repeats)
         {
           for(auto i = 0; i < stbds_arrlen(cblock->blocks); i++)
@@ -856,7 +859,9 @@ namespace chainblocks
             // This looks dangerous and error prone but the reality of chainblocks is that
             // a chain is expected to be evaluated using blocks reflection before running!
             auto subBlk = cblock->blocks[i].payload.blockValue;
-            activateBlock(subBlk, context, input, previousOutput);
+            // Apply same rule of runChain
+            auto repeatInput = repeatOutput.valueType == None ? input : repeatOutput;
+            activateBlock(subBlk, context, repeatInput, repeatOutput);
           }
 
           // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
@@ -956,6 +961,9 @@ namespace chainblocks
               previousOutput = blk->activate(blk, context, input);
               return;
           }
+          CBVar ifOutput;
+          ifOutput.valueType = None;
+          ifOutput.payload.chainState = Continue;
           if(result)
           {
             for(auto i = 0; i < stbds_arrlen(cblock->trueBlocks); i++)
@@ -963,7 +971,9 @@ namespace chainblocks
               // This looks dangerous and error prone but the reality of chainblocks is that
               // a chain is expected to be evaluated using blocks reflection before running!
               auto subBlk = cblock->trueBlocks[i].payload.blockValue;
-              activateBlock(subBlk, context, input, previousOutput);
+              // Apply same rule of runChain
+              auto ifInput = ifOutput.valueType == None ? input : ifOutput;
+              activateBlock(subBlk, context, ifInput, ifOutput);
             }       
             // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
             if(context->aborted)
@@ -985,7 +995,9 @@ namespace chainblocks
               // This looks dangerous and error prone but the reality of chainblocks is that
               // a chain is expected to be evaluated using blocks reflection before running!
               auto subBlk = cblock->falseBlocks[i].payload.blockValue;
-              activateBlock(subBlk, context, input, previousOutput);
+              // Apply same rule of runChain
+              auto ifInput = ifOutput.valueType == None ? input : ifOutput;
+              activateBlock(subBlk, context, ifInput, ifOutput);
             }       
             // make sure to propagate cancelation, but prevent Stop/Restart if passthrough
             if(context->aborted)
