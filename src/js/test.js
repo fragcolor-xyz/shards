@@ -1,4 +1,4 @@
-import { chain, Msg, Log, Repeat } from "./blocks";
+import { chain, Msg, Log, Repeat, SetTableValue, GetTableValue } from "./blocks";
 
 try
 {
@@ -67,6 +67,17 @@ try
         5
       ),
       "JS is not too bad uh!",
+      Log(),
+      "Tables are nice",
+      SetTableValue(
+        "table1",
+        "myKey"
+      ),
+      "This value will not show up!",
+      GetTableValue(
+        "table1",
+        "myKey"
+      ),
       Log()
     ]))
   }

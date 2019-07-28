@@ -578,7 +578,7 @@ namespace chainblocks
     return &v;
   }
 
-  static void registerCoreBlocks();
+  void registerCoreBlocks();
 
   static CBRuntimeBlock* createBlock(const char* name)
   {

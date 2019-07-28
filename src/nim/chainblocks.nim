@@ -562,6 +562,8 @@ when appType != "lib" or defined(forceCBRuntime):
   initSeq(blockNamesCacheSeq)
 
   proc cbBlocks*(): CBStrings {.cdecl, exportc, dynlib.} =
+    invokeFunction("chainblocks::registerCoreBlocks").to(void)
+    
     blockNamesCache.setLen(0)
     blockNamesCacheSeq.clear()
     for item in cppItems[BlocksMap, BlocksPair](blocksRegister):

@@ -19,13 +19,14 @@ namespace chainblocks
   thread_local CBChain* CurrentChain;
 
   static bool coreRegistered = false;
-  static void registerCoreBlocks()
+  void registerCoreBlocks()
   {
     if(!coreRegistered)
     {
       // Do this here to prevent insanity loop
       coreRegistered = true;
       REGISTER_CORE_BLOCK(SetTableValue);
+      REGISTER_CORE_BLOCK(GetTableValue);
     }
   }
 };

@@ -330,8 +330,8 @@ __declspec(align(16))
 #endif
 struct CBNamedVar
 {
-  CBVar value;
   const char* key;
+  CBVar value;
 };
 
 typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
