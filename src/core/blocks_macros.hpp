@@ -64,8 +64,12 @@
 
 #define RUNTIME_BLOCK_cleanup(_name_) result->cleanup = static_cast<CBCleanupProc>([] (CBRuntimeBlock* block) { reinterpret_cast<_name_##Runtime*>(block)->core.cleanup(); });
 
-#define RUNTIME_BLOCK_END(_name_) return result;\
+#define RUNTIME_CORE_BLOCK_END(_name_) return result;\
   }
+
+#define RUNTIME_BLOCK_END(_name_) return result;\
+  }\
+};
 
 #define REGISTER_BLOCK(_namespace_, _name_) chainblocks::registerBlock(#_namespace_ "." #_name_, _namespace_::createBlock##_name_)
 #define REGISTER_CORE_BLOCK(_name_) chainblocks::registerBlock(#_name_, createBlock##_name_)
