@@ -1,5 +1,6 @@
 import ../../../types
 import ../../../chainblocks
+import nimline
 
 when true:
   type
