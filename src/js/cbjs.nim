@@ -129,6 +129,94 @@ when true:
     result = newClassObj(context, JsCBVarConst.classId, JsCBVarConst.prototype)
     result.attachPtr(addr v)
 
+proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
+  if src.isStr:
+    let
+      strVar = src.getCStr(jsContext)
+    var strTemp: CBVar = strVar.CBString
+    dst[].storage = JsVarStorage.Copy
+    quickcopy(dst[].value, strTemp)
+    strVar.freeCStr(jsContext)
+  
+  elif src.isInt:
+    dst[].value.valueType = Int
+    dst[].value.intValue = src.toInt(jsContext)
+  
+  elif src.isFloat:
+    dst[].value.valueType = Float
+    dst[].value.floatValue = src.toFloat(jsContext)
+  
+  elif src.isArray(jsContext):
+    dst[].value.valueType = Seq
+    dst[].storage = JsVarStorage.Seq
+    initSeq(dst[].value.seqValue)
+    
+    let
+      jlen = src.getProperty(jsContext, "length")
+      len = jlen.toInt32(jsContext)
+    
+    for i in 0..<len:
+      let val = src.getProperty(jsContext, i)
+      
+      let blockValue = cast[ptr CBRuntimeBlock](val.getPtr(JsCBRuntimeBlock.classId))
+      if blockValue != nil:
+        # The block will own the block, remove the ptr from the js side, so it won't destroy it!
+        val.attachPtr(nil)
+        dst[].value.seqValue.push(blockValue)
+        val.decRef(jsContext)
+        continue
+      
+      # Finally try to wrap in a Const()
+      let
+        constStr = newStr("Const", jsContext)
+        constBlkJs = JsCBRuntimeBlock.construct(jsContext, [constStr])
+        constBlk = cast[ptr CBRuntimeBlock](constBlkJs.getPtr(JsCBRuntimeBlock.classId))
+      
+      if constBlk != nil:
+        # The block will own the block, remove the ptr from the js side, so it won't destroy it!
+        constBlkJs.attachPtr(nil)
+        
+        # Set the var as param
+        var tmp: JsCBVarBox
+        jsToVar(addr tmp, val)
+        constBlk[].setParam(constBlk, 0, tmp.value)
+        # free mem from the temp if we need to
+        case tmp.storage
+        of JsVarStorage.None:
+          discard
+        of JsVarStorage.Copy:
+          `~quickcopy` tmp.value
+        of JsVarStorage.Seq:
+          for sub in tmp.value.seqValue.mitems:
+            `~quickcopy` sub
+          freeSeq(tmp.value.seqValue)
+        
+        dst[].value.seqValue.push(constBlk)
+        val.decRef(jsContext)
+        continue
+      
+      val.decRef(jsContext)
+    
+  # Make sure this is the last as all is an obj, well at least array is
+  elif src.isObj:
+    let constVar = cast[ptr CBVar](src.getPtr(JsCBVarConst.classId))
+    if constVar != nil:
+      dst[].storage = JsVarStorage.Copy
+      quickcopy(dst[].value, constVar[])
+      return
+    
+    let blockValue = cast[ptr CBRuntimeBlock](src.getPtr(JsCBRuntimeBlock.classId))
+    if blockValue != nil:
+      dst[].value.valueType = Block
+      dst[].value.blockValue = blockValue
+      return
+    
+    let chainValue = cast[CBChainPtr](src.getPtr(JsCBChain.classId))
+    if blockValue != nil:
+      dst[].value.valueType = Chain
+      dst[].value.chainValue = chainValue
+      return
+
 # A mutable CBVar
 when true:
   var JsCBVar = JsClass(
@@ -153,57 +241,7 @@ when true:
       
       # Add logic to init var from any value...
       if argc == 1:
-        if argv[0].isStr:
-          let
-            strVar = argv[0].getCStr(jsContext)
-          var strTemp: CBVar = strVar.CBString
-          newVar[].storage = JsVarStorage.Copy
-          quickcopy(newVar[].value, strTemp)
-          strVar.freeCStr(jsContext)
-        
-        elif argv[0].isInt:
-          newVar[].value.valueType = Int
-          newVar[].value.intValue = argv[0].toInt(jsContext)
-        
-        elif argv[0].isFloat:
-          newVar[].value.valueType = Float
-          newVar[].value.floatValue = argv[0].toFloat(jsContext)
-        
-        elif argv[0].isArray(jsContext):
-          newVar[].value.valueType = Seq
-          newVar[].storage = JsVarStorage.Seq
-          initSeq(newVar[].value.seqValue)
-          
-          let
-            jlen = argv[0].getProperty(jsContext, "length")
-            len = jlen.toInt32(jsContext)
-          
-          for i in 0..<len:
-            let val = argv[0].getProperty(jsContext, i)
-            
-            let blockValue = cast[ptr CBRuntimeBlock](val.getPtr(JsCBRuntimeBlock.classId))
-            if blockValue != nil:
-              newVar[].value.seqValue.push(blockValue)
-        
-        elif argv[0].isObj:
-          block findObj:
-            let constVar = cast[ptr CBVar](argv[0].getPtr(JsCBVarConst.classId))
-            if constVar != nil:
-              newVar[].storage = JsVarStorage.Copy
-              quickcopy(newVar[].value, constVar[])
-              break
-            
-            let blockValue = cast[ptr CBRuntimeBlock](argv[0].getPtr(JsCBRuntimeBlock.classId))
-            if blockValue != nil:
-              newVar[].value.valueType = Block
-              newVar[].value.blockValue = blockValue
-              break
-            
-            let chainValue = cast[CBChainPtr](argv[0].getPtr(JsCBChain.classId))
-            if blockValue != nil:
-              newVar[].value.valueType = Chain
-              newVar[].value.chainValue = chainValue
-              break
+        jsToVar(newVar, argv[0])
       
       elif argc > 1:
         if argv[0].isInt: # infer from first arg
@@ -551,8 +589,11 @@ function chain(blocks, name, looped, unsafe) {
   }
   newChain.unsafe = unsafe
 
-  blocks.forEach(function(block) {
-    newChain.addBlock(block)
+  blocks.forEach(function(val) {
+    if(val instanceof Block)
+      newChain.addBlock(val)
+    else // assume var
+      newChain.addBlock(Const(val))
   })
 
   return newChain
