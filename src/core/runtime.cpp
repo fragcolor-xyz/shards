@@ -17,6 +17,17 @@ namespace chainblocks
   phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   thread_local std::map<std::string, CBCallback> RunLoopHooks;
   thread_local CBChain* CurrentChain;
+
+  static bool coreRegistered = false;
+  static void registerCoreBlocks()
+  {
+    if(!coreRegistered)
+    {
+      // Do this here to prevent insanity loop
+      coreRegistered = true;
+      REGISTER_CORE_BLOCK(SetTableValue);
+    }
+  }
 };
 
 // Utility
@@ -1006,14 +1017,8 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
 
   int main()
   {
-    registerCoreBlocks();
-    auto msg = Core::createBlockMsg();
-    LOG(INFO) << msg->name(msg);
-    CBVar strVar;
-    strVar.valueType = String;
-    strVar.payload.stringValue = "well yeah cool.";
-    msg->setParam(msg, 0, strVar);
-    auto res = msg->activate(msg, nullptr, CBVar());
-    LOG(INFO) << res.payload.stringValue;
+    auto blk = chainblocks::createBlock("SetTableValue");
+    LOG(INFO) << blk->name(blk);
+    LOG(INFO) << blk->exposedVariables(blk);
   }
 #endif

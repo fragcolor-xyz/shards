@@ -470,7 +470,7 @@ namespace chainblocks
       chainblocks::GlobalChains.erase(findIt);
     }
   }
-
+  
   static void registerBlock(const char* fullName, CBBlockConstructor constructor)
   {
     auto cname = std::string(fullName);
@@ -486,7 +486,7 @@ namespace chainblocks
       std::cout << "overridden block: " << cname << "\n";
     }
   }
-
+  
   static void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info)
   {
     auto tup = std::make_tuple(vendorId, typeId);
@@ -578,8 +578,13 @@ namespace chainblocks
     return &v;
   }
 
+  static void registerCoreBlocks();
+
   static CBRuntimeBlock* createBlock(const char* name)
   {
+    // Always hook this here
+    registerCoreBlocks();
+
     auto it = BlocksRegister.find(name);
     if(it == BlocksRegister.end())
     {
