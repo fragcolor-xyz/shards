@@ -722,29 +722,27 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `destroyProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.destroy()
-      # manually destroy nim side
-      when defined nimV2:
-        if b.cacheInputTypes != nil:
-          freeSeq(b.cacheInputTypes[])
-          dispose(b.cacheInputTypes)
-        if b.cacheOutputTypes != nil:
-          freeSeq(b.cacheOutputTypes[])
-          dispose(b.cacheOutputTypes)
-        if b.cacheExposedVariables != nil:
-          for item in b.cacheExposedVariables[].mitems:
-            freeSeq(item.valueTypes)
-          freeSeq(b.cacheExposedVariables[])
-          dispose(b.cacheExposedVariables)
-        if b.cacheConsumedVariables != nil:
-          for item in b.cacheConsumedVariables[].mitems:
-            freeSeq(item.valueTypes)
-          freeSeq(b.cacheConsumedVariables[])
-          dispose(b.cacheConsumedVariables)
-        if b.cacheParameters != nil:
-          for item in b.cacheParameters[].mitems:
-            freeSeq(item.valueTypes)
-          freeSeq(b.cacheParameters[])
-          dispose(b.cacheParameters)
+      if b.cacheInputTypes != nil:
+        freeSeq(b.cacheInputTypes[])
+        b.cacheInputTypes = nil
+      if b.cacheOutputTypes != nil:
+        freeSeq(b.cacheOutputTypes[])
+        b.cacheOutputTypes = nil
+      if b.cacheExposedVariables != nil:
+        for item in b.cacheExposedVariables[].mitems:
+          freeSeq(item.valueTypes)
+        freeSeq(b.cacheExposedVariables[])
+        b.cacheExposedVariables = nil
+      if b.cacheConsumedVariables != nil:
+        for item in b.cacheConsumedVariables[].mitems:
+          freeSeq(item.valueTypes)
+        freeSeq(b.cacheConsumedVariables[])
+        b.cacheConsumedVariables = nil
+      if b.cacheParameters != nil:
+        for item in b.cacheParameters[].mitems:
+          freeSeq(item.valueTypes)
+        freeSeq(b.cacheParameters[])
+        b.cacheParameters = nil
       cppdel(b)
     when compiles((var x: `blk`; x.preChain(nil))):
       proc `preChainProc`*(b: `rtName`, context: CBContext) {.cdecl.} =
