@@ -1,4 +1,5 @@
-#include "../runtime.hpp"
+#include "../chainblocks.hpp"
+#include "../blocks_macros.hpp"
 
 namespace chainblocks
 {
@@ -43,8 +44,14 @@ namespace chainblocks
     
     CBVar activate(CBContext* context, CBVar input)
     {
+      //TODO
       return msg;
     }
+  };
+
+  struct SetTableValue
+  {
+    
   };
 };
 
@@ -57,4 +64,9 @@ RUNTIME_BLOCK_parameters(Msg)
 RUNTIME_BLOCK_setParam(Msg)
 RUNTIME_BLOCK_getParam(Msg)
 RUNTIME_BLOCK_activate(Msg)
-RUNTIME_BLOCK_END()
+RUNTIME_BLOCK_END(Msg)
+
+static void registerCoreBlocks()
+{
+  REGISTER_BLOCK(Core, Msg);
+}

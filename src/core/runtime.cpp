@@ -1006,6 +1006,7 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
 
   int main()
   {
+    registerCoreBlocks();
     auto msg = Core::createBlockMsg();
     LOG(INFO) << msg->name(msg);
     CBVar strVar;
