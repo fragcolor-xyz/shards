@@ -476,7 +476,7 @@ when appType != "lib" or defined(forceCBRuntime):
     node[].invoke("tick", input).to(void)
   proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, exportc, dynlib.} = tick(node, input)
   proc stop*(node: ptr CBNode) {.inline.} =
-    node[].invoke("stop").to(void)
+    node[].invoke("terminate").to(void)
   proc cbNodeStop*(node: ptr CBNode) {.cdecl, exportc, dynlib.} = stop(node)
 
   proc prepareInternal(chain: CBChainPtr) {.importcpp: "chainblocks::prepare(#)", header: "runtime.hpp".}
