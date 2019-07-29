@@ -179,7 +179,7 @@ struct CBImage
 struct CBTypeInfo
 {
   CBType basicType;
-
+  
   // this is a way to express in a simpler manner that this type might also be an array
   // instead of basically using seqTypes, populate it and make this Seq as basicType
   // Usually this represents a flat single dimentional arrays of CBTypes, and generally basicType == Seq and sequenced == true is discouraged
@@ -191,12 +191,12 @@ struct CBTypeInfo
       int32_t objectVendorId;
       int32_t objectTypeId;
     };
-
+    
     struct {
       int32_t enumVendorId;
       int32_t enumTypeId;
     };
-
+    
     // Currently not so much used, sequenced makes it easier but might be useful too
     // This allows multiple depth levels of arrays
     CBTypesInfo seqTypes;
@@ -354,6 +354,8 @@ typedef CBParametersInfo (__cdecl *CBParametersProc)(CBRuntimeBlock*);
 typedef void (__cdecl *CBSetParamProc)(CBRuntimeBlock*, int, CBVar);
 typedef CBVar (__cdecl *CBGetParamProc)(CBRuntimeBlock*, int);
 
+typedef CBTypeInfo (__cdecl *CBInferTypesProc)(CBRuntimeBlock*, CBTypeInfo inputType, CBParametersInfo consumableVariables);
+
 // All those happen inside a coroutine
 typedef void (__cdecl *CBPreChainProc)(CBRuntimeBlock*, CBContext*);
 typedef CBVar (__cdecl *CBActivateProc)(CBRuntimeBlock*, CBContext*, CBVar);
@@ -380,14 +382,16 @@ struct CBRuntimeBlock
   CBSetupProc setup; // A one time construtor setup for the block
   CBDestroyProc destroy; // A one time finalizer for the block, blocks should also free all the memory in here!
   
-  CBPreChainProc preChain; // Called inside the coro before a chain starts
-  CBPostChainProc postChain; // Called inside the coro afer a chain ends
+  CBPreChainProc preChain; // Called inside the coro before a chain starts, optional
+  CBPostChainProc postChain; // Called inside the coro afer a chain ends, optional
   
   CBInputTypesProc inputTypes;
   CBOutputTypesProc outputTypes;
   
   CBExposedVariablesProc exposedVariables;
   CBConsumedVariablesProc consumedVariables;
+
+  CBInferTypesProc inferTypes; // Optional call used during validation to fixup "Any" input type and provide valid output and exposed variable types
 
   CBParametersProc parameters;
   CBSetParamProc setParam; // Set a parameter, the block will copy the value, so if you allocated any memory you should free it

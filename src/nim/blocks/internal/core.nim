@@ -43,7 +43,7 @@ when true:
   template parameters*(b: CBSetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBSetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBSetVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { String })]
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { Any })]
   template activate*(b: CBSetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
@@ -64,15 +64,19 @@ when true:
       name*: GbString
   
   template cleanup*(b: CBGetVariable) = b.target = nil
-  template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
+  template inputTypes*(b: CBGetVariable): CBTypesInfo = ({ None })
   template outputTypes*(b: CBGetVariable): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBGetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBGetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBGetVariable; index: int): CBVar = b.name
-  template consumedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { String })]
+  template consumedVariables*(b: CBGetVariable): CBParametersInfo = *@[(b.name.cstring, { Any })]
+  proc inferTypes(b: var CBGetVariable; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo =
+    result = None
+    for consumable in consumables:
+      if consumable.name == b.name:
+        result = consumable.valueTypes[0]
   template activate*(b: CBGetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
-    
     b.target[]
 
   chainblock CBGetVariable, "GetVariable"
@@ -110,8 +114,8 @@ when true:
     else: assert(false); Empty
   template consumedVariables*(b: CBSetVariable): CBParametersInfo = 
     *@[
-      (b.name1, { String }),
-      (b.name2, { String })
+      (b.name1, { Any }),
+      (b.name2, { Any })
     ]
   template activate*(b: CBSwapVariables; context: CBContext; input: CBVar): CBVar =
     if b.targeta == nil: b.targeta = context.contextVariable(b.name1)
@@ -147,7 +151,7 @@ when true:
   template parameters*(b: CBAddVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBAddVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBAddVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name, { String })]
+  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name, { Any })]
   template activate*(b: CBAddVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
     
@@ -428,6 +432,7 @@ when true:
     var inval = val
     quickcopy(b.value, inval)
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
+  template inferTypes(b: CBlockConst; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo = b.value.valueType
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE

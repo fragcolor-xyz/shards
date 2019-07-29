@@ -1673,12 +1673,16 @@ struct CBNode
       validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
       {
         auto node = reinterpret_cast<CBNode*>(userData);
+        auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
         if(!nonfatalWarning)
         {
-          auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
           node->errorMsg.assign(errorTxt);
           node->errorMsg += ", input block: " + std::string(blk->name(blk));
           throw chainblocks::CBException(node->errorMsg.c_str());
+        }
+        else
+        {
+          LOG(INFO) << "Validation warning: " << errorTxt << " input block: " << blk->name(blk);
         }
       }, this);
     }

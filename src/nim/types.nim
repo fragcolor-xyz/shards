@@ -182,6 +182,8 @@ type
   CBSetParamProc* {.importcpp: "CBSetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int; val: CBVar) {.cdecl.}
   CBGetParamProc* {.importcpp: "CBGetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int): CBVar {.cdecl.}
 
+  CBInferTypesProc*{.importcpp: "CBInferTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo {.cdecl.}
+
   CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
   CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
 
@@ -206,6 +208,8 @@ type
     parameters*: CBParametersProc
     setParam*: CBSetParamProc
     getParam*: CBGetParamProc
+
+    inferTypes*: CBInferTypesProc
 
     activate*: CBActivateProc
     cleanup*: CBCleanupProc
@@ -349,7 +353,7 @@ iterator mitems*(t: CBTable): var CBNamedVar {.inline.} =
   for i in 0..<t.len:
     yield t[i]
 proc incl*(t: var CBTable; pair: CBNamedVar) {.inline.} = invokeFunction("stbds_shputs", t, pair).to(void)
-proc incl*(t: var CBTable; k: cstring; v: CBVar) {.inline.} = incl(t, CBNamedVar(key: k, value: v))
+proc incl*(t: var CBTable; k: cstring; v: CBVar) {.inline.} = invokeFunction("stbds_shput", t, k, v).to(void)
 proc excl*(t: CBTable; key: cstring) {.inline.} = invokeFunction("stbds_shdel", t, key).to(void)
 proc find*(t: CBTable; key: cstring): int {.inline.} = invokeFunction("stbds_shgeti", t, key).to(int)
 converter toCBVar*(t: CBTable): CBVar {.inline.} = CBVar(valueType: Table, payload: CBVarPayload(tableValue: t))

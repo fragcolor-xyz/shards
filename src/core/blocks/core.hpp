@@ -7,8 +7,10 @@ namespace chainblocks
 {
   static CBTypesInfo inOutInfo;
   static CBTypesInfo strInfo;
-  static CBParametersInfo paramsInfo;
-
+  static CBTypesInfo tableInfo;
+  static CBParametersInfo tableParamsInfo;
+  static CBParametersInfo tableExposedInfo;
+  
   struct SetTableValue
   {
     CBVar* target = nullptr;
@@ -62,14 +64,29 @@ namespace chainblocks
         CBTypeInfo strType = { String, false /*sequenced*/ };
         stbds_arrpush(strInfo, strType);
       }
-      if(!paramsInfo)
+      if(!tableParamsInfo)
       {
         CBParameterInfo nameInfo = { "Name", "The name of the table variable.", strInfo };
-        stbds_arrpush(paramsInfo, nameInfo);
+        stbds_arrpush(tableParamsInfo, nameInfo);
         CBParameterInfo keyInfo = { "Key", "The key of the value to write in the table.", strInfo};
-        stbds_arrpush(paramsInfo, keyInfo);
+        stbds_arrpush(tableParamsInfo, keyInfo);
       }
-      return paramsInfo;
+      return tableParamsInfo;
+    }
+    
+    CBParametersInfo exposedVariables()
+    {
+      if(!tableInfo)
+      {
+        CBTypeInfo atableType = { Table };
+        stbds_arrpush(tableInfo, atableType);
+      }
+      if(!tableExposedInfo)
+      {
+        CBParameterInfo nameInfo = { name.c_str(), "The exposed table.", tableInfo };
+        stbds_arrpush(tableExposedInfo, nameInfo);
+      }
+      return tableExposedInfo;
     }
     
     void setParam(int index, CBVar value)
@@ -173,14 +190,29 @@ namespace chainblocks
         CBTypeInfo strType = { String, false /*sequenced*/ };
         stbds_arrpush(strInfo, strType);
       }
-      if(!paramsInfo)
+      if(!tableParamsInfo)
       {
         CBParameterInfo nameInfo = { "Name", "The name of the table variable.", strInfo };
-        stbds_arrpush(paramsInfo, nameInfo);
+        stbds_arrpush(tableParamsInfo, nameInfo);
         CBParameterInfo keyInfo = { "Key", "The key of the value to write in the table.", strInfo};
-        stbds_arrpush(paramsInfo, keyInfo);
+        stbds_arrpush(tableParamsInfo, keyInfo);
       }
-      return paramsInfo;
+      return tableParamsInfo;
+    }
+
+    CBParametersInfo consumedVariables()
+    {
+      if(!tableInfo)
+      {
+        CBTypeInfo atableType = { Table };
+        stbds_arrpush(tableInfo, atableType);
+      }
+      if(!tableExposedInfo)
+      {
+        CBParameterInfo nameInfo = { name.c_str(), "The exposed table.", tableInfo };
+        stbds_arrpush(tableExposedInfo, nameInfo);
+      }
+      return tableExposedInfo;
     }
     
     void setParam(int index, CBVar value)
@@ -241,6 +273,7 @@ RUNTIME_BLOCK_cleanup(SetTableValue)
 RUNTIME_BLOCK_inputTypes(SetTableValue)
 RUNTIME_BLOCK_outputTypes(SetTableValue)
 RUNTIME_BLOCK_parameters(SetTableValue)
+RUNTIME_BLOCK_exposedVariables(SetTableValue)
 RUNTIME_BLOCK_setParam(SetTableValue)
 RUNTIME_BLOCK_getParam(SetTableValue)
 RUNTIME_BLOCK_activate(SetTableValue)
@@ -252,6 +285,7 @@ RUNTIME_BLOCK_cleanup(GetTableValue)
 RUNTIME_BLOCK_inputTypes(GetTableValue)
 RUNTIME_BLOCK_outputTypes(GetTableValue)
 RUNTIME_BLOCK_parameters(GetTableValue)
+RUNTIME_BLOCK_consumedVariables(GetTableValue)
 RUNTIME_BLOCK_setParam(GetTableValue)
 RUNTIME_BLOCK_getParam(GetTableValue)
 RUNTIME_BLOCK_activate(GetTableValue)

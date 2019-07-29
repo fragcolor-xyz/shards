@@ -691,6 +691,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     parametersProc = ident($blk & "_parameters")
     setParamProc = ident($blk & "_setParam")
     getParamProc = ident($blk & "_getParam")
+
+    inferTypesProc = ident($blk & "_inferTypes")
     
     activateProc = ident($blk & "_activate")
     cleanupProc = ident($blk & "_cleanup")
@@ -790,6 +792,12 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `getParamProc`*(b: `rtName`; index: int): CBVar {.cdecl.} =
       updateStackBottom()
       b.sb.getParam(index)
+    when compiles((var x: `blk`; discard x.inferTypes(CBTypeInfo(), nil))):
+      static:
+        echo `blk`, " has inferTypes"
+      proc `inferTypesProc`*(b: `rtName`; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo {.cdecl.} =
+        updateStackBottom()
+        b.sb.inferTypes(inputType, consumables)
     proc `activateProc`*(b: `rtName`; context: CBContext; input: CBVar): CBVar {.cdecl.} =
       updateStackBottom()
       try:
@@ -824,6 +832,10 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       result.parameters = cast[CBParametersProc](`parametersProc`.pointer)
       result.setParam = cast[CBSetParamProc](`setParamProc`.pointer)
       result.getParam = cast[CBGetParamProc](`getParamProc`.pointer)
+      
+      when compiles((var x: `blk`; discard x.inferTypes(CBTypeInfo(), nil))):
+        result.inferTypes = cast[CBInferTypesProc](`inferTypesProc`.pointer)
+      
       result.activate = cast[CBActivateProc](`activateProc`.pointer)
       result.cleanup = cast[CBCleanupProc](`cleanupProc`.pointer)
   

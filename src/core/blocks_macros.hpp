@@ -18,6 +18,7 @@
     result->getParam = static_cast<CBGetParamProc>([] (CBRuntimeBlock* block, int index) { return CBVar(); });\
     result->preChain = nullptr;\
     result->postChain = nullptr;\
+    result->inferTypes = nullptr;\
     result->cleanup = static_cast<CBCleanupProc>([] (CBRuntimeBlock* block) {});
 
 #define RUNTIME_CORE_BLOCK(_typename_, _name_) struct _name_##Runtime {\
@@ -39,6 +40,7 @@
     result->getParam = static_cast<CBGetParamProc>([] (CBRuntimeBlock* block, int index) { return CBVar(); });\
     result->preChain = nullptr;\
     result->postChain = nullptr;\
+    result->inferTypes = nullptr;\
     result->cleanup = static_cast<CBCleanupProc>([] (CBRuntimeBlock* block) {});
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root of the call if the block is all inline
@@ -57,6 +59,8 @@
 #define RUNTIME_BLOCK_parameters(_name_) result->parameters = static_cast<CBParametersProc>([] (CBRuntimeBlock* block) { return reinterpret_cast<_name_##Runtime*>(block)->core.parameters(); });
 #define RUNTIME_BLOCK_setParam(_name_) result->setParam = static_cast<CBSetParamProc>([] (CBRuntimeBlock* block, int index, CBVar value) { reinterpret_cast<_name_##Runtime*>(block)->core.setParam(index, value); });
 #define RUNTIME_BLOCK_getParam(_name_) result->getParam = static_cast<CBGetParamProc>([] (CBRuntimeBlock* block, int index) { return reinterpret_cast<_name_##Runtime*>(block)->core.getParam(index); });
+
+#define RUNTIME_BLOCK_inferTypes(_name_) result->inferTypes = static_cast<CBInferTypesProc>([] (CBRuntimeBlock* block, CBTypeInfo inputType, CBParametersInfo consumableVariables) { return reinterpret_cast<_name_##Runtime*>(block)->core.inferTypes(inputType, consumableVariables); });
 
 #define RUNTIME_BLOCK_preChain(_name_) result->preChain = static_cast<CBPreChainProc>([] (CBRuntimeBlock* block, CBContext* context) { reinterpret_cast<_name_##Runtime*>(block)->core.preChain(context); });
 #define RUNTIME_BLOCK_activate(_name_) result->activate = static_cast<CBActivateProc>([] (CBRuntimeBlock* block, CBContext* context, CBVar input) { return reinterpret_cast<_name_##Runtime*>(block)->core.activate(context, input); });
