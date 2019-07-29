@@ -1660,20 +1660,28 @@ namespace chainblocks
 
 struct CBNode
 {
-  void schedule(CBChain* chain, CBVar input = {})
+  ~CBNode()
+  {
+    terminate();
+  }
+  
+  void schedule(CBChain* chain, CBVar input = {}, bool validate = true)
   {
     // Validate the chain
-    validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
+    if(validate)
     {
-      auto node = reinterpret_cast<CBNode*>(userData);
-      if(!nonfatalWarning)
+      validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
       {
-        auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
-        node->errorMsg.assign(errorTxt);
-        node->errorMsg += ", input block: " + std::string(blk->name(blk));
-        throw chainblocks::CBException(node->errorMsg.c_str());
-      }
-    }, this);
+        auto node = reinterpret_cast<CBNode*>(userData);
+        if(!nonfatalWarning)
+        {
+          auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
+          node->errorMsg.assign(errorTxt);
+          node->errorMsg += ", input block: " + std::string(blk->name(blk));
+          throw chainblocks::CBException(node->errorMsg.c_str());
+        }
+      }, this);
+    }
     
     chains.push_back(chain);
     chain->node = this;
@@ -1695,12 +1703,13 @@ struct CBNode
     }
   }
   
-  void stop()
+  void terminate()
   {
     for(auto chain : chains)
     {
       chainblocks::stop(chain);
     }
+    chains.clear();
   }
   
 private:
