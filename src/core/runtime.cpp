@@ -164,6 +164,11 @@ EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext
   chainblocks::activateBlock(block, context, *input, *output);
 }
 
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+{
+  return validateConnections(chain, callback, userData, inputType);
+}
+
 EXPORTED void __cdecl chainblocks_Log(int level, const char* format, ...)
 {
   auto temp = std::vector<char> {};
@@ -869,7 +874,7 @@ bool matchTypes(const CBTypeInfo& exposedType, const CBTypeInfo& consumedType)
 
 struct ValidationContext
 {
-  phmap::flat_hash_map<std::string, CBParameterInfo> exposed;
+  phmap::flat_hash_map<std::string, CBExposedTypeInfo> exposed;
   
   CBTypeInfo previousOutputType;
   
@@ -909,7 +914,7 @@ void validateConnection(ValidationContext& ctx)
   }
   
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
-  CBParameterInfo* consumables = nullptr;
+  CBExposedTypesInfo consumables = nullptr;
   
   // make sure we have the vars we need, collect first
   for(auto i = 0; i < stbds_arrlen(consumedVar); i++)
@@ -920,7 +925,8 @@ void validateConnection(ValidationContext& ctx)
     if(findIt == ctx.exposed.end())
     {
       std::string err("Required consumed variable not found: " + name);
-      ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      // Warning only, delegate inferTypes to decide
+      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
     }
     else
     {
@@ -930,26 +936,14 @@ void validateConnection(ValidationContext& ctx)
         stbds_arrpush(consumables, findIt->second);
       }
       
-      auto exposedTypes = findIt->second.valueTypes;
-      auto requiredTyes = consumedVar[i].valueTypes;
-      // Simply compare len first of inner value Types array
-      if(stbds_arrlen(exposedTypes) != stbds_arrlen(requiredTyes))
+      auto exposedType = findIt->second.exposedType;
+      auto requiredType = consumedVar[i].exposedType;
+      
+      // Finally deep compare types
+      if(!matchTypes(exposedType, requiredType))
       {
         std::string err("Required consumed types do not match currently exposed ones: " + name);
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
-      }
-      // Finally deep compare types
-      auto len = stbds_arrlen(exposedTypes);
-      for(auto i = 0; i < len; i++)
-      {
-        auto& exposedType = exposedTypes[i];
-        auto& consumedType = requiredTyes[i];
-        
-        if(!matchTypes(exposedType, consumedType))
-        {
-          std::string err("Required consumed types do not match currently exposed ones: " + name);
-          ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
-        }
       }
     }
   }
@@ -962,6 +956,16 @@ void validateConnection(ValidationContext& ctx)
     ctx.previousOutputType = ctx.bottom->inferTypes(ctx.bottom, previousOutput, consumables);
     stbds_arrfree(consumables);
   }
+  else
+  {
+    // Short-cut if it's just one type and not any type
+    // Any type tho means keep previous output type!
+    auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
+    if(stbds_arrlen(outputTypes) == 1 && outputTypes[0].basicType != Any)
+    {
+      ctx.previousOutputType = outputTypes[0];
+    }
+  }
 
   // Grab those after type inference!
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
@@ -973,26 +977,48 @@ void validateConnection(ValidationContext& ctx)
     auto findIt = ctx.exposed.find(name);
     if(findIt != ctx.exposed.end())
     {
-      // do we want to override it?, warn at least
-      std::string err("Overriding already exposed variable: " + name);
-      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+      // Ignore tables, this behavior is a bit hard coded but makes sense
+      if(exposed_param.exposedType.basicType != Table)
+      {
+        // do we want to override it?, warn at least
+        std::string err("Overriding already exposed variable: " + name);
+        ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+      }
     }
     
     ctx.exposed[name] = exposed_param;
   }
 }
 
-void validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData)
+CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
 {
   auto ctx = ValidationContext();
+  ctx.previousOutputType = inputType;
   ctx.cb = callback;
   ctx.userData = userData;
 
-  for(auto blk : chain->blocks)
+  for(auto blk : chain)
   {
     ctx.bottom = blk;
     validateConnection(ctx);
   }
+
+  return ctx.previousOutputType;
+}
+
+CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
+{
+  return validateConnections(chain->blocks, callback, userData, inputType);
+}
+
+CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
+{
+  std::vector<CBRuntimeBlock*> blocks;
+  for(auto i = 0; i < stbds_arrlen(chain); i++)
+  {
+    blocks.push_back(chain[i]);
+  }
+  return validateConnections(blocks, callback, userData, inputType);
 }
 
 void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData)
@@ -1038,6 +1064,23 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
   
   std::string err("Parameter not accepting this kind of variable");
   callback(block, err.c_str(), false, userData);
+}
+
+void CBChain::cleanup()
+{
+  if(node)
+  {
+    node->remove(this);
+    node = nullptr;
+  }
+
+  for(auto blk : blocks)
+  {
+    blk->cleanup(blk);
+    blk->destroy(blk);
+    //blk is responsible to free itself, as they might use any allocation strategy they wish!
+  }
+  blocks.clear();
 }
 
 #ifdef TESTING

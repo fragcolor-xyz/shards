@@ -101,8 +101,8 @@ type
     Table
 
   CBTypeInfo* {.importcpp: "CBTypeInfo", header: "chainblocks.hpp".} = object
-    sequenced*: bool # This type can be in a sequence of itself
     basicType*: CBType
+    sequenced*: bool # This type can be in a sequence of itself
     objectVendorId*: int32
     objectTypeId*: int32
     enumVendorId*: int32
@@ -120,6 +120,13 @@ type
     help*: cstring
   
   CBParametersInfo* {.importcpp: "CBParametersInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBParameterInfo]
+
+  CBExposedTypeInfo* {.importcpp: "CBExposedTypeInfo", header: "chainblocks.hpp".} = object
+    name*: cstring
+    help*: cstring
+    exposedType*: CBTypeInfo
+
+  CBExposedTypesInfo* {.importcpp: "CBExposedTypesInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBExposedTypeInfo]
   
   CBChainState* {.importcpp: "CBChainState", header: "chainblocks.hpp".} = enum
     Continue, # Even if None returned, continue to next block
@@ -175,14 +182,14 @@ type
   CBInputTypesProc*{.importcpp: "CBInputTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
   CBOutputTypesProc* {.importcpp: "CBOutputTypesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
 
-  CBExposedVariablesProc* {.importcpp: "CBExposedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
-  CBConsumedVariablesProc* {.importcpp: "CBConsumedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
+  CBExposedVariablesProc* {.importcpp: "CBExposedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBExposedTypesInfo {.cdecl.}
+  CBConsumedVariablesProc* {.importcpp: "CBConsumedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBExposedTypesInfo {.cdecl.}
 
   CBParametersProc* {.importcpp: "CBParametersProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
   CBSetParamProc* {.importcpp: "CBSetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int; val: CBVar) {.cdecl.}
   CBGetParamProc* {.importcpp: "CBGetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int): CBVar {.cdecl.}
 
-  CBInferTypesProc*{.importcpp: "CBInferTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo {.cdecl.}
+  CBInferTypesProc*{.importcpp: "CBInferTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo {.cdecl.}
 
   CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
   CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
@@ -215,10 +222,11 @@ type
     cleanup*: CBCleanupProc
 
   CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBRuntimeBlock {.cdecl.}
+  CBRuntimeBlocks* {.importcpp: "CBRuntimeBlocks", header: "chainblocks.hpp".} = ptr UncheckedArray[ptr CBRuntimeBlock]
 
   CBCallback* {.importcpp: "CBCallback", header: "chainblocks.hpp".} = proc(): void {.cdecl.}
 
-  CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo | CBStrings
+  CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo | CBStrings | CBExposedTypesInfo | CBRuntimeBlocks
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 
@@ -373,6 +381,9 @@ iterator mitems*(s: CBParametersInfo): var CBParameterInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
 iterator mitems*(s: CBStrings): var CBString {.inline.} =
+  for i in 0..<s.len:
+    yield s[i]
+iterator mitems*(s: CBExposedTypesInfo): var CBExposedTypeInfo {.inline.} =
   for i in 0..<s.len:
     yield s[i]
 proc push*[T](cbs: var CBSeqLike, val: T) {.inline.} = invokeFunction("stbds_arrpush", cbs, val).to(void)

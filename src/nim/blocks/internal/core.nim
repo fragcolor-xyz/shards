@@ -1,38 +1,11 @@
-# NimClosure - kinda internal/compile time module to call a nim closure
-when true:
-  const
-    NimClosureCC* = toFourCC("nimc")
-  let
-    NimClosureInfo* = CBTypeInfo(basicType: Object, objectVendorId: FragCC.int32, objectTypeId: NimClosureCC.int32)
-  
-  # DON'T Register it actually
-  # registerObjectType(FragCC, NimClosureCC, CBObjectInfo(name: "Nim Closure"))
-
-  type
-    CBNimClosureObj = proc(input: CBVar): CBVar
-    CBNimClosure* = object
-      call: CBVar
-
-  converter toCBVar*(c: var CBNimClosureObj): CBVar {.inline.} = (addr c).pointer.asCBVar(FragCC, NimClosureCC)
-
-  template inputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBNimClosure): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBNimClosure): CBParametersInfo = *@[(cs"Closure", *@[NimClosureInfo])]
-  template setParam*(b: CBNimClosure; index: int; val: CBVar) = b.call = val
-  template getParam*(b: CBNimClosure; index: int): CBVar = b.call
-  template activate*(b: CBNimClosure; context: CBContext; input: CBVar): CBVar =
-    let call = cast[ptr CBNimClosureObj](b.call.objectValue)
-    call[](input)
-
-  chainblock CBNimClosure, "NimClosure"
-
 # SetVariable - sets a context variable
 when true:
   type
     CBSetVariable* = object
       # INLINE BLOCK, CORE STUB PRESENT
-      target*: ptr CBVar
-      name*: GbString
+      target: ptr CBVar
+      name: GbString
+      exposedInfo: CBExposedTypesInfo
   
   template cleanup*(b: CBSetVariable) =
     if b.target != nil:
@@ -43,7 +16,15 @@ when true:
   template parameters*(b: CBSetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBSetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBSetVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name.cstring, { Any })]
+  
+  proc inferTypes(b: var CBSetVariable; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =  
+    result = inputType
+    # Fix exposed type
+    freeSeq(b.exposedInfo); initSeq(b.exposedInfo)
+    b.exposedInfo.push(CBExposedTypeInfo(name: b.name.cstring, exposedType: result))
+    
+  proc exposedVariables*(b: var CBSetVariable): CBExposedTypesInfo = b.exposedInfo
+
   template activate*(b: CBSetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil:
       b.target = context.contextVariable(b.name)
@@ -69,12 +50,14 @@ when true:
   template parameters*(b: CBGetVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBGetVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBGetVariable; index: int): CBVar = b.name
-  template consumedVariables*(b: CBGetVariable): CBParametersInfo = *@[(b.name.cstring, { Any })]
-  proc inferTypes(b: var CBGetVariable; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo =
+  proc consumedVariables*(b: var CBGetVariable): CBExposedTypesInfo =
+    initSeq(result) # assume cached
+    result.push(CBExposedTypeInfo(name: b.name.cstring, exposedType: Any))
+  proc inferTypes(b: var CBGetVariable; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
     result = None
-    for consumable in consumables:
+    for consumable in consumables.mitems:
       if consumable.name == b.name:
-        result = consumable.valueTypes[0]
+        result = consumable.exposedType
   template activate*(b: CBGetVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
     b.target[]
@@ -112,11 +95,10 @@ when true:
     of 0: b.name1.CBVar
     of 1: b.name2
     else: assert(false); Empty
-  template consumedVariables*(b: CBSetVariable): CBParametersInfo = 
-    *@[
-      (b.name1, { Any }),
-      (b.name2, { Any })
-    ]
+  proc consumedVariables*(b: var CBSwapVariables): CBExposedTypesInfo =
+    initSeq(result)
+    result.push(CBExposedTypeInfo(name: b.name1.cstring, exposedType: Any))
+    result.push(CBExposedTypeInfo(name: b.name2.cstring, exposedType: Any))
   template activate*(b: CBSwapVariables; context: CBContext; input: CBVar): CBVar =
     if b.targeta == nil: b.targeta = context.contextVariable(b.name1)
     if b.targetb == nil: b.targetb = context.contextVariable(b.name2)
@@ -136,6 +118,7 @@ when true:
       target*: ptr CBVar
       name*: GbString
       maxSize: int
+      exposedInfo: CBExposedTypesInfo
   
   template cleanup*(b: CBAddVariable) =
     if b.target != nil and b.target[].valueType == Seq:
@@ -151,7 +134,17 @@ when true:
   template parameters*(b: CBAddVariable): CBParametersInfo = *@[(cs"Name", { String })]
   template setParam*(b: CBAddVariable; index: int; val: CBVar) = b.name = val.stringValue; cleanup(b)
   template getParam*(b: CBAddVariable; index: int): CBVar = b.name
-  template exposedVariables*(b: CBSetVariable): CBParametersInfo = *@[(b.name, { Any })]
+  
+  proc inferTypes(b: var CBAddVariable; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    result = inputType
+    result.sequenced = true # we return input type in a seq
+    
+    # Fix exposed type
+    freeSeq(b.exposedInfo); initSeq(b.exposedInfo)
+    b.exposedInfo.push(CBExposedTypeInfo(name: b.name.cstring, exposedType: result))
+    
+  proc exposedVariables*(b: var CBAddVariable): CBExposedTypesInfo = b.exposedInfo
+
   template activate*(b: CBAddVariable; context: CBContext; input: CBVar): CBVar =
     if b.target == nil: b.target = context.contextVariable(b.name)
     
@@ -194,6 +187,12 @@ when true:
   template destroy*(b: CBGetItems) = freeSeq(b.cachedResult)
   template inputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
   template outputTypes*(b: CBGetItems): CBTypesInfo = ({ Any }, true #[seq]#)
+  proc inferTypes(b: var CBGetItems; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    result = inputType
+    if b.indices.valueType == Seq and b.indices.seqValue.len > 1:
+      result.sequenced = true # we return input type in a seq
+    else:
+      result.sequenced = false
   template parameters*(b: CBGetItems): CBParametersInfo = *@[(cs"Index", ({ Int }, true #[seq]#), false #[context]#)]
   template setParam*(b: CBGetItems; index: int; val: CBVar) = b.indices = val
   template getParam*(b: CBGetItems; index: int): CBVar = b.indices
@@ -273,6 +272,25 @@ when true:
       b.detach
     else:
       CBVar(valueType: None)
+  proc inferTypes*(b: var CBRunChain; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    if b.passthrough or b.chain == nil:
+      return inputType
+    else:
+      # We need to validate the sub chain to figure it out!
+      var failed = false
+      let subResult = validateConnections(
+        b.chain,
+        proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+          var failedPtr = cast[ptr bool](userData)
+          if not nonfatalWarning:
+            failedPtr[] = true,
+        addr failed,
+        inputType
+      )
+      if not failed:
+        return subResult
+      else:
+        return None
   template activate*(b: CBRunChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
@@ -343,6 +361,25 @@ when true:
       CBVar(valueType: Bool, payload: CBVarPayload(boolValue: b.passthrough))
     else:
       CBVar(valueType: None)
+  proc inferTypes*(b: var CBWaitChain; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    if b.passthrough or b.chain == nil:
+      return inputType
+    else:
+      # We need to validate the sub chain to figure it out!
+      var failed = false
+      let subResult = validateConnections(
+        b.chain,
+        proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+          var failedPtr = cast[ptr bool](userData)
+          if not nonfatalWarning:
+            failedPtr[] = true,
+        addr failed,
+        inputType
+      )
+      if not failed:
+        return subResult
+      else:
+        return None
   template activate*(b: CBWaitChain; context: CBContext; input: CBVar): CBVar =
     if b.chain == nil:
       input
@@ -432,7 +469,9 @@ when true:
     var inval = val
     quickcopy(b.value, inval)
   template getParam*(b: CBlockConst; index: int): CBVar = b.value
-  template inferTypes(b: CBlockConst; inputType: CBTypeInfo; consumables: CBParametersInfo): CBTypeInfo = b.value.valueType
+  template inferTypes*(b: CBlockConst; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    b.value.valueType
+    # what if it's seq or table? need to add that info in! TODO
   template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
@@ -715,7 +754,7 @@ when true:
   registerEnumType(FragCC, BoolOpCC, CBEnumInfo(name: "Boolean operation", labels: boolOpLabels))
 
   type
-    CBBoolOp* {.size: sizeof(uint8).} = enum
+    CBBoolOp* = enum
       # INLINE BLOCK, CORE STUB PRESENT
       Equal
       More
@@ -726,7 +765,7 @@ when true:
   type
     CBlockIf* = object
       # INLINE BLOCK, CORE STUB PRESENT
-      op: CBBoolOp
+      op: uint8
       match: CBVar
       matchCtx: ptr CBVar
       trueBlocks: CBSeq
@@ -764,7 +803,7 @@ when true:
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
     of 0:
-      b.op = val.enumValue.CBBoolOp
+      b.op = val.enumValue.uint8
     of 1:
       `~quickcopy` b.match
       var inval = val
@@ -815,7 +854,46 @@ when true:
     of 4:
       b.passthrough
     else:
-      Empty  
+      Empty
+  proc inferTypes*(b: var CBlockIf; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
+    if b.passthrough:
+      return inputType
+    else:
+      # We need to validate the sub chain to figure it out!
+      var
+        failed = false
+        trueChain: CBRuntimeBlocks = nil
+        falseChain: CBRuntimeBlocks = nil
+      for blk in b.trueBlocks.mitems: trueChain.push(blk.blockValue)
+      for blk in b.falseBlocks.mitems: falseChain.push(blk.blockValue)
+      
+      let
+        trueResult = validateConnections(
+          trueChain,
+          proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+            var failedPtr = cast[ptr bool](userData)
+            if not nonfatalWarning:
+              failedPtr[] = true,
+          addr failed,
+          inputType
+        )
+        falseResult = validateConnections(
+          falseChain,
+          proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+            var failedPtr = cast[ptr bool](userData)
+            if not nonfatalWarning:
+              failedPtr[] = true,
+          addr failed,
+          inputType
+        )
+      
+      freeSeq(trueChain)
+      freeSeq(falseChain)
+      
+      if not failed and trueResult.basicType == falseResult.basicType: # TODO add better strict matching...
+        return trueResult
+      else:
+        return None
   template activate*(b: CBlockIf; context: CBContext; input: CBVar): CBVar =
     if b.match.valueType == ContextVar and b.matchCtx == nil:
       b.matchCtx = context.contextVariable(b.match.stringValue)
@@ -853,7 +931,7 @@ when true:
         else:
           output
     
-    case b.op
+    case b.op.CBBoolOp
     of Equal: res = operation(`==`)
     of More: res = operation(`>`)
     of Less: res = operation(`<`)

@@ -5,11 +5,9 @@
 
 namespace chainblocks
 {
-  static CBTypesInfo inOutInfo;
+  static CBTypesInfo anyInOutInfo;
   static CBTypesInfo strInfo;
-  static CBTypesInfo tableInfo;
   static CBParametersInfo tableParamsInfo;
-  static CBParametersInfo tableExposedInfo;
   
   struct SetTableValue
   {
@@ -17,6 +15,8 @@ namespace chainblocks
     std::string name;
     std::string key;
     CBVar currentValue;
+
+    CBExposedTypesInfo tableExposedInfo = nullptr;
     
     void cleanup()
     {
@@ -39,22 +39,22 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!inOutInfo)
+      if(!anyInOutInfo)
       {
         CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(inOutInfo, anyType);
+        stbds_arrpush(anyInOutInfo, anyType);
       }
-      return inOutInfo;
+      return anyInOutInfo;
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!inOutInfo)
+      if(!anyInOutInfo)
       {
         CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(inOutInfo, anyType);
+        stbds_arrpush(anyInOutInfo, anyType);
       }
-      return inOutInfo;
+      return anyInOutInfo;
     }
     
     CBParametersInfo parameters()
@@ -74,20 +74,18 @@ namespace chainblocks
       return tableParamsInfo;
     }
     
-    CBParametersInfo exposedVariables()
+    CBExposedTypesInfo exposedVariables()
     {
-      if(!tableInfo)
-      {
-        CBTypeInfo atableType = { Table };
-        stbds_arrpush(tableInfo, atableType);
-      }
       if(!tableExposedInfo)
       {
-        CBParameterInfo nameInfo = { name.c_str(), "The exposed table.", tableInfo };
+        CBTypeInfo atableType = { Table };
+        CBExposedTypeInfo nameInfo = { name.c_str(), "The exposed table.", atableType };
         stbds_arrpush(tableExposedInfo, nameInfo);
       }
       return tableExposedInfo;
     }
+
+    // Run inference and don't expose already exposed to mute warning
     
     void setParam(int index, CBVar value)
     {
@@ -157,6 +155,8 @@ namespace chainblocks
     CBVar* target = nullptr;
     std::string name;
     std::string key;
+
+    CBExposedTypesInfo tableExposedInfo = nullptr;
     
     void cleanup()
     {
@@ -165,22 +165,22 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!inOutInfo)
+      if(!anyInOutInfo)
       {
         CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(inOutInfo, anyType);
+        stbds_arrpush(anyInOutInfo, anyType);
       }
-      return inOutInfo;
+      return anyInOutInfo;
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!inOutInfo)
+      if(!anyInOutInfo)
       {
         CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(inOutInfo, anyType);
+        stbds_arrpush(anyInOutInfo, anyType);
       }
-      return inOutInfo;
+      return anyInOutInfo;
     }
     
     CBParametersInfo parameters()
@@ -194,22 +194,18 @@ namespace chainblocks
       {
         CBParameterInfo nameInfo = { "Name", "The name of the table variable.", strInfo };
         stbds_arrpush(tableParamsInfo, nameInfo);
-        CBParameterInfo keyInfo = { "Key", "The key of the value to write in the table.", strInfo};
+        CBParameterInfo keyInfo = { "Key", "The key of the value to read from the table.", strInfo};
         stbds_arrpush(tableParamsInfo, keyInfo);
       }
       return tableParamsInfo;
     }
 
-    CBParametersInfo consumedVariables()
+    CBExposedTypesInfo consumedVariables()
     {
-      if(!tableInfo)
-      {
-        CBTypeInfo atableType = { Table };
-        stbds_arrpush(tableInfo, atableType);
-      }
       if(!tableExposedInfo)
       {
-        CBParameterInfo nameInfo = { name.c_str(), "The exposed table.", tableInfo };
+        CBTypeInfo atableType = { Table };
+        CBExposedTypeInfo nameInfo = { name.c_str(), "The exposed table.", atableType };
         stbds_arrpush(tableExposedInfo, nameInfo);
       }
       return tableExposedInfo;

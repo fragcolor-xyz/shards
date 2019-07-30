@@ -11,8 +11,8 @@
     result->destroy = static_cast<CBDestroyProc>([] (CBRuntimeBlock* block) {});\
     result->inputTypes = static_cast<CBInputTypesProc>([] (CBRuntimeBlock* block) { return CBTypesInfo(); });\
     result->outputTypes = static_cast<CBOutputTypesProc>([] (CBRuntimeBlock* block) { return CBTypesInfo(); });\
-    result->exposedVariables = static_cast<CBExposedVariablesProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
+    result->exposedVariables = static_cast<CBExposedVariablesProc>([] (CBRuntimeBlock* block) { return CBExposedTypesInfo(); });\
+    result->consumedVariables = static_cast<CBConsumedVariablesProc>([] (CBRuntimeBlock* block) { return CBExposedTypesInfo(); });\
     result->parameters = static_cast<CBParametersProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
     result->setParam = static_cast<CBSetParamProc>([] (CBRuntimeBlock* block, int index, CBVar value) {});\
     result->getParam = static_cast<CBGetParamProc>([] (CBRuntimeBlock* block, int index) { return CBVar(); });\
@@ -33,8 +33,8 @@
     result->destroy = static_cast<CBDestroyProc>([] (CBRuntimeBlock* block) {});\
     result->inputTypes = static_cast<CBInputTypesProc>([] (CBRuntimeBlock* block) { return CBTypesInfo(); });\
     result->outputTypes = static_cast<CBOutputTypesProc>([] (CBRuntimeBlock* block) { return CBTypesInfo(); });\
-    result->exposedVariables = static_cast<CBExposedVariablesProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
+    result->exposedVariables = static_cast<CBExposedVariablesProc>([] (CBRuntimeBlock* block) { return CBExposedTypesInfo(); });\
+    result->consumedVariables = static_cast<CBConsumedVariablesProc>([] (CBRuntimeBlock* block) { return CBExposedTypesInfo(); });\
     result->parameters = static_cast<CBParametersProc>([] (CBRuntimeBlock* block) { return CBParametersInfo(); });\
     result->setParam = static_cast<CBSetParamProc>([] (CBRuntimeBlock* block, int index, CBVar value) {});\
     result->getParam = static_cast<CBGetParamProc>([] (CBRuntimeBlock* block, int index) { return CBVar(); });\
