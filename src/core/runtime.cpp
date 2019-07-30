@@ -990,7 +990,7 @@ void validateConnection(ValidationContext& ctx)
   }
 }
 
-CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
+CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
   auto ctx = ValidationContext();
   ctx.previousOutputType = inputType;
@@ -1006,12 +1006,12 @@ CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValid
   return ctx.previousOutputType;
 }
 
-CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
+CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
   return validateConnections(chain->blocks, callback, userData, inputType);
 }
 
-CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo())
+CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
   std::vector<CBRuntimeBlock*> blocks;
   for(auto i = 0; i < stbds_arrlen(chain); i++)
