@@ -37,7 +37,7 @@ var JsCBRuntimeBlock = JsClass(
       blk[].cleanup(blk)
       blk[].destroy(blk),
   
-  constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
+  constructor: proc(self: var JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]) =
     if not argv[0].isStr:
       self = throwTypeError(jsContext, "Block constructor requires a name")
       return
@@ -64,7 +64,7 @@ var JsCBChain = JsClass(
     if chain != nil:
       destroy(chain),
   
-  constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
+  constructor: proc(self: var JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]) =
     if not argv[0].isStr:
       self = throwTypeError(jsContext, "Chain constructor requires a name")
       return
@@ -95,7 +95,7 @@ when true:
   var JsCBVarConst = JsClass(
     finalizer: proc(self: JSValue; classId: uint32) =
       discard,
-    constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
+    constructor: proc(self: var JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]) =
       discard,
     constructorMinArgs: 0
   )
@@ -235,7 +235,7 @@ when true:
         
         cppdel(cbvar),
     
-    constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
+    constructor: proc(self: var JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]) =
       var newVar: ptr JsCBVarBox
       cppnew(newVar, JsCBVarBox, JsCBVarBox)
       
@@ -450,7 +450,7 @@ when true:
       if node != nil:
         destroyNode(cast[ptr CBNode](node)),
     
-    constructor: proc(self: var JSValue; argc: int; argv: ptr UncheckedArray[JSValue]) =
+    constructor: proc(self: var JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]) =
       var node = createNode()
       self.attachPtr(node)
   )
