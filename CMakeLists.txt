@@ -45,6 +45,14 @@ find_program(NIM_EXECUTABLE nim PATHS ENV PATH)
 
 set(NIM_OPTIONS cpp -d:cmake --newruntime -d:useWinAnsi -d:useMalloc)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # 64 bits
+  set(NIM_OPTIONS ${NIM_OPTIONS} --cpu:amd64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # 32 bits
+  set(NIM_OPTIONS ${NIM_OPTIONS} --cpu:i386)
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(NIM_OPTIONS ${NIM_OPTIONS} --passC:-ggdb)
 else()
