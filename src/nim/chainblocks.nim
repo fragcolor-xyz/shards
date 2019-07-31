@@ -14,29 +14,30 @@ export logging
 
 import nimline
 
-when appType != "lib" or defined(forceCBRuntime):
-  {.compile: "../core/runtime.cpp".}
-  {.compile: "../core/3rdparty/easylogging++.cc".}
+when not defined cmake:
+  when appType != "lib" or defined(forceCBRuntime):
+    {.compile: "../core/runtime.cpp".}
+    {.compile: "../core/3rdparty/easylogging++.cc".}
 
-  cppdefines("ELPP_FEATURE_CRASH_LOG")
-  
-  when defined windows:
-    {.passL: "-static -lboost_context-mt".}
-    {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
+    cppdefines("ELPP_FEATURE_CRASH_LOG")
+    
+    when defined windows:
+      {.passL: "-static -lboost_context-mt".}
+      {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
+    else:
+      {.passL: "-static -pthread -lboost_context".}
+      {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
   else:
-    {.passL: "-static -pthread -lboost_context".}
-    {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
-else:
-  when defined windows:
-    {.passL: "-static".}
-    {.passC: "-static".}
-  else:
-    {.passL: "-static -pthread".}
-    {.passC: "-static -pthread".}
-  
-  {.emit: """/*INCLUDESECTION*/
-#define STB_DS_IMPLEMENTATION 1
-""".}
+    when defined windows:
+      {.passL: "-static".}
+      {.passC: "-static".}
+    else:
+      {.passL: "-static -pthread".}
+      {.passC: "-static -pthread".}
+    
+    {.emit: """/*INCLUDESECTION*/
+  #define STB_DS_IMPLEMENTATION 1
+  """.}
 
 {.passC: "-ffast-math".}
 
@@ -427,13 +428,14 @@ template withChain*(chain, body: untyped): untyped =
   setCurrentChain(prev)
 
 let noParams: CBParametersInfo = nil
+let noExpose: CBExposedTypesInfo = nil
 
 # Make those optional
 template help*(b: auto): cstring = ""
 template setup*(b: auto) = discard
 template destroy*(b: auto) = discard
-template exposedVariables*(b: auto): CBParametersInfo = noParams
-template consumedVariables*(b: auto): CBParametersInfo = noParams
+template exposedVariables*(b: auto): CBExposedTypesInfo = noExpose
+template consumedVariables*(b: auto): CBExposedTypesInfo = noExpose
 template parameters*(b: auto): CBParametersInfo = noParams
 template setParam*(b: auto; index: int; val: CBVar) = discard
 template getParam*(b: auto; index: int): CBVar = CBVar(valueType: None)
@@ -517,11 +519,12 @@ when appType != "lib" or defined(forceCBRuntime):
   type 
     CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.}
     ValidationResults* = seq[tuple[error: bool; message: string]]
-  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateConnections(#, #, #)", header: "runtime.hpp".}
+  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
+  proc validateConnections*(chain: CBRuntimeBlocks; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
   proc validateSetParam*(blk: ptr CBRuntimeBlock; index: cint;  value: var CBVar; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateSetParam(#, #, #, #, #)", header: "runtime.hpp".}
   
   proc validate*(chain: CBChainPtr): ValidationResults =
-    validateConnections(
+    discard validateConnections(
       chain,
       proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
         var resp = cast[ptr ValidationResults](userData)
@@ -691,6 +694,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     parametersProc = ident($blk & "_parameters")
     setParamProc = ident($blk & "_setParam")
     getParamProc = ident($blk & "_getParam")
+
+    inferTypesProc = ident($blk & "_inferTypes")
     
     activateProc = ident($blk & "_activate")
     cleanupProc = ident($blk & "_cleanup")
@@ -704,8 +709,8 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
         sb: `blk`
         cacheInputTypes: owned(ref CBTypesInfo)
         cacheOutputTypes: owned(ref CBTypesInfo)
-        cacheExposedVariables: owned(ref CBParametersInfo)
-        cacheConsumedVariables: owned(ref CBParametersInfo)
+        cacheExposedVariables: owned(ref CBExposedTypesInfo)
+        cacheConsumedVariables: owned(ref CBExposedTypesInfo)
         cacheParameters: owned(ref CBParametersInfo)
       
       `rtName`* = ptr `rtNameValue`
@@ -731,13 +736,9 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
         freeSeq(b.cacheOutputTypes[])
         b.cacheOutputTypes = nil
       if b.cacheExposedVariables != nil:
-        for item in b.cacheExposedVariables[].mitems:
-          freeSeq(item.valueTypes)
         freeSeq(b.cacheExposedVariables[])
         b.cacheExposedVariables = nil
       if b.cacheConsumedVariables != nil:
-        for item in b.cacheConsumedVariables[].mitems:
-          freeSeq(item.valueTypes)
         freeSeq(b.cacheConsumedVariables[])
         b.cacheConsumedVariables = nil
       if b.cacheParameters != nil:
@@ -766,13 +767,13 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
         new b.cacheOutputTypes
         b.cacheOutputTypes[] = b.sb.outputTypes()
       b.cacheOutputTypes[]
-    proc `exposedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
+    proc `exposedVariablesProc`*(b: `rtName`): CBExposedTypesInfo {.cdecl.} =
       updateStackBottom()
       if b.cacheExposedVariables == nil:
         new b.cacheExposedVariables
         b.cacheExposedVariables[] = b.sb.exposedVariables()
       b.cacheExposedVariables[]
-    proc `consumedVariablesProc`*(b: `rtName`): CBParametersInfo {.cdecl.} =
+    proc `consumedVariablesProc`*(b: `rtName`): CBExposedTypesInfo {.cdecl.} =
       updateStackBottom()
       if b.cacheConsumedVariables == nil:
         new b.cacheConsumedVariables
@@ -790,6 +791,12 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `getParamProc`*(b: `rtName`; index: int): CBVar {.cdecl.} =
       updateStackBottom()
       b.sb.getParam(index)
+    when compiles((var x: `blk`; discard x.inferTypes(CBTypeInfo(), nil))):
+      static:
+        echo `blk`, " has inferTypes"
+      proc `inferTypesProc`*(b: `rtName`; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo {.cdecl.} =
+        updateStackBottom()
+        b.sb.inferTypes(inputType, consumables)
     proc `activateProc`*(b: `rtName`; context: CBContext; input: CBVar): CBVar {.cdecl.} =
       updateStackBottom()
       try:
@@ -824,6 +831,10 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
       result.parameters = cast[CBParametersProc](`parametersProc`.pointer)
       result.setParam = cast[CBSetParamProc](`setParamProc`.pointer)
       result.getParam = cast[CBGetParamProc](`getParamProc`.pointer)
+      
+      when compiles((var x: `blk`; discard x.inferTypes(CBTypeInfo(), nil))):
+        result.inferTypes = cast[CBInferTypesProc](`inferTypesProc`.pointer)
+      
       result.activate = cast[CBActivateProc](`activateProc`.pointer)
       result.cleanup = cast[CBCleanupProc](`cleanupProc`.pointer)
   
@@ -1135,17 +1146,6 @@ when isMainModule and appType != "lib":
       Math.Sqrt
       Log()
     inlineTesting2.start()
-
-    var nimcall = proc(input: CBVar): CBVar {.closure.} =
-      logs($input)
-      input
-    
-    withChain closureTest:
-      Const 77
-      NimClosure nimcall
-      Log()
-    
-    closureTest.start()
     
     var
       mainChain = newChain("mainChain")

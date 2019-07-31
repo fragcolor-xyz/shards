@@ -2,7 +2,7 @@
 
 /*
   TODO:
-  Make this header C compatible when CHAINBLOCKS_RUNTIME is not defined.
+  Make this header *should be/TODO* C compatible when CHAINBLOCKS_RUNTIME is not defined.
 */
 
 // Use only basic types and libs, we want full ABI compatibility between blocks
@@ -110,17 +110,28 @@ enum CBInlineBlocks : uint8_t
 
 // Forward declarations
 struct CBVar;
-typedef CBVar* CBSeq;
+typedef CBVar* CBSeq; // a stb array
+
 struct CBNamedVar;
-typedef CBNamedVar* CBTable;
+typedef CBNamedVar* CBTable; // a stb string map
+
 struct CBChain;
 typedef CBChain* CBChainPtr;
+
 struct CBNode;
+
 struct CBRuntimeBlock;
+typedef CBRuntimeBlock** CBRuntimeBlocks; // a stb array
+
 struct CBTypeInfo;
-typedef CBTypeInfo* CBTypesInfo;
+typedef CBTypeInfo* CBTypesInfo; // a stb array
+
 struct CBParameterInfo;
-typedef CBParameterInfo* CBParametersInfo;
+typedef CBParameterInfo* CBParametersInfo; // a stb array
+
+struct CBExposedTypeInfo;
+typedef CBExposedTypeInfo* CBExposedTypesInfo; // a stb array
+
 struct CBContext;
 
 typedef void* CBPointer;
@@ -129,7 +140,7 @@ typedef double CBFloat;
 typedef bool CBBool;
 typedef int32_t CBEnum;
 typedef const char* CBString;
-typedef CBString* CBStrings;
+typedef CBString* CBStrings; // a stb array
 
 #if defined(__clang__) || defined(__GNUC__)
   #define likely(x)       __builtin_expect((x),1)
@@ -179,7 +190,7 @@ struct CBImage
 struct CBTypeInfo
 {
   CBType basicType;
-
+  
   // this is a way to express in a simpler manner that this type might also be an array
   // instead of basically using seqTypes, populate it and make this Seq as basicType
   // Usually this represents a flat single dimentional arrays of CBTypes, and generally basicType == Seq and sequenced == true is discouraged
@@ -191,15 +202,17 @@ struct CBTypeInfo
       int32_t objectVendorId;
       int32_t objectTypeId;
     };
-
+    
     struct {
       int32_t enumVendorId;
       int32_t enumTypeId;
     };
-
-    // Currently not so much used, sequenced makes it easier but might be useful too
-    // This allows multiple depth levels of arrays
+    
+    // If we are a seq, the possible types present in this seq
     CBTypesInfo seqTypes;
+    
+    // If we are a table, the possible types present in this table
+    CBTypesInfo tableTypes;
   };
 };
 
@@ -229,11 +242,18 @@ struct CBParameterInfo
   bool allowContext;
 };
 
+struct CBExposedTypeInfo
+{
+  const char* name;
+  const char* help;
+  CBTypeInfo exposedType;
+};
+
 /*
   # Of CBVars and memory
-
+  
   ## Specifically String and Seq types
-
+  
   ### Blocks need to maintain their own garbage, in a way so that any reciver of CBVar/s will not have to worry about it.
   
   #### In the case of getParam:
@@ -347,12 +367,14 @@ typedef void (__cdecl *CBDestroyProc)(CBRuntimeBlock*);
 typedef CBTypesInfo (__cdecl *CBInputTypesProc)(CBRuntimeBlock*);
 typedef CBTypesInfo (__cdecl *CBOutputTypesProc)(CBRuntimeBlock*);
 
-typedef CBParametersInfo (__cdecl *CBExposedVariablesProc)(CBRuntimeBlock*);
-typedef CBParametersInfo (__cdecl *CBConsumedVariablesProc)(CBRuntimeBlock*);
+typedef CBExposedTypesInfo (__cdecl *CBExposedVariablesProc)(CBRuntimeBlock*);
+typedef CBExposedTypesInfo (__cdecl *CBConsumedVariablesProc)(CBRuntimeBlock*);
 
 typedef CBParametersInfo (__cdecl *CBParametersProc)(CBRuntimeBlock*);
 typedef void (__cdecl *CBSetParamProc)(CBRuntimeBlock*, int, CBVar);
 typedef CBVar (__cdecl *CBGetParamProc)(CBRuntimeBlock*, int);
+
+typedef CBTypeInfo (__cdecl *CBInferTypesProc)(CBRuntimeBlock*, CBTypeInfo inputType, CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
 typedef void (__cdecl *CBPreChainProc)(CBRuntimeBlock*, CBContext*);
@@ -380,14 +402,16 @@ struct CBRuntimeBlock
   CBSetupProc setup; // A one time construtor setup for the block
   CBDestroyProc destroy; // A one time finalizer for the block, blocks should also free all the memory in here!
   
-  CBPreChainProc preChain; // Called inside the coro before a chain starts
-  CBPostChainProc postChain; // Called inside the coro afer a chain ends
+  CBPreChainProc preChain; // Called inside the coro before a chain starts, optional
+  CBPostChainProc postChain; // Called inside the coro afer a chain ends, optional
   
   CBInputTypesProc inputTypes;
   CBOutputTypesProc outputTypes;
   
   CBExposedVariablesProc exposedVariables;
   CBConsumedVariablesProc consumedVariables;
+
+  CBInferTypesProc inferTypes; // Optional call used during validation to fixup "Any" input type and provide valid output and exposed variable types
 
   CBParametersProc parameters;
   CBSetParamProc setParam; // Set a parameter, the block will copy the value, so if you allocated any memory you should free it
@@ -396,6 +420,8 @@ struct CBRuntimeBlock
   CBActivateProc activate;
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes internally to clean up the block state
 };
+
+typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData);
 
 #ifdef _WIN32
 # ifdef DLL_EXPORT
@@ -447,6 +473,7 @@ EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
 
 // Utility to use blocks within blocks
 EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output);
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType);
 
 // Logging
 EXPORTED void __cdecl chainblocks_Log(int level, const char* msg, ...);

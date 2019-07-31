@@ -631,25 +631,13 @@ function chain(blocks, name, looped, unsafe) {
         exStr = ex.asJsStr(jsContext).getCStr(jsContext)
       if exStr != "": logs(exStr)
       exStr.freeCStr(jsContext)
-  
-  loadBlocks()
-  
-  var filename: string
-  
-  for kind, key, val in getopt():
-    case kind
-    of cmdArgument:
-      filename = key
-    of cmdLongOption, cmdShortOption:
-      case key
-      of "help", "h": writeHelp()
-      of "version", "v": writeVersion()
-      of "dump", "d": writeFile("blocks.js", generateSugar())
-    of cmdEnd: assert(false) # cannot happen
-  if filename == "":
-    # no filename has been given, so we show the help
-    writeHelp()
-  else:
+
+  when defined cbjsinject:
+    import os
+    
+    loadBlocks()
+    let filename = getEnv("CBJS_ATTACH")
+    log("Loading file: " & filename)
     let
       res = eval(jsContext, readFile(filename), filename, true)
     if res.isException:
@@ -658,3 +646,31 @@ function chain(blocks, name, looped, unsafe) {
         exStr = ex.asJsStr(jsContext).getCStr(jsContext)
       if exStr != "": logs(exStr)
       exStr.freeCStr(jsContext)
+    
+  else:
+    loadBlocks()
+    
+    var filename: string
+    
+    for kind, key, val in getopt():
+      case kind
+      of cmdArgument:
+        filename = key
+      of cmdLongOption, cmdShortOption:
+        case key
+        of "help", "h": writeHelp()
+        of "version", "v": writeVersion()
+        of "dump", "d": writeFile("blocks.js", generateSugar())
+      of cmdEnd: assert(false) # cannot happen
+    if filename == "":
+      # no filename has been given, so we show the help
+      writeHelp()
+    else:
+      let
+        res = eval(jsContext, readFile(filename), filename, true)
+      if res.isException:
+        let
+          ex = getLastException(jsContext)
+          exStr = ex.asJsStr(jsContext).getCStr(jsContext)
+        if exStr != "": logs(exStr)
+        exStr.freeCStr(jsContext)

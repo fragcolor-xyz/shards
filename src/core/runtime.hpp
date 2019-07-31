@@ -22,53 +22,84 @@
 struct CBConstStub
 {
   CBRuntimeBlock header;
-  CBVar constValue;
+  struct
+  {
+    CBVar constValue;
+  };
 };
+
 struct CBSleepStub
 {
   CBRuntimeBlock header;
-  double sleepTime;
+  struct
+  {
+    double sleepTime;
+  };
 };
+
 struct CBMathStub
 {
   CBRuntimeBlock header;
-  CBVar operand;
-  CBVar* ctxOperand;
-  CBSeq seqCache;
+  struct
+  {
+    CBVar operand;
+    CBVar* ctxOperand;
+    CBSeq seqCache;
+  };
 };
+
 struct CBMathUnaryStub
 {
   CBRuntimeBlock header;
-  CBSeq seqCache;
+  struct
+  {
+    CBSeq seqCache;
+  };
 };
+
 struct CBCoreRepeat
 {
   CBRuntimeBlock header;
-  bool doForever;
-  int32_t times;
-  CBSeq blocks;
+  struct
+  {
+    bool doForever;
+    int32_t times;
+    CBSeq blocks;
+  };
 };
+
 struct CBCoreIf
 {
   CBRuntimeBlock header;
-  uint8_t boolOp;
-  CBVar match;
-  CBVar* matchCtx;
-  CBSeq trueBlocks;
-  CBSeq falseBlocks;
-  bool passthrough;
+  struct
+  {
+    uint8_t boolOp;
+    CBVar match;
+    CBVar* matchCtx;
+    CBSeq trueBlocks;
+    CBSeq falseBlocks;
+    bool passthrough;
+  };
 };
+
 struct CBCoreSetVariable
 {
   // Also Get and Add
   CBRuntimeBlock header;
-  CBVar* target;
+  struct
+  {
+    CBVar* target;
+  };
 };
+
 struct CBCoreSwapVariables
 {
   CBRuntimeBlock header;
-  CBVar* target1;
-  CBVar* target2;
+  struct
+  {
+    CBVar* target1;
+    CBVar* target2;
+  };
 };
 
 // Since we build the runtime we are free to use any std and lib
@@ -209,16 +240,7 @@ struct CBChain
     cleanup();
   }
 
-  void cleanup()
-  {
-    for(auto blk : blocks)
-    {
-      blk->cleanup(blk);
-      blk->destroy(blk);
-      //blk is responsible to free itself, as they might use any allocation strategy they wish!
-    }
-    blocks.clear();
-  }
+  void cleanup();
 
   // Also the chain takes ownership of the block!
   void addBlock(CBRuntimeBlock* blk)
@@ -262,8 +284,9 @@ struct CBChain
   std::vector<CBRuntimeBlock*> blocks;
 };
 
-typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData);
-void validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData);
+CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
+CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
+CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
 void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData);
 
 namespace chainblocks
@@ -1670,15 +1693,19 @@ struct CBNode
     // Validate the chain
     if(validate)
     {
-      validateConnections(chain, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
+      validateConnections(chain->blocks, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
       {
         auto node = reinterpret_cast<CBNode*>(userData);
+        auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
         if(!nonfatalWarning)
         {
-          auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
           node->errorMsg.assign(errorTxt);
           node->errorMsg += ", input block: " + std::string(blk->name(blk));
           throw chainblocks::CBException(node->errorMsg.c_str());
+        }
+        else
+        {
+          LOG(INFO) << "Validation warning: " << errorTxt << " input block: " << blk->name(blk);
         }
       }, this);
     }
@@ -1710,6 +1737,12 @@ struct CBNode
       chainblocks::stop(chain);
     }
     chains.clear();
+  }
+
+  void remove(CBChain* chain)
+  {
+    chainblocks::stop(chain);
+    chains.remove(chain);
   }
   
 private:

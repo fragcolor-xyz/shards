@@ -164,6 +164,11 @@ EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext
   chainblocks::activateBlock(block, context, *input, *output);
 }
 
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+{
+  return validateConnections(chain, callback, userData, inputType);
+}
+
 EXPORTED void __cdecl chainblocks_Log(int level, const char* format, ...)
 {
   auto temp = std::vector<char> {};
@@ -826,7 +831,7 @@ void from_json(const json& j, CBChainPtr& chain)
   }
 }
 
-bool matchTypes(CBTypeInfo& exposedType, CBTypeInfo& consumedType)
+bool matchTypes(const CBTypeInfo& exposedType, const CBTypeInfo& consumedType)
 {
   if(consumedType.basicType == Any || consumedType.basicType == None)
     return true;
@@ -837,11 +842,11 @@ bool matchTypes(CBTypeInfo& exposedType, CBTypeInfo& consumedType)
     return false;
   }
 
-  // if(exposedType.sequenced && !consumedType.sequenced)
-  // {
-  //   // Fail if we might output a sequenced value but input cannot deal with it
-  //   return false;
-  // }
+  if(exposedType.sequenced && !consumedType.sequenced)
+  {
+    // Fail if we might output a sequenced value but input cannot deal with it
+    return false;
+  }
   
   switch(exposedType.basicType)
   {
@@ -861,106 +866,159 @@ bool matchTypes(CBTypeInfo& exposedType, CBTypeInfo& consumedType)
       }
       break;
     }
-    case Seq:
-    {
-      // TODO
-      break;
-    }
     default:
       return true;
   }
   return true;
 }
 
-void validateConnection(phmap::flat_hash_map<std::string, CBParameterInfo>& exposed, CBValidationCallback cb, CBRuntimeBlock* top, CBRuntimeBlock* bottom, void* userData)
+struct ValidationContext
 {
-  auto outputInfo = top->outputTypes(top);
-  auto inputInfo = bottom->inputTypes(bottom);
-  auto exposedVars = bottom->exposedVariables(bottom);
-  auto consumedVar = bottom->consumedVariables(bottom);
+  phmap::flat_hash_map<std::string, CBExposedTypeInfo> exposed;
   
-  // make sure we have the vars we need
+  CBTypeInfo previousOutputType;
+  
+  CBRuntimeBlock* bottom;
+  
+  CBValidationCallback cb;
+  void* userData;
+};
+
+struct ConsumedParam
+{
+  const char* key;
+  CBParameterInfo value;
+};
+
+void validateConnection(ValidationContext& ctx)
+{
+  auto previousOutput = ctx.previousOutputType;
+  
+  auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
+  auto inputMatches = false;
+  // validate our generic input
+  for(auto i = 0; i < stbds_arrlen(inputInfos); i++)
+  {
+    auto& inputInfo = inputInfos[i];
+    if(matchTypes(previousOutput, inputInfo))
+    {
+      inputMatches = true;
+      break;
+    }
+  }
+  
+  if(!inputMatches)
+  {
+    std::string err("Could not find a matching input type");
+    ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+  }
+  
+  auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
+  CBExposedTypesInfo consumables = nullptr;
+  
+  // make sure we have the vars we need, collect first
   for(auto i = 0; i < stbds_arrlen(consumedVar); i++)
   {
     auto& consumed_param = consumedVar[i];
     std::string name(consumed_param.name);
-    auto findIt = exposed.find(name);
-    if(findIt == exposed.end())
+    auto findIt = ctx.exposed.find(name);
+    if(findIt == ctx.exposed.end())
     {
       std::string err("Required consumed variable not found: " + name);
-      cb(bottom, err.c_str(), false, userData);
+      // Warning only, delegate inferTypes to decide
+      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
     }
-    
-    // Validate types!
-    // Ensure they match
-    auto exposedTypes = findIt->second.valueTypes;
-    auto requiredTyes = consumed_param.valueTypes;
-    if(stbds_arrlen(exposedTypes) != stbds_arrlen(requiredTyes))
+    else
     {
-      std::string err("Required consumed types do not match currently exposed ones: " + name);
-      cb(bottom, err.c_str(), false, userData);
-    }
-    auto len = stbds_arrlen(exposedTypes);
-    for(auto i = 0; i < len; i++)
-    {
-      auto& exposedType = exposedTypes[i];
-      auto& consumedType = requiredTyes[i];
-
-      if(!matchTypes(exposedType, consumedType))
+      if(ctx.bottom->inferTypes)
+      {
+        // Store for later use during inference of types!
+        stbds_arrpush(consumables, findIt->second);
+      }
+      
+      auto exposedType = findIt->second.exposedType;
+      auto requiredType = consumedVar[i].exposedType;
+      
+      // Finally deep compare types
+      if(!matchTypes(exposedType, requiredType))
       {
         std::string err("Required consumed types do not match currently exposed ones: " + name);
-        cb(bottom, err.c_str(), false, userData);
+        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
     }
   }
+  
+  // infer and specialize types if we need to
+  // If we don't we assume our output will be of the same type of the previous!
+  if(ctx.bottom->inferTypes)
+  {
+    // this ensures e.g. SetVariable exposedVars have right type from the actual input type (previousOutput)!
+    ctx.previousOutputType = ctx.bottom->inferTypes(ctx.bottom, previousOutput, consumables);
+    stbds_arrfree(consumables);
+  }
+  else
+  {
+    // Short-cut if it's just one type and not any type
+    // Any type tho means keep previous output type!
+    auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
+    if(stbds_arrlen(outputTypes) == 1 && outputTypes[0].basicType != Any)
+    {
+      ctx.previousOutputType = outputTypes[0];
+    }
+  }
 
+  // Grab those after type inference!
+  auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for(auto i = 0; i < stbds_arrlen(exposedVars); i++)
   {
     auto& exposed_param = exposedVars[i];
     std::string name(exposed_param.name);
-    auto findIt = exposed.find(name);
-    if(findIt != exposed.end())
+    auto findIt = ctx.exposed.find(name);
+    if(findIt != ctx.exposed.end())
     {
-      // do we want to override it?, warn at least
-      std::string err("Overriding already exposed variable: " + name);
-      cb(bottom, err.c_str(), true, userData);
-    }
-
-    exposed[name] = exposed_param;
-  }
-
-  // Finally match input/output
-  for(auto i = 0; i < stbds_arrlen(inputInfo); i++)
-  {
-    auto& inputType = inputInfo[i];
-    // Go thru all of them and try match, exit if we do!
-    for(auto i = 0; i < stbds_arrlen(outputInfo); i++)
-    {
-      auto& outputType = outputInfo[i];
-      if(matchTypes(outputType, inputType))
+      // Ignore tables, this behavior is a bit hard coded but makes sense
+      if(exposed_param.exposedType.basicType != Table)
       {
-        return;
+        // do we want to override it?, warn at least
+        std::string err("Overriding already exposed variable: " + name);
+        ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       }
     }
+    
+    ctx.exposed[name] = exposed_param;
   }
-
-  std::string err("Could not find a matching output type");
-  cb(bottom, err.c_str(), false, userData);
 }
 
-void validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData)
+CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
-  phmap::flat_hash_map<std::string, CBParameterInfo> exposedVars;
-  CBRuntimeBlock* previousBlock = nullptr;
-  for(auto blk : chain->blocks)
+  auto ctx = ValidationContext();
+  ctx.previousOutputType = inputType;
+  ctx.cb = callback;
+  ctx.userData = userData;
+
+  for(auto blk : chain)
   {
-    if(previousBlock)
-    {
-      validateConnection(exposedVars, callback, previousBlock, blk, userData);
-    }
-    previousBlock = blk;
+    ctx.bottom = blk;
+    validateConnection(ctx);
   }
+
+  return ctx.previousOutputType;
+}
+
+CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+{
+  return validateConnections(chain->blocks, callback, userData, inputType);
+}
+
+CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+{
+  std::vector<CBRuntimeBlock*> blocks;
+  for(auto i = 0; i < stbds_arrlen(chain); i++)
+  {
+    blocks.push_back(chain[i]);
+  }
+  return validateConnections(blocks, callback, userData, inputType);
 }
 
 void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData)
@@ -976,7 +1034,7 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
   auto param = params[index];
   
   // Build a CBTypeInfo for the var
-  CBTypeInfo varType;
+  auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
   switch(value.valueType)
   {
@@ -990,11 +1048,6 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
     {
       varType.enumVendorId = value.payload.enumVendorId;
       varType.enumTypeId = value.payload.enumTypeId;
-      break;
-    }
-    case Seq:
-    {
-      // TODO
       break;
     }
     default:
@@ -1011,6 +1064,23 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
   
   std::string err("Parameter not accepting this kind of variable");
   callback(block, err.c_str(), false, userData);
+}
+
+void CBChain::cleanup()
+{
+  if(node)
+  {
+    node->remove(this);
+    node = nullptr;
+  }
+
+  for(auto blk : blocks)
+  {
+    blk->cleanup(blk);
+    blk->destroy(blk);
+    //blk is responsible to free itself, as they might use any allocation strategy they wish!
+  }
+  blocks.clear();
 }
 
 #ifdef TESTING
