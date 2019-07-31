@@ -14,29 +14,30 @@ export logging
 
 import nimline
 
-when appType != "lib" or defined(forceCBRuntime):
-  {.compile: "../core/runtime.cpp".}
-  {.compile: "../core/3rdparty/easylogging++.cc".}
+when not defined meson:
+  when appType != "lib" or defined(forceCBRuntime):
+    {.compile: "../core/runtime.cpp".}
+    {.compile: "../core/3rdparty/easylogging++.cc".}
 
-  cppdefines("ELPP_FEATURE_CRASH_LOG")
-  
-  when defined windows:
-    {.passL: "-static -lboost_context-mt".}
-    {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
+    cppdefines("ELPP_FEATURE_CRASH_LOG")
+    
+    when defined windows:
+      {.passL: "-static -lboost_context-mt".}
+      {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
+    else:
+      {.passL: "-static -pthread -lboost_context".}
+      {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
   else:
-    {.passL: "-static -pthread -lboost_context".}
-    {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
-else:
-  when defined windows:
-    {.passL: "-static".}
-    {.passC: "-static".}
-  else:
-    {.passL: "-static -pthread".}
-    {.passC: "-static -pthread".}
-  
-  {.emit: """/*INCLUDESECTION*/
-#define STB_DS_IMPLEMENTATION 1
-""".}
+    when defined windows:
+      {.passL: "-static".}
+      {.passC: "-static".}
+    else:
+      {.passL: "-static -pthread".}
+      {.passC: "-static -pthread".}
+    
+    {.emit: """/*INCLUDESECTION*/
+  #define STB_DS_IMPLEMENTATION 1
+  """.}
 
 {.passC: "-ffast-math".}
 
