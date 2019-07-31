@@ -14,7 +14,7 @@ export logging
 
 import nimline
 
-when not defined meson:
+when not defined cmake:
   when appType != "lib" or defined(forceCBRuntime):
     {.compile: "../core/runtime.cpp".}
     {.compile: "../core/3rdparty/easylogging++.cc".}

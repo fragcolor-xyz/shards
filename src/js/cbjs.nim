@@ -632,9 +632,9 @@ function chain(blocks, name, looped, unsafe) {
       if exStr != "": logs(exStr)
       exStr.freeCStr(jsContext)
 
-  when appType == "lib":
+  when defined cbjsinject:
     import os
-
+    
     loadBlocks()
     let filename = getEnv("CBJS_ATTACH")
     log("Loading file: " & filename)
@@ -649,7 +649,7 @@ function chain(blocks, name, looped, unsafe) {
     
   else:
     loadBlocks()
-
+    
     var filename: string
     
     for kind, key, val in getopt():
