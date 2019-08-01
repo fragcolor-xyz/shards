@@ -5,6 +5,7 @@
 
 namespace chainblocks
 {
+  static CBTypesInfo noneType;
   static CBTypesInfo anyInOutInfo;
   static CBTypesInfo strInfo;
   static CBParametersInfo tableParamsInfo;
@@ -15,7 +16,7 @@ namespace chainblocks
     std::string name;
     std::string key;
     CBVar currentValue;
-
+    CBTypeInfo tableValueType;
     CBExposedTypesInfo tableExposedInfo = nullptr;
     
     void cleanup()
@@ -35,6 +36,18 @@ namespace chainblocks
       }
       
       target = nullptr;
+    }
+    
+    void destroy()
+    {
+      if(tableExposedInfo)
+      {
+        if(tableExposedInfo[0].exposedType.tableTypes)
+        {
+          stbds_arrfree(tableExposedInfo[0].exposedType.tableTypes);
+        }
+        stbds_arrfree(tableExposedInfo);
+      }
     }
     
     CBTypesInfo inputTypes()
@@ -84,8 +97,29 @@ namespace chainblocks
       }
       return tableExposedInfo;
     }
-
-    // Run inference and don't expose already exposed to mute warning
+    
+    CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)
+    {
+      if(!tableExposedInfo)
+      {
+        CBTypeInfo atableType = { Table };
+        CBExposedTypeInfo nameInfo = { name.c_str(), "The exposed table.", atableType };
+        stbds_arrpush(tableExposedInfo, nameInfo);
+      }
+      
+      // Properly specialized this table type!
+      if(!tableExposedInfo[0].exposedType.tableTypes)
+      {
+        stbds_arrpush(tableExposedInfo[0].exposedType.tableTypes, inputType);
+      }
+      else
+      {
+        tableExposedInfo[0].exposedType.tableTypes[0] = inputType;
+      }
+      
+      tableValueType = inputType;
+      return inputType;
+    }
     
     void setParam(int index, CBVar value)
     {
@@ -165,12 +199,12 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!anyInOutInfo)
+      if(!noneType)
       {
-        CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(anyInOutInfo, anyType);
+        CBTypeInfo noType = { None };
+        stbds_arrpush(noneType, noType);
       }
-      return anyInOutInfo;
+      return noneType;
     }
     
     CBTypesInfo outputTypes()
@@ -209,6 +243,18 @@ namespace chainblocks
         stbds_arrpush(tableExposedInfo, nameInfo);
       }
       return tableExposedInfo;
+    }
+    
+    CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)
+    {
+      for(auto i = 0; i < stbds_arrlen(consumableVariables); i++)
+      {
+        if(consumableVariables[i].name == name && consumableVariables[i].exposedType.tableTypes)
+        {
+          return consumableVariables[i].exposedType.tableTypes[0]; // TODO taking only the first for now
+        }
+      }
+      return CBTypeInfo();
     }
     
     void setParam(int index, CBVar value)
@@ -270,6 +316,7 @@ RUNTIME_BLOCK_inputTypes(SetTableValue)
 RUNTIME_BLOCK_outputTypes(SetTableValue)
 RUNTIME_BLOCK_parameters(SetTableValue)
 RUNTIME_BLOCK_exposedVariables(SetTableValue)
+RUNTIME_BLOCK_inferTypes(SetTableValue)
 RUNTIME_BLOCK_setParam(SetTableValue)
 RUNTIME_BLOCK_getParam(SetTableValue)
 RUNTIME_BLOCK_activate(SetTableValue)
@@ -282,6 +329,7 @@ RUNTIME_BLOCK_inputTypes(GetTableValue)
 RUNTIME_BLOCK_outputTypes(GetTableValue)
 RUNTIME_BLOCK_parameters(GetTableValue)
 RUNTIME_BLOCK_consumedVariables(GetTableValue)
+RUNTIME_BLOCK_inferTypes(GetTableValue)
 RUNTIME_BLOCK_setParam(GetTableValue)
 RUNTIME_BLOCK_getParam(GetTableValue)
 RUNTIME_BLOCK_activate(GetTableValue)

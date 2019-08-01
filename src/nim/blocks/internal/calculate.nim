@@ -15,6 +15,8 @@ when true:
     template destroy*(b: typename) = freeSeq(b.seqCache)
     template inputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     template outputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
+    proc inferTypes(b: var typeName; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =  
+      result = inputType
     template parameters*(b: typeName): CBParametersInfo =
       *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color }, true #[usesContext]#)]
     template setParam*(b: typeName; index: int; val: CBVar) =
@@ -64,6 +66,8 @@ when true:
     template destroy*(b: typename) = freeSeq(b.seqCache)
     template inputTypes*(b: typeName): CBTypesInfo = ({ Float, Float2, Float3, Float4 }, true)
     template outputTypes*(b: typeName): CBTypesInfo = ({ Float, Float2, Float3, Float4 }, true)
+    proc inferTypes(b: var typeName; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =  
+      result = inputType
     template activate*(b: typeName; context: CBContext; input: CBVar): CBVar =
       # THIS CODE WON'T BE EXECUTED
       # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE

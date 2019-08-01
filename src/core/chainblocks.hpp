@@ -269,6 +269,10 @@ struct CBExposedTypeInfo
   
   ### What about exposed/consumedVariables, parameters and input/outputTypes:
   * Same for them, they are just read only basically
+  
+  ### Type safety of outputs
+  * A block should return a StopChain variable and set error if there is any error and it cannot provide the expected output type.
+    None doesn't mean safe, stop/restart is safe
 */
 
 #ifdef _MSC_VER
