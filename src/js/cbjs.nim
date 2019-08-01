@@ -244,41 +244,48 @@ when true:
         jsToVar(newVar, argv[0])
       
       elif argc > 1:
-        if argv[0].isInt: # infer from first arg
-          case argc
-          of 2:
-            newVar[].value.valueType = Int2
-            for i in 0..<argc: newVar[].value.int2Value[i] = argv[i].toInt(jsContext)
-          of 3:
-            newVar[].value.valueType = Int3
-            for i in 0..<argc: newVar[].value.int3Value[i] = argv[i].toInt(jsContext)
-          of 4:
-            newVar[].value.valueType = Int4
-            for i in 0..<argc: newVar[].value.int4Value[i] = argv[i].toInt(jsContext)
-          of 8:
-            newVar[].value.valueType = Int8
-            for i in 0..<argc: newVar[].value.int8Value[i] = argv[i].toInt(jsContext)
-          of 16:
-            newVar[].value.valueType = Int16
-            for i in 0..<argc: newVar[].value.int16Value[i] = argv[i].toInt(jsContext)
-          else:
-            self = throwTypeError(jsContext, "Int variable out of range, pass as an array instead.")
-            return
-        
-        elif argv[0].isFloat: # infer from first arg
-          case argc
-          of 2:
-            newVar[].value.valueType = Float2
-            for i in 0..<argc: newVar[].value.float2Value[i] = argv[i].toFloat(jsContext)
-          of 3:
-            newVar[].value.valueType = Float3
-            for i in 0..<argc: newVar[].value.float3Value[i] = argv[i].toFloat(jsContext)
-          of 4:
-            newVar[].value.valueType = Float4
-            for i in 0..<argc: newVar[].value.float4Value[i] = argv[i].toFloat(jsContext)
-          else:
-            self = throwTypeError(jsContext, "Float variable out of range, pass as an array instead.")
-            return
+        if argv[0].isBool: # First bool, true = floats, false = ints
+          let isFloat = argv[0].toBool(jsContext)
+          if not isFloat: # infer from first arg
+            case argc
+            of 2:
+              newVar[].value.valueType = Int
+              newVar[].value.intValue = argv[1].toInt(jsContext)
+            of 3:
+              newVar[].value.valueType = Int2
+              for i in 1..<argc: newVar[].value.int2Value[i] = argv[i].toInt(jsContext)
+            of 4:
+              newVar[].value.valueType = Int3
+              for i in 1..<argc: newVar[].value.int3Value[i] = argv[i].toInt(jsContext)
+            of 5:
+              newVar[].value.valueType = Int4
+              for i in 1..<argc: newVar[].value.int4Value[i] = argv[i].toInt(jsContext)
+            of 9:
+              newVar[].value.valueType = Int8
+              for i in 1..<argc: newVar[].value.int8Value[i] = argv[i].toInt(jsContext)
+            of 17:
+              newVar[].value.valueType = Int16
+              for i in 1..<argc: newVar[].value.int16Value[i] = argv[i].toInt(jsContext)
+            else:
+              self = throwTypeError(jsContext, "Int variable out of range, pass as an array instead.")
+              return
+          else: # infer from first arg
+            case argc
+            of 2:
+              newVar[].value.valueType = Float
+              newVar[].value.floatValue = argv[1].toFloat(jsContext)
+            of 3:
+              newVar[].value.valueType = Float2
+              for i in 1..<argc: newVar[].value.float2Value[i] = argv[i].toFloat(jsContext)
+            of 4:
+              newVar[].value.valueType = Float3
+              for i in 1..<argc: newVar[].value.float3Value[i] = argv[i].toFloat(jsContext)
+            of 5:
+              newVar[].value.valueType = Float4
+              for i in 1..<argc: newVar[].value.float4Value[i] = argv[i].toFloat(jsContext)
+            else:
+              self = throwTypeError(jsContext, "Float variable out of range, pass as an array instead.")
+              return
       
       self.attachPtr(newVar),
     
@@ -538,7 +545,10 @@ when isMainModule:
       if pname in reservedWords:
         pname = pname & "_"
       result &= "$#  if($# !== undefined) {\n" % [extraSpace, pname]
-      result &= "$#    blk.setParam($#, new Var($#))\n" % [extraSpace, $pindex, pname]
+      result &= "$#    if($# instanceof Var)\n" % [extraSpace, pname]
+      result &= "$#      blk.setParam($#, $#)\n" % [extraSpace, $pindex, pname]
+      result &= "$#    else\n" % [extraSpace]
+      result &= "$#      blk.setParam($#, new Var($#))\n" % [extraSpace, $pindex, pname]
       result &= "$#  }\n" % [extraSpace]
       inc pindex
     
@@ -599,22 +609,43 @@ function chain(blocks, name, looped, unsafe) {
   return newChain
 }
 
-//var hiddenMainNode = new Node()
-//
-//Chain.start = function() {
-//  hiddenMainNode.schedule(this)
-//  return this
-//}
-//
-//Chain.start = function() {
-//  this.looped = true
-//  hiddenMainNode.schedule(this)
-//  return this
-//}
+function Int(x)
+{
+  return new Var(false, x)
+}
+function Int2(x, y)
+{
+  return new Var(false, x, y)
+}
+function Int3(x, y, z)
+{
+  return new Var(false, x, y, z)
+}
+function Int4(x, y, z, w)
+{
+  return new Var(false, x, y, z, w)
+}
+
+function Float(x)
+{
+  return new Var(true, x)
+}
+function Float2(x, y)
+{
+  return new Var(true, x, y)
+}
+function Float3(x, y, z)
+{
+  return new Var(true, x, y, z)
+}
+function Float4(x, y, z, w)
+{
+  return new Var(true, x, y, z, w)
+}
 
 """
 
-    output &= "export { chain"
+    output &= "export { chain, Int, Int2, Int3, Int4, Float, Float2, Float3, Float4"
     for namespace, _ in namespaces.mpairs:
       output &= ", $#" % [namespace]
     output &= " };\n\n"
