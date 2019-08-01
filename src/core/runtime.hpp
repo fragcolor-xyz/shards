@@ -376,7 +376,7 @@ namespace chainblocks
   static int cloneVar(CBVar& dst, const CBVar& src)
   {
     int freeCount = 0;
-    if(src.valueType < EndOfBlittableTypes && src.valueType < EndOfBlittableTypes)
+    if(src.valueType < EndOfBlittableTypes && dst.valueType < EndOfBlittableTypes)
     {
       memcpy((void*)&dst, (const void*)&src, sizeof(CBVar));
     }

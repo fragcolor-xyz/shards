@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../chainblocks.hpp"
+#include "../runtime.hpp"
 #include "../blocks_macros.hpp"
 
 namespace chainblocks
@@ -307,6 +307,8 @@ namespace chainblocks
       return res;
     }
   };
+
+  
 };
 
 // Register SetTableValue
