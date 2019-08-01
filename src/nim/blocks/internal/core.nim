@@ -514,13 +514,10 @@ when true:
   template outputTypes*(b: CBlockLog): CBTypesInfo = ({ Any }, true #[seq]#)
   template activate*(b: var CBlockLog; context: CBContext; input: CBVar): CBVar =
     if input.valueType == ContextVar:
-      let
-        strVal = $context.contextVariable(input.stringValue)[]
-      logs(strVal.cstring)
+      let ctxVal = context.contextVariable(input.stringValue)[]
+      emitc("LOG(INFO) << ", `ctxVal`, ";")
     else:
-      let
-        strVal = $input
-      logs(strVal.cstring)
+      emitc("LOG(INFO) << ", `input`, ";")
     input
 
   chainblock CBlockLog, "Log"
