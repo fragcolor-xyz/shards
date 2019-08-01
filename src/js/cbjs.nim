@@ -151,6 +151,10 @@ proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
     dst[].value.valueType = Float
     dst[].value.floatValue = src.toFloat(jsContext)
   
+  elif src.isBool:
+    dst[].value.valueType = Bool
+    dst[].value.boolValue = src.toBool(jsContext)
+  
   elif src.isArray(jsContext):
     dst[].value.valueType = Seq
     dst[].storage = JsVarStorage.Seq

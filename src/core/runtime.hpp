@@ -482,12 +482,12 @@ namespace chainblocks
     if(findIt == BlocksRegister.end())
     {
       BlocksRegister.insert(std::make_pair(cname, constructor));
-      // std::cout << "added block: " << cname << "\n";
+      DLOG(INFO) << "added block: " << cname;
     }
     else
     {
       BlocksRegister[cname] = constructor;
-      std::cout << "overridden block: " << cname << "\n";
+      LOG(INFO) << "overridden block: " << cname;
     }
   }
   
@@ -499,12 +499,12 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       ObjectTypesRegister.insert(std::make_pair(tup, info));
-      std::cout << "added object type: " << typeName << "\n";
+      DLOG(INFO) << "added object type: " << typeName;
     }
     else
     {
       ObjectTypesRegister[tup] = info;
-      std::cout << "overridden object type: " << typeName << "\n";
+      LOG(INFO) << "overridden object type: " << typeName;
     }
   }
 
@@ -516,12 +516,12 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       EnumTypesRegister.insert(std::make_pair(tup, info));
-      std::cout << "added object type: " << typeName << "\n";
+      DLOG(INFO) << "added object type: " << typeName;
     }
     else
     {
       EnumTypesRegister[tup] = info;
-      std::cout << "overridden object type: " << typeName << "\n";
+      LOG(INFO) << "overridden object type: " << typeName;
     }
   }
 
@@ -1352,18 +1352,18 @@ namespace chainblocks
         }
         catch(const std::exception& e)
         {
-          std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+          LOG(ERROR) << "Pre chain failure, failed block: " << std::string(blk->name(blk));
           if(context->error.length() > 0)
-            std::cerr << "Last error: " << std::string(context->error) << "\n";
-          std::cerr << e.what() << "\n";
+            LOG(ERROR) << "Last error: " << std::string(context->error);
+          LOG(ERROR) << e.what();
           CurrentChain = previousChain;
           return { false, {} };
         }
         catch(...)
         {
-          std::cerr << "Pre chain failure, failed block: " << std::string(blk->name(blk)) << "\n";
+          LOG(ERROR) << "Pre chain failure, failed block: " << std::string(blk->name(blk));
           if(context->error.length() > 0)
-            std::cerr << "Last error: " << std::string(context->error) << "\n";
+            LOG(ERROR) << "Last error: " << std::string(context->error);
           CurrentChain = previousChain;
           return { false, {} };
         }
@@ -1375,7 +1375,7 @@ namespace chainblocks
       try
       {
         #if 0
-          std::cout << "Activating block: " << std::string(blk->name(blk)) << "\n";
+          LOG(INFO) << "Activating block: " << std::string(blk->name(blk));
         #endif
         
         // Pass chain root input every time we find None, this allows a long chain to re-process the root input if wanted!
@@ -1397,8 +1397,8 @@ namespace chainblocks
               // Print errors if any, we might have stopped because of some error!
               if(context->error.length() > 0)
               {
-                std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
-                std::cerr << "Last error: " << std::string(context->error) << "\n";
+                LOG(ERROR) << "Block activation error, failed block: " << std::string(blk->name(blk));
+                LOG(ERROR) << "Last error: " << std::string(context->error);
               }
               runChainPOSTCHAIN
               CurrentChain = previousChain;
@@ -1411,19 +1411,19 @@ namespace chainblocks
       }
       catch(const std::exception& e)
       {
-        std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
+        LOG(ERROR) << "Block activation error, failed block: " << std::string(blk->name(blk));
         if(context->error.length() > 0)
-          std::cerr << "Last error: " << std::string(context->error) << "\n";
-        std::cerr << e.what() << "\n";;
+          LOG(ERROR) << "Last error: " << std::string(context->error);
+        LOG(ERROR) << e.what();;
         runChainPOSTCHAIN
         CurrentChain = previousChain;
         return { false, previousOutput };
       }
       catch(...)
       {
-        std::cerr << "Block activation error, failed block: " << std::string(blk->name(blk)) << "\n";
+        LOG(ERROR) << "Block activation error, failed block: " << std::string(blk->name(blk));
         if(context->error.length() > 0)
-          std::cerr << "Last error: " << std::string(context->error) << "\n";
+          LOG(ERROR) << "Last error: " << std::string(context->error);
         runChainPOSTCHAIN
         CurrentChain = previousChain;
         return { false, previousOutput };
@@ -1448,12 +1448,12 @@ namespace chainblocks
       }
       catch(const std::exception& e)
       {
-        std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
-        std::cerr << e.what() << '\n';
+        LOG(ERROR) << "Block cleanup error, failed block: " << std::string(blk->name(blk));
+        LOG(ERROR) << e.what() << '\n';
       }
       catch(...)
       {
-        std::cerr << "Block cleanup error, failed block: " << std::string(blk->name(blk)) << "\n";
+        LOG(ERROR) << "Block cleanup error, failed block: " << std::string(blk->name(blk));
       }
     }
   }

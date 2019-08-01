@@ -55,28 +55,51 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(NIM_OPTIONS ${NIM_OPTIONS} --passC:-ggdb)
-else()
+elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   set(NIM_OPTIONS ${NIM_OPTIONS} -d:danger --passC:-ggdb)
+else()
+  set(NIM_OPTIONS ${NIM_OPTIONS} -d:danger)
 endif()
+
+# list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS nim)
+
+file(GLOB_RECURSE nim_files ${CHAINBLOCKS_DIR}/../*.nim)
+foreach(nim_file ${nim_files})
+  list(APPEND nim_files_list "${nim_file}")
+endforeach()
 ###
 
-### chainblocks.nim
-if(DEFINED BASE_TESTING)
-  add_custom_target(
-    base_chainblocks_lib_build ALL
-    COMMAND
-      ${NIM_EXECUTABLE} ${NIM_OPTIONS} --nimcache:nimcache-chainblocks_lib --app:staticlib -o:libchainblocks.a --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME -d:blocksTesting ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim 
-  )
+### cbjs.exe via nim
+# https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
+add_custom_command(
+  OUTPUT libcbjs.a
+  COMMAND
+    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --app:staticlib --nimcache:nimcache-base-cbjs -o:libcbjs.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/js/cbjs.nim
+  DEPENDS
+    ${nim_files_list}
+)
+add_custom_target(cbjs_lib_target DEPENDS libcbjs.a)
+add_library(cbjs_lib STATIC IMPORTED GLOBAL)
+add_dependencies(cbjs_lib cbjs_lib_target)
+set_target_properties(cbjs_lib PROPERTIES
+  IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libcbjs.a
+)
 
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
-  add_executable(base_chainblocks ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
-  add_dependencies(base_chainblocks base_chainblocks_lib_build)
-  if(WIN32)
-    set_property(TARGET base_chainblocks PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
-    set(BOOST_CONTEXT -lboost_context-mt)
-  else()
-    set_property(TARGET base_chainblocks PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
-    set(BOOST_CONTEXT -lboost_context)
-  endif()
-  target_link_libraries(base_chainblocks ${CMAKE_CURRENT_BINARY_DIR}/libchainblocks.a cbruntime ${BOOST_CONTEXT})
+# Need this little hack
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
+add_executable(cbjs ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
+if(WIN32)
+  set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
+  set(BOOST_CONTEXT -lboost_context-mt)
+else()
+  set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
+  set(BOOST_CONTEXT -lboost_context)
 endif()
+target_link_libraries(
+  cbjs
+  cbjs_lib
+  cbruntime
+  quickjs
+  ${BOOST_CONTEXT}
+)
+###
