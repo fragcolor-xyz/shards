@@ -7,6 +7,23 @@
 #include "3rdparty/parallel_hashmap/phmap.h"
 #include "3rdparty/easylogging++.h"
 
+namespace chainblocks
+{
+  class CBException : public std::exception
+  {
+    public:
+      CBException(const char* errmsg) : errorMessage(errmsg) {}
+    
+      const char * what () const noexcept
+      {
+        return errorMessage;
+      }
+    
+    private:
+      const char* errorMessage;
+  };
+};
+
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch(var.valueType)
   {
@@ -155,4 +172,94 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
       break;
   }
   return os;
+}
+
+inline bool operator!=(const CBVar& a, const CBVar& b);
+
+inline bool operator==(const CBVar& a, const CBVar& b)
+{
+  if(a.valueType != b.valueType)
+    return false;
+  
+  switch(a.valueType)
+  {
+    case Any:
+    case EndOfBlittableTypes:
+      return true;
+    case None:
+      return a.payload.chainState == b.payload.chainState;
+    case Object:
+      return a.payload.objectValue == b.payload.objectValue;
+    case Enum:
+      return  a.payload.enumVendorId == b.payload.enumVendorId && 
+              a.payload.enumTypeId == b.payload.enumTypeId &&
+              a.payload.enumValue == b.payload.enumValue;
+    case Bool:
+      return a.payload.boolValue == b.payload.boolValue;
+    case Int:
+      return a.payload.intValue == b.payload.intValue;
+    case Float:
+      return a.payload.floatValue == b.payload.floatValue;
+    case Int2:
+    case Int3:
+    case Int4:
+    case Int8:
+    case Int16:
+    case Float2:
+    case Float3:
+    case Float4:
+      return memcmp(&a.payload, &b.payload, sizeof(CBVarPayload)) == 0;
+    case Color:
+      return  a.payload.colorValue.r == b.payload.colorValue.r &&
+              a.payload.colorValue.g == b.payload.colorValue.g &&
+              a.payload.colorValue.b == b.payload.colorValue.b &&
+              a.payload.colorValue.a == b.payload.colorValue.a;
+    case Chain:
+      return a.payload.chainValue == b.payload.chainValue;
+    case Block:
+      return a.payload.blockValue == b.payload.blockValue;
+    case ContextVar:
+    case String:
+      return strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
+      break;
+    case Image:
+      return
+        a.payload.imageValue.channels == b.payload.imageValue.channels &&
+        a.payload.imageValue.width == b.payload.imageValue.width &&
+        a.payload.imageValue.height == b.payload.imageValue.height &&
+        memcmp(a.payload.imageValue.data, b.payload.imageValue.data, 
+        a.payload.imageValue.channels * a.payload.imageValue.width * a.payload.imageValue.height) == 0;
+    case Seq:
+      if(stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+        return false;
+      
+      for(auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++)
+      {
+        if(a.payload.seqValue[i] != b.payload.seqValue[i])
+          return false;
+      }
+      
+      return true;
+    case Table:
+      if(stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+        return false;
+      
+      for(auto i = 0; i < stbds_shlen(a.payload.tableValue); i++)
+      {
+        if(strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+          return false;
+        
+        if(a.payload.tableValue[i].value != b.payload.tableValue[i].value)
+          return false;
+      }
+      
+      return true;
+  }
+  
+  return false;
+}
+
+inline bool operator!=(const CBVar& a, const CBVar& b)
+{
+  return !(a == b);
 }

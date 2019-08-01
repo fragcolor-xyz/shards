@@ -1,15 +1,11 @@
 #pragma once
 
-#include "../runtime.hpp"
-#include "../blocks_macros.hpp"
+#include "shared.hpp"
 
 namespace chainblocks
 {
-  static CBTypesInfo noneType;
-  static CBTypesInfo anyInOutInfo;
-  static CBTypesInfo strInfo;
   static CBParametersInfo tableParamsInfo;
-  
+
   struct SetTableValue
   {
     CBVar* target = nullptr;
@@ -54,7 +50,7 @@ namespace chainblocks
     {
       if(!anyInOutInfo)
       {
-        CBTypeInfo anyType = { Any, true /*sequenced*/ };
+        CBTypeInfo anyType = { Any };
         stbds_arrpush(anyInOutInfo, anyType);
       }
       return anyInOutInfo;
@@ -64,7 +60,7 @@ namespace chainblocks
     {
       if(!anyInOutInfo)
       {
-        CBTypeInfo anyType = { Any, true /*sequenced*/ };
+        CBTypeInfo anyType = { Any };
         stbds_arrpush(anyInOutInfo, anyType);
       }
       return anyInOutInfo;
@@ -74,7 +70,7 @@ namespace chainblocks
     {
       if(!strInfo)
       {
-        CBTypeInfo strType = { String, false /*sequenced*/ };
+        CBTypeInfo strType = { String };
         stbds_arrpush(strInfo, strType);
       }
       if(!tableParamsInfo)
@@ -307,12 +303,11 @@ namespace chainblocks
       return res;
     }
   };
-
-  
 };
 
 // Register SetTableValue
 RUNTIME_CORE_BLOCK(chainblocks::SetTableValue, SetTableValue)
+RUNTIME_BLOCK_destroy(SetTableValue)
 RUNTIME_BLOCK_cleanup(SetTableValue)
 RUNTIME_BLOCK_inputTypes(SetTableValue)
 RUNTIME_BLOCK_outputTypes(SetTableValue)

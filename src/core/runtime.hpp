@@ -294,22 +294,8 @@ namespace chainblocks
   extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
-
+  
   static CBRuntimeBlock* createBlock(const char* name);
-
-  class CBException : public std::exception
-  {
-    public:
-      CBException(const char* errmsg) : errorMessage(errmsg) {}
-
-      const char * what () const noexcept
-      {
-        return errorMessage;
-      }
-
-    private:
-      const char* errorMessage;
-  };
 };
 
 using json = nlohmann::json;

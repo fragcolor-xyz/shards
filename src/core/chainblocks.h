@@ -495,4 +495,3 @@ EXPORTED void __cdecl chainblocks_Log(int level, const char* msg, ...);
 #ifdef __cplusplus
 };
 #endif
-

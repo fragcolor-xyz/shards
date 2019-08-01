@@ -2,7 +2,8 @@
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "runtime.hpp"
-#include "blocks/core.hpp"
+#include "blocks/tables.hpp"
+#include "blocks/assert.hpp"
 #include <cstdarg>
 
 INITIALIZE_EASYLOGGINGPP
@@ -27,6 +28,8 @@ namespace chainblocks
       coreRegistered = true;
       REGISTER_CORE_BLOCK(SetTableValue);
       REGISTER_CORE_BLOCK(GetTableValue);
+      REGISTER_BLOCK(Assert, Is);
+      REGISTER_BLOCK(Assert, IsNot);
     }
   }
 };
