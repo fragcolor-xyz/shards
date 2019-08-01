@@ -2,7 +2,7 @@ project("chainblocks")
 cmake_minimum_required(VERSION 3.15)
 
 if (NOT DEFINED CHAINBLOCKS_DIR)
-  set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
   set(BASE_TESTING 1)
 endif()
 
@@ -65,7 +65,7 @@ if(DEFINED BASE_TESTING)
   add_custom_target(
     base_chainblocks_lib_build ALL
     COMMAND
-      ${NIM_EXECUTABLE} ${NIM_OPTIONS} --nimcache:nimcache-chainblocks_lib --app:staticlib -o:libchainblocks.a --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME -d:blocksTesting ${CMAKE_CURRENT_SOURCE_DIR}/src/nim/chainblocks.nim 
+      ${NIM_EXECUTABLE} ${NIM_OPTIONS} --nimcache:nimcache-chainblocks_lib --app:staticlib -o:libchainblocks.a --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME -d:blocksTesting ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim 
   )
 
   file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
