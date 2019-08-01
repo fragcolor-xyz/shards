@@ -1,4 +1,4 @@
-import { chain, Msg, Log, Repeat, SetTableValue, GetTableValue } from "./blocks";
+import { chain, Msg, Log, Repeat, SetTableValue, GetTableValue, Int3, Const, GetVariable } from "blocks";
 
 try
 {
@@ -53,7 +53,7 @@ try
       Repeat(
         [
           Msg("Repeating... this..."),
-          77,
+          Int3(77, 78, 69),
           Log(),
           Repeat(
             [
@@ -78,6 +78,8 @@ try
         "table1",
         "myKey"
       ),
+      Log(),
+      GetVariable("table1"),
       Log()
     ]))
   }

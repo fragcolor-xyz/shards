@@ -132,6 +132,8 @@ when true:
     result = newClassObj(context, JsCBVarConst.classId, JsCBVarConst.prototype)
     result.attachPtr(addr v)
 
+var JsCBVar: JSClass
+
 proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
   if src.isStr:
     let
@@ -179,21 +181,25 @@ proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
         # The block will own the block, remove the ptr from the js side, so it won't destroy it!
         constBlkJs.attachPtr(nil)
         
-        # Set the var as param
-        var tmp: JsCBVarBox
-        jsToVar(addr tmp, val)
-        constBlk[].setParam(constBlk, 0, tmp.value)
-        # free mem from the temp if we need to
-        case tmp.storage
-        of JsVarStorage.None:
-          discard
-        of JsVarStorage.Copy:
-          `~quickcopy` tmp.value
-        of JsVarStorage.Seq:
-          for sub in tmp.value.seqValue.mitems:
-            `~quickcopy` sub
-          freeSeq(tmp.value.seqValue)
-        
+        var cbvar = cast[ptr JsCBVarBox](val.getPtr(JsCBVar.classId))
+        if cbvar != nil:
+          constBlk[].setParam(constBlk, 0, cbvar[].value)
+        else:
+          # Set the var as param
+          var tmp: JsCBVarBox
+          jsToVar(addr tmp, val)
+          constBlk[].setParam(constBlk, 0, tmp.value)
+          # free mem from the temp if we need to
+          case tmp.storage
+          of JsVarStorage.None:
+            discard
+          of JsVarStorage.Copy:
+            `~quickcopy` tmp.value
+          of JsVarStorage.Seq:
+            for sub in tmp.value.seqValue.mitems:
+              `~quickcopy` sub
+            freeSeq(tmp.value.seqValue)
+          
         dst[].value.seqValue.push(constBlk)
         val.decRef(jsContext)
         continue
@@ -222,7 +228,7 @@ proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
 
 # A mutable CBVar
 when true:
-  var JsCBVar = JsClass(
+  JsCBVar = JsClass(
     finalizer: proc(self: JSValue; classId: uint32) =
       var cbvar = cast[ptr JsCBVarBox](self.getPtr(classId))
       if cbvar != nil:
