@@ -52,6 +52,8 @@ when true:
   template getParam*(b: CBPython; index: int): CBVar =
     b.filename
 
+  # TODO INFER TYPES, this won't work!
+
   template activate*(blk: CBPython; context: CBContext; input: CBVar): CBVar =
     var res = StopChain
     try:
