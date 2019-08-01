@@ -8,6 +8,9 @@ var
   jsRuntime = newJSRuntime()
   jsContext = newJSContext(jsRuntime)
 
+# let's expose global
+jsContext.Global.setProperty(jsContext, "global", jsContext.Global)
+
 proc loadBuiltIns() =
   var logProc = newProc(jsContext, proc(ctx: ptr JSContext; this_val: JSValue; argc: cint; argv: ptr UncheckedArray[JSValue]): JSValue {.cdecl.} =
     for i in 0..<argc:
@@ -212,7 +215,7 @@ proc jsToVar(dst: ptr JsCBVarBox; src: JsValue) =
       return
     
     let chainValue = cast[CBChainPtr](src.getPtr(JsCBChain.classId))
-    if blockValue != nil:
+    if chainValue != nil:
       dst[].value.valueType = Chain
       dst[].value.chainValue = chainValue
       return
@@ -253,19 +256,19 @@ when true:
               newVar[].value.intValue = argv[1].toInt(jsContext)
             of 3:
               newVar[].value.valueType = Int2
-              for i in 1..<argc: newVar[].value.int2Value[i] = argv[i].toInt(jsContext)
+              for i in 1..<argc: newVar[].value.int2Value[i-1] = argv[i].toInt(jsContext)
             of 4:
               newVar[].value.valueType = Int3
-              for i in 1..<argc: newVar[].value.int3Value[i] = argv[i].toInt(jsContext)
+              for i in 1..<argc: newVar[].value.int3Value[i-1] = argv[i].toInt(jsContext)
             of 5:
               newVar[].value.valueType = Int4
-              for i in 1..<argc: newVar[].value.int4Value[i] = argv[i].toInt(jsContext)
+              for i in 1..<argc: newVar[].value.int4Value[i-1] = argv[i].toInt(jsContext)
             of 9:
               newVar[].value.valueType = Int8
-              for i in 1..<argc: newVar[].value.int8Value[i] = argv[i].toInt(jsContext)
+              for i in 1..<argc: newVar[].value.int8Value[i-1] = argv[i].toInt(jsContext)
             of 17:
               newVar[].value.valueType = Int16
-              for i in 1..<argc: newVar[].value.int16Value[i] = argv[i].toInt(jsContext)
+              for i in 1..<argc: newVar[].value.int16Value[i-1] = argv[i].toInt(jsContext)
             else:
               self = throwTypeError(jsContext, "Int variable out of range, pass as an array instead.")
               return
@@ -276,13 +279,13 @@ when true:
               newVar[].value.floatValue = argv[1].toFloat(jsContext)
             of 3:
               newVar[].value.valueType = Float2
-              for i in 1..<argc: newVar[].value.float2Value[i] = argv[i].toFloat(jsContext)
+              for i in 1..<argc: newVar[].value.float2Value[i-1] = argv[i].toFloat(jsContext)
             of 4:
               newVar[].value.valueType = Float3
-              for i in 1..<argc: newVar[].value.float3Value[i] = argv[i].toFloat(jsContext)
+              for i in 1..<argc: newVar[].value.float3Value[i-1] = argv[i].toFloat(jsContext)
             of 5:
               newVar[].value.valueType = Float4
-              for i in 1..<argc: newVar[].value.float4Value[i] = argv[i].toFloat(jsContext)
+              for i in 1..<argc: newVar[].value.float4Value[i-1] = argv[i].toFloat(jsContext)
             else:
               self = throwTypeError(jsContext, "Float variable out of range, pass as an array instead.")
               return
