@@ -177,7 +177,7 @@ when true:
   chainblock CBAddVariable, "AddVariable"
 
 # GetItems - gets an item from a Seq
-when true:
+when false:
   type
     CBGetItems* = object
       indices*: CBVar
@@ -306,9 +306,9 @@ when true:
         # Run within the root flow, just call runChain
         b.chain[].finished = false
         let
-          resTuple = runChain(b.chain, context, input)
-          noerrors = cppTupleGet[bool](0, resTuple.toCpp)
-          output = cppTupleGet[CBVar](1, resTuple.toCpp)
+          runRes = runChain(b.chain, context, input)
+          noerrors = runRes.state != RunChainOutputState.Failed
+          output = runRes.output
         b.chain[].finishedOutput = output
         b.chain[].finished = true
         if not noerrors or context[].aborted:

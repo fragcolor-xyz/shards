@@ -59,7 +59,6 @@ type
   CBContextObj* {.importcpp: "CBContext", header: "chainblocks.hpp".} = object
     aborted*: bool
     restarted*: bool
-    stack*: CBSeq
   CBContext* = ptr CBContextObj
 
   CBEnumInfo* {.importcpp: "CBEnumInfo", header: "chainblocks.hpp".} = object

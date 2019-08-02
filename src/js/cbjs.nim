@@ -503,9 +503,9 @@ when true:
         node = cast[ptr CBNode](this_val.getPtr(JsCBNode.classId))
       if node == nil: return throwTypeError(ctx, "schedule invalid node")
       
-      node.tick()
+      let noErrors = node.tick()
       
-      return Undefined,
+      return noErrors.jsBool(jsContext),
     0
   )
 

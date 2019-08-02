@@ -474,8 +474,8 @@ when appType != "lib" or defined(forceCBRuntime):
     chain[].looped = loop.bool
     chain[].unsafe = unsafe.bool
     schedule(node, chain, input)
-  proc tick*(node: ptr CBNode, input: CBVar = Empty) {.inline.} =
-    node[].invoke("tick", input).to(void)
+  proc tick*(node: ptr CBNode, input: CBVar = Empty): bool {.inline, discardable.} =
+    node[].invoke("tick", input).to(bool)
   proc cbNodeTick*(node: ptr CBNode, input: CBVar) {.cdecl, exportc, dynlib.} = tick(node, input)
   proc stop*(node: ptr CBNode) {.inline.} =
     node[].invoke("terminate").to(void)
@@ -890,6 +890,13 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
 
 when appType != "lib" or defined(forceCBRuntime):
   # When building the runtime!
+  type
+    RunChainOutputState* {.importcpp: "chainblocks::RunChainOutputState", header: "runtime.hpp".} = enum
+      Running, Restarted, Stopped, Failed
+    
+    RunChainOutput* {.importcpp: "chainblocks::RunChainOutput", header: "runtime.hpp".} = object
+      output*: CBVar
+      state*: RunChainOutputState
 
   proc registerBlock*(name: string; initProc: CBBlockConstructor) =
     invokeFunction("chainblocks::registerBlock", name, initProc).to(void)
@@ -931,7 +938,7 @@ when appType != "lib" or defined(forceCBRuntime):
     cppdel(chain)
   proc cbDestroyChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = destroy(chain)
   
-  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): StdTuple2[bool, CBVar] {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
+  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): RunChainOutput {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
 
   proc activateBlock*(chain: ptr CBRuntimeBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
   
@@ -1040,7 +1047,7 @@ include ops
 when not defined(skipCoreBlocks):
   import os
   import nimline
-  include blocks/internal/[core, strings, stack, calculate, ipc]
+  include blocks/internal/[core, strings, calculate, ipc]
 
 when appType != "lib" or defined(forceCBRuntime):
   # Swaps from compile time chain mode on/off

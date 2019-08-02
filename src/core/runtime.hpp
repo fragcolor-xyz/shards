@@ -222,8 +222,10 @@ struct CBChain
     started(false),
     finished(false),
     returned(false),
+    failed(false),
     rootTickInput(CBVar()),
     finishedOutput(CBVar()),
+    ownedOutput(false),
     context(nullptr),
     node(nullptr)
   {}
@@ -268,9 +270,11 @@ struct CBChain
   
   // when running as coro if actually the coro lambda exited
   bool returned;
+  bool failed;
 
   CBVar rootTickInput;
   CBVar finishedOutput;
+  bool ownedOutput;
   
   CBContext* context;
   CBNode* node;
@@ -1305,11 +1309,25 @@ namespace chainblocks
       }
     }
   }
-
-  inline static std::tuple<bool, CBVar> runChain(CBChain* chain, CBContext* context, CBVar chainInput)
+  
+  enum RunChainOutputState
+  {
+    Running,
+    Restarted,
+    Stopped,
+    Failed
+  };
+  
+  struct RunChainOutput
+  {
+    CBVar output;
+    RunChainOutputState state;
+  };
+  
+  inline static RunChainOutput runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
     CBVar previousOutput;
-
+    
     // Detect and pause if we need to here
     // avoid pausing in the middle or so, that is for a proper debug mode runner, 
     // here we care about performance
@@ -1323,11 +1341,11 @@ namespace chainblocks
       {
         case Restart:
         { 
-          return { true, previousOutput };
+          return { previousOutput, Restarted };
         }
         case Stop:
         {
-          return { false, previousOutput };
+          return { previousOutput, Stopped };
         }
         case Continue:
           continue;
@@ -1355,7 +1373,7 @@ namespace chainblocks
             LOG(ERROR) << "Last error: " << std::string(context->error);
           LOG(ERROR) << e.what();
           CurrentChain = previousChain;
-          return { false, {} };
+          return { CBVar(), Failed };
         }
         catch(...)
         {
@@ -1363,7 +1381,7 @@ namespace chainblocks
           if(context->error.length() > 0)
             LOG(ERROR) << "Last error: " << std::string(context->error);
           CurrentChain = previousChain;
-          return { false, {} };
+          return { CBVar(), Failed };
         }
       }
     }
@@ -1388,19 +1406,24 @@ namespace chainblocks
             {
               runChainPOSTCHAIN
               CurrentChain = previousChain;
-              return { true, previousOutput };
+              return { previousOutput, Restarted };
             }
             case Stop:
             {
+              runChainPOSTCHAIN
+              CurrentChain = previousChain;
+              
               // Print errors if any, we might have stopped because of some error!
-              if(context->error.length() > 0)
+              if(unlikely(context->error.length() > 0))
               {
                 LOG(ERROR) << "Block activation error, failed block: " << std::string(blk->name(blk));
                 LOG(ERROR) << "Last error: " << std::string(context->error);
+                return { previousOutput, Failed };
               }
-              runChainPOSTCHAIN
-              CurrentChain = previousChain;
-              return { false, previousOutput };
+              else
+              {
+                return { previousOutput, Stopped };
+              }
             }
             case Continue:
               continue;
@@ -1415,7 +1438,7 @@ namespace chainblocks
         LOG(ERROR) << e.what();;
         runChainPOSTCHAIN
         CurrentChain = previousChain;
-        return { false, previousOutput };
+        return { previousOutput, Failed };
       }
       catch(...)
       {
@@ -1424,13 +1447,13 @@ namespace chainblocks
           LOG(ERROR) << "Last error: " << std::string(context->error);
         runChainPOSTCHAIN
         CurrentChain = previousChain;
-        return { false, previousOutput };
+        return { previousOutput, Failed };
       }
     }
     
     runChainPOSTCHAIN
     CurrentChain = previousChain;
-    return { true, previousOutput };
+    return { previousOutput, Running };
   }
 
   static void cleanup(CBChain* chain)
@@ -1461,6 +1484,14 @@ namespace chainblocks
     auto running = true;
     // Reset return state
     chain->returned = false;
+    // Clean previous output if we had one
+    if(chain->ownedOutput)
+    {
+      destroyVar(chain->finishedOutput);
+      chain->ownedOutput = false;
+    }
+    // Reset error
+    chain->failed = false;
     // Create a new context and copy the sink in
     CBContext context(std::move(sink));
 
@@ -1475,16 +1506,13 @@ namespace chainblocks
       running = chain->looped;
       context.restarted = false; // Remove restarted flag
       
-      // Reset len to 0 of the stack
-      if(context.stack)
-        stbds_arrsetlen(context.stack, 0);
-      
       chain->finished = false; // Reset finished flag (atomic)
       auto runRes = runChain(chain, &context, chain->rootTickInput);
-      chain->finishedOutput = std::get<1>(runRes); // Write result before setting flag
+      chain->finishedOutput = runRes.output; // Write result before setting flag
       chain->finished = true; // Set finished flag (atomic)
-      if(!std::get<0>(runRes))
+      if(runRes.state == Failed)
       {
+        chain->failed = true;
         context.aborted = true;
         break;
       }
@@ -1501,9 +1529,11 @@ namespace chainblocks
     }
     
   endOfChain:
-    // Completely free the stack
-    if(context.stack)
-      stbds_arrfree(context.stack);
+    // Copy the output variable since the next call might wipe it
+    auto tmp = chain->finishedOutput;
+    chain->finishedOutput = CBVar(); // Reset it we are not sure on the internal state
+    chain->ownedOutput = true;
+    cloneVar(chain->finishedOutput, tmp);
     
     // run cleanup on all the blocks
     cleanup(chain);
@@ -1538,8 +1568,8 @@ namespace chainblocks
     
     chainblocks::CurrentChain = previousChain;
   }
-
-  static void stop(CBChain* chain, CBVar* result = nullptr)
+  
+  static bool stop(CBChain* chain, CBVar* result = nullptr)
   {
     // Clone the results if we need them
     if(result)
@@ -1576,6 +1606,13 @@ namespace chainblocks
     }
     
     chain->started = false;
+    
+    if(chain->failed)
+    {
+      return false;
+    }
+    
+    return true;
   }
 
   static void tick(CBChain* chain, CBVar rootInput = CBVar())
@@ -1695,18 +1732,23 @@ struct CBNode
     chainblocks::start(chain, input);
   }
   
-  void tick(CBVar input = {})
+  bool tick(CBVar input = {})
   {
+    auto noErrors = true;
     chainsTicking = chains;
     for(auto chain : chainsTicking)
     {
       chainblocks::tick(chain, input);
       if(!chainblocks::isRunning(chain))
       {
-        chainblocks::stop(chain);
+        if(!chainblocks::stop(chain))
+        {
+          noErrors = false;
+        }
         chains.remove(chain);
       }
     }
+    return noErrors;
   }
   
   void terminate()

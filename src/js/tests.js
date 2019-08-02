@@ -43,10 +43,13 @@ n.schedule(chain([
   Log(),
   GetItems(0),
   Assert.Is(10, true),
+  GetVariable("list1"),
   GetItems(1),
   Assert.Is(20, true),
+  GetVariable("list1"),
   GetItems(2),
   Assert.Is(30, true),
+  Log(),
 
   0,
   SetVariable("counter"),
@@ -97,9 +100,21 @@ consumer.schedule(chain([
   Assert.Is("My message in a bottle...")
 ], "consumer", true))
 
+if(!n.tick())
+{
+  throw new Error()
+}
+
 let ticks = 10
 while(ticks--)
 {
-  producer.tick()
-  consumer.tick()
+  if(!producer.tick()) { throw new Error() }
+  if(!consumer.tick()) { throw new Error() }
 }
+
+(GetVariable "var")
+(If More 10 (
+  (GetVariable "var")
+  (GetVariable "var")
+  (GetVariable "var")
+))

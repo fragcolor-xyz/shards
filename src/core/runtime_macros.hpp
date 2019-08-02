@@ -8,18 +8,18 @@
     }\
     catch(const std::exception& e)\
     {\
-      std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+      LOG(ERROR) << "Post chain failure, failed block: " << std::string(blk->name(blk));\
       if(context->error.length() > 0)\
-        std::cerr << "Last error: " << std::string(context->error) << "\n";\
-      std::cerr << e.what() << "\n";\
-      return { false, previousOutput };\
+        LOG(ERROR) << "Last error: " << std::string(context->error);\
+      LOG(ERROR) << e.what() << "\n";\
+      return { previousOutput, Failed };\
     }\
     catch(...)\
     {\
-      std::cerr << "Post chain failure, failed block: " << std::string(blk->name(blk)) << "\n";\
+      LOG(ERROR) << "Post chain failure, failed block: " << std::string(blk->name(blk));\
       if(context->error.length() > 0)\
-        std::cerr << "Last error: " << std::string(context->error) << "\n";\
-      return { false, previousOutput };\
+        LOG(ERROR) << "Last error: " << std::string(context->error);\
+      return { previousOutput, Failed };\
     }\
   }\
 }
