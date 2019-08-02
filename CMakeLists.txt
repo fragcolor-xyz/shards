@@ -1,6 +1,8 @@
 project("chainblocks")
 cmake_minimum_required(VERSION 3.15)
 
+set(CMAKE_CXX_STANDARD 17)
+
 if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
   set(BASE_TESTING 1)
