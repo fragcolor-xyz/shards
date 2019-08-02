@@ -183,7 +183,6 @@ typedef boost::context::continuation CBCoro;
 struct CBContext
 {
   CBContext(CBCoro&& sink) :
-    stack(nullptr), 
     restarted(false), 
     aborted(false),
     shouldPause(false),
@@ -193,7 +192,6 @@ struct CBContext
   }
 
   phmap::node_hash_map<std::string, CBVar> variables;
-  CBSeq stack;
   std::string error;
 
   // Those 2 go together with CBVar chainstates restart and stop
