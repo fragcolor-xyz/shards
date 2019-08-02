@@ -2,6 +2,7 @@
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 #include "runtime.hpp"
+#include "blocks/seqs.hpp"
 #include "blocks/tables.hpp"
 #include "blocks/assert.hpp"
 #include <cstdarg>
@@ -26,6 +27,7 @@ namespace chainblocks
     {
       // Do this here to prevent insanity loop
       coreRegistered = true;
+      REGISTER_CORE_BLOCK(GetItems);
       REGISTER_CORE_BLOCK(SetTableValue);
       REGISTER_CORE_BLOCK(GetTableValue);
       REGISTER_BLOCK(Assert, Is);
@@ -980,8 +982,8 @@ void validateConnection(ValidationContext& ctx)
     auto findIt = ctx.exposed.find(name);
     if(findIt != ctx.exposed.end())
     {
-      // Ignore tables, this behavior is a bit hard coded but makes sense
-      if(exposed_param.exposedType.basicType != Table)
+      // Ignore tables and seqs, this behavior is a bit hard coded but makes sense as they support "adding" items
+      if(exposed_param.exposedType.basicType != Table && exposed_param.exposedType.basicType != Seq)
       {
         // do we want to override it?, warn at least
         std::string err("Overriding already exposed variable: " + name);
@@ -1084,6 +1086,12 @@ void CBChain::cleanup()
     //blk is responsible to free itself, as they might use any allocation strategy they wish!
   }
   blocks.clear();
+
+  if(ownedOutput)
+  {
+    chainblocks::destroyVar(finishedOutput);
+    ownedOutput = false;
+  }
 }
 
 #ifdef TESTING

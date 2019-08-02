@@ -6,7 +6,9 @@
 namespace chainblocks
 {
   static CBTypesInfo noneType;
+  static CBTypesInfo intSeqInfo;
   static CBTypesInfo boolInfo;
   static CBTypesInfo anyInOutInfo;
   static CBTypesInfo strInfo;
+  static CBParametersInfo indicesParamsInfo;
 };
