@@ -42,9 +42,16 @@ static StaticList<malBuiltIn*> handlers;
 
 extern void NimMain();
 
-void installCBCore(malEnvPtr env) {
+void registerKeywords(malEnvPtr env);
+
+void installCBCore(malEnvPtr env) 
+{
   NimMain();
-  for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) {
+  
+  registerKeywords(env);
+  
+  for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) 
+  {
     malBuiltIn* handler = *it;
     env->set(handler->name(), handler);
   }
@@ -53,12 +60,15 @@ void installCBCore(malEnvPtr env) {
 class malCBBlock : public malValue {
 public:
     malCBBlock(MalString name) : m_block(chainblocks::createBlock(name.c_str())) { }
+
+    malCBBlock(CBRuntimeBlock* block) : m_block(block) { }
     
     malCBBlock(const malCBBlock& that, malValuePtr meta) : malValue(meta), m_block(that.m_block) { }
     
     ~malCBBlock()
     {
-      // m_block->destroy(m_block);
+      if(m_block)
+        m_block->destroy(m_block);
     }
     
     virtual MalString print(bool readably) const 
@@ -69,6 +79,11 @@ public:
     }
     
     CBRuntimeBlock* value() const { return m_block; }
+
+    void consume() 
+    {
+      m_block = nullptr;
+    }
     
     virtual bool doIsEqualTo(const malValue* rhs) const
     {
@@ -248,11 +263,96 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   }
   else if (const malCBBlock* v = DYNAMIC_CAST(malCBBlock, arg)) 
   {
-    return v->value();
+    auto block = v->value();
+    const_cast<malCBBlock*>(v)->consume(); // Blocks are unique, consume before use, assume goes inside another block or
+    return block;
   }
   else
   {
     throw chainblocks::CBException("Invalid argument");
+  }
+}
+
+CBVar varify(malValuePtr valPtr)
+{
+
+}
+
+int findParamIndex(std::string name, CBParametersInfo params)
+{
+  for(auto i = 0; i < stbds_arrlen(params); i++)
+  {
+    auto param = params[i];
+    if(param.name == name)
+      return i;
+  }
+  return -1;
+}
+
+void validationCallback(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
+{
+  auto failed = reinterpret_cast<bool*>(userData);
+  auto block = const_cast<CBRuntimeBlock*>(errorBlock);
+  if(!nonfatalWarning)
+  {
+    *failed = true;
+    LOG(ERROR) << "Parameter validation failed: " << errorTxt << " block: " << block->name(block);
+  }
+  else
+  {
+    LOG(INFO) << "Parameter validation warning: " << errorTxt << " block: " << block->name(block);
+  }
+}
+
+void setBlockParameters(CBRuntimeBlock* block, malValueIter begin, malValueIter end)
+{
+  auto argsBegin = begin;
+  auto argsEnd = end;
+  auto params = block->parameters(block);
+  auto pindex = 0;
+  while(argsBegin != argsEnd)
+  {
+    auto arg = *argsBegin++;
+    if(const malKeyword* v = DYNAMIC_CAST(malKeyword, arg))
+    {
+      // In this case it's a keyworded call from now on
+      pindex = -1;
+      
+      // Jump to next value straight, expecting a value
+      auto value = *argsBegin++;
+      auto idx = findParamIndex(v->value(), params);
+      if(unlikely(idx == -1))
+      {
+        LOG(ERROR) << "Parameter not found: " << v->value() << " block: " << block->name(block);
+        throw chainblocks::CBException("Parameter not found");
+      }
+      else
+      {
+        auto var = varify(value);
+        bool failed = false;
+        validateSetParam(block, idx, var, validationCallback, &failed);
+        if(failed)
+          throw chainblocks::CBException("Parameter validation failed");
+        block->setParam(block, idx, var);
+      }
+    }
+    else if(pindex == -1)
+    {
+      // We expected a keyword! fail
+      LOG(ERROR) << "Keyword expected, block: " << block->name(block);
+      throw chainblocks::CBException("Keyword expected");
+    }
+    else
+    {
+      auto var = varify(arg);
+      bool failed = false;
+      validateSetParam(block, pindex, var, validationCallback, &failed);
+      if(failed)
+        throw chainblocks::CBException("Parameter validation failed");
+      block->setParam(block, pindex, var);
+      
+      pindex++;
+    }
   }
 }
 
@@ -447,3 +547,7 @@ BUILTIN("__setParam__")
   
   return mal::nilValue();
 }
+
+#ifdef HAS_CB_GENERATED
+#include "CBGenerated.hpp"
+#endif

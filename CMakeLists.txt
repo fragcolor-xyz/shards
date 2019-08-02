@@ -125,6 +125,30 @@ set_target_properties(cbnim_lib PROPERTIES
 )
 ###
 
+### mal blocks code generator
+add_executable(
+  malgen
+  "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
+)
+set_property(TARGET malgen PROPERTY COMPILE_FLAGS "-static")
+target_link_libraries(malgen cbruntime cbnim_lib ${BOOST_CONTEXT})
+
+# https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
+add_custom_command(
+  OUTPUT CBGenerated.hpp
+  COMMAND
+    malgen
+  DEPENDS
+    malgen
+)
+add_custom_target(generator_target DEPENDS CBGenerated.hpp)
+add_library(generator STATIC IMPORTED GLOBAL)
+add_dependencies(generator generator_target)
+set_target_properties(generator PROPERTIES
+  IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/CBGenerated.hpp
+)
+###
+
 ### mal
 add_executable(
   mal
@@ -139,6 +163,8 @@ add_executable(
   "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
 )
-set_property(TARGET mal PROPERTY COMPILE_FLAGS "-static -ffast-math")
+add_dependencies(mal generator)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set_property(TARGET mal PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
 target_link_libraries(mal readline cbruntime cbnim_lib ${BOOST_CONTEXT})
 ###

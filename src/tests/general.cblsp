@@ -2,7 +2,9 @@
 (schedule Root (Chain "namedChain"))
 (schedule Root (Chain "namedChain"
   nil
+  (Log)
   "Hello world!"
+  (Log)
 ))
 ;; (schedule Root (Chain "namedChain"
 ;;   nil
