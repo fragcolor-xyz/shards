@@ -1098,7 +1098,7 @@ when appType != "lib" or defined(forceCBRuntime):
 assert sizeof(CBVar) == 32
 assert sizeof(CBVarPayload) == 16
 
-when isMainModule and appType != "lib":
+when isMainModule and appType != "lib" and appType != "staticlib":
   import os
   
   type

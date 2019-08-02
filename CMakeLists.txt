@@ -14,6 +14,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 ###
 
+### boost context
+if(WIN32)
+  set(BOOST_CONTEXT -lboost_context-mt)
+else()
+  set(BOOST_CONTEXT -lboost_context)
+endif()
+###
+
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/src/core
@@ -90,13 +98,7 @@ set_target_properties(cbjs_lib PROPERTIES
 # Need this little hack
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
 add_executable(cbjs ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
-if(WIN32)
-  set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
-  set(BOOST_CONTEXT -lboost_context-mt)
-else()
-  set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
-  set(BOOST_CONTEXT -lboost_context)
-endif()
+set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
 target_link_libraries(
   cbjs
   cbjs_lib
@@ -104,4 +106,39 @@ target_link_libraries(
   quickjs
   ${BOOST_CONTEXT}
 )
+###
+
+### corecb via nim
+# https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
+add_custom_command(
+  OUTPUT libnimcb.a
+  COMMAND
+    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --app:staticlib --noMain --nimcache:nimcache-base-cbjs -o:libnimcb.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim
+  DEPENDS
+    ${nim_files_list}
+)
+add_custom_target(cbnim_lib_target DEPENDS libnimcb.a)
+add_library(cbnim_lib STATIC IMPORTED GLOBAL)
+add_dependencies(cbnim_lib cbnim_lib_target)
+set_target_properties(cbnim_lib PROPERTIES
+  IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libnimcb.a
+)
+###
+
+### mal
+add_executable(
+  mal
+  "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Environment.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Reader.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/ReadLine.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/String.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Types.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+)
+set_property(TARGET mal PROPERTY COMPILE_FLAGS "-static -ffast-math")
+target_link_libraries(mal readline cbruntime cbnim_lib ${BOOST_CONTEXT})
 ###

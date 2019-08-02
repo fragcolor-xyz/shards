@@ -1,0 +1,13 @@
+(def! Root (Node))
+(schedule Root (Chain "namedChain"))
+(schedule Root (Chain "namedChain"
+  nil
+  "Hello world!"
+))
+;; (schedule Root (Chain "namedChain"
+;;   nil
+;;   "Hello world!"
+;;   (Repeat :times 5 :action (
+;;     "Repeating..."
+;;   ))
+;; ))
