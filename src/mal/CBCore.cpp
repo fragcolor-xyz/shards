@@ -273,9 +273,97 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   }
 }
 
-CBVar varify(malValuePtr valPtr)
+CBVar varify(malValuePtr arg)
 {
-
+  if (arg == mal::nilValue())
+  {
+    CBVar var;
+    var.valueType = None;
+    var.payload.chainState = Continue;
+    return var;
+  }
+  else if (const malString* v = DYNAMIC_CAST(malString, arg)) 
+  {
+    CBVar strVar;
+    strVar.valueType = String;
+    strVar.payload.stringValue = v->value().c_str();
+    return strVar;
+  }
+  else if (const malInteger* v = DYNAMIC_CAST(malInteger, arg)) 
+  {
+    CBVar var;
+    var.valueType = Int;
+    var.payload.intValue = v->value();
+    return var;
+  }
+  else if (const malFloat* v = DYNAMIC_CAST(malFloat, arg)) 
+  {
+    CBVar var;
+    var.valueType = Float;
+    var.payload.floatValue = v->value();
+    return var;
+  }
+  else if (const malSequence* v = DYNAMIC_CAST(malSequence, arg)) 
+  {
+    CBVar var;
+    var.valueType = Seq;
+    var.payload.seqValue = nullptr;
+    var.payload.seqLen = -1;
+    auto count = v->count();
+    for(auto i = 0; i < count; i++)
+    {
+      auto val = v->item(i);
+      auto subVar = varify(val);
+      stbds_arrpush(var.payload.seqValue, subVar);
+    }
+    return var;
+  }
+  // else if (const malHash* v = DYNAMIC_CAST(malHash, arg)) 
+  // {
+  //   CBVar var;
+  //   var.valueType = Seq;
+  //   var.payload.seqValue = nullptr;
+  //   var.payload.seqLen = -1;
+  //   auto count = v->count();
+  //   for(auto i = 0; i < count; i++)
+  //   {
+  //     auto val = v->item(i);
+  //     auto subVar = varify(val);
+  //     stbds_arrpush(var.payload.seqValue, subVar);
+  //   }
+  //   return var;
+  // }
+  else if (arg == mal::trueValue())
+  {
+    CBVar var;
+    var.valueType = Bool;
+    var.payload.boolValue = true;
+    return var;
+  }
+  else if (arg == mal::falseValue())
+  {
+    CBVar var;
+    var.valueType = Bool;
+    var.payload.boolValue = false;
+    return var;
+  }
+  else if (const malCBVar* v = DYNAMIC_CAST(malCBVar, arg)) 
+  {
+    return v->value();
+  }
+  else if (const malCBBlock* v = DYNAMIC_CAST(malCBBlock, arg)) 
+  {
+    auto block = v->value();
+    const_cast<malCBBlock*>(v)->consume(); // Blocks are unique, consume before use, assume goes inside another block or
+    CBVar var;
+    var.valueType = Block;
+    var.payload.blockValue = block;
+    return var;
+  }
+  else
+  {
+    throw chainblocks::CBException("Invalid variable");
+  }
 }
 
 int findParamIndex(std::string name, CBParametersInfo params)
@@ -320,10 +408,11 @@ void setBlockParameters(CBRuntimeBlock* block, malValueIter begin, malValueIter 
       
       // Jump to next value straight, expecting a value
       auto value = *argsBegin++;
-      auto idx = findParamIndex(v->value(), params);
+      auto paramName = v->value().substr(1);
+      auto idx = findParamIndex(paramName, params);
       if(unlikely(idx == -1))
       {
-        LOG(ERROR) << "Parameter not found: " << v->value() << " block: " << block->name(block);
+        LOG(ERROR) << "Parameter not found: " << paramName << " block: " << block->name(block);
         throw chainblocks::CBException("Parameter not found");
       }
       else

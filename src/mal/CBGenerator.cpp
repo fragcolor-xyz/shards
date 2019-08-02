@@ -27,6 +27,7 @@ int main(int argc, const char* argv[])
     os << "BUILTIN_DEF(_Gen_" << counter << ", \"" << blockFullName << "\")\n";
     os << "{\n";
     os << "  auto block = chainblocks::createBlock(\"" << blockFullName << "\");\n";
+    os << "  block->setup(block);\n";
     
     auto block = chainblocks::createBlock(blockDef.first.c_str());
     auto params = block->parameters(block);

@@ -589,9 +589,13 @@ when true:
         quickcopy(b.acceptedValues, inval)
       else:
         var
-          inseq = ~@[val]
-          inval: CBVar = inseq
-        quickcopy(b.acceptedValues, inval)
+          inval = val
+          valCopy: CBVar
+        quickcopy(valCopy, inval)
+        var
+          inseq = ~@[valCopy]
+          sval: CBVar = inseq
+        quickcopy(b.acceptedValues, sval)
     of 1:
       b.isregex = val.boolValue
     of 2:
@@ -681,9 +685,13 @@ when true:
         quickcopy(b.acceptedValues, inval)
       else:
         var
-          inseq = ~@[val]
-          inval: CBVar = inseq
-        quickcopy(b.acceptedValues, inval)
+          inval = val
+          valCopy: CBVar
+        quickcopy(valCopy, inval)
+        var
+          inseq = ~@[valCopy]
+          sval: CBVar = inseq
+        quickcopy(b.acceptedValues, sval)
     of 1:
       b.isregex = val.boolValue
     of 2:
