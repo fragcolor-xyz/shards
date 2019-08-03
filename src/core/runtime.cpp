@@ -1181,42 +1181,45 @@ namespace chainblocks
 {
   void error_handler(int err_sig)
   {
-    signal(err_sig, SIG_DFL);
+    std::signal(err_sig, SIG_DFL);
+    
     auto printTrace = false;
+    
     switch (err_sig) 
     {
       case SIGINT:
       case SIGTERM:
         break;
       case SIGFPE:
-        LOG(FATAL) << "Fatal SIGFPE";
+        LOG(ERROR) << "Fatal SIGFPE";
         printTrace = true;
         break;
       case SIGILL:
-        LOG(FATAL) << "Fatal SIGILL";
+        LOG(ERROR) << "Fatal SIGILL";
         printTrace = true;
         break;
       case SIGABRT:
-        LOG(FATAL) << "Fatal SIGABRT";
+        LOG(ERROR) << "Fatal SIGABRT";
         printTrace = true;
         break;
       case SIGSEGV:
-        LOG(FATAL) << "Fatal SIGSEGV";
+        LOG(ERROR) << "Fatal SIGSEGV";
         printTrace = true;
         break;
     }
     
     if(printTrace)
       LOG(FATAL) << boost::stacktrace::stacktrace();
-    raise(err_sig);
+    
+    std::raise(err_sig);
   }
 
   void installSignalHandlers()
   {
-    signal(SIGFPE, error_handler);
-    signal(SIGILL, error_handler);
-    signal(SIGABRT, error_handler);
-    signal(SIGSEGV, error_handler);
+    std::signal(SIGFPE, &error_handler);
+    std::signal(SIGILL, &error_handler);
+    std::signal(SIGABRT, &error_handler);
+    std::signal(SIGSEGV, &error_handler);
   }
 };
 
