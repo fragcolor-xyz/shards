@@ -55,6 +55,12 @@ proc setLen*[T](s: var StbSeq[T]; newLen: int) {.inline.} =
   invokeFunction("stbds_arrsetlen", s.stbSeq, newLen).to(void)
   zeroMem(addr s.stbSeq[0], sizeof(T) * newLen)
 
+proc delswap*[T](s: var StbSeq[T]; idx: int) {.inline.} =
+  invokeFunction("stbds_arrdelswap", s.stbSeq, idx).to(void)
+
+proc del*[T](s: var StbSeq[T]; idx: int) {.inline.} =
+  invokeFunction("stbds_arrdel", s.stbSeq, idx).to(void)
+
 proc `[]`*[T](s: var StbSeq[T]; index: int): var T {.inline,.} =
   assert index < s.len
   s.stbSeq[index]

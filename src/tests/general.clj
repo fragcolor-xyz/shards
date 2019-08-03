@@ -38,7 +38,7 @@
 
   (Float4 10.3 3.6 2.1 1.1)
   (Math.Multiply (Float4 2 2 2 2))
-  (Assert.Is (Float4 (* 10.3 2) (* 3.6  2) (* 2.1 2) (* 1.1 2)) true)
+  (Assert.Is (Float4 (* 10.3 2) (* 3.6 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
   (Float3 10.3 2.1 1.1)
