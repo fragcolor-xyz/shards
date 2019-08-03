@@ -275,6 +275,7 @@ CBRuntimeBlock* blockify(malValuePtr arg)
 
 CBVar varify(malValuePtr arg)
 {
+  // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue())
   {
     CBVar var;
@@ -284,10 +285,12 @@ CBVar varify(malValuePtr arg)
   }
   else if (const malString* v = DYNAMIC_CAST(malString, arg)) 
   {
-    CBVar strVar;
-    strVar.valueType = String;
-    strVar.payload.stringValue = v->value().c_str();
-    return strVar;
+    CBVar tmp;
+    tmp.valueType = String;
+    tmp.payload.stringValue = v->value().c_str();
+    CBVar var;
+    chainblocks::cloneVar(var, tmp);
+    return var;
   }
   else if (const malInteger* v = DYNAMIC_CAST(malInteger, arg)) 
   {
@@ -303,19 +306,22 @@ CBVar varify(malValuePtr arg)
     var.payload.floatValue = v->value();
     return var;
   }
-  else if (const malSequence* v = DYNAMIC_CAST(malSequence, arg)) 
+  else if (const malList* v = DYNAMIC_CAST(malList, arg)) 
   {
-    CBVar var;
-    var.valueType = Seq;
-    var.payload.seqValue = nullptr;
-    var.payload.seqLen = -1;
+    CBVar tmp;
+    tmp.valueType = Seq;
+    tmp.payload.seqValue = nullptr;
+    tmp.payload.seqLen = -1;
     auto count = v->count();
     for(auto i = 0; i < count; i++)
     {
       auto val = v->item(i);
       auto subVar = varify(val);
-      stbds_arrpush(var.payload.seqValue, subVar);
+      stbds_arrpush(tmp.payload.seqValue, subVar);
     }
+    CBVar var;
+    chainblocks::cloneVar(var, tmp);
+    stbds_arrfree(tmp.payload.seqValue);
     return var;
   }
   // else if (const malHash* v = DYNAMIC_CAST(malHash, arg)) 
@@ -349,7 +355,9 @@ CBVar varify(malValuePtr arg)
   }
   else if (const malCBVar* v = DYNAMIC_CAST(malCBVar, arg)) 
   {
-    return v->value();
+    CBVar var;
+    chainblocks::cloneVar(var, v->value());
+    return var;
   }
   else if (const malCBBlock* v = DYNAMIC_CAST(malCBBlock, arg)) 
   {
@@ -423,6 +431,7 @@ void setBlockParameters(CBRuntimeBlock* block, malValueIter begin, malValueIter 
         if(failed)
           throw chainblocks::CBException("Parameter validation failed");
         block->setParam(block, idx, var);
+        chainblocks::destroyVar(var);
       }
     }
     else if(pindex == -1)
@@ -439,6 +448,7 @@ void setBlockParameters(CBRuntimeBlock* block, malValueIter begin, malValueIter 
       if(failed)
         throw chainblocks::CBException("Parameter validation failed");
       block->setParam(block, pindex, var);
+      chainblocks::destroyVar(var);
       
       pindex++;
     }
@@ -459,12 +469,39 @@ BUILTIN("Chain")
   return malValuePtr(mchain);
 }
 
+BUILTIN("Blocks")
+{
+  auto vec = new malValueVec();
+  while(argsBegin != argsEnd)
+  {
+    auto arg = *argsBegin++;
+    vec->push_back(malValuePtr(new malCBBlock(blockify(arg))));
+  }
+  return malValuePtr(new malList(vec));
+}
+
 BUILTIN("schedule")
 {
   CHECK_ARGS_IS(2);
   ARG(malCBNode, node);
   ARG(malCBChain, chain);
   node->schedule(chain);
+  return mal::nilValue();
+}
+
+BUILTIN("tick")
+{
+  CHECK_ARGS_IS(1);
+  ARG(malCBNode, node);
+  node->value()->tick();
+  return mal::nilValue();
+}
+
+BUILTIN("sleep")
+{
+  CHECK_ARGS_IS(1);
+  ARG(malFloat, sleepTime);
+  chainblocks::sleep(sleepTime->value());
   return mal::nilValue();
 }
 
@@ -614,28 +651,10 @@ BUILTIN("Float4")
   return malValuePtr(new malCBVar(var));
 }
 
-// Mostly internal use
-
-BUILTIN_ISA("__CBVar?__", malCBVar);
-
-BUILTIN("__createBlock__")
-{
-  CHECK_ARGS_IS(2);
-  ARG(malString, blkName);
-  return malValuePtr(new malCBBlock(blkName->value()));
-}
-
-BUILTIN("__setParam__")
-{
-  CHECK_ARGS_IS(3);
-  ARG(malCBBlock, blk);
-  ARG(malInteger, index);
-  ARG(malCBVar, var);
-  
-  blk->value()->setParam(blk->value(), index->value(), var->value());
-  
-  return mal::nilValue();
-}
+BUILTIN_ISA("Var?", malCBVar);
+BUILTIN_ISA("Node?", malCBNode);
+BUILTIN_ISA("Chain?", malCBChain);
+BUILTIN_ISA("Block?", malCBBlock);
 
 #ifdef HAS_CB_GENERATED
 #include "CBGenerated.hpp"

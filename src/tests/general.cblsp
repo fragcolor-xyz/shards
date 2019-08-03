@@ -5,5 +5,23 @@
   "Hello world!"
   (When :Accept "\\w+ world!" :IsRegex true)
   (Msg "Here we are!")
-  (Repeat :Times 5 :Action (Msg "Ok..."))
+  (Repeat :Times 5 :Action (Blocks 
+    (Msg "Ok...")
+    (Msg "Ok2?")
+    10
+    (Math.Multiply 10)
+    (Assert.Is 100)
+    (Log)
+  ))
 ))
+
+(def! inc (fn* [a] (+ a 1)))
+
+(def! Loop (fn* [counter] (do
+  (tick Root)
+  (sleep 0.1)
+  (prn counter)
+  (Loop (inc counter))
+)))
+
+(Loop 0)

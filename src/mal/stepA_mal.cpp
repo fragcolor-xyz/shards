@@ -31,7 +31,9 @@ int main(int argc, char* argv[])
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
         String filename = escape(argv[1]);
-        safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
+        String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
+        if (out.length() > 0 && out != "nil")
+            std::cout << out << "\n";
         return 0;
     }
     rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
