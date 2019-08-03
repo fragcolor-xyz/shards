@@ -89,28 +89,32 @@ set_target_properties(cbnim_lib PROPERTIES
 ###
 
 ### mal blocks code generator
-add_executable(
-  malgen
-  "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
-)
-set_property(TARGET malgen PROPERTY COMPILE_FLAGS "-static")
-target_link_libraries(malgen cbruntime cbnim_lib ${BOOST_CONTEXT} ${EXTRA_LIBS})
+macro(lisp_builtins LIB GENNAME)
+  add_executable(
+    malgen_${GENNAME}
+    "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
+  )
+  set_property(TARGET malgen_${GENNAME} PROPERTY COMPILE_FLAGS "-static")
+  target_link_libraries(malgen_${GENNAME} cbruntime ${LIB} ${BOOST_CONTEXT} ${EXTRA_LIBS} ${ARGN})
 
-# https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
-add_custom_command(
-  OUTPUT CBGenerated.hpp
-  COMMAND
-    malgen
-  DEPENDS
-    malgen
-)
-add_custom_target(generator_target DEPENDS CBGenerated.hpp)
-add_library(generator STATIC IMPORTED GLOBAL)
-add_dependencies(generator generator_target)
-set_target_properties(generator PROPERTIES
-  IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/CBGenerated.hpp
-)
+  # https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
+  add_custom_command(
+    OUTPUT CBGenerated_${GENNAME}.hpp
+    COMMAND
+    malgen_${GENNAME}
+    DEPENDS
+    malgen_${GENNAME}
+  )
+  add_custom_target(${GENNAME}_target DEPENDS CBGenerated_${GENNAME}.hpp)
+  add_library(${GENNAME} STATIC IMPORTED GLOBAL)
+  add_dependencies(${GENNAME} ${GENNAME}_target)
+  set_target_properties(${GENNAME} PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/CBGenerated_${GENNAME}.hpp
+  )
+endmacro()
 ###
+
+lisp_builtins(cbnim_lib core_generator)
 
 ### mal
 add_executable(
@@ -126,7 +130,7 @@ add_executable(
   "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
 )
-add_dependencies(cbl generator)
+add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
 target_link_libraries(cbl -lreadline cbruntime cbnim_lib ${BOOST_CONTEXT} ${EXTRA_LIBS})
