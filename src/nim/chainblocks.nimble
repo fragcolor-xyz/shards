@@ -11,6 +11,5 @@ installFiles  = @["types.nim", "ops.nim", "images.nim"]
 # Dependencies
 
 requires "nim >= 0.20.9"
-requires "nimpy#head"
 requires "nimline#head"
 requires "fragments#head"
