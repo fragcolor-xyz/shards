@@ -513,8 +513,8 @@ BUILTIN("tick")
 {
   CHECK_ARGS_IS(1);
   ARG(malCBNode, node);
-  node->value()->tick();
-  return mal::nilValue();
+  auto noErrors = node->value()->tick();
+  return mal::boolean(noErrors);
 }
 
 BUILTIN("sleep")

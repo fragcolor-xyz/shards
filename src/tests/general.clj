@@ -112,12 +112,12 @@
   (Assert.Is "Hello world!" true)
   (Log)
 ))
-(tick P)
-(tick C)
-(tick P)
-(tick C)
-(tick P)
-(tick C)
+(if (tick P) nil (throw "P/C tick failed"))
+(if (tick C) nil (throw "P/C tick failed"))
+(if (tick P) nil (throw "P/C tick failed"))
+(if (tick C) nil (throw "P/C tick failed"))
+(if (tick P) nil (throw "P/C tick failed"))
+(if (tick C) nil (throw "P/C tick failed"))
 
 ; (def! inc (fn* [a] (+ a 1)))
 
