@@ -2,13 +2,12 @@ buildAndRun:win:debug:
   script:
     - $currentDir = Get-Location
     - $nimbleDir = "$currentDir/nimbledir"
-    - $env:NIMBLE_PATH = "$currentDir/nimbledir"
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
     - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - cbl ../src/tests/general.clj
   tags:
@@ -18,13 +17,12 @@ buildAndRun:win:release:
   script:
     - $currentDir = Get-Location
     - $nimbleDir = "$currentDir/nimbledir"
-    - $env:NIMBLE_PATH = "$currentDir/nimbledir"
     - cd src/nim
     - nimble install --depsOnly --nimbleDir:$nimbleDir -y
     - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+    - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - cbl ../src/tests/general.clj
   tags:

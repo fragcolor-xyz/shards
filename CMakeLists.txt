@@ -41,8 +41,8 @@ find_program(NIM_EXECUTABLE nim PATHS ENV PATH)
 
 set(NIM_OPTIONS cpp -d:cmake --newruntime -d:useWinAnsi -d:useMalloc)
 
-if(DEFINED $ENV{NIMBLE_PATH})
-  set(NIM_OPTIONS ${NIM_OPTIONS} --NimblePath:$ENV{NIMBLE_PATH})
+if(DEFINED NIMBLE_PATH)
+  set(NIM_OPTIONS ${NIM_OPTIONS} --NimblePath:${NIMBLE_PATH})
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
