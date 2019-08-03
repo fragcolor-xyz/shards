@@ -20,7 +20,7 @@ if(WIN32)
   set(EXTRA_LIBS "")
 else()
   set(BOOST_CONTEXT -lboost_context)
-  set(EXTRA_LIBS -lrt)
+  set(EXTRA_LIBS -pthread -lrt)
 endif()
 ###
 
