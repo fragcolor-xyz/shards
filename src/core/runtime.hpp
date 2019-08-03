@@ -484,7 +484,7 @@ namespace chainblocks
     if(findIt == BlocksRegister.end())
     {
       BlocksRegister.insert(std::make_pair(cname, constructor));
-      DLOG(INFO) << "added block: " << cname;
+      // DLOG(INFO) << "added block: " << cname;
     }
     else
     {
@@ -501,7 +501,7 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       ObjectTypesRegister.insert(std::make_pair(tup, info));
-      DLOG(INFO) << "added object type: " << typeName;
+      // DLOG(INFO) << "added object type: " << typeName;
     }
     else
     {
@@ -518,12 +518,12 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       EnumTypesRegister.insert(std::make_pair(tup, info));
-      DLOG(INFO) << "added object type: " << typeName;
+      // DLOG(INFO) << "added enum type: " << typeName;
     }
     else
     {
       EnumTypesRegister[tup] = info;
-      LOG(INFO) << "overridden object type: " << typeName;
+      LOG(INFO) << "overridden enum type: " << typeName;
     }
   }
 
