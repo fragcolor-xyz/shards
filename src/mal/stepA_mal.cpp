@@ -1,7 +1,9 @@
 #include "MAL.h"
 
 #include "Environment.h"
+#ifndef NO_MAL_MAIN
 #include "ReadLine.h"
+#endif
 #include "Types.h"
 
 #include <iostream>
@@ -17,11 +19,13 @@ static String safeRep(const String& input, malEnvPtr env);
 static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
+#ifndef NO_MAL_MAIN
 static ReadLine s_readLine("~/.mal-history");
+#endif
 
 static malEnvPtr replEnv(new malEnv);
 
-int main(int argc, char* argv[])
+int malmain(int argc, char* argv[])
 {
     String prompt = "user> ";
     String input;
@@ -36,14 +40,25 @@ int main(int argc, char* argv[])
             std::cout << out << "\n";
         return 0;
     }
+#ifndef NO_MAL_MAIN
     rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
     while (s_readLine.get(prompt, input)) {
         String out = safeRep(input, replEnv);
         if (out.length() > 0)
             std::cout << out << "\n";
     }
+#endif
     return 0;
 }
+
+#ifndef NO_MAL_MAIN
+
+int main(int argc, char* argv[])
+{
+    return malmain(argc, argv);
+}
+
+#endif
 
 static String safeRep(const String& input, malEnvPtr env)
 {
@@ -345,6 +360,8 @@ static void installFunctions(malEnvPtr env) {
     }
 }
 
+#ifndef NO_MAL_MAIN
+
 // Added to keep the linker happy at step A
 malValuePtr readline(const String& prompt)
 {
@@ -354,4 +371,6 @@ malValuePtr readline(const String& prompt)
     }
     return mal::nilValue();
 }
+
+#endif
 

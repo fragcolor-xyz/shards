@@ -397,6 +397,8 @@ BUILTIN("read-string")
     return readStr(str->value());
 }
 
+#ifndef NO_MAL_MAIN
+
 BUILTIN("readline")
 {
     CHECK_ARGS_IS(1);
@@ -404,6 +406,8 @@ BUILTIN("readline")
 
     return readline(str->value());
 }
+
+#endif
 
 BUILTIN("reset!")
 {
