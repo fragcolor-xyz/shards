@@ -309,6 +309,8 @@ void from_json(const json& j, CBChainPtr& chain);
 
 namespace chainblocks
 {
+  void installSignalHandlers();
+  
   static int destroyVar(CBVar& var)
   {
     int freeCount = 0;

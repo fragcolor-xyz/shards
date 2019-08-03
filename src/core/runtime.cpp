@@ -6,6 +6,8 @@
 #include "blocks/tables.hpp"
 #include "blocks/assert.hpp"
 #include <cstdarg>
+#include <csignal>
+#include <boost/stacktrace.hpp>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -1093,6 +1095,130 @@ void CBChain::cleanup()
     ownedOutput = false;
   }
 }
+
+// #ifdef _WIN32
+// // Courtesy of http://theorangeduck.com/page/printing-stack-trace-mingw
+// #include <windows.h>
+// #include <DbgHelp.h>
+
+// #include <stdio.h>
+// #include <stdlib.h>
+
+// static void stack_trace(void) {
+
+//   HANDLE process = GetCurrentProcess();
+//   HANDLE thread = GetCurrentThread();
+  
+//   CONTEXT context;
+//   memset(&context, 0, sizeof(CONTEXT));
+//   context.ContextFlags = CONTEXT_FULL;
+//   RtlCaptureContext(&context);
+  
+//   SymInitialize(process, NULL, TRUE);
+  
+//   DWORD image;
+//   STACKFRAME64 stackframe;
+//   ZeroMemory(&stackframe, sizeof(STACKFRAME64));
+  
+// #ifdef _M_IX86
+//   image = IMAGE_FILE_MACHINE_I386;
+//   stackframe.AddrPC.Offset = context.Eip;
+//   stackframe.AddrPC.Mode = AddrModeFlat;
+//   stackframe.AddrFrame.Offset = context.Ebp;
+//   stackframe.AddrFrame.Mode = AddrModeFlat;
+//   stackframe.AddrStack.Offset = context.Esp;
+//   stackframe.AddrStack.Mode = AddrModeFlat;
+// #elif _M_X64
+//   image = IMAGE_FILE_MACHINE_AMD64;
+//   stackframe.AddrPC.Offset = context.Rip;
+//   stackframe.AddrPC.Mode = AddrModeFlat;
+//   stackframe.AddrFrame.Offset = context.Rsp;
+//   stackframe.AddrFrame.Mode = AddrModeFlat;
+//   stackframe.AddrStack.Offset = context.Rsp;
+//   stackframe.AddrStack.Mode = AddrModeFlat;
+// #elif _M_IA64
+//   image = IMAGE_FILE_MACHINE_IA64;
+//   stackframe.AddrPC.Offset = context.StIIP;
+//   stackframe.AddrPC.Mode = AddrModeFlat;
+//   stackframe.AddrFrame.Offset = context.IntSp;
+//   stackframe.AddrFrame.Mode = AddrModeFlat;
+//   stackframe.AddrBStore.Offset = context.RsBSP;
+//   stackframe.AddrBStore.Mode = AddrModeFlat;
+//   stackframe.AddrStack.Offset = context.IntSp;
+//   stackframe.AddrStack.Mode = AddrModeFlat;
+// #endif
+
+//   el::Logger* defaultLogger = el::Loggers::getLogger("default");
+
+//   for (size_t i = 0; i < 25; i++) {
+    
+//     BOOL result = StackWalk64(
+//       image, process, thread,
+//       &stackframe, &context, NULL, 
+//       SymFunctionTableAccess64, SymGetModuleBase64, NULL);
+    
+//     if (!result) { break; }
+    
+//     char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+//     PSYMBOL_INFO symbol = (PSYMBOL_INFO)buffer;
+//     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+//     symbol->MaxNameLen = MAX_SYM_NAME;
+    
+//     DWORD64 displacement = 0;
+//     if (SymFromAddr(process, stackframe.AddrPC.Offset, &displacement, symbol)) {
+//       defaultLogger->fatal("[%v] %v", i, symbol->Name);
+//     } else {
+//       defaultLogger->fatal("[%v] ???", i);
+//     }
+    
+//   }
+  
+//   SymCleanup(process);
+// }
+// #endif
+
+namespace chainblocks
+{
+  void error_handler(int err_sig)
+  {
+    signal(err_sig, SIG_DFL);
+    auto printTrace = false;
+    switch (err_sig) 
+    {
+      case SIGINT:
+      case SIGTERM:
+        break;
+      case SIGFPE:
+        LOG(FATAL) << "Fatal SIGFPE";
+        printTrace = true;
+        break;
+      case SIGILL:
+        LOG(FATAL) << "Fatal SIGILL";
+        printTrace = true;
+        break;
+      case SIGABRT:
+        LOG(FATAL) << "Fatal SIGABRT";
+        printTrace = true;
+        break;
+      case SIGSEGV:
+        LOG(FATAL) << "Fatal SIGSEGV";
+        printTrace = true;
+        break;
+    }
+    
+    if(printTrace)
+      LOG(FATAL) << boost::stacktrace::stacktrace();
+    raise(err_sig);
+  }
+
+  void installSignalHandlers()
+  {
+    signal(SIGFPE, error_handler);
+    signal(SIGILL, error_handler);
+    signal(SIGABRT, error_handler);
+    signal(SIGSEGV, error_handler);
+  }
+};
 
 #ifdef TESTING
   static CBChain mainChain("MainChain");
