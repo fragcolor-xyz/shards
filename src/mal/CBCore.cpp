@@ -224,7 +224,8 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   {
     CBVar strVar;
     strVar.valueType = String;
-    strVar.payload.stringValue = v->value().c_str();
+    auto s = v->value();
+    strVar.payload.stringValue = s.c_str();
     WRAP_TO_CONST(strVar);
   }
   else if (const malNumber* v = DYNAMIC_CAST(malNumber, arg)) 
@@ -289,8 +290,9 @@ CBVar varify(malValuePtr arg)
   {
     CBVar tmp;
     tmp.valueType = String;
-    tmp.payload.stringValue = v->value().c_str();
-    CBVar var;
+    auto s = v->value();
+    tmp.payload.stringValue = s.c_str();
+    auto var = CBVar();
     chainblocks::cloneVar(var, tmp);
     return var;
   }
@@ -325,7 +327,7 @@ CBVar varify(malValuePtr arg)
       auto subVar = varify(val);
       stbds_arrpush(tmp.payload.seqValue, subVar);
     }
-    CBVar var;
+    auto var = CBVar();
     chainblocks::cloneVar(var, tmp);
     stbds_arrfree(tmp.payload.seqValue);
     return var;
@@ -361,7 +363,7 @@ CBVar varify(malValuePtr arg)
   }
   else if (const malCBVar* v = DYNAMIC_CAST(malCBVar, arg)) 
   {
-    CBVar var;
+    auto var = CBVar();
     chainblocks::cloneVar(var, v->value());
     return var;
   }
@@ -531,7 +533,8 @@ BUILTIN("#")
   ARG(malString, value);
   CBVar tmp;
   tmp.valueType = ContextVar;
-  tmp.payload.stringValue = value->value().c_str();
+  auto s = value->value();
+  tmp.payload.stringValue = s.c_str();
   auto var = CBVar();
   chainblocks::cloneVar(var, tmp);
   return malValuePtr(new malCBVar(var));

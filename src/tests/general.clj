@@ -1,22 +1,22 @@
 (def! Root (Node))
 
-(schedule Root (Chain "namedChain"
-  nil
-  "Hello world!"
-  (When :Accept "\\w+ world!" :IsRegex true)
-  (Msg "Here we are!")
-  (Repeat :Times 5 :Action (Blocks 
-    (Msg "Ok...")
-    (Msg "Ok2?")
-    10
-    (Math.Multiply 10)
-    (Assert.Is 100)
-    (Log)
-  ))
-))
+; (schedule Root (Chain "namedChain"
+;   nil
+;   "Hello world!"
+;   (When :Accept "\\w+ world!" :IsRegex true)
+;   (Msg "Here we are!")
+;   (Repeat :Times 5 :Action (Blocks 
+;     (Msg "Ok...")
+;     (Msg "Ok2?")
+;     10
+;     (Math.Multiply 10)
+;     (Assert.Is 100)
+;     (Log)
+;   ))
+; ))
 
 (schedule Root (Chain "namedChain"
-  (Msg "Running tests!")
+  ; (Msg "Running tests!")
 
   "Hello"
   (Assert.Is "Hello" true)

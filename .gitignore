@@ -13,3 +13,4 @@ src/nim/tests/tcbvar.xml
 src/nim/tcbvar.xml
 *.log
 build
+build-release
