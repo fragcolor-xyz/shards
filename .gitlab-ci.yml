@@ -7,7 +7,7 @@ buildAndRun:win:debug:
     - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake -G Ninja -DNIMBLE_PATH=$nimbleDir/pkgs -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - cbl ../src/tests/general.clj
   tags:
@@ -22,7 +22,7 @@ buildAndRun:win:release:
     - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+    - cmake -G Ninja -DNIMBLE_PATH=$nimbleDir/pkgs -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - cbl ../src/tests/general.clj
   tags:
