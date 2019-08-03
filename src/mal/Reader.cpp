@@ -6,6 +6,7 @@
 typedef std::regex              Regex;
 
 static const Regex intRegex("^[-+]?\\d+$");
+static const Regex hexRegex("^0x[0-9a-fA-F]+$");
 static const Regex floatRegex("^[-+]?[0-9]*\\.?[0-9]+$");
 static const Regex closeRegex("[\\)\\]}]");
 
@@ -210,6 +211,10 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
 
     if (std::regex_match(token, floatRegex)) {
+        return mal::number(token);
+    }
+
+    if (std::regex_match(token, hexRegex)) {
         return mal::number(token);
     }
     
