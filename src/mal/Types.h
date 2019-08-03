@@ -73,32 +73,10 @@ private:
     const String m_name;
 };
 
-class malInteger : public malValue {
+class malNumber : public malValue {
 public:
-    malInteger(int64_t value) : m_value(value) { }
-    malInteger(const malInteger& that, malValuePtr meta)
-        : malValue(meta), m_value(that.m_value) { }
-
-    virtual String print(bool readably) const {
-        return std::to_string(m_value);
-    }
-
-    int64_t value() const { return m_value; }
-
-    virtual bool doIsEqualTo(const malValue* rhs) const {
-        return m_value == static_cast<const malInteger*>(rhs)->m_value;
-    }
-
-    WITH_META(malInteger);
-
-private:
-    const int64_t m_value;
-};
-
-class malFloat : public malValue {
-public:
-    malFloat(double value) : m_value(value) { }
-    malFloat(const malFloat& that, malValuePtr meta)
+    malNumber(double value) : m_value(value) { }
+    malNumber(const malNumber& that, malValuePtr meta)
         : malValue(meta), m_value(that.m_value) { }
 
     virtual String print(bool readably) const {
@@ -108,10 +86,10 @@ public:
     double value() const { return m_value; }
 
     virtual bool doIsEqualTo(const malValue* rhs) const {
-        return m_value == static_cast<const malFloat*>(rhs)->m_value;
+        return m_value == static_cast<const malNumber*>(rhs)->m_value;
     }
 
-    WITH_META(malFloat);
+    WITH_META(malNumber);
 
 private:
     const double m_value;
@@ -375,10 +353,8 @@ namespace mal {
     malValuePtr hash(malValueIter argsBegin, malValueIter argsEnd,
                      bool isEvaluated);
     malValuePtr hash(const malHash::Map& map);
-    malValuePtr integer(int64_t value);
-    malValuePtr integer(const String& token);
-    malValuePtr real(int64_t value);
-    malValuePtr real(const String& token);
+    malValuePtr number(double value);
+    malValuePtr number(const String& token);
     malValuePtr keyword(const String& token);
     malValuePtr lambda(const StringVec&, malValuePtr, malEnvPtr);
     malValuePtr list(malValueVec* items);

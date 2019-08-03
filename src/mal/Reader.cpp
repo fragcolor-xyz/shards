@@ -206,11 +206,11 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
     
     if (std::regex_match(token, intRegex)) {
-        return mal::integer(token);
+        return mal::number(token);
     }
 
     if (std::regex_match(token, floatRegex)) {
-        return mal::real(token);
+        return mal::number(token);
     }
     
     return mal::symbol(token);

@@ -52,19 +52,19 @@ static StaticList<malBuiltIn*> handlers;
 #define BUILTIN_INTOP(op, checkDivByZero) \
     BUILTIN(#op) { \
         CHECK_ARGS_IS(2); \
-        ARG(malInteger, lhs); \
-        ARG(malInteger, rhs); \
+        ARG(malNumber, lhs); \
+        ARG(malNumber, rhs); \
         if (checkDivByZero) { \
             MAL_CHECK(rhs->value() != 0, "Division by zero"); \
         } \
-        return mal::integer(lhs->value() op rhs->value()); \
+        return mal::number(lhs->value() op rhs->value()); \
     }
 
 BUILTIN_ISA("atom?",        malAtom);
 BUILTIN_ISA("keyword?",     malKeyword);
 BUILTIN_ISA("list?",        malList);
 BUILTIN_ISA("map?",         malHash);
-BUILTIN_ISA("number?",      malInteger);
+BUILTIN_ISA("number?",      malNumber);
 BUILTIN_ISA("sequential?",  malSequence);
 BUILTIN_ISA("string?",      malString);
 BUILTIN_ISA("symbol?",      malSymbol);
@@ -73,7 +73,6 @@ BUILTIN_ISA("vector?",      malVector);
 BUILTIN_INTOP(+,            false);
 BUILTIN_INTOP(/,            true);
 BUILTIN_INTOP(*,            false);
-BUILTIN_INTOP(%,            true);
 
 BUILTIN_IS("true?",         trueValue);
 BUILTIN_IS("false?",        falseValue);
@@ -82,20 +81,32 @@ BUILTIN_IS("nil?",          nilValue);
 BUILTIN("-")
 {
     int argCount = CHECK_ARGS_BETWEEN(1, 2);
-    ARG(malInteger, lhs);
+    ARG(malNumber, lhs);
     if (argCount == 1) {
-        return mal::integer(- lhs->value());
+        return mal::number(- lhs->value());
     }
 
-    ARG(malInteger, rhs);
-    return mal::integer(lhs->value() - rhs->value());
+    ARG(malNumber, rhs);
+    return mal::number(lhs->value() - rhs->value());
+}
+
+BUILTIN("%")
+{
+    CHECK_ARGS_IS(2);
+    ARG(malNumber, lhs);
+    ARG(malNumber, rhs);
+    
+    int64_t l = static_cast<int64_t>(lhs->value());
+    int64_t r = static_cast<int64_t>(rhs->value());
+    MAL_CHECK(r != 0, "Division by zero");
+    return mal::number(l % r);
 }
 
 BUILTIN("<=")
 {
     CHECK_ARGS_IS(2);
-    ARG(malInteger, lhs);
-    ARG(malInteger, rhs);
+    ARG(malNumber, lhs);
+    ARG(malNumber, rhs);
 
     return mal::boolean(lhs->value() <= rhs->value());
 }
@@ -103,8 +114,8 @@ BUILTIN("<=")
 BUILTIN(">=")
 {
     CHECK_ARGS_IS(2);
-    ARG(malInteger, lhs);
-    ARG(malInteger, rhs);
+    ARG(malNumber, lhs);
+    ARG(malNumber, rhs);
 
     return mal::boolean(lhs->value() >= rhs->value());
 }
@@ -112,8 +123,8 @@ BUILTIN(">=")
 BUILTIN("<")
 {
     CHECK_ARGS_IS(2);
-    ARG(malInteger, lhs);
-    ARG(malInteger, rhs);
+    ARG(malNumber, lhs);
+    ARG(malNumber, rhs);
 
     return mal::boolean(lhs->value() < rhs->value());
 }
@@ -121,8 +132,8 @@ BUILTIN("<")
 BUILTIN(">")
 {
     CHECK_ARGS_IS(2);
-    ARG(malInteger, lhs);
-    ARG(malInteger, rhs);
+    ARG(malNumber, lhs);
+    ARG(malNumber, rhs);
 
     return mal::boolean(lhs->value() > rhs->value());
 }
@@ -222,11 +233,11 @@ BUILTIN("count")
 {
     CHECK_ARGS_IS(1);
     if (*argsBegin == mal::nilValue()) {
-        return mal::integer(0);
+        return mal::number(0);
     }
 
     ARG(malSequence, seq);
-    return mal::integer(seq->count());
+    return mal::number(seq->count());
 }
 
 BUILTIN("deref")
@@ -353,7 +364,7 @@ BUILTIN("nth")
 {
     CHECK_ARGS_IS(2);
     ARG(malSequence, seq);
-    ARG(malInteger,  index);
+    ARG(malNumber,  index);
 
     int i = index->value();
     MAL_CHECK(i >= 0 && i < seq->count(), "Index out of range");
@@ -499,7 +510,7 @@ BUILTIN("time-ms")
         high_resolution_clock::now().time_since_epoch()
     );
 
-    return mal::integer(ms.count());
+    return mal::number(ms.count());
 }
 
 BUILTIN("vals")

@@ -219,31 +219,31 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   }
   else if (const malString* v = DYNAMIC_CAST(malString, arg)) 
   {
-    // Wrap a string into a const block!
     CBVar strVar;
     strVar.valueType = String;
     strVar.payload.stringValue = v->value().c_str();
     WRAP_TO_CONST(strVar);
   }
-  else if (const malInteger* v = DYNAMIC_CAST(malInteger, arg)) 
+  else if (const malNumber* v = DYNAMIC_CAST(malNumber, arg)) 
   {
-    // Wrap a string into a const block!
+    auto value = v->value();
+    int64_t floatTest = value * 10;
+    bool isInteger = (floatTest % 10) == 0;
     CBVar var;
-    var.valueType = Int;
-    var.payload.intValue = v->value();
-    WRAP_TO_CONST(var);
-  }
-  else if (const malFloat* v = DYNAMIC_CAST(malFloat, arg)) 
-  {
-    // Wrap a string into a const block!
-    CBVar var;
-    var.valueType = Float;
-    var.payload.floatValue = v->value();
+    if(isInteger)
+    {
+      var.valueType = Int;
+      var.payload.intValue = value;
+    }
+    else
+    {
+      var.valueType = Float;
+      var.payload.floatValue = value;
+    }
     WRAP_TO_CONST(var);
   }
   else if (arg == mal::trueValue())
   {
-    // Wrap none into const
     CBVar var;
     var.valueType = Bool;
     var.payload.boolValue = true;
@@ -251,7 +251,6 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   }
   else if (arg == mal::falseValue())
   {
-    // Wrap none into const
     CBVar var;
     var.valueType = Bool;
     var.payload.boolValue = false;
@@ -292,18 +291,22 @@ CBVar varify(malValuePtr arg)
     chainblocks::cloneVar(var, tmp);
     return var;
   }
-  else if (const malInteger* v = DYNAMIC_CAST(malInteger, arg)) 
+  else if (const malNumber* v = DYNAMIC_CAST(malNumber, arg)) 
   {
+    auto value = v->value();
+    int64_t floatTest = value * 10;
+    bool isInteger = (floatTest % 10) == 0;
     CBVar var;
-    var.valueType = Int;
-    var.payload.intValue = v->value();
-    return var;
-  }
-  else if (const malFloat* v = DYNAMIC_CAST(malFloat, arg)) 
-  {
-    CBVar var;
-    var.valueType = Float;
-    var.payload.floatValue = v->value();
+    if(isInteger)
+    {
+      var.valueType = Int;
+      var.payload.intValue = value;
+    }
+    else
+    {
+      var.valueType = Float;
+      var.payload.floatValue = value;
+    }
     return var;
   }
   else if (const malList* v = DYNAMIC_CAST(malList, arg)) 
@@ -500,7 +503,7 @@ BUILTIN("tick")
 BUILTIN("sleep")
 {
   CHECK_ARGS_IS(1);
-  ARG(malFloat, sleepTime);
+  ARG(malNumber, sleepTime);
   chainblocks::sleep(sleepTime->value());
   return mal::nilValue();
 }
@@ -520,9 +523,9 @@ BUILTIN("#")
 BUILTIN("Enum")
 {
   CHECK_ARGS_IS(3);
-  ARG(malInteger, value0);
-  ARG(malInteger, value1);
-  ARG(malInteger, value2);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
   CBVar var;
   var.valueType = Enum;
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
@@ -534,7 +537,7 @@ BUILTIN("Enum")
 BUILTIN("Int")
 {
   CHECK_ARGS_IS(1);
-  ARG(malInteger, value);
+  ARG(malNumber, value);
   CBVar var;
   var.valueType = Int;
   var.payload.intValue = value->value();
@@ -544,8 +547,8 @@ BUILTIN("Int")
 BUILTIN("Int2")
 {
   CHECK_ARGS_IS(2);
-  ARG(malInteger, value0);
-  ARG(malInteger, value1);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
   CBVar var;
   var.valueType = Int2;
   var.payload.int2Value[0] = value0->value();
@@ -556,9 +559,9 @@ BUILTIN("Int2")
 BUILTIN("Int3")
 {
   CHECK_ARGS_IS(3);
-  ARG(malInteger, value0);
-  ARG(malInteger, value1);
-  ARG(malInteger, value2);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
   CBVar var;
   var.valueType = Int3;
   var.payload.int3Value[0] = value0->value();
@@ -570,10 +573,10 @@ BUILTIN("Int3")
 BUILTIN("Int4")
 {
   CHECK_ARGS_IS(4);
-  ARG(malInteger, value0);
-  ARG(malInteger, value1);
-  ARG(malInteger, value2);
-  ARG(malInteger, value3);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
+  ARG(malNumber, value3);
   CBVar var;
   var.valueType = Int4;
   var.payload.int4Value[0] = value0->value();
@@ -586,10 +589,10 @@ BUILTIN("Int4")
 BUILTIN("Color")
 {
   CHECK_ARGS_IS(4);
-  ARG(malInteger, value0);
-  ARG(malInteger, value1);
-  ARG(malInteger, value2);
-  ARG(malInteger, value3);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
+  ARG(malNumber, value3);
   CBVar var;
   var.valueType = Color;
   var.payload.colorValue.r = static_cast<uint8_t>(value0->value());
@@ -602,7 +605,7 @@ BUILTIN("Color")
 BUILTIN("Float")
 {
   CHECK_ARGS_IS(1);
-  ARG(malFloat, value);
+  ARG(malNumber, value);
   CBVar var;
   var.valueType = Float;
   var.payload.floatValue = value->value();
@@ -612,8 +615,8 @@ BUILTIN("Float")
 BUILTIN("Float2")
 {
   CHECK_ARGS_IS(2);
-  ARG(malFloat, value0);
-  ARG(malFloat, value1);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
   CBVar var;
   var.valueType = Float2;
   var.payload.float2Value[0] = value0->value();
@@ -624,9 +627,9 @@ BUILTIN("Float2")
 BUILTIN("Float3")
 {
   CHECK_ARGS_IS(3);
-  ARG(malFloat, value0);
-  ARG(malFloat, value1);
-  ARG(malFloat, value2);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
   CBVar var;
   var.valueType = Float3;
   var.payload.float3Value[0] = value0->value();
@@ -638,10 +641,10 @@ BUILTIN("Float3")
 BUILTIN("Float4")
 {
   CHECK_ARGS_IS(4);
-  ARG(malFloat, value0);
-  ARG(malFloat, value1);
-  ARG(malFloat, value2);
-  ARG(malFloat, value3);
+  ARG(malNumber, value0);
+  ARG(malNumber, value1);
+  ARG(malNumber, value2);
+  ARG(malNumber, value3);
   CBVar var;
   var.valueType = Float4;
   var.payload.float4Value[0] = value0->value();
