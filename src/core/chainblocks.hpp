@@ -201,14 +201,53 @@ inline bool operator==(const CBVar& a, const CBVar& b)
     case Float:
       return a.payload.floatValue == b.payload.floatValue;
     case Int2:
+    {
+      CBInt2 vec = a.payload.int2Value == b.payload.int2Value;
+      for(auto i = 0; i < 2; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Int3:
+    {
+      CBInt3 vec = a.payload.int3Value == b.payload.int3Value;
+      for(auto i = 0; i < 3; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Int4:
+    {
+      CBInt4 vec = a.payload.int4Value == b.payload.int4Value;
+      for(auto i = 0; i < 4; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Int8:
+    {
+      CBInt8 vec = a.payload.int8Value == b.payload.int8Value;
+      for(auto i = 0; i < 8; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Int16:
+    {
+      auto vec = a.payload.int16Value == b.payload.int16Value;
+      for(auto i = 0; i < 16; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Float2:
+    {
+      CBInt2 vec = a.payload.float2Value == b.payload.float2Value; //cast to int
+      for(auto i = 0; i < 2; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Float3:
+    {
+      CBInt3 vec = a.payload.float3Value == b.payload.float3Value; //cast to int
+      for(auto i = 0; i < 3; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Float4:
-      return memcmp(&a.payload, &b.payload, sizeof(CBVarPayload)) == 0;
+    {
+      CBInt4 vec = a.payload.float4Value == b.payload.float4Value; //cast to int
+      for(auto i = 0; i < 4; i++) if(vec[i] == 0) return false;
+      return true;
+    }
     case Color:
       return  a.payload.colorValue.r == b.payload.colorValue.r &&
               a.payload.colorValue.g == b.payload.colorValue.g &&
