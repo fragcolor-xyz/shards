@@ -50,6 +50,9 @@ void installCBCore(malEnvPtr env)
   
   registerKeywords(env);
   
+  env->set("Looped", mal::keyword("Looped"));
+  env->set("Unsafe", mal::keyword("Unsafe"));
+  
   for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) 
   {
     malBuiltIn* handler = *it;
@@ -467,7 +470,21 @@ BUILTIN("Chain")
   while(argsBegin != argsEnd)
   {
     auto arg = *argsBegin++;
-    chain->addBlock(blockify(arg));
+    if (const malKeyword* v = DYNAMIC_CAST(malKeyword, arg))  // Options!
+    {
+      if(v->value() == ":Looped")
+      {
+        chain->looped = true;
+      }
+      else if(v->value() == ":Unsafe")
+      {
+        chain->unsafe = true;
+      }
+    }
+    else
+    {
+      chain->addBlock(blockify(arg));
+    }
   }
   return malValuePtr(mchain);
 }

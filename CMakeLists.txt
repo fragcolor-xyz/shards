@@ -36,24 +36,14 @@ add_library(
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DELPP_FEATURE_CRASH_LOG -static -ffast-math")
 ###
 
-### quickjs
-file(STRINGS ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/VERSION quickjs_version)
-add_library(
-  quickjs STATIC
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/quickjs.c
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/quickjs-libc.c
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/cutils.c
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/libunicode.c
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/libregexp.c
-  ${CHAINBLOCKS_DIR}/../quicknimjs/src/quicknimjspkg/quickjs/libbf.c
-)
-set_property(TARGET quickjs PROPERTY COMPILE_FLAGS "-DCONFIG_VERSION=\\\"${quickjs_version}\\\" -D_GNU_SOURCE -static -ffast-math")
-###
-
 ### nim stuff
 find_program(NIM_EXECUTABLE nim PATHS ENV PATH)
 
 set(NIM_OPTIONS cpp -d:cmake --newruntime -d:useWinAnsi -d:useMalloc)
+
+if(DEFINED NIMBLE_PATH)
+  set(NIM_OPTIONS ${NIM_OPTIONS} --NimblePath:${NIMBLE_PATH})
+endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   # 64 bits
@@ -77,35 +67,6 @@ file(GLOB_RECURSE nim_files ${CHAINBLOCKS_DIR}/../*.nim)
 foreach(nim_file ${nim_files})
   list(APPEND nim_files_list "${nim_file}")
 endforeach()
-###
-
-### cbjs.exe via nim
-# https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
-add_custom_command(
-  OUTPUT libcbjs.a
-  COMMAND
-    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --app:staticlib --nimcache:nimcache-base-cbjs -o:libcbjs.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/js/cbjs.nim
-  DEPENDS
-    ${nim_files_list}
-)
-add_custom_target(cbjs_lib_target DEPENDS libcbjs.a)
-add_library(cbjs_lib STATIC IMPORTED GLOBAL)
-add_dependencies(cbjs_lib cbjs_lib_target)
-set_target_properties(cbjs_lib PROPERTIES
-  IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libcbjs.a
-)
-
-# Need this little hack
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/null.cpp "")
-add_executable(cbjs ${CMAKE_CURRENT_BINARY_DIR}/null.cpp)
-set_property(TARGET cbjs PROPERTY LINK_FLAGS "-static ${LINKING_OPTIONS}")
-target_link_libraries(
-  cbjs
-  cbjs_lib
-  cbruntime
-  quickjs
-  ${BOOST_CONTEXT}
-)
 ###
 
 ### corecb via nim
@@ -151,7 +112,7 @@ set_target_properties(generator PROPERTIES
 
 ### mal
 add_executable(
-  mal
+  cbl
   "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
@@ -163,8 +124,8 @@ add_executable(
   "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
 )
-add_dependencies(mal generator)
+add_dependencies(cbl generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-set_property(TARGET mal PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
-target_link_libraries(mal readline cbruntime cbnim_lib ${BOOST_CONTEXT})
+set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
+target_link_libraries(cbl readline cbruntime cbnim_lib ${BOOST_CONTEXT})
 ###
