@@ -1,6 +1,6 @@
-FROM ubuntu:18.04
+FROM archlinux/base
 
-RUN apt-get update && apt-get install -y build-essential git wget curl clang libboost-all-dev cmake ninja-build
+RUN pacman -Syu --noconfirm && pacman -S --noconfirm base-devel git cmake wget clang ninja boost
 
 ARG USER_ID
 ARG GROUP_ID
