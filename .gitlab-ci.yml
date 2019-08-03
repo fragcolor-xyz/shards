@@ -37,7 +37,7 @@ buildAndRun:linux:debug:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # run
-    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj"
+    - docker run --rm -t -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj"
   tags:
     - LINUX, DOCKER
 

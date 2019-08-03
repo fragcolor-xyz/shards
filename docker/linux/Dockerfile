@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-RUN apt-get update && apt-get install -y build-essential git wget curl clang libboost-all-dev cmake ninja
+RUN apt-get update && apt-get install -y build-essential git wget curl clang libboost-all-dev cmake ninja-build
 
 ARG USER_ID
 ARG GROUP_ID
