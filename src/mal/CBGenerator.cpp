@@ -17,6 +17,7 @@ int main(int argc, const char* argv[])
   os.open("CBGenerated.hpp");
 
   std::set<std::string> keywords;
+  std::set<std::string> enums;
 
   auto counter = 0;
   for(auto blockDef : chainblocks::BlocksRegister)
@@ -51,7 +52,29 @@ int main(int argc, const char* argv[])
   {
     os << "  env->set(\"" << word << "\", mal::keyword(\"" << word << "\"));\n";
   }
+  // Enums here as well
+  for(auto enumDef : chainblocks::EnumTypesRegister)
+  {
+    auto infoTup = enumDef.first;
+    auto info = enumDef.second;
+    if(enums.find(info.name) != enums.end())
+    {
+      // What to do with collisions??
+      throw chainblocks::CBException("Enum collision - TODO");
+    }
+    
+    LOG(INFO) << "Processing enum: " << info.name;
+
+    for(auto i = 0; i < stbds_arrlen(info.labels); i++)
+    {
+      os << "  env->set(\"" << info.name << "." << info.labels[i] << 
+        "\", newEnum(" << std::get<0>(infoTup) << ", " << std::get<1>(infoTup) << 
+        ", " << i << "));\n";
+    }
+  }
   os << "}\n\n";
+
+  
 
   os.close();
   return 0;

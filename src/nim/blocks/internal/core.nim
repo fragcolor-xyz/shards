@@ -747,18 +747,9 @@ when true:
 
 # If
 when true:
-  const
-    BoolOpCC* = toFourCC("bool")
-  
-  var
-    boolOpLabelsSeq = *@[cs"Equal", cs"More", cs"Less", cs"MoreEqual", cs"LessEqual"]
-    boolOpLabels = boolOpLabelsSeq.toCBStrings()
-  
   let
-    boolOpInfo = CBTypeInfo(basicType: Enum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32)
+    boolOpInfo = CBTypeInfo(basicType: Enum, enumVendorId: 1718772071, enumTypeId: 1651470188)
   
-  registerEnumType(FragCC, BoolOpCC, CBEnumInfo(name: "Boolean operation", labels: boolOpLabels))
-
   type
     CBBoolOp* = enum
       # INLINE BLOCK, CORE STUB PRESENT
@@ -767,7 +758,7 @@ when true:
       Less
       MoreEqual
       LessEqual
-
+  
   type
     CBlockIf* = object
       # INLINE BLOCK, CORE STUB PRESENT
@@ -776,7 +767,7 @@ when true:
       matchCtx: ptr CBVar
       trueBlocks: CBSeq
       falseBlocks: CBSeq
-      passthrough: bool      
+      passthrough: bool 
   
   template setup*(b: CBlockIf) = 
     initSeq(b.trueBlocks)
@@ -850,7 +841,7 @@ when true:
   template getParam*(b: CBlockIf; index: int): CBVar =
     case index
     of 0:
-      CBVar(valueType: Enum, payload: CBVarPayload(enumValue: b.op.CBEnum, enumVendorId: FragCC.int32, enumTypeId: BoolOpCC.int32))
+      CBVar(valueType: Enum, payload: CBVarPayload(enumValue: b.op.CBEnum, enumVendorId: 1718772071, enumTypeId: 1651470188))
     of 1:
       b.match
     of 2:

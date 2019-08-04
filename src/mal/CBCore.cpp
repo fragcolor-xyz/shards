@@ -443,7 +443,10 @@ void setBlockParameters(malCBBlock* malblock, malValueIter begin, malValueIter e
         bool failed = false;
         validateSetParam(block, idx, var, validationCallback, &failed);
         if(failed)
+        {
+          LOG(ERROR) << "Failed parameter: " << paramName;
           throw chainblocks::CBException("Parameter validation failed");
+        }
         block->setParam(block, idx, var);
         chainblocks::destroyVar(var);
       }
@@ -460,7 +463,10 @@ void setBlockParameters(malCBBlock* malblock, malValueIter begin, malValueIter e
       bool failed = false;
       validateSetParam(block, pindex, var, validationCallback, &failed);
       if(failed)
+      {
+        LOG(ERROR) << "Failed parameter index: " << pindex;
         throw chainblocks::CBException("Parameter validation failed");
+      }
       block->setParam(block, pindex, var);
       chainblocks::destroyVar(var);
       
@@ -543,6 +549,16 @@ BUILTIN("#")
   tmp.payload.stringValue = s.c_str();
   auto var = CBVar();
   chainblocks::cloneVar(var, tmp);
+  return malValuePtr(new malCBVar(var));
+}
+
+malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value)
+{
+  CBVar var;
+  var.valueType = Enum;
+  var.payload.enumVendorId = vendor;
+  var.payload.enumTypeId = type;
+  var.payload.enumValue = value;
   return malValuePtr(new malCBVar(var));
 }
 

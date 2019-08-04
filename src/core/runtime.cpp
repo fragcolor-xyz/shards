@@ -34,6 +34,9 @@ namespace chainblocks
       REGISTER_CORE_BLOCK(GetTableValue);
       REGISTER_BLOCK(Assert, Is);
       REGISTER_BLOCK(Assert, IsNot);
+
+      // also enums
+      initEnums();
     }
   }
 };

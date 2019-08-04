@@ -3,7 +3,6 @@
 # Simply define a program by chaining blocks (black boxes), that have input and output/s
 
 import sequtils, macros, strutils
-import fragments/[serialization]
 import images
 
 import types
@@ -42,7 +41,7 @@ when not defined cmake:
 {.passC: "-ffast-math".}
 
 const
-  FragCC* = toFourCC("frag")
+  FragCC* = 1718772071
 
 proc elems*(v: CBInt2): array[2, int64] {.inline.} = [v.toCpp[0].to(int64), v.toCpp[1].to(int64)]
 proc elems*(v: CBInt3): array[3, int32] {.inline.} = [v.toCpp[0].to(int32), v.toCpp[1].to(int32), v.toCpp[2].to(int32)]
@@ -293,8 +292,8 @@ converter toCString*(cbStr: CBString): cstring {.inline, noinit.} = cast[cstring
 converter toCBVar*(v: CBImage): CBVar {.inline.} =
   return CBVar(valueType: CBType.Image, payload: CBVarPayload(imageValue: v))
 
-proc asCBVar*(v: pointer; vendorId, typeId: FourCC): CBVar {.inline.} =
-  return CBVar(valueType: Object, payload: CBVarPayload(objectValue: v, objectVendorId: vendorId.int32, objectTypeId: typeId.int32))
+proc asCBVar*(v: pointer; vendorId, typeId: int32): CBVar {.inline.} =
+  return CBVar(valueType: Object, payload: CBVarPayload(objectValue: v, objectVendorId: vendorId, objectTypeId: typeId))
 
 converter toCBVar*(v: int): CBVar {.inline.} =
   return CBVar(valueType: Int, payload: CBVarPayload(intValue: v))
@@ -901,10 +900,10 @@ when appType != "lib" or defined(forceCBRuntime):
   proc registerBlock*(name: string; initProc: CBBlockConstructor) =
     invokeFunction("chainblocks::registerBlock", name, initProc).to(void)
 
-  proc registerObjectType*(vendorId, typeId: FourCC; info: CBObjectInfo) =
+  proc registerObjectType*(vendorId, typeId: int32; info: CBObjectInfo) =
     invokeFunction("chainblocks::registerObjectType", vendorId, typeId, info).to(void)
 
-  proc registerEnumType*(vendorId, typeId: FourCC; info: CBEnumInfo) =
+  proc registerEnumType*(vendorId, typeId: int32; info: CBEnumInfo) =
     invokeFunction("chainblocks::registerEnumType", vendorId, typeId, info).to(void)
 
   proc registerRunLoopCallback*(name: string; callback: CBCallback) =
