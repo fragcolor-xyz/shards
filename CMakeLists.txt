@@ -35,7 +35,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
-set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DELPP_FEATURE_CRASH_LOG -static -ffast-math")
+set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-static -ffast-math")
 ###
 
 ### nim stuff

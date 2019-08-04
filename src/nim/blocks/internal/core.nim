@@ -447,6 +447,7 @@ when true:
       while not hasGlobalVariable(b.name):
         pause(0.0) # Wait until we find it
       b.gtarget = globalVariable(b.name)
+    
     b.ctarget[] = b.gtarget[]
     input
 

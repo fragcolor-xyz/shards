@@ -291,7 +291,7 @@ namespace chainblocks
   extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo> ObjectTypesRegister;
   extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
-  extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+  extern thread_local phmap::node_hash_map<std::string, CBVar> GlobalVariables;
   extern thread_local std::map<std::string, CBCallback> RunLoopHooks;
   extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;

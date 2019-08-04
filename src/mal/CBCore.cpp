@@ -194,7 +194,7 @@ public:
     virtual MalString print(bool readably) const 
     { 
       std::ostringstream stream;
-      stream << "CBVar: " << m_var;
+      stream << m_var;
       return stream.str();
     }
     
