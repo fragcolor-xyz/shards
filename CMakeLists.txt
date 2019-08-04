@@ -41,7 +41,7 @@ set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-static -ffast-math")
 ### nim stuff
 find_program(NIM_EXECUTABLE nim PATHS ENV PATH)
 
-set(NIM_OPTIONS cpp -d:cmake --newruntime -d:useWinAnsi -d:useMalloc -d:noSignalHandler)
+set(NIM_OPTIONS cpp -d:cmake --newruntime -d:useWinAnsi -d:useMalloc -d:noSignalHandler --stackTrace:off --lineTrace:off)
 
 if(DEFINED NIMBLE_PATH)
   set(NIM_OPTIONS ${NIM_OPTIONS} --NimblePath:${NIMBLE_PATH})

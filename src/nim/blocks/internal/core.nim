@@ -899,7 +899,7 @@ when true:
     let
       match = if b.match.valueType == ContextVar: b.matchCtx[] else: b.match
     var
-      res = false
+      res = Empty
     template operation(operator: untyped): untyped =
       if operator(input, match):
         var output = Empty
