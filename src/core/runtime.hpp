@@ -7,9 +7,11 @@
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wtype-limits"
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wmultichar"
 #elif defined(__clang__)
 #pragma clang diagnostic ignored "-Wtype-limits"
 #pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wmultichar"
 #endif
 
 #include <string.h> // memset
@@ -503,7 +505,7 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       ObjectTypesRegister.insert(std::make_pair(tup, info));
-      DLOG(INFO) << "added object type: " << typeName;
+      // DLOG(INFO) << "added object type: " << typeName;
     }
     else
     {
@@ -520,7 +522,7 @@ namespace chainblocks
     if(findIt == ObjectTypesRegister.end())
     {
       EnumTypesRegister.insert(std::make_pair(tup, info));
-      DLOG(INFO) << "added enum type: " << typeName;
+      // DLOG(INFO) << "added enum type: " << typeName;
     }
     else
     {

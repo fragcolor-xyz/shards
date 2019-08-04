@@ -218,11 +218,13 @@ BUILTIN("Node")
 #define WRAP_TO_CONST(_var_) auto constBlock = chainblocks::createBlock("Const");\
   constBlock->setup(constBlock);\
   constBlock->setParam(constBlock, 0, _var_);\
-  return constBlock
+  result.push_back(constBlock)
 
 // Helper to generate const blocks automatically inferring types
-CBRuntimeBlock* blockify(malValuePtr arg)
+std::vector<CBRuntimeBlock*> blockify(malValuePtr arg)
 {
+  std::vector<CBRuntimeBlock*> result;
+  
   if (arg == mal::nilValue())
   {
     // Wrap none into const
@@ -279,12 +281,23 @@ CBRuntimeBlock* blockify(malValuePtr arg)
   {
     auto block = v->value();
     const_cast<malCBBlock*>(v)->consume(); // Blocks are unique, consume before use, assume goes inside another block or
-    return block;
+    result.push_back(block);
+  }
+  else if (const malSequence* v = DYNAMIC_CAST(malSequence, arg)) 
+  {
+    auto count = v->count();
+    for(auto i = 0; i < count; i++)
+    {
+      auto val = v->item(i);
+      auto blks = blockify(val);
+      result.insert(result.end(), blks.begin(), blks.end());
+    }
   }
   else
   {
-    throw chainblocks::CBException("Invalid argument");
+    throw chainblocks::CBException("Invalid argument for chain");
   }
+  return result;
 }
 
 CBVar varify(malCBBlock* mblk, malValuePtr arg)
@@ -325,7 +338,7 @@ CBVar varify(malCBBlock* mblk, malValuePtr arg)
     }
     return var;
   }
-  else if (const malList* v = DYNAMIC_CAST(malList, arg)) 
+  else if (const malSequence* v = DYNAMIC_CAST(malSequence, arg)) 
   {
     CBVar tmp;
     tmp.valueType = Seq;
@@ -497,7 +510,9 @@ BUILTIN("Chain")
     }
     else
     {
-      chain->addBlock(blockify(arg));
+      auto blks = blockify(arg);
+      for(auto blk : blks)
+        chain->addBlock(blk);
     }
   }
   return malValuePtr(mchain);
@@ -509,7 +524,9 @@ BUILTIN("Blocks")
   while(argsBegin != argsEnd)
   {
     auto arg = *argsBegin++;
-    vec->push_back(malValuePtr(new malCBBlock(blockify(arg))));
+    auto blks = blockify(arg);
+    for(auto blk : blks)
+      vec->push_back(malValuePtr(new malCBBlock(blk)));
   }
   return malValuePtr(new malList(vec));
 }
