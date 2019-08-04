@@ -13,7 +13,7 @@ namespace chainblocks
   static CBParametersInfo indicesParamsInfo;
   static CBEnumInfo boolOpEnumInfo = { "BoolOp" };
 
-  void initEnums()
+  static void initEnums()
   {
     // These leak for now
     stbds_arrpush(boolOpEnumInfo.labels, "Equal");

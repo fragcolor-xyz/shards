@@ -8,18 +8,19 @@
 #include <set>
 #define CHAINBLOCKS_RUNTIME
 #include "../core/runtime.hpp"
+#include "../core/blocks/shared.hpp"
 
 #define CHECK_ARGS_IS(expected) \
-    checkArgsIs(name.c_str(), expected, \
-                  std::distance(argsBegin, argsEnd))
+  checkArgsIs(name.c_str(), expected, \
+  std::distance(argsBegin, argsEnd))
 
 #define CHECK_ARGS_BETWEEN(min, max) \
-    checkArgsBetween(name.c_str(), min, max, \
-                       std::distance(argsBegin, argsEnd))
+  checkArgsBetween(name.c_str(), min, max, \
+  std::distance(argsBegin, argsEnd))
 
 #define CHECK_ARGS_AT_LEAST(expected) \
-    checkArgsAtLeast(name.c_str(), expected, \
-                        std::distance(argsBegin, argsEnd))
+  checkArgsAtLeast(name.c_str(), expected, \
+  std::distance(argsBegin, argsEnd))
 
 #define ARG(type, name) type* name = VALUE_CAST(type, *argsBegin++)
 
@@ -27,21 +28,19 @@ static StaticList<malBuiltIn*> handlers;
 #define FUNCNAME(uniq) builtIn ## uniq
 #define HRECNAME(uniq) handler ## uniq
 #define BUILTIN_DEF(uniq, symbol) \
-    static malBuiltIn::ApplyFunc FUNCNAME(uniq); \
-    static StaticList<malBuiltIn*>::Node HRECNAME(uniq) \
-        (handlers, new malBuiltIn(symbol, FUNCNAME(uniq))); \
-    malValuePtr FUNCNAME(uniq)(const MalString& name, \
-        malValueIter argsBegin, malValueIter argsEnd)
+  static malBuiltIn::ApplyFunc FUNCNAME(uniq); \
+  static StaticList<malBuiltIn*>::Node HRECNAME(uniq) \
+  (handlers, new malBuiltIn(symbol, FUNCNAME(uniq))); \
+  malValuePtr FUNCNAME(uniq)(const MalString& name, \
+  malValueIter argsBegin, malValueIter argsEnd)
 
 #define BUILTIN(symbol)  BUILTIN_DEF(__LINE__, symbol)
 
 #define BUILTIN_ISA(symbol, type) \
-    BUILTIN(symbol) { \
-        CHECK_ARGS_IS(1); \
-        return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
-    }
-
-
+  BUILTIN(symbol) { \
+    CHECK_ARGS_IS(1); \
+    return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
+  }
 
 extern void NimMain();
 
@@ -55,8 +54,33 @@ void installCBCore(malEnvPtr env)
   
   registerKeywords(env);
   
+  // Chain params
   env->set("Looped", mal::keyword("Looped"));
   env->set("Unsafe", mal::keyword("Unsafe"));
+  // CBType
+  env->set("None", mal::keyword("None"));
+  env->set("Any", mal::keyword("Any"));
+  env->set("Object", mal::keyword("Object"));
+  env->set("Enum", mal::keyword("Enum"));
+  env->set("Bool", mal::keyword("Bool"));
+  env->set("Int", mal::keyword("Int"));
+  env->set("Int2", mal::keyword("Int2"));
+  env->set("Int3", mal::keyword("Int3"));
+  env->set("Int4", mal::keyword("Int4"));
+  env->set("Int8", mal::keyword("Int8"));
+  env->set("Int16", mal::keyword("Int16"));
+  env->set("Float", mal::keyword("Float"));
+  env->set("Float2", mal::keyword("Float2"));
+  env->set("Float3", mal::keyword("Float3"));
+  env->set("Float4", mal::keyword("Float4"));
+  env->set("Color", mal::keyword("Color"));
+  env->set("Chain", mal::keyword("Chain"));
+  env->set("Block", mal::keyword("Block"));
+  env->set("String", mal::keyword("String"));
+  env->set("ContextVar", mal::keyword("ContextVar"));
+  env->set("Image", mal::keyword("Image"));
+  env->set("Seq", mal::keyword("Seq"));
+  env->set("Table", mal::keyword("Table"));
   
   for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) 
   {
@@ -185,7 +209,7 @@ public:
       chainblocks::destroyVar(m_var);
       chainblocks::cloneVar(m_var, that.m_var);
     }
-
+    
     ~malCBVar()
     {
       chainblocks::destroyVar(m_var);
@@ -202,13 +226,203 @@ public:
     {
       return m_var == static_cast<const malCBVar*>(rhs)->m_var;
     }
-
+    
     CBVar value() const { return m_var; }
     
     WITH_META(malCBVar);
-private:
+    
     CBVar m_var;
 };
+
+CBType keywordToType(malKeyword* typeKeyword)
+{
+  if(typeKeyword->value() == "None")
+    return CBType::None;
+  else if(typeKeyword->value() == "Any")
+    return CBType::Any;
+  else if(typeKeyword->value() == "Enum")
+    return CBType::Enum;
+  else if(typeKeyword->value() == "Bool")
+    return CBType::Bool;
+  else if(typeKeyword->value() == "Int")
+    return CBType::Int;
+  else if(typeKeyword->value() == "Int2")
+    return CBType::Int2;
+  else if(typeKeyword->value() == "Int3")
+    return CBType::Int3;
+  else if(typeKeyword->value() == "Int4")
+    return CBType::Int4;
+  else if(typeKeyword->value() == "Int8")
+    return CBType::Int8;
+  else if(typeKeyword->value() == "Int16")
+    return CBType::Int16;
+  else if(typeKeyword->value() == "Float")
+    return CBType::Float;
+  else if(typeKeyword->value() == "Float2")
+    return CBType::Float2;
+  else if(typeKeyword->value() == "Float3")
+    return CBType::Float3;
+  else if(typeKeyword->value() == "Float4")
+    return CBType::Float4;
+  else if(typeKeyword->value() == "Color")
+    return CBType::Color;
+  else if(typeKeyword->value() == "Chain")
+    return CBType::Chain;
+  else if(typeKeyword->value() == "Block")
+    return CBType::Block;
+  else if(typeKeyword->value() == "String")
+    return CBType::String;
+  else if(typeKeyword->value() == "ContextVar")
+    return CBType::ContextVar;
+  else if(typeKeyword->value() == "Image")
+    return CBType::Image;
+  else if(typeKeyword->value() == "Seq")
+    return CBType::Seq;
+  else if(typeKeyword->value() == "Table")
+    return CBType::Table;
+  else
+    throw chainblocks::CBException("Could not infer type for special '.' block. Need to return a proper type keyword!");
+}
+
+malValuePtr typeToKeyword(CBType type)
+{
+  switch(type)
+  {
+    case None:
+      return mal::keyword("None");
+    case Any:
+      return mal::keyword("Any");
+    case Object:
+      return mal::keyword("Object");
+    case Enum:
+      return mal::keyword("Enum");
+    case Bool:
+      return mal::keyword("Bool");
+    case Int:
+      return mal::keyword("Int");
+    case Int2:
+      return mal::keyword("Int2");
+    case Int3:
+      return mal::keyword("Int3");
+    case Int4:
+      return mal::keyword("Int4");
+    case Int8:
+      return mal::keyword("Int8");
+    case Int16:
+      return mal::keyword("Int16");
+    case Float:
+      return mal::keyword("Float");
+    case Float2:
+      return mal::keyword("Float2");
+    case Float3:
+      return mal::keyword("Float3");
+    case Float4:
+      return mal::keyword("Float4");
+    case Color:
+      return mal::keyword("Color");
+    case Chain:
+      return mal::keyword("Chain");
+    case Block:
+      return mal::keyword("Block");
+    case String:
+      return mal::keyword("String");
+    case ContextVar:
+      return mal::keyword("ContextVar");
+    case Image:
+      return mal::keyword("Image");
+    case Seq:
+      return mal::keyword("Seq");
+    case Table:
+      return mal::keyword("Table");
+  };
+  return mal::keyword("None");
+}
+
+namespace chainblocks
+{
+  struct InnerCall
+  {
+    malValuePtr malInfer; // a fn* [inputType]
+    malList* malActivateList;
+    malValuePtr malActivate; // a fn* [input]
+    malCBVar* innerVar;
+    
+    void init(malValuePtr infer, malValuePtr activate)
+    {
+      malInfer = infer;
+      
+      auto avec = new malValueVec();
+      avec->push_back(activate);
+      
+      innerVar = new malCBVar(CBVar());
+      avec->push_back(malValuePtr(innerVar));
+      
+      malActivateList = new malList(avec);
+      malActivate = malValuePtr(malActivateList);
+    }
+    
+    CBTypesInfo inputTypes()
+    {
+      if(!anyInOutInfo)
+      {
+        CBTypeInfo anyType = { Any };
+        stbds_arrpush(anyInOutInfo, anyType);
+      }
+      return anyInOutInfo;
+    }
+    
+    CBTypesInfo outputTypes()
+    {
+      if(!anyInOutInfo)
+      {
+        CBTypeInfo anyType = { Any };
+        stbds_arrpush(anyInOutInfo, anyType);
+      }
+      return anyInOutInfo;
+    }
+    
+    CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)
+    {
+      // call a fn* [inputTypeKeyword] in place
+      auto ivec = new malValueVec();
+      ivec->push_back(malInfer);
+      ivec->push_back(typeToKeyword(inputType.basicType));
+      auto res = EVAL(malValuePtr(new malList(ivec)), nullptr);
+      
+      auto typeKeyword = VALUE_CAST(malKeyword, res);
+      auto returnType = CBTypeInfo();
+      returnType.basicType = keywordToType(typeKeyword);
+      
+      return returnType;
+    }
+    
+    CBVar activate(CBContext* context, CBVar input)
+    {
+      cloneVar(innerVar->m_var, input);
+      auto res = EVAL(malActivate, nullptr);
+      auto resStaticVar = STATIC_CAST(malCBVar, res); // for perf here we use static, it's dangerous tho!
+      return resStaticVar->m_var;
+    }
+  };
+
+RUNTIME_CORE_BLOCK(chainblocks::InnerCall, InnerCall)
+RUNTIME_BLOCK_inputTypes(InnerCall)
+RUNTIME_BLOCK_outputTypes(InnerCall)
+RUNTIME_BLOCK_inferTypes(InnerCall)
+RUNTIME_BLOCK_activate(InnerCall)
+RUNTIME_CORE_BLOCK_END(InnerCall)
+};
+
+BUILTIN(".")
+{
+  CHECK_ARGS_IS(2);
+  ARG(malLambda, infer);
+  ARG(malLambda, activate);
+  auto blk = chainblocks::createBlockInnerCall();
+  auto inner = reinterpret_cast<chainblocks::InnerCallRuntime*>(blk);
+  inner->core.init(infer, activate);
+  return malValuePtr(new malCBBlock(blk));
+}
 
 BUILTIN("Node")
 {

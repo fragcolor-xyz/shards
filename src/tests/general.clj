@@ -46,6 +46,9 @@
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
+  (. (fn* [inputType] inputType) (fn* [input] input)) ; test our interop special block
+  (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
+
   10
   (AddVariable "list1")
   20
