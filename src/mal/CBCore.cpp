@@ -55,32 +55,32 @@ void installCBCore(malEnvPtr env)
   registerKeywords(env);
   
   // Chain params
-  env->set("Looped", mal::keyword("Looped"));
-  env->set("Unsafe", mal::keyword("Unsafe"));
+  env->set(":Looped", mal::keyword(":Looped"));
+  env->set(":Unsafe", mal::keyword(":Unsafe"));
   // CBType
-  env->set("None", mal::keyword("None"));
-  env->set("Any", mal::keyword("Any"));
-  env->set("Object", mal::keyword("Object"));
-  env->set("Enum", mal::keyword("Enum"));
-  env->set("Bool", mal::keyword("Bool"));
-  env->set("Int", mal::keyword("Int"));
-  env->set("Int2", mal::keyword("Int2"));
-  env->set("Int3", mal::keyword("Int3"));
-  env->set("Int4", mal::keyword("Int4"));
-  env->set("Int8", mal::keyword("Int8"));
-  env->set("Int16", mal::keyword("Int16"));
-  env->set("Float", mal::keyword("Float"));
-  env->set("Float2", mal::keyword("Float2"));
-  env->set("Float3", mal::keyword("Float3"));
-  env->set("Float4", mal::keyword("Float4"));
-  env->set("Color", mal::keyword("Color"));
-  env->set("Chain", mal::keyword("Chain"));
-  env->set("Block", mal::keyword("Block"));
-  env->set("String", mal::keyword("String"));
-  env->set("ContextVar", mal::keyword("ContextVar"));
-  env->set("Image", mal::keyword("Image"));
-  env->set("Seq", mal::keyword("Seq"));
-  env->set("Table", mal::keyword("Table"));
+  env->set(":None", mal::keyword(":None"));
+  env->set(":Any", mal::keyword(":Any"));
+  env->set(":Object", mal::keyword(":Object"));
+  env->set(":Enum", mal::keyword(":Enum"));
+  env->set(":Bool", mal::keyword(":Bool"));
+  env->set(":Int", mal::keyword(":Int"));
+  env->set(":Int2", mal::keyword(":Int2"));
+  env->set(":Int3", mal::keyword(":Int3"));
+  env->set(":Int4", mal::keyword(":Int4"));
+  env->set(":Int8", mal::keyword(":Int8"));
+  env->set(":Int16", mal::keyword(":Int16"));
+  env->set(":Float", mal::keyword(":Float"));
+  env->set(":Float2", mal::keyword(":Float2"));
+  env->set(":Float3", mal::keyword(":Float3"));
+  env->set(":Float4", mal::keyword(":Float4"));
+  env->set(":Color", mal::keyword(":Color"));
+  env->set(":Chain", mal::keyword(":Chain"));
+  env->set(":Block", mal::keyword(":Block"));
+  env->set(":String", mal::keyword(":String"));
+  env->set(":ContextVar", mal::keyword(":ContextVar"));
+  env->set(":Image", mal::keyword(":Image"));
+  env->set(":Seq", mal::keyword(":Seq"));
+  env->set(":Table", mal::keyword(":Table"));
   
   for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) 
   {
@@ -236,49 +236,50 @@ public:
 
 CBType keywordToType(malKeyword* typeKeyword)
 {
-  if(typeKeyword->value() == "None")
+  auto value = typeKeyword->value();
+  if(value== ":None")
     return CBType::None;
-  else if(typeKeyword->value() == "Any")
+  else if(value== ":Any")
     return CBType::Any;
-  else if(typeKeyword->value() == "Enum")
+  else if(value== ":Enum")
     return CBType::Enum;
-  else if(typeKeyword->value() == "Bool")
+  else if(value== ":Bool")
     return CBType::Bool;
-  else if(typeKeyword->value() == "Int")
+  else if(value== ":Int")
     return CBType::Int;
-  else if(typeKeyword->value() == "Int2")
+  else if(value== ":Int2")
     return CBType::Int2;
-  else if(typeKeyword->value() == "Int3")
+  else if(value== ":Int3")
     return CBType::Int3;
-  else if(typeKeyword->value() == "Int4")
+  else if(value== ":Int4")
     return CBType::Int4;
-  else if(typeKeyword->value() == "Int8")
+  else if(value== ":Int8")
     return CBType::Int8;
-  else if(typeKeyword->value() == "Int16")
+  else if(value== ":Int16")
     return CBType::Int16;
-  else if(typeKeyword->value() == "Float")
+  else if(value== ":Float")
     return CBType::Float;
-  else if(typeKeyword->value() == "Float2")
+  else if(value== ":Float2")
     return CBType::Float2;
-  else if(typeKeyword->value() == "Float3")
+  else if(value== ":Float3")
     return CBType::Float3;
-  else if(typeKeyword->value() == "Float4")
+  else if(value== ":Float4")
     return CBType::Float4;
-  else if(typeKeyword->value() == "Color")
+  else if(value== ":Color")
     return CBType::Color;
-  else if(typeKeyword->value() == "Chain")
+  else if(value== ":Chain")
     return CBType::Chain;
-  else if(typeKeyword->value() == "Block")
+  else if(value== ":Block")
     return CBType::Block;
-  else if(typeKeyword->value() == "String")
+  else if(value== ":String")
     return CBType::String;
-  else if(typeKeyword->value() == "ContextVar")
+  else if(value== ":ContextVar")
     return CBType::ContextVar;
-  else if(typeKeyword->value() == "Image")
+  else if(value== ":Image")
     return CBType::Image;
-  else if(typeKeyword->value() == "Seq")
+  else if(value== ":Seq")
     return CBType::Seq;
-  else if(typeKeyword->value() == "Table")
+  else if(value== ":Table")
     return CBType::Table;
   else
     throw chainblocks::CBException("Could not infer type for special '.' block. Need to return a proper type keyword!");
@@ -289,53 +290,53 @@ malValuePtr typeToKeyword(CBType type)
   switch(type)
   {
     case None:
-      return mal::keyword("None");
+      return mal::keyword(":None");
     case Any:
-      return mal::keyword("Any");
+      return mal::keyword(":Any");
     case Object:
-      return mal::keyword("Object");
+      return mal::keyword(":Object");
     case Enum:
-      return mal::keyword("Enum");
+      return mal::keyword(":Enum");
     case Bool:
-      return mal::keyword("Bool");
+      return mal::keyword(":Bool");
     case Int:
-      return mal::keyword("Int");
+      return mal::keyword(":Int");
     case Int2:
-      return mal::keyword("Int2");
+      return mal::keyword(":Int2");
     case Int3:
-      return mal::keyword("Int3");
+      return mal::keyword(":Int3");
     case Int4:
-      return mal::keyword("Int4");
+      return mal::keyword(":Int4");
     case Int8:
-      return mal::keyword("Int8");
+      return mal::keyword(":Int8");
     case Int16:
-      return mal::keyword("Int16");
+      return mal::keyword(":Int16");
     case Float:
-      return mal::keyword("Float");
+      return mal::keyword(":Float");
     case Float2:
-      return mal::keyword("Float2");
+      return mal::keyword(":Float2");
     case Float3:
-      return mal::keyword("Float3");
+      return mal::keyword(":Float3");
     case Float4:
-      return mal::keyword("Float4");
+      return mal::keyword(":Float4");
     case Color:
-      return mal::keyword("Color");
+      return mal::keyword(":Color");
     case Chain:
-      return mal::keyword("Chain");
+      return mal::keyword(":Chain");
     case Block:
-      return mal::keyword("Block");
+      return mal::keyword(":Block");
     case String:
-      return mal::keyword("String");
+      return mal::keyword(":String");
     case ContextVar:
-      return mal::keyword("ContextVar");
+      return mal::keyword(":ContextVar");
     case Image:
-      return mal::keyword("Image");
+      return mal::keyword(":Image");
     case Seq:
-      return mal::keyword("Seq");
+      return mal::keyword(":Seq");
     case Table:
-      return mal::keyword("Table");
+      return mal::keyword(":Table");
   };
-  return mal::keyword("None");
+  return mal::keyword(":None");
 }
 
 namespace chainblocks

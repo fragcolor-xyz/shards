@@ -50,7 +50,7 @@ int main(int argc, const char* argv[])
   os << "{\n";
   for(auto word : keywords)
   {
-    os << "  env->set(\"" << word << "\", mal::keyword(\"" << word << "\"));\n";
+    os << "  env->set(\":" << word << "\", mal::keyword(\":" << word << "\"));\n";
   }
   // Enums here as well
   for(auto enumDef : chainblocks::EnumTypesRegister)

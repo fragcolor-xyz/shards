@@ -49,6 +49,9 @@
   (. (fn* [inputType] inputType) (fn* [input] input)) ; test our interop special block
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
 
+  (. (fn* [inputType] :Int) (fn* [input] (Int 22))) ; test our interop special block
+  (Assert.Is 22 true)
+
   10
   (AddVariable "list1")
   20
