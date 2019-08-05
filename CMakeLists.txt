@@ -23,7 +23,7 @@ if(WIN32)
   set(EXTRA_LIBS -lws2_32)
 else()
   set(BOOST_LIBS -lboost_context -lboost_filesystem)
-  set(EXTRA_LIBS -pthread-ldl -lrt)
+  set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
 ###
 

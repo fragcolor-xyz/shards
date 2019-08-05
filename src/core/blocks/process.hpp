@@ -31,7 +31,7 @@ namespace chainblocks
           CBTypeInfo strType = { String };
           stbds_arrpush(strInfo, strType);
         }
-        return anyInOutInfo;
+        return strInfo;
       }
       
       CBVar activate(CBContext* ctx, CBVar input)
