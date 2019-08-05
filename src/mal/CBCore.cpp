@@ -344,23 +344,13 @@ namespace chainblocks
   struct InnerCall
   {
     malValuePtr malInfer; // a fn* [inputType]
-    malList* malActivateList;
     malValuePtr malActivate; // a fn* [input]
-    malCBVar* innerVar;
     CBVar outputVar;
 
     void init(malValuePtr infer, malValuePtr activate)
     {
       malInfer = infer;
-      
-      auto avec = new malValueVec();
-      avec->push_back(activate);
-      
-      innerVar = new malCBVar(CBVar());
-      avec->push_back(malValuePtr(innerVar));
-      
-      malActivateList = new malList(avec);
-      malActivate = malValuePtr(malActivateList);
+      malActivate = activate;
     }
     
     CBTypesInfo inputTypes()
@@ -389,6 +379,7 @@ namespace chainblocks
       auto ivec = new malValueVec();
       ivec->push_back(malInfer);
       ivec->push_back(typeToKeyword(inputType.basicType));
+      
       auto res = EVAL(malValuePtr(new malList(ivec)), nullptr);
       
       auto typeKeyword = VALUE_CAST(malKeyword, res);
@@ -400,10 +391,18 @@ namespace chainblocks
     
     CBVar activate(CBContext* context, CBVar input)
     {
-      cloneVar(innerVar->m_var, input);
-      auto res = EVAL(malActivate, nullptr);
+      auto avec = new malValueVec(); 
+      avec->push_back(malActivate);
+      auto inputCopy = CBVar();
+      cloneVar(inputCopy, input);
+      auto innerVar = new malCBVar(inputCopy);
+      avec->push_back(malValuePtr(innerVar));
+      
+      auto res = EVAL(malValuePtr(new malList(avec)), nullptr);
+      
       auto resStaticVar = STATIC_CAST(malCBVar, res); // for perf here we use static, it's dangerous tho!
       cloneVar(outputVar, resStaticVar->m_var);
+      
       return outputVar;
     }
   };
