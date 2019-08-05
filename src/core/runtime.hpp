@@ -864,9 +864,7 @@ namespace chainblocks
       {
         auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
         auto repeats = cblock->doForever ? 1 : cblock->times;
-        CBVar repeatOutput;
-        repeatOutput.valueType = None;
-        repeatOutput.payload.chainState = Continue;
+        auto repeatOutput = CBVar();
         while(repeats)
         {
           for(auto i = 0; i < stbds_arrlen(cblock->blocks); i++)
@@ -976,9 +974,7 @@ namespace chainblocks
               previousOutput = blk->activate(blk, context, input);
               return;
           }
-          CBVar ifOutput;
-          ifOutput.valueType = None;
-          ifOutput.payload.chainState = Continue;
+          auto ifOutput = CBVar();
           if(result)
           {
             for(auto i = 0; i < stbds_arrlen(cblock->trueBlocks); i++)
@@ -1330,7 +1326,7 @@ namespace chainblocks
   
   inline static RunChainOutput runChain(CBChain* chain, CBContext* context, CBVar chainInput)
   {
-    CBVar previousOutput;
+    auto previousOutput = CBVar();
     
     // Detect and pause if we need to here
     // avoid pausing in the middle or so, that is for a proper debug mode runner, 

@@ -507,7 +507,7 @@ when true:
   chainblock CBStopChain, "ChainStop"
 
 # Log - a debug value logger
-when true:
+when false:
   type
     CBlockLog* = object
 
@@ -524,7 +524,7 @@ when true:
   chainblock CBlockLog, "Log"
 
 # Msg - a debug log log
-when true:
+when false:
   type
     CBlockMsg* = object
       msg*: CBVar

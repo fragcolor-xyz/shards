@@ -5,6 +5,7 @@
 #include "blocks/seqs.hpp"
 #include "blocks/tables.hpp"
 #include "blocks/assert.hpp"
+#include "blocks/logging.hpp"
 #include <cstdarg>
 #include <csignal>
 #include <boost/stacktrace.hpp>
@@ -29,6 +30,8 @@ namespace chainblocks
     {
       // Do this here to prevent insanity loop
       coreRegistered = true;
+      REGISTER_CORE_BLOCK(Log);
+      REGISTER_CORE_BLOCK(Msg);
       REGISTER_CORE_BLOCK(GetItems);
       REGISTER_CORE_BLOCK(SetTableValue);
       REGISTER_CORE_BLOCK(GetTableValue);
