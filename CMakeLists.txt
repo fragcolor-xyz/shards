@@ -11,10 +11,12 @@ endif()
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   # add_link_options(-static -fuse-ld=lld)
+elseif(WIN32)
+  add_link_options(-static)
+  add_compile_options(-static)
 endif()
 
-add_link_options(-static)
-add_compile_options(-fno-threadsafe-statics -ffast-math -static)
+add_compile_options(-fno-threadsafe-statics -ffast-math)
 ###
 
 ### boost context
