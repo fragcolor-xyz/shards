@@ -16,10 +16,10 @@ endif()
 
 ### boost context
 if(WIN32)
-  set(BOOST_CONTEXT -lboost_context-mt)
-  # set(EXTRA_LIBS)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(EXTRA_LIBS -lws2_32)
 else()
-  set(BOOST_CONTEXT -lboost_context)
+  set(BOOST_LIBS -lboost_context -lboost_filesystem)
   set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
 ###
@@ -95,7 +95,7 @@ macro(lisp_builtins LIB GENNAME)
     "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
   )
   set_property(TARGET malgen_${GENNAME} PROPERTY COMPILE_FLAGS "-static")
-  target_link_libraries(malgen_${GENNAME} cbruntime ${LIB} ${BOOST_CONTEXT} ${EXTRA_LIBS} ${ARGN})
+  target_link_libraries(malgen_${GENNAME} cbruntime ${LIB} ${BOOST_LIBS} ${EXTRA_LIBS} ${ARGN})
 
   # https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
   add_custom_command(
@@ -133,5 +133,5 @@ add_executable(
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
-target_link_libraries(cbl -lreadline cbruntime cbnim_lib ${BOOST_CONTEXT} ${EXTRA_LIBS})
+target_link_libraries(cbl -lreadline cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
 ###

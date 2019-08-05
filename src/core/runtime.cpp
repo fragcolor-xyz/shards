@@ -1,11 +1,17 @@
 #define STB_DS_IMPLEMENTATION 1
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
+
+#ifdef _WIN32
+  #include  "winsock2.h"
+#endif
+
 #include "runtime.hpp"
 #include "blocks/seqs.hpp"
 #include "blocks/tables.hpp"
 #include "blocks/assert.hpp"
 #include "blocks/logging.hpp"
+#include "blocks/process.hpp"
 #include <cstdarg>
 #include <csignal>
 #include <boost/stacktrace.hpp>
@@ -37,6 +43,7 @@ namespace chainblocks
       REGISTER_CORE_BLOCK(GetTableValue);
       REGISTER_BLOCK(Assert, Is);
       REGISTER_BLOCK(Assert, IsNot);
+      REGISTER_BLOCK(Process, Exec);
 
       // also enums
       initEnums();

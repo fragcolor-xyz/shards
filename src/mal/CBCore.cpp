@@ -230,7 +230,7 @@ public:
     CBVar value() const { return m_var; }
     
     WITH_META(malCBVar);
-    
+private:
     CBVar m_var;
 };
 
@@ -339,6 +339,7 @@ malValuePtr typeToKeyword(CBType type)
   return mal::keyword(":None");
 }
 
+#if 1
 namespace chainblocks
 {
   struct InnerCall
@@ -401,7 +402,7 @@ namespace chainblocks
       auto res = EVAL(malValuePtr(new malList(avec)), nullptr);
       
       auto resStaticVar = STATIC_CAST(malCBVar, res); // for perf here we use static, it's dangerous tho!
-      cloneVar(outputVar, resStaticVar->m_var);
+      cloneVar(outputVar, resStaticVar->value());
       
       return outputVar;
     }
@@ -425,6 +426,7 @@ BUILTIN(".")
   inner->core.init(infer, activate);
   return malValuePtr(new malCBBlock(blk));
 }
+#endif
 
 BUILTIN("Node")
 {
@@ -830,6 +832,21 @@ BUILTIN("Enum")
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
   var.payload.enumTypeId = static_cast<int32_t>(value1->value());
   var.payload.enumValue = static_cast<CBEnum>(value2->value());
+  return malValuePtr(new malCBVar(var));
+}
+
+BUILTIN("String")
+{
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+
+  CBVar tmp;
+  tmp.valueType = String;
+  auto s = value->value();
+  tmp.payload.stringValue = s.c_str();
+  auto var = CBVar();
+  chainblocks::cloneVar(var, tmp);
+
   return malValuePtr(new malCBVar(var));
 }
 
