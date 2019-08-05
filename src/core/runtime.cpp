@@ -1066,13 +1066,6 @@ void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidati
     default:
       break;
   };
-
-  if(value.valueType == ContextVar && param.allowContext)
-  {
-    // We are good.. kinda, this means we might have side effects tho! TODO, should flag/mark
-    // Also basically the whole validation is delegated at runtime and must be done by the block maker
-    return; 
-  }
   
   for(auto i = 0; i < stbds_arrlen(param.valueTypes); i++)
   {

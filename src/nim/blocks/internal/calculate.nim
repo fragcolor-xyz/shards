@@ -18,7 +18,7 @@ when true:
     proc inferTypes(b: var typeName; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =  
       result = inputType
     template parameters*(b: typeName): CBParametersInfo =
-      *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color }, true #[usesContext]#)]
+      *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color })]
     template setParam*(b: typeName; index: int; val: CBVar) =
       b.operand = val
       # will refresh on next activate

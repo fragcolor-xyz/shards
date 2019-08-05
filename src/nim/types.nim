@@ -115,7 +115,6 @@ type
   CBParameterInfo* {.importcpp: "CBParameterInfo", header: "chainblocks.hpp".} = object
     name*: cstring
     valueTypes*: CBTypesInfo
-    allowContext*: bool # This parameter could be a contextvar
     help*: cstring
   
   CBParametersInfo* {.importcpp: "CBParametersInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBParameterInfo]

@@ -239,7 +239,6 @@ struct CBParameterInfo
   const char* name;
   const char* help;
   CBTypesInfo valueTypes;
-  bool allowContext;
 };
 
 struct CBExposedTypeInfo

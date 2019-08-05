@@ -578,9 +578,9 @@ when true:
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
     *@[
-      (cs"Accept", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
-      (cs"IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
-      (cs"All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+      (cs"Accept", (AllIntTypes + AllFloatTypes + { String, Color, ContextVar }, true #[seq]#)),
+      (cs"IsRegex", ({ Bool }, false #[seq]#)),
+      (cs"All", ({ Bool }, false #[seq]#))
     ]
   template setParam*(b: CBWhen; index: int; val: CBVar) =
     case index
@@ -674,9 +674,9 @@ when true:
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
     *@[
-      (cs"Reject", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#), true #[context]#),
-      (cs"IsRegex", ({ Bool }, false #[seq]#), false #[context]#),
-      (cs"All", ({ Bool }, false #[seq]#), false #[context]#) # must match all of the accepted
+      (cs"Reject", (AllIntTypes + AllFloatTypes + { String, Color, ContextVar }, true #[seq]#)),
+      (cs"IsRegex", ({ Bool }, false #[seq]#)),
+      (cs"All", ({ Bool }, false #[seq]#)) # must match all of the accepted
     ]
   template setParam*(b: CBWhenNot; index: int; val: CBVar) =
     case index
@@ -792,11 +792,11 @@ when true:
   template outputTypes*(b: CBlockIf): CBTypesInfo = (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#)
   template parameters*(b: CBlockIf): CBParametersInfo =
     *@[
-      (cs"Operator", toCBTypesInfo(*@[boolOpInfo]), false),
-      (cs"Operand", (AllIntTypes + AllFloatTypes + { String, Color }, true #[seq]#).toCBTypesInfo(), true #[context]#),
-      (cs"True", ({ Block, None }, true).toCBTypesInfo(), false),
-      (cs"False", ({ Block, None }, true).toCBTypesInfo(), false),
-      (cs"Passthrough", ({ Bool }, false).toCBTypesInfo(), false)
+      (cs"Operator", toCBTypesInfo(*@[boolOpInfo])),
+      (cs"Operand", (AllIntTypes + AllFloatTypes + { String, Color, ContextVar }, true #[seq]#).toCBTypesInfo()),
+      (cs"True", ({ Block, None }, true).toCBTypesInfo()),
+      (cs"False", ({ Block, None }, true).toCBTypesInfo()),
+      (cs"Passthrough", ({ Bool }, false).toCBTypesInfo())
     ]
   template setParam*(b: CBlockIf; index: int; val: CBVar) =
     case index
@@ -996,9 +996,9 @@ when true:
   template outputTypes*(b: CBRepeat): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBRepeat): CBParametersInfo =
     *@[
-      (cs"Action", ({ Block, None }, true).toCBTypesInfo(), false),
-      (cs"Times", ({ Int }).toCBTypesInfo(), false),
-      (cs"Forever", ({ Bool }).toCBTypesInfo(), false),
+      (cs"Action", ({ Block, None }, true).toCBTypesInfo()),
+      (cs"Times", ({ Int }).toCBTypesInfo()),
+      (cs"Forever", ({ Bool }).toCBTypesInfo()),
     ]
   template setParam*(b: CBRepeat; index: int; val: CBVar) =
     case index
