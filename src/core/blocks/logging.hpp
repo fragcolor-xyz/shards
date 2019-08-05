@@ -34,7 +34,7 @@ namespace chainblocks
   {
     CBVar activate(CBContext* context, CBVar input)
     {
-      LOG(INFO) << input;
+      CLOG(INFO, chainblocks::CurrentChain->logger_name.c_str()) << input;
       return input;
     }
   };
@@ -87,7 +87,7 @@ namespace chainblocks
     
     CBVar activate(CBContext* context, CBVar input)
     {
-      LOG(INFO) << msg;
+      CLOG(INFO, chainblocks::CurrentChain->logger_name.c_str()) << msg;
       return input;
     }
   };

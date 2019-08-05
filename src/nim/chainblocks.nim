@@ -657,7 +657,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     parametersProc = ident($blk & "_parameters")
     setParamProc = ident($blk & "_setParam")
     getParamProc = ident($blk & "_getParam")
-
+    
     inferTypesProc = ident($blk & "_inferTypes")
     
     activateProc = ident($blk & "_activate")
@@ -665,7 +665,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
   
   result = quote do:
     import macros # used!
-
+    
     type
       `rtNameValue` = object
         pre: CBRuntimeBlock

@@ -16,6 +16,8 @@
 
 #include <string.h> // memset
 
+#include <regex>
+
 #include "chainblocks.hpp"
 #include "blocks_macros.hpp"
 // C++ Mandatory from now!
@@ -230,11 +232,17 @@ struct CBChain
     ownedOutput(false),
     context(nullptr),
     node(nullptr)
-  {}
+  {
+    static std::regex re("[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+");
+    logger_name = std::regex_replace(name, re, "_");
+    logger_name = "chain." + logger_name;
+    el::Loggers::getLogger(logger_name.c_str());
+  }
 
   ~CBChain()
   {
     cleanup();
+    el::Loggers::unregisterLogger(logger_name.c_str());
   }
 
   void cleanup();
@@ -260,6 +268,7 @@ struct CBChain
   bool unsafe;
 
   std::string name;
+  std::string logger_name;
 
   CBCoro* coro;
   Duration next;

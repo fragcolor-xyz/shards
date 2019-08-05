@@ -12,6 +12,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   # add_link_options(-fuse-ld=lld)
 endif()
+add_compile_options(-fno-threadsafe-statics -ffast-math -static)
 ###
 
 ### boost context
@@ -35,7 +36,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
-set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-static -ffast-math")
 ###
 
 ### nim stuff
@@ -94,7 +94,6 @@ macro(lisp_builtins LIB GENNAME)
     malgen_${GENNAME}
     "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
   )
-  set_property(TARGET malgen_${GENNAME} PROPERTY COMPILE_FLAGS "-static")
   target_link_libraries(malgen_${GENNAME} cbruntime ${LIB} ${BOOST_LIBS} ${EXTRA_LIBS} ${ARGN})
 
   # https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
@@ -132,6 +131,6 @@ add_executable(
 )
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-static -ffast-math -DHAS_CB_GENERATED")
+set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED")
 target_link_libraries(cbl -lreadline cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
 ###

@@ -339,7 +339,6 @@ malValuePtr typeToKeyword(CBType type)
   return mal::keyword(":None");
 }
 
-#if 1
 namespace chainblocks
 {
   struct InnerCall
@@ -426,7 +425,6 @@ BUILTIN(".")
   inner->core.init(infer, activate);
   return malValuePtr(new malCBBlock(blk));
 }
-#endif
 
 BUILTIN("Node")
 {

@@ -109,6 +109,10 @@
   (Assert.IsNot "Value1" true)
   (Log)
 
+  "chain:initChain[1]"
+  (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
+  (Log)
+
   (Msg "All looking good!")
 ))
 
