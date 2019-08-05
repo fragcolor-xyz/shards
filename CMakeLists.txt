@@ -134,5 +134,5 @@ add_executable(
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED")
-target_link_libraries(cbl -lreadline -ltermcap cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
+target_link_libraries(cbl -lreadline -lncurses cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
 ###
