@@ -347,7 +347,8 @@ namespace chainblocks
     malList* malActivateList;
     malValuePtr malActivate; // a fn* [input]
     malCBVar* innerVar;
-    
+    CBVar outputVar;
+
     void init(malValuePtr infer, malValuePtr activate)
     {
       malInfer = infer;
@@ -402,7 +403,8 @@ namespace chainblocks
       cloneVar(innerVar->m_var, input);
       auto res = EVAL(malActivate, nullptr);
       auto resStaticVar = STATIC_CAST(malCBVar, res); // for perf here we use static, it's dangerous tho!
-      return resStaticVar->m_var;
+      cloneVar(outputVar, resStaticVar->m_var);
+      return outputVar;
     }
   };
 
