@@ -12,6 +12,13 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   # set(LINKING_OPTIONS -fuse-ld=lld)
 endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_options(-DDBOOST_STACKTRACE_USE_ADDR2LINE)
+elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  add_compile_options(-DBOOST_STACKTRACE_USE_ADDR2LINE)
+else()
+endif()
 ###
 
 ### boost context
