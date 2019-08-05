@@ -1763,11 +1763,16 @@ struct CBNode
     }
     chains.clear();
   }
-
+  
   void remove(CBChain* chain)
   {
     chainblocks::stop(chain);
     chains.remove(chain);
+  }
+  
+  bool empty()
+  {
+    return chains.empty();
   }
   
 private:

@@ -765,6 +765,30 @@ BUILTIN("tick")
   return mal::boolean(noErrors);
 }
 
+BUILTIN("run")
+{
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malCBNode, node);
+
+  auto sleepTime = 0.0;
+  if(argsBegin != argsEnd)
+  {
+    ARG(malNumber, argSleepTime);
+    sleepTime = argSleepTime->value();
+  }
+  
+  auto cbnode = node->value();
+  while(!cbnode->empty())
+  {
+    auto noErrors = cbnode->tick();
+    if(!noErrors)
+      return mal::boolean(false);
+    chainblocks::sleep(sleepTime);
+  }
+  
+  return mal::boolean(true);
+}
+
 BUILTIN("sleep")
 {
   CHECK_ARGS_IS(1);
