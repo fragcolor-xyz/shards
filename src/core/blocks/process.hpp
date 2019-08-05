@@ -9,10 +9,20 @@ namespace chainblocks
 {
   namespace Process
   {
+    static CBTypesInfo execTableInfos;
+    static CBTypeInfo execTableInfo = { Table };
+
     struct Exec
     {
       // Spawns a child runs it, waits results and outputs them!
-      std::string output;
+      std::string outBuf;
+      std::string errBuf;
+      CBTable outputTable;
+      
+      void destroy()
+      {
+        stbds_shfree(outputTable);
+      }
       
       CBTypesInfo inputTypes()
       {
@@ -26,18 +36,20 @@ namespace chainblocks
       
       CBTypesInfo outputTypes()
       {
-        if(!strInfo)
+        if(!execTableInfos)
         {
+          CBTypeInfo intType = { Int };
           CBTypeInfo strType = { String };
-          stbds_arrpush(strInfo, strType);
+          stbds_arrpush(execTableInfo.tableTypes, intType);
+          stbds_arrpush(execTableInfo.tableTypes, strType);
+          
+          stbds_arrpush(execTableInfos, execTableInfo);
         }
-        return strInfo;
+        return execTableInfos;
       }
       
       CBVar activate(CBContext* ctx, CBVar input)
       {
-        output.clear();
-        
         boost::process::ipstream opipe;
         boost::process::ipstream epipe;
         boost::process::child cmd(input.payload.stringValue, boost::process::std_out > opipe, boost::process::std_err > epipe);
@@ -48,19 +60,24 @@ namespace chainblocks
         
         while(cmd.running())
         {
-          chainblocks::suspend(0.0);
+          chainblocks::suspend(0.0); // TODO terminate if we interrupt!!! / Run on thread
         }
         
+        // Let's try to be efficient in terms of reusing memory, altho maybe the SS is not necessary, could not figure
+        outBuf.clear();
+        errBuf.clear();
         std::stringstream ss;
         ss << opipe.rdbuf();
+        outBuf.assign(ss.str());
+        ss.clear();
         ss << epipe.rdbuf();
-        output.assign(ss.str());
+        errBuf.assign(ss.str());
         
-        CBVar res;
-        res.valueType = String;
-        res.payload.stringValue = output.c_str();
+        stbds_shput(outputTable, "error_code", Var(cmd.exit_code()));
+        stbds_shput(outputTable, "std_out", Var(outBuf));
+        stbds_shput(outputTable, "std_err", Var(errBuf));
         
-        return res;
+        return Var(outputTable);
       }
     };
   };

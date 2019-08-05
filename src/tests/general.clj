@@ -115,6 +115,7 @@
 
   (Msg "All looking good!")
 ))
+(if (tick Root) nil (throw "Root tick failed"))
 
 (def! P (Node))
 (def! C (Node))

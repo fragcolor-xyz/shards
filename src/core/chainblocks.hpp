@@ -22,7 +22,36 @@ namespace chainblocks
     private:
       const char* errorMessage;
   };
+  
+  struct Var : public CBVar
+  {
+    Var(int src)
+    {
+      valueType = Int;
+      payload.intValue = src;
+    }
+    
+    Var(const char* src)
+    {
+      valueType = String;
+      payload.stringValue = src;
+    }
+    
+    Var(std::string& src)
+    {
+      valueType = String;
+      payload.stringValue = src.c_str();
+    }
+    
+    Var(CBTable& src)
+    {
+      valueType = Table;
+      payload.tableValue = src;
+    }
+  };
 };
+
+#define CHAINLOG(_X_) CLOG(_X_, chainblocks::CurrentChain->logger_name.c_str())
 
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch(var.valueType)
