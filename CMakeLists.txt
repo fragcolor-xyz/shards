@@ -10,8 +10,10 @@ endif()
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  # add_link_options(-fuse-ld=lld)
+  # add_link_options(-static -fuse-ld=lld)
 endif()
+
+add_link_options(-static)
 add_compile_options(-fno-threadsafe-statics -ffast-math -static)
 ###
 
@@ -21,7 +23,7 @@ if(WIN32)
   set(EXTRA_LIBS -lws2_32)
 else()
   set(BOOST_LIBS -lboost_context -lboost_filesystem)
-  set(EXTRA_LIBS -pthread -ldl -lrt)
+  set(EXTRA_LIBS -pthread-ldl -lrt)
 endif()
 ###
 
@@ -132,5 +134,5 @@ add_executable(
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED")
-target_link_libraries(cbl -lreadline cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
+target_link_libraries(cbl -lreadline -ltermcap cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
 ###
