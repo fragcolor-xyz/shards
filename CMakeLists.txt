@@ -10,16 +10,7 @@ endif()
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  # set(LINKING_OPTIONS -fuse-ld=lld)
-endif()
-
-if(NOT WIN32)
-  find_program(ADDR2LINE addr2line)
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-DBOOST_STACKTRACE_USE_ADDR2LINE=${ADDR2LINE})
-  elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_compile_options(-DBOOST_STACKTRACE_USE_ADDR2LINE=${ADDR2LINE})
-  endif()
+  # add_link_options(-fuse-ld=lld)
 endif()
 ###
 

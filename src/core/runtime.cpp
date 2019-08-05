@@ -1221,8 +1221,10 @@ namespace chainblocks
     if(printTrace)
     {
       std::signal(SIGABRT, SIG_DFL); // also make sure to remove this due to logger double report on FATAL
-      LOG(FATAL) << boost::stacktrace::stacktrace();
+      LOG(ERROR) << boost::stacktrace::stacktrace();
     }
+    
+    std::raise(err_sig);
   }
 
   void installSignalHandlers()
