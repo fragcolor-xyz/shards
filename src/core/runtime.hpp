@@ -864,7 +864,9 @@ namespace chainblocks
       {
         auto cblock = reinterpret_cast<CBCoreRepeat*>(blk);
         auto repeats = cblock->doForever ? 1 : cblock->times;
-        auto repeatOutput = CBVar();
+        CBVar repeatOutput;
+        repeatOutput.valueType = None;
+        repeatOutput.payload.chainState = Continue;
         while(repeats)
         {
           for(auto i = 0; i < stbds_arrlen(cblock->blocks); i++)
@@ -974,7 +976,9 @@ namespace chainblocks
               previousOutput = blk->activate(blk, context, input);
               return;
           }
-          auto ifOutput = CBVar();
+          CBVar ifOutput;
+          ifOutput.valueType = None;
+          ifOutput.payload.chainState = Continue;
           if(result)
           {
             for(auto i = 0; i < stbds_arrlen(cblock->trueBlocks); i++)
