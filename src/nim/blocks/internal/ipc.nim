@@ -213,7 +213,7 @@ when true:
       cppnew(b.segment, ManagedSharedMem, ManagedSharedMem, open_only, b.name.cstring)
       b.buffer = b.segment[].invoke("find_or_construct<rigtorp::SPSCQueue<CBVar>>(\"queue\")", 500).to(ptr SPSCQueue)
     
-    var output: CBVar
+    var output = Empty
     while true:
       var outputPtr = b.buffer[].invoke("front").to(ptr CBVar)
       

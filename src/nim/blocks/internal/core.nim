@@ -162,14 +162,13 @@ when true:
       # Update values etc
       if input.valueType == Seq:
         for item in input.seqValue.mitems:
-          var
-            cp: CBVar
+          var cp = Empty
           quickcopy(cp, item)
           b.target[].seqValue.push(cp)
       else:
         var
           inpt = input
-          cp: CBVar
+          cp = Empty
         quickcopy(cp, inpt)
         b.target[].seqValue.push(cp)
     

@@ -16,12 +16,20 @@
     (fn* [input] input))
   (Assert.Is "IPC STRING Hello world..." true)
   (Log)
+  10
+  (AddVariable "list1")
+  20
+  (AddVariable "list1")
+  30
+  (AddVariable "list1")
+  (GetVariable "list1")
+  (Log)
 ))
 
 (def! dec (fn* [a] (- a 1)))
 (def! Loop (fn* [count] (do
   (if (tick P) nil (throw "P/C tick failed"))
-  ; (if (tick C) nil (throw "P/C tick failed"))
+  (if (tick C) nil (throw "P/C tick failed"))
   (if (> count 0) (Loop (dec count)) nil)
 )))
 
