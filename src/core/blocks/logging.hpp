@@ -5,28 +5,20 @@
 
 namespace chainblocks
 {
-  static CBParametersInfo msgParamsInfo;
+  static ParamsInfo msgParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Message", "The message to log.", CBTypesInfo(strInfo))
+  );
 
   struct LoggingBase
   {
     CBTypesInfo inputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
   };
   
@@ -45,17 +37,7 @@ namespace chainblocks
 
     CBParametersInfo parameters()
     {
-      if(!strInfo)
-      {
-        CBTypeInfo strType = { String };
-        stbds_arrpush(strInfo, strType);
-      }
-      if(!msgParamsInfo)
-      {
-        CBParameterInfo msgInfo = { "Message", "The message to log.", strInfo };
-        stbds_arrpush(msgParamsInfo, msgInfo);
-      }
-      return msgParamsInfo;
+      return CBParametersInfo(msgParamsInfo);
     }
     
     void setParam(int index, CBVar inValue)

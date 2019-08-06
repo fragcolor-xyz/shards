@@ -9,8 +9,8 @@ namespace chainblocks
 {
   namespace Process
   {
-    static CBTypesInfo execTableInfos;
-    static CBTypeInfo execTableInfo = { Table };
+    static TypesInfo execTableContentsInfo = TypesInfo::FromMany(CBType::Int, CBType::String);
+    static TypesInfo execTableInfo = TypesInfo(CBType::Table, CBTypesInfo(execTableContentsInfo));
 
     struct Exec
     {
@@ -26,26 +26,12 @@ namespace chainblocks
       
       CBTypesInfo inputTypes()
       {
-        if(!strInfo)
-        {
-          CBTypeInfo strType = { String };
-          stbds_arrpush(strInfo, strType);
-        }
-        return strInfo;
+        return CBTypesInfo(strInfo);
       }
       
       CBTypesInfo outputTypes()
       {
-        if(!execTableInfos)
-        {
-          CBTypeInfo intType = { Int };
-          CBTypeInfo strType = { String };
-          stbds_arrpush(execTableInfo.tableTypes, intType);
-          stbds_arrpush(execTableInfo.tableTypes, strType);
-          
-          stbds_arrpush(execTableInfos, execTableInfo);
-        }
-        return execTableInfos;
+        return CBTypesInfo(execTableInfo);
       }
       
       CBVar activate(CBContext* ctx, CBVar input)

@@ -99,7 +99,6 @@ converter toCBParameterInfo*(record: tuple[paramName: cstring; helpText: cstring
 
 converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes, false))
 converter toCBParameterInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: set[CBType]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes, false))
-# converter toCBParameterInfo*(s: tuple[paramName: cstring; helpText: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, s.helpText, (s.actualTypes.types, s.actualTypes.canBeSeq))
 converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: CBTypesInfo]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, s.actualTypes)
 converter toCBParameterInfo*(s: tuple[paramName: cstring; actualTypes: tuple[types: set[CBType]; canBeSeq: bool]]): CBParameterInfo {.inline, noinit.} = (s.paramName, "".cstring, (s.actualTypes.types, s.actualTypes.canBeSeq))
 

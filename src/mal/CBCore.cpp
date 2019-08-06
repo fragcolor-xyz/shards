@@ -355,22 +355,12 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)

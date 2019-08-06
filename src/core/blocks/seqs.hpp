@@ -4,6 +4,11 @@
 
 namespace chainblocks
 {
+  static TypesInfo indicesTypes = TypesInfo::FromManyTypes(CBTypeInfo(intInfo), CBTypeInfo(intSeqInfo));
+  static ParamsInfo indicesParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Indices", "One or multiple indices to filter from a sequence.", CBTypesInfo(indicesTypes))
+  );
+
   struct GetItems
   {
     CBSeq cachedResult;
@@ -19,38 +24,17 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBParametersInfo parameters()
     {
-      if(!intSeqInfo)
-      {
-        CBTypeInfo intType = { Int };
-        intType.sequenced = true;
-        stbds_arrpush(intSeqInfo, intType);
-      }
-      if(!indicesParamsInfo)
-      {
-        CBParameterInfo indicesInfo = { "Indices", "One or multiple indices to filter from a sequence.", intSeqInfo };
-        stbds_arrpush(indicesParamsInfo, indicesInfo);
-      }
-      return indicesParamsInfo;
+      return CBParametersInfo(indicesParamsInfo);
     }
     
     CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)

@@ -6,7 +6,10 @@ namespace chainblocks
 {
   namespace Assert
   {
-    static CBParametersInfo assertParamsInfo;
+    static ParamsInfo assertParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Value", "The value to test against for equality.", CBTypesInfo(anyInfo)),
+      ParamsInfo::Param("Abort", "If we should crash the program on failure.", CBTypesInfo(boolInfo))
+    );
     
     struct Base
     {
@@ -20,44 +23,17 @@ namespace chainblocks
       
       CBTypesInfo inputTypes()
       {
-        if(!anyInOutInfo)
-        {
-          CBTypeInfo anyType = { Any };
-          stbds_arrpush(anyInOutInfo, anyType);
-        }
-        return anyInOutInfo;
+        return CBTypesInfo(anyInfo);
       }
       
       CBTypesInfo outputTypes()
       {
-        if(!anyInOutInfo)
-        {
-          CBTypeInfo anyType = { Any };
-          stbds_arrpush(anyInOutInfo, anyType);
-        }
-        return anyInOutInfo;
+        return CBTypesInfo(anyInfo);
       }
       
       CBParametersInfo parameters()
       {
-        if(!anyInOutInfo)
-        {
-          CBTypeInfo anyType = { Any };
-          stbds_arrpush(anyInOutInfo, anyType);
-        }
-        if(!boolInfo)
-        {
-          CBTypeInfo boolType = { Bool };
-          stbds_arrpush(boolInfo, boolType);
-        }
-        if(!assertParamsInfo)
-        {
-          CBParameterInfo anyInfo = { "Value", "The value to test against for equality.", anyInOutInfo };
-          stbds_arrpush(assertParamsInfo, anyInfo);
-          CBParameterInfo abortInfo = { "Abort", "If we should crash the program on failure.", boolInfo };
-          stbds_arrpush(assertParamsInfo, abortInfo);
-        }
-        return assertParamsInfo;
+        return CBParametersInfo(assertParamsInfo);
       }
       
       void setParam(int index, CBVar inValue)

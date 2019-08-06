@@ -5,12 +5,16 @@
 
 namespace chainblocks
 {
-  static CBTypesInfo noneType;
-  static CBTypesInfo intSeqInfo;
-  static CBTypesInfo boolInfo;
-  static CBTypesInfo anyInOutInfo;
-  static CBTypesInfo strInfo;
-  static CBParametersInfo indicesParamsInfo;
+  static TypesInfo strInfo = TypesInfo(CBType::String);
+  static TypesInfo anyInfo = TypesInfo(CBType::Any);
+  static TypesInfo noneInfo = TypesInfo(CBType::None);
+  static TypesInfo boolInfo = TypesInfo(CBType::Bool);
+  static TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static TypesInfo chainInfo = TypesInfo(CBType::Chain);
+  static TypesInfo intInfo = TypesInfo(CBType::Int);
+  static TypesInfo intSeqInfo = TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
+  static TypesInfo int2Info = TypesInfo(CBType::Int2);
+  
   static CBEnumInfo boolOpEnumInfo = { "BoolOp" };
 
   static void initEnums()

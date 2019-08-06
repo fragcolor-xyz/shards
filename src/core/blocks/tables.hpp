@@ -4,7 +4,10 @@
 
 namespace chainblocks
 {
-  static CBParametersInfo tableParamsInfo;
+  static ParamsInfo tableParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Name", "The name of the table variable.", CBTypesInfo(strInfo)),
+    ParamsInfo::Param("Key", "The key of the value to write in the table.", CBTypesInfo(strInfo))
+  );
 
   struct SetTableValue
   {
@@ -12,8 +15,10 @@ namespace chainblocks
     std::string name;
     std::string key;
     CBVar currentValue;
-    CBTypeInfo tableValueType;
-    CBExposedTypesInfo tableExposedInfo = nullptr;
+    
+    ExposedInfo tableExposedInfo;
+    TypesInfo tableTypeInfo;
+    TypesInfo contentInfo;
     
     void cleanup()
     {
@@ -34,86 +39,31 @@ namespace chainblocks
       target = nullptr;
     }
     
-    void destroy()
-    {
-      if(tableExposedInfo)
-      {
-        if(tableExposedInfo[0].exposedType.tableTypes)
-        {
-          stbds_arrfree(tableExposedInfo[0].exposedType.tableTypes);
-        }
-        stbds_arrfree(tableExposedInfo);
-      }
-    }
-    
     CBTypesInfo inputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBParametersInfo parameters()
     {
-      if(!strInfo)
-      {
-        CBTypeInfo strType = { String };
-        stbds_arrpush(strInfo, strType);
-      }
-      if(!tableParamsInfo)
-      {
-        CBParameterInfo nameInfo = { "Name", "The name of the table variable.", strInfo };
-        stbds_arrpush(tableParamsInfo, nameInfo);
-        CBParameterInfo keyInfo = { "Key", "The key of the value to write in the table.", strInfo};
-        stbds_arrpush(tableParamsInfo, keyInfo);
-      }
-      return tableParamsInfo;
+      return CBParametersInfo(tableParamsInfo);
     }
     
     CBExposedTypesInfo exposedVariables()
     {
-      if(!tableExposedInfo)
-      {
-        CBTypeInfo atableType = { Table };
-        CBExposedTypeInfo nameInfo = { name.c_str(), "The exposed table.", atableType };
-        stbds_arrpush(tableExposedInfo, nameInfo);
-      }
-      return tableExposedInfo;
+      return CBExposedTypesInfo(tableExposedInfo);
     }
     
     CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)
     {
-      if(!tableExposedInfo)
-      {
-        CBTypeInfo atableType = { Table };
-        CBExposedTypeInfo nameInfo = { name.c_str(), "The exposed table.", atableType };
-        stbds_arrpush(tableExposedInfo, nameInfo);
-      }
-      
-      // Properly specialized this table type!
-      if(!tableExposedInfo[0].exposedType.tableTypes)
-      {
-        stbds_arrpush(tableExposedInfo[0].exposedType.tableTypes, inputType);
-      }
-      else
-      {
-        tableExposedInfo[0].exposedType.tableTypes[0] = inputType;
-      }
-      
-      tableValueType = inputType;
+      contentInfo = TypesInfo(inputType);
+      tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(contentInfo));
+      tableExposedInfo = ExposedInfo(ExposedInfo::Variable(name.c_str(), "The exposed table.", CBTypeInfo(tableTypeInfo) ));
       return inputType;
     }
     
@@ -195,39 +145,17 @@ namespace chainblocks
     
     CBTypesInfo inputTypes()
     {
-      if(!noneType)
-      {
-        CBTypeInfo noType = { None };
-        stbds_arrpush(noneType, noType);
-      }
-      return noneType;
+      return CBTypesInfo(noneInfo);
     }
     
     CBTypesInfo outputTypes()
     {
-      if(!anyInOutInfo)
-      {
-        CBTypeInfo anyType = { Any, true /*sequenced*/ };
-        stbds_arrpush(anyInOutInfo, anyType);
-      }
-      return anyInOutInfo;
+      return CBTypesInfo(anyInfo);
     }
     
     CBParametersInfo parameters()
     {
-      if(!strInfo)
-      {
-        CBTypeInfo strType = { String, false /*sequenced*/ };
-        stbds_arrpush(strInfo, strType);
-      }
-      if(!tableParamsInfo)
-      {
-        CBParameterInfo nameInfo = { "Name", "The name of the table variable.", strInfo };
-        stbds_arrpush(tableParamsInfo, nameInfo);
-        CBParameterInfo keyInfo = { "Key", "The key of the value to read from the table.", strInfo};
-        stbds_arrpush(tableParamsInfo, keyInfo);
-      }
-      return tableParamsInfo;
+      return CBParametersInfo(tableParamsInfo);
     }
 
     CBExposedTypesInfo consumedVariables()
@@ -250,6 +178,7 @@ namespace chainblocks
           return consumableVariables[i].exposedType.tableTypes[0]; // TODO taking only the first for now
         }
       }
+      assert(false);
       return CBTypeInfo();
     }
     
@@ -307,7 +236,6 @@ namespace chainblocks
 
 // Register SetTableValue
 RUNTIME_CORE_BLOCK(chainblocks::SetTableValue, SetTableValue)
-RUNTIME_BLOCK_destroy(SetTableValue)
 RUNTIME_BLOCK_cleanup(SetTableValue)
 RUNTIME_BLOCK_inputTypes(SetTableValue)
 RUNTIME_BLOCK_outputTypes(SetTableValue)

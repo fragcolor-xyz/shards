@@ -8,6 +8,7 @@
 #include "3rdparty/easylogging++.h"
 
 #include <cassert>
+#include <type_traits>
 
 namespace chainblocks
 {
@@ -41,13 +42,13 @@ namespace chainblocks
     
     explicit Var(const char* src)
     {
-      valueType = String;
+      valueType = CBType::String;
       payload.stringValue = src;
     }
     
     explicit Var(std::string& src)
     {
-      valueType = String;
+      valueType = CBType::String;
       payload.stringValue = src.c_str();
     }
     
@@ -71,9 +72,152 @@ namespace chainblocks
 
     explicit operator const char*() const
     {
-      assert(valueType == String);
+      assert(valueType == CBType::String);
       return payload.stringValue;
     }
+  };
+
+  struct TypesInfo
+  {
+    TypesInfo() {}
+
+    TypesInfo(CBType singleType, bool canBeSeq = false)
+    {
+      _innerInfo = nullptr;
+      CBTypeInfo t = { singleType };
+      stbds_arrpush(_innerInfo, t);
+      _innerInfo[0].sequenced = canBeSeq;
+    }
+
+    TypesInfo(CBTypeInfo info)
+    {
+      _innerInfo = nullptr;
+      stbds_arrpush(_innerInfo, info);
+    }
+
+    TypesInfo(CBType singleType, CBTypesInfo contentsInfo)
+    {
+      _innerInfo = nullptr;
+      CBTypeInfo t = { singleType };
+      stbds_arrpush(_innerInfo, t);
+
+      assert(_innerInfo[0].basicType == Table || _innerInfo[0].basicType == Seq);
+      if(_innerInfo[0].basicType == Table)
+        _innerInfo[0].tableTypes = CBTypesInfo(contentsInfo);
+      else if(_innerInfo[0].basicType == Seq)
+        _innerInfo[0].seqTypes = CBTypesInfo(contentsInfo);
+    }
+
+    template<typename... Args>
+    static TypesInfo FromMany(Args... types)
+    {
+      TypesInfo result;
+      std::vector<CBType> vec = {types...};
+      result._innerInfo = nullptr;
+      for(auto type : vec)
+      {
+        CBTypeInfo t = { type };
+        stbds_arrpush(result._innerInfo, t);
+      }
+      return result;
+    }
+
+    template<typename... Args>
+    static TypesInfo FromManyTypes(Args... types)
+    {
+      TypesInfo result;
+      std::vector<CBTypeInfo> vec = {types...};
+      result._innerInfo = nullptr;
+      for(auto type : vec)
+      {
+        stbds_arrpush(result._innerInfo, type);
+      }
+      return result;
+    }
+
+    ~TypesInfo()
+    {
+      if(_innerInfo)
+        stbds_arrfree(_innerInfo);
+    }
+
+    explicit operator CBTypesInfo() const
+    {
+      return _innerInfo;
+    }
+
+    explicit operator CBTypeInfo() const
+    {
+      return _innerInfo[0];
+    }
+
+    CBTypesInfo _innerInfo;
+  };
+  
+  struct ParamsInfo
+  {
+    template<typename... Types>
+    ParamsInfo(Types... types)
+    {
+      std::vector<CBParameterInfo> vec = {types...};
+      _innerInfo = nullptr;
+      for(auto pi : vec)
+      {
+        stbds_arrpush(_innerInfo, pi);
+      }
+    }
+
+    static CBParameterInfo Param(const char* name, const char* help, CBTypesInfo types)
+    {
+      CBParameterInfo res = { name, help, types };
+      return res;
+    }
+
+    ~ParamsInfo()
+    {
+      if(_innerInfo)
+        stbds_arrfree(_innerInfo);
+    }
+
+    explicit operator CBParametersInfo() const
+    {
+      return _innerInfo;
+    }
+
+    CBParametersInfo _innerInfo;
+  };
+
+  struct ExposedInfo
+  {
+    template<typename... Types>
+    ExposedInfo(Types... types)
+    {
+      std::vector<CBExposedTypeInfo> vec = {types...};
+      _innerInfo = nullptr;
+      for(auto pi : vec)
+      {
+        stbds_arrpush(_innerInfo, pi);
+      }
+    }
+
+    static CBExposedTypeInfo Variable(const char* name, const char* help, CBTypeInfo type)
+    {
+      CBExposedTypeInfo res = { name, help, type };
+      return res;
+    }
+
+    ~ExposedInfo()
+    {
+      if(_innerInfo)
+        stbds_arrfree(_innerInfo);
+    }
+
+    explicit operator CBExposedTypesInfo() const
+    {
+      return _innerInfo;
+    }
+
+    CBExposedTypesInfo _innerInfo;
   };
 };
 
@@ -191,7 +335,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     case Block:
       os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
       break;
-    case String:
+    case CBType::String:
       os << var.payload.stringValue;
       break;
     case ContextVar:
@@ -313,7 +457,7 @@ inline bool operator==(const CBVar& a, const CBVar& b)
     case Block:
       return a.payload.blockValue == b.payload.blockValue;
     case ContextVar:
-    case String:
+    case CBType::String:
       return strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
       break;
     case Image:
