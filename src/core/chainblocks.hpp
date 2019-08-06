@@ -7,6 +7,8 @@
 #include "3rdparty/parallel_hashmap/phmap.h"
 #include "3rdparty/easylogging++.h"
 
+#include <cassert>
+
 namespace chainblocks
 {
   class CBException : public std::exception
@@ -25,28 +27,52 @@ namespace chainblocks
   
   struct Var : public CBVar
   {
-    Var(int src)
+    explicit Var(int src)
+    {
+      valueType = Int;
+      payload.intValue = src;
+    }
+
+    explicit Var(uint64_t src)
     {
       valueType = Int;
       payload.intValue = src;
     }
     
-    Var(const char* src)
+    explicit Var(const char* src)
     {
       valueType = String;
       payload.stringValue = src;
     }
     
-    Var(std::string& src)
+    explicit Var(std::string& src)
     {
       valueType = String;
       payload.stringValue = src.c_str();
     }
     
-    Var(CBTable& src)
+    explicit Var(CBTable& src)
     {
       valueType = Table;
       payload.tableValue = src;
+    }
+
+    explicit operator int() const
+    {
+      assert(valueType == Int);
+      return static_cast<int>(payload.intValue);
+    }
+
+    explicit operator uint64_t() const
+    {
+      assert(valueType == Int);
+      return static_cast<uint64_t>(payload.intValue);
+    }
+
+    explicit operator const char*() const
+    {
+      assert(valueType == String);
+      return payload.stringValue;
     }
   };
 };

@@ -417,7 +417,6 @@ namespace chainblocks
           if((dst.valueType != String && dst.valueType != ContextVar) || strlen(dst.payload.stringValue) < srcLen)
           {
             freeCount += destroyVar(dst);
-            dst.valueType = String;
             dst.payload.stringValue = new char[srcLen + 1];
           }
           
