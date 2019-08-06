@@ -12,6 +12,7 @@
 #include "blocks/assert.hpp"
 #include "blocks/logging.hpp"
 #include "blocks/process.hpp"
+#include "blocks/chains.hpp"
 #include <cstdarg>
 #include <csignal>
 #include <boost/stacktrace.hpp>
@@ -41,6 +42,7 @@ namespace chainblocks
       REGISTER_CORE_BLOCK(GetItems);
       REGISTER_CORE_BLOCK(SetTableValue);
       REGISTER_CORE_BLOCK(GetTableValue);
+      REGISTER_CORE_BLOCK(RunChain);
       REGISTER_BLOCK(Assert, Is);
       REGISTER_BLOCK(Assert, IsNot);
       REGISTER_BLOCK(Process, Exec);

@@ -79,7 +79,32 @@ namespace chainblocks
 
   struct TypesInfo
   {
-    TypesInfo() {}
+    TypesInfo()
+    {
+      _innerInfo = nullptr;
+      CBTypeInfo t = { None };
+      stbds_arrpush(_innerInfo, t);
+      _innerInfo[0].sequenced = false;
+    }
+
+    TypesInfo(const TypesInfo& other)
+    { 
+      _innerInfo = nullptr;
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+    }
+
+    TypesInfo& operator=(const TypesInfo& other)
+    { 
+      stbds_arrsetlen(_innerInfo, 0);
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+      return *this;
+    }
 
     TypesInfo(CBType singleType, bool canBeSeq = false)
     {
@@ -112,8 +137,8 @@ namespace chainblocks
     static TypesInfo FromMany(Args... types)
     {
       TypesInfo result;
-      std::vector<CBType> vec = {types...};
       result._innerInfo = nullptr;
+      std::vector<CBType> vec = {types...};
       for(auto type : vec)
       {
         CBTypeInfo t = { type };
@@ -126,8 +151,8 @@ namespace chainblocks
     static TypesInfo FromManyTypes(Args... types)
     {
       TypesInfo result;
-      std::vector<CBTypeInfo> vec = {types...};
       result._innerInfo = nullptr;
+      std::vector<CBTypeInfo> vec = {types...};
       for(auto type : vec)
       {
         stbds_arrpush(result._innerInfo, type);
@@ -156,6 +181,25 @@ namespace chainblocks
   
   struct ParamsInfo
   {
+    ParamsInfo(const ParamsInfo& other)
+    {
+      stbds_arrsetlen(_innerInfo, 0);
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+    }
+
+    ParamsInfo& operator=(const ParamsInfo& other)
+    {
+      _innerInfo = nullptr;
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+      return *this;
+    }
+
     template<typename... Types>
     ParamsInfo(Types... types)
     {
@@ -189,6 +233,25 @@ namespace chainblocks
 
   struct ExposedInfo
   {
+    ExposedInfo(const ExposedInfo& other)
+    {
+      _innerInfo = nullptr;
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+    }
+
+    ExposedInfo& operator=(const ExposedInfo& other)
+    {
+      stbds_arrsetlen(_innerInfo, 0);
+      for(auto i = 0; i < stbds_arrlen(other._innerInfo); i++)
+      {
+        stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      }
+      return *this;
+    }
+
     template<typename... Types>
     ExposedInfo(Types... types)
     {
