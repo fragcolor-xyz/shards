@@ -108,6 +108,11 @@ public:
     }
     
     CBChain* value() const { return m_chain; }
+
+    void consume() 
+    {
+      m_chain = nullptr;
+    }
     
     virtual bool doIsEqualTo(const malValue* rhs) const
     {
@@ -230,7 +235,7 @@ public:
     CBVar value() const { return m_var; }
     
     WITH_META(malCBVar);
-private:
+
     CBVar m_var;
 };
 
@@ -344,23 +349,43 @@ namespace chainblocks
   struct InnerCall
   {
     malValuePtr malInfer; // a fn* [inputType]
+    malList* malActivateList;
     malValuePtr malActivate; // a fn* [input]
+    malCBVar* innerVar;
     CBVar outputVar;
 
     void init(malValuePtr infer, malValuePtr activate)
     {
       malInfer = infer;
-      malActivate = activate;
+      
+      auto avec = new malValueVec();
+      avec->push_back(activate);
+      
+      innerVar = new malCBVar(CBVar());
+      avec->push_back(malValuePtr(innerVar));
+      
+      malActivateList = new malList(avec);
+      malActivate = malValuePtr(malActivateList);
     }
     
     CBTypesInfo inputTypes()
     {
-      return CBTypesInfo(anyInfo);
+      if(!anyInOutInfo)
+      {
+        CBTypeInfo anyType = { Any };
+        stbds_arrpush(anyInOutInfo, anyType);
+      }
+      return anyInOutInfo;
     }
     
     CBTypesInfo outputTypes()
     {
-      return CBTypesInfo(anyInfo);
+      if(!anyInOutInfo)
+      {
+        CBTypeInfo anyType = { Any };
+        stbds_arrpush(anyInOutInfo, anyType);
+      }
+      return anyInOutInfo;
     }
     
     CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumableVariables)
@@ -369,7 +394,6 @@ namespace chainblocks
       auto ivec = new malValueVec();
       ivec->push_back(malInfer);
       ivec->push_back(typeToKeyword(inputType.basicType));
-      
       auto res = EVAL(malValuePtr(new malList(ivec)), nullptr);
       
       auto typeKeyword = VALUE_CAST(malKeyword, res);
@@ -381,18 +405,10 @@ namespace chainblocks
     
     CBVar activate(CBContext* context, CBVar input)
     {
-      auto avec = new malValueVec(); 
-      avec->push_back(malActivate);
-      auto inputCopy = CBVar();
-      cloneVar(inputCopy, input);
-      auto innerVar = new malCBVar(inputCopy);
-      avec->push_back(malValuePtr(innerVar));
-      
-      auto res = EVAL(malValuePtr(new malList(avec)), nullptr);
-      
+      cloneVar(innerVar->m_var, input);
+      auto res = EVAL(malActivate, nullptr);
       auto resStaticVar = STATIC_CAST(malCBVar, res); // for perf here we use static, it's dangerous tho!
-      cloneVar(outputVar, resStaticVar->value());
-      
+      cloneVar(outputVar, resStaticVar->m_var);
       return outputVar;
     }
   };

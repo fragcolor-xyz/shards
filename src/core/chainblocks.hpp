@@ -28,10 +28,30 @@ namespace chainblocks
   
   struct Var : public CBVar
   {
+    explicit Var()
+    {
+      valueType = None;
+      payload.chainState = Continue;
+    }
+
+    static Var Stop()
+    {
+      Var res;
+      res.valueType = None;
+      res.payload.chainState = CBChainState::Stop;
+      return res;
+    }
+
     explicit Var(int src)
     {
       valueType = Int;
       payload.intValue = src;
+    }
+
+    explicit Var(CBChain* src)
+    {
+      valueType = Chain;
+      payload.chainValue = src;
     }
 
     explicit Var(uint64_t src)
@@ -56,24 +76,6 @@ namespace chainblocks
     {
       valueType = Table;
       payload.tableValue = src;
-    }
-
-    explicit operator int() const
-    {
-      assert(valueType == Int);
-      return static_cast<int>(payload.intValue);
-    }
-
-    explicit operator uint64_t() const
-    {
-      assert(valueType == Int);
-      return static_cast<uint64_t>(payload.intValue);
-    }
-
-    explicit operator const char*() const
-    {
-      assert(valueType == CBType::String);
-      return payload.stringValue;
     }
   };
 

@@ -216,7 +216,7 @@ when false:
   chainblock CBGetItems, "GetItems"
 
 # RunChain - Runs a sub chain, ends the parent chain if the sub chain fails
-when true:
+when false:
   type
     CBRunChain* = object
       chain: CBChainPtr

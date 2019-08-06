@@ -14,6 +14,8 @@ namespace chainblocks
   static TypesInfo intInfo = TypesInfo(CBType::Int);
   static TypesInfo intSeqInfo = TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
   static TypesInfo int2Info = TypesInfo(CBType::Int2);
+  static TypesInfo strTableInfo = TypesInfo(CBType::Table, CBTypesInfo(strInfo));
+  static TypesInfo intTableInfo = TypesInfo(CBType::Table, CBTypesInfo(intInfo));
   
   static CBEnumInfo boolOpEnumInfo = { "BoolOp" };
 
