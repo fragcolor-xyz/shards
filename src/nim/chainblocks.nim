@@ -316,7 +316,7 @@ converter toCBVar*(v: CBColor): CBVar {.inline.} =
 converter toCBVar*(v: CBChainPtr): CBVar {.inline.} =
   return CBVar(valueType: Chain, payload: CBVarPayload(chainValue: v))
 
-converter toCBVar*(v: ptr CBRuntimeBlock): CBVar {.inline.} =
+converter toCBVar*(v: ptr CBlock): CBVar {.inline.} =
   return CBVar(valueType: Block, payload: CBVarPayload(blockValue: v))
 
 template contextOrPure*(subject, container: untyped; wantedType: CBType; typeGetter: untyped): untyped =
@@ -356,8 +356,8 @@ template cleanup*(b: auto) = discard
 when appType != "lib" or defined(forceCBRuntime):
   proc throwCBException*(msg: string) = emitc("throw chainblocks::CBException(", msg.cstring, ");")
 
-  proc createBlock*(name: cstring): ptr CBRuntimeBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
-  proc cbCreateBlock*(name: cstring): ptr CBRuntimeBlock {.cdecl, exportc, dynlib.} = createBlock(name)
+  proc createBlock*(name: cstring): ptr CBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
+  proc cbCreateBlock*(name: cstring): ptr CBlock {.cdecl, exportc, dynlib.} = createBlock(name)
 
   proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "runtime.hpp".}
   proc cbGetCurrentChain*(): CBChainPtr {.cdecl, exportc, dynlib.} = getCurrentChain()
@@ -369,27 +369,27 @@ when appType != "lib" or defined(forceCBRuntime):
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
   
   type 
-    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.}
+    CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.}
     ValidationResults* = seq[tuple[error: bool; message: string]]
   proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
-  proc validateConnections*(chain: CBRuntimeBlocks; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
-  proc validateSetParam*(blk: ptr CBRuntimeBlock; index: cint;  value: var CBVar; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateSetParam(#, #, #, #, #)", header: "runtime.hpp".}
+  proc validateConnections*(chain: CBlocks; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
+  proc validateSetParam*(blk: ptr CBlock; index: cint;  value: var CBVar; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateSetParam(#, #, #, #, #)", header: "runtime.hpp".}
   
   proc validate*(chain: CBChainPtr): ValidationResults =
     discard validateConnections(
       chain,
-      proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+      proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
         var resp = cast[ptr ValidationResults](userData)
         resp[].add((not nonfatalWarning, $error)),
       addr result
     )
   
-  proc validate*(blk: ptr CBRuntimeBlock; index: int;  value: var CBVar): ValidationResults =
+  proc validate*(blk: ptr CBlock; index: int;  value: var CBVar): ValidationResults =
     validateSetParam(
       blk,
       index.cint,
       value,
-      proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+      proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
         var resp = cast[ptr ValidationResults](userData)
         resp[].add((not nonfatalWarning, $error)),
       addr result
@@ -443,7 +443,7 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     
     type
       `rtNameValue` = object
-        pre: CBRuntimeBlock
+        pre: CBlock
         sb: `blk`
         cacheInputTypes: owned(ref CBTypesInfo)
         cacheOutputTypes: owned(ref CBTypesInfo)
@@ -545,10 +545,10 @@ macro chainblock*(blk: untyped; blockName: string; namespaceStr: string = ""; te
     proc `cleanupProc`*(b: `rtName`) {.cdecl.} =
       updateStackBottom()
       b.sb.cleanup()
-    registerBlock(`namespace` & `blockName`) do -> ptr CBRuntimeBlock {.cdecl.}:
+    registerBlock(`namespace` & `blockName`) do -> ptr CBlock {.cdecl.}:
       # https://stackoverflow.com/questions/7546620/operator-new-initializes-memory-to-zero
       # Memory will be memset to 0x0, because we call T()
-      cppnew(result, CBRuntimeBlock, `rtNameValue`)
+      cppnew(result, CBlock, `rtNameValue`)
       # DO NOT CHANGE THE FOLLOWING, this sorcery is needed to build with msvc 19ish
       # Moreover it's kinda nim's fault, as it won't generate a C cast without `.pointer`
       result.name = cast[CBNameProc](`nameProc`.pointer)
@@ -616,7 +616,7 @@ when appType != "lib" or defined(forceCBRuntime):
 
   proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): RunChainOutput {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
 
-  proc activateBlock*(chain: ptr CBRuntimeBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
+  proc activateBlock*(chain: ptr CBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
   
   proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "runtime.hpp".}
   proc suspend*(seconds: float64): CBVar {.inline.} =

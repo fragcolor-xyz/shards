@@ -85,7 +85,7 @@ namespace chainblocks
       
       // We need to validate the sub chain to figure it out! 
       
-      CBTypeInfo outputType = validateConnections(chain, [] (const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData) {
+      CBTypeInfo outputType = validateConnections(chain, [] (const CBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData) {
         if(!nonfatalWarning)
         {
           LOG(ERROR) << "RunChain: failed inner chain validation, error: " << errorTxt;

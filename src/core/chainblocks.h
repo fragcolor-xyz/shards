@@ -120,8 +120,8 @@ typedef CBChain* CBChainPtr;
 
 struct CBNode;
 
-struct CBRuntimeBlock;
-typedef CBRuntimeBlock** CBRuntimeBlocks; // a stb array
+struct CBlock;
+typedef CBlock** CBlocks; // a stb array
 
 struct CBTypeInfo;
 typedef CBTypeInfo* CBTypesInfo; // a stb array
@@ -327,7 +327,7 @@ struct CBVarPayload // will be 32 bytes, must be 16 aligned due to vectors
     
     CBChainPtr chainValue;
     
-    CBRuntimeBlock* blockValue;
+    CBlock* blockValue;
     
     struct {
       CBEnum enumValue;
@@ -357,37 +357,37 @@ struct CBNamedVar
   CBVar value;
 };
 
-typedef CBRuntimeBlock* (__cdecl *CBBlockConstructor)();
+typedef CBlock* (__cdecl *CBBlockConstructor)();
 typedef void (__cdecl *CBCallback)();
 
-typedef const char* (__cdecl *CBNameProc)(CBRuntimeBlock*);
-typedef const char* (__cdecl *CBHelpProc)(CBRuntimeBlock*);
+typedef const char* (__cdecl *CBNameProc)(CBlock*);
+typedef const char* (__cdecl *CBHelpProc)(CBlock*);
 
 // Construction/Destruction
-typedef void (__cdecl *CBSetupProc)(CBRuntimeBlock*);
-typedef void (__cdecl *CBDestroyProc)(CBRuntimeBlock*);
+typedef void (__cdecl *CBSetupProc)(CBlock*);
+typedef void (__cdecl *CBDestroyProc)(CBlock*);
 
-typedef CBTypesInfo (__cdecl *CBInputTypesProc)(CBRuntimeBlock*);
-typedef CBTypesInfo (__cdecl *CBOutputTypesProc)(CBRuntimeBlock*);
+typedef CBTypesInfo (__cdecl *CBInputTypesProc)(CBlock*);
+typedef CBTypesInfo (__cdecl *CBOutputTypesProc)(CBlock*);
 
-typedef CBExposedTypesInfo (__cdecl *CBExposedVariablesProc)(CBRuntimeBlock*);
-typedef CBExposedTypesInfo (__cdecl *CBConsumedVariablesProc)(CBRuntimeBlock*);
+typedef CBExposedTypesInfo (__cdecl *CBExposedVariablesProc)(CBlock*);
+typedef CBExposedTypesInfo (__cdecl *CBConsumedVariablesProc)(CBlock*);
 
-typedef CBParametersInfo (__cdecl *CBParametersProc)(CBRuntimeBlock*);
-typedef void (__cdecl *CBSetParamProc)(CBRuntimeBlock*, int, CBVar);
-typedef CBVar (__cdecl *CBGetParamProc)(CBRuntimeBlock*, int);
+typedef CBParametersInfo (__cdecl *CBParametersProc)(CBlock*);
+typedef void (__cdecl *CBSetParamProc)(CBlock*, int, CBVar);
+typedef CBVar (__cdecl *CBGetParamProc)(CBlock*, int);
 
-typedef CBTypeInfo (__cdecl *CBInferTypesProc)(CBRuntimeBlock*, CBTypeInfo inputType, CBExposedTypesInfo consumableVariables);
+typedef CBTypeInfo (__cdecl *CBInferTypesProc)(CBlock*, CBTypeInfo inputType, CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
-typedef void (__cdecl *CBPreChainProc)(CBRuntimeBlock*, CBContext*);
-typedef CBVar (__cdecl *CBActivateProc)(CBRuntimeBlock*, CBContext*, CBVar);
-typedef void (__cdecl *CBPostChainProc)(CBRuntimeBlock*, CBContext*);
+typedef void (__cdecl *CBPreChainProc)(CBlock*, CBContext*);
+typedef CBVar (__cdecl *CBActivateProc)(CBlock*, CBContext*, CBVar);
+typedef void (__cdecl *CBPostChainProc)(CBlock*, CBContext*);
 
 // Generally when stop() is called
-typedef void (__cdecl *CBCleanupProc)(CBRuntimeBlock*);
+typedef void (__cdecl *CBCleanupProc)(CBlock*);
 
-struct CBRuntimeBlock
+struct CBlock
 {
   CBInlineBlocks inlineBlockId;
 
@@ -416,7 +416,7 @@ struct CBRuntimeBlock
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes internally to clean up the block state
 };
 
-typedef void (__cdecl *CBValidationCallback)(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData);
+typedef void (__cdecl *CBValidationCallback)(const CBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData);
 
 #ifdef _WIN32
 # ifdef DLL_EXPORT
@@ -467,8 +467,8 @@ EXPORTED void __cdecl chainblocks_CloneVar(CBVar* dst, const CBVar* src);
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var);
 
 // Utility to use blocks within blocks
-EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output);
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType);
+EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock* block, CBContext* context, CBVar* input, CBVar* output);
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(CBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType);
 
 // Logging
 EXPORTED void __cdecl chainblocks_Log(int level, const char* msg, ...);

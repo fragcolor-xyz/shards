@@ -47,7 +47,7 @@ extern void NimMain();
 void registerKeywords(malEnvPtr env);
 
 namespace chainblocks {
-  CBRuntimeBlock* createBlockInnerCall();
+  CBlock* createBlockInnerCall();
 }
 
 void installCBCore(malEnvPtr env) 
@@ -144,7 +144,7 @@ class malCBBlock : public malValue {
 public:
     malCBBlock(MalString name) : m_block(chainblocks::createBlock(name.c_str())) { }
     
-    malCBBlock(CBRuntimeBlock* block) : m_block(block) { }
+    malCBBlock(CBlock* block) : m_block(block) { }
     
     malCBBlock(const malCBBlock& that, malValuePtr meta) 
     : malValue(meta), m_block(that.m_block), m_innerRefs(that.m_innerRefs)
@@ -165,7 +165,7 @@ public:
       return stream.str();
     }
     
-    CBRuntimeBlock* value() const
+    CBlock* value() const
     {
       if(!m_block)
         throw chainblocks::CBException("Attempted to use a block that has been consumed. Blocks are unique.");
@@ -189,7 +189,7 @@ public:
     
     WITH_META(malCBBlock);
 private:
-    CBRuntimeBlock* m_block;
+    CBlock* m_block;
     std::set<const RefCounted*> m_innerRefs;
 };
 
@@ -472,9 +472,9 @@ BUILTIN("Node")
   result.push_back(constBlock)
 
 // Helper to generate const blocks automatically inferring types
-std::vector<CBRuntimeBlock*> blockify(malValuePtr arg)
+std::vector<CBlock*> blockify(malValuePtr arg)
 {
-  std::vector<CBRuntimeBlock*> result;
+  std::vector<CBlock*> result;
   
   if (arg == mal::nilValue())
   {
@@ -662,10 +662,10 @@ int findParamIndex(std::string name, CBParametersInfo params)
   return -1;
 }
 
-void validationCallback(const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
+void validationCallback(const CBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
 {
   auto failed = reinterpret_cast<bool*>(userData);
-  auto block = const_cast<CBRuntimeBlock*>(errorBlock);
+  auto block = const_cast<CBlock*>(errorBlock);
   if(!nonfatalWarning)
   {
     *failed = true;

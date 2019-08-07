@@ -181,12 +181,12 @@ EXPORTED void __cdecl chainblocks_DestroyVar(CBVar* var)
   chainblocks::destroyVar(*var);
 }
 
-EXPORTED void __cdecl chainblocks_ActivateBlock(CBRuntimeBlock* block, CBContext* context, CBVar* input, CBVar* output)
+EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock* block, CBContext* context, CBVar* input, CBVar* output)
 {
   chainblocks::activateBlock(block, context, *input, *output);
 }
 
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(const CBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
   return validateConnections(chain, callback, userData, inputType);
 }
@@ -900,7 +900,7 @@ struct ValidationContext
   
   CBTypeInfo previousOutputType;
   
-  CBRuntimeBlock* bottom;
+  CBlock* bottom;
   
   CBValidationCallback cb;
   void* userData;
@@ -1012,7 +1012,7 @@ void validateConnection(ValidationContext& ctx)
   }
 }
 
-CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+CBTypeInfo validateConnections(const std::vector<CBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
   auto ctx = ValidationContext();
   ctx.previousOutputType = inputType;
@@ -1033,9 +1033,9 @@ CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callba
   return validateConnections(chain->blocks, callback, userData, inputType);
 }
 
-CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
+CBTypeInfo validateConnections(const CBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType)
 {
-  std::vector<CBRuntimeBlock*> blocks;
+  std::vector<CBlock*> blocks;
   for(auto i = 0; i < stbds_arrlen(chain); i++)
   {
     blocks.push_back(chain[i]);
@@ -1043,7 +1043,7 @@ CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback
   return validateConnections(blocks, callback, userData, inputType);
 }
 
-void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData)
+void validateSetParam(CBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData)
 {
   auto params = block->parameters(block);
   if(stbds_arrlen(params) <= index)

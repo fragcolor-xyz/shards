@@ -222,7 +222,7 @@ when true:
       var failed = false
       let subResult = validateConnections(
         b.chain,
-        proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+        proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
           var failedPtr = cast[ptr bool](userData)
           if not nonfatalWarning:
             failedPtr[] = true,
@@ -674,15 +674,15 @@ when true:
       # We need to validate the sub chain to figure it out!
       var
         failed = false
-        trueChain: CBRuntimeBlocks = nil
-        falseChain: CBRuntimeBlocks = nil
+        trueChain: CBlocks = nil
+        falseChain: CBlocks = nil
       for blk in b.trueBlocks.mitems: trueChain.push(blk.blockValue)
       for blk in b.falseBlocks.mitems: falseChain.push(blk.blockValue)
       
       let
         trueResult = validateConnections(
           trueChain,
-          proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+          proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
             var failedPtr = cast[ptr bool](userData)
             if not nonfatalWarning:
               failedPtr[] = true,
@@ -691,7 +691,7 @@ when true:
         )
         falseResult = validateConnections(
           falseChain,
-          proc(blk: ptr CBRuntimeBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
+          proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
             var failedPtr = cast[ptr bool](userData)
             if not nonfatalWarning:
               failedPtr[] = true,

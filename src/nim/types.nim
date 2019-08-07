@@ -155,7 +155,7 @@ type
     tableValue*: CBTable
     tableLen*: int32
     chainValue*: CBChainPtr
-    blockValue*: ptr CBRuntimeBlock
+    blockValue*: ptr CBlock
     enumValue*: CBEnum
     enumVendorId*: int32
     enumTypeId*: int32
@@ -168,31 +168,31 @@ type
   CBVarConst* = object
     value*: CBVar
 
-  CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
-  CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): cstring {.cdecl.}
+  CBNameProc* {.importcpp: "CBNameProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): cstring {.cdecl.}
+  CBHelpProc* {.importcpp: "CBHelpProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): cstring {.cdecl.}
 
-  CBSetupProc* {.importcpp: "CBSetupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
-  CBDestroyProc* {.importcpp: "CBDestroyProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
+  CBSetupProc* {.importcpp: "CBSetupProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock) {.cdecl.}
+  CBDestroyProc* {.importcpp: "CBDestroyProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock) {.cdecl.}
 
-  CBPreChainProc* {.importcpp: "CBPreChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
-  CBPostChainProc* {.importcpp: "CBPostChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext) {.cdecl.}
+  CBPreChainProc* {.importcpp: "CBPreChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock; context: CBContext) {.cdecl.}
+  CBPostChainProc* {.importcpp: "CBPostChainProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock; context: CBContext) {.cdecl.}
 
-  CBInputTypesProc*{.importcpp: "CBInputTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
-  CBOutputTypesProc* {.importcpp: "CBOutputTypesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBTypesInfo {.cdecl.}
+  CBInputTypesProc*{.importcpp: "CBInputTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBlock): CBTypesInfo {.cdecl.}
+  CBOutputTypesProc* {.importcpp: "CBOutputTypesProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): CBTypesInfo {.cdecl.}
 
-  CBExposedVariablesProc* {.importcpp: "CBExposedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBExposedTypesInfo {.cdecl.}
-  CBConsumedVariablesProc* {.importcpp: "CBConsumedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBExposedTypesInfo {.cdecl.}
+  CBExposedVariablesProc* {.importcpp: "CBExposedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): CBExposedTypesInfo {.cdecl.}
+  CBConsumedVariablesProc* {.importcpp: "CBConsumedVariablesProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): CBExposedTypesInfo {.cdecl.}
 
-  CBParametersProc* {.importcpp: "CBParametersProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock): CBParametersInfo {.cdecl.}
-  CBSetParamProc* {.importcpp: "CBSetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int; val: CBVar) {.cdecl.}
-  CBGetParamProc* {.importcpp: "CBGetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; index: int): CBVar {.cdecl.}
+  CBParametersProc* {.importcpp: "CBParametersProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock): CBParametersInfo {.cdecl.}
+  CBSetParamProc* {.importcpp: "CBSetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock; index: int; val: CBVar) {.cdecl.}
+  CBGetParamProc* {.importcpp: "CBGetParamProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock; index: int): CBVar {.cdecl.}
 
-  CBInferTypesProc*{.importcpp: "CBInferTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBRuntimeBlock; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo {.cdecl.}
+  CBInferTypesProc*{.importcpp: "CBInferTypesProc", header: "chainblocks.hpp".}  = proc(b: ptr CBlock; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo {.cdecl.}
 
-  CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
-  CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBRuntimeBlock) {.cdecl.}
+  CBActivateProc* {.importcpp: "CBActivateProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock; context: CBContext; input: CBVar): CBVar {.cdecl.}
+  CBCleanupProc* {.importcpp: "CBCleanupProc", header: "chainblocks.hpp".} = proc(b: ptr CBlock) {.cdecl.}
 
-  CBRuntimeBlock* {.importcpp: "CBRuntimeBlock", header: "chainblocks.hpp".} = object
+  CBlock* {.importcpp: "CBlock", header: "chainblocks.hpp".} = object
     inlineBlockId*: uint8
     
     name*: CBNameProc
@@ -219,12 +219,12 @@ type
     activate*: CBActivateProc
     cleanup*: CBCleanupProc
 
-  CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBRuntimeBlock {.cdecl.}
-  CBRuntimeBlocks* {.importcpp: "CBRuntimeBlocks", header: "chainblocks.hpp".} = ptr UncheckedArray[ptr CBRuntimeBlock]
+  CBBlockConstructor* {.importcpp: "CBBlockConstructor", header: "chainblocks.hpp".} = proc(): ptr CBlock {.cdecl.}
+  CBlocks* {.importcpp: "CBlocks", header: "chainblocks.hpp".} = ptr UncheckedArray[ptr CBlock]
 
   CBCallback* {.importcpp: "CBCallback", header: "chainblocks.hpp".} = proc(): void {.cdecl.}
 
-  CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo | CBStrings | CBExposedTypesInfo | CBRuntimeBlocks
+  CBSeqLike* = CBSeq | CBTypesInfo | CBParametersInfo | CBStrings | CBExposedTypesInfo | CBlocks
   CBIntVectorsLike* = CBInt2 | CBInt3 | CBInt4 | CBInt8 | CBInt16
   CBFloatVectorsLike* = CBFloat2 | CBFloat3 | CBFloat4
 

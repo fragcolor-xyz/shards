@@ -15,7 +15,7 @@
 // Stub inline blocks, actually implemented in respective nim code!
 struct CBConstStub
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     CBVar constValue;
@@ -24,7 +24,7 @@ struct CBConstStub
 
 struct CBSleepStub
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     double sleepTime;
@@ -33,7 +33,7 @@ struct CBSleepStub
 
 struct CBMathStub
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     CBVar operand;
@@ -44,7 +44,7 @@ struct CBMathStub
 
 struct CBMathUnaryStub
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     CBSeq seqCache;
@@ -53,7 +53,7 @@ struct CBMathUnaryStub
 
 struct CBCoreRepeat
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     bool doForever;
@@ -64,7 +64,7 @@ struct CBCoreRepeat
 
 struct CBCoreIf
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     uint8_t boolOp;
@@ -79,7 +79,7 @@ struct CBCoreIf
 struct CBCoreSetVariable
 {
   // Also Get and Add
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     CBVar* target;
@@ -88,7 +88,7 @@ struct CBCoreSetVariable
 
 struct CBCoreSwapVariables
 {
-  CBRuntimeBlock header;
+  CBlock header;
   struct
   {
     CBVar* target1;
@@ -207,6 +207,11 @@ struct CBContext
 
 struct CBChain
 {
+  static std::unique_ptr<CBChain> CreateChain(const char* name) 
+  {
+    return std::make_unique<CBChain>(name);
+  }
+
   CBChain(const char* chain_name) :
     looped(false),
     unsafe(false),
@@ -238,13 +243,13 @@ struct CBChain
   void cleanup();
 
   // Also the chain takes ownership of the block!
-  void addBlock(CBRuntimeBlock* blk)
+  void addBlock(CBlock* blk)
   {
     blocks.push_back(blk);
   }
 
   // Also removes ownership of the block
-  void removeBlock(CBRuntimeBlock* blk)
+  void removeBlock(CBlock* blk)
   {
     auto findIt = std::find(blocks.begin(), blocks.end(), blk);
     if(findIt != blocks.end())
@@ -279,13 +284,13 @@ struct CBChain
   
   CBContext* context;
   CBNode* node;
-  std::vector<CBRuntimeBlock*> blocks;
+  std::vector<CBlock*> blocks;
 };
 
-CBTypeInfo validateConnections(const std::vector<CBRuntimeBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
-CBTypeInfo validateConnections(const CBRuntimeBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
+CBTypeInfo validateConnections(const std::vector<CBlock*> chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
+CBTypeInfo validateConnections(const CBlocks chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
 CBTypeInfo validateConnections(const CBChain* chain, CBValidationCallback callback, void* userData, CBTypeInfo inputType = CBTypeInfo());
-void validateSetParam(CBRuntimeBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData);
+void validateSetParam(CBlock* block, int index, CBVar& value, CBValidationCallback callback, void* userData);
 
 namespace chainblocks
 {
@@ -298,7 +303,7 @@ namespace chainblocks
   extern phmap::node_hash_map<std::string, CBChain*> GlobalChains;
   extern thread_local CBChain* CurrentChain;
   
-  static CBRuntimeBlock* createBlock(const char* name);
+  static CBlock* createBlock(const char* name);
 };
 
 using json = nlohmann::json;
@@ -588,7 +593,7 @@ namespace chainblocks
 
   void registerCoreBlocks();
 
-  static CBRuntimeBlock* createBlock(const char* name)
+  static CBlock* createBlock(const char* name)
   {
     // Always hook this here
     registerCoreBlocks();
@@ -838,7 +843,7 @@ namespace chainblocks
 
   #include "runtime_macros.hpp"
 
-  inline static void activateBlock(CBRuntimeBlock* blk, CBContext* context, const CBVar& input, CBVar& previousOutput)
+  inline static void activateBlock(CBlock* blk, CBContext* context, const CBVar& input, CBVar& previousOutput)
   {
     switch(blk->inlineBlockId)
     {
@@ -1711,10 +1716,10 @@ struct CBNode
     // Validate the chain
     if(validate)
     {
-      validateConnections(chain->blocks, [](const CBRuntimeBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
+      validateConnections(chain->blocks, [](const CBlock* errorBlock, const char* errorTxt, bool nonfatalWarning, void* userData)
       {
         auto node = reinterpret_cast<CBNode*>(userData);
-        auto blk = const_cast<CBRuntimeBlock*>(errorBlock);
+        auto blk = const_cast<CBlock*>(errorBlock);
         if(!nonfatalWarning)
         {
           node->errorMsg.assign(errorTxt);
