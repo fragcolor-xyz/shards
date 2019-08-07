@@ -93,11 +93,16 @@ class malCBChain : public malValue {
 public:
     malCBChain(MalString name) : m_chain(new CBChain(name.c_str())) { }
     
-    malCBChain(const malCBChain& that, malValuePtr meta) : malValue(meta), m_chain(that.m_chain) { }
+    malCBChain(const malCBChain& that, malValuePtr meta) : malValue(meta), m_chain(that.m_chain) 
+    {
+      // Chains are unique!
+      consume();
+    }
     
     ~malCBChain()
     {
-      delete m_chain;
+      if(m_chain)
+        delete m_chain;
     }
     
     virtual MalString print(bool readably) const 
@@ -107,7 +112,12 @@ public:
       return stream.str();
     }
     
-    CBChain* value() const { return m_chain; }
+    CBChain* value() const 
+    { 
+      if(!m_chain)
+        throw chainblocks::CBException("Attempted to use a chain that has been consumed. Chains are unique.");
+      return m_chain; 
+    }
 
     void consume() 
     {
@@ -130,7 +140,11 @@ public:
     
     malCBBlock(CBRuntimeBlock* block) : m_block(block) { }
     
-    malCBBlock(const malCBBlock& that, malValuePtr meta) : malValue(meta), m_block(that.m_block) { }
+    malCBBlock(const malCBBlock& that, malValuePtr meta) 
+    : malValue(meta), m_block(that.m_block), m_innerRefs(that.m_innerRefs)
+    {
+      consume();
+    }
     
     ~malCBBlock()
     {
@@ -145,7 +159,12 @@ public:
       return stream.str();
     }
     
-    CBRuntimeBlock* value() const { return m_block; }
+    CBRuntimeBlock* value() const
+    {
+      if(!m_block)
+        throw chainblocks::CBException("Attempted to use a block that has been consumed. Blocks are unique.");
+      return m_block;
+    }
     
     void consume() 
     {
@@ -172,7 +191,11 @@ class malCBNode : public malValue {
 public:
     malCBNode() : m_node(new CBNode()) { }
     
-    malCBNode(const malCBNode& that, malValuePtr meta) : malValue(meta), m_node(that.m_node) { }
+    malCBNode(const malCBNode& that, malValuePtr meta) 
+    : malValue(meta), m_node(that.m_node), m_innerRefs(that.m_innerRefs)
+    {
+      consume();
+    }
     
     ~malCBNode()
     {
@@ -186,7 +209,17 @@ public:
       return stream.str();
     }
 
-    CBNode* value() const { return m_node; }
+    CBNode* value() const
+    { 
+      if(!m_node)
+        throw chainblocks::CBException("Attempted to use a node that has been consumed. Nodes are unique.");
+      return m_node;
+    }
+
+    void consume()
+    {
+      m_node = nullptr;
+    }
 
     void schedule(malCBChain* chain)
     {
@@ -211,7 +244,7 @@ public:
     
     malCBVar(const malCBVar& that, malValuePtr meta) : malValue(meta) 
     {
-      chainblocks::destroyVar(m_var);
+      m_var = CBVar();
       chainblocks::cloneVar(m_var, that.m_var);
     }
     
