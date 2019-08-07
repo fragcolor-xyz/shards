@@ -29,6 +29,62 @@ else()
 endif()
 ###
 
+### setup clang format
+find_program(
+  CLANG_FORMAT_EXE
+  NAMES "clang-format"
+  DOC "Path to clang-format executable"
+  )
+if(NOT CLANG_FORMAT_EXE)
+  message(STATUS "clang-format not found.")
+else()
+  message(STATUS "clang-format found: ${CLANG_FORMAT_EXE}")
+  set(DO_CLANG_FORMAT "${CLANG_FORMAT_EXE}" "-i -style=LLVM")
+endif()
+
+#### Files to format
+if (NOT DEFINED MY_PROJECT_SOURCE_FILES)
+  set(
+    MY_PROJECT_SOURCE_FILES
+    ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+    ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
+    ${CHAINBLOCKS_DIR}/src/core/runtime_macros.hpp
+    ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
+    ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
+    ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/assert.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/chains.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/logging.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/process.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/tables.hpp
+    ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
+    ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
+    )
+endif()
+
+#### Format target
+function(prepend var prefix)
+  set(listVar "")
+
+  foreach(f ${ARGN})
+    list(APPEND listVar "${prefix}/${f}")
+  endforeach()
+
+  set(${var} "${listVar}" PARENT_SCOPE)
+endfunction()
+
+if(CLANG_FORMAT_EXE)
+  # prepend(FILES_TO_FORMAT ${CMAKE_CURRENT_SOURCE_DIR} ${MY_PROJECT_SOURCE_FILES})
+
+  add_custom_target(
+    format
+    COMMAND ${CLANG_FORMAT_EXE} -i -style=LLVM ${MY_PROJECT_SOURCE_FILES}
+  )
+endif()
+###
+
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/src/core
