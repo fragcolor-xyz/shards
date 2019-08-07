@@ -816,7 +816,7 @@ void from_json(const json& j, CBChainPtr& chain)
     auto blk = chainblocks::createBlock(blkname.c_str());
     if(!blk)
     {
-      auto errmsg = "Failed to create block of type: " + std::string("blkname");
+      auto errmsg = "Failed to create block of type: " + std::string(blkname);
       throw chainblocks::CBException(errmsg.c_str());
     }
   

@@ -16,7 +16,7 @@ elseif(WIN32)
   add_compile_options(-static)
 endif()
 
-add_compile_options(-fno-threadsafe-statics -ffast-math)
+add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
 ###
 
 ### boost context

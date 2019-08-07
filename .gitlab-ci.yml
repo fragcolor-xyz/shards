@@ -10,6 +10,7 @@ buildAndRun:win:debug:
     - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
+    - .\cbl.exe ../src/tests/inner.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 
@@ -25,6 +26,7 @@ buildAndRun:win:release:
     - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
+    - .\cbl.exe ../src/tests/inner.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 

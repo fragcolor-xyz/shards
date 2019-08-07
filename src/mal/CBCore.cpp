@@ -46,6 +46,10 @@ extern void NimMain();
 
 void registerKeywords(malEnvPtr env);
 
+namespace chainblocks {
+  CBRuntimeBlock* createBlockInnerCall();
+}
+
 void installCBCore(malEnvPtr env) 
 {
   chainblocks::installSignalHandlers();
@@ -92,6 +96,8 @@ void installCBCore(malEnvPtr env)
 class malCBChain : public malValue {
 public:
     malCBChain(MalString name) : m_chain(new CBChain(name.c_str())) { }
+
+    malCBChain(CBChain* chain) : m_chain(chain) { }
     
     malCBChain(const malCBChain& that, malValuePtr meta) : malValue(meta), m_chain(that.m_chain) 
     {
@@ -995,6 +1001,40 @@ BUILTIN("Float4")
   var.payload.float4Value[2] = value2->value();
   var.payload.float4Value[3] = value3->value();
   return malValuePtr(new malCBVar(var));
+}
+
+BUILTIN("json")
+{
+  CHECK_ARGS_IS(1);
+  auto first = *argsBegin;
+  if (const malCBChain* v = DYNAMIC_CAST(malCBChain, first))
+  {
+    json jchain = v->value();
+    return malValuePtr(mal::string(jchain.dump()));
+  }
+  else if (const malCBVar* v = DYNAMIC_CAST(malCBVar, first))
+  {
+    json jchain = v->value();
+    return malValuePtr(mal::string(jchain.dump()));
+  }
+  return mal::nilValue();
+}
+
+BUILTIN("ChainJson")
+{
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  try
+  {
+    auto jchain = json::parse(value->value());
+    CBChain* chain = jchain.get<CBChain*>();
+    return malValuePtr(new malCBChain(chain));
+  }
+  catch(json::exception& e)
+  {
+    LOG(ERROR) << "Failed to parse a json chain, " << e.what();
+    return mal::nilValue();
+  }
 }
 
 BUILTIN_ISA("Var?", malCBVar);

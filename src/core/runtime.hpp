@@ -4,16 +4,6 @@
 
 // ONLY CLANG AND GCC SUPPORTED FOR NOW
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wtype-limits"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wmultichar"
-#elif defined(__clang__)
-#pragma clang diagnostic ignored "-Wtype-limits"
-#pragma clang diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wmultichar"
-#endif
-
 #include <string.h> // memset
 
 #include <regex>

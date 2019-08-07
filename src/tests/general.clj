@@ -15,7 +15,7 @@
 ;   ))
 ; ))
 
-(schedule Root (Chain "namedChain"
+(def! testChain (Chain "namedChain"
   ; (Msg "Running tests!")
 
   "Hello"
@@ -44,18 +44,6 @@
   (Float3 10.3 2.1 1.1)
   (Math.Multiply (Float3 2 2 2))
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
-  (Log)
-
-  (. 
-    (fn* [inputType] inputType) 
-    (fn* [input] input)) ; test our interop special block
-  (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
-  (Log)
-
-  (. 
-    (fn* [inputType] :Int) 
-    (fn* [input] (Int 22))) ; test our interop special block
-  (Assert.Is 22 true)
   (Log)
 
   10
@@ -115,6 +103,11 @@
 
   (Msg "All looking good!")
 ))
+(schedule Root testChain)
+(if (tick Root) nil (throw "Root tick failed"))
+
+; test json support
+(schedule Root (ChainJson (json testChain)))
 (if (tick Root) nil (throw "Root tick failed"))
 
 (def! P (Node))
