@@ -95,6 +95,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
+add_dependencies(cbruntime format)
 ###
 
 ### nim stuff

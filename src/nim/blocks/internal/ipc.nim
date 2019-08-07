@@ -33,7 +33,7 @@ type IPC* = object
 
 const
   modulePath = currentSourcePath().splitPath().head
-cppincludes(modulePath & "")
+cppincludes(modulePath & "/../../../core/3rdparty")
 
 defineCppType(ManagedSharedMem, "boost::interprocess::managed_shared_memory", "<boost/interprocess/managed_shared_memory.hpp>")
 defineCppType(MemHandle, "boost::interprocess::managed_shared_memory::handle_t", "<boost/interprocess/managed_shared_memory.hpp>")

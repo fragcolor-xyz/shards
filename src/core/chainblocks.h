@@ -154,6 +154,8 @@ typedef int8_t CBInt16 __attribute__((vector_size(16)));
 typedef double CBFloat2 __attribute__((vector_size(16)));
 typedef float CBFloat3 __attribute__((vector_size(16)));
 typedef float CBFloat4 __attribute__((vector_size(16)));
+
+#define ALIGNED
 #else
 typedef int64_t CBInt2[2];
 typedef int32_t CBInt3[3];
@@ -164,6 +166,8 @@ typedef int8_t CBInt16[16];
 typedef double CBFloat2[2];
 typedef float CBFloat3[3];
 typedef float CBFloat4[4];
+
+#define ALIGNED __declspec(align(16))
 #endif
 
 #ifndef _WIN32
@@ -241,51 +245,37 @@ struct CBExposedTypeInfo {
   CBTypeInfo exposedType;
 };
 
-/*
-  # Of CBVars and memory
-  
+// # Of CBVars and memory
 
+// ## Specifically String and Seq types
 
-  ## Specifically String and Seq types
-  
+// ### Blocks need to maintain their own garbage, in a way so that any reciver
+// of CBVar/s will not have to worry about it.
 
+// #### In the case of getParam:
+//   * the callee should allocate and preferably cache any String or Seq that
+// needs to return.
+//   * the callers will just read and should not modify the contents.
+// #### In the case of activate:
+//   * The input var memory is owned by the previous block.
+//   * The output var memory is owned by the activating block.
+//   * The activating block will have to manage any CBVar that puts in the stack
+// or context variables as well!
+// #### In the case of setParam:
+//   * If the block needs to store the String or Seq data it will then need to
+// deep copy it.
+//   * Callers should free up any allocated memory.
 
-  ### Blocks need to maintain their own garbage, in a way so that any reciver of
-  CBVar/s will not have to worry about it.
-  
+// ### What about exposed/consumedVariables, parameters and input/outputTypes:
+// * Same for them, they are just read only basically
 
+// ### Type safety of outputs
+// * A block should return a StopChain variable and set error if there is any
+// error and it cannot provide the expected output type. None doesn't mean safe,
+// stop/restart is safe
 
-  #### In the case of getParam:
-    * the callee should allocate and preferably cache any String or Seq that
-  needs to return.
-    * the callers will just read and should not modify the contents.
-  #### In the case of activate:
-    * The input var memory is owned by the previous block.
-    * The output var memory is owned by the activating block.
-    * The activating block will have to manage any CBVar that puts in the stack
-  or context variables as well!
-  #### In the case of setParam:
-    * If the block needs to store the String or Seq data it will then need to
-  deep copy it.
-    * Callers should free up any allocated memory.
-  
-
-
-  ### What about exposed/consumedVariables, parameters and input/outputTypes:
-  * Same for them, they are just read only basically
-  
-
-
-  ### Type safety of outputs
-  * A block should return a StopChain variable and set error if there is any
-  error and it cannot provide the expected output type. None doesn't mean safe,
-  stop/restart is safe
-*/
-
-#ifdef _MSC_VER
-__declspec(align(16))
-#endif
-    struct CBVarPayload // will be 32 bytes, must be 16 aligned due to vectors
+ALIGNED struct CBVarPayload // will be 32 bytes, must be 16 aligned due to
+                            // vectors
 {
   union {
     CBChainState chainState;
@@ -344,10 +334,7 @@ __declspec(align(16))
   };
 };
 
-#ifdef _MSC_VER
-__declspec(align(16))
-#endif
-    struct CBVar {
+ALIGNED struct CBVar {
   CBVarPayload payload;
   CBType valueType;
   // reserved to the owner of the var, cloner, block etc to do whatever they
@@ -355,10 +342,7 @@ __declspec(align(16))
   uint8_t reserved[15];
 };
 
-#ifdef _MSC_VER
-__declspec(align(16))
-#endif
-    struct CBNamedVar {
+ALIGNED struct CBNamedVar {
   const char *key;
   CBVar value;
 };

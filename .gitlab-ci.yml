@@ -11,6 +11,7 @@ buildAndRun:win:debug:
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
     - .\cbl.exe ../src/tests/inner.clj
+    - .\cbl.exe ../src/tests/loader.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 
@@ -27,6 +28,7 @@ buildAndRun:win:release:
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
     - .\cbl.exe ../src/tests/inner.clj
+    - .\cbl.exe ../src/tests/loader.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 

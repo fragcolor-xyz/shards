@@ -109,6 +109,7 @@
 ; test json support
 (schedule Root (ChainJson (json testChain)))
 (if (tick Root) nil (throw "Root tick failed"))
+(println (json testChain))
 
 (def! P (Node))
 (def! C (Node))
