@@ -3,7 +3,8 @@ import stbseq
 
 # {.experimental.}
 
-emitc("/*INCLUDESECTION*/#define GB_STRING_IMPLEMENTATION")
+{.emit: "/*INCLUDESECTION*/#include <malloc.h>".}
+{.emit: "/*INCLUDESECTION*/#define GB_STRING_IMPLEMENTATION".}
 
 type
   NativeGBString {.importcpp: "gbString", header: "chainblocks.hpp".} = distinct cstring
