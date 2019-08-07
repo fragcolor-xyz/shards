@@ -43,26 +43,25 @@ else()
 endif()
 
 #### Files to format
-if (NOT DEFINED MY_PROJECT_SOURCE_FILES)
-  set(
-    MY_PROJECT_SOURCE_FILES
-    ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
-    ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
-    ${CHAINBLOCKS_DIR}/src/core/runtime_macros.hpp
-    ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
-    ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
-    ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/assert.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/chains.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/logging.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/process.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/tables.hpp
-    ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
-    ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
-    )
-endif()
+set(
+  MY_PROJECT_SOURCE_FILES
+  ${MY_PROJECT_SOURCE_FILES}
+  ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
+  ${CHAINBLOCKS_DIR}/src/core/runtime_macros.hpp
+  ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
+  ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
+  ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.hpp
+  ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
+  ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
+)
 
 #### Format target
 function(prepend var prefix)
