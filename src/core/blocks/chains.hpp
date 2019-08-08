@@ -227,7 +227,7 @@ struct ChainFileWatcher {
             lastWrite = writeTime;
           }
           // sleep some
-          std::this_thread::sleep_for(std::chrono::seconds(2));
+          chainblocks::sleep(2.0);
         } catch (std::exception &e) {
           ChainLoadResult result = {true, e.what(), nullptr};
           results.push(result);

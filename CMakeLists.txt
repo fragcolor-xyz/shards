@@ -12,14 +12,14 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   # add_link_options(-static -fuse-ld=lld)
 elseif(WIN32)
-  add_link_options(-static -lwinpthreads)
+  add_link_options(-static)
   add_compile_options(-static)
 endif()
 
 add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
 ###
 
-### boost context
+### libs
 if(WIN32)
   set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
   set(EXTRA_LIBS -lws2_32)
