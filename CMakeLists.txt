@@ -12,7 +12,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   # add_link_options(-static -fuse-ld=lld)
 elseif(WIN32)
-  add_link_options(-static)
+  add_link_options(-static -lwinpthreads)
   add_compile_options(-static)
 endif()
 
