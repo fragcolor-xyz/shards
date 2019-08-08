@@ -191,29 +191,30 @@ struct GetTableValue {
     return res;
   }
 };
-}; // namespace chainblocks
 
 // Register SetTableValue
-RUNTIME_CORE_BLOCK(chainblocks::SetTableValue, SetTableValue)
-RUNTIME_BLOCK_cleanup(SetTableValue) RUNTIME_BLOCK_inputTypes(SetTableValue)
-    RUNTIME_BLOCK_outputTypes(SetTableValue)
-        RUNTIME_BLOCK_parameters(SetTableValue)
-            RUNTIME_BLOCK_exposedVariables(SetTableValue)
-                RUNTIME_BLOCK_inferTypes(SetTableValue)
-                    RUNTIME_BLOCK_setParam(SetTableValue)
-                        RUNTIME_BLOCK_getParam(SetTableValue)
-                            RUNTIME_BLOCK_activate(SetTableValue)
-                                RUNTIME_CORE_BLOCK_END(SetTableValue)
+RUNTIME_CORE_BLOCK(SetTableValue);
+RUNTIME_BLOCK_cleanup(SetTableValue);
+RUNTIME_BLOCK_inputTypes(SetTableValue);
+RUNTIME_BLOCK_outputTypes(SetTableValue);
+RUNTIME_BLOCK_parameters(SetTableValue);
+RUNTIME_BLOCK_exposedVariables(SetTableValue);
+RUNTIME_BLOCK_inferTypes(SetTableValue);
+RUNTIME_BLOCK_setParam(SetTableValue);
+RUNTIME_BLOCK_getParam(SetTableValue);
+RUNTIME_BLOCK_activate(SetTableValue);
+RUNTIME_BLOCK_END(SetTableValue);
 
-    // Register GetTableValue
-    RUNTIME_CORE_BLOCK(chainblocks::GetTableValue,
-                       GetTableValue) RUNTIME_BLOCK_cleanup(GetTableValue)
-        RUNTIME_BLOCK_inputTypes(GetTableValue)
-            RUNTIME_BLOCK_outputTypes(GetTableValue)
-                RUNTIME_BLOCK_parameters(GetTableValue)
-                    RUNTIME_BLOCK_consumedVariables(GetTableValue)
-                        RUNTIME_BLOCK_inferTypes(GetTableValue)
-                            RUNTIME_BLOCK_setParam(GetTableValue)
-                                RUNTIME_BLOCK_getParam(GetTableValue)
-                                    RUNTIME_BLOCK_activate(GetTableValue)
-                                        RUNTIME_CORE_BLOCK_END(GetTableValue)
+// Register GetTableValue
+RUNTIME_CORE_BLOCK(GetTableValue);
+RUNTIME_BLOCK_cleanup(GetTableValue);
+RUNTIME_BLOCK_inputTypes(GetTableValue);
+RUNTIME_BLOCK_outputTypes(GetTableValue);
+RUNTIME_BLOCK_parameters(GetTableValue);
+RUNTIME_BLOCK_consumedVariables(GetTableValue);
+RUNTIME_BLOCK_inferTypes(GetTableValue);
+RUNTIME_BLOCK_setParam(GetTableValue);
+RUNTIME_BLOCK_getParam(GetTableValue);
+RUNTIME_BLOCK_activate(GetTableValue);
+RUNTIME_BLOCK_END(GetTableValue);
+}; // namespace chainblocks

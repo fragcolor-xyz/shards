@@ -1,8 +1,7 @@
-#define RUNTIME_BLOCK(_typename_, _namespace_, _name_)                         \
-  namespace _namespace_ {                                                      \
+#define RUNTIME_BLOCK(_namespace_, _name_)                                     \
   struct _name_##Runtime {                                                     \
     CBlock header;                                                             \
-    _typename_ core;                                                           \
+    _name_ core;                                                               \
   };                                                                           \
   __cdecl CBlock *createBlock##_name_() {                                      \
     CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
@@ -30,10 +29,10 @@
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
-#define RUNTIME_CORE_BLOCK(_typename_, _name_)                                 \
+#define RUNTIME_CORE_BLOCK(_name_)                                             \
   struct _name_##Runtime {                                                     \
     CBlock header;                                                             \
-    _typename_ core;                                                           \
+    _name_ core;                                                               \
   };                                                                           \
   __cdecl CBlock *createBlock##_name_() {                                      \
     CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
@@ -148,15 +147,9 @@
     reinterpret_cast<_name_##Runtime *>(block)->core.cleanup();                \
   });
 
-#define RUNTIME_CORE_BLOCK_END(_name_)                                         \
-  return result;                                                               \
-  }
-
 #define RUNTIME_BLOCK_END(_name_)                                              \
   return result;                                                               \
-  }                                                                            \
-  }                                                                            \
-  ;
+  }
 
 #define REGISTER_BLOCK(_namespace_, _name_)                                    \
   chainblocks::registerBlock(#_namespace_ "." #_name_,                         \

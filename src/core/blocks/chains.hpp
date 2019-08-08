@@ -352,22 +352,26 @@ struct ChainLoader {
     doneOnce = false;
   }
 };
-}; // namespace chainblocks
 
 // Register
-RUNTIME_CORE_BLOCK(chainblocks::RunChain, RunChain)
-RUNTIME_BLOCK_inputTypes(RunChain) RUNTIME_BLOCK_outputTypes(RunChain)
-    RUNTIME_BLOCK_parameters(RunChain) RUNTIME_BLOCK_inferTypes(RunChain)
-        RUNTIME_BLOCK_setParam(RunChain) RUNTIME_BLOCK_getParam(RunChain)
-            RUNTIME_BLOCK_activate(RunChain) RUNTIME_BLOCK_cleanup(
-                RunChain) RUNTIME_CORE_BLOCK_END(RunChain)
+RUNTIME_CORE_BLOCK(RunChain);
+RUNTIME_BLOCK_inputTypes(RunChain);
+RUNTIME_BLOCK_outputTypes(RunChain);
+RUNTIME_BLOCK_parameters(RunChain);
+RUNTIME_BLOCK_inferTypes(RunChain);
+RUNTIME_BLOCK_setParam(RunChain);
+RUNTIME_BLOCK_getParam(RunChain);
+RUNTIME_BLOCK_activate(RunChain);
+RUNTIME_BLOCK_cleanup(RunChain);
+RUNTIME_BLOCK_END(RunChain);
 
-                RUNTIME_CORE_BLOCK(chainblocks::ChainLoader, ChainLoader)
-                    RUNTIME_BLOCK_inputTypes(
-                        ChainLoader) RUNTIME_BLOCK_outputTypes(ChainLoader)
-                        RUNTIME_BLOCK_parameters(ChainLoader)
-                            RUNTIME_BLOCK_setParam(ChainLoader)
-                                RUNTIME_BLOCK_getParam(ChainLoader)
-                                    RUNTIME_BLOCK_activate(ChainLoader)
-                                        RUNTIME_BLOCK_cleanup(ChainLoader)
-                                            RUNTIME_CORE_BLOCK_END(ChainLoader)
+RUNTIME_CORE_BLOCK(ChainLoader);
+RUNTIME_BLOCK_inputTypes(ChainLoader);
+RUNTIME_BLOCK_outputTypes(ChainLoader);
+RUNTIME_BLOCK_parameters(ChainLoader);
+RUNTIME_BLOCK_setParam(ChainLoader);
+RUNTIME_BLOCK_getParam(ChainLoader);
+RUNTIME_BLOCK_activate(ChainLoader);
+RUNTIME_BLOCK_cleanup(ChainLoader);
+RUNTIME_BLOCK_END(ChainLoader);
+}; // namespace chainblocks

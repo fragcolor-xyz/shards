@@ -41,6 +41,8 @@ static StaticList<malBuiltIn *> handlers;
 
 extern void NimMain();
 
+extern void chainblocks_RegisterAllBlocks();
+
 void registerKeywords(malEnvPtr env);
 
 namespace chainblocks {
@@ -49,6 +51,8 @@ CBlock *createBlockInnerCall();
 
 void installCBCore(malEnvPtr env) {
   chainblocks::installSignalHandlers();
+
+  chainblocks_RegisterAllBlocks();
 
   NimMain();
 
@@ -401,10 +405,12 @@ struct InnerCall {
   }
 };
 
-RUNTIME_CORE_BLOCK(chainblocks::InnerCall, InnerCall)
-RUNTIME_BLOCK_inputTypes(InnerCall) RUNTIME_BLOCK_outputTypes(InnerCall)
-    RUNTIME_BLOCK_inferTypes(InnerCall) RUNTIME_BLOCK_activate(InnerCall)
-        RUNTIME_CORE_BLOCK_END(InnerCall)
+RUNTIME_CORE_BLOCK(InnerCall);
+RUNTIME_BLOCK_inputTypes(InnerCall);
+RUNTIME_BLOCK_outputTypes(InnerCall);
+RUNTIME_BLOCK_inferTypes(InnerCall);
+RUNTIME_BLOCK_activate(InnerCall);
+RUNTIME_BLOCK_END(InnerCall);
 }; // namespace chainblocks
 
 BUILTIN(".") {

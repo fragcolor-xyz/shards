@@ -31,27 +31,27 @@ phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 thread_local std::map<std::string, CBCallback> RunLoopHooks;
 thread_local CBChain *CurrentChain;
 
-static bool coreRegistered = false;
 void registerCoreBlocks() {
-  if (!coreRegistered) {
-    // Do this here to prevent insanity loop
-    coreRegistered = true;
-    REGISTER_CORE_BLOCK(Log);
-    REGISTER_CORE_BLOCK(Msg);
-    REGISTER_CORE_BLOCK(GetItems);
-    REGISTER_CORE_BLOCK(SetTableValue);
-    REGISTER_CORE_BLOCK(GetTableValue);
-    REGISTER_CORE_BLOCK(RunChain);
-    REGISTER_CORE_BLOCK(ChainLoader);
-    REGISTER_BLOCK(Assert, Is);
-    REGISTER_BLOCK(Assert, IsNot);
-    REGISTER_BLOCK(Process, Exec);
+  // Do this here to prevent insanity loop
+  REGISTER_CORE_BLOCK(Log);
+  REGISTER_CORE_BLOCK(Msg);
+  REGISTER_CORE_BLOCK(GetItems);
+  REGISTER_CORE_BLOCK(SetTableValue);
+  REGISTER_CORE_BLOCK(GetTableValue);
+  REGISTER_CORE_BLOCK(RunChain);
+  REGISTER_CORE_BLOCK(ChainLoader);
+  REGISTER_BLOCK(Assert, Is);
+  REGISTER_BLOCK(Assert, IsNot);
+  REGISTER_BLOCK(Process, Exec);
 
-    // also enums
-    initEnums();
-  }
+  // also enums
+  initEnums();
 }
 }; // namespace chainblocks
+
+#ifndef OVERRIDE_REGISTER_ALL_BLOCKS
+void chainblocks_RegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
+#endif
 
 // Utility
 void dealloc(CBImage &self) {

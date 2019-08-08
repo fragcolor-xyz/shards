@@ -96,6 +96,8 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
 add_dependencies(cbruntime format)
+
+set(CB_RUNTIME_LIBS cbruntime)
 ###
 
 ### nim stuff
@@ -154,7 +156,7 @@ macro(lisp_builtins LIB GENNAME)
     malgen_${GENNAME}
     "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
   )
-  target_link_libraries(malgen_${GENNAME} cbruntime ${LIB} ${BOOST_LIBS} ${EXTRA_LIBS} ${ARGN})
+  target_link_libraries(malgen_${GENNAME} ${CB_RUNTIME_LIBS} ${LIB} ${BOOST_LIBS} ${EXTRA_LIBS} ${ARGN})
 
   # https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
   add_custom_command(
@@ -192,5 +194,5 @@ add_executable(
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED")
-target_link_libraries(cbl -lreadline -lncurses cbruntime cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
+target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} cbnim_lib ${BOOST_LIBS} ${EXTRA_LIBS})
 ###

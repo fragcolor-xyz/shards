@@ -494,9 +494,6 @@ static CBVar *contextVariable(CBContext *ctx, const char *name) {
 void registerCoreBlocks();
 
 static CBlock *createBlock(const char *name) {
-  // Always hook this here
-  registerCoreBlocks();
-
   auto it = BlocksRegister.find(name);
   if (it == BlocksRegister.end()) {
     return nullptr;

@@ -57,10 +57,12 @@ struct Exec {
     return Var(outputTable);
   }
 };
-}; // namespace Process
 
 // Register Exec
-RUNTIME_BLOCK(chainblocks::Process::Exec, Process, Exec)
-RUNTIME_BLOCK_inputTypes(Exec) RUNTIME_BLOCK_outputTypes(Exec)
-    RUNTIME_BLOCK_activate(Exec) RUNTIME_BLOCK_END(Exec)
+RUNTIME_BLOCK(Process, Exec);
+RUNTIME_BLOCK_inputTypes(Exec);
+RUNTIME_BLOCK_outputTypes(Exec);
+RUNTIME_BLOCK_activate(Exec);
+RUNTIME_BLOCK_END(Exec);
+}; // namespace Process
 }; // namespace chainblocks

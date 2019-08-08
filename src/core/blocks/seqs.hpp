@@ -86,12 +86,16 @@ struct GetItems {
     return result;
   }
 };
-}; // namespace chainblocks
 
 // Register GetItems
-RUNTIME_CORE_BLOCK(chainblocks::GetItems, GetItems)
-RUNTIME_BLOCK_destroy(GetItems) RUNTIME_BLOCK_inputTypes(GetItems)
-    RUNTIME_BLOCK_outputTypes(GetItems) RUNTIME_BLOCK_parameters(GetItems)
-        RUNTIME_BLOCK_inferTypes(GetItems) RUNTIME_BLOCK_setParam(GetItems)
-            RUNTIME_BLOCK_getParam(GetItems) RUNTIME_BLOCK_activate(GetItems)
-                RUNTIME_CORE_BLOCK_END(GetItems)
+RUNTIME_CORE_BLOCK(GetItems);
+RUNTIME_BLOCK_destroy(GetItems);
+RUNTIME_BLOCK_inputTypes(GetItems);
+RUNTIME_BLOCK_outputTypes(GetItems);
+RUNTIME_BLOCK_parameters(GetItems);
+RUNTIME_BLOCK_inferTypes(GetItems);
+RUNTIME_BLOCK_setParam(GetItems);
+RUNTIME_BLOCK_getParam(GetItems);
+RUNTIME_BLOCK_activate(GetItems);
+RUNTIME_BLOCK_END(GetItems);
+}; // namespace chainblocks

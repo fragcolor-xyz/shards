@@ -7,10 +7,12 @@
 
 extern void NimMain();
 
+extern void chainblocks_RegisterAllBlocks();
+
 int main(int argc, const char *argv[]) {
   // boot strap all
+  chainblocks_RegisterAllBlocks();
   NimMain();
-  auto _ = chainblocks::createBlock("Const");
 
   std::ofstream os;
   os.open("CBGenerated.hpp");
