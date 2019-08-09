@@ -238,8 +238,9 @@ CBTypeInfo validateConnections(const CBlocks chain,
 CBTypeInfo validateConnections(const CBChain *chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType = CBTypeInfo());
-void validateSetParam(CBlock *block, int index, CBVar &value,
-                      CBValidationCallback callback, void *userData);
+bool validateSetParam(CBlock *block, int index, CBVar &value,
+                      CBValidationCallback callback, void *userData,
+                      bool sequenced = false);
 
 namespace chainblocks {
 extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;

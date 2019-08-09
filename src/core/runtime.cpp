@@ -16,6 +16,7 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <set>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -686,8 +687,10 @@ void from_json(const json &j, CBChainPtr &chain) {
   }
 }
 
-bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType) {
-  if (consumedType.basicType == Any || consumedType.basicType == None)
+bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
+                bool isParameter) {
+  if (consumedType.basicType == Any ||
+      (!isParameter && consumedType.basicType == None))
     return true;
 
   if (exposedType.basicType != consumedType.basicType) {
@@ -745,7 +748,7 @@ void validateConnection(ValidationContext &ctx) {
   // validate our generic input
   for (auto i = 0; i < stbds_arrlen(inputInfos); i++) {
     auto &inputInfo = inputInfos[i];
-    if (matchTypes(previousOutput, inputInfo)) {
+    if (matchTypes(previousOutput, inputInfo, false)) {
       inputMatches = true;
       break;
     }
@@ -778,7 +781,7 @@ void validateConnection(ValidationContext &ctx) {
       auto requiredType = consumedVar[i].exposedType;
 
       // Finally deep compare types
-      if (!matchTypes(exposedType, requiredType)) {
+      if (!matchTypes(exposedType, requiredType, false)) {
         std::string err(
             "Required consumed types do not match currently exposed ones: " +
             name);
@@ -858,13 +861,14 @@ CBTypeInfo validateConnections(const CBlocks chain,
   return validateConnections(blocks, callback, userData, inputType);
 }
 
-void validateSetParam(CBlock *block, int index, CBVar &value,
-                      CBValidationCallback callback, void *userData) {
+bool validateSetParam(CBlock *block, int index, CBVar &value,
+                      CBValidationCallback callback, void *userData,
+                      bool sequenced) {
   auto params = block->parameters(block);
   if (stbds_arrlen(params) <= index) {
     std::string err("Parameter index out of range");
     callback(block, err.c_str(), false, userData);
-    return;
+    return false;
   }
 
   auto param = params[index];
@@ -872,6 +876,7 @@ void validateSetParam(CBlock *block, int index, CBVar &value,
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
+  varType.sequenced = sequenced;
   switch (value.valueType) {
   case Object: {
     varType.objectVendorId = value.payload.objectVendorId;
@@ -888,13 +893,25 @@ void validateSetParam(CBlock *block, int index, CBVar &value,
   };
 
   for (auto i = 0; i < stbds_arrlen(param.valueTypes); i++) {
-    if (matchTypes(varType, param.valueTypes[i])) {
-      return; // we are good just exit
+    if (matchTypes(varType, param.valueTypes[i], true)) {
+      return true; // we are good just exit
+    }
+  }
+
+  // Failed until now but let's check if the type is a sequenced too
+  if (value.valueType == Seq) {
+    // Validate each type in the seq
+    for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {
+      if (validateSetParam(block, index, value.payload.seqValue[i], callback,
+                           userData, true))
+        return true;
     }
   }
 
   std::string err("Parameter not accepting this kind of variable");
   callback(block, err.c_str(), false, userData);
+
+  return false;
 }
 
 void CBChain::cleanup() {

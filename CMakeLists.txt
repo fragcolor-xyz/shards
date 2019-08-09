@@ -3,6 +3,63 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_CXX_STANDARD 17)
 
+### CLANG SANITIZERS (mac / linux only)
+# Build Types
+set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}
+    CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel tsan asan lsan msan ubsan"
+    FORCE)
+
+# ThreadSanitizer
+set(CMAKE_C_FLAGS_TSAN
+    "-fsanitize=thread -g -O1"
+    CACHE STRING "Flags used by the C compiler during ThreadSanitizer builds."
+    FORCE)
+set(CMAKE_CXX_FLAGS_TSAN
+    "-fsanitize=thread -g -O1"
+    CACHE STRING "Flags used by the C++ compiler during ThreadSanitizer builds."
+    FORCE)
+
+# AddressSanitize
+set(CMAKE_C_FLAGS_ASAN
+    "-fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1"
+    CACHE STRING "Flags used by the C compiler during AddressSanitizer builds."
+    FORCE)
+set(CMAKE_CXX_FLAGS_ASAN
+    "-fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1"
+    CACHE STRING "Flags used by the C++ compiler during AddressSanitizer builds."
+    FORCE)
+
+# LeakSanitizer
+set(CMAKE_C_FLAGS_LSAN
+    "-fsanitize=leak -fno-omit-frame-pointer -g -O1"
+    CACHE STRING "Flags used by the C compiler during LeakSanitizer builds."
+    FORCE)
+set(CMAKE_CXX_FLAGS_LSAN
+    "-fsanitize=leak -fno-omit-frame-pointer -g -O1"
+    CACHE STRING "Flags used by the C++ compiler during LeakSanitizer builds."
+    FORCE)
+
+# MemorySanitizer
+set(CMAKE_C_FLAGS_MSAN
+    "-fsanitize=memory -fno-optimize-sibling-calls -fsanitize-memory-track-origins=2 -fno-omit-frame-pointer -g -O2"
+    CACHE STRING "Flags used by the C compiler during MemorySanitizer builds."
+    FORCE)
+set(CMAKE_CXX_FLAGS_MSAN
+    "-fsanitize=memory -fno-optimize-sibling-calls -fsanitize-memory-track-origins=2 -fno-omit-frame-pointer -g -O2"
+    CACHE STRING "Flags used by the C++ compiler during MemorySanitizer builds."
+    FORCE)
+
+# UndefinedBehaviour
+set(CMAKE_C_FLAGS_UBSAN
+    "-fsanitize=undefined"
+    CACHE STRING "Flags used by the C compiler during UndefinedBehaviourSanitizer builds."
+    FORCE)
+set(CMAKE_CXX_FLAGS_UBSAN
+    "-fsanitize=undefined"
+    CACHE STRING "Flags used by the C++ compiler during UndefinedBehaviourSanitizer builds."
+    FORCE)
+### SANITIZERS
+
 if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
   set(BASE_TESTING 1)
@@ -138,7 +195,7 @@ endforeach()
 add_custom_command(
   OUTPUT libnimcb.a
   COMMAND
-    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --app:staticlib --noMain --nimcache:nimcache-base-cbjs -o:libnimcb.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim
+    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --cc:clang --app:staticlib --noMain --nimcache:nimcache-base-cbjs -o:libnimcb.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim
   DEPENDS
     ${nim_files_list}
 )

@@ -580,10 +580,8 @@ int findParamIndex(std::string name, CBParametersInfo params) {
 
 void validationCallback(const CBlock *errorBlock, const char *errorTxt,
                         bool nonfatalWarning, void *userData) {
-  auto failed = reinterpret_cast<bool *>(userData);
   auto block = const_cast<CBlock *>(errorBlock);
   if (!nonfatalWarning) {
-    *failed = true;
     LOG(ERROR) << "Parameter validation failed: " << errorTxt
                << " block: " << block->name(block);
   } else {
@@ -615,9 +613,7 @@ void setBlockParameters(malCBBlock *malblock, malValueIter begin,
         throw chainblocks::CBException("Parameter not found");
       } else {
         auto var = varify(malblock, value);
-        bool failed = false;
-        validateSetParam(block, idx, var, validationCallback, &failed);
-        if (failed) {
+        if (!validateSetParam(block, idx, var, validationCallback, nullptr)) {
           LOG(ERROR) << "Failed parameter: " << paramName;
           throw chainblocks::CBException("Parameter validation failed");
         }
@@ -630,9 +626,7 @@ void setBlockParameters(malCBBlock *malblock, malValueIter begin,
       throw chainblocks::CBException("Keyword expected");
     } else {
       auto var = varify(malblock, arg);
-      bool failed = false;
-      validateSetParam(block, pindex, var, validationCallback, &failed);
-      if (failed) {
+      if (!validateSetParam(block, pindex, var, validationCallback, nullptr)) {
         LOG(ERROR) << "Failed parameter index: " << pindex;
         throw chainblocks::CBException("Parameter validation failed");
       }
