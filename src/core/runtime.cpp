@@ -16,7 +16,6 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <set>
 
 INITIALIZE_EASYLOGGINGPP
 
