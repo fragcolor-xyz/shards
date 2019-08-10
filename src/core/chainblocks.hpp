@@ -226,8 +226,6 @@ struct ExposedInfo {
 };
 }; // namespace chainblocks
 
-#define CHAINLOG(_X_) CLOG(_X_, chainblocks::CurrentChain->logger_name.c_str())
-
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
   case EndOfBlittableTypes:

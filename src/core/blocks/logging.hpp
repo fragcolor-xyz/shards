@@ -15,7 +15,7 @@ struct LoggingBase {
 
 struct Log : public LoggingBase {
   CBVar activate(CBContext *context, CBVar input) {
-    CLOG(INFO, chainblocks::CurrentChain->logger_name.c_str()) << input;
+    CLOG(INFO, context->logger_name.c_str()) << input;
     return input;
   }
 };
@@ -49,7 +49,7 @@ struct Msg : public LoggingBase {
   }
 
   CBVar activate(CBContext *context, CBVar input) {
-    CLOG(INFO, chainblocks::CurrentChain->logger_name.c_str()) << msg;
+    CLOG(INFO, context->logger_name.c_str()) << msg;
     return input;
   }
 };

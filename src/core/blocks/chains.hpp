@@ -38,41 +38,6 @@ static ParamsInfo chainloaderParamsInfo = ParamsInfo(
                       "chain in the same node.",
                       CBTypesInfo(boolInfo)));
 
-template <typename T>
-static inline CBVar activateRunChain(T *block, CBChain *chain,
-                                     CBContext *context, CBVar input) {
-  if (!chain)
-    return input;
-
-  if (!block->doneOnce) {
-    if (block->once)
-      block->doneOnce = true;
-
-    if (block->detached) {
-      if (!chainblocks::isRunning(chain)) {
-        chainblocks::CurrentChain->node->schedule(chain, input);
-      }
-      return input;
-    } else {
-      // Run within the root flow, just call runChain
-
-      chain->finished = false; // Reset finished flag (atomic)
-      auto runRes = runChain(chain, context, input);
-      chain->finishedOutput = runRes.output; // Write result before setting flag
-      chain->finished = true;                // Set finished flag (atomic)
-      if (runRes.state == Failed || context->aborted) {
-        return Var::Stop();
-      } else if (block->passthrough) {
-        return input;
-      } else {
-        return runRes.output;
-      }
-    }
-  } else {
-    return input;
-  }
-}
-
 struct RunChain {
   CBChain *chain;
   bool once;
@@ -159,17 +124,12 @@ struct RunChain {
 
       if (detached) {
         if (!chainblocks::isRunning(chain)) {
-          chainblocks::CurrentChain->node->schedule(chain, input);
+          context->chain->node->schedule(chain, input);
         }
         return input;
       } else {
-        // Run within the root flow, just call runChain
-
-        chain->finished = false; // Reset finished flag (atomic)
-        auto runRes = runChain(chain, context, input);
-        chain->finishedOutput =
-            runRes.output;      // Write result before setting flag
-        chain->finished = true; // Set finished flag (atomic)
+        // Run within the root flow
+        auto runRes = chainblocks_RunSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else if (passthrough) {
@@ -324,17 +284,12 @@ struct ChainLoader {
 
       if (detached) {
         if (!chainblocks::isRunning(chain)) {
-          chainblocks::CurrentChain->node->schedule(chain, input);
+          context->chain->node->schedule(chain, input);
         }
         return input;
       } else {
-        // Run within the root flow, just call runChain
-
-        chain->finished = false; // Reset finished flag (atomic)
-        auto runRes = runChain(chain, context, input);
-        chain->finishedOutput =
-            runRes.output;      // Write result before setting flag
-        chain->finished = true; // Set finished flag (atomic)
+        // Run within the root flow
+        auto runRes = chainblocks_RunSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else {

@@ -332,13 +332,6 @@ proc contextVariable*(name: string): CBVar {.inline.} =
 
 template `~~`*(name: string): CBVar = contextVariable(name)
 
-template withChain*(chain, body: untyped): untyped =
-  var `chain` {.inject.} = newChain(astToStr(`chain`))
-  var prev = getCurrentChain()
-  setCurrentChain(chain)
-  body
-  setCurrentChain(prev)
-
 let noParams: CBParametersInfo = nil
 let noExpose: CBExposedTypesInfo = nil
 
@@ -358,12 +351,6 @@ when appType != "lib" or defined(forceCBRuntime):
 
   proc createBlock*(name: cstring): ptr CBlock {.importcpp: "chainblocks::createBlock(#)", header: "runtime.hpp".}
   proc cbCreateBlock*(name: cstring): ptr CBlock {.cdecl, exportc, dynlib.} = createBlock(name)
-
-  proc getCurrentChain*(): CBChainPtr {.importcpp: "chainblocks::getCurrentChain()", header: "runtime.hpp".}
-  proc cbGetCurrentChain*(): CBChainPtr {.cdecl, exportc, dynlib.} = getCurrentChain()
-
-  proc setCurrentChain*(chain: CBChainPtr) {.importcpp: "chainblocks::setCurrentChain(#)", header: "runtime.hpp".}
-  proc cbSetCurrentChain*(chain: CBChainPtr) {.cdecl, exportc, dynlib.} = setCurrentChain(chain)
 
   proc globalVariable*(name: cstring): ptr CBVar {.importcpp: "chainblocks::globalVariable(#)", header: "runtime.hpp".}
   proc hasGlobalVariable*(name: cstring): bool {.importcpp: "chainblocks::hasGlobalVariable(#)", header: "runtime.hpp".}
@@ -614,14 +601,14 @@ when appType != "lib" or defined(forceCBRuntime):
 
   proc setError*(ctx: CBContext; errorTxt: cstring) {.importcpp: "#->setError(#)", header: "runtime.hpp".}
 
-  proc runChain*(chain: CBChainPtr, context: ptr CBContextObj; chainInput: CBVar): RunChainOutput {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
+  proc runChain*(chain: CBChainPtr, context: CBContext; chainInput: CBVar): RunChainOutput {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
 
-  proc activateBlock*(chain: ptr CBlock, context: ptr CBContextObj; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
+  proc activateBlock*(chain: ptr CBlock, context: CBContext; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
   
-  proc suspendInternal(seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#)", header: "runtime.hpp".}
-  proc suspend*(seconds: float64): CBVar {.inline.} =
+  proc suspendInternal(context: CBContext; seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#, #)", header: "runtime.hpp".}
+  proc suspend*(context: CBContext; seconds: float64): CBVar {.inline.} =
     var frame = getFrameState()
-    result = suspendInternal(seconds)
+    result = suspendInternal(context, seconds)
     setFrameState(frame)
 
   proc isRunning*(chain: CBChainPtr): bool {.importcpp: "chainblocks::isRunning(#)", header: "runtime.hpp".}
@@ -632,8 +619,8 @@ when appType != "lib" or defined(forceCBRuntime):
   proc canceled*(ctx: CBContext): bool {.inline.} = ctx.aborted
 
 # This template is inteded to be used inside blocks activations
-template pause*(secs: float): untyped =
-  let suspendRes = suspend(secs.float64)
+template pause*(ctx: CBContext; secs: float): untyped =
+  let suspendRes = suspend(ctx, secs.float64)
   if suspendRes.chainState != Continue:
     return suspendRes
 

@@ -121,16 +121,16 @@ when true:
       var newInput = outgoingString(b, input)
       while not b.buffer[].invoke("try_push", newInput).to(bool):
         # Pause a if the queue is full
-        pause(0.0)
+        pause(context, 0.0)
     of Seq:
       var newInput = outgoingSeq(b, input)
       while not b.buffer[].invoke("try_push", newInput).to(bool):
         # Pause a if the queue is full
-        pause(0.0)
+        pause(context, 0.0)
     else:
       while not b.buffer[].invoke("try_push", input).to(bool):
         # Pause a if the queue is full
-        pause(0.0)
+        pause(context, 0.0)
       
     input
   
@@ -219,7 +219,7 @@ when true:
       
       if outputPtr == nil:
         # not ready, yield
-        pause(0.0)
+        pause(context, 0.0)
       else:
         output = outputPtr[]
         b.buffer[].invoke("pop").to(void)

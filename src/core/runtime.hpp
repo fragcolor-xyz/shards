@@ -145,46 +145,14 @@ template <typename... TT> struct hash<std::tuple<TT...>> {
 
 typedef boost::context::continuation CBCoro;
 
-struct CBContext {
-  CBContext(CBCoro &&sink)
-      : restarted(false), aborted(false), shouldPause(false), paused(false),
-        continuation(std::move(sink)) {}
-
-  phmap::node_hash_map<std::string, CBVar> variables;
-  std::string error;
-
-  // Those 2 go together with CBVar chainstates restart and stop
-  bool restarted;
-  // Also used to cancel a chain
-  bool aborted;
-  // Used internally to pause a chain execution
-  std::atomic_bool shouldPause;
-  std::atomic_bool paused;
-
-  // Used within the coro stack! (suspend, etc)
-  CBCoro &&continuation;
-
-  void setError(const char *errorMsg) { error = errorMsg; }
-};
-
 struct CBChain {
   CBChain(const char *chain_name)
-      : looped(false), unsafe(false), name(chain_name), coro(nullptr), next(0),
+      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
         started(false), finished(false), returned(false), failed(false),
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        context(nullptr), node(nullptr) {
-    static std::regex re(
-        "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\."
-        "\\_]+");
-    logger_name = std::regex_replace(name, re, "_");
-    logger_name = "chain." + logger_name;
-    el::Loggers::getLogger(logger_name.c_str());
-  }
+        context(nullptr), node(nullptr) {}
 
-  ~CBChain() {
-    cleanup();
-    el::Loggers::unregisterLogger(logger_name.c_str());
-  }
+  ~CBChain() { cleanup(); }
 
   void cleanup();
 
@@ -204,10 +172,8 @@ struct CBChain {
   bool unsafe;
 
   std::string name;
-  std::string logger_name;
 
   CBCoro *coro;
-  Duration next;
 
   // we could simply null check coro but actually some chains (sub chains), will
   // run without a coro within the root coro so we need this too
@@ -229,6 +195,43 @@ struct CBChain {
   std::vector<CBlock *> blocks;
 };
 
+struct CBContext {
+  CBContext(CBCoro &&sink, CBChain *running_chain)
+      : chain(running_chain), restarted(false), aborted(false),
+        shouldPause(false), paused(false), continuation(std::move(sink)) {
+    static std::regex re(
+        "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\."
+        "\\_]+");
+    logger_name = std::regex_replace(chain->name, re, "_");
+    logger_name = "chain." + logger_name;
+    el::Loggers::getLogger(logger_name.c_str());
+  }
+
+  ~CBContext() { el::Loggers::unregisterLogger(logger_name.c_str()); }
+
+  CBChain *chain;
+
+  phmap::node_hash_map<std::string, CBVar> variables;
+  std::string error;
+
+  // Those 2 go together with CBVar chainstates restart and stop
+  bool restarted;
+  // Also used to cancel a chain
+  bool aborted;
+  // Used internally to pause a chain execution
+  std::atomic_bool shouldPause;
+  std::atomic_bool paused;
+
+  // Used within the coro stack! (suspend, etc)
+  CBCoro &&continuation;
+  Duration next;
+
+  // Have a logger per context
+  std::string logger_name;
+
+  void setError(const char *errorMsg) { error = errorMsg; }
+};
+
 CBTypeInfo validateConnections(const std::vector<CBlock *> chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType = CBTypeInfo());
@@ -248,11 +251,10 @@ extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
 extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
     EnumTypesRegister;
-extern thread_local phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-extern thread_local std::map<std::string, CBCallback> RunLoopHooks;
+extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+extern std::map<std::string, CBCallback> RunLoopHooks;
 extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
-extern thread_local CBChain *CurrentChain;
 
 static CBlock *createBlock(const char *name);
 }; // namespace chainblocks
@@ -387,10 +389,6 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
   }
   return freeCount;
 }
-
-static void setCurrentChain(CBChain *chain) { CurrentChain = chain; }
-
-static CBChain *getCurrentChain() { return CurrentChain; }
 
 static void registerChain(CBChain *chain) {
   chainblocks::GlobalChains[chain->name] = chain;
@@ -600,20 +598,19 @@ static CBlock *createBlock(const char *name) {
   return blkp;
 }
 
-static CBVar suspend(double seconds) {
-  auto current = chainblocks::CurrentChain;
+static CBVar suspend(CBContext *context, double seconds) {
   if (seconds <= 0) {
-    current->next = Duration(0);
+    context->next = Duration(0);
   } else {
-    current->next = Clock::now().time_since_epoch() + Duration(seconds);
+    context->next = Clock::now().time_since_epoch() + Duration(seconds);
   }
-  current->context->continuation = current->context->continuation.resume();
-  if (current->context->restarted) {
+  context->continuation = context->continuation.resume();
+  if (context->restarted) {
     CBVar restart = {};
     restart.valueType = None;
     restart.payload.chainState = Restart;
     return restart;
-  } else if (current->context->aborted) {
+  } else if (context->aborted) {
     CBVar stop = {};
     stop.valueType = None;
     stop.payload.chainState = Stop;
@@ -623,18 +620,6 @@ static CBVar suspend(double seconds) {
   cont.valueType = None;
   cont.payload.chainState = Continue;
   return cont;
-}
-
-static CBSeq blocks(CBChain *chain) {
-  CBSeq result = nullptr;
-  stbds_arrsetlen(result, chain->blocks.size());
-  for (auto i = 0; i < chain->blocks.size(); i++) {
-    CBVar blk;
-    blk.valueType = Block;
-    blk.payload.blockValue = chain->blocks[i];
-    result[i] = blk;
-  }
-  return result;
 }
 
 #include "runtime_macros.hpp"
@@ -649,7 +634,7 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreSleep: {
     auto cblock = reinterpret_cast<CBSleepStub *>(blk);
-    auto suspendRes = suspend(cblock->sleepTime);
+    auto suspendRes = suspend(context, cblock->sleepTime);
     if (suspendRes.payload.chainState != Continue)
       previousOutput = suspendRes;
     else
@@ -1009,15 +994,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   }
 }
 
-enum RunChainOutputState { Running, Restarted, Stopped, Failed };
-
-struct RunChainOutput {
-  CBVar output;
-  RunChainOutputState state;
-};
-
-inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
-                                      CBVar chainInput) {
+inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+                                        CBVar chainInput) {
   auto previousOutput = CBVar();
 
   // Detect and pause if we need to here
@@ -1026,7 +1004,7 @@ inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
   while (context->shouldPause) {
     context->paused = true;
 
-    auto suspendRes = suspend(0.0);
+    auto suspendRes = suspend(context, 0.0);
     // Since we suspended we need to make sure we should continue when resuming
     switch (suspendRes.payload.chainState) {
     case Restart: {
@@ -1043,8 +1021,6 @@ inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->started = true;
   context->paused = false;
   chain->context = context;
-  auto previousChain = CurrentChain;
-  CurrentChain = chain;
 
   for (auto blk : chain->blocks) {
     if (blk->preChain) {
@@ -1056,14 +1032,12 @@ inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
         if (context->error.length() > 0)
           LOG(ERROR) << "Last error: " << std::string(context->error);
         LOG(ERROR) << e.what();
-        CurrentChain = previousChain;
         return {CBVar(), Failed};
       } catch (...) {
         LOG(ERROR) << "Pre chain failure, failed block: "
                    << std::string(blk->name(blk));
         if (context->error.length() > 0)
           LOG(ERROR) << "Last error: " << std::string(context->error);
-        CurrentChain = previousChain;
         return {CBVar(), Failed};
       }
     }
@@ -1084,11 +1058,11 @@ inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
       if (previousOutput.valueType == None) {
         switch (previousOutput.payload.chainState) {
         case Restart: {
-          runChainPOSTCHAIN CurrentChain = previousChain;
+          runChainPOSTCHAIN;
           return {previousOutput, Restarted};
         }
         case Stop: {
-          runChainPOSTCHAIN CurrentChain = previousChain;
+          runChainPOSTCHAIN;
 
           // Print errors if any, we might have stopped because of some error!
           if (unlikely(context->error.length() > 0)) {
@@ -1111,19 +1085,19 @@ inline static RunChainOutput runChain(CBChain *chain, CBContext *context,
         LOG(ERROR) << "Last error: " << std::string(context->error);
       LOG(ERROR) << e.what();
       ;
-      runChainPOSTCHAIN CurrentChain = previousChain;
+      runChainPOSTCHAIN;
       return {previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       if (context->error.length() > 0)
         LOG(ERROR) << "Last error: " << std::string(context->error);
-      runChainPOSTCHAIN CurrentChain = previousChain;
+      runChainPOSTCHAIN;
       return {previousOutput, Failed};
     }
   }
 
-  runChainPOSTCHAIN CurrentChain = previousChain;
+  runChainPOSTCHAIN;
   return {previousOutput, Running};
 }
 
@@ -1158,7 +1132,7 @@ static boost::context::continuation run(CBChain *chain,
   // Reset error
   chain->failed = false;
   // Create a new context and copy the sink in
-  CBContext context(std::move(sink));
+  CBContext context(std::move(sink), chain);
 
   // We prerolled our coro, suspend here before actually starting.
   // This allows us to allocate the stack ahead of time.
@@ -1182,7 +1156,7 @@ static boost::context::continuation run(CBChain *chain,
 
     if (!chain->unsafe && chain->looped) {
       // Ensure no while(true), yield anyway every run
-      chain->next = Duration(0);
+      context.next = Duration(0);
       context.continuation = context.continuation.resume();
       // This is delayed upon continuation!!
       if (context.aborted)
@@ -1221,13 +1195,8 @@ static void start(CBChain *chain, CBVar input = {}) {
   if (!chain->coro || !(*chain->coro) || chain->started)
     return; // check if not null and bool operator also to see if alive!
 
-  auto previousChain = chainblocks::CurrentChain;
-  chainblocks::CurrentChain = chain;
-
   chain->rootTickInput = input;
   *chain->coro = chain->coro->resume();
-
-  chainblocks::CurrentChain = previousChain;
 }
 
 static bool stop(CBChain *chain, CBVar *result = nullptr) {
@@ -1238,19 +1207,12 @@ static bool stop(CBChain *chain, CBVar *result = nullptr) {
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
     if ((*chain->coro) && !chain->returned) {
-      // Push current chain
-      auto previous = chainblocks::CurrentChain;
-      chainblocks::CurrentChain = chain;
-
       // set abortion flag, we always have a context in this case
       chain->context->aborted = true;
 
       // BIG Warning: chain->context existed in the coro stack!!!
       // after this resume chain->context is trash!
       chain->coro->resume();
-
-      // Pop current chain
-      chainblocks::CurrentChain = previous;
     }
 
     // delete also the coro ptr
@@ -1271,23 +1233,23 @@ static bool stop(CBChain *chain, CBVar *result = nullptr) {
 }
 
 static void tick(CBChain *chain, CBVar rootInput = CBVar()) {
-  if (!chain->coro || !(*chain->coro) || chain->returned || !chain->started)
+  if (!chain->context || !chain->coro || !(*chain->coro) || chain->returned ||
+      !chain->started)
     return; // check if not null and bool operator also to see if alive!
 
   Duration now = Clock::now().time_since_epoch();
-  if (now >= chain->next) {
-    auto previousChain = chainblocks::CurrentChain;
-    chainblocks::CurrentChain = chain;
-
+  if (now >= chain->context->next) {
     chain->rootTickInput = rootInput;
     *chain->coro = chain->coro->resume();
-
-    chainblocks::CurrentChain = previousChain;
   }
 }
 
 static bool isRunning(CBChain *chain) {
   return chain->started && !chain->returned;
+}
+
+static bool hasEnded(CBChain *chain) {
+  return chain->started && chain->returned;
 }
 
 static bool isCanceled(CBContext *context) { return context->aborted; }

@@ -67,7 +67,7 @@ endif()
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  # add_link_options(-static -fuse-ld=lld)
+  add_link_options(-static -fuse-ld=lld)
 elseif(WIN32)
   add_link_options(-static)
   add_compile_options(-static)
@@ -169,9 +169,11 @@ endif()
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   # 64 bits
   set(NIM_OPTIONS ${NIM_OPTIONS} --cpu:amd64)
+  add_compile_definitions(AMD64_BUILD)
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   # 32 bits
   set(NIM_OPTIONS ${NIM_OPTIONS} --cpu:i386)
+  add_compile_definitions(I386_BUILD)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -241,7 +241,7 @@ when true:
         b.done = true
       
       while not b.chain[].finished:
-        pause(0.0)
+        pause(context, 0.0)
       
       if b.passthrough:
         input
@@ -298,7 +298,7 @@ when true:
       b.ctarget = context.contextVariable(b.name)
     if b.gtarget == nil:
       while not hasGlobalVariable(b.name):
-        pause(0.0) # Wait until we find it
+        pause(context, 0.0) # Wait until we find it
       b.gtarget = globalVariable(b.name)
     
     b.ctarget[] = b.gtarget[]
@@ -374,7 +374,7 @@ when true:
   template activate*(b: CBlockSleep; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
-    pause(b.time)
+    pause(context, b.time)
     input
 
   chainblock CBlockSleep, "Sleep"

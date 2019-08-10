@@ -35,8 +35,8 @@ struct Exec {
     }
 
     while (cmd.running()) {
-      chainblocks::suspend(
-          0.0); // TODO terminate if we interrupt!!! / Run on thread
+      // TODO terminate if we interrupt!!! / Run on thread
+      chainblocks::suspend(ctx, 0.0);
     }
 
     // Let's try to be efficient in terms of reusing memory, altho maybe the SS

@@ -25,11 +25,10 @@ phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
 phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
     EnumTypesRegister;
-thread_local phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+phmap::node_hash_map<std::string, CBVar> GlobalVariables;
 phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 phmap::node_hash_map<std::string, CBChain *> GlobalChains;
-thread_local std::map<std::string, CBCallback> RunLoopHooks;
-thread_local CBChain *CurrentChain;
+std::map<std::string, CBCallback> RunLoopHooks;
 
 void registerCoreBlocks() {
   // Do this here to prevent insanity loop
@@ -154,8 +153,8 @@ EXPORTED int __cdecl chainblocks_ContextState(CBContext *context) {
   return 0;
 }
 
-EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds) {
-  return chainblocks::suspend(seconds);
+EXPORTED CBVar __cdecl chainblocks_Suspend(CBContext *context, double seconds) {
+  return chainblocks::suspend(context, seconds);
 }
 
 EXPORTED void __cdecl chainblocks_CloneVar(CBVar *dst, const CBVar *src) {
@@ -164,6 +163,21 @@ EXPORTED void __cdecl chainblocks_CloneVar(CBVar *dst, const CBVar *src) {
 
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar *var) {
   chainblocks::destroyVar(*var);
+}
+
+EXPORTED __cdecl CBRunChainOutput
+chainblocks_RunSubChain(CBChain *chain, CBContext *context, CBVar input) {
+  chain->finished = false; // Reset finished flag (atomic)
+  auto runRes = chainblocks::runChain(chain, context, input);
+  chain->finishedOutput = runRes.output; // Write result before setting flag
+  chain->finished = true;                // Set finished flag (atomic)
+  return runRes;
+}
+
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateChain(
+    CBChain *chain, CBValidationCallback callback, void *userData,
+    CBTypeInfo inputType) {
+  return validateConnections(chain, callback, userData, inputType);
 }
 
 EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock *block,

@@ -171,7 +171,11 @@ typedef float CBFloat4[4];
 #endif
 
 #ifndef _WIN32
+#ifdef I386_BUILD
 #define __cdecl __attribute__((__cdecl__))
+#else
+#define __cdecl
+#endif
 #endif
 
 struct CBColor {
@@ -274,7 +278,7 @@ struct CBExposedTypeInfo {
 // error and it cannot provide the expected output type. None doesn't mean safe,
 // stop/restart is safe
 
-ALIGNED struct CBVarPayload // will be 32 bytes, must be 16 aligned due to
+ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
                             // vectors
 {
   union {
@@ -345,6 +349,13 @@ ALIGNED struct CBVar {
 ALIGNED struct CBNamedVar {
   const char *key;
   CBVar value;
+};
+
+enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
+
+struct CBRunChainOutput {
+  CBVar output;
+  CBRunChainOutputState state;
 };
 
 typedef CBlock *(__cdecl *CBBlockConstructor)();
@@ -480,13 +491,18 @@ EXPORTED void __cdecl chainblocks_ThrowException(const char *errorText);
 EXPORTED int __cdecl chainblocks_ContextState(CBContext *context);
 
 // To be used within blocks, to suspend the coroutine
-EXPORTED CBVar __cdecl chainblocks_Suspend(double seconds);
+EXPORTED CBVar __cdecl chainblocks_Suspend(CBContext *context, double seconds);
 
 // Utility to deal with CBVars
 EXPORTED void __cdecl chainblocks_CloneVar(CBVar *dst, const CBVar *src);
 EXPORTED void __cdecl chainblocks_DestroyVar(CBVar *var);
 
 // Utility to use blocks within blocks
+EXPORTED __cdecl CBRunChainOutput
+chainblocks_RunSubChain(CBChain *chain, CBContext *context, CBVar input);
+EXPORTED CBTypeInfo __cdecl chainblocks_ValidateChain(
+    CBChain *chain, CBValidationCallback callback, void *userData,
+    CBTypeInfo inputType);
 EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock *block,
                                                 CBContext *context,
                                                 CBVar *input, CBVar *output);
