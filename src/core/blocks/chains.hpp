@@ -5,6 +5,7 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
 #include <fstream>
+#include <memory>
 #include <thread>
 
 namespace bfs = boost::filesystem;
@@ -38,7 +39,10 @@ static ParamsInfo chainloaderParamsInfo = ParamsInfo(
                       "chain in the same node.",
                       CBTypesInfo(boolInfo)));
 
-struct RunChain {
+static ParamsInfo chainOnlyParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
+
+struct ChainRunner {
   CBChain *chain;
   bool once;
   bool doneOnce;
@@ -46,9 +50,40 @@ struct RunChain {
   bool detached;
 
   CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-
   CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    if (passthrough || !chain)
+      return inputType;
+
+    // We need to validate the sub chain to figure it out!
+
+    CBTypeInfo outputType = validateConnections(
+        chain,
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
+                       << errorTxt;
+            throw CBException("RunChain: failed inner chain validation");
+          } else {
+            LOG(INFO) << "RunChain: warning during inner chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, inputType);
+
+    return outputType;
+  }
+
+  void cleanup() {
+    if (chain)
+      chainblocks::stop(chain);
+    doneOnce = false;
+  }
+};
+
+struct RunChain : public ChainRunner {
   CBParametersInfo parameters() { return CBParametersInfo(runChainParamsInfo); }
 
   void setParam(int index, CBVar value) {
@@ -90,30 +125,6 @@ struct RunChain {
     return Var();
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    if (passthrough || !chain)
-      return inputType;
-
-    // We need to validate the sub chain to figure it out!
-
-    CBTypeInfo outputType = validateConnections(
-        chain,
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
-          if (!nonfatalWarning) {
-            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                       << errorTxt;
-            throw CBException("RunChain: failed inner chain validation");
-          } else {
-            LOG(INFO) << "RunChain: warning during inner chain validation: "
-                      << errorTxt;
-          }
-        },
-        this, inputType);
-
-    return outputType;
-  }
-
   CBVar activate(CBContext *context, CBVar input) {
     if (unlikely(!chain))
       return input;
@@ -142,11 +153,206 @@ struct RunChain {
       return input;
     }
   }
+};
 
-  void cleanup() {
-    if (chain)
-      chainblocks::stop(chain);
-    doneOnce = false;
+struct Dispatch : public ChainRunner {
+  // Always passes back the input as output
+
+  Dispatch() : ChainRunner() {
+    passthrough = true;
+    once = false;
+    detached = false;
+  }
+
+  CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    // Run within the root flow
+    auto runRes = chainblocks_RunSubChain(chain, context, input);
+    if (unlikely(runRes.state == Failed || context->aborted)) {
+      return Var::Stop();
+    }
+    // Pass back the input
+    return input;
+  }
+};
+
+struct DispatchOnce : public ChainRunner {
+  // Always passes back the input as output
+
+  DispatchOnce() : ChainRunner() {
+    passthrough = true;
+    once = true;
+    detached = false;
+  }
+
+  CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    if (!doneOnce) {
+      doneOnce = true;
+
+      // Run within the root flow
+      auto runRes = chainblocks_RunSubChain(chain, context, input);
+      if (unlikely(runRes.state == Failed || context->aborted)) {
+        return Var::Stop();
+      }
+    }
+    return input;
+  }
+};
+
+struct Do : public ChainRunner {
+  // Always passes as output the actual inner chain output
+
+  Do() : ChainRunner() {
+    passthrough = false;
+    once = false;
+    detached = false;
+  }
+
+  CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    // Run within the root flow
+    auto runRes = chainblocks_RunSubChain(chain, context, input);
+    if (unlikely(runRes.state == Failed || context->aborted)) {
+      return Var::Stop();
+    }
+    // Pass the actual output
+    return runRes.output;
+  }
+};
+
+struct DoOnce : public ChainRunner {
+  // Always passes as output the actual inner chain output, once, other times
+  // it's a passthru
+
+  DoOnce() : ChainRunner() {
+    passthrough = false;
+    once = true;
+    detached = false;
+  }
+
+  CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    if (!doneOnce) {
+      doneOnce = true;
+
+      // Run within the root flow
+      auto runRes = chainblocks_RunSubChain(chain, context, input);
+      if (unlikely(runRes.state == Failed || context->aborted)) {
+        return Var::Stop();
+      }
+      return runRes.output;
+    } else {
+      return input;
+    }
   }
 };
 
@@ -162,7 +368,7 @@ struct ChainFileWatcher {
   std::string fileName;
   rigtorp::SPSCQueue<ChainLoadResult> results;
 
-  ChainFileWatcher(std::string &file)
+  explicit ChainFileWatcher(std::string &file)
       : running(true), fileName(file), results(2) {
     worker = std::thread([this] {
       std::time_t lastWrite = 0;
@@ -205,21 +411,11 @@ struct ChainFileWatcher {
   }
 };
 
-struct ChainLoader {
+struct ChainLoader : public ChainRunner {
   std::string fileName;
-  CBChain *chain;
-  bool once;
-  bool doneOnce;
-  bool detached;
   std::unique_ptr<ChainFileWatcher> watcher;
 
-  ChainLoader()
-      : chain(nullptr), once(false), doneOnce(false), detached(false),
-        watcher(nullptr) {}
-
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-
-  CBTypesInfo outputTypes() { return CBTypesInfo(noneInfo); }
+  ChainLoader() : ChainRunner(), watcher(nullptr) {}
 
   CBParametersInfo parameters() {
     return CBParametersInfo(chainloaderParamsInfo);
@@ -229,7 +425,7 @@ struct ChainLoader {
     switch (index) {
     case 0:
       fileName = value.payload.stringValue;
-      watcher.reset(new ChainFileWatcher(fileName));
+      watcher = std::make_unique<ChainFileWatcher>(fileName);
       break;
     case 1:
       once = value.payload.boolValue;
@@ -260,8 +456,8 @@ struct ChainLoader {
   }
 
   CBVar activate(CBContext *context, CBVar input) {
-    if (!watcher.get()->results.empty()) {
-      auto result = watcher.get()->results.front();
+    if (!watcher->results.empty()) {
+      auto result = watcher->results.front();
       if (unlikely(result->hasError)) {
         LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "
                    << result->errorMsg;
@@ -272,7 +468,7 @@ struct ChainLoader {
         }
         chain = result->chain;
       }
-      watcher.get()->results.pop();
+      watcher->results.pop();
     }
 
     if (unlikely(!chain))
@@ -300,12 +496,6 @@ struct ChainLoader {
       return input;
     }
   }
-
-  void cleanup() {
-    if (chain)
-      chainblocks::stop(chain);
-    doneOnce = false;
-  }
 };
 
 // Register
@@ -319,6 +509,48 @@ RUNTIME_BLOCK_getParam(RunChain);
 RUNTIME_BLOCK_activate(RunChain);
 RUNTIME_BLOCK_cleanup(RunChain);
 RUNTIME_BLOCK_END(RunChain);
+
+RUNTIME_CORE_BLOCK(Do);
+RUNTIME_BLOCK_inputTypes(Do);
+RUNTIME_BLOCK_outputTypes(Do);
+RUNTIME_BLOCK_parameters(Do);
+RUNTIME_BLOCK_inferTypes(Do);
+RUNTIME_BLOCK_setParam(Do);
+RUNTIME_BLOCK_getParam(Do);
+RUNTIME_BLOCK_activate(Do);
+RUNTIME_BLOCK_cleanup(Do);
+RUNTIME_BLOCK_END(Do);
+
+RUNTIME_CORE_BLOCK(DoOnce);
+RUNTIME_BLOCK_inputTypes(DoOnce);
+RUNTIME_BLOCK_outputTypes(DoOnce);
+RUNTIME_BLOCK_parameters(DoOnce);
+RUNTIME_BLOCK_inferTypes(DoOnce);
+RUNTIME_BLOCK_setParam(DoOnce);
+RUNTIME_BLOCK_getParam(DoOnce);
+RUNTIME_BLOCK_activate(DoOnce);
+RUNTIME_BLOCK_cleanup(DoOnce);
+RUNTIME_BLOCK_END(DoOnce);
+
+RUNTIME_CORE_BLOCK(Dispatch);
+RUNTIME_BLOCK_inputTypes(Dispatch);
+RUNTIME_BLOCK_outputTypes(Dispatch);
+RUNTIME_BLOCK_parameters(Dispatch);
+RUNTIME_BLOCK_setParam(Dispatch);
+RUNTIME_BLOCK_getParam(Dispatch);
+RUNTIME_BLOCK_activate(Dispatch);
+RUNTIME_BLOCK_cleanup(Dispatch);
+RUNTIME_BLOCK_END(Dispatch);
+
+RUNTIME_CORE_BLOCK(DispatchOnce);
+RUNTIME_BLOCK_inputTypes(DispatchOnce);
+RUNTIME_BLOCK_outputTypes(DispatchOnce);
+RUNTIME_BLOCK_parameters(DispatchOnce);
+RUNTIME_BLOCK_setParam(DispatchOnce);
+RUNTIME_BLOCK_getParam(DispatchOnce);
+RUNTIME_BLOCK_activate(DispatchOnce);
+RUNTIME_BLOCK_cleanup(DispatchOnce);
+RUNTIME_BLOCK_END(DispatchOnce);
 
 RUNTIME_CORE_BLOCK(ChainLoader);
 RUNTIME_BLOCK_inputTypes(ChainLoader);

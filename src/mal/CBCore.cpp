@@ -22,8 +22,8 @@
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
 static StaticList<malBuiltIn *> handlers;
-#define FUNCNAME(uniq) builtIn##uniq
-#define HRECNAME(uniq) handler##uniq
+#define FUNCNAME(uniq) cb_builtIn##uniq
+#define HRECNAME(uniq) cb_handler##uniq
 #define BUILTIN_DEF(uniq, symbol)                                              \
   static malBuiltIn::ApplyFunc FUNCNAME(uniq);                                 \
   static StaticList<malBuiltIn *>::Node HRECNAME(uniq)(                        \

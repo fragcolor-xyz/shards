@@ -38,6 +38,10 @@ void registerCoreBlocks() {
   REGISTER_CORE_BLOCK(SetTableValue);
   REGISTER_CORE_BLOCK(GetTableValue);
   REGISTER_CORE_BLOCK(RunChain);
+  REGISTER_CORE_BLOCK(Do);
+  REGISTER_CORE_BLOCK(DoOnce);
+  REGISTER_CORE_BLOCK(Dispatch);
+  REGISTER_CORE_BLOCK(DispatchOnce);
   REGISTER_CORE_BLOCK(ChainLoader);
   REGISTER_BLOCK(Assert, Is);
   REGISTER_BLOCK(Assert, IsNot);

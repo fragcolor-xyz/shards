@@ -13,16 +13,18 @@
 namespace chainblocks {
 class CBException : public std::exception {
 public:
-  CBException(const char *errmsg) : errorMessage(errmsg) {}
+  explicit CBException(const char *errmsg) : errorMessage(errmsg) {}
 
-  const char *what() const noexcept { return errorMessage; }
+  [[nodiscard]] const char *what() const noexcept override {
+    return errorMessage;
+  }
 
 private:
   const char *errorMessage;
 };
 
 struct Var : public CBVar {
-  explicit Var() {
+  explicit Var() : CBVar() {
     valueType = None;
     payload.chainState = Continue;
   }
@@ -34,32 +36,32 @@ struct Var : public CBVar {
     return res;
   }
 
-  explicit Var(int src) {
+  explicit Var(int src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
   }
 
-  explicit Var(CBChain *src) {
+  explicit Var(CBChain *src) : CBVar() {
     valueType = Chain;
     payload.chainValue = src;
   }
 
-  explicit Var(uint64_t src) {
+  explicit Var(uint64_t src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
   }
 
-  explicit Var(const char *src) {
+  explicit Var(const char *src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src;
   }
 
-  explicit Var(std::string &src) {
+  explicit Var(std::string &src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src.c_str();
   }
 
-  explicit Var(CBTable &src) {
+  explicit Var(CBTable &src) : CBVar() {
     valueType = Table;
     payload.tableValue = src;
   }
@@ -88,14 +90,14 @@ struct TypesInfo {
     return *this;
   }
 
-  TypesInfo(CBType singleType, bool canBeSeq = false) {
+  explicit TypesInfo(CBType singleType, bool canBeSeq = false) {
     _innerInfo = nullptr;
     CBTypeInfo t = {singleType};
     stbds_arrpush(_innerInfo, t);
     _innerInfo[0].sequenced = canBeSeq;
   }
 
-  TypesInfo(CBTypeInfo info) {
+  explicit TypesInfo(CBTypeInfo info) {
     _innerInfo = nullptr;
     stbds_arrpush(_innerInfo, info);
   }
@@ -161,7 +163,7 @@ struct ParamsInfo {
     return *this;
   }
 
-  template <typename... Types> ParamsInfo(Types... types) {
+  template <typename... Types> explicit ParamsInfo(Types... types) {
     std::vector<CBParameterInfo> vec = {types...};
     _innerInfo = nullptr;
     for (auto pi : vec) {
@@ -182,7 +184,7 @@ struct ParamsInfo {
 
   explicit operator CBParametersInfo() const { return _innerInfo; }
 
-  CBParametersInfo _innerInfo;
+  CBParametersInfo _innerInfo{};
 };
 
 struct ExposedInfo {
@@ -201,7 +203,7 @@ struct ExposedInfo {
     return *this;
   }
 
-  template <typename... Types> ExposedInfo(Types... types) {
+  template <typename... Types> explicit ExposedInfo(Types... types) {
     std::vector<CBExposedTypeInfo> vec = {types...};
     _innerInfo = nullptr;
     for (auto pi : vec) {
