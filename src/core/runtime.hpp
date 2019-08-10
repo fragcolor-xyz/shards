@@ -245,7 +245,7 @@ struct CBContext {
   std::atomic_bool shouldPause;
   std::atomic_bool paused;
 
-  // Used within the coro stack! (suspend, etc)
+  // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
   Duration next;
 
@@ -255,7 +255,7 @@ struct CBContext {
   void setError(const char *errorMsg) { error = errorMsg; }
 };
 
-CBTypeInfo validateConnections(const std::vector<CBlock *> chain,
+CBTypeInfo validateConnections(const std::vector<CBlock *> &chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType = CBTypeInfo());
 CBTypeInfo validateConnections(const CBlocks chain,

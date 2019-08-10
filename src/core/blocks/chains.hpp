@@ -84,7 +84,9 @@ struct ChainRunner {
 };
 
 struct RunChain : public ChainRunner {
-  static CBParametersInfo parameters() { return CBParametersInfo(runChainParamsInfo); }
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(runChainParamsInfo);
+  }
 
   void setParam(int index, CBVar value) {
     switch (index) {

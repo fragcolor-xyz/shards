@@ -75,6 +75,30 @@ struct Var : public CBVar {
     payload.tableValue = src;
   }
 
+  explicit Var(std::vector<CBVar> vars) {
+    _owned = true;
+    valueType = Seq;
+    payload.seqValue = nullptr;
+    payload.seqLen = -1;
+    stbds_arrsetlen(payload.seqValue, vars.size());
+    for (auto i = 0; i < vars.size(); i++) {
+      payload.seqValue[i].valueType = None;
+      chainblocks_CloneVar(&payload.seqValue[i], &vars[i]);
+    }
+  }
+
+  explicit Var(std::vector<CBlock *> blocks) {
+    valueType = Seq;
+    payload.seqValue = nullptr;
+    payload.seqLen = -1;
+    for (auto block : blocks) {
+      CBVar blockVar;
+      blockVar.valueType = Block;
+      blockVar.payload.blockValue = block;
+      stbds_arrpush(payload.seqValue, blockVar);
+    }
+  }
+
   template <typename... Args> static Var Sequence(Args... vars) {
     auto result = Var();
     result._owned = true;
@@ -523,3 +547,19 @@ inline bool operator==(const CBVar &a, const CBVar &b) {
 }
 
 inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
+
+namespace chainblocks {
+struct StreamStorage {
+  std::vector<char> data;
+  std::stringstream stream;
+
+  void write(CBVar &var) { stream << var; }
+
+  const char *str() {
+    data.clear();
+    data.assign(std::istreambuf_iterator<char>(stream),
+                std::istreambuf_iterator<char>());
+    return &data[0];
+  }
+};
+}; // namespace chainblocks

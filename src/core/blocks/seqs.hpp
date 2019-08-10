@@ -23,7 +23,9 @@ struct GetItems {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {

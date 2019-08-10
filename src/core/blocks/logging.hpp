@@ -23,7 +23,9 @@ struct Log : public LoggingBase {
 struct Msg : public LoggingBase {
   std::string msg;
 
-  static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(msgParamsInfo);
+  }
 
   void setParam(int index, CBVar inValue) {
     switch (index) {

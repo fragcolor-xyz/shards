@@ -494,12 +494,12 @@ std::vector<CBlock *> blockify(malValuePtr arg) {
 CBVar varify(malCBBlock *mblk, malValuePtr arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
-    CBVar var;
+    CBVar var{};
     var.valueType = None;
     var.payload.chainState = Continue;
     return var;
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
-    CBVar tmp;
+    CBVar tmp{};
     tmp.valueType = String;
     auto s = v->value();
     tmp.payload.stringValue = s.c_str();
@@ -510,7 +510,7 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     auto value = v->value();
     int64_t floatTest = value * 10;
     bool isInteger = (floatTest % 10) == 0;
-    CBVar var;
+    CBVar var{};
     if (isInteger) {
       var.valueType = Int;
       var.payload.intValue = value;
@@ -520,7 +520,7 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     }
     return var;
   } else if (const malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
-    CBVar tmp;
+    CBVar tmp{};
     tmp.valueType = Seq;
     tmp.payload.seqValue = nullptr;
     tmp.payload.seqLen = -1;
@@ -535,12 +535,12 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     stbds_arrfree(tmp.payload.seqValue);
     return var;
   } else if (arg == mal::trueValue()) {
-    CBVar var;
+    CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = true;
     return var;
   } else if (arg == mal::falseValue()) {
-    CBVar var;
+    CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = false;
     return var;
@@ -553,13 +553,13 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     const_cast<malCBBlock *>(v)
         ->consume(); // Blocks are unique, consume before use, assume goes
                      // inside another block or
-    CBVar var;
+    CBVar var{};
     var.valueType = Block;
     var.payload.blockValue = block;
     return var;
   } else if (const malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
-    CBVar var;
+    CBVar var{};
     var.valueType = Chain;
     var.payload.chainValue = chain;
     mblk->addChain(v);
@@ -569,8 +569,8 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
   }
 }
 
-int findParamIndex(std::string name, CBParametersInfo params) {
-  for (auto i = 0; i < stbds_arrlen(params); i++) {
+int findParamIndex(const std::string &name, CBParametersInfo params) {
+  for (auto i = 0; stbds_arrlen(params) > i; i++) {
     auto param = params[i];
     if (param.name == name)
       return i;
@@ -588,6 +588,16 @@ void validationCallback(const CBlock *errorBlock, const char *errorTxt,
     LOG(INFO) << "Parameter validation warning: " << errorTxt
               << " block: " << block->name(block);
   }
+}
+
+bool shouldBlockify(CBParameterInfo &param) {
+  for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
+    if (param.valueTypes[i].basicType != Block &&
+        param.valueTypes[i].basicType != None) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void setBlockParameters(malCBBlock *malblock, malValueIter begin,
@@ -612,26 +622,49 @@ void setBlockParameters(malCBBlock *malblock, malValueIter begin,
                    << " block: " << block->name(block);
         throw chainblocks::CBException("Parameter not found");
       } else {
-        auto var = varify(malblock, value);
-        if (!validateSetParam(block, idx, var, validationCallback, nullptr)) {
-          LOG(ERROR) << "Failed parameter: " << paramName;
-          throw chainblocks::CBException("Parameter validation failed");
+        if (shouldBlockify(params[idx])) {
+          auto blocks = blockify(value);
+          chainblocks::Var blocksVar(blocks);
+          if (!validateSetParam(block, idx, blocksVar, validationCallback,
+                                nullptr)) {
+            LOG(ERROR) << "Failed parameter: " << paramName;
+            throw chainblocks::CBException("Parameter validation failed");
+          }
+          block->setParam(block, idx, blocksVar);
+        } else {
+          auto var = varify(malblock, value);
+          if (!validateSetParam(block, idx, var, validationCallback, nullptr)) {
+            LOG(ERROR) << "Failed parameter: " << paramName;
+            throw chainblocks::CBException("Parameter validation failed");
+          }
+          block->setParam(block, idx, var);
+          chainblocks::destroyVar(var);
         }
-        block->setParam(block, idx, var);
-        chainblocks::destroyVar(var);
       }
     } else if (pindex == -1) {
       // We expected a keyword! fail
       LOG(ERROR) << "Keyword expected, block: " << block->name(block);
       throw chainblocks::CBException("Keyword expected");
     } else {
-      auto var = varify(malblock, arg);
-      if (!validateSetParam(block, pindex, var, validationCallback, nullptr)) {
-        LOG(ERROR) << "Failed parameter index: " << pindex;
-        throw chainblocks::CBException("Parameter validation failed");
+      if (shouldBlockify(params[pindex])) {
+        auto blocks = blockify(arg);
+        chainblocks::Var blocksVar(blocks);
+        if (!validateSetParam(block, pindex, blocksVar, validationCallback,
+                              nullptr)) {
+          LOG(ERROR) << "Failed parameter index: " << pindex;
+          throw chainblocks::CBException("Parameter validation failed");
+        }
+        block->setParam(block, pindex, blocksVar);
+      } else {
+        auto var = varify(malblock, arg);
+        if (!validateSetParam(block, pindex, var, validationCallback,
+                              nullptr)) {
+          LOG(ERROR) << "Failed parameter index: " << pindex;
+          throw chainblocks::CBException("Parameter validation failed");
+        }
+        block->setParam(block, pindex, var);
+        chainblocks::destroyVar(var);
       }
-      block->setParam(block, pindex, var);
-      chainblocks::destroyVar(var);
 
       pindex++;
     }

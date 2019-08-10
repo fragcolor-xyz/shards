@@ -365,7 +365,7 @@ void to_json(json &j, const CBVar &var) {
     std::vector<json> items;
     for (int i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
       auto &v = var.payload.seqValue[i];
-      items.push_back(v);
+      items.emplace_back(v);
     }
     j = json{{"type", valType}, {"values", items}};
     break;
@@ -555,7 +555,7 @@ void from_json(const json &j, CBVar &var) {
     var.valueType = Seq;
     auto items = j.at("values").get<std::vector<json>>();
     var.payload.seqValue = nullptr;
-    for (auto item : items) {
+    for (const auto &item : items) {
       stbds_arrpush(var.payload.seqValue, item.get<CBVar>());
     }
     break;
@@ -568,7 +568,7 @@ void from_json(const json &j, CBVar &var) {
     for (auto item : items) {
       auto key = item.at("key").get<std::string>();
       auto value = item.at("value").get<CBVar>();
-      CBNamedVar named;
+      CBNamedVar named{};
       named.key = new char[key.length() + 1];
       strcpy((char *)named.key, key.c_str());
       named.value = value;
@@ -610,7 +610,7 @@ void from_json(const json &j, CBVar &var) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; i < stbds_arrlen(blkParams); i++) {
+        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
           auto &paramInfo = blkParams[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
@@ -632,7 +632,7 @@ void to_json(json &j, const CBChainPtr &chain) {
   for (auto blk : chain->blocks) {
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for (int i = 0; i < stbds_arrlen(paramsDesc); i++) {
+    for (int i = 0; stbds_arrlen(paramsDesc) > i; i++) {
       auto &desc = paramsDesc[i];
       auto value = blk->getParam(blk, i);
 
@@ -688,7 +688,7 @@ void from_json(const json &j, CBChainPtr &chain) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; i < stbds_arrlen(blkParams); i++) {
+        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
           auto &paramInfo = blkParams[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
@@ -746,12 +746,12 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
 struct ValidationContext {
   phmap::flat_hash_map<std::string, CBExposedTypeInfo> exposed;
 
-  CBTypeInfo previousOutputType;
+  CBTypeInfo previousOutputType{};
 
-  CBlock *bottom;
+  CBlock *bottom{};
 
-  CBValidationCallback cb;
-  void *userData;
+  CBValidationCallback cb{};
+  void *userData{};
 };
 
 struct ConsumedParam {
@@ -765,7 +765,7 @@ void validateConnection(ValidationContext &ctx) {
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
   auto inputMatches = false;
   // validate our generic input
-  for (auto i = 0; i < stbds_arrlen(inputInfos); i++) {
+  for (auto i = 0; stbds_arrlen(inputInfos) > i; i++) {
     auto &inputInfo = inputInfos[i];
     if (matchTypes(previousOutput, inputInfo, false)) {
       inputMatches = true;
@@ -782,7 +782,7 @@ void validateConnection(ValidationContext &ctx) {
   CBExposedTypesInfo consumables = nullptr;
 
   // make sure we have the vars we need, collect first
-  for (auto i = 0; i < stbds_arrlen(consumedVar); i++) {
+  for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
     auto &consumed_param = consumedVar[i];
     std::string name(consumed_param.name);
     auto findIt = ctx.exposed.find(name);
@@ -829,7 +829,7 @@ void validateConnection(ValidationContext &ctx) {
   // Grab those after type inference!
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
-  for (auto i = 0; i < stbds_arrlen(exposedVars); i++) {
+  for (auto i = 0; stbds_arrlen(exposedVars) > i; i++) {
     auto &exposed_param = exposedVars[i];
     std::string name(exposed_param.name);
     auto findIt = ctx.exposed.find(name);
@@ -848,7 +848,7 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-CBTypeInfo validateConnections(const std::vector<CBlock *> chain,
+CBTypeInfo validateConnections(const std::vector<CBlock *> &chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType) {
   auto ctx = ValidationContext();
@@ -874,7 +874,7 @@ CBTypeInfo validateConnections(const CBlocks chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType) {
   std::vector<CBlock *> blocks;
-  for (auto i = 0; i < stbds_arrlen(chain); i++) {
+  for (auto i = 0; stbds_arrlen(chain) > i; i++) {
     blocks.push_back(chain[i]);
   }
   return validateConnections(blocks, callback, userData, inputType);
@@ -911,7 +911,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
     break;
   };
 
-  for (auto i = 0; i < stbds_arrlen(param.valueTypes); i++) {
+  for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
     if (matchTypes(varType, param.valueTypes[i], true)) {
       return true; // we are good just exit
     }
@@ -920,7 +920,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   // Failed until now but let's check if the type is a sequenced too
   if (value.valueType == Seq) {
     // Validate each type in the seq
-    for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {
+    for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
       if (validateSetParam(block, index, value.payload.seqValue[i], callback,
                            userData, true))
         return true;

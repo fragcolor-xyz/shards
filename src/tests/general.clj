@@ -1,20 +1,5 @@
 (def! Root (Node))
 
-; (schedule Root (Chain "namedChain"
-;   nil
-;   "Hello world!"
-;   (When :Accept "\\w+ world!" :IsRegex true)
-;   (Msg "Here we are!")
-;   (Repeat :Times 5 :Action (Blocks 
-;     (Msg "Ok...")
-;     (Msg "Ok2?")
-;     10
-;     (Math.Multiply 10)
-;     (Assert.Is 100)
-;     (Log)
-;   ))
-; ))
-
 (def! inner1 (Chain "inner"
   (Assert.Is "My input" true)
   "My input 2"
@@ -71,11 +56,11 @@
 
   0
   (SetVariable "counter")
-  (Repeat (Blocks
+  (Repeat [
     (GetVariable "counter")
     (Math.Add 1)
     (SetVariable "counter")
-  ) 5)
+  ] 5)
   (GetVariable "counter")
   (Assert.Is 5 true)
   (Log)
