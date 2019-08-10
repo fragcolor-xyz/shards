@@ -20,9 +20,9 @@ struct Exec {
 
   void destroy() { stbds_shfree(outputTable); }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(strInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(strInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(execTableInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(execTableInfo); }
 
   CBVar activate(CBContext *ctx, CBVar input) {
     boost::process::ipstream opipe;

@@ -143,6 +143,24 @@ template <typename... TT> struct hash<std::tuple<TT...>> {
 };
 } // namespace std
 
+namespace chainblocks {
+extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
+extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
+    ObjectTypesRegister;
+extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
+    EnumTypesRegister;
+extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
+extern std::map<std::string, CBCallback> RunLoopHooks;
+extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
+extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
+
+static CBlock *createBlock(const char *name);
+
+static void registerChain(CBChain *chain);
+
+static void unregisterChain(CBChain *chain);
+}; // namespace chainblocks
+
 typedef boost::context::continuation CBCoro;
 
 struct CBChain {
@@ -150,9 +168,14 @@ struct CBChain {
       : looped(false), unsafe(false), name(chain_name), coro(nullptr),
         started(false), finished(false), returned(false), failed(false),
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        context(nullptr), node(nullptr) {}
+        context(nullptr), node(nullptr) {
+    chainblocks::registerChain(this);
+  }
 
-  ~CBChain() { cleanup(); }
+  ~CBChain() {
+    chainblocks::unregisterChain(this);
+    cleanup();
+  }
 
   void cleanup();
 
@@ -244,20 +267,6 @@ CBTypeInfo validateConnections(const CBChain *chain,
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData,
                       bool sequenced = false);
-
-namespace chainblocks {
-extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
-extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
-    ObjectTypesRegister;
-extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
-    EnumTypesRegister;
-extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
-extern std::map<std::string, CBCallback> RunLoopHooks;
-extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
-extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
-
-static CBlock *createBlock(const char *name);
-}; // namespace chainblocks
 
 using json = nlohmann::json;
 // The following procedures implement json.hpp protocol in order to allow easy
@@ -390,17 +399,6 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
   return freeCount;
 }
 
-static void registerChain(CBChain *chain) {
-  chainblocks::GlobalChains[chain->name] = chain;
-}
-
-static void unregisterChain(CBChain *chain) {
-  auto findIt = chainblocks::GlobalChains.find(chain->name);
-  if (findIt != chainblocks::GlobalChains.end()) {
-    chainblocks::GlobalChains.erase(findIt);
-  }
-}
-
 static void registerBlock(const char *fullName,
                           CBBlockConstructor constructor) {
   auto cname = std::string(fullName);
@@ -462,6 +460,17 @@ static void unregisterExitCallback(const char *eventName) {
   auto findIt = chainblocks::ExitHooks.find(eventName);
   if (findIt != chainblocks::ExitHooks.end()) {
     chainblocks::ExitHooks.erase(findIt);
+  }
+}
+
+static void registerChain(CBChain *chain) {
+  chainblocks::GlobalChains[chain->name] = chain;
+}
+
+static void unregisterChain(CBChain *chain) {
+  auto findIt = chainblocks::GlobalChains.find(chain->name);
+  if (findIt != chainblocks::GlobalChains.end()) {
+    chainblocks::GlobalChains.erase(findIt);
   }
 }
 

@@ -49,8 +49,8 @@ struct ChainRunner {
   bool passthrough;
   bool detached;
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     if (passthrough || !chain)
@@ -84,7 +84,7 @@ struct ChainRunner {
 };
 
 struct RunChain : public ChainRunner {
-  CBParametersInfo parameters() { return CBParametersInfo(runChainParamsInfo); }
+  static CBParametersInfo parameters() { return CBParametersInfo(runChainParamsInfo); }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -164,7 +164,7 @@ struct Dispatch : public ChainRunner {
     detached = false;
   }
 
-  CBParametersInfo parameters() {
+  static CBParametersInfo parameters() {
     return CBParametersInfo(chainOnlyParamsInfo);
   }
 
@@ -212,7 +212,7 @@ struct DispatchOnce : public ChainRunner {
     detached = false;
   }
 
-  CBParametersInfo parameters() {
+  static CBParametersInfo parameters() {
     return CBParametersInfo(chainOnlyParamsInfo);
   }
 
@@ -263,7 +263,7 @@ struct Do : public ChainRunner {
     detached = false;
   }
 
-  CBParametersInfo parameters() {
+  static CBParametersInfo parameters() {
     return CBParametersInfo(chainOnlyParamsInfo);
   }
 
@@ -312,7 +312,7 @@ struct DoOnce : public ChainRunner {
     detached = false;
   }
 
-  CBParametersInfo parameters() {
+  static CBParametersInfo parameters() {
     return CBParametersInfo(chainOnlyParamsInfo);
   }
 
@@ -353,6 +353,105 @@ struct DoOnce : public ChainRunner {
     } else {
       return input;
     }
+  }
+};
+
+struct Detach : public ChainRunner {
+  // Detaches completely into a new chain on the same node
+  // it's a passthru
+
+  Detach() : ChainRunner() {
+    passthrough = true;
+    once = false;
+    detached = true;
+  }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    assert(context && context->chain && context->chain->node);
+
+    if (!chainblocks::isRunning(chain)) {
+      context->chain->node->schedule(chain, input);
+    }
+    return input;
+  }
+};
+
+struct DetachOnce : public ChainRunner {
+  // Detaches completely into a new chain on the same node
+  // it's a passthru
+
+  DetachOnce() : ChainRunner() {
+    passthrough = true;
+    once = true;
+    detached = true;
+  }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(chainOnlyParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    if (unlikely(!chain))
+      return input;
+
+    assert(context && context->chain && context->chain->node);
+
+    if (!doneOnce) {
+      doneOnce = true;
+      if (!chainblocks::isRunning(chain)) {
+        context->chain->node->schedule(chain, input);
+      }
+    }
+    return input;
   }
 };
 
@@ -417,7 +516,7 @@ struct ChainLoader : public ChainRunner {
 
   ChainLoader() : ChainRunner(), watcher(nullptr) {}
 
-  CBParametersInfo parameters() {
+  static CBParametersInfo parameters() {
     return CBParametersInfo(chainloaderParamsInfo);
   }
 
@@ -551,6 +650,26 @@ RUNTIME_BLOCK_getParam(DispatchOnce);
 RUNTIME_BLOCK_activate(DispatchOnce);
 RUNTIME_BLOCK_cleanup(DispatchOnce);
 RUNTIME_BLOCK_END(DispatchOnce);
+
+RUNTIME_CORE_BLOCK(DetachOnce);
+RUNTIME_BLOCK_inputTypes(DetachOnce);
+RUNTIME_BLOCK_outputTypes(DetachOnce);
+RUNTIME_BLOCK_parameters(DetachOnce);
+RUNTIME_BLOCK_setParam(DetachOnce);
+RUNTIME_BLOCK_getParam(DetachOnce);
+RUNTIME_BLOCK_activate(DetachOnce);
+RUNTIME_BLOCK_cleanup(DetachOnce);
+RUNTIME_BLOCK_END(DetachOnce);
+
+RUNTIME_CORE_BLOCK(Detach);
+RUNTIME_BLOCK_inputTypes(Detach);
+RUNTIME_BLOCK_outputTypes(Detach);
+RUNTIME_BLOCK_parameters(Detach);
+RUNTIME_BLOCK_setParam(Detach);
+RUNTIME_BLOCK_getParam(Detach);
+RUNTIME_BLOCK_activate(Detach);
+RUNTIME_BLOCK_cleanup(Detach);
+RUNTIME_BLOCK_END(Detach);
 
 RUNTIME_CORE_BLOCK(ChainLoader);
 RUNTIME_BLOCK_inputTypes(ChainLoader);

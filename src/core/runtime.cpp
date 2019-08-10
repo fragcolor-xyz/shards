@@ -42,6 +42,8 @@ void registerCoreBlocks() {
   REGISTER_CORE_BLOCK(DoOnce);
   REGISTER_CORE_BLOCK(Dispatch);
   REGISTER_CORE_BLOCK(DispatchOnce);
+  REGISTER_CORE_BLOCK(Detach);
+  REGISTER_CORE_BLOCK(DetachOnce);
   REGISTER_CORE_BLOCK(ChainLoader);
   REGISTER_BLOCK(Assert, Is);
   REGISTER_BLOCK(Assert, IsNot);

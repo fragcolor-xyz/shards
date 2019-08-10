@@ -8,13 +8,13 @@ static ParamsInfo msgParamsInfo = ParamsInfo(
     ParamsInfo::Param("Message", "The message to log.", CBTypesInfo(strInfo)));
 
 struct LoggingBase {
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 };
 
 struct Log : public LoggingBase {
-  CBVar activate(CBContext *context, CBVar input) {
+  static CBVar activate(CBContext *context, CBVar input) {
     CLOG(INFO, context->logger_name.c_str()) << input;
     return input;
   }
@@ -23,7 +23,7 @@ struct Log : public LoggingBase {
 struct Msg : public LoggingBase {
   std::string msg;
 
-  CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
+  static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
 
   void setParam(int index, CBVar inValue) {
     switch (index) {

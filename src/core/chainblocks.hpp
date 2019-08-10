@@ -24,6 +24,15 @@ private:
 };
 
 struct Var : public CBVar {
+  ~Var() {
+    if (_owned && valueType == Seq) {
+      for (auto i = 0; stbds_arrlen(payload.seqValue) > i; i++) {
+        chainblocks_DestroyVar(&payload.seqValue[i]);
+      }
+      stbds_arrfree(payload.seqValue);
+    }
+  }
+
   explicit Var() : CBVar() {
     valueType = None;
     payload.chainState = Continue;
@@ -65,6 +74,22 @@ struct Var : public CBVar {
     valueType = Table;
     payload.tableValue = src;
   }
+
+  template <typename... Args> static Var Sequence(Args... vars) {
+    auto result = Var();
+    result._owned = true;
+    result.valueType = Seq;
+    std::vector<CBVar> vec = {CBVar(vars...)};
+    stbds_arrsetlen(result.payload.seqValue, vec.size());
+    for (auto i = 0; i < vec.size(); i++) {
+      result.payload.seqValue[i].valueType = None;
+      chainblocks_CloneVar(&result.payload.seqValue[i], &vec[i]);
+    }
+    return result;
+  }
+
+private:
+  bool _owned = false;
 };
 
 struct TypesInfo {
@@ -77,14 +102,14 @@ struct TypesInfo {
 
   TypesInfo(const TypesInfo &other) {
     _innerInfo = nullptr;
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
+    for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
       stbds_arrpush(_innerInfo, other._innerInfo[i]);
     }
   }
 
   TypesInfo &operator=(const TypesInfo &other) {
     stbds_arrsetlen(_innerInfo, 0);
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
+    for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
       stbds_arrpush(_innerInfo, other._innerInfo[i]);
     }
     return *this;
@@ -462,7 +487,6 @@ inline bool operator==(const CBVar &a, const CBVar &b) {
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
-    break;
   case Image:
     return a.payload.imageValue.channels == b.payload.imageValue.channels &&
            a.payload.imageValue.width == b.payload.imageValue.width &&

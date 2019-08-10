@@ -10,12 +10,11 @@ static ParamsInfo tableParamsInfo = ParamsInfo(
                       CBTypesInfo(strInfo)));
 
 struct SetTableValue {
-  CBVar *target = nullptr;
+  CBVar *target{};
   std::string name;
   std::string key;
-  CBVar currentValue;
-
-  ExposedInfo tableExposedInfo;
+  CBVar currentValue{};
+  ExposedInfo tableExposedInfo{};
   TypesInfo tableTypeInfo;
   TypesInfo contentInfo;
 
@@ -35,11 +34,13 @@ struct SetTableValue {
     target = nullptr;
   }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBParametersInfo parameters() { return CBParametersInfo(tableParamsInfo); }
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(tableParamsInfo);
+  }
 
   CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(tableExposedInfo);
@@ -68,7 +69,7 @@ struct SetTableValue {
   }
 
   CBVar getParam(int index) {
-    CBVar res;
+    CBVar res{};
     res.valueType = String;
     switch (index) {
     case 0:
@@ -93,7 +94,7 @@ struct SetTableValue {
       target->valueType = Table;
       target->payload.tableValue = nullptr;
       // Also set table default
-      CBVar defaultVar;
+      CBVar defaultVar{};
       defaultVar.valueType = None;
       defaultVar.payload.chainState = Continue;
       CBNamedVar defaultNamed = {nullptr, defaultVar};
@@ -111,19 +112,20 @@ struct SetTableValue {
 };
 
 struct GetTableValue {
-  CBVar *target = nullptr;
+  CBVar *target{};
   std::string name;
   std::string key;
-
-  CBExposedTypesInfo tableExposedInfo = nullptr;
+  CBExposedTypesInfo tableExposedInfo{};
 
   void cleanup() { target = nullptr; }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(noneInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(noneInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBParametersInfo parameters() { return CBParametersInfo(tableParamsInfo); }
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(tableParamsInfo);
+  }
 
   CBExposedTypesInfo consumedVariables() {
     if (!tableExposedInfo) {
@@ -137,7 +139,7 @@ struct GetTableValue {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+    for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
       if (consumableVariables[i].name == name &&
           consumableVariables[i].exposedType.tableTypes) {
         return consumableVariables[i]
@@ -162,7 +164,7 @@ struct GetTableValue {
   }
 
   CBVar getParam(int index) {
-    CBVar res;
+    CBVar res{};
     res.valueType = String;
     switch (index) {
     case 0:

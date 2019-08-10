@@ -15,6 +15,11 @@
 ;   ))
 ; ))
 
+(def! inner1 (Chain "inner"
+  (Assert.Is "My input" true)
+  "My input 2"
+))
+
 (def! testChain (Chain "namedChain"
   ; (Msg "Running tests!")
 
@@ -100,6 +105,14 @@
   "chain:initChain[1]"
   (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
   (Log)
+
+  "My input"
+  (Dispatch inner1)
+  (Assert.Is "My input" true)
+
+  "My input"
+  (Do inner1)
+  (Assert.Is "My input 2" true)
 
   (Msg "All looking good!")
 ))

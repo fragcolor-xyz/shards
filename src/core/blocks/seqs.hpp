@@ -19,20 +19,17 @@ struct GetItems {
     }
   }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
 
-  CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
+  static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
-    if (indices.valueType == Seq &&
-        (stbds_arrlen(indices.payload.seqValue) > 1))
-      inputType.sequenced = true;
-    else
-      inputType.sequenced = false;
+    inputType.sequenced = indices.valueType == Seq &&
+                          (stbds_arrlen(indices.payload.seqValue) > 1);
     return inputType;
   }
 
@@ -69,7 +66,7 @@ struct GetItems {
     // Else it's a seq
     auto nindices = stbds_arrlen(indices.payload.seqValue);
     stbds_arrsetlen(cachedResult, nindices);
-    for (auto i = 0; i < nindices; i++) {
+    for (auto i = 0; nindices > i; i++) {
       auto index = indices.payload.seqValue[i].payload.intValue;
       if (index >= inputLen) {
         LOG(ERROR) << "GetItems out of range! len:" << inputLen
@@ -79,7 +76,7 @@ struct GetItems {
       cachedResult[i] = input.payload.seqValue[index];
     }
 
-    CBVar result;
+    CBVar result{};
     result.valueType = Seq;
     result.payload.seqLen = -1;
     result.payload.seqValue = cachedResult;
