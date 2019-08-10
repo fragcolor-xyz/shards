@@ -197,7 +197,7 @@ endforeach()
 add_custom_command(
   OUTPUT libnimcb.a
   COMMAND
-    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --cc:clang --app:staticlib --noMain --nimcache:nimcache-base-cbjs -o:libnimcb.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim
+    ${NIM_EXECUTABLE} ${NIM_OPTIONS} -f --app:staticlib --noMain --nimcache:nimcache-base-cbjs -o:libnimcb.a -p:${CMAKE_CURRENT_LIST_DIR}/src/nim --passL:-static --passC:-static --passC:-DCHAINBLOCKS_RUNTIME ${CHAINBLOCKS_DIR}/src/nim/chainblocks.nim
   DEPENDS
     ${nim_files_list}
 )
