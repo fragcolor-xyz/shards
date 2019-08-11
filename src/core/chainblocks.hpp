@@ -549,17 +549,36 @@ inline bool operator==(const CBVar &a, const CBVar &b) {
 inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
 
 namespace chainblocks {
-struct StreamStorage {
+struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
-  std::stringstream stream;
+  void reset() { data.clear(); }
 
-  void write(CBVar &var) { stream << var; }
-
-  const char *str() {
-    data.clear();
-    data.assign(std::istreambuf_iterator<char>(stream),
-                std::istreambuf_iterator<char>());
-    return &data[0];
+  int overflow(int c) {
+    data.emplace_back(static_cast<char>(c));
+    return 0;
   }
+
+  void done() { data.emplace_back('\0'); }
+
+  const char *str() { return &data[0]; }
+};
+
+struct VarStringStream {
+  CachedStreamBuf cache;
+  CBVar previousValue{};
+
+  ~VarStringStream() { chainblocks_DestroyVar(&previousValue); }
+
+  void write(CBVar &var) {
+    if (var != previousValue) {
+      cache.reset();
+      std::ostream stream(&cache);
+      stream << var;
+      cache.done();
+      chainblocks_CloneVar(&previousValue, &var);
+    }
+  }
+
+  const char *str() { return cache.str(); }
 };
 }; // namespace chainblocks
