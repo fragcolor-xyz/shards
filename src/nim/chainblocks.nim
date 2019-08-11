@@ -61,14 +61,17 @@ proc elems*(v: CBFloat4): array[4, float32] {.inline.} = [v.toCpp[0].to(float32)
 converter toCBTypesInfo*(s: tuple[types: set[CBType]; canBeSeq: bool]): CBTypesInfo {.inline, noinit.} =
   initSeq(result)
   for t in s.types:
-    global.stbds_arrpush(result, CBTypeInfo(basicType: t, sequenced: s.canBeSeq)).to(void)
+    global.stbds_arrpush(result, CBTypeInfo(basicType: t)).to(void)
+  if s.canBeSeq:
+    global.stbds_arrpush(result, CBTypeInfo(basicType: Seq)).to(void)
+    initSeq(result[result.len - 1].seqTypes)
+    for t in s.types:
+      global.stbds_arrpush(result[result.len - 1].seqTypes, CBTypeInfo(basicType: t)).to(void)
+
 
 converter toCBTypesInfo*(s: set[CBType]): CBTypesInfo {.inline, noinit.} = (s, false)
 
-converter toCBTypeInfo*(s: tuple[ty: CBType, isSeq: bool]): CBTypeInfo {.inline, noinit.} =
-  CBTypeInfo(basicType: s.ty, sequenced: s.isSeq)
-
-converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = (s, false)
+converter toCBTypeInfo*(s: CBType): CBTypeInfo {.inline, noinit.} = CBTypeInfo(basicType: s)
 
 converter toCBTypesInfo*(s: CBTypeInfo): CBTypesInfo {.inline, noinit.} =
   initSeq(result)

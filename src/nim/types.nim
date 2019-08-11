@@ -101,11 +101,12 @@ type
 
   CBTypeInfo* {.importcpp: "CBTypeInfo", header: "chainblocks.hpp".} = object
     basicType*: CBType
-    sequenced*: bool # This type can be in a sequence of itself
     objectVendorId*: int32
     objectTypeId*: int32
     enumVendorId*: int32
     enumTypeId*: int32
+    seqTypes*: CBTypesInfo
+    tableTypes*: CBTypesInfo
 
   CBTypesInfo* {.importcpp: "CBTypesInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBTypeInfo]
 

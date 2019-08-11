@@ -6,7 +6,19 @@
 ))
 
 (def! testChain (Chain "namedChain"
-  ; (Msg "Running tests!")
+  (Msg "Running tests!")
+
+  true
+  (Cond [
+    (--> (When true) true) (--> (Msg "Cond was true!!") false)
+    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+  (Assert.Is false true)
+
+  false
+  (Cond [
+    (--> (When true) true) (--> (Msg "Cond was true!!") false)
+    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+  (Assert.Is true true)
 
   "Hello"
   (Assert.Is "Hello" true)
@@ -56,11 +68,11 @@
 
   0
   (SetVariable "counter")
-  (Repeat [
+  (Repeat (-->
     (GetVariable "counter")
     (Math.Add 1)
     (SetVariable "counter")
-  ] 5)
+   ) 5)
   (GetVariable "counter")
   (Assert.Is 5 true)
   (Log)

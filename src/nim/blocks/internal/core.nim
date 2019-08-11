@@ -119,6 +119,7 @@ when true:
       name*: GbString
       maxSize: int
       exposedInfo: CBExposedTypesInfo
+      outputInfo: CBTypeInfo
   
   template cleanup*(b: CBAddVariable) =
     if b.target != nil and b.target[].valueType == Seq:
@@ -136,12 +137,17 @@ when true:
   template getParam*(b: CBAddVariable; index: int): CBVar = b.name
   
   proc inferTypes(b: var CBAddVariable; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
-    result = inputType
-    result.sequenced = true # we return input type in a seq
+    b.outputInfo.basicType = Seq
+    if b.outputInfo.seqTypes != nil:
+      freeSeq(b.outputInfo.seqTypes)
+      initSeq(b.outputInfo.seqTypes)
+    b.outputInfo.seqTypes.push(inputType)
     
     # Fix exposed type
     freeSeq(b.exposedInfo); initSeq(b.exposedInfo)
-    b.exposedInfo.push(CBExposedTypeInfo(name: b.name.cstring, exposedType: result))
+    b.exposedInfo.push(CBExposedTypeInfo(name: b.name.cstring, exposedType: b.outputInfo))
+
+    return b.outputInfo
     
   proc exposedVariables*(b: var CBAddVariable): CBExposedTypesInfo = b.exposedInfo
 
@@ -392,7 +398,7 @@ when true:
   template outputTypes*(b: CBWhen): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhen): CBParametersInfo = 
     *@[
-      (cs"Accept", (AllIntTypes + AllFloatTypes + { String, Color, ContextVar }, true #[seq]#)),
+      (cs"Accept", (AllIntTypes + AllFloatTypes + { String, Color, Bool, ContextVar }, true #[seq]#)),
       (cs"IsRegex", ({ Bool }, false #[seq]#)),
       (cs"All", ({ Bool }, false #[seq]#))
     ]
@@ -488,7 +494,7 @@ when true:
   template outputTypes*(b: CBWhenNot): CBTypesInfo = ({ Any }, true #[seq]#)
   template parameters*(b: CBWhenNot): CBParametersInfo = 
     *@[
-      (cs"Reject", (AllIntTypes + AllFloatTypes + { String, Color, ContextVar }, true #[seq]#)),
+      (cs"Reject", (AllIntTypes + AllFloatTypes + { String, Color, Bool, ContextVar }, true #[seq]#)),
       (cs"IsRegex", ({ Bool }, false #[seq]#)),
       (cs"All", ({ Bool }, false #[seq]#)) # must match all of the accepted
     ]

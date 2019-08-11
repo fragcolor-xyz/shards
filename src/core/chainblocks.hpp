@@ -1,6 +1,7 @@
 #pragma once
 
 #include "chainblocks.h"
+#include "ops.hpp"
 
 // Included 3rdparty
 #include "3rdparty/easylogging++.h"
@@ -25,7 +26,7 @@ private:
 
 struct Var : public CBVar {
   ~Var() {
-    if (_owned && valueType == Seq) {
+    if (valueType == Seq) {
       for (auto i = 0; stbds_arrlen(payload.seqValue) > i; i++) {
         chainblocks_DestroyVar(&payload.seqValue[i]);
       }
@@ -48,6 +49,11 @@ struct Var : public CBVar {
   explicit Var(int src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
+  }
+
+  explicit Var(bool src) : CBVar() {
+    valueType = Bool;
+    payload.boolValue = src;
   }
 
   explicit Var(CBChain *src) : CBVar() {
@@ -76,7 +82,6 @@ struct Var : public CBVar {
   }
 
   explicit Var(std::vector<CBVar> vars) {
-    _owned = true;
     valueType = Seq;
     payload.seqValue = nullptr;
     payload.seqLen = -1;
@@ -98,30 +103,18 @@ struct Var : public CBVar {
       stbds_arrpush(payload.seqValue, blockVar);
     }
   }
-
-  template <typename... Args> static Var Sequence(Args... vars) {
-    auto result = Var();
-    result._owned = true;
-    result.valueType = Seq;
-    std::vector<CBVar> vec = {CBVar(vars...)};
-    stbds_arrsetlen(result.payload.seqValue, vec.size());
-    for (auto i = 0; i < vec.size(); i++) {
-      result.payload.seqValue[i].valueType = None;
-      chainblocks_CloneVar(&result.payload.seqValue[i], &vec[i]);
-    }
-    return result;
-  }
-
-private:
-  bool _owned = false;
 };
+
+static Var True = Var(true);
+static Var False = Var(false);
+static Var StopChain = Var::Stop();
+static Var Empty = Var();
 
 struct TypesInfo {
   TypesInfo() {
     _innerInfo = nullptr;
     CBTypeInfo t = {None};
     stbds_arrpush(_innerInfo, t);
-    _innerInfo[0].sequenced = false;
   }
 
   TypesInfo(const TypesInfo &other) {
@@ -139,16 +132,13 @@ struct TypesInfo {
     return *this;
   }
 
-  explicit TypesInfo(CBType singleType, bool canBeSeq = false) {
+  explicit TypesInfo(CBTypeInfo singleType, bool canBeSeq = false) {
     _innerInfo = nullptr;
-    CBTypeInfo t = {singleType};
-    stbds_arrpush(_innerInfo, t);
-    _innerInfo[0].sequenced = canBeSeq;
-  }
-
-  explicit TypesInfo(CBTypeInfo info) {
-    _innerInfo = nullptr;
-    stbds_arrpush(_innerInfo, info);
+    stbds_arrpush(_innerInfo, singleType);
+    if (canBeSeq) {
+      _subTypes.push_back(TypesInfo(CBType::Seq, CBTypesInfo(*this)));
+      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
+    }
   }
 
   TypesInfo(CBType singleType, CBTypesInfo contentsInfo) {
@@ -161,6 +151,16 @@ struct TypesInfo {
       _innerInfo[0].tableTypes = CBTypesInfo(contentsInfo);
     else if (_innerInfo[0].basicType == Seq)
       _innerInfo[0].seqTypes = CBTypesInfo(contentsInfo);
+  }
+
+  explicit TypesInfo(CBType singleType, bool canBeSeq = false) {
+    _innerInfo = nullptr;
+    CBTypeInfo t = {singleType};
+    stbds_arrpush(_innerInfo, t);
+    if (canBeSeq) {
+      _subTypes.push_back(TypesInfo(CBType::Seq, CBTypesInfo(*this)));
+      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
+    }
   }
 
   template <typename... Args> static TypesInfo FromMany(Args... types) {
@@ -194,6 +194,7 @@ struct TypesInfo {
   explicit operator CBTypeInfo() const { return _innerInfo[0]; }
 
   CBTypesInfo _innerInfo;
+  std::vector<TypesInfo> _subTypes;
 };
 
 struct ParamsInfo {
@@ -275,290 +276,17 @@ struct ExposedInfo {
 
   CBExposedTypesInfo _innerInfo;
 };
-}; // namespace chainblocks
 
-inline MAKE_LOGGABLE(CBVar, var, os) {
-  switch (var.valueType) {
-  case EndOfBlittableTypes:
-    break;
-  case None:
-    if (var.payload.chainState == Continue)
-      os << "*None*";
-    else if (var.payload.chainState == Stop)
-      os << "*ChainStop*";
-    else if (var.payload.chainState == Restart)
-      os << "*ChainRestart*";
-    break;
-  case Any:
-    os << "*Any*";
-    break;
-  case Object:
-    os << "Object: " << reinterpret_cast<uintptr_t>(var.payload.objectValue);
-    break;
-  case Enum:
-    os << "Enum: " << var.payload.enumValue;
-    break;
-  case Bool:
-    os << var.payload.boolValue;
-    break;
-  case Int:
-    os << var.payload.intValue;
-    break;
-  case Int2:
-    for (auto i = 0; i < 2; i++) {
-      if (i == 0)
-        os << var.payload.int2Value[i];
-      else
-        os << ", " << var.payload.int2Value[i];
-    }
-    break;
-  case Int3:
-    for (auto i = 0; i < 3; i++) {
-      if (i == 0)
-        os << var.payload.int3Value[i];
-      else
-        os << ", " << var.payload.int3Value[i];
-    }
-    break;
-  case Int4:
-    for (auto i = 0; i < 4; i++) {
-      if (i == 0)
-        os << var.payload.int4Value[i];
-      else
-        os << ", " << var.payload.int4Value[i];
-    }
-    break;
-  case Int8:
-    for (auto i = 0; i < 8; i++) {
-      if (i == 0)
-        os << var.payload.int8Value[i];
-      else
-        os << ", " << var.payload.int8Value[i];
-    }
-    break;
-  case Int16:
-    for (auto i = 0; i < 16; i++) {
-      if (i == 0)
-        os << var.payload.int16Value[i];
-      else
-        os << ", " << var.payload.int16Value[i];
-    }
-    break;
-  case Float:
-    os << var.payload.floatValue;
-    break;
-  case Float2:
-    for (auto i = 0; i < 2; i++) {
-      if (i == 0)
-        os << var.payload.float2Value[i];
-      else
-        os << ", " << var.payload.float2Value[i];
-    }
-    break;
-  case Float3:
-    for (auto i = 0; i < 3; i++) {
-      if (i == 0)
-        os << var.payload.float3Value[i];
-      else
-        os << ", " << var.payload.float3Value[i];
-    }
-    break;
-  case Float4:
-    for (auto i = 0; i < 4; i++) {
-      if (i == 0)
-        os << var.payload.float4Value[i];
-      else
-        os << ", " << var.payload.float4Value[i];
-    }
-    break;
-  case Color:
-    os << var.payload.colorValue.r << ", " << var.payload.colorValue.g << ", "
-       << var.payload.colorValue.b << ", " << var.payload.colorValue.a;
-    break;
-  case Chain:
-    os << "Chain: " << reinterpret_cast<uintptr_t>(var.payload.chainValue);
-    break;
-  case Block:
-    os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
-    break;
-  case CBType::String:
-    os << var.payload.stringValue;
-    break;
-  case ContextVar:
-    os << "*ContextVariable*: " << var.payload.stringValue;
-    break;
-  case Image:
-    os << "Image";
-    os << " Width: " << var.payload.imageValue.width;
-    os << " Height: " << var.payload.imageValue.height;
-    os << " Channels: " << var.payload.imageValue.channels;
-    break;
-  case Seq:
-    os << "[";
-    for (auto i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
-      if (i == 0)
-        os << var.payload.seqValue[i];
-      else
-        os << ", " << var.payload.seqValue[i];
-    }
-    os << "]";
-    break;
-  case Table:
-    os << "{";
-    for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
-      if (i == 0)
-        os << var.payload.tableValue[i].key << ": "
-           << var.payload.tableValue[i].value;
-      else
-        os << ", " << var.payload.tableValue[i].key << ": "
-           << var.payload.tableValue[i].value;
-    }
-    os << "}";
-    break;
-  }
-  return os;
-}
-
-inline bool operator!=(const CBVar &a, const CBVar &b);
-
-inline bool operator==(const CBVar &a, const CBVar &b) {
-  if (a.valueType != b.valueType)
-    return false;
-
-  switch (a.valueType) {
-  case Any:
-  case EndOfBlittableTypes:
-    return true;
-  case None:
-    return a.payload.chainState == b.payload.chainState;
-  case Object:
-    return a.payload.objectValue == b.payload.objectValue;
-  case Enum:
-    return a.payload.enumVendorId == b.payload.enumVendorId &&
-           a.payload.enumTypeId == b.payload.enumTypeId &&
-           a.payload.enumValue == b.payload.enumValue;
-  case Bool:
-    return a.payload.boolValue == b.payload.boolValue;
-  case Int:
-    return a.payload.intValue == b.payload.intValue;
-  case Float:
-    return a.payload.floatValue == b.payload.floatValue;
-  case Int2: {
-    CBInt2 vec = a.payload.int2Value == b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Int3: {
-    CBInt3 vec = a.payload.int3Value == b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Int4: {
-    CBInt4 vec = a.payload.int4Value == b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Int8: {
-    CBInt8 vec = a.payload.int8Value == b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Int16: {
-    auto vec = a.payload.int16Value == b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Float2: {
-    CBInt2 vec = a.payload.float2Value == b.payload.float2Value; // cast to int
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Float3: {
-    CBInt3 vec = a.payload.float3Value == b.payload.float3Value; // cast to int
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Float4: {
-    CBInt4 vec = a.payload.float4Value == b.payload.float4Value; // cast to int
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
-  }
-  case Color:
-    return a.payload.colorValue.r == b.payload.colorValue.r &&
-           a.payload.colorValue.g == b.payload.colorValue.g &&
-           a.payload.colorValue.b == b.payload.colorValue.b &&
-           a.payload.colorValue.a == b.payload.colorValue.a;
-  case Chain:
-    return a.payload.chainValue == b.payload.chainValue;
-  case Block:
-    return a.payload.blockValue == b.payload.blockValue;
-  case ContextVar:
-  case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
-  case Image:
-    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
-           a.payload.imageValue.width == b.payload.imageValue.width &&
-           a.payload.imageValue.height == b.payload.imageValue.height &&
-           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                  a.payload.imageValue.channels * a.payload.imageValue.width *
-                      a.payload.imageValue.height) == 0;
-  case Seq:
-    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
-      return false;
-
-    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-      if (a.payload.seqValue[i] != b.payload.seqValue[i])
-        return false;
-    }
-
-    return true;
-  case Table:
-    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-      return false;
-
-    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
-        return false;
-
-      if (a.payload.tableValue[i].value != b.payload.tableValue[i].value)
-        return false;
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
-
-namespace chainblocks {
 struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
   void reset() { data.clear(); }
 
   int overflow(int c) {
-    data.emplace_back(static_cast<char>(c));
+    data.push_back(static_cast<char>(c));
     return 0;
   }
 
-  void done() { data.emplace_back('\0'); }
+  void done() { data.push_back('\0'); }
 
   const char *str() { return &data[0]; }
 };

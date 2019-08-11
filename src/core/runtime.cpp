@@ -8,6 +8,7 @@
 
 #include "blocks/assert.hpp"
 #include "blocks/chains.hpp"
+#include "blocks/flow.hpp"
 #include "blocks/logging.hpp"
 #include "blocks/process.hpp"
 #include "blocks/seqs.hpp"
@@ -45,6 +46,7 @@ void registerCoreBlocks() {
   REGISTER_CORE_BLOCK(Detach);
   REGISTER_CORE_BLOCK(DetachOnce);
   REGISTER_CORE_BLOCK(ChainLoader);
+  REGISTER_CORE_BLOCK(Cond);
   REGISTER_BLOCK(Assert, Is);
   REGISTER_BLOCK(Assert, IsNot);
   REGISTER_BLOCK(Process, Exec);
@@ -707,18 +709,13 @@ void from_json(const json &j, CBChainPtr &chain) {
 }
 
 bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
-                bool isParameter) {
+                bool isParameter, bool strict = true) {
   if (consumedType.basicType == Any ||
       (!isParameter && consumedType.basicType == None))
     return true;
 
   if (exposedType.basicType != consumedType.basicType) {
     // Fail if basic type differs
-    return false;
-  }
-
-  if (exposedType.sequenced && !consumedType.sequenced) {
-    // Fail if we might output a sequenced value but input cannot deal with it
     return false;
   }
 
@@ -734,6 +731,52 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
     if (exposedType.enumVendorId != consumedType.enumVendorId ||
         exposedType.enumTypeId != consumedType.enumTypeId) {
       return false;
+    }
+    break;
+  }
+  case Seq: {
+    if (strict) {
+      auto atypes = stbds_arrlen(exposedType.seqTypes);
+      auto btypes = stbds_arrlen(consumedType.seqTypes);
+      for (auto i = 0; i < atypes; i++) {
+        // Go thru all exposed types and make sure we get a positive match with
+        // the consumer
+        auto atype = exposedType.seqTypes[i];
+        auto matched = false;
+        for (auto y = 0; y < btypes; y++) {
+          auto btype = consumedType.seqTypes[y];
+          if (matchTypes(atype, btype, isParameter)) {
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          return false;
+        }
+      }
+    }
+    break;
+  }
+  case Table: {
+    if (strict) {
+      auto atypes = stbds_arrlen(exposedType.tableTypes);
+      auto btypes = stbds_arrlen(consumedType.tableTypes);
+      for (auto i = 0; i < atypes; i++) {
+        // Go thru all exposed types and make sure we get a positive match with
+        // the consumer
+        auto atype = exposedType.tableTypes[i];
+        auto matched = false;
+        for (auto y = 0; y < btypes; y++) {
+          auto btype = consumedType.tableTypes[y];
+          if (matchTypes(atype, btype, isParameter)) {
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          return false;
+        }
+      }
     }
     break;
   }
@@ -800,7 +843,10 @@ void validateConnection(ValidationContext &ctx) {
       auto requiredType = consumedVar[i].exposedType;
 
       // Finally deep compare types
-      if (!matchTypes(exposedType, requiredType, false)) {
+      if (!matchTypes(exposedType, requiredType, false, false)) {
+        // We matched in non strict mode, meaning seq and table inner types are
+        // ignored At this point this is ok, strict checking should happen
+        // inside infer anyway
         std::string err(
             "Required consumed types do not match currently exposed ones: " +
             name);
@@ -880,22 +926,32 @@ CBTypeInfo validateConnections(const CBlocks chain,
   return validateConnections(blocks, callback, userData, inputType);
 }
 
-bool validateSetParam(CBlock *block, int index, CBVar &value,
-                      CBValidationCallback callback, void *userData,
-                      bool sequenced) {
-  auto params = block->parameters(block);
-  if (stbds_arrlen(params) <= index) {
-    std::string err("Parameter index out of range");
-    callback(block, err.c_str(), false, userData);
-    return false;
+void freeDerivedInfo(CBTypeInfo info) {
+  switch (info.basicType) {
+  case Seq: {
+    for (auto i = 0; stbds_arrlen(info.seqTypes) > i; i++) {
+      freeDerivedInfo(info.seqTypes[i]);
+    }
+    stbds_arrfree(info.seqTypes);
   }
+  case Table: {
+    for (auto i = 0; stbds_arrlen(info.tableTypes) > i; i++) {
+      freeDerivedInfo(info.tableTypes[i]);
+    }
+    stbds_arrfree(info.tableTypes);
+  }
+  default:
+    break;
+  };
+}
 
-  auto param = params[index];
-
+CBTypeInfo deriveTypeInfo(CBVar &value) {
+  // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
-  varType.sequenced = sequenced;
+  varType.seqTypes = nullptr;
+  varType.tableTypes = nullptr;
   switch (value.valueType) {
   case Object: {
     varType.objectVendorId = value.payload.objectVendorId;
@@ -907,9 +963,39 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
     varType.enumTypeId = value.payload.enumTypeId;
     break;
   }
+  case Seq: {
+    for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
+      stbds_arrpush(varType.seqTypes,
+                    deriveTypeInfo(value.payload.seqValue[i]));
+    }
+    break;
+  }
+  case Table: {
+    for (auto i = 0; stbds_arrlen(value.payload.tableValue) > i; i++) {
+      stbds_arrpush(varType.tableTypes,
+                    deriveTypeInfo(value.payload.tableValue[i].value));
+    }
+    break;
+  }
   default:
     break;
   };
+  return varType;
+}
+
+bool validateSetParam(CBlock *block, int index, CBVar &value,
+                      CBValidationCallback callback, void *userData) {
+  auto params = block->parameters(block);
+  if (stbds_arrlen(params) <= index) {
+    std::string err("Parameter index out of range");
+    callback(block, err.c_str(), false, userData);
+    return false;
+  }
+
+  auto param = params[index];
+
+  // Build a CBTypeInfo for the var
+  auto varType = deriveTypeInfo(value);
 
   for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
     if (matchTypes(varType, param.valueTypes[i], true)) {
@@ -922,13 +1008,15 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
     // Validate each type in the seq
     for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
       if (validateSetParam(block, index, value.payload.seqValue[i], callback,
-                           userData, true))
+                           userData))
         return true;
     }
   }
 
   std::string err("Parameter not accepting this kind of variable");
   callback(block, err.c_str(), false, userData);
+
+  freeDerivedInfo(varType);
 
   return false;
 }

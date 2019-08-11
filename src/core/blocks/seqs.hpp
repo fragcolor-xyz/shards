@@ -12,6 +12,8 @@ static ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
 struct GetItems {
   CBSeq cachedResult;
   CBVar indices;
+  TypesInfo outputInfo;
+  TypesInfo inputInfo;
 
   void destroy() {
     if (cachedResult) {
@@ -30,9 +32,13 @@ struct GetItems {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
-    inputType.sequenced = indices.valueType == Seq &&
-                          (stbds_arrlen(indices.payload.seqValue) > 1);
-    return inputType;
+    if (indices.valueType == Seq) {
+      inputInfo = TypesInfo(inputType);
+      outputInfo = TypesInfo(CBType::Seq, CBTypesInfo(inputInfo));
+      return CBTypeInfo(outputInfo);
+    } else {
+      return inputType;
+    }
   }
 
   void setParam(int index, CBVar value) {

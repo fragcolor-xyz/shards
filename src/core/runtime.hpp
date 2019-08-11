@@ -265,8 +265,7 @@ CBTypeInfo validateConnections(const CBChain *chain,
                                CBValidationCallback callback, void *userData,
                                CBTypeInfo inputType = CBTypeInfo());
 bool validateSetParam(CBlock *block, int index, CBVar &value,
-                      CBValidationCallback callback, void *userData,
-                      bool sequenced = false);
+                      CBValidationCallback callback, void *userData);
 
 using json = nlohmann::json;
 // The following procedures implement json.hpp protocol in order to allow easy
@@ -1001,6 +1000,28 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   }
+}
+
+inline static bool activateBlocks(CBlocks blocks, int nblocks,
+                                  CBContext *context, const CBVar &input,
+                                  CBVar &output) {
+  for (auto i = 0; i < nblocks; i++) {
+    auto activationInput = output.valueType == None ? input : output;
+    activateBlock(blocks[i], context, activationInput, output);
+    if (output.valueType == None) {
+      switch (output.payload.chainState) {
+      case Restart: {
+        return true;
+      }
+      case Stop: {
+        return false;
+      }
+      case Continue:
+        continue;
+      }
+    }
+  }
+  return true;
 }
 
 inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
