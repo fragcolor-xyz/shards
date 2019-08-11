@@ -632,6 +632,9 @@ static CBVar suspend(CBContext *context, double seconds) {
 
 #include "runtime_macros.hpp"
 
+inline static bool activateBlocks(CBSeq blocks, CBContext *context,
+                                  const CBVar &input, CBVar &output);
+
 inline static void activateBlock(CBlock *blk, CBContext *context,
                                  const CBVar &input, CBVar &previousOutput) {
   switch (blk->inlineBlockId) {
@@ -652,27 +655,12 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   case CoreRepeat: {
     auto cblock = reinterpret_cast<CBCoreRepeat *>(blk);
     auto repeats = cblock->doForever ? 1 : cblock->times;
-    CBVar repeatOutput;
+    CBVar repeatOutput{};
     repeatOutput.valueType = None;
     repeatOutput.payload.chainState = Continue;
     while (repeats) {
-      for (auto i = 0; i < stbds_arrlen(cblock->blocks); i++) {
-        // This looks dangerous and error prone but the reality of chainblocks
-        // is that a chain is expected to be evaluated using blocks reflection
-        // before running!
-        auto subBlk = cblock->blocks[i].payload.blockValue;
-        // Apply same rule of runChain
-        auto repeatInput =
-            repeatOutput.valueType == None ? input : repeatOutput;
-        activateBlock(subBlk, context, repeatInput, repeatOutput);
-      }
-
-      // make sure to propagate cancelation, but prevent Stop/Restart if
-      // passthrough
-      if (context->aborted) {
-        previousOutput.valueType = None;
-        previousOutput.payload.chainState = Stop;
-        // Quick immediately
+      if (!activateBlocks(cblock->blocks, context, input, repeatOutput)) {
+        previousOutput = StopChain;
         return;
       }
 
@@ -763,20 +751,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
       ifOutput.valueType = None;
       ifOutput.payload.chainState = Continue;
       if (result) {
-        for (auto i = 0; i < stbds_arrlen(cblock->trueBlocks); i++) {
-          // This looks dangerous and error prone but the reality of chainblocks
-          // is that a chain is expected to be evaluated using blocks reflection
-          // before running!
-          auto subBlk = cblock->trueBlocks[i].payload.blockValue;
-          // Apply same rule of runChain
-          auto ifInput = ifOutput.valueType == None ? input : ifOutput;
-          activateBlock(subBlk, context, ifInput, ifOutput);
-        }
-        // make sure to propagate cancelation, but prevent Stop/Restart if
-        // passthrough
-        if (unlikely(context->aborted)) {
-          previousOutput.valueType = None;
-          previousOutput.payload.chainState = Stop;
+        if (!activateBlocks(cblock->trueBlocks, context, input, ifOutput)) {
+          previousOutput = StopChain;
         } else if (cblock->passthrough) {
           previousOutput = input;
         } else {
@@ -785,20 +761,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
         return;
       } else {
       ifFalsePath:
-        for (auto i = 0; i < stbds_arrlen(cblock->falseBlocks); i++) {
-          // This looks dangerous and error prone but the reality of chainblocks
-          // is that a chain is expected to be evaluated using blocks reflection
-          // before running!
-          auto subBlk = cblock->falseBlocks[i].payload.blockValue;
-          // Apply same rule of runChain
-          auto ifInput = ifOutput.valueType == None ? input : ifOutput;
-          activateBlock(subBlk, context, ifInput, ifOutput);
-        }
-        // make sure to propagate cancelation, but prevent Stop/Restart if
-        // passthrough
-        if (unlikely(context->aborted)) {
-          previousOutput.valueType = None;
-          previousOutput.payload.chainState = Stop;
+        if (!activateBlocks(cblock->falseBlocks, context, input, ifOutput)) {
+          previousOutput = StopChain;
         } else if (cblock->passthrough) {
           previousOutput = input;
         } else {
@@ -1024,6 +988,28 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
   return true;
 }
 
+inline static bool activateBlocks(CBSeq blocks, CBContext *context,
+                                  const CBVar &input, CBVar &output) {
+  for (auto i = 0; i < stbds_arrlen(blocks); i++) {
+    auto activationInput = output.valueType == None ? input : output;
+    activateBlock(blocks[i].payload.blockValue, context, activationInput,
+                  output);
+    if (output.valueType == None) {
+      switch (output.payload.chainState) {
+      case Restart: {
+        return true;
+      }
+      case Stop: {
+        return false;
+      }
+      case Continue:
+        continue;
+      }
+    }
+  }
+  return true;
+}
+
 inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                                         CBVar chainInput) {
   auto previousOutput = CBVar();
@@ -1075,10 +1061,6 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 
   for (auto blk : chain->blocks) {
     try {
-#if 0
-          LOG(INFO) << "Activating block: " << std::string(blk->name(blk));
-#endif
-
       // Pass chain root input every time we find None, this allows a long chain
       // to re-process the root input if wanted!
       auto input =

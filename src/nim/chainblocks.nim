@@ -606,7 +606,7 @@ when appType != "lib" or defined(forceCBRuntime):
 
   proc runChain*(chain: CBChainPtr, context: CBContext; chainInput: CBVar): RunChainOutput {.importcpp: "chainblocks::runChain(#, #, #)", header: "runtime.hpp".}
 
-  proc activateBlock*(chain: ptr CBlock, context: CBContext; input: var CBVar; output: var CBVar) {.importcpp: "chainblocks::activateBlock(#, #, #, #)", header: "runtime.hpp".}
+  proc activateBlocks*(chain: CBSeq, context: CBContext; input: var CBVar; output: var CBVar): bool {.importcpp: "chainblocks::activateBlocks(#, #, #, #)", header: "runtime.hpp".}
   
   proc suspendInternal(context: CBContext; seconds: float64): CBVar {.importcpp: "chainblocks::suspend(#, #)", header: "runtime.hpp".}
   proc suspend*(context: CBContext; seconds: float64): CBVar {.inline.} =

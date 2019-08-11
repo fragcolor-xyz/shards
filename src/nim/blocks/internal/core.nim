@@ -723,26 +723,20 @@ when true:
       res = Empty
     template operation(operator: untyped): untyped =
       if operator(input, match):
-        var output = Empty
-        for blk in b.trueBlocks.mitems:
-          var activationInput = if output.valueType == None: input else: output
-          activateBlock(blk.blockValue, context, activationInput, output)
-        
-        if context.aborted:
-          # We need to check and propagate abort signal as first priority
+        var
+          output = Empty
+          inputMut = input
+        if not activateBlocks(b.trueBlocks, context, inputMut, output):
           StopChain
         elif b.passthrough:
           input
         else:
           output
       else:
-        var output = Empty
-        for blk in b.falseBlocks.mitems:
-          var activationInput = if output.valueType == None: input else: output
-          activateBlock(blk.blockValue, context, activationInput, output)
-        
-        if context.aborted:
-          # We need to check and propagate abort signal as first priority
+        var
+          output = Empty
+          inputMut = input
+        if not activateBlocks(b.falseBlocks, context, inputMut, output):
           StopChain
         elif b.passthrough:
           input
@@ -855,24 +849,8 @@ when true:
   template activate*(b: var CBRepeat; context: CBContext; input: CBVar): CBVar =
     # THIS CODE WON'T BE EXECUTED
     # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
-    var
-      res = input
-      repeats = if b.forever: 1 else: b.times
-    while repeats > 0:
-      var output = Empty
-      for blk in b.blocks.mitems:
-        var activationInput = if output.valueType == None: input else: output
-        activateBlock(blk.blockValue, context, activationInput, output)
-      
-      if context.aborted:
-        # We need to check and propagate abort signal as first priority
-        res = StopChain
-      # rest we ignore
-      
-      if not b.forever:
-        dec repeats
-    
-    res
+    assert(false)
+    Empty
 
   chainblock CBRepeat, "Repeat", "":
     var repLog = createBlock("Log")
