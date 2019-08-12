@@ -172,10 +172,10 @@ struct Cond {
     auto idx = 0;
     CBVar actionInput = input;
     CBVar finalOutput = RestartChain;
-    for (auto cond : _conditions) {
+    for (const auto &cond : _conditions) {
       CBVar output{};
-      if (unlikely(
-              !activateBlocks(&cond[0], cond.size(), context, input, output))) {
+      if (unlikely(!activateBlocks(const_cast<CBlocks>(&cond[0]), cond.size(),
+                                   context, input, output))) {
         return StopChain;
       } else if (output == True) {
         // Do the action if true!

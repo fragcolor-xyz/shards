@@ -4,8 +4,8 @@ namespace chainblocks {
 static ParamsInfo compareParamsInfo = ParamsInfo(ParamsInfo::Param(
     "Value", "The value to test against for equality.", CBTypesInfo(anyInfo)));
 
-struct Base {
-  CBVar value;
+struct BaseOpsBin {
+  CBVar value{};
 
   void destroy() { destroyVar(value); }
 
@@ -39,7 +39,7 @@ struct Base {
   }
 };
 
-struct Is : public Base {
+struct Is : public BaseOpsBin {
   CBVar activate(CBContext *context, CBVar input) {
     if (input != value) {
       return False;
@@ -48,7 +48,7 @@ struct Is : public Base {
   }
 };
 
-struct IsNot : public Base {
+struct IsNot : public BaseOpsBin {
   CBVar activate(CBContext *context, CBVar input) {
     if (input == value) {
       return False;

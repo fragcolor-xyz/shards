@@ -86,7 +86,7 @@
     (GetVariable "counter")
     (Math.Add 1)
     (SetVariable "counter")
-   ) 5)
+   ) :Times 5)
   (GetVariable "counter")
   (Assert.Is 5 true)
   (Log)
