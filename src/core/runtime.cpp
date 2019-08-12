@@ -7,6 +7,7 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <string.h>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -503,14 +504,16 @@ void from_json(const json &j, CBVar &var) {
     var.valueType = ContextVar;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
-    strcpy((char *)var.payload.stringValue, strVal.c_str());
+    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
+    strncpy((char *)var.payload.stringValue, strVal.c_str(), strVal.length());
     break;
   }
   case String: {
     var.valueType = String;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
-    strcpy((char *)var.payload.stringValue, strVal.c_str());
+    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
+    strncpy((char *)var.payload.stringValue, strVal.c_str(), strVal.length());
     break;
   }
   case Color: {
@@ -561,7 +564,8 @@ void from_json(const json &j, CBVar &var) {
       auto value = item.at("value").get<CBVar>();
       CBNamedVar named{};
       named.key = new char[key.length() + 1];
-      strcpy((char *)named.key, key.c_str());
+      memset((void *)named.key, 0x0, key.length() + 1);
+      strncpy((char *)named.key, key.c_str(), key.length());
       named.value = value;
       stbds_shputs(var.payload.tableValue, named);
     }

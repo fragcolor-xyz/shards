@@ -27,6 +27,13 @@
   ] :Threading true)
   (Assert.Is true true)
 
+  10
+  (Cond [
+    (--> true)    (--> (Msg "Cond was true!!") false)
+    (--> (Is 10)) (--> (Msg "Cond was false!") true)
+  ] :Threading false)
+  (Assert.Is false true)
+
   "Hello"
   (Assert.Is "Hello" true)
   (Log)

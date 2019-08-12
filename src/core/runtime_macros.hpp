@@ -22,35 +22,37 @@
 
 #define _runChainINLINECMATH(__cfunc, __cfuncf, __cfunc_str, __input,          \
                              __output)                                         \
-  switch (__input.valueType) {                                                 \
+  switch ((__input).valueType) {                                               \
   case Float:                                                                  \
-    __output.valueType = Float;                                                \
-    __output.payload.floatValue = __cfunc(__input.payload.floatValue);         \
+    (__output).valueType = Float;                                              \
+    (__output).payload.floatValue = __cfunc((__input).payload.floatValue);     \
     break;                                                                     \
   case Float2:                                                                 \
-    __output.valueType = Float2;                                               \
-    __output.payload.float2Value[0] = __cfunc(__input.payload.float2Value[0]); \
-    __output.payload.float2Value[1] = __cfunc(__input.payload.float2Value[1]); \
+    (__output).valueType = Float2;                                             \
+    (__output).payload.float2Value[0] =                                        \
+        __cfunc((__input).payload.float2Value[0]);                             \
+    (__output).payload.float2Value[1] =                                        \
+        __cfunc((__input).payload.float2Value[1]);                             \
     break;                                                                     \
   case Float3:                                                                 \
-    __output.valueType = Float3;                                               \
-    __output.payload.float3Value[0] =                                          \
-        __cfuncf(__input.payload.float3Value[0]);                              \
-    __output.payload.float3Value[1] =                                          \
-        __cfuncf(__input.payload.float3Value[1]);                              \
-    __output.payload.float3Value[2] =                                          \
-        __cfuncf(__input.payload.float3Value[2]);                              \
+    (__output).valueType = Float3;                                             \
+    (__output).payload.float3Value[0] =                                        \
+        __cfuncf((__input).payload.float3Value[0]);                            \
+    (__output).payload.float3Value[1] =                                        \
+        __cfuncf((__input).payload.float3Value[1]);                            \
+    (__output).payload.float3Value[2] =                                        \
+        __cfuncf((__input).payload.float3Value[2]);                            \
     break;                                                                     \
   case Float4:                                                                 \
-    __output.valueType = Float4;                                               \
-    __output.payload.float4Value[0] =                                          \
-        __cfuncf(__input.payload.float4Value[0]);                              \
-    __output.payload.float4Value[1] =                                          \
-        __cfuncf(__input.payload.float4Value[1]);                              \
-    __output.payload.float4Value[2] =                                          \
-        __cfuncf(__input.payload.float4Value[2]);                              \
-    __output.payload.float4Value[3] =                                          \
-        __cfuncf(__input.payload.float4Value[3]);                              \
+    (__output).valueType = Float4;                                             \
+    (__output).payload.float4Value[0] =                                        \
+        __cfuncf((__input).payload.float4Value[0]);                            \
+    (__output).payload.float4Value[1] =                                        \
+        __cfuncf((__input).payload.float4Value[1]);                            \
+    (__output).payload.float4Value[2] =                                        \
+        __cfuncf((__input).payload.float4Value[2]);                            \
+    (__output).payload.float4Value[3] =                                        \
+        __cfuncf((__input).payload.float4Value[3]);                            \
     break;                                                                     \
   default:                                                                     \
     throw CBException(__cfunc_str                                              \
@@ -82,72 +84,72 @@
                 : *(cblock->ctxOperand = contextVariable(                      \
                         context, cblock->operand.payload.stringValue))         \
           : cblock->operand;                                                   \
-  if (unlikely(__input.valueType != operand.valueType)) {                      \
+  if (unlikely((__input).valueType != operand.valueType)) {                    \
     throw CBException(__op_str " not supported between different types!");     \
   } else if (unlikely(operand.valueType == None)) {                            \
     throw CBException("Could not find the operand variable!");                 \
   } else {                                                                     \
-    switch (__input.valueType) {                                               \
+    switch ((__input).valueType) {                                             \
     case Int:                                                                  \
-      __output.valueType = Int;                                                \
-      __output.payload.intValue =                                              \
-          __input.payload.intValue __op operand.payload.intValue;              \
+      (__output).valueType = Int;                                              \
+      (__output).payload.intValue =                                            \
+          (__input).payload.intValue __op operand.payload.intValue;            \
       break;                                                                   \
     case Int2:                                                                 \
-      __output.valueType = Int2;                                               \
-      __output.payload.int2Value =                                             \
-          __input.payload.int2Value __op operand.payload.int2Value;            \
+      (__output).valueType = Int2;                                             \
+      (__output).payload.int2Value =                                           \
+          (__input).payload.int2Value __op operand.payload.int2Value;          \
       break;                                                                   \
     case Int3:                                                                 \
-      __output.valueType = Int3;                                               \
-      __output.payload.int3Value =                                             \
-          __input.payload.int3Value __op operand.payload.int3Value;            \
+      (__output).valueType = Int3;                                             \
+      (__output).payload.int3Value =                                           \
+          (__input).payload.int3Value __op operand.payload.int3Value;          \
       break;                                                                   \
     case Int4:                                                                 \
-      __output.valueType = Int4;                                               \
-      __output.payload.int4Value =                                             \
-          __input.payload.int4Value __op operand.payload.int4Value;            \
+      (__output).valueType = Int4;                                             \
+      (__output).payload.int4Value =                                           \
+          (__input).payload.int4Value __op operand.payload.int4Value;          \
       break;                                                                   \
     case Int8:                                                                 \
-      __output.valueType = Int8;                                               \
-      __output.payload.int8Value =                                             \
-          __input.payload.int8Value __op operand.payload.int8Value;            \
+      (__output).valueType = Int8;                                             \
+      (__output).payload.int8Value =                                           \
+          (__input).payload.int8Value __op operand.payload.int8Value;          \
       break;                                                                   \
     case Int16:                                                                \
-      __output.valueType = Int16;                                              \
-      __output.payload.int16Value =                                            \
-          __input.payload.int16Value __op operand.payload.int16Value;          \
+      (__output).valueType = Int16;                                            \
+      (__output).payload.int16Value =                                          \
+          (__input).payload.int16Value __op operand.payload.int16Value;        \
       break;                                                                   \
     case Float:                                                                \
-      __output.valueType = Float;                                              \
-      __output.payload.floatValue =                                            \
-          __input.payload.floatValue __op operand.payload.floatValue;          \
+      (__output).valueType = Float;                                            \
+      (__output).payload.floatValue =                                          \
+          (__input).payload.floatValue __op operand.payload.floatValue;        \
       break;                                                                   \
     case Float2:                                                               \
-      __output.valueType = Float2;                                             \
-      __output.payload.float2Value =                                           \
-          __input.payload.float2Value __op operand.payload.float2Value;        \
+      (__output).valueType = Float2;                                           \
+      (__output).payload.float2Value =                                         \
+          (__input).payload.float2Value __op operand.payload.float2Value;      \
       break;                                                                   \
     case Float3:                                                               \
-      __output.valueType = Float3;                                             \
-      __output.payload.float3Value =                                           \
-          __input.payload.float3Value __op operand.payload.float3Value;        \
+      (__output).valueType = Float3;                                           \
+      (__output).payload.float3Value =                                         \
+          (__input).payload.float3Value __op operand.payload.float3Value;      \
       break;                                                                   \
     case Float4:                                                               \
-      __output.valueType = Float4;                                             \
-      __output.payload.float4Value =                                           \
-          __input.payload.float4Value __op operand.payload.float4Value;        \
+      (__output).valueType = Float4;                                           \
+      (__output).payload.float4Value =                                         \
+          (__input).payload.float4Value __op operand.payload.float4Value;      \
       break;                                                                   \
     case Color:                                                                \
-      __output.valueType = Color;                                              \
-      __output.payload.colorValue.r =                                          \
-          __input.payload.colorValue.r __op operand.payload.colorValue.r;      \
-      __output.payload.colorValue.g =                                          \
-          __input.payload.colorValue.g __op operand.payload.colorValue.g;      \
-      __output.payload.colorValue.b =                                          \
-          __input.payload.colorValue.b __op operand.payload.colorValue.b;      \
-      __output.payload.colorValue.a =                                          \
-          __input.payload.colorValue.a __op operand.payload.colorValue.a;      \
+      (__output).valueType = Color;                                            \
+      (__output).payload.colorValue.r =                                        \
+          (__input).payload.colorValue.r __op operand.payload.colorValue.r;    \
+      (__output).payload.colorValue.g =                                        \
+          (__input).payload.colorValue.g __op operand.payload.colorValue.g;    \
+      (__output).payload.colorValue.b =                                        \
+          (__input).payload.colorValue.b __op operand.payload.colorValue.b;    \
+      (__output).payload.colorValue.a =                                        \
+          (__input).payload.colorValue.a __op operand.payload.colorValue.a;    \
       break;                                                                   \
     default:                                                                   \
       throw CBException(__op_str                                               \
@@ -178,52 +180,52 @@
                 : *(cblock->ctxOperand = contextVariable(                      \
                         context, cblock->operand.payload.stringValue))         \
           : cblock->operand;                                                   \
-  if (unlikely(__input.valueType != operand.valueType)) {                      \
+  if (unlikely((__input).valueType != operand.valueType)) {                    \
     throw CBException(__op_str " not supported between different types!");     \
   } else if (unlikely(operand.valueType == None)) {                            \
     throw CBException("Could not find the operand variable!");                 \
   } else {                                                                     \
-    switch (__input.valueType) {                                               \
+    switch ((__input).valueType) {                                             \
     case Int:                                                                  \
-      __output.valueType = Int;                                                \
-      __output.payload.intValue =                                              \
-          __input.payload.intValue __op operand.payload.intValue;              \
+      (__output).valueType = Int;                                              \
+      (__output).payload.intValue =                                            \
+          (__input).payload.intValue __op operand.payload.intValue;            \
       break;                                                                   \
     case Int2:                                                                 \
-      __output.valueType = Int2;                                               \
-      __output.payload.int2Value =                                             \
-          __input.payload.int2Value __op operand.payload.int2Value;            \
+      (__output).valueType = Int2;                                             \
+      (__output).payload.int2Value =                                           \
+          (__input).payload.int2Value __op operand.payload.int2Value;          \
       break;                                                                   \
     case Int3:                                                                 \
-      __output.valueType = Int3;                                               \
-      __output.payload.int3Value =                                             \
-          __input.payload.int3Value __op operand.payload.int3Value;            \
+      (__output).valueType = Int3;                                             \
+      (__output).payload.int3Value =                                           \
+          (__input).payload.int3Value __op operand.payload.int3Value;          \
       break;                                                                   \
     case Int4:                                                                 \
-      __output.valueType = Int4;                                               \
-      __output.payload.int4Value =                                             \
-          __input.payload.int4Value __op operand.payload.int4Value;            \
+      (__output).valueType = Int4;                                             \
+      (__output).payload.int4Value =                                           \
+          (__input).payload.int4Value __op operand.payload.int4Value;          \
       break;                                                                   \
     case Int8:                                                                 \
-      __output.valueType = Int8;                                               \
-      __output.payload.int8Value =                                             \
-          __input.payload.int8Value __op operand.payload.int8Value;            \
+      (__output).valueType = Int8;                                             \
+      (__output).payload.int8Value =                                           \
+          (__input).payload.int8Value __op operand.payload.int8Value;          \
       break;                                                                   \
     case Int16:                                                                \
-      __output.valueType = Int16;                                              \
-      __output.payload.int16Value =                                            \
-          __input.payload.int16Value __op operand.payload.int16Value;          \
+      (__output).valueType = Int16;                                            \
+      (__output).payload.int16Value =                                          \
+          (__input).payload.int16Value __op operand.payload.int16Value;        \
       break;                                                                   \
     case Color:                                                                \
-      __output.valueType = Color;                                              \
-      __output.payload.colorValue.r =                                          \
-          __input.payload.colorValue.r __op operand.payload.colorValue.r;      \
-      __output.payload.colorValue.g =                                          \
-          __input.payload.colorValue.g __op operand.payload.colorValue.g;      \
-      __output.payload.colorValue.b =                                          \
-          __input.payload.colorValue.b __op operand.payload.colorValue.b;      \
-      __output.payload.colorValue.a =                                          \
-          __input.payload.colorValue.a __op operand.payload.colorValue.a;      \
+      (__output).valueType = Color;                                            \
+      (__output).payload.colorValue.r =                                        \
+          (__input).payload.colorValue.r __op operand.payload.colorValue.r;    \
+      (__output).payload.colorValue.g =                                        \
+          (__input).payload.colorValue.g __op operand.payload.colorValue.g;    \
+      (__output).payload.colorValue.b =                                        \
+          (__input).payload.colorValue.b __op operand.payload.colorValue.b;    \
+      (__output).payload.colorValue.a =                                        \
+          (__input).payload.colorValue.a __op operand.payload.colorValue.a;    \
       break;                                                                   \
     default:                                                                   \
       throw CBException(__op_str                                               \

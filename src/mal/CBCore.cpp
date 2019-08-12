@@ -49,7 +49,7 @@ namespace chainblocks {
 CBlock *createBlockInnerCall();
 }
 
-void installCBCore(malEnvPtr env) {
+void installCBCore(const malEnvPtr &env) {
   chainblocks::installSignalHandlers();
 
   chainblocks_RegisterAllBlocks();
@@ -94,11 +94,11 @@ void installCBCore(malEnvPtr env) {
 
 class malCBChain : public malValue {
 public:
-  malCBChain(MalString name) : m_chain(new CBChain(name.c_str())) {}
+  malCBChain(const MalString &name) : m_chain(new CBChain(name.c_str())) {}
 
   malCBChain(CBChain *chain) : m_chain(chain) {}
 
-  malCBChain(const malCBChain &that, malValuePtr meta)
+  malCBChain(const malCBChain &that, const malValuePtr &meta)
       : malValue(meta), m_chain(that.m_chain) {
     // Chains are unique!
     consume();
@@ -136,12 +136,12 @@ private:
 
 class malCBBlock : public malValue {
 public:
-  malCBBlock(MalString name)
+  malCBBlock(const MalString &name)
       : m_block(chainblocks::createBlock(name.c_str())) {}
 
   malCBBlock(CBlock *block) : m_block(block) {}
 
-  malCBBlock(const malCBBlock &that, malValuePtr meta)
+  malCBBlock(const malCBBlock &that, const malValuePtr &meta)
       : malValue(meta), m_block(that.m_block), m_innerRefs(that.m_innerRefs) {
     consume();
   }
@@ -185,7 +185,7 @@ class malCBNode : public malValue {
 public:
   malCBNode() : m_node(new CBNode()) {}
 
-  malCBNode(const malCBNode &that, malValuePtr meta)
+  malCBNode(const malCBNode &that, const malValuePtr &meta)
       : malValue(meta), m_node(that.m_node), m_innerRefs(that.m_innerRefs) {
     consume();
   }
@@ -227,7 +227,7 @@ class malCBVar : public malValue {
 public:
   malCBVar(CBVar var) : m_var(var) {}
 
-  malCBVar(const malCBVar &that, malValuePtr meta) : malValue(meta) {
+  malCBVar(const malCBVar &that, const malValuePtr &meta) : malValue(meta) {
     m_var = CBVar();
     chainblocks::cloneVar(m_var, that.m_var);
   }
@@ -363,7 +363,7 @@ struct InnerCall {
   malCBVar *innerVar;
   CBVar outputVar;
 
-  void init(malValuePtr infer, malValuePtr activate) {
+  void init(const malValuePtr &infer, const malValuePtr &activate) {
     malInfer = infer;
 
     auto avec = new malValueVec();
@@ -432,7 +432,7 @@ BUILTIN("Node") { return malValuePtr(new malCBNode()); }
   result.push_back(constBlock)
 
 // Helper to generate const blocks automatically inferring types
-std::vector<CBlock *> blockify(malValuePtr arg) {
+std::vector<CBlock *> blockify(const malValuePtr &arg) {
   std::vector<CBlock *> result;
 
   if (arg == mal::nilValue()) {
@@ -490,7 +490,7 @@ std::vector<CBlock *> blockify(malValuePtr arg) {
   return result;
 }
 
-CBVar varify(malCBBlock *mblk, malValuePtr arg) {
+CBVar varify(malCBBlock *mblk, const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     CBVar var{};

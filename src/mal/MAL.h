@@ -25,7 +25,7 @@ extern String rep(const String& input, malEnvPtr env);
 
 // Core.cpp
 extern void installCore(malEnvPtr env);
-extern void installCBCore(malEnvPtr env);
+extern void installCBCore(const malEnvPtr& env);
 
 // Reader.cpp
 extern malValuePtr readStr(const String& input);

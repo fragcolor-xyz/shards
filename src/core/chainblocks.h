@@ -109,27 +109,27 @@ enum CBInlineBlocks : uint8_t {
 
 // Forward declarations
 struct CBVar;
-typedef CBVar *CBSeq; // a stb array
+typedef struct CBVar *CBSeq; // a stb array
 
 struct CBNamedVar;
-typedef CBNamedVar *CBTable; // a stb string map
+typedef struct CBNamedVar *CBTable; // a stb string map
 
 struct CBChain;
-typedef CBChain *CBChainPtr;
+typedef struct CBChain *CBChainPtr;
 
 struct CBNode;
 
 struct CBlock;
-typedef CBlock **CBlocks; // a stb array
+typedef struct CBlock **CBlocks; // a stb array
 
 struct CBTypeInfo;
-typedef CBTypeInfo *CBTypesInfo; // a stb array
+typedef struct CBTypeInfo *CBTypesInfo; // a stb array
 
 struct CBParameterInfo;
-typedef CBParameterInfo *CBParametersInfo; // a stb array
+typedef struct CBParameterInfo *CBParametersInfo; // a stb array
 
 struct CBExposedTypeInfo;
-typedef CBExposedTypeInfo *CBExposedTypesInfo; // a stb array
+typedef struct CBExposedTypeInfo *CBExposedTypesInfo; // a stb array
 
 struct CBContext;
 
@@ -193,7 +193,7 @@ struct CBImage {
 };
 
 struct CBTypeInfo {
-  CBType basicType;
+  enum CBType basicType;
 
   union {
     struct {
@@ -239,7 +239,7 @@ struct CBParameterInfo {
 struct CBExposedTypeInfo {
   const char *name;
   const char *help;
-  CBTypeInfo exposedType;
+  struct CBTypeInfo exposedType;
 };
 
 // # Of CBVars and memory
@@ -275,7 +275,7 @@ ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
                             // vectors
 {
   union {
-    CBChainState chainState;
+    enum CBChainState chainState;
 
     struct {
       CBPointer objectValue;
@@ -315,13 +315,13 @@ ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
 
     CBString stringValue;
 
-    CBColor colorValue;
+    struct CBColor colorValue;
 
-    CBImage imageValue;
+    struct CBImage imageValue;
 
     CBChainPtr chainValue;
 
-    CBlock *blockValue;
+    struct CBlock *blockValue;
 
     struct {
       CBEnum enumValue;
@@ -332,8 +332,8 @@ ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
 };
 
 ALIGNED struct CBVar {
-  CBVarPayload payload;
-  CBType valueType;
+  struct CBVarPayload payload;
+  enum CBType valueType;
   // reserved to the owner of the var, cloner, block etc to do whatever they
   // need to do :)
   uint8_t reserved[15];
@@ -341,46 +341,47 @@ ALIGNED struct CBVar {
 
 ALIGNED struct CBNamedVar {
   const char *key;
-  CBVar value;
+  struct CBVar value;
 };
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
 struct CBRunChainOutput {
-  CBVar output;
-  CBRunChainOutputState state;
+  struct CBVar output;
+  enum CBRunChainOutputState state;
 };
 
-typedef CBlock *(__cdecl *CBBlockConstructor)();
+typedef struct CBlock *(__cdecl *CBBlockConstructor)();
 typedef void(__cdecl *CBCallback)();
 
-typedef const char *(__cdecl *CBNameProc)(CBlock *);
-typedef const char *(__cdecl *CBHelpProc)(CBlock *);
+typedef const char *(__cdecl *CBNameProc)(struct CBlock *);
+typedef const char *(__cdecl *CBHelpProc)(struct CBlock *);
 
 // Construction/Destruction
-typedef void(__cdecl *CBSetupProc)(CBlock *);
-typedef void(__cdecl *CBDestroyProc)(CBlock *);
+typedef void(__cdecl *CBSetupProc)(struct CBlock *);
+typedef void(__cdecl *CBDestroyProc)(struct CBlock *);
 
-typedef CBTypesInfo(__cdecl *CBInputTypesProc)(CBlock *);
-typedef CBTypesInfo(__cdecl *CBOutputTypesProc)(CBlock *);
+typedef CBTypesInfo(__cdecl *CBInputTypesProc)(struct CBlock *);
+typedef CBTypesInfo(__cdecl *CBOutputTypesProc)(struct CBlock *);
 
-typedef CBExposedTypesInfo(__cdecl *CBExposedVariablesProc)(CBlock *);
-typedef CBExposedTypesInfo(__cdecl *CBConsumedVariablesProc)(CBlock *);
+typedef CBExposedTypesInfo(__cdecl *CBExposedVariablesProc)(struct CBlock *);
+typedef CBExposedTypesInfo(__cdecl *CBConsumedVariablesProc)(struct CBlock *);
 
-typedef CBParametersInfo(__cdecl *CBParametersProc)(CBlock *);
-typedef void(__cdecl *CBSetParamProc)(CBlock *, int, CBVar);
-typedef CBVar(__cdecl *CBGetParamProc)(CBlock *, int);
+typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
+typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, CBVar);
+typedef CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
 typedef CBTypeInfo(__cdecl *CBInferTypesProc)(
-    CBlock *, CBTypeInfo inputType, CBExposedTypesInfo consumableVariables);
+    struct CBlock *, CBTypeInfo inputType,
+    CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
-typedef void(__cdecl *CBPreChainProc)(CBlock *, CBContext *);
-typedef CBVar(__cdecl *CBActivateProc)(CBlock *, CBContext *, CBVar);
-typedef void(__cdecl *CBPostChainProc)(CBlock *, CBContext *);
+typedef void(__cdecl *CBPreChainProc)(struct CBlock *, CBContext *);
+typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, CBVar);
+typedef void(__cdecl *CBPostChainProc)(struct CBlock *, CBContext *);
 
 // Generally when stop() is called
-typedef void(__cdecl *CBCleanupProc)(CBlock *);
+typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
 
 struct CBlock {
   CBInlineBlocks inlineBlockId;

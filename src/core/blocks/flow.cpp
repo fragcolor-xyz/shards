@@ -32,12 +32,12 @@ struct Cond {
   }
 
   void cleanup() {
-    for (auto blocks : _conditions) {
+    for (const auto &blocks : _conditions) {
       for (auto block : blocks) {
         block->cleanup(block);
       }
     }
-    for (auto blocks : _actions) {
+    for (const auto &blocks : _actions) {
       for (auto block : blocks) {
         block->cleanup(block);
       }
@@ -45,13 +45,13 @@ struct Cond {
   }
 
   void destroy() {
-    for (auto blocks : _conditions) {
+    for (const auto &blocks : _conditions) {
       for (auto block : blocks) {
         block->cleanup(block);
         block->destroy(block);
       }
     }
-    for (auto blocks : _actions) {
+    for (const auto &blocks : _actions) {
       for (auto block : blocks) {
         block->cleanup(block);
         block->destroy(block);
@@ -137,7 +137,7 @@ struct Cond {
     // Evaluate all actions, all must return the same type in order to be safe
     CBTypeInfo previousType{};
     auto idx = 0;
-    for (auto action : _actions) {
+    for (const auto &action : _actions) {
       CBTypeInfo outputType = validateConnections(
           action,
           [](const CBlock *errorBlock, const char *errorTxt,

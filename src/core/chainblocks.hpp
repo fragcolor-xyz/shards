@@ -88,23 +88,12 @@ struct Var : public CBVar {
     payload.tableValue = src;
   }
 
-  explicit Var(std::vector<CBVar> vars) {
-    valueType = Seq;
-    payload.seqValue = nullptr;
-    payload.seqLen = -1;
-    stbds_arrsetlen(payload.seqValue, vars.size());
-    for (auto i = 0; i < vars.size(); i++) {
-      payload.seqValue[i].valueType = None;
-      chainblocks_CloneVar(&payload.seqValue[i], &vars[i]);
-    }
-  }
-
-  explicit Var(std::vector<CBlock *> blocks) {
+  explicit Var(const std::vector<CBlock *> &blocks) : CBVar() {
     valueType = Seq;
     payload.seqValue = nullptr;
     payload.seqLen = -1;
     for (auto block : blocks) {
-      CBVar blockVar;
+      CBVar blockVar{};
       blockVar.valueType = Block;
       blockVar.payload.blockValue = block;
       stbds_arrpush(payload.seqValue, blockVar);
@@ -144,7 +133,7 @@ struct TypesInfo {
     _innerInfo = nullptr;
     stbds_arrpush(_innerInfo, singleType);
     if (canBeSeq) {
-      _subTypes.push_back(TypesInfo(CBType::Seq, CBTypesInfo(*this)));
+      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
       stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
     }
   }
@@ -166,7 +155,7 @@ struct TypesInfo {
     CBTypeInfo t = {singleType};
     stbds_arrpush(_innerInfo, t);
     if (canBeSeq) {
-      _subTypes.push_back(TypesInfo(CBType::Seq, CBTypesInfo(*this)));
+      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
       stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
     }
   }
@@ -289,7 +278,7 @@ struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
   void reset() { data.clear(); }
 
-  int overflow(int c) {
+  int overflow(int c) override {
     data.push_back(static_cast<char>(c));
     return 0;
   }

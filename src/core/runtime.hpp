@@ -355,7 +355,9 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
       }
 
       dst.valueType = src.valueType;
-      strcpy((char *)dst.payload.stringValue, (char *)src.payload.stringValue);
+      strncpy((char *)dst.payload.stringValue, (char *)src.payload.stringValue,
+              srcLen);
+      ((char *)dst.payload.stringValue)[srcLen] = '\0';
     } break;
     case Image: {
       auto srcImgSize = src.payload.imageValue.height *
@@ -385,7 +387,7 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
       stbds_sh_new_arena(dst.payload.tableValue);
       auto srcLen = stbds_shlen(src.payload.tableValue);
       for (auto i = 0; i < srcLen; i++) {
-        CBVar clone;
+        CBVar clone{};
         freeCount += cloneVar(clone, src.payload.tableValue[i].value);
         stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key,
                     clone);
@@ -680,6 +682,7 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
                                    context, cblock->match.payload.stringValue))
                      : cblock->match;
     auto result = false;
+    CBVar ifOutput{};
     if (unlikely(input.valueType != match.valueType)) {
       goto ifFalsePath;
     } else {
@@ -747,9 +750,7 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
         previousOutput = blk->activate(blk, context, input);
         return;
       }
-      CBVar ifOutput;
-      ifOutput.valueType = None;
-      ifOutput.payload.chainState = Continue;
+
       if (result) {
         if (!activateBlocks(cblock->trueBlocks, context, input, ifOutput)) {
           previousOutput = StopChain;

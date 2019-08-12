@@ -21,7 +21,7 @@ int main(int argc, const char *argv[]) {
   std::set<std::string> enums;
 
   auto counter = 0;
-  for (auto blockDef : chainblocks::BlocksRegister) {
+  for (const auto &blockDef : chainblocks::BlocksRegister) {
     auto blockFullName = blockDef.first;
     LOG(INFO) << "Generating block: " << blockFullName;
 
@@ -48,7 +48,7 @@ int main(int argc, const char *argv[]) {
 
   os << "void registerKeywords(malEnvPtr env)\n";
   os << "{\n";
-  for (auto word : keywords) {
+  for (const auto &word : keywords) {
     os << "  env->set(\":" << word << "\", mal::keyword(\":" << word
        << "\"));\n";
   }
