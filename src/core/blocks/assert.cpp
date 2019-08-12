@@ -1,5 +1,3 @@
-#pragma once
-
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -7,7 +5,7 @@ namespace Assert {
 static ParamsInfo assertParamsInfo = ParamsInfo(
     ParamsInfo::Param("Value", "The value to test against for equality.",
                       CBTypesInfo(anyInfo)),
-    ParamsInfo::Param("Abort", "If we should crash the program on failure.",
+    ParamsInfo::Param("Abort", "If we should abort the process on failure.",
                       CBTypesInfo(boolInfo)));
 
 struct Base {
@@ -105,4 +103,9 @@ RUNTIME_BLOCK_getParam(IsNot);
 RUNTIME_BLOCK_activate(IsNot);
 RUNTIME_BLOCK_END(IsNot);
 }; // namespace Assert
+
+void registerAssertBlocks() {
+  REGISTER_BLOCK(Assert, Is);
+  REGISTER_BLOCK(Assert, IsNot);
+}
 }; // namespace chainblocks

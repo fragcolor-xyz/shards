@@ -1,5 +1,3 @@
-#pragma once
-
 #include "3rdparty/SPSCQueue.h"
 #include "shared.hpp"
 #include <boost/filesystem.hpp>
@@ -682,4 +680,15 @@ RUNTIME_BLOCK_getParam(ChainLoader);
 RUNTIME_BLOCK_activate(ChainLoader);
 RUNTIME_BLOCK_cleanup(ChainLoader);
 RUNTIME_BLOCK_END(ChainLoader);
+
+void registerChainsBlocks() {
+  REGISTER_CORE_BLOCK(RunChain);
+  REGISTER_CORE_BLOCK(Do);
+  REGISTER_CORE_BLOCK(DoOnce);
+  REGISTER_CORE_BLOCK(Dispatch);
+  REGISTER_CORE_BLOCK(DispatchOnce);
+  REGISTER_CORE_BLOCK(Detach);
+  REGISTER_CORE_BLOCK(DetachOnce);
+  REGISTER_CORE_BLOCK(ChainLoader);
+}
 }; // namespace chainblocks

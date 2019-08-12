@@ -1,5 +1,3 @@
-#pragma once
-
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -219,4 +217,9 @@ RUNTIME_BLOCK_setParam(GetTableValue);
 RUNTIME_BLOCK_getParam(GetTableValue);
 RUNTIME_BLOCK_activate(GetTableValue);
 RUNTIME_BLOCK_END(GetTableValue);
+
+void registerTablesBlocks() {
+  REGISTER_CORE_BLOCK(SetTableValue);
+  REGISTER_CORE_BLOCK(GetTableValue);
+}
 }; // namespace chainblocks

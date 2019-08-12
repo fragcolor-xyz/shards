@@ -20,6 +20,13 @@
     (--> (When false) true) (--> (Msg "Cond was false!") true)])
   (Assert.Is true true)
 
+  10
+  (Cond [
+    (--> true)    (--> (Msg "Cond was true!!") false)
+    (--> (Is 10)) (--> (Msg "Cond was false!") true)
+  ] :Threading true)
+  (Assert.Is true true)
+
   "Hello"
   (Assert.Is "Hello" true)
   (Log)

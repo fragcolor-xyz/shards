@@ -46,6 +46,13 @@ struct Var : public CBVar {
     return res;
   }
 
+  static Var Restart() {
+    Var res;
+    res.valueType = None;
+    res.payload.chainState = CBChainState::Restart;
+    return res;
+  }
+
   explicit Var(int src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
@@ -108,6 +115,7 @@ struct Var : public CBVar {
 static Var True = Var(true);
 static Var False = Var(false);
 static Var StopChain = Var::Stop();
+static Var RestartChain = Var::Restart();
 static Var Empty = Var();
 
 struct TypesInfo {

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -103,4 +101,6 @@ RUNTIME_BLOCK_setParam(GetItems);
 RUNTIME_BLOCK_getParam(GetItems);
 RUNTIME_BLOCK_activate(GetItems);
 RUNTIME_BLOCK_END(GetItems);
+
+void registerSeqsBlocks() { REGISTER_CORE_BLOCK(GetItems); }
 }; // namespace chainblocks

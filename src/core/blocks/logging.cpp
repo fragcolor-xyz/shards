@@ -1,5 +1,3 @@
-#pragma once
-
 #include "shared.hpp"
 #include <string>
 
@@ -72,4 +70,9 @@ RUNTIME_BLOCK_setParam(Msg);
 RUNTIME_BLOCK_getParam(Msg);
 RUNTIME_BLOCK_activate(Msg);
 RUNTIME_BLOCK_END(Msg);
+
+void registerLoggingBlocks() {
+  REGISTER_CORE_BLOCK(Log);
+  REGISTER_CORE_BLOCK(Msg);
+}
 }; // namespace chainblocks

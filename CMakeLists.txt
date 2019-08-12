@@ -110,14 +110,15 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/flow.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/ops_binary.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
 )
@@ -152,6 +153,14 @@ include_directories(
 add_library(
   cbruntime STATIC
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/ops_binary.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
 add_dependencies(cbruntime format)

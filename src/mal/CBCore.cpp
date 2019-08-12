@@ -474,9 +474,8 @@ std::vector<CBlock *> blockify(malValuePtr arg) {
     WRAP_TO_CONST(v->value());
   } else if (const malCBBlock *v = DYNAMIC_CAST(malCBBlock, arg)) {
     auto block = v->value();
-    const_cast<malCBBlock *>(v)
-        ->consume(); // Blocks are unique, consume before use, assume goes
-                     // inside another block or
+    // Blocks are unique, consume before use, assume goes inside another block
+    const_cast<malCBBlock *>(v)->consume();
     result.push_back(block);
   } else if (const malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     auto count = v->count();
@@ -503,7 +502,7 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     tmp.valueType = String;
     auto s = v->value();
     tmp.payload.stringValue = s.c_str();
-    auto var = CBVar();
+    CBVar var{};
     chainblocks::cloneVar(var, tmp);
     return var;
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
@@ -530,7 +529,7 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
       auto subVar = varify(mblk, val);
       stbds_arrpush(tmp.payload.seqValue, subVar);
     }
-    auto var = CBVar();
+    CBVar var{};
     chainblocks::cloneVar(var, tmp);
     stbds_arrfree(tmp.payload.seqValue);
     return var;
@@ -545,14 +544,13 @@ CBVar varify(malCBBlock *mblk, malValuePtr arg) {
     var.payload.boolValue = false;
     return var;
   } else if (const malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
-    auto var = CBVar();
+    CBVar var{};
     chainblocks::cloneVar(var, v->value());
     return var;
   } else if (const malCBBlock *v = DYNAMIC_CAST(malCBBlock, arg)) {
     auto block = v->value();
-    const_cast<malCBBlock *>(v)
-        ->consume(); // Blocks are unique, consume before use, assume goes
-                     // inside another block or
+    // Blocks are unique, consume before use, assume goes inside another block
+    const_cast<malCBBlock *>(v)->consume();
     CBVar var{};
     var.valueType = Block;
     var.payload.blockValue = block;

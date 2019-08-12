@@ -2,18 +2,8 @@
 #define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 
-#ifdef _WIN32
-#include "winsock2.h"
-#endif
-
-#include "blocks/assert.hpp"
-#include "blocks/chains.hpp"
-#include "blocks/flow.hpp"
-#include "blocks/logging.hpp"
-#include "blocks/process.hpp"
-#include "blocks/seqs.hpp"
-#include "blocks/tables.hpp"
 #include "runtime.hpp"
+#include "blocks/shared.hpp"
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
@@ -31,25 +21,24 @@ phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 std::map<std::string, CBCallback> RunLoopHooks;
 
+extern void registerAssertBlocks();
+extern void registerChainsBlocks();
+extern void registerLoggingBlocks();
+extern void registerFlowBlocks();
+extern void registerProcessBlocks();
+extern void registerSeqsBlocks();
+extern void registerTablesBlocks();
+extern void registerOpsBinaryBlocks();
+
 void registerCoreBlocks() {
-  // Do this here to prevent insanity loop
-  REGISTER_CORE_BLOCK(Log);
-  REGISTER_CORE_BLOCK(Msg);
-  REGISTER_CORE_BLOCK(GetItems);
-  REGISTER_CORE_BLOCK(SetTableValue);
-  REGISTER_CORE_BLOCK(GetTableValue);
-  REGISTER_CORE_BLOCK(RunChain);
-  REGISTER_CORE_BLOCK(Do);
-  REGISTER_CORE_BLOCK(DoOnce);
-  REGISTER_CORE_BLOCK(Dispatch);
-  REGISTER_CORE_BLOCK(DispatchOnce);
-  REGISTER_CORE_BLOCK(Detach);
-  REGISTER_CORE_BLOCK(DetachOnce);
-  REGISTER_CORE_BLOCK(ChainLoader);
-  REGISTER_CORE_BLOCK(Cond);
-  REGISTER_BLOCK(Assert, Is);
-  REGISTER_BLOCK(Assert, IsNot);
-  REGISTER_BLOCK(Process, Exec);
+  registerAssertBlocks();
+  registerChainsBlocks();
+  registerLoggingBlocks();
+  registerFlowBlocks();
+  registerProcessBlocks();
+  registerSeqsBlocks();
+  registerTablesBlocks();
+  registerOpsBinaryBlocks();
 
   // also enums
   initEnums();

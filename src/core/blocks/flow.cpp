@@ -1,10 +1,3 @@
-//
-// Created by giova on 8/10/2019.
-//
-
-#ifndef CHAINBLOCKS_PRIVATE_FLOW_HPP
-#define CHAINBLOCKS_PRIVATE_FLOW_HPP
-
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -18,6 +11,11 @@ static ParamsInfo condParamsInfo = ParamsInfo(
                       CBTypesInfo(blockSeqsOrNoneInfo)),
     ParamsInfo::Param("Passthrough",
                       "The input of this block will be the output.",
+                      CBTypesInfo(boolInfo)),
+    ParamsInfo::Param("Threading",
+                      "Will not short circuit after the first true test "
+                      "expression. The threaded value gets used in only the "
+                      "action and not the test part of the clause.",
                       CBTypesInfo(boolInfo)));
 
 struct Cond {
@@ -25,6 +23,7 @@ struct Cond {
   std::vector<std::vector<CBlock *>> _conditions;
   std::vector<std::vector<CBlock *>> _actions;
   bool passthrough = false;
+  bool threading = false;
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
@@ -109,6 +108,9 @@ struct Cond {
     case 1:
       passthrough = value.payload.boolValue;
       break;
+    case 2:
+      threading = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -120,6 +122,8 @@ struct Cond {
       return _chains;
     case 1:
       return Var(passthrough);
+    case 2:
+      return Var(threading);
     default:
       break;
     }
@@ -166,26 +170,33 @@ struct Cond {
     }
 
     auto idx = 0;
+    CBVar actionInput = input;
+    CBVar finalOutput = RestartChain;
     for (auto cond : _conditions) {
       CBVar output{};
-      if (!activateBlocks(&cond[0], cond.size(), context, input, output)) {
+      if (unlikely(
+              !activateBlocks(&cond[0], cond.size(), context, input, output))) {
         return StopChain;
       } else if (output == True) {
         // Do the action if true!
         // And stop here
         output = Empty;
-        if (!activateBlocks(&_actions[idx][0], _actions.size(), context, input,
-                            output)) {
+        if (unlikely(!activateBlocks(&_actions[idx][0], _actions.size(),
+                                     context, actionInput, output))) {
           return StopChain;
-        } else if (passthrough)
-          return input;
-        else
-          return output;
+        } else if (threading) {
+          // set the output as the next action input (not cond tho!)
+          finalOutput = output;
+          actionInput = finalOutput;
+        } else {
+          // not threading so short circuit here
+          return passthrough ? input : output;
+        }
       }
       idx++;
     }
 
-    return Empty;
+    return finalOutput;
   }
 };
 
@@ -200,7 +211,7 @@ RUNTIME_BLOCK_getParam(Cond);
 RUNTIME_BLOCK_activate(Cond);
 RUNTIME_BLOCK_cleanup(Cond);
 RUNTIME_BLOCK_destroy(Cond);
-RUNTIME_BLOCK_END(RunChain);
-}; // namespace chainblocks
+RUNTIME_BLOCK_END(Cond);
 
-#endif // CHAINBLOCKS_PRIVATE_FLOW_HPP
+void registerFlowBlocks() { REGISTER_CORE_BLOCK(Cond); }
+}; // namespace chainblocks

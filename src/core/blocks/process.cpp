@@ -1,4 +1,6 @@
-#pragma once
+#ifdef _WIN32
+#include "winsock2.h"
+#endif
 
 #include "shared.hpp"
 #include <boost/process.hpp>
@@ -65,4 +67,6 @@ RUNTIME_BLOCK_outputTypes(Exec);
 RUNTIME_BLOCK_activate(Exec);
 RUNTIME_BLOCK_END(Exec);
 }; // namespace Process
+
+void registerProcessBlocks() { REGISTER_BLOCK(Process, Exec); }
 }; // namespace chainblocks
