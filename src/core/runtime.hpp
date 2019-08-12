@@ -282,10 +282,7 @@ static int destroyVar(CBVar &var) {
   int freeCount = 0;
   switch (var.valueType) {
   case Seq: {
-    // Notice we use capacity rather then len!
-    // Assuming memory is nicely memset
-    // We do that because we try our best to recycle memory
-    int len = stbds_arrcap(var.payload.seqValue);
+    int len = stbds_arrlen(var.payload.seqValue);
     for (int i = 0; i < len; i++) {
       freeCount += destroyVar(var.payload.seqValue[i]);
     }
@@ -337,11 +334,20 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
         dst.valueType = Seq;
         dst.payload.seqLen = -1;
         dst.payload.seqValue = nullptr;
+      } else {
+        int dstLen = stbds_arrlen(dst.payload.seqValue);
+        if (srcLen < dstLen) {
+          // need to destroy leftovers
+          for (auto i = srcLen; i < dstLen; i++) {
+            freeCount += destroyVar(dst.payload.seqValue[i]);
+          }
+        }
       }
 
       stbds_arrsetlen(dst.payload.seqValue, (unsigned)srcLen);
       for (auto i = 0; i < srcLen; i++) {
         auto &subsrc = src.payload.seqValue[i];
+        memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
         freeCount += cloneVar(dst.payload.seqValue[i], subsrc);
       }
     } break;

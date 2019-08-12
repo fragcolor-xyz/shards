@@ -14,3 +14,4 @@ src/nim/tcbvar.xml
 *.log
 build
 build-release
+build-lnx

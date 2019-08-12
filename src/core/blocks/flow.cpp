@@ -22,8 +22,8 @@ struct Cond {
   CBVar _chains{};
   std::vector<std::vector<CBlock *>> _conditions;
   std::vector<std::vector<CBlock *>> _actions;
-  bool passthrough = false;
-  bool threading = false;
+  bool _passthrough = false;
+  bool _threading = false;
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
@@ -106,10 +106,10 @@ struct Cond {
       break;
     }
     case 1:
-      passthrough = value.payload.boolValue;
+      _passthrough = value.payload.boolValue;
       break;
     case 2:
-      threading = value.payload.boolValue;
+      _threading = value.payload.boolValue;
       break;
     default:
       break;
@@ -121,9 +121,9 @@ struct Cond {
     case 0:
       return _chains;
     case 1:
-      return Var(passthrough);
+      return Var(_passthrough);
     case 2:
-      return Var(threading);
+      return Var(_threading);
     default:
       break;
     }
@@ -131,7 +131,7 @@ struct Cond {
   }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    if (passthrough)
+    if (_passthrough)
       return inputType;
 
     // Evaluate all actions, all must return the same type in order to be safe
@@ -163,7 +163,7 @@ struct Cond {
 
   CBVar activate(CBContext *context, CBVar input) {
     if (unlikely(_actions.size() == 0)) {
-      if (passthrough)
+      if (_passthrough)
         return input;
       else
         return CBVar(); // None
@@ -184,13 +184,13 @@ struct Cond {
         if (unlikely(!activateBlocks(&_actions[idx][0], _actions.size(),
                                      context, actionInput, output))) {
           return StopChain;
-        } else if (threading) {
+        } else if (_threading) {
           // set the output as the next action input (not cond tho!)
           finalOutput = output;
           actionInput = finalOutput;
         } else {
-          // not threading so short circuit here
-          return passthrough ? input : output;
+          // not _threading so short circuit here
+          return _passthrough ? input : output;
         }
       }
       idx++;
@@ -210,6 +210,7 @@ RUNTIME_BLOCK_setParam(Cond);
 RUNTIME_BLOCK_getParam(Cond);
 RUNTIME_BLOCK_activate(Cond);
 RUNTIME_BLOCK_cleanup(Cond);
+RUNTIME_BLOCK_setup(Cond);
 RUNTIME_BLOCK_destroy(Cond);
 RUNTIME_BLOCK_END(Cond);
 

@@ -161,7 +161,7 @@ type
     enumVendorId*: int32
     enumTypeId*: int32
 
-  CBVar* {.importcpp: "CBVar", header: "chainblocks.hpp".} = object
+  CBVar* {.importc: "CBVar", header: "chainblocks.hpp".} = object
     payload*: CBVarPayload
     valueType*: CBType
     reserved*: array[15, uint8]
