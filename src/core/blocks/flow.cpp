@@ -210,7 +210,6 @@ RUNTIME_BLOCK_setParam(Cond);
 RUNTIME_BLOCK_getParam(Cond);
 RUNTIME_BLOCK_activate(Cond);
 RUNTIME_BLOCK_cleanup(Cond);
-RUNTIME_BLOCK_setup(Cond);
 RUNTIME_BLOCK_destroy(Cond);
 RUNTIME_BLOCK_END(Cond);
 
