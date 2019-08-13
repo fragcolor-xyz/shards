@@ -2,13 +2,13 @@
 #include <string>
 
 namespace chainblocks {
-static ParamsInfo msgParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Message", "The message to log.", CBTypesInfo(strInfo)));
+static ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
+    "Message", "The message to log.", CBTypesInfo(SharedTypes::strInfo)));
 
 struct LoggingBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 };
 
 struct Log : public LoggingBase {

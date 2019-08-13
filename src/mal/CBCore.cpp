@@ -376,9 +376,9 @@ struct InnerCall {
     malActivate = malValuePtr(malActivateList);
   }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {

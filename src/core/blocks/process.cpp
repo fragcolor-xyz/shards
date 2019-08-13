@@ -22,7 +22,7 @@ struct Exec {
 
   void destroy() { stbds_shfree(outputTable); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(strInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(execTableInfo); }
 

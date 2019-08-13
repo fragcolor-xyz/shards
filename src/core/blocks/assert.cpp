@@ -2,21 +2,22 @@
 
 namespace chainblocks {
 namespace Assert {
-static ParamsInfo assertParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Value", "The value to test against for equality.",
-                      CBTypesInfo(anyInfo)),
-    ParamsInfo::Param("Abort", "If we should abort the process on failure.",
-                      CBTypesInfo(boolInfo)));
 
 struct Base {
+  static inline ParamsInfo assertParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Value", "The value to test against for equality.",
+                        CBTypesInfo(SharedTypes::anyInfo)),
+      ParamsInfo::Param("Abort", "If we should abort the process on failure.",
+                        CBTypesInfo(SharedTypes::boolInfo)));
+
   CBVar value;
   bool aborting;
 
   void destroy() { destroyVar(value); }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBParametersInfo parameters() { return CBParametersInfo(assertParamsInfo); }
 

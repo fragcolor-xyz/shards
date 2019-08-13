@@ -1,8 +1,8 @@
 #include "shared.hpp"
 
 namespace chainblocks {
-static TypesInfo blockSeqsOrNoneInfo =
-    TypesInfo::FromManyTypes(CBTypeInfo(blockSeqInfo), CBTypeInfo(noneInfo));
+static TypesInfo blockSeqsOrNoneInfo = TypesInfo::FromManyTypes(
+    CBTypeInfo((SharedTypes::blockSeqInfo)), CBTypeInfo(SharedTypes::noneInfo));
 
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chains",
@@ -11,12 +11,12 @@ static ParamsInfo condParamsInfo = ParamsInfo(
                       CBTypesInfo(blockSeqsOrNoneInfo)),
     ParamsInfo::Param("Passthrough",
                       "The input of this block will be the output.",
-                      CBTypesInfo(boolInfo)),
+                      CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param("Threading",
                       "Will not short circuit after the first true test "
                       "expression. The threaded value gets used in only the "
                       "action and not the test part of the clause.",
-                      CBTypesInfo(boolInfo)));
+                      CBTypesInfo(SharedTypes::boolInfo)));
 
 struct Cond {
   CBVar _chains{};
@@ -25,8 +25,8 @@ struct Cond {
   bool _passthrough = false;
   bool _threading = false;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBParametersInfo parameters() {
     return CBParametersInfo(condParamsInfo);
   }

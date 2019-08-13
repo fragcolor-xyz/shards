@@ -1,17 +1,18 @@
 #include "shared.hpp"
 
 namespace chainblocks {
-static ParamsInfo compareParamsInfo = ParamsInfo(ParamsInfo::Param(
-    "Value", "The value to test against for equality.", CBTypesInfo(anyInfo)));
+static ParamsInfo compareParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Value", "The value to test against for equality.",
+                      CBTypesInfo(SharedTypes::anyInfo)));
 
 struct BaseOpsBin {
   CBVar value{};
 
   void destroy() { destroyVar(value); }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
 

@@ -2,8 +2,8 @@
 
 namespace chainblocks {
 struct ToInt4 {
-  CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(int4Info); }
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo((SharedTypes::int4Info)); }
 
   bool convert(CBVar &dst, int &index, const CBVar &src) {
     // TODO overflows

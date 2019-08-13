@@ -1,8 +1,8 @@
 #include "shared.hpp"
 
 namespace chainblocks {
-static TypesInfo indicesTypes =
-    TypesInfo::FromManyTypes(CBTypeInfo(intInfo), CBTypeInfo(intSeqInfo));
+static TypesInfo indicesTypes = TypesInfo::FromManyTypes(
+    CBTypeInfo(SharedTypes::intInfo), CBTypeInfo((SharedTypes::intSeqInfo)));
 static ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
     "Indices", "One or multiple indices to filter from a sequence.",
     CBTypesInfo(indicesTypes)));
@@ -19,9 +19,9 @@ struct GetItems {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(indicesParamsInfo);

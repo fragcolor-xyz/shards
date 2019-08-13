@@ -3,9 +3,9 @@
 namespace chainblocks {
 static ParamsInfo tableParamsInfo = ParamsInfo(
     ParamsInfo::Param("Name", "The name of the table variable.",
-                      CBTypesInfo(strInfo)),
+                      CBTypesInfo(SharedTypes::strInfo)),
     ParamsInfo::Param("Key", "The key of the value to write in the table.",
-                      CBTypesInfo(strInfo)));
+                      CBTypesInfo(SharedTypes::strInfo)));
 
 struct SetTableValue {
   CBVar *target{};
@@ -32,9 +32,9 @@ struct SetTableValue {
     target = nullptr;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(tableParamsInfo);
@@ -117,9 +117,9 @@ struct GetTableValue {
 
   void cleanup() { target = nullptr; }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(noneInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(tableParamsInfo);

@@ -15,27 +15,27 @@ static ParamsInfo runChainParamsInfo = ParamsInfo(
     ParamsInfo::Param("Once",
                       "Runs this sub-chain only once within the parent chain "
                       "execution cycle.",
-                      CBTypesInfo(boolInfo)),
+                      CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param(
         "Passthrough",
         "The input of this block will be the output. Always on if Detached.",
-        CBTypesInfo(boolInfo)),
+        CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param("Detached",
                       "Runs the sub-chain as a completely separate parallel "
                       "chain in the same node.",
-                      CBTypesInfo(boolInfo)));
+                      CBTypesInfo(SharedTypes::boolInfo)));
 
 static ParamsInfo chainloaderParamsInfo = ParamsInfo(
     ParamsInfo::Param("File", "The json file of the chain to run and watch.",
-                      CBTypesInfo(strInfo)),
+                      CBTypesInfo(SharedTypes::strInfo)),
     ParamsInfo::Param("Once",
                       "Runs this sub-chain only once within the parent chain "
                       "execution cycle.",
-                      CBTypesInfo(boolInfo)),
+                      CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param("Detached",
                       "Runs the sub-chain as a completely separate parallel "
                       "chain in the same node.",
-                      CBTypesInfo(boolInfo)));
+                      CBTypesInfo(SharedTypes::boolInfo)));
 
 static ParamsInfo chainOnlyParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
@@ -47,8 +47,8 @@ struct ChainRunner {
   bool passthrough;
   bool detached;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     if (passthrough || !chain)
