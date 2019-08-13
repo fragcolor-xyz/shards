@@ -12,6 +12,8 @@
 #include <type_traits>
 
 namespace chainblocks {
+constexpr uint32_t FragCC = 'frag'; // 1718772071
+
 class CBException : public std::exception {
 public:
   explicit CBException(const char *errmsg) : errorMessage(errmsg) {}
@@ -26,6 +28,7 @@ private:
 
 struct Var : public CBVar {
   ~Var() {
+    // Dangerous... need to pull this out or something, TODO
     if (valueType == Seq) {
       for (auto i = 0; stbds_arrlen(payload.seqValue) > i; i++) {
         chainblocks_DestroyVar(&payload.seqValue[i]);
@@ -50,6 +53,17 @@ struct Var : public CBVar {
     Var res;
     res.valueType = None;
     res.payload.chainState = CBChainState::Restart;
+    return res;
+  }
+
+  template <typename T>
+  static Var Object(T valuePtr, uint32_t objectVendorId,
+                    uint32_t objectTypeId) {
+    Var res;
+    res.valueType = CBType::Object;
+    res.payload.objectValue = valuePtr;
+    res.payload.objectVendorId = objectVendorId;
+    res.payload.objectTypeId = objectTypeId;
     return res;
   }
 
@@ -136,6 +150,21 @@ struct TypesInfo {
       _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
       stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
     }
+  }
+
+  static TypesInfo Object(int32_t objectVendorId, int32_t objectTypeId,
+                          bool canBeSeq = false) {
+    TypesInfo result;
+    result._innerInfo = nullptr;
+    CBTypeInfo objType = {CBType::Object};
+    objType.objectVendorId = objectVendorId;
+    objType.objectTypeId = objectTypeId;
+    stbds_arrpush(result._innerInfo, objType);
+    if (canBeSeq) {
+      result._subTypes.emplace_back(CBType::Seq, CBTypesInfo(result));
+      stbds_arrpush(result._innerInfo, CBTypeInfo(result._subTypes[0]));
+    }
+    return result;
   }
 
   TypesInfo(CBType singleType, CBTypesInfo contentsInfo) {

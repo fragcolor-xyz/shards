@@ -37,8 +37,11 @@ struct Exec {
     }
 
     while (cmd.running()) {
-      // TODO terminate if we interrupt!!! / Run on thread
-      chainblocks::suspend(ctx, 0.0);
+      auto chainState = chainblocks::suspend(ctx, 0);
+      if (chainState.payload.chainState != Continue) {
+        cmd.terminate();
+        return chainState;
+      }
     }
 
     // Let's try to be efficient in terms of reusing memory, altho maybe the SS

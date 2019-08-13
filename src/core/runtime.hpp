@@ -638,6 +638,14 @@ static CBVar suspend(CBContext *context, double seconds) {
   return cont;
 }
 
+#define cbpause(_time_)                                                        \
+  {                                                                            \
+    auto chainState = chainblocks::suspend(context, _time_);                   \
+    if (chainState.payload.chainState != Continue) {                           \
+      return chainState;                                                       \
+    }                                                                          \
+  }
+
 #include "runtime_macros.hpp"
 
 inline static bool activateBlocks(CBSeq blocks, CBContext *context,
