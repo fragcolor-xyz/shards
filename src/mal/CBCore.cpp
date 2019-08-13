@@ -678,16 +678,60 @@ BUILTIN("schedule") {
   return mal::nilValue();
 }
 
+BUILTIN("prepare") {
+  CHECK_ARGS_IS(1);
+  ARG(malCBChain, chain);
+  chainblocks::prepare(chain->value());
+  return mal::nilValue();
+}
+
+BUILTIN("start") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malCBChain, chain);
+  if (argsBegin != argsEnd) {
+    ARG(malCBVar, inputVar);
+    chainblocks::start(chain->value(), inputVar->value());
+  } else {
+    chainblocks::start(chain->value());
+  }
+  return mal::nilValue();
+}
+
 BUILTIN("tick") {
   CHECK_ARGS_IS(1);
-  ARG(malCBNode, node);
-  auto noErrors = node->value()->tick();
-  return mal::boolean(noErrors);
+  auto first = *argsBegin;
+  if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
+    auto ticked = chainblocks::tick(v->value());
+    return mal::boolean(ticked);
+  } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
+    auto noErrors = v->value()->tick();
+    return mal::boolean(noErrors);
+  } else {
+    throw chainblocks::CBException("tick Expected Node or Chain");
+  }
+  return mal::nilValue();
+}
+
+BUILTIN("stop") {
+  CHECK_ARGS_IS(1);
+  ARG(malCBChain, chain);
+  CBVar res{};
+  chainblocks::stop(chain->value(), &res);
+  return malValuePtr(new malCBVar(res));
 }
 
 BUILTIN("run") {
   CHECK_ARGS_AT_LEAST(1);
-  ARG(malCBNode, node);
+  CBNode *node = nullptr;
+  CBChain *chain = nullptr;
+  auto first = *argsBegin++;
+  if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
+    chain = v->value();
+  } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
+    node = v->value();
+  } else {
+    throw chainblocks::CBException("tick Expected Node or Chain");
+  }
 
   auto sleepTime = 0.0;
   if (argsBegin != argsEnd) {
@@ -695,12 +739,17 @@ BUILTIN("run") {
     sleepTime = argSleepTime->value();
   }
 
-  auto cbnode = node->value();
-  while (!cbnode->empty()) {
-    auto noErrors = cbnode->tick();
-    if (!noErrors)
-      return mal::boolean(false);
-    chainblocks::sleep(sleepTime);
+  if (node) {
+    while (!node->empty()) {
+      auto noErrors = node->tick();
+      if (!noErrors)
+        return mal::boolean(false);
+      chainblocks::sleep(sleepTime);
+    }
+  } else {
+    while (!chainblocks::tick(chain)) {
+      chainblocks::sleep(sleepTime);
+    }
   }
 
   return mal::boolean(true);

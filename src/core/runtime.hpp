@@ -159,6 +159,8 @@ static CBlock *createBlock(const char *name);
 static void registerChain(CBChain *chain);
 
 static void unregisterChain(CBChain *chain);
+
+static int destroyVar(CBVar &var);
 }; // namespace chainblocks
 
 typedef boost::context::continuation CBCoro;
@@ -173,8 +175,9 @@ struct CBChain {
   }
 
   ~CBChain() {
-    chainblocks::unregisterChain(this);
     cleanup();
+    chainblocks::unregisterChain(this);
+    chainblocks::destroyVar(rootTickInput);
   }
 
   void cleanup();
@@ -1222,7 +1225,7 @@ static void start(CBChain *chain, CBVar input = {}) {
   if (!chain->coro || !(*chain->coro) || chain->started)
     return; // check if not null and bool operator also to see if alive!
 
-  chain->rootTickInput = input;
+  chainblocks::cloneVar(chain->rootTickInput, input);
   *chain->coro = chain->coro->resume();
 }
 
@@ -1259,16 +1262,17 @@ static bool stop(CBChain *chain, CBVar *result = nullptr) {
   return true;
 }
 
-static void tick(CBChain *chain, CBVar rootInput = CBVar()) {
+static bool tick(CBChain *chain, CBVar rootInput = CBVar()) {
   if (!chain->context || !chain->coro || !(*chain->coro) || chain->returned ||
       !chain->started)
-    return; // check if not null and bool operator also to see if alive!
+    return false; // check if not null and bool operator also to see if alive!
 
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
     chain->rootTickInput = rootInput;
     *chain->coro = chain->coro->resume();
   }
+  return true;
 }
 
 static bool isRunning(CBChain *chain) {
