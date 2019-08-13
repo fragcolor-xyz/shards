@@ -181,7 +181,7 @@ struct Cond {
         // Do the action if true!
         // And stop here
         output = Empty;
-        if (unlikely(!activateBlocks(&_actions[idx][0], _actions.size(),
+        if (unlikely(!activateBlocks(&_actions[idx][0], _actions[idx].size(),
                                      context, actionInput, output))) {
           return StopChain;
         } else if (_threading) {
