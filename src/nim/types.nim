@@ -69,6 +69,7 @@ type
     width*: uint16
     height*: uint16
     channels*: uint8
+    flags*: uint8
     data*: ptr UncheckedArray[uint8]
 
   CBType* {.importcpp: "CBType", header: "chainblocks.hpp", size: sizeof(uint8).} = enum

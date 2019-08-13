@@ -20,6 +20,8 @@ static TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
 static TypesInfo blockSeqInfo = TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
 static TypesInfo intSeqInfo = TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
 static TypesInfo int2Info = TypesInfo(CBType::Int2);
+static TypesInfo int3Info = TypesInfo(CBType::Int3);
+static TypesInfo int4Info = TypesInfo(CBType::Int4);
 static TypesInfo strTableInfo = TypesInfo(CBType::Table, CBTypesInfo(strInfo));
 static TypesInfo intTableInfo = TypesInfo(CBType::Table, CBTypesInfo(intInfo));
 

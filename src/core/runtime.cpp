@@ -30,6 +30,7 @@ extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
 extern void registerTablesBlocks();
 extern void registerOpsBinaryBlocks();
+extern void registerCastingBlocks();
 
 void registerCoreBlocks() {
   registerAssertBlocks();
@@ -40,6 +41,7 @@ void registerCoreBlocks() {
   registerSeqsBlocks();
   registerTablesBlocks();
   registerOpsBinaryBlocks();
+  registerCastingBlocks();
 
   // also enums
   initEnums();

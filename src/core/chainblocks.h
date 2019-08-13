@@ -185,10 +185,15 @@ struct CBColor {
   uint8_t a;
 };
 
+// None = RGBA
+#define CBIMAGE_FLAGS_NONE (0)
+#define CBIMAGE_FLAGS_BGRA (1 << 0)
+
 struct CBImage {
   uint16_t width;
   uint16_t height;
   uint8_t channels;
+  uint8_t flags;
   uint8_t *data;
 };
 
