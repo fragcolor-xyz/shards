@@ -364,8 +364,8 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
       }
 
       dst.valueType = src.valueType;
-      strncpy((char *)dst.payload.stringValue, (char *)src.payload.stringValue,
-              srcLen);
+      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
+             srcLen);
       ((char *)dst.payload.stringValue)[srcLen] = '\0';
     } break;
     case Image: {
@@ -674,10 +674,10 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   case CoreRepeat: {
     auto cblock = reinterpret_cast<CBCoreRepeat *>(blk);
     auto repeats = cblock->doForever ? 1 : cblock->times;
-    CBVar repeatOutput{};
-    repeatOutput.valueType = None;
-    repeatOutput.payload.chainState = Continue;
     while (repeats) {
+      CBVar repeatOutput{};
+      repeatOutput.valueType = None;
+      repeatOutput.payload.chainState = Continue;
       if (!activateBlocks(cblock->blocks, context, input, repeatOutput)) {
         previousOutput = StopChain;
         return;
@@ -985,11 +985,12 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
 }
 
 inline static bool activateBlocks(CBlocks blocks, int nblocks,
-                                  CBContext *context, const CBVar &input,
+                                  CBContext *context, const CBVar &chainInput,
                                   CBVar &output) {
+  auto input = chainInput;
   for (auto i = 0; i < nblocks; i++) {
-    auto activationInput = output.valueType == None ? input : output;
-    activateBlock(blocks[i], context, activationInput, output);
+    activateBlock(blocks[i], context, input, output);
+    input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case Restart: {
@@ -1007,11 +1008,11 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
 }
 
 inline static bool activateBlocks(CBSeq blocks, CBContext *context,
-                                  const CBVar &input, CBVar &output) {
+                                  const CBVar &chainInput, CBVar &output) {
+  auto input = chainInput;
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
-    auto activationInput = output.valueType == None ? input : output;
-    activateBlock(blocks[i].payload.blockValue, context, activationInput,
-                  output);
+    activateBlock(blocks[i].payload.blockValue, context, input, output);
+    input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case Restart: {
@@ -1077,13 +1078,11 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     }
   }
 
+  auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
-      // Pass chain root input every time we find None, this allows a long chain
-      // to re-process the root input if wanted!
-      auto input =
-          previousOutput.valueType == None ? chainInput : previousOutput;
       activateBlock(blk, context, input, previousOutput);
+      input = previousOutput;
 
       if (previousOutput.valueType == None) {
         switch (previousOutput.payload.chainState) {

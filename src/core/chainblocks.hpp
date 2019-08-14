@@ -72,6 +72,11 @@ struct Var : public CBVar {
     payload.intValue = src;
   }
 
+  explicit Var(double src) : CBVar() {
+    valueType = Float;
+    payload.intValue = src;
+  }
+
   explicit Var(bool src) : CBVar() {
     valueType = Bool;
     payload.boolValue = src;
@@ -83,6 +88,11 @@ struct Var : public CBVar {
   }
 
   explicit Var(uint64_t src) : CBVar() {
+    valueType = Int;
+    payload.intValue = src;
+  }
+
+  explicit Var(int64_t src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
   }

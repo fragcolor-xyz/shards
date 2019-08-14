@@ -12,15 +12,19 @@ when true:
     
     template cleanup*(b: typeName) = b.ctxOperand = nil
     template setup*(b: typename) = initSeq(b.seqCache)
-    template destroy*(b: typename) = freeSeq(b.seqCache)
+    template destroy*(b: typename) =
+      freeSeq(b.seqCache)
+      `~quickcopy`(b.operand)
     template inputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     template outputTypes*(b: typeName): CBTypesInfo = (AllIntTypes + AllFloatTypes + { Color }, true)
     proc inferTypes(b: var typeName; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =  
       result = inputType
     template parameters*(b: typeName): CBParametersInfo =
-      *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color })]
+      *@[(cs"Operand", AllIntTypes + AllFloatTypes + { Color, ContextVar })]
     template setParam*(b: typeName; index: int; val: CBVar) =
-      b.operand = val
+      `~quickcopy`(b.operand)
+      var inVal = val
+      quickcopy(b.operand, inVal)
       # will refresh on next activate
       cleanup(b)
     template getParam*(b: typeName; index: int): CBVar =

@@ -507,7 +507,7 @@ void from_json(const json &j, CBVar &var) {
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
     memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
-    strncpy((char *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
     break;
   }
   case String: {
@@ -515,7 +515,7 @@ void from_json(const json &j, CBVar &var) {
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
     memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
-    strncpy((char *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
     break;
   }
   case Color: {
@@ -567,7 +567,7 @@ void from_json(const json &j, CBVar &var) {
       CBNamedVar named{};
       named.key = new char[key.length() + 1];
       memset((void *)named.key, 0x0, key.length() + 1);
-      strncpy((char *)named.key, key.c_str(), key.length());
+      memcpy((char *)named.key, key.c_str(), key.length());
       named.value = value;
       stbds_shputs(var.payload.tableValue, named);
     }

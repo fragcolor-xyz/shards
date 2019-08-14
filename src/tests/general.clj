@@ -62,6 +62,8 @@
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
+  nil
+  (AddVariable "list1") ; should reset the list..
   10
   (AddVariable "list1")
   20
@@ -79,6 +81,28 @@
   (GetItems 2)
   (Assert.Is 30 true)
   (Log)
+
+  (Repeat (-->
+    nil
+    (AddVariable "list1") ; should reset the list..
+    10
+    (AddVariable "list1")
+    20
+    (AddVariable "list1")
+    30
+    (AddVariable "list1")
+    (GetVariable "list1")
+    (Log)
+    (GetItems 0)
+    (Assert.Is 10 true)
+    (GetVariable "list1")
+    (GetItems 1)
+    (Assert.Is 20 true)
+    (GetVariable "list1")
+    (GetItems 2)
+    (Assert.Is 30 true)
+    (Log)
+  ) :Times 5)
 
   0
   (SetVariable "counter")
@@ -124,6 +148,32 @@
   "My input"
   (Do inner1)
   (Assert.Is "My input 2" true)
+
+  ; b0r
+  0
+  (Math.And 0xFF)
+  (Math.LShift 8)
+  (SetVariable "x")
+  ; b1r
+  0
+  (Math.And 0xFF)
+  (Math.Or (# "x"))
+  (Math.LShift 8)
+  (SetVariable "x")
+  ; b2r
+  59
+  (Math.And 0xFF)
+  (Math.Or (# "x"))
+  (Math.LShift 8)
+  (SetVariable "x")
+  ; b3r
+  156
+  (Math.And 0xFF)
+  (Math.Or (# "x"))
+  (SetVariable "x")
+  ; result
+  (GetVariable "x")
+  (Log)
 
   (Msg "All looking good!")
 ))
