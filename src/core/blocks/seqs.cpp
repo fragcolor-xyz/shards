@@ -17,6 +17,7 @@ struct GetItems {
     if (cachedResult) {
       stbds_arrfree(cachedResult);
     }
+    destroyVar(indices);
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
@@ -42,7 +43,7 @@ struct GetItems {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      indices = value;
+      cloneVar(indices, value);
       break;
     default:
       break;

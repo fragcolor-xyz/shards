@@ -98,8 +98,9 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     }
     break;
   case Color:
-    os << var.payload.colorValue.r << ", " << var.payload.colorValue.g << ", "
-       << var.payload.colorValue.b << ", " << var.payload.colorValue.a;
+    os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g)
+       << ", " << int(var.payload.colorValue.b) << ", "
+       << int(var.payload.colorValue.a);
     break;
   case Chain:
     os << "Chain: " << reinterpret_cast<uintptr_t>(var.payload.chainValue);

@@ -25,6 +25,9 @@ struct SharedTypes {
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
   static inline TypesInfo int4Info = TypesInfo(CBType::Int4);
+  static inline TypesInfo float2Info = TypesInfo(CBType::Float2);
+  static inline TypesInfo float3Info = TypesInfo(CBType::Float3);
+  static inline TypesInfo float4Info = TypesInfo(CBType::Float4);
   static inline TypesInfo strTableInfo =
       TypesInfo(CBType::Table, CBTypesInfo(strInfo));
   static inline TypesInfo intTableInfo =

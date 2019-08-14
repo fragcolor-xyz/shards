@@ -175,6 +175,9 @@
   (GetVariable "x")
   (Log)
 
+  (Color 2 2 2 255)
+  (Log)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
