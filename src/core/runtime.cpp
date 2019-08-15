@@ -31,8 +31,10 @@ extern void registerSeqsBlocks();
 extern void registerTablesBlocks();
 extern void registerOpsBinaryBlocks();
 extern void registerCastingBlocks();
+extern void registerBlocksCoreBlocks();
 
 void registerCoreBlocks() {
+  registerBlocksCoreBlocks();
   registerAssertBlocks();
   registerChainsBlocks();
   registerLoggingBlocks();

@@ -116,6 +116,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ops_binary.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
@@ -188,6 +189,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ops_binary.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
 add_dependencies(cbruntime format)
