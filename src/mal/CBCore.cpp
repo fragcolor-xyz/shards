@@ -39,8 +39,6 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin));                       \
   }
 
-extern void NimMain();
-
 extern void chainblocks_RegisterAllBlocks();
 
 void registerKeywords(malEnvPtr env);
@@ -53,8 +51,6 @@ void installCBCore(const malEnvPtr &env) {
   chainblocks::installSignalHandlers();
 
   chainblocks_RegisterAllBlocks();
-
-  NimMain();
 
   registerKeywords(env);
 
