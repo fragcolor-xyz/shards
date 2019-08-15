@@ -16,6 +16,15 @@
   (Get "x" "key1")
   (Assert.Is 10 true)
   (Log)
+  77
+  (Set "x" "key2")
+  (Assert.Is 77 true)
+  20
+  (Assert.Is 20 true)
+  (Get "x" "key1")
+  (Assert.Is 10 true)
+  (Get "x" "key2")
+  (Assert.Is 77 true)
 ))
 
 (prn "Done!")

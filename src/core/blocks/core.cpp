@@ -178,10 +178,9 @@ struct Get : public VariableBase {
               return tableTypes[y];
             }
           }
-          throw CBException(
-              "Get: Could not infer an output type, key not found.");
         }
       }
+      throw CBException("Get: Could not infer an output type, key not found.");
     } else {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
         auto &cv = consumableVariables[i];
