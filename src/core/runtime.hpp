@@ -226,8 +226,8 @@ struct CBContext {
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)) {
     static std::regex re(
-        "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\."
-        "\\_]+");
+        "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-\\."
+        "_]+");
     logger_name = std::regex_replace(chain->name, re, "_");
     logger_name = "chain." + logger_name;
     el::Loggers::getLogger(logger_name.c_str());
@@ -1061,6 +1061,8 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     if (blk->preChain) {
       try {
         blk->preChain(blk, context);
+      } catch (boost::context::detail::forced_unwind const &e) {
+        throw; // required for Boost Coroutine!
       } catch (const std::exception &e) {
         LOG(ERROR) << "Pre chain failure, failed block: "
                    << std::string(blk->name(blk));
@@ -1107,6 +1109,8 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           continue;
         }
       }
+    } catch (boost::context::detail::forced_unwind const &e) {
+      throw; // required for Boost Coroutine!
     } catch (const std::exception &e) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
@@ -1137,6 +1141,8 @@ static void cleanup(CBChain *chain) {
     auto blk = *it;
     try {
       blk->cleanup(blk);
+    } catch (boost::context::detail::forced_unwind const &e) {
+      throw; // required for Boost Coroutine!
     } catch (const std::exception &e) {
       LOG(ERROR) << "Block cleanup error, failed block: "
                  << std::string(blk->name(blk));
