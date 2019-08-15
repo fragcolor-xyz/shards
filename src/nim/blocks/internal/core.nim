@@ -312,33 +312,6 @@ when true:
 
   chainblock CBUseGlobal, "WaitGlobal"
 
-# Const - passes a const value
-when true:
-  type
-    CBlockConst* = object
-      # INLINE BLOCK, CORE STUB PRESENT
-      value*: CBVar
-  
-  template destroy*(b: CBlockConst) = `~quickcopy` b.value
-  template inputTypes*(b: CBlockConst): CBTypesInfo = { None }
-  template outputTypes*(b: CBlockConst): CBTypesInfo = (AllIntTypes + AllFloatTypes + { None, String, Color }, true)
-  template parameters*(b: CBlockConst): CBParametersInfo = 
-    *@[(cs"Value", (AllIntTypes + AllFloatTypes + { None, String, Color }, true #[seq]#))]
-  template setParam*(b: CBlockConst; index: int; val: CBVar) =
-    `~quickcopy` b.value
-    var inval = val
-    quickcopy(b.value, inval)
-  template getParam*(b: CBlockConst; index: int): CBVar = b.value
-  template inferTypes*(b: CBlockConst; inputType: CBTypeInfo; consumables: CBExposedTypesInfo): CBTypeInfo =
-    b.value.valueType
-    # what if it's seq or table? need to add that info in! TODO
-  template activate*(b: CBlockConst; context: CBContext; input: CBVar): CBVar =
-    # THIS CODE WON'T BE EXECUTED
-    # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
-    b.value
-
-  chainblock CBlockConst, "Const"
-
 # Restart - ends a chain iteration, applies up to the root chain
 when true:
   type
