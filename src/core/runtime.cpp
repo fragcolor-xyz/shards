@@ -784,7 +784,7 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
 }
 
 struct ValidationContext {
-  phmap::flat_hash_map<std::string, CBExposedTypeInfo> exposed;
+  phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>> exposed;
 
   CBTypeInfo previousOutputType{};
 
@@ -832,18 +832,26 @@ void validateConnection(ValidationContext &ctx) {
       ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
     } else {
       if (ctx.bottom->inferTypes) {
-        // Store for later use during inference of types!
-        stbds_arrpush(consumables, findIt->second);
+        for (auto type : findIt->second) {
+          // Store for later use during inference of types!
+          stbds_arrpush(consumables, type);
+        }
       }
 
-      auto exposedType = findIt->second.exposedType;
-      auto requiredType = consumedVar[i].exposedType;
-
-      // Finally deep compare types
-      if (!matchTypes(exposedType, requiredType, false, false)) {
-        // We matched in non strict mode, meaning seq and table inner types are
-        // ignored At this point this is ok, strict checking should happen
-        // inside infer anyway
+      auto matching = false;
+      for (auto type : findIt->second) {
+        auto exposedType = type.exposedType;
+        auto requiredType = consumedVar[i].exposedType;
+        // Finally deep compare types
+        if (matchTypes(exposedType, requiredType, false, false)) {
+          // We matched in non strict mode, meaning seq and table inner types
+          // are ignored At this point this is ok, strict checking should happen
+          // inside infer anyway
+          matching = true;
+          break;
+        }
+      }
+      if (!matching) {
         std::string err(
             "Required consumed types do not match currently exposed ones: " +
             name);
@@ -886,8 +894,15 @@ void validateConnection(ValidationContext &ctx) {
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       }
     }
-
-    ctx.exposed[name] = exposed_param;
+    // Tables expose multiple types
+    if (exposed_param.exposedType.basicType == Table) {
+      if (ctx.exposed[name].size() == 1 &&
+          ctx.exposed[name][0].exposedType.basicType != Table)
+        ctx.exposed[name].clear(); // reset in this case!
+      ctx.exposed[name].push_back(exposed_param);
+    } else {
+      ctx.exposed[name] = {exposed_param};
+    }
   }
 }
 

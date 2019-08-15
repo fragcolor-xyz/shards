@@ -215,7 +215,10 @@ struct CBTypeInfo {
     CBTypesInfo seqTypes;
 
     // If we are a table, the possible types present in this table
-    CBTypesInfo tableTypes;
+    struct {
+      CBStrings tableKeys;
+      CBTypesInfo tableTypes;
+    };
   };
 };
 

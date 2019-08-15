@@ -132,6 +132,7 @@ static Var RestartChain = Var::Restart();
 static Var Empty = Var();
 
 struct TypesInfo {
+  // TODO this is messy, need to make some decisions on storage and clean up!!
   TypesInfo() {
     _innerInfo = nullptr;
     CBTypeInfo t = {None};
@@ -142,6 +143,13 @@ struct TypesInfo {
     _innerInfo = nullptr;
     for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
       stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      if (other._innerInfo[i].basicType == Table) {
+        auto otherInfo = other._innerInfo[i];
+        _innerInfo[i].tableKeys = nullptr;
+        for (auto y = 0; y < stbds_arrlen(otherInfo.tableKeys); y++) {
+          stbds_arrpush(_innerInfo[i].tableKeys, otherInfo.tableKeys[y]);
+        }
+      }
     }
   }
 
@@ -149,6 +157,13 @@ struct TypesInfo {
     stbds_arrsetlen(_innerInfo, 0);
     for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
       stbds_arrpush(_innerInfo, other._innerInfo[i]);
+      if (other._innerInfo[i].basicType == Table) {
+        auto otherInfo = other._innerInfo[i];
+        _innerInfo[i].tableKeys = nullptr;
+        for (auto y = 0; y < stbds_arrlen(otherInfo.tableKeys); y++) {
+          stbds_arrpush(_innerInfo[i].tableKeys, otherInfo.tableKeys[y]);
+        }
+      }
     }
     return *this;
   }
@@ -177,15 +192,19 @@ struct TypesInfo {
     return result;
   }
 
-  TypesInfo(CBType singleType, CBTypesInfo contentsInfo) {
+  TypesInfo(CBType singleType, CBTypesInfo contentsInfo,
+            const char *name = nullptr) {
     _innerInfo = nullptr;
     CBTypeInfo t = {singleType};
     stbds_arrpush(_innerInfo, t);
 
     assert(_innerInfo[0].basicType == Table || _innerInfo[0].basicType == Seq);
-    if (_innerInfo[0].basicType == Table)
+
+    if (_innerInfo[0].basicType == Table) {
       _innerInfo[0].tableTypes = CBTypesInfo(contentsInfo);
-    else if (_innerInfo[0].basicType == Seq)
+      _innerInfo[0].tableKeys = nullptr;
+      stbds_arrpush(_innerInfo[0].tableKeys, name);
+    } else if (_innerInfo[0].basicType == Seq)
       _innerInfo[0].seqTypes = CBTypesInfo(contentsInfo);
   }
 
@@ -221,8 +240,13 @@ struct TypesInfo {
   }
 
   ~TypesInfo() {
-    if (_innerInfo)
+    if (_innerInfo) {
+      if (stbds_arrlen(_innerInfo) > 0) {
+        if (_innerInfo[0].basicType == Table && _innerInfo[0].tableKeys)
+          stbds_arrfree(_innerInfo[0].tableKeys);
+      }
       stbds_arrfree(_innerInfo);
+    }
   }
 
   explicit operator CBTypesInfo() const { return _innerInfo; }

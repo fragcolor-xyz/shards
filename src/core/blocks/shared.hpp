@@ -17,6 +17,7 @@ struct SharedTypes {
   static inline TypesInfo chainInfo = TypesInfo(CBType::Chain);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
+  static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
   static inline TypesInfo blockSeqInfo =
       TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
