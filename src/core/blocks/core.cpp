@@ -104,6 +104,19 @@ RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
+namespace Math {
+MATH_BLOCK(Add);
+MATH_BLOCK(Subtract);
+MATH_BLOCK(Multiply);
+MATH_BLOCK(Divide);
+MATH_BLOCK(Xor);
+MATH_BLOCK(And);
+MATH_BLOCK(Or);
+MATH_BLOCK(Mod);
+MATH_BLOCK(LShift);
+MATH_BLOCK(RShift);
+}; // namespace Math
+
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Set);
@@ -114,5 +127,16 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Restart);
   REGISTER_CORE_BLOCK(Stop);
   REGISTER_CORE_BLOCK(Take);
+
+  REGISTER_BLOCK(Math, Add);
+  REGISTER_BLOCK(Math, Subtract);
+  REGISTER_BLOCK(Math, Multiply);
+  REGISTER_BLOCK(Math, Divide);
+  REGISTER_BLOCK(Math, Xor);
+  REGISTER_BLOCK(Math, And);
+  REGISTER_BLOCK(Math, Or);
+  REGISTER_BLOCK(Math, Mod);
+  REGISTER_BLOCK(Math, LShift);
+  REGISTER_BLOCK(Math, RShift);
 }
 }; // namespace chainblocks

@@ -7,17 +7,17 @@
 
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")
-
+  
   true
   (Cond [
-    (--> (When true) true) (--> (Msg "Cond was true!!") false)
-    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)])
   (Assert.Is false true)
 
   false
   (Cond [
-    (--> (When true) true) (--> (Msg "Cond was true!!") false)
-    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)])
   (Assert.Is true true)
 
   10
@@ -62,84 +62,84 @@
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
-  nil
-  (AddVariable "list1") ; should reset the list..
+  (Const [])
+  (Set "list1")
   10
-  (AddVariable "list1")
+  (Push "list1")
   20
-  (AddVariable "list1")
+  (Push "list1")
   30
-  (AddVariable "list1")
-  (GetVariable "list1")
+  (Push "list1")
+  (Get "list1")
   (Log)
-  (GetItems 0)
+  (Take 0)
   (Assert.Is 10 true)
-  (GetVariable "list1")
-  (GetItems 1)
+  (Get "list1")
+  (Take 1)
   (Assert.Is 20 true)
-  (GetVariable "list1")
-  (GetItems 2)
+  (Get "list1")
+  (Take 2)
   (Assert.Is 30 true)
   (Log)
 
-  (Repeat (-->
-    nil
-    (AddVariable "list1") ; should reset the list..
-    10
-    (AddVariable "list1")
-    20
-    (AddVariable "list1")
-    30
-    (AddVariable "list1")
-    (GetVariable "list1")
-    (Log)
-    (GetItems 0)
-    (Assert.Is 10 true)
-    (GetVariable "list1")
-    (GetItems 1)
-    (Assert.Is 20 true)
-    (GetVariable "list1")
-    (GetItems 2)
-    (Assert.Is 30 true)
-    (Log)
-  ) :Times 5)
+  ; (Repeat (-->
+  ;   nil
+  ;   (Push "list1") ; should reset the list..
+  ;   10
+  ;   (Push "list1")
+  ;   20
+  ;   (Push "list1")
+  ;   30
+  ;   (Push "list1")
+  ;   (Get "list1")
+  ;   (Log)
+  ;   (Take 0)
+  ;   (Assert.Is 10 true)
+  ;   (Get "list1")
+  ;   (Take 1)
+  ;   (Assert.Is 20 true)
+  ;   (Get "list1")
+  ;   (Take 2)
+  ;   (Assert.Is 30 true)
+  ;   (Log)
+  ; ) :Times 5)
 
-  0
-  (SetVariable "counter")
-  (Repeat (-->
-    (GetVariable "counter")
-    (Math.Add 1)
-    (SetVariable "counter")
-   ) :Times 5)
-  (GetVariable "counter")
-  (Assert.Is 5 true)
-  (Log)
+  ; 0
+  ; (Set "counter")
+  ; (Repeat (-->
+  ;   (Get "counter")
+  ;   (Math.Add 1)
+  ;   (Set "counter")
+  ;  ) :Times 5)
+  ; (Get "counter")
+  ; (Assert.Is 5 true)
+  ; (Log)
 
   20
-  (SetVariable "a")
+  (Set "a")
   30
-  (SetVariable "b")
-  (SwapVariables "a" "b")
-  (GetVariable "a")
+  (Set "b")
+  (Swap "a" "b")
+  (Get "a")
   (Assert.Is 30)
-  (GetVariable "b")
+  (Get "b")
   (Assert.Is 20)
   (Log)
 
   "Value1"
-  (SetTableValue "tab1" "v1")
+  (Set "tab1" "v1")
   "Value2"
-  (SetTableValue "tab1" "v2")
-  (GetTableValue "tab1" "v1")
+  (Set "tab1" "v2")
+  (Get "tab1" "v1")
   (Assert.Is "Value1" true)
   (Log)
-  (GetTableValue "tab1" "v2")
+  (Get "tab1" "v2")
   (Assert.IsNot "Value1" true)
   (Log)
 
-  "chain:initChain[1]"
-  (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
-  (Log)
+  ; "chain:initChain[1]"
+  ; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
+  ; (Log)
 
   "My input"
   (Dispatch inner1)
@@ -153,26 +153,26 @@
   0
   (Math.And 0xFF)
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b1r
   0
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b2r
   59
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b3r
   156
   (Math.And 0xFF)
   (Math.Or (# "x"))
-  (SetVariable "x")
+  (Set "x")
   ; result
-  (GetVariable "x")
+  (Get "x")
   (Log)
 
   (Color 2 2 2 255)

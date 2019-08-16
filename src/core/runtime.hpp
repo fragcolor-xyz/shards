@@ -13,15 +13,6 @@
 // C++ Mandatory from now!
 
 // Stub inline blocks, actually implemented in respective nim code!
-struct CBMathStub {
-  CBlock header;
-  struct {
-    CBVar operand;
-    CBVar *ctxOperand;
-    CBSeq seqCache;
-  };
-};
-
 struct CBMathUnaryStub {
   CBlock header;
   struct {
@@ -35,34 +26,6 @@ struct CBCoreRepeat {
     bool doForever;
     int32_t times;
     CBSeq blocks;
-  };
-};
-
-struct CBCoreIf {
-  CBlock header;
-  struct {
-    uint8_t boolOp;
-    CBVar match;
-    CBVar *matchCtx;
-    CBSeq trueBlocks;
-    CBSeq falseBlocks;
-    bool passthrough;
-  };
-};
-
-struct CBCoreSetVariable {
-  // Also Get and Add
-  CBlock header;
-  struct {
-    CBVar *target;
-  };
-};
-
-struct CBCoreSwapVariables {
-  CBlock header;
-  struct {
-    CBVar *target1;
-    CBVar *target2;
   };
 };
 
@@ -158,6 +121,7 @@ static void registerBlock(const char *fullName, CBBlockConstructor constructor);
   }
 
 #include "blocks/core.hpp"
+#include "blocks/math.hpp"
 
 typedef boost::context::continuation CBCoro;
 
@@ -514,8 +478,6 @@ static CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
   } else if (strcmp(name, "Repeat") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
-  } else if (strcmp(name, "If") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreIf;
   } else if (strcmp(name, "Get") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (strcmp(name, "Set") == 0) {
@@ -691,108 +653,6 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = input;
     return;
   }
-  case CoreIf: {
-    // We only do it quick in certain cases!
-    auto cblock = reinterpret_cast<CBCoreIf *>(blk);
-    auto match = cblock->match.valueType == ContextVar
-                     ? cblock->matchCtx
-                           ? *cblock->matchCtx
-                           : *(cblock->matchCtx = contextVariable(
-                                   context, cblock->match.payload.stringValue))
-                     : cblock->match;
-    auto result = false;
-    CBVar ifOutput{};
-    if (unlikely(input.valueType != match.valueType)) {
-      goto ifFalsePath;
-    } else {
-      switch (input.valueType) {
-      case Int:
-        switch (cblock->boolOp) {
-        case 0:
-          result = input.payload.intValue == match.payload.intValue;
-          break;
-        case 1:
-          result = input.payload.intValue > match.payload.intValue;
-          break;
-        case 2:
-          result = input.payload.intValue < match.payload.intValue;
-          break;
-        case 3:
-          result = input.payload.intValue >= match.payload.intValue;
-          break;
-        case 4:
-          result = input.payload.intValue <= match.payload.intValue;
-          break;
-        }
-        break;
-      case Float:
-        switch (cblock->boolOp) {
-        case 0:
-          result = input.payload.floatValue == match.payload.floatValue;
-          break;
-        case 1:
-          result = input.payload.floatValue > match.payload.floatValue;
-          break;
-        case 2:
-          result = input.payload.floatValue < match.payload.floatValue;
-          break;
-        case 3:
-          result = input.payload.floatValue >= match.payload.floatValue;
-          break;
-        case 4:
-          result = input.payload.floatValue <= match.payload.floatValue;
-          break;
-        }
-        break;
-      case String:
-        // http://www.cplusplus.com/reference/string/string/operators/
-        switch (cblock->boolOp) {
-        case 0:
-          result = input.payload.stringValue == match.payload.stringValue;
-          break;
-        case 1:
-          result = input.payload.stringValue > match.payload.stringValue;
-          break;
-        case 2:
-          result = input.payload.stringValue < match.payload.stringValue;
-          break;
-        case 3:
-          result = input.payload.stringValue >= match.payload.stringValue;
-          break;
-        case 4:
-          result = input.payload.stringValue <= match.payload.stringValue;
-          break;
-        }
-        break;
-      default:
-        // too complex let's just make the activation call into nim
-        previousOutput = blk->activate(blk, context, input);
-        return;
-      }
-
-      if (result) {
-        if (!activateBlocks(cblock->trueBlocks, context, input, ifOutput)) {
-          previousOutput = StopChain;
-        } else if (cblock->passthrough) {
-          previousOutput = input;
-        } else {
-          previousOutput = ifOutput;
-        }
-        return;
-      } else {
-      ifFalsePath:
-        if (!activateBlocks(cblock->falseBlocks, context, input, ifOutput)) {
-          previousOutput = StopChain;
-        } else if (cblock->passthrough) {
-          previousOutput = input;
-        } else {
-          previousOutput = ifOutput;
-        }
-        return;
-      }
-    }
-    break;
-  }
   case CoreGet: {
     auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
@@ -809,44 +669,54 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   case MathAdd: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINEMATH(+, "+") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AddRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathSubtract: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINEMATH(-, "-") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::SubtractRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathMultiply: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINEMATH(*, "*") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::MultiplyRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathDivide: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINEMATH(/, "/") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::DivideRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathXor: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(^, "^") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::XorRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAnd: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(&, "&") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AndRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathOr: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(|, "|") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::OrRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathMod: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(%, "%") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::ModRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLShift: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(<<, "<<") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::LShiftRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathRShift: {
-    auto cblock = reinterpret_cast<CBMathStub *>(blk);
-    runChainINLINE_INT_MATH(>>, ">>") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::RShiftRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAbs: {
     auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
