@@ -263,7 +263,6 @@ struct Get : public VariableBase {
     }
     if (_isTable) {
       if (_target->valueType == Table) {
-        // TODO this might return None (default)
         ptrdiff_t index =
             stbds_shgeti(_target->payload.tableValue, _key.c_str());
         if (index == -1) {
@@ -345,35 +344,12 @@ struct Swap {
 };
 
 struct Push : public VariableBase {
-  CBVar _tableRecord{};
-  TypesInfo _tableTypeInfo{};
-  TypesInfo _contentInfo{};
-  TypesInfo _seqContentInfo{};
+  CBVar _value{};
 
   void cleanup() {
-    if (_target) {
-      if (_isTable && _target->valueType == Table) {
-        // Destroy the value we are holding..
-        destroyVar(_tableRecord);
-        // Remove from table
-        stbds_shdel(_target->payload.tableValue, _key.c_str());
-        // Finally free the table if has no values
-        if (stbds_shlen(_target->payload.tableValue) == 0) {
-          stbds_shfree(_target->payload.tableValue);
-          *_target = CBVar();
-        }
-      } else {
-        if (_target->valueType == Seq) {
-          // we are the block that will cleanup the seq!
-          // use seqLen as the seq might be cleared in the middle of graph
-          for (auto i = 0; i < _target->payload.seqLen; i++) {
-            destroyVar(_target->payload.seqValue[i]);
-          }
-          stbds_arrfree(_target->payload.seqValue);
-          memset(_target, 0x0, sizeof(CBVar));
-        }
-      }
-    }
+    // destroyVar(_value);
+    // We do not free value...
+    // The Set block with the sequence will take care of it!
     _target = nullptr;
   }
 
@@ -381,28 +357,16 @@ struct Push : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
-    // bake exposed types
+  CBExposedTypesInfo consumedVariables() {
     if (_isTable) {
-      // we are a table!
-      _contentInfo = TypesInfo(inputType);
-      _seqContentInfo = TypesInfo(CBType::Seq, CBTypesInfo(_contentInfo));
-      _tableTypeInfo =
-          TypesInfo(CBType::Table, CBTypesInfo(_seqContentInfo), _key.c_str());
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), "The consumed table.",
+                                CBTypeInfo(CoreInfo::tableInfo)));
     } else {
-      // just a variable!
-      _contentInfo = TypesInfo(inputType);
-      _seqContentInfo = TypesInfo(CBType::Seq, CBTypesInfo(_contentInfo));
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(_seqContentInfo)));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
+                                CBTypeInfo(CoreInfo::anyInfo)));
     }
-    return inputType;
-  }
-
-  CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
@@ -412,31 +376,28 @@ struct Push : public VariableBase {
     }
     if (_isTable) {
       if (_target->valueType != Table) {
-        // Not initialized yet
-        _target->valueType = Table;
-        _target->payload.tableValue = nullptr;
+        throw CBException("Variable is not a table, failed to Push.");
       }
 
-      // clone on top of it so we recycle memory
-      cloneVar(_tableRecord, input);
-      stbds_shput(_target->payload.tableValue, _key.c_str(), _tableRecord);
+      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (index == -1) {
+        throw CBException("Record not found in table, failed to Push.");
+      }
+
+      auto &seq = _target->payload.tableValue[index].value;
+      if (seq.valueType != Seq) {
+        throw CBException("Variable is not a sequence, failed to Push.");
+      }
+
+      cloneVar(_value, input);
+      stbds_arrpush(seq.payload.seqValue, _value);
     } else {
       if (_target->valueType != Seq) {
-        // Previous eventual Set keep their value so there won't be leaks
-        // From now on tho the _target is shared with Push blocks
-        _target->valueType = Seq;
-        _target->payload.seqLen = -1;
-        _target->payload.seqValue = nullptr;
+        throw CBException("Variable is not a sequence, failed to Push.");
       }
 
-      CBVar tmp{};
-      cloneVar(tmp, input);
-      stbds_arrpush(_target->payload.seqValue, tmp);
-      // Store max len, as the last writing block, will delete all the vars
-      // this is thanks to the fact we cleanup in reverse order!
-      _target->payload.seqLen =
-          std::max(int32_t(stbds_arrlen(_target->payload.seqValue)),
-                   _target->payload.seqLen);
+      cloneVar(_value, input);
+      stbds_arrpush(_target->payload.seqValue, _value);
     }
     return input;
   }
