@@ -67,9 +67,25 @@ RUNTIME_BLOCK_getParam(Get);
 RUNTIME_BLOCK_activate(Get);
 RUNTIME_BLOCK_END(Get);
 
+// Register Swap
+RUNTIME_CORE_BLOCK_FACTORY(Swap);
+RUNTIME_BLOCK_cleanup(Swap);
+RUNTIME_BLOCK_inputTypes(Swap);
+RUNTIME_BLOCK_outputTypes(Swap);
+RUNTIME_BLOCK_parameters(Swap);
+RUNTIME_BLOCK_consumedVariables(Swap);
+RUNTIME_BLOCK_setParam(Swap);
+RUNTIME_BLOCK_getParam(Swap);
+RUNTIME_BLOCK_activate(Swap);
+RUNTIME_BLOCK_END(Swap);
+
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Get);
+  REGISTER_CORE_BLOCK(Swap);
+  REGISTER_CORE_BLOCK(Sleep);
+  REGISTER_CORE_BLOCK(Restart);
+  REGISTER_CORE_BLOCK(Stop);
 }
 }; // namespace chainblocks

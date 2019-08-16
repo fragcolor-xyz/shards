@@ -25,6 +25,20 @@
   (Assert.Is 10 true)
   (Get "x" "key2")
   (Assert.Is 77 true)
+
+  9
+  (Set "a")
+  18
+  (Set "b")
+  (Get "a")
+  (Assert.Is 9 true)
+  (Get "b")
+  (Assert.Is 18 true)
+  (Swap "a" "b")
+  (Get "a")
+  (Assert.Is 18 true)
+  (Get "b")
+  (Assert.Is 9 true)
 ))
 
 (prn "Done!")

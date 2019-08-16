@@ -533,8 +533,8 @@ static CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (strcmp(name, "Set") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
-  } else if (strcmp(name, "SwapVariables") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreSwapVariables;
+  } else if (strcmp(name, "Swap") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
   } else if (strcmp(name, "Math.Add") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;
   } else if (strcmp(name, "Math.Subtract") == 0) {
@@ -802,19 +802,9 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core.activate(context, input);
     return;
   }
-  case CoreSwapVariables: {
-    auto cblock = reinterpret_cast<CBCoreSwapVariables *>(blk);
-    if (unlikely(!cblock->target1 ||
-                 !cblock->target2)) // call first if we have no targets
-    {
-      previousOutput = blk->activate(
-          blk, context, input); // ignore previousOutput since we pass input
-    } else {
-      auto tmp = *cblock->target1;
-      *cblock->target1 = *cblock->target2;
-      *cblock->target2 = tmp;
-      previousOutput = input;
-    }
+  case CoreSwap: {
+    auto cblock = reinterpret_cast<chainblocks::SwapRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
     return;
   }
   case MathAdd: {

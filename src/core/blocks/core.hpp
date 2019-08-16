@@ -276,10 +276,74 @@ struct Get : public VariableBase {
   }
 };
 
+struct Swap {
+  static inline ParamsInfo swapParamsInfo =
+      ParamsInfo(ParamsInfo::Param("NameA", "The name of first variable.",
+                                   CBTypesInfo(CoreInfo::strInfo)),
+                 ParamsInfo::Param("NameB", "The name of second variable.",
+                                   CBTypesInfo(CoreInfo::strInfo)));
+
+  std::string _nameA;
+  std::string _nameB;
+  CBVar *_targetA{};
+  CBVar *_targetB{};
+  ExposedInfo _exposedInfo;
+
+  void cleanup() {
+    _targetA = nullptr;
+    _targetB = nullptr;
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  CBExposedTypesInfo consumedVariables() {
+    _exposedInfo = ExposedInfo(
+        ExposedInfo::Variable(_nameA.c_str(), "The consumed variable.",
+                              CBTypeInfo(CoreInfo::anyInfo)),
+        ExposedInfo::Variable(_nameB.c_str(), "The consumed variable.",
+                              CBTypeInfo(CoreInfo::anyInfo)));
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(swapParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _nameA = value.payload.stringValue;
+    else if (index == 1) {
+      _nameB = value.payload.stringValue;
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Var(_nameA.c_str());
+    else if (index == 1)
+      return Var(_nameB.c_str());
+    throw CBException("Param index out of range.");
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_targetA) {
+      _targetA = contextVariable(context, _nameA.c_str());
+      _targetB = contextVariable(context, _nameB.c_str());
+    }
+    auto tmp = *_targetA;
+    *_targetA = *_targetB;
+    *_targetB = tmp;
+    return input;
+  }
+};
+
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Get);
+RUNTIME_CORE_BLOCK_TYPE(Swap);
 }; // namespace chainblocks
