@@ -43,6 +43,32 @@
   (Set "a")
   (Assert.Is "9" true)
   (Assert.IsNot 9 true)
+
+  1
+  (Push "a")
+  2
+  (Push "a")
+  3
+  (Push "a")
+  4
+  (Push "a")
+  5
+  (Push "a")
+  (Get "a")
+  (Assert.Is [1 2 3 4 5] true)
+  (Log)
+
+  (Const [6 7 8 9])
+  (Set "b")
+  (Log)
+  (Get "b")
+  (Assert.Is [6 7 8 9] true)
+  (Take [0 1])
+  (Assert.Is [6 7] true)
+  (Log)
+  (Take 0)
+  (Assert.Is 6 true)
+  (Log)
 ))
 
 (prn "Done!")

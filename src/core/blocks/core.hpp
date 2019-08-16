@@ -19,11 +19,13 @@ struct CoreInfo {
 };
 
 struct Const {
-  static inline TypesInfo constTypesInfo = TypesInfo::FromMany(
+  static inline TypesInfo constBaseTypesInfo = TypesInfo::FromMany(
       CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
       CBType::Float4, CBType::None, CBType::String, CBType::Color,
       CBType::Bool);
+  static inline TypesInfo constTypesInfo =
+      TypesInfo(CBTypesInfo(constBaseTypesInfo), true);
   static inline ParamsInfo constParamsInfo = ParamsInfo(
       ParamsInfo::Param("Value", "The constant value to insert in the chain.",
                         CBTypesInfo(constTypesInfo)));
@@ -135,7 +137,7 @@ struct VariableBase {
 };
 
 struct Set : public VariableBase {
-  CBVar _tableRecord{};
+  CBVar _value{};
   TypesInfo _tableTypeInfo{};
   TypesInfo _tableContentInfo{};
 
@@ -143,16 +145,16 @@ struct Set : public VariableBase {
     if (_target) {
       if (_isTable && _target->valueType == Table) {
         // Destroy the value we are holding..
-        destroyVar(_tableRecord);
+        destroyVar(_value);
         // Remove from table
         stbds_shdel(_target->payload.tableValue, _key.c_str());
         // Finally free the table if has no values
         if (stbds_shlen(_target->payload.tableValue) == 0) {
           stbds_shfree(_target->payload.tableValue);
-          *_target = CBVar();
+          memset(_target, 0x0, sizeof(CBVar));
         }
       } else {
-        destroyVar(*_target);
+        destroyVar(_value);
       }
     }
     _target = nullptr;
@@ -197,11 +199,12 @@ struct Set : public VariableBase {
       }
 
       // Clone on top of it so we recycle memory
-      cloneVar(_tableRecord, input);
-      stbds_shput(_target->payload.tableValue, _key.c_str(), _tableRecord);
+      cloneVar(_value, input);
+      stbds_shput(_target->payload.tableValue, _key.c_str(), _value);
     } else {
       // Clone will try to recyle memory and such
-      cloneVar(*_target, input);
+      cloneVar(_value, input);
+      *_target = _value;
     }
     return input;
   }
@@ -360,7 +363,15 @@ struct Push : public VariableBase {
           *_target = CBVar();
         }
       } else {
-        destroyVar(*_target);
+        if (_target->valueType == Seq) {
+          // we are the block that will cleanup the seq!
+          // use seqLen as the seq might be cleared in the middle of graph
+          for (auto i = 0; i < _target->payload.seqLen; i++) {
+            destroyVar(_target->payload.seqValue[i]);
+          }
+          stbds_arrfree(_target->payload.seqValue);
+          memset(_target, 0x0, sizeof(CBVar));
+        }
       }
     }
     _target = nullptr;
@@ -410,8 +421,22 @@ struct Push : public VariableBase {
       cloneVar(_tableRecord, input);
       stbds_shput(_target->payload.tableValue, _key.c_str(), _tableRecord);
     } else {
-      // Clone will try to recyle memory and such
-      cloneVar(*_target, input);
+      if (_target->valueType != Seq) {
+        // Previous eventual Set keep their value so there won't be leaks
+        // From now on tho the _target is shared with Push blocks
+        _target->valueType = Seq;
+        _target->payload.seqLen = -1;
+        _target->payload.seqValue = nullptr;
+      }
+
+      CBVar tmp{};
+      cloneVar(tmp, input);
+      stbds_arrpush(_target->payload.seqValue, tmp);
+      // Store max len, as the last writing block, will delete all the vars
+      // this is thanks to the fact we cleanup in reverse order!
+      _target->payload.seqLen =
+          std::max(int32_t(stbds_arrlen(_target->payload.seqValue)),
+                   _target->payload.seqLen);
     }
     return input;
   }
@@ -515,4 +540,5 @@ RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
+RUNTIME_CORE_BLOCK_TYPE(Push);
 }; // namespace chainblocks

@@ -177,6 +177,17 @@ struct TypesInfo {
     }
   }
 
+  explicit TypesInfo(CBTypesInfo types, bool canBeSeq = false) {
+    _innerInfo = nullptr;
+    for (auto i = 0; i < stbds_arrlen(types); i++) {
+      stbds_arrpush(_innerInfo, types[i]);
+    }
+    if (canBeSeq) {
+      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
+      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
+    }
+  }
+
   static TypesInfo Object(int32_t objectVendorId, int32_t objectTypeId,
                           bool canBeSeq = false) {
     TypesInfo result;
