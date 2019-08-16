@@ -17,7 +17,6 @@ phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
 phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
     EnumTypesRegister;
-phmap::node_hash_map<std::string, CBVar> GlobalVariables;
 phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 std::map<std::string, CBCallback> RunLoopHooks;
@@ -28,7 +27,6 @@ extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
 extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
-extern void registerTablesBlocks();
 extern void registerOpsBinaryBlocks();
 extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
@@ -41,7 +39,6 @@ void registerCoreBlocks() {
   registerFlowBlocks();
   registerProcessBlocks();
   registerSeqsBlocks();
-  registerTablesBlocks();
   registerOpsBinaryBlocks();
   registerCastingBlocks();
 

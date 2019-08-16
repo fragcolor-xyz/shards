@@ -113,7 +113,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.hpp
@@ -187,7 +186,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/tables.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ops_binary.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp

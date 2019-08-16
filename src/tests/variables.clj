@@ -39,6 +39,10 @@
   (Assert.Is 18 true)
   (Get "b")
   (Assert.Is 9 true)
+  (ToString)
+  (Set "a")
+  (Assert.Is "9" true)
+  (Assert.IsNot 9 true)
 ))
 
 (prn "Done!")

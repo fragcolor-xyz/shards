@@ -135,7 +135,6 @@ extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
 extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
     EnumTypesRegister;
-extern phmap::node_hash_map<std::string, CBVar> GlobalVariables;
 extern std::map<std::string, CBCallback> RunLoopHooks;
 extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
@@ -487,18 +486,6 @@ static void callExitCallbacks() {
        it != chainblocks::ExitHooks.end(); ++it) {
     it->second();
   }
-}
-
-static CBVar *globalVariable(const char *name) {
-  CBVar &v = GlobalVariables[name];
-  return &v;
-}
-
-static bool hasGlobalVariable(const char *name) {
-  auto findIt = GlobalVariables.find(name);
-  if (findIt == GlobalVariables.end())
-    return false;
-  return true;
 }
 
 static CBVar *contextVariable(CBContext *ctx, const char *name) {

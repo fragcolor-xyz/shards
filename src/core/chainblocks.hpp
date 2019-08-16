@@ -357,7 +357,7 @@ struct VarStringStream {
 
   ~VarStringStream() { chainblocks_DestroyVar(&previousValue); }
 
-  void write(CBVar &var) {
+  void write(const CBVar &var) {
     if (var != previousValue) {
       cache.reset();
       std::ostream stream(&cache);
