@@ -14,6 +14,10 @@ struct CoreInfo {
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
+  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
+  static inline TypesInfo blockSeqInfo =
+      TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
   static inline TypesInfo intSeqInfo =
       TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
 };
@@ -524,6 +528,75 @@ struct Take {
   }
 };
 
+struct Repeat {
+  int _times = 0;
+  CBVar _blocks{};
+  bool _forever = false;
+
+  static inline ParamsInfo repeatParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Action", "The blocks to repeat.",
+                        CBTypesInfo(CoreInfo::blockSeqInfo)),
+      ParamsInfo::Param("Times", "How many times we should repeat the action.",
+                        CBTypesInfo(CoreInfo::intInfo)),
+      ParamsInfo::Param("Forever", "If we should repeat the action forever.",
+                        CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(repeatParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_blocks, value);
+      break;
+    case 1:
+      _times = value.payload.intValue;
+      break;
+    case 2:
+      _forever = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    case 1:
+      return Var(_times);
+    case 2:
+      return Var(_forever);
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto repeats = _forever ? 1 : _times;
+    while (repeats) {
+      CBVar repeatOutput{};
+      repeatOutput.valueType = None;
+      repeatOutput.payload.chainState = Continue;
+      if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
+                                   repeatOutput))) {
+        return StopChain;
+      }
+
+      if (!_forever)
+        repeats--;
+    }
+    return input;
+  }
+};
+
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
@@ -533,4 +606,5 @@ RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
 RUNTIME_CORE_BLOCK_TYPE(Push);
+RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks

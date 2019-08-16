@@ -20,15 +20,6 @@ struct CBMathUnaryStub {
   };
 };
 
-struct CBCoreRepeat {
-  CBlock header;
-  struct {
-    bool doForever;
-    int32_t times;
-    CBSeq blocks;
-  };
-};
-
 // Since we build the runtime we are free to use any std and lib
 #include <atomic>
 #include <chrono>
@@ -110,6 +101,8 @@ static int destroyVar(CBVar &var);
 static CBVar suspend(CBContext *context, double seconds);
 static CBVar *contextVariable(CBContext *ctx, const char *name);
 static void registerBlock(const char *fullName, CBBlockConstructor constructor);
+inline static bool activateBlocks(CBSeq blocks, CBContext *context,
+                                  const CBVar &chainInput, CBVar &output);
 }; // namespace chainblocks
 
 #define cbpause(_time_)                                                        \
@@ -186,8 +179,7 @@ struct CBContext {
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)) {
     static std::regex re(
-        "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-\\."
-        "_]+");
+        R"([^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\-\._]+)");
     logger_name = std::regex_replace(chain->name, re, "_");
     logger_name = "chain." + logger_name;
     el::Loggers::getLogger(logger_name.c_str());
@@ -636,21 +628,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   case CoreRepeat: {
-    auto cblock = reinterpret_cast<CBCoreRepeat *>(blk);
-    auto repeats = cblock->doForever ? 1 : cblock->times;
-    while (repeats) {
-      CBVar repeatOutput{};
-      repeatOutput.valueType = None;
-      repeatOutput.payload.chainState = Continue;
-      if (!activateBlocks(cblock->blocks, context, input, repeatOutput)) {
-        previousOutput = StopChain;
-        return;
-      }
-
-      if (!cblock->doForever)
-        repeats--;
-    }
-    previousOutput = input;
+    auto cblock = reinterpret_cast<chainblocks::RepeatRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
     return;
   }
   case CoreGet: {

@@ -104,6 +104,16 @@ RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
+// Register Take
+RUNTIME_CORE_BLOCK_FACTORY(Repeat);
+RUNTIME_BLOCK_inputTypes(Repeat);
+RUNTIME_BLOCK_outputTypes(Repeat);
+RUNTIME_BLOCK_parameters(Repeat);
+RUNTIME_BLOCK_setParam(Repeat);
+RUNTIME_BLOCK_getParam(Repeat);
+RUNTIME_BLOCK_activate(Repeat);
+RUNTIME_BLOCK_END(Repeat);
+
 namespace Math {
 MATH_BLOCK(Add);
 MATH_BLOCK(Subtract);
@@ -127,6 +137,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Restart);
   REGISTER_CORE_BLOCK(Stop);
   REGISTER_CORE_BLOCK(Take);
+  REGISTER_CORE_BLOCK(Repeat);
 
   REGISTER_BLOCK(Math, Add);
   REGISTER_BLOCK(Math, Subtract);

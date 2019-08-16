@@ -82,38 +82,38 @@
   (Assert.Is 30 true)
   (Log)
 
-  ; (Repeat (-->
-  ;   nil
-  ;   (Push "list1") ; should reset the list..
-  ;   10
-  ;   (Push "list1")
-  ;   20
-  ;   (Push "list1")
-  ;   30
-  ;   (Push "list1")
-  ;   (Get "list1")
-  ;   (Log)
-  ;   (Take 0)
-  ;   (Assert.Is 10 true)
-  ;   (Get "list1")
-  ;   (Take 1)
-  ;   (Assert.Is 20 true)
-  ;   (Get "list1")
-  ;   (Take 2)
-  ;   (Assert.Is 30 true)
-  ;   (Log)
-  ; ) :Times 5)
+  (Repeat (-->
+    (Const [])
+    (Set "list1")
+    10
+    (Push "list1")
+    20
+    (Push "list1")
+    30
+    (Push "list1")
+    (Get "list1")
+    (Log)
+    (Take 0)
+    (Assert.Is 10 true)
+    (Get "list1")
+    (Take 1)
+    (Assert.Is 20 true)
+    (Get "list1")
+    (Take 2)
+    (Assert.Is 30 true)
+    (Log)
+  ) :Times 5)
 
-  ; 0
-  ; (Set "counter")
-  ; (Repeat (-->
-  ;   (Get "counter")
-  ;   (Math.Add 1)
-  ;   (Set "counter")
-  ;  ) :Times 5)
-  ; (Get "counter")
-  ; (Assert.Is 5 true)
-  ; (Log)
+  0
+  (Set "counter")
+  (Repeat (-->
+    (Get "counter")
+    (Math.Add 1)
+    (Set "counter")
+   ) :Times 5)
+  (Get "counter")
+  (Assert.Is 5 true)
+  (Log)
 
   20
   (Set "a")
