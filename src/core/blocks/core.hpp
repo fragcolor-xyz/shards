@@ -77,10 +77,18 @@ struct Sleep {
   }
 };
 
-struct StopChain {
+struct Stop {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
   CBVar activate(CBContext *context, const CBVar &input) { return Var::Stop(); }
+};
+
+struct Restart {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var::Restart();
+  }
 };
 
 struct VariableBase {
@@ -270,6 +278,8 @@ struct Get : public VariableBase {
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
+RUNTIME_CORE_BLOCK_TYPE(Stop);
+RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 }; // namespace chainblocks

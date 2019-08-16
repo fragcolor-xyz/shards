@@ -27,6 +27,20 @@ RUNTIME_BLOCK_getParam(Sleep);
 RUNTIME_BLOCK_activate(Sleep);
 RUNTIME_BLOCK_END(Sleep);
 
+// Register Stop
+RUNTIME_CORE_BLOCK_FACTORY(Stop);
+RUNTIME_BLOCK_inputTypes(Stop);
+RUNTIME_BLOCK_outputTypes(Stop);
+RUNTIME_BLOCK_activate(Stop);
+RUNTIME_BLOCK_END(Stop);
+
+// Register Restart
+RUNTIME_CORE_BLOCK_FACTORY(Restart);
+RUNTIME_BLOCK_inputTypes(Restart);
+RUNTIME_BLOCK_outputTypes(Restart);
+RUNTIME_BLOCK_activate(Restart);
+RUNTIME_BLOCK_END(Restart);
+
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
 RUNTIME_BLOCK_cleanup(Set);

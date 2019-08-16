@@ -519,6 +519,10 @@ static CBlock *createBlock(const char *name) {
   // Hook inline blocks to override activation in runChain
   if (strcmp(name, "Const") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
+  } else if (strcmp(name, "Stop") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreStop;
+  } else if (strcmp(name, "Restart") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
   } else if (strcmp(name, "Sleep") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
   } else if (strcmp(name, "Repeat") == 0) {
@@ -626,12 +630,12 @@ static CBVar suspend(CBContext *context, double seconds) {
   if (context->restarted) {
     CBVar restart = {};
     restart.valueType = None;
-    restart.payload.chainState = Restart;
+    restart.payload.chainState = CBChainState::Restart;
     return restart;
   } else if (context->aborted) {
     CBVar stop = {};
     stop.valueType = None;
-    stop.payload.chainState = Stop;
+    stop.payload.chainState = CBChainState::Stop;
     return stop;
   }
   CBVar cont = {};
@@ -655,6 +659,16 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreSleep: {
     auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreStop: {
+    auto cblock = reinterpret_cast<chainblocks::StopRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreRestart: {
+    auto cblock = reinterpret_cast<chainblocks::RestartRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
     return;
   }
@@ -980,10 +994,10 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
     input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
-      case Restart: {
+      case CBChainState::Restart: {
         return true;
       }
-      case Stop: {
+      case CBChainState::Stop: {
         return false;
       }
       case Continue:
@@ -1002,10 +1016,10 @@ inline static bool activateBlocks(CBSeq blocks, CBContext *context,
     input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
-      case Restart: {
+      case CBChainState::Restart: {
         return true;
       }
-      case Stop: {
+      case CBChainState::Stop: {
         return false;
       }
       case Continue:
@@ -1029,10 +1043,10 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     auto suspendRes = suspend(context, 0.0);
     // Since we suspended we need to make sure we should continue when resuming
     switch (suspendRes.payload.chainState) {
-    case Restart: {
+    case CBChainState::Restart: {
       return {previousOutput, Restarted};
     }
-    case Stop: {
+    case CBChainState::Stop: {
       return {previousOutput, Stopped};
     }
     case Continue:
@@ -1075,11 +1089,11 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 
       if (previousOutput.valueType == None) {
         switch (previousOutput.payload.chainState) {
-        case Restart: {
+        case CBChainState::Restart: {
           runChainPOSTCHAIN;
           return {previousOutput, Restarted};
         }
-        case Stop: {
+        case CBChainState::Stop: {
           runChainPOSTCHAIN;
 
           // Print errors if any, we might have stopped because of some error!
@@ -1092,7 +1106,7 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
             return {previousOutput, Stopped};
           }
         }
-        case Continue:
+        case CBChainState::Continue:
           continue;
         }
       }

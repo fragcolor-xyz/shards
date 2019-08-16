@@ -246,52 +246,6 @@ when true:
 
   chainblock CBUseGlobal, "WaitGlobal"
 
-# Restart - ends a chain iteration, applies up to the root chain
-when true:
-  type
-    CBEndChain* = object
-
-  template inputTypes*(b: CBEndChain): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBEndChain): CBTypesInfo = { None }
-  template activate*(b: var CBEndChain; context: CBContext; input: CBVar): CBVar =
-    context.restarted = true
-    RestartChain
-
-  chainblock CBEndChain, "ChainRestart"
-
-# Stop - stops a chain, applies up to the root chain
-when true:
-  type
-    CBStopChain* = object
-
-  template inputTypes*(b: CBStopChain): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBStopChain): CBTypesInfo = { None }
-  template activate*(b: var CBStopChain; context: CBContext; input: CBVar): CBVar =
-    context.aborted = true
-    StopChain
-
-  chainblock CBStopChain, "ChainStop"
-
-# Sleep (coroutine)
-when true:
-  type
-    CBlockSleep* = object
-      # INLINE BLOCK, CORE STUB PRESENT
-      time: float64
-
-  template inputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
-  template outputTypes*(b: CBlockSleep): CBTypesInfo = ({ Any }, true #[seq]#)
-  template parameters*(b: CBlockSleep): CBParametersInfo = *@[(cs"Time", { Float })]
-  template setParam*(b: CBlockSleep; index: int; val: CBVar) = b.time = val.floatValue
-  template getParam*(b: CBlockSleep; index: int): CBVar = b.time.CBVar
-  template activate*(b: CBlockSleep; context: CBContext; input: CBVar): CBVar =
-    # THIS CODE WON'T BE EXECUTED
-    # THIS BLOCK IS OPTIMIZED INLINE IN THE C++ CORE
-    pause(context, b.time)
-    input
-
-  chainblock CBlockSleep, "Sleep"
-
 # When - a filter block, that let's inputs pass only when the condition is true
 when true:
   type
