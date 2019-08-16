@@ -298,7 +298,7 @@ void to_json(json &j, const CBVar &var) {
     break;
   }
   case Float: {
-    j = json{{"type", valType}, {"value", var.payload.intValue}};
+    j = json{{"type", valType}, {"value", var.payload.floatValue}};
     break;
   }
   case Float2: {
@@ -477,7 +477,7 @@ void from_json(const json &j, CBVar &var) {
   }
   case Float: {
     var.valueType = Float;
-    var.payload.intValue = j.at("value").get<double>();
+    var.payload.floatValue = j.at("value").get<double>();
     break;
   }
   case Float2: {
