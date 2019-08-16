@@ -15,3 +15,6 @@ src/nim/tcbvar.xml
 build
 build-release
 build-lnx
+src/core/.DS_Store
+.DS_Store
+src/.DS_Store

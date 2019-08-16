@@ -79,6 +79,18 @@ RUNTIME_BLOCK_getParam(Swap);
 RUNTIME_BLOCK_activate(Swap);
 RUNTIME_BLOCK_END(Swap);
 
+// Register Take
+RUNTIME_CORE_BLOCK_FACTORY(Take);
+RUNTIME_BLOCK_destroy(Take);
+RUNTIME_BLOCK_inputTypes(Take);
+RUNTIME_BLOCK_outputTypes(Take);
+RUNTIME_BLOCK_parameters(Take);
+RUNTIME_BLOCK_inferTypes(Take);
+RUNTIME_BLOCK_setParam(Take);
+RUNTIME_BLOCK_getParam(Take);
+RUNTIME_BLOCK_activate(Take);
+RUNTIME_BLOCK_END(Take);
+
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Set);
@@ -87,5 +99,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Sleep);
   REGISTER_CORE_BLOCK(Restart);
   REGISTER_CORE_BLOCK(Stop);
+  REGISTER_CORE_BLOCK(Take);
 }
 }; // namespace chainblocks

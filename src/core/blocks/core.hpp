@@ -8,11 +8,14 @@
 
 namespace chainblocks {
 struct CoreInfo {
+  static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static inline TypesInfo intSeqInfo =
+      TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
 };
 
 struct Const {
@@ -190,17 +193,10 @@ struct Set : public VariableBase {
         // Not initialized yet
         _target->valueType = Table;
         _target->payload.tableValue = nullptr;
-        // Also set table default
-        CBVar defaultVar{};
-        defaultVar.valueType = None;
-        defaultVar.payload.chainState = Continue;
-        CBNamedVar defaultNamed = {nullptr, defaultVar};
-        stbds_shdefaults(_target->payload.tableValue, defaultNamed);
+        _target->payload.tableLen = -1;
       }
 
-      // Get the current value, if not in it will be default None anyway
-      // If was in we actually clone on top of it so we recycle memory
-      _tableRecord = stbds_shget(_target->payload.tableValue, _key.c_str());
+      // Clone on top of it so we recycle memory
       cloneVar(_tableRecord, input);
       stbds_shput(_target->payload.tableValue, _key.c_str(), _tableRecord);
     } else {
@@ -265,7 +261,13 @@ struct Get : public VariableBase {
     if (_isTable) {
       if (_target->valueType == Table) {
         // TODO this might return None (default)
-        return stbds_shget(_target->payload.tableValue, _key.c_str());
+        ptrdiff_t index =
+            stbds_shgeti(_target->payload.tableValue, _key.c_str());
+        if (index == -1) {
+          // TODO should we throw?
+          return Var::Restart();
+        }
+        return _target->payload.tableValue[index].value;
       } else {
         // TODO should we throw?
         return Var::Restart();
@@ -339,6 +341,172 @@ struct Swap {
   }
 };
 
+struct Push : public VariableBase {
+  CBVar _tableRecord{};
+  TypesInfo _tableTypeInfo{};
+  TypesInfo _contentInfo{};
+  TypesInfo _seqContentInfo{};
+
+  void cleanup() {
+    if (_target) {
+      if (_isTable && _target->valueType == Table) {
+        // Destroy the value we are holding..
+        destroyVar(_tableRecord);
+        // Remove from table
+        stbds_shdel(_target->payload.tableValue, _key.c_str());
+        // Finally free the table if has no values
+        if (stbds_shlen(_target->payload.tableValue) == 0) {
+          stbds_shfree(_target->payload.tableValue);
+          *_target = CBVar();
+        }
+      } else {
+        destroyVar(*_target);
+      }
+    }
+    _target = nullptr;
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // bake exposed types
+    if (_isTable) {
+      // we are a table!
+      _contentInfo = TypesInfo(inputType);
+      _seqContentInfo = TypesInfo(CBType::Seq, CBTypesInfo(_contentInfo));
+      _tableTypeInfo =
+          TypesInfo(CBType::Table, CBTypesInfo(_seqContentInfo), _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+    } else {
+      // just a variable!
+      _contentInfo = TypesInfo(inputType);
+      _seqContentInfo = TypesInfo(CBType::Seq, CBTypesInfo(_contentInfo));
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed variable.", CBTypeInfo(_seqContentInfo)));
+    }
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = contextVariable(context, _name.c_str());
+    }
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue = nullptr;
+      }
+
+      // clone on top of it so we recycle memory
+      cloneVar(_tableRecord, input);
+      stbds_shput(_target->payload.tableValue, _key.c_str(), _tableRecord);
+    } else {
+      // Clone will try to recyle memory and such
+      cloneVar(*_target, input);
+    }
+    return input;
+  }
+};
+
+struct Take {
+  static inline TypesInfo indicesTypes = TypesInfo::FromManyTypes(
+      CBTypeInfo(CoreInfo::intInfo), CBTypeInfo((CoreInfo::intSeqInfo)));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices", "One or multiple indices to filter from a sequence.",
+      CBTypesInfo(indicesTypes)));
+
+  CBSeq cachedResult;
+  CBVar indices;
+  TypesInfo outputInfo;
+  TypesInfo inputInfo;
+
+  void destroy() {
+    if (cachedResult) {
+      stbds_arrfree(cachedResult);
+    }
+    destroyVar(indices);
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // Figure if we output a sequence or not
+    if (indices.valueType == Seq) {
+      inputInfo = TypesInfo(inputType);
+      outputInfo = TypesInfo(CBType::Seq, CBTypesInfo(inputInfo));
+      return CBTypeInfo(outputInfo);
+    } else {
+      return inputType;
+    }
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(indices, value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) { return indices; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.valueType != Seq) {
+      throw CBException("Take expected a sequence!");
+    }
+
+    auto inputLen = stbds_arrlen(input.payload.seqValue);
+
+    if (indices.valueType == Int) {
+      auto index = indices.payload.intValue;
+      if (index >= inputLen) {
+        LOG(ERROR) << "Take out of range! len:" << inputLen
+                   << " wanted index: " << index;
+        throw CBException("Take out of range!");
+      }
+
+      return input.payload.seqValue[index];
+    }
+
+    // Else it's a seq
+    auto nindices = stbds_arrlen(indices.payload.seqValue);
+    stbds_arrsetlen(cachedResult, nindices);
+    for (auto i = 0; nindices > i; i++) {
+      auto index = indices.payload.seqValue[i].payload.intValue;
+      if (index >= inputLen) {
+        LOG(ERROR) << "Take out of range! len:" << inputLen
+                   << " wanted index: " << index;
+        throw CBException("Take out of range!");
+      }
+      cachedResult[i] = input.payload.seqValue[index];
+    }
+
+    CBVar result{};
+    result.valueType = Seq;
+    result.payload.seqLen = -1;
+    result.payload.seqValue = cachedResult;
+    return result;
+  }
+};
+
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
@@ -346,4 +514,5 @@ RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
+RUNTIME_CORE_BLOCK_TYPE(Take);
 }; // namespace chainblocks
