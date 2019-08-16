@@ -12,14 +12,6 @@
 #include "chainblocks.hpp"
 // C++ Mandatory from now!
 
-// Stub inline blocks, actually implemented in respective nim code!
-struct CBMathUnaryStub {
-  CBlock header;
-  struct {
-    CBSeq seqCache;
-  };
-};
-
 // Since we build the runtime we are free to use any std and lib
 #include <atomic>
 #include <chrono>
@@ -93,14 +85,21 @@ extern std::map<std::string, CBCallback> RunLoopHooks;
 extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 
-static CBlock *createBlock(const char *name);
-static void registerChain(CBChain *chain);
-static void unregisterChain(CBChain *chain);
+CBlock *createBlock(const char *name);
+void registerBlock(const char *fullName, CBBlockConstructor constructor);
+void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
+void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
+void registerRunLoopCallback(const char *eventName, CBCallback callback);
+void unregisterRunLoopCallback(const char *eventName);
+void registerExitCallback(const char *eventName, CBCallback callback);
+void unregisterExitCallback(const char *eventName);
+void callExitCallbacks();
+void registerChain(CBChain *chain);
+void unregisterChain(CBChain *chain);
 static int cloneVar(CBVar &dst, const CBVar &src);
 static int destroyVar(CBVar &var);
 static CBVar suspend(CBContext *context, double seconds);
 static CBVar *contextVariable(CBContext *ctx, const char *name);
-static void registerBlock(const char *fullName, CBBlockConstructor constructor);
 inline static bool activateBlocks(CBSeq blocks, CBContext *context,
                                   const CBVar &chainInput, CBVar &output);
 }; // namespace chainblocks
@@ -361,211 +360,15 @@ static int cloneVar(CBVar &dst, const CBVar &src) {
   return freeCount;
 }
 
-static void registerBlock(const char *fullName,
-                          CBBlockConstructor constructor) {
-  auto cname = std::string(fullName);
-  auto findIt = BlocksRegister.find(cname);
-  if (findIt == BlocksRegister.end()) {
-    BlocksRegister.insert(std::make_pair(cname, constructor));
-    // DLOG(INFO) << "added block: " << cname;
-  } else {
-    BlocksRegister[cname] = constructor;
-    LOG(INFO) << "overridden block: " << cname;
-  }
-}
-
-static void registerObjectType(int32_t vendorId, int32_t typeId,
-                               CBObjectInfo info) {
-  auto tup = std::make_tuple(vendorId, typeId);
-  auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(tup);
-  if (findIt == ObjectTypesRegister.end()) {
-    ObjectTypesRegister.insert(std::make_pair(tup, info));
-    // DLOG(INFO) << "added object type: " << typeName;
-  } else {
-    ObjectTypesRegister[tup] = info;
-    LOG(INFO) << "overridden object type: " << typeName;
-  }
-}
-
-static void registerEnumType(int32_t vendorId, int32_t typeId,
-                             CBEnumInfo info) {
-  auto tup = std::make_tuple(vendorId, typeId);
-  auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(tup);
-  if (findIt == ObjectTypesRegister.end()) {
-    EnumTypesRegister.insert(std::make_pair(tup, info));
-    // DLOG(INFO) << "added enum type: " << typeName;
-  } else {
-    EnumTypesRegister[tup] = info;
-    LOG(INFO) << "overridden enum type: " << typeName;
-  }
-}
-
-static void registerRunLoopCallback(const char *eventName,
-                                    CBCallback callback) {
-  chainblocks::RunLoopHooks[eventName] = callback;
-}
-
-static void unregisterRunLoopCallback(const char *eventName) {
-  auto findIt = chainblocks::RunLoopHooks.find(eventName);
-  if (findIt != chainblocks::RunLoopHooks.end()) {
-    chainblocks::RunLoopHooks.erase(findIt);
-  }
-}
-
-static void registerExitCallback(const char *eventName, CBCallback callback) {
-  chainblocks::ExitHooks[eventName] = callback;
-}
-
-static void unregisterExitCallback(const char *eventName) {
-  auto findIt = chainblocks::ExitHooks.find(eventName);
-  if (findIt != chainblocks::ExitHooks.end()) {
-    chainblocks::ExitHooks.erase(findIt);
-  }
-}
-
-static void registerChain(CBChain *chain) {
-  chainblocks::GlobalChains[chain->name] = chain;
-}
-
-static void unregisterChain(CBChain *chain) {
-  auto findIt = chainblocks::GlobalChains.find(chain->name);
-  if (findIt != chainblocks::GlobalChains.end()) {
-    chainblocks::GlobalChains.erase(findIt);
-  }
-}
-
-static void callExitCallbacks() {
-  // Iterate backwards
-  for (auto it = chainblocks::ExitHooks.begin();
-       it != chainblocks::ExitHooks.end(); ++it) {
-    it->second();
-  }
-}
-
 static CBVar *contextVariable(CBContext *ctx, const char *name) {
   CBVar &v = ctx->variables[name];
   return &v;
 }
 
 void registerCoreBlocks();
+CBlock *createBlock(const char *name);
 
-static CBlock *createBlock(const char *name) {
-  auto it = BlocksRegister.find(name);
-  if (it == BlocksRegister.end()) {
-    return nullptr;
-  }
-
-  auto blkp = it->second();
-
-  // Hook inline blocks to override activation in runChain
-  if (strcmp(name, "Const") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreConst;
-  } else if (strcmp(name, "Stop") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreStop;
-  } else if (strcmp(name, "Restart") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
-  } else if (strcmp(name, "Sleep") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
-  } else if (strcmp(name, "Repeat") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
-  } else if (strcmp(name, "Get") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreGet;
-  } else if (strcmp(name, "Set") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreSet;
-  } else if (strcmp(name, "Swap") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
-  } else if (strcmp(name, "Take") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreTake;
-  } else if (strcmp(name, "Push") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CorePush;
-  } else if (strcmp(name, "Math.Add") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAdd;
-  } else if (strcmp(name, "Math.Subtract") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathSubtract;
-  } else if (strcmp(name, "Math.Multiply") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathMultiply;
-  } else if (strcmp(name, "Math.Divide") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathDivide;
-  } else if (strcmp(name, "Math.Xor") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathXor;
-  } else if (strcmp(name, "Math.And") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAnd;
-  } else if (strcmp(name, "Math.Or") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathOr;
-  } else if (strcmp(name, "Math.Mod") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathMod;
-  } else if (strcmp(name, "Math.LShift") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLShift;
-  } else if (strcmp(name, "Math.RShift") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathRShift;
-  } else if (strcmp(name, "Math.Abs") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAbs;
-  } else if (strcmp(name, "Math.Exp") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathExp;
-  } else if (strcmp(name, "Math.Exp2") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathExp2;
-  } else if (strcmp(name, "Math.Expm1") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathExpm1;
-  } else if (strcmp(name, "Math.Log") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog;
-  } else if (strcmp(name, "Math.Log10") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog10;
-  } else if (strcmp(name, "Math.Log2") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog2;
-  } else if (strcmp(name, "Math.Log1p") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog1p;
-  } else if (strcmp(name, "Math.Sqrt") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathSqrt;
-  } else if (strcmp(name, "Math.Cbrt") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathCbrt;
-  } else if (strcmp(name, "Math.Sin") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathSin;
-  } else if (strcmp(name, "Math.Cos") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathCos;
-  } else if (strcmp(name, "Math.Tan") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathTan;
-  } else if (strcmp(name, "Math.Asin") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAsin;
-  } else if (strcmp(name, "Math.Acos") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAcos;
-  } else if (strcmp(name, "Math.Atan") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAtan;
-  } else if (strcmp(name, "Math.Sinh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathSinh;
-  } else if (strcmp(name, "Math.Cosh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathCosh;
-  } else if (strcmp(name, "Math.Tanh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathTanh;
-  } else if (strcmp(name, "Math.Asinh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAsinh;
-  } else if (strcmp(name, "Math.Acosh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAcosh;
-  } else if (strcmp(name, "Math.Atanh") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathAtanh;
-  } else if (strcmp(name, "Math.Erf") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathErf;
-  } else if (strcmp(name, "Math.Erfc") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathErfc;
-  } else if (strcmp(name, "Math.TGamma") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathTGamma;
-  } else if (strcmp(name, "Math.LGamma") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathLGamma;
-  } else if (strcmp(name, "Math.Ceil") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathCeil;
-  } else if (strcmp(name, "Math.Floor") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathFloor;
-  } else if (strcmp(name, "Math.Trunc") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathTrunc;
-  } else if (strcmp(name, "Math.Round") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::MathRound;
-  }
-
-  return blkp;
-}
-
-static CBVar suspend(CBContext *context, double seconds) {
+inline static CBVar suspend(CBContext *context, double seconds) {
   if (seconds <= 0) {
     context->next = Duration(0);
   } else {
@@ -698,127 +501,157 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   case MathAbs: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(fabs, fabsf, "Abs") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathExp: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(exp, expf, "Exp") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathExp2: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(exp2, exp2f, "Exp2") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::Exp2Runtime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathExpm1: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(expm1, expm1f, "Expm1") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::Expm1Runtime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLog: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(log, logf, "Log") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::LogRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLog10: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(log10, log10f, "Log10") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::Log10Runtime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLog2: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(log2, log2f, "Log2") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::Log2Runtime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLog1p: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(log1p, log1pf, "Log1p") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::Log1pRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathSqrt: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(sqrt, sqrtf, "Sqrt") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::SqrtRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathCbrt: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(cbrt, cbrtf, "Cbrt") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::CbrtRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathSin: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(sin, sinf, "Sin") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::SinRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathCos: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(cos, cosf, "Cos") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::CosRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathTan: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(tan, tanf, "Tan") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::TanRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAsin: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(asin, asinf, "Asin") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AsinRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAcos: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(acos, acosf, "Acos") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AcosRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAtan: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(atan, atanf, "Atan") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AtanRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathSinh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(sinh, sinhf, "Sinh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::SinhRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathCosh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(cosh, coshf, "Cosh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::CoshRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathTanh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(tanh, tanhf, "Tanh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::TanhRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAsinh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(asinh, asinhf, "Asinh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AsinhRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAcosh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(acosh, acoshf, "Acosh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AcoshRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathAtanh: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(atanh, atanhf, "Atanh") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::AtanhRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathErf: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(erf, erff, "Erf") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::ErfRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathErfc: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(erfc, erfcf, "Erfc") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::ErfcRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathTGamma: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(tgamma, tgammaf, "TGamma") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::TGammaRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathLGamma: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(lgamma, lgammaf, "LGamma") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::LGammaRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathCeil: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(ceil, ceilf, "Ceil") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::CeilRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathFloor: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(floor, floorf, "Floor") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::FloorRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathTrunc: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(trunc, truncf, "Trunc") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::TruncRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
   case MathRound: {
-    auto cblock = reinterpret_cast<CBMathUnaryStub *>(blk);
-    runChainINLINECMATH(round, roundf, "Round") return;
+    auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
   }
-  default: // NotInline
-  {
+  default: {
+    // NotInline
     previousOutput = blk->activate(blk, context, input);
     return;
   }

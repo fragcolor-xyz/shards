@@ -45,6 +45,199 @@ void registerCoreBlocks() {
   // also enums
   initEnums();
 }
+
+CBlock *createBlock(const char *name) {
+  auto it = BlocksRegister.find(name);
+  if (it == BlocksRegister.end()) {
+    return nullptr;
+  }
+
+  auto blkp = it->second();
+
+  // Hook inline blocks to override activation in runChain
+  if (strcmp(name, "Const") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreConst;
+  } else if (strcmp(name, "Stop") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreStop;
+  } else if (strcmp(name, "Restart") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
+  } else if (strcmp(name, "Sleep") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
+  } else if (strcmp(name, "Repeat") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
+  } else if (strcmp(name, "Get") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreGet;
+  } else if (strcmp(name, "Set") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreSet;
+  } else if (strcmp(name, "Swap") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
+  } else if (strcmp(name, "Take") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreTake;
+  } else if (strcmp(name, "Push") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CorePush;
+  } else if (strcmp(name, "Math.Add") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAdd;
+  } else if (strcmp(name, "Math.Subtract") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathSubtract;
+  } else if (strcmp(name, "Math.Multiply") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathMultiply;
+  } else if (strcmp(name, "Math.Divide") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathDivide;
+  } else if (strcmp(name, "Math.Xor") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathXor;
+  } else if (strcmp(name, "Math.And") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAnd;
+  } else if (strcmp(name, "Math.Or") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathOr;
+  } else if (strcmp(name, "Math.Mod") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathMod;
+  } else if (strcmp(name, "Math.LShift") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLShift;
+  } else if (strcmp(name, "Math.RShift") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathRShift;
+  } else if (strcmp(name, "Math.Abs") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAbs;
+  } else if (strcmp(name, "Math.Exp") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathExp;
+  } else if (strcmp(name, "Math.Exp2") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathExp2;
+  } else if (strcmp(name, "Math.Expm1") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathExpm1;
+  } else if (strcmp(name, "Math.Log") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLog;
+  } else if (strcmp(name, "Math.Log10") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLog10;
+  } else if (strcmp(name, "Math.Log2") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLog2;
+  } else if (strcmp(name, "Math.Log1p") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLog1p;
+  } else if (strcmp(name, "Math.Sqrt") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathSqrt;
+  } else if (strcmp(name, "Math.Cbrt") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathCbrt;
+  } else if (strcmp(name, "Math.Sin") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathSin;
+  } else if (strcmp(name, "Math.Cos") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathCos;
+  } else if (strcmp(name, "Math.Tan") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathTan;
+  } else if (strcmp(name, "Math.Asin") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAsin;
+  } else if (strcmp(name, "Math.Acos") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAcos;
+  } else if (strcmp(name, "Math.Atan") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAtan;
+  } else if (strcmp(name, "Math.Sinh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathSinh;
+  } else if (strcmp(name, "Math.Cosh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathCosh;
+  } else if (strcmp(name, "Math.Tanh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathTanh;
+  } else if (strcmp(name, "Math.Asinh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAsinh;
+  } else if (strcmp(name, "Math.Acosh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAcosh;
+  } else if (strcmp(name, "Math.Atanh") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathAtanh;
+  } else if (strcmp(name, "Math.Erf") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathErf;
+  } else if (strcmp(name, "Math.Erfc") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathErfc;
+  } else if (strcmp(name, "Math.TGamma") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathTGamma;
+  } else if (strcmp(name, "Math.LGamma") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathLGamma;
+  } else if (strcmp(name, "Math.Ceil") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathCeil;
+  } else if (strcmp(name, "Math.Floor") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathFloor;
+  } else if (strcmp(name, "Math.Trunc") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathTrunc;
+  } else if (strcmp(name, "Math.Round") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::MathRound;
+  }
+
+  return blkp;
+}
+
+void registerBlock(const char *fullName, CBBlockConstructor constructor) {
+  auto cname = std::string(fullName);
+  auto findIt = BlocksRegister.find(cname);
+  if (findIt == BlocksRegister.end()) {
+    BlocksRegister.insert(std::make_pair(cname, constructor));
+    // DLOG(INFO) << "added block: " << cname;
+  } else {
+    BlocksRegister[cname] = constructor;
+    LOG(INFO) << "overridden block: " << cname;
+  }
+}
+
+void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
+  auto tup = std::make_tuple(vendorId, typeId);
+  auto typeName = std::string(info.name);
+  auto findIt = ObjectTypesRegister.find(tup);
+  if (findIt == ObjectTypesRegister.end()) {
+    ObjectTypesRegister.insert(std::make_pair(tup, info));
+    // DLOG(INFO) << "added object type: " << typeName;
+  } else {
+    ObjectTypesRegister[tup] = info;
+    LOG(INFO) << "overridden object type: " << typeName;
+  }
+}
+
+void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
+  auto tup = std::make_tuple(vendorId, typeId);
+  auto typeName = std::string(info.name);
+  auto findIt = ObjectTypesRegister.find(tup);
+  if (findIt == ObjectTypesRegister.end()) {
+    EnumTypesRegister.insert(std::make_pair(tup, info));
+    // DLOG(INFO) << "added enum type: " << typeName;
+  } else {
+    EnumTypesRegister[tup] = info;
+    LOG(INFO) << "overridden enum type: " << typeName;
+  }
+}
+
+void registerRunLoopCallback(const char *eventName, CBCallback callback) {
+  chainblocks::RunLoopHooks[eventName] = callback;
+}
+
+void unregisterRunLoopCallback(const char *eventName) {
+  auto findIt = chainblocks::RunLoopHooks.find(eventName);
+  if (findIt != chainblocks::RunLoopHooks.end()) {
+    chainblocks::RunLoopHooks.erase(findIt);
+  }
+}
+
+void registerExitCallback(const char *eventName, CBCallback callback) {
+  chainblocks::ExitHooks[eventName] = callback;
+}
+
+void unregisterExitCallback(const char *eventName) {
+  auto findIt = chainblocks::ExitHooks.find(eventName);
+  if (findIt != chainblocks::ExitHooks.end()) {
+    chainblocks::ExitHooks.erase(findIt);
+  }
+}
+
+void registerChain(CBChain *chain) {
+  chainblocks::GlobalChains[chain->name] = chain;
+}
+
+void unregisterChain(CBChain *chain) {
+  auto findIt = chainblocks::GlobalChains.find(chain->name);
+  if (findIt != chainblocks::GlobalChains.end()) {
+    chainblocks::GlobalChains.erase(findIt);
+  }
+}
+
+void callExitCallbacks() {
+  // Iterate backwards
+  for (auto it = chainblocks::ExitHooks.begin();
+       it != chainblocks::ExitHooks.end(); ++it) {
+    it->second();
+  }
+}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
