@@ -1,6 +1,6 @@
 (def! node (Node))
 
-(schedule node (Chain "variables"
+(schedule node (Chain "variables" :Looped
   10
   (Set "x")
   (Assert.Is 10 true)
@@ -95,5 +95,7 @@
   (Get "d" "k1")
   (Assert.Is ["a" "b" "c"] true)
 ))
+
+(tick node)
 
 (prn "Done!")

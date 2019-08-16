@@ -137,16 +137,16 @@ struct VariableBase {
 };
 
 struct Set : public VariableBase {
-  CBVar _value{};
   TypesInfo _tableTypeInfo{};
   TypesInfo _tableContentInfo{};
 
   void cleanup() {
     if (_target) {
       if (_isTable && _target->valueType == Table) {
-        // Destroy the value we are holding..
-        destroyVar(_value);
         // Remove from table
+        auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+        if (idx != -1)
+          destroyVar(_target->payload.tableValue[idx].value);
         stbds_shdel(_target->payload.tableValue, _key.c_str());
         // Finally free the table if has no values
         if (stbds_shlen(_target->payload.tableValue) == 0) {
@@ -154,7 +154,7 @@ struct Set : public VariableBase {
           memset(_target, 0x0, sizeof(CBVar));
         }
       } else {
-        destroyVar(_value);
+        destroyVar(*_target);
       }
     }
     _target = nullptr;
@@ -198,13 +198,18 @@ struct Set : public VariableBase {
         _target->payload.tableLen = -1;
       }
 
-      // Clone on top of it so we recycle memory
-      cloneVar(_value, input);
-      stbds_shput(_target->payload.tableValue, _key.c_str(), _value);
+      auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (idx != -1) {
+        // Clone on top of it so we recycle memory
+        cloneVar(_target->payload.tableValue[idx].value, input);
+      } else {
+        CBVar tmp{};
+        cloneVar(tmp, input);
+        stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
+      }
     } else {
       // Clone will try to recyle memory and such
-      cloneVar(_value, input);
-      *_target = _value;
+      cloneVar(*_target, input);
     }
     return input;
   }
@@ -343,20 +348,7 @@ struct Swap {
   }
 };
 
-struct Push : public VariableBase {
-  CBVar _value{};
-
-  void cleanup() {
-    // destroyVar(_value);
-    // We do not free value...
-    // The Set block with the sequence will take care of it!
-    _target = nullptr;
-  }
-
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-
+struct SeqVariableBase : public VariableBase {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
@@ -396,6 +388,14 @@ struct Push : public VariableBase {
     }
     return CBExposedTypesInfo(_exposedInfo);
   }
+};
+
+struct Push : public SeqVariableBase {
+  void cleanup() { _target = nullptr; }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
@@ -416,15 +416,19 @@ struct Push : public VariableBase {
         throw CBException("Variable is not a sequence, failed to Push.");
       }
 
-      cloneVar(_value, input);
-      stbds_arrpush(seq.payload.seqValue, _value);
+      CBVar tmp{};
+      // The Set block with the sequence will take care of memory!
+      cloneVar(tmp, input);
+      stbds_arrpush(seq.payload.seqValue, tmp);
     } else {
       if (_target->valueType != Seq) {
         throw CBException("Variable is not a sequence, failed to Push.");
       }
 
-      cloneVar(_value, input);
-      stbds_arrpush(_target->payload.seqValue, _value);
+      CBVar tmp{};
+      // The Set block with the sequence will take care of memory!
+      cloneVar(tmp, input);
+      stbds_arrpush(_target->payload.seqValue, tmp);
     }
     return input;
   }
