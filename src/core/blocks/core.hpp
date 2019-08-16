@@ -357,6 +357,33 @@ struct Push : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    if (_isTable) {
+      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
+        if (consumableVariables[i].name == _name &&
+            consumableVariables[i].exposedType.tableTypes) {
+          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
+          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
+          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
+            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
+              return inputType; // found lets escape
+            }
+          }
+        }
+      }
+      throw CBException("Push: key not found or key value is not a sequence!.");
+    } else {
+      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+        auto &cv = consumableVariables[i];
+        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          return inputType; // found lets escape
+        }
+      }
+    }
+    throw CBException("Push: consumed variable is not a sequence.");
+  }
+
   CBExposedTypesInfo consumedVariables() {
     if (_isTable) {
       _exposedInfo = ExposedInfo(

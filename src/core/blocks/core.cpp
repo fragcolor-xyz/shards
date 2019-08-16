@@ -60,6 +60,7 @@ RUNTIME_BLOCK_cleanup(Push);
 RUNTIME_BLOCK_inputTypes(Push);
 RUNTIME_BLOCK_outputTypes(Push);
 RUNTIME_BLOCK_parameters(Push);
+RUNTIME_BLOCK_inferTypes(Push);
 RUNTIME_BLOCK_consumedVariables(Push);
 RUNTIME_BLOCK_setParam(Push);
 RUNTIME_BLOCK_getParam(Push);
