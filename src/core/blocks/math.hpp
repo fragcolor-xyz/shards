@@ -5,6 +5,8 @@
 namespace chainblocks {
 namespace Math {
 struct BinaryBase {
+  enum OpType { Normal, Seq1, SeqSeq };
+
   static inline TypesInfo mathBaseTypesInfo = TypesInfo::FromMany(
       CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
@@ -22,16 +24,23 @@ struct BinaryBase {
 
   CBVar _operand{};
   CBVar *_ctxOperand{};
-  CBSeq _cachedSeq = nullptr;
+  CBVar _cachedSeq{};
   ExposedInfo _consumedInfo{};
+  OpType _opType = Normal;
 
   void cleanup() { _ctxOperand = nullptr; }
 
   void destroy() {
-    if (_cachedSeq) {
-      stbds_arrfree(_cachedSeq);
+    if (_cachedSeq.valueType == Seq) {
+      stbds_arrfree(_cachedSeq.payload.seqValue);
     }
     destroyVar(_operand);
+  }
+
+  void setup() {
+    _cachedSeq.valueType = Seq;
+    _cachedSeq.payload.seqValue = nullptr;
+    _cachedSeq.payload.seqLen = -1;
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(mathTypesInfo); }
@@ -47,15 +56,32 @@ struct BinaryBase {
     if (_operand.valueType == ContextVar) {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
         if (consumableVariables[i].name == _operand.payload.stringValue) {
-          if (consumableVariables[i].exposedType != inputType) {
+          if (consumableVariables[i].exposedType.basicType != Seq &&
+              inputType.basicType != Seq) {
+            _opType = Normal;
+          } else if (consumableVariables[i].exposedType.basicType != Seq &&
+                     inputType.basicType == Seq) {
+            _opType = Seq1;
+          } else if (consumableVariables[i].exposedType.basicType == Seq &&
+                     inputType.basicType == Seq) {
+            _opType = SeqSeq;
+          } else {
             throw CBException(
-                "Math operation not supported between different types!");
+                "Math broadcasting not supported between given types!");
           }
         }
       }
-    } else if (_operand.valueType != inputType.basicType) {
-      throw CBException(
-          "Math operation not supported between different types!");
+    } else {
+      if (_operand.valueType != Seq && inputType.basicType != Seq) {
+        _opType = Normal;
+      } else if (_operand.valueType != Seq && inputType.basicType == Seq) {
+        _opType = Seq1;
+      } else if (_operand.valueType == Seq && inputType.basicType == Seq) {
+        _opType = SeqSeq;
+      } else {
+        throw CBException(
+            "Math broadcasting not supported between given types!");
+      }
     }
     return inputType;
   }
@@ -80,12 +106,10 @@ struct BinaryBase {
 
 #define MATH_OPERATION(NAME, OPERATOR, OPERATOR_STR)                           \
   struct NAME : public BinaryBase {                                            \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
-      }                                                                        \
-      CBVar output{};                                                          \
-      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+    void operate(CBVar &output, const CBVar &input, const CBVar &operand) {    \
+      if (input.valueType != operand.valueType)                                \
+        throw CBException("Operation not supported between different "         \
+                          "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -152,19 +176,45 @@ struct BinaryBase {
         throw CBException(OPERATOR_STR                                         \
                           " operation not supported between given types!");    \
       }                                                                        \
-      return output;                                                           \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
+        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
+      }                                                                        \
+      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+      CBVar output{};                                                          \
+      if (_opType == Normal) {                                                 \
+        operate(output, input, operand);                                       \
+        return output;                                                         \
+      } else if (_opType == Seq1) {                                            \
+        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          operate(output, input.payload.seqValue[i], operand);                 \
+          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        }                                                                      \
+        return _cachedSeq;                                                     \
+      } else {                                                                 \
+        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue),             \
+                  i < stbds_arrlen(operand.payload.seqValue);                  \
+             i++) {                                                            \
+          operate(output, input.payload.seqValue[i],                           \
+                  operand.payload.seqValue[i]);                                \
+          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        }                                                                      \
+        return _cachedSeq;                                                     \
+      }                                                                        \
     }                                                                          \
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 #define MATH_INT_OPERATION(NAME, OPERATOR, OPERATOR_STR)                       \
   struct NAME : public BinaryBase {                                            \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
-      }                                                                        \
-      CBVar output{};                                                          \
-      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+    void operate(CBVar &output, const CBVar &input, const CBVar &operand) {    \
+      if (input.valueType != operand.valueType)                                \
+        throw CBException("Operation not supported between different "         \
+                          "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -211,7 +261,34 @@ struct BinaryBase {
         throw CBException(OPERATOR_STR                                         \
                           " operation not supported between given types!");    \
       }                                                                        \
-      return output;                                                           \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
+        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
+      }                                                                        \
+      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+      CBVar output{};                                                          \
+      if (_opType == Normal) {                                                 \
+        operate(output, input, operand);                                       \
+        return output;                                                         \
+      } else if (_opType == Seq1) {                                            \
+        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          operate(output, input, operand);                                     \
+          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        }                                                                      \
+        return _cachedSeq;                                                     \
+      } else {                                                                 \
+        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue),             \
+                  i < stbds_arrlen(operand.payload.seqValue);                  \
+             i++) {                                                            \
+          operate(output, input, operand.payload.seqValue[i]);                 \
+          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        }                                                                      \
+        return _cachedSeq;                                                     \
+      }                                                                        \
     }                                                                          \
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
@@ -231,6 +308,7 @@ MATH_INT_OPERATION(RShift, >>, "RShift");
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
   RUNTIME_BLOCK_destroy(NAME);                                                 \
   RUNTIME_BLOCK_cleanup(NAME);                                                 \
+  RUNTIME_BLOCK_setup(NAME);                                                   \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \

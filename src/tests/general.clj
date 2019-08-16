@@ -178,6 +178,16 @@
   (Color 2 2 2 255)
   (Log)
 
+  (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
+  (Math.Multiply (Float 2.0))
+  (Log)
+  (Assert.Is [(Float 2) (Float 4) (Float 6) (Float 8)] true)
+
+  (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
+  (Math.Multiply [(Float 2.0) (Float 1.0) (Float 1.0) (Float 2.0)])
+  (Log)
+  (Assert.Is [(Float 2) (Float 2) (Float 3) (Float 8)] true)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
