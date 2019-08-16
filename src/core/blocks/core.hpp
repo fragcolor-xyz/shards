@@ -12,6 +12,7 @@ struct CoreInfo {
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
+  static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
 };
 
 struct Const {
@@ -49,6 +50,31 @@ struct Const {
   }
 
   CBVar activate(CBContext *context, CBVar input) { return _value; }
+};
+
+struct Sleep {
+  static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Time", "The amount of time in seconds (float) to pause this chain.",
+      CBTypesInfo(CoreInfo::floatInfo)));
+
+  double time{};
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(sleepParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) { time = value.payload.floatValue; }
+
+  CBVar getParam(int index) { return Var(time); }
+
+  CBVar activate(CBContext *context, CBVar input) {
+    cbpause(time);
+    return input;
+  }
 };
 
 struct VariableBase {
@@ -237,6 +263,7 @@ struct Get : public VariableBase {
 };
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
+RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 }; // namespace chainblocks

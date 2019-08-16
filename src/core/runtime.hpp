@@ -13,13 +13,6 @@
 // C++ Mandatory from now!
 
 // Stub inline blocks, actually implemented in respective nim code!
-struct CBSleepStub {
-  CBlock header;
-  struct {
-    double sleepTime;
-  };
-};
-
 struct CBMathStub {
   CBlock header;
   struct {
@@ -152,9 +145,18 @@ static void registerChain(CBChain *chain);
 static void unregisterChain(CBChain *chain);
 static int cloneVar(CBVar &dst, const CBVar &src);
 static int destroyVar(CBVar &var);
+static CBVar suspend(CBContext *context, double seconds);
 static CBVar *contextVariable(CBContext *ctx, const char *name);
 static void registerBlock(const char *fullName, CBBlockConstructor constructor);
 }; // namespace chainblocks
+
+#define cbpause(_time_)                                                        \
+  {                                                                            \
+    auto chainState = chainblocks::suspend(context, _time_);                   \
+    if (chainState.payload.chainState != Continue) {                           \
+      return chainState;                                                       \
+    }                                                                          \
+  }
 
 #include "blocks/core.hpp"
 
@@ -638,14 +640,6 @@ static CBVar suspend(CBContext *context, double seconds) {
   return cont;
 }
 
-#define cbpause(_time_)                                                        \
-  {                                                                            \
-    auto chainState = chainblocks::suspend(context, _time_);                   \
-    if (chainState.payload.chainState != Continue) {                           \
-      return chainState;                                                       \
-    }                                                                          \
-  }
-
 #include "runtime_macros.hpp"
 
 inline static bool activateBlocks(CBSeq blocks, CBContext *context,
@@ -660,12 +654,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   case CoreSleep: {
-    auto cblock = reinterpret_cast<CBSleepStub *>(blk);
-    auto suspendRes = suspend(context, cblock->sleepTime);
-    if (suspendRes.payload.chainState != Continue)
-      previousOutput = suspendRes;
-    else
-      previousOutput = input;
+    auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
     return;
   }
   case CoreRepeat: {

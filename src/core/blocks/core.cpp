@@ -17,6 +17,16 @@ RUNTIME_BLOCK_getParam(Const);
 RUNTIME_BLOCK_activate(Const);
 RUNTIME_BLOCK_END(Const);
 
+// Register Sleep
+RUNTIME_CORE_BLOCK_FACTORY(Sleep);
+RUNTIME_BLOCK_inputTypes(Sleep);
+RUNTIME_BLOCK_outputTypes(Sleep);
+RUNTIME_BLOCK_parameters(Sleep);
+RUNTIME_BLOCK_setParam(Sleep);
+RUNTIME_BLOCK_getParam(Sleep);
+RUNTIME_BLOCK_activate(Sleep);
+RUNTIME_BLOCK_END(Sleep);
+
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
 RUNTIME_BLOCK_cleanup(Set);

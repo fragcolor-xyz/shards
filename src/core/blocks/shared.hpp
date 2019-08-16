@@ -9,15 +9,15 @@
 
 namespace chainblocks {
 struct SharedTypes {
-  static inline TypesInfo strInfo = TypesInfo(CBType::String);
-  static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
-  static inline TypesInfo noneInfo = TypesInfo(CBType::None);
+  static inline TypesInfo &strInfo = CoreInfo::strInfo;
+  static inline TypesInfo &anyInfo = CoreInfo::anyInfo;
+  static inline TypesInfo &noneInfo = CoreInfo::noneInfo;
   static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
-  static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static inline TypesInfo &floatInfo = CoreInfo::floatInfo;
   static inline TypesInfo chainInfo = TypesInfo(CBType::Chain);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
-  static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
+  static inline TypesInfo &tableInfo = CoreInfo::tableInfo;
   static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
   static inline TypesInfo blockSeqInfo =
       TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
