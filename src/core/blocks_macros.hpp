@@ -60,6 +60,38 @@
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
+#define RUNTIME_CORE_BLOCK_TYPE(_name_)                                        \
+  struct _name_##Runtime {                                                     \
+    CBlock header;                                                             \
+    _name_ core;                                                               \
+  };
+#define RUNTIME_CORE_BLOCK_FACTORY(_name_)                                     \
+  __cdecl CBlock *createBlock##_name_() {                                      \
+    CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
+    result->name =                                                             \
+        static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
+    result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
+    result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
+    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {});        \
+    result->inputTypes = static_cast<CBInputTypesProc>(                        \
+        [](CBlock *block) { return CBTypesInfo(); });                          \
+    result->outputTypes = static_cast<CBOutputTypesProc>(                      \
+        [](CBlock *block) { return CBTypesInfo(); });                          \
+    result->exposedVariables = static_cast<CBExposedVariablesProc>(            \
+        [](CBlock *block) { return CBExposedTypesInfo(); });                   \
+    result->consumedVariables = static_cast<CBConsumedVariablesProc>(          \
+        [](CBlock *block) { return CBExposedTypesInfo(); });                   \
+    result->parameters = static_cast<CBParametersProc>(                        \
+        [](CBlock *block) { return CBParametersInfo(); });                     \
+    result->setParam = static_cast<CBSetParamProc>(                            \
+        [](CBlock *block, int index, CBVar value) {});                         \
+    result->getParam = static_cast<CBGetParamProc>(                            \
+        [](CBlock *block, int index) { return CBVar(); });                     \
+    result->preChain = nullptr;                                                \
+    result->postChain = nullptr;                                               \
+    result->inferTypes = nullptr;                                              \
+    result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
+
 // Those get nicely inlined fully so only 1 indirection will happen at the root
 // of the call if the block is all inline
 #define RUNTIME_BLOCK_name(_name_)                                             \

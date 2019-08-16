@@ -301,6 +301,7 @@ CBType keywordToType(malKeyword *typeKeyword) {
 
 malValuePtr typeToKeyword(CBType type) {
   switch (type) {
+  case EndOfBlittableTypes:
   case None:
     return mal::keyword(":None");
   case Any:

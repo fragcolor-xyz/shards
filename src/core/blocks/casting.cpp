@@ -132,6 +132,8 @@ namespace chainblocks {
         if (index == _width_)                                                  \
           return true;                                                         \
         break;                                                                 \
+      default:                                                                 \
+        throw CBException("Cannot cast given input type.");                    \
       }                                                                        \
       return false;                                                            \
     }                                                                          \
@@ -161,6 +163,8 @@ namespace chainblocks {
         if (convert(output, index, input))                                     \
           return output;                                                       \
         break;                                                                 \
+      default:                                                                 \
+        throw CBException("Cannot cast given input type.");                    \
       }                                                                        \
       return output;                                                           \
     }                                                                          \

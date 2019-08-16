@@ -13,13 +13,6 @@
 // C++ Mandatory from now!
 
 // Stub inline blocks, actually implemented in respective nim code!
-struct CBConstStub {
-  CBlock header;
-  struct {
-    CBVar constValue;
-  };
-};
-
 struct CBSleepStub {
   CBlock header;
   struct {
@@ -155,13 +148,15 @@ extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 
 static CBlock *createBlock(const char *name);
-
 static void registerChain(CBChain *chain);
-
 static void unregisterChain(CBChain *chain);
-
+static int cloneVar(CBVar &dst, const CBVar &src);
 static int destroyVar(CBVar &var);
+static CBVar *contextVariable(CBContext *ctx, const char *name);
+static void registerBlock(const char *fullName, CBBlockConstructor constructor);
 }; // namespace chainblocks
+
+#include "blocks/core.hpp"
 
 typedef boost::context::continuation CBCoro;
 
@@ -528,8 +523,10 @@ static CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
   } else if (strcmp(name, "If") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreIf;
-  } else if (strcmp(name, "GetVariable") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreGetVariable;
+  } else if (strcmp(name, "Get") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreGet;
+  } else if (strcmp(name, "Set") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreSet;
   } else if (strcmp(name, "SwapVariables") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSwapVariables;
   } else if (strcmp(name, "Math.Add") == 0) {
@@ -658,8 +655,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
                                  const CBVar &input, CBVar &previousOutput) {
   switch (blk->inlineBlockId) {
   case CoreConst: {
-    auto cblock = reinterpret_cast<CBConstStub *>(blk);
-    previousOutput = cblock->constValue;
+    auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
+    previousOutput = cblock->core._value;
     return;
   }
   case CoreSleep: {
@@ -791,14 +788,14 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     }
     break;
   }
-  case CoreGetVariable: {
-    auto cblock = reinterpret_cast<CBCoreSetVariable *>(blk);
-    if (unlikely(!cblock->target)) // call first if we have no target
-    {
-      previousOutput = blk->activate(blk, context, input);
-    } else {
-      previousOutput = *cblock->target;
-    }
+  case CoreGet: {
+    auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreSet: {
+    auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
     return;
   }
   case CoreSwapVariables: {

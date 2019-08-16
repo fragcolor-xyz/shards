@@ -311,6 +311,8 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     }
     return true;
   }
+  default:
+    return true;
   }
   return true;
 }
