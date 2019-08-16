@@ -52,7 +52,7 @@ struct GetItems {
 
   CBVar getParam(int index) { return indices; }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (input.valueType != Seq) {
       throw CBException("GetItems expected a sequence!");
     }
@@ -177,7 +177,7 @@ struct Flatten {
     return innerType;
   }
 
-  void add(CBVar &input) {
+  void add(const CBVar &input) {
     switch (input.valueType) {
     case None:
     case Any:
@@ -262,7 +262,7 @@ struct Flatten {
     }
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     outputCache.valueType = Seq;
     outputCache.payload.seqLen = -1; // TODO seqLen figure out or leave/remove
     stbds_arrsetlen(outputCache.payload.seqValue,

@@ -41,7 +41,7 @@ struct BaseOpsBin {
 };
 
 struct Is : public BaseOpsBin {
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (input != value) {
       return False;
     }
@@ -50,7 +50,7 @@ struct Is : public BaseOpsBin {
 };
 
 struct IsNot : public BaseOpsBin {
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (input == value) {
       return False;
     }

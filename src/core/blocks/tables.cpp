@@ -82,7 +82,7 @@ struct SetTableValue {
     return res;
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (!target) {
       target = chainblocks::contextVariable(context, name.c_str());
     }
@@ -177,7 +177,7 @@ struct GetTableValue {
     return res;
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (!target) {
       target = chainblocks::contextVariable(context, name.c_str());
     }

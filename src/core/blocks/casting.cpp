@@ -138,7 +138,7 @@ namespace chainblocks {
       return false;                                                            \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, CBVar input) {                          \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
       int index = 0;                                                           \
       CBVar output{};                                                          \
       output.valueType = _varName_##_width_;                                   \

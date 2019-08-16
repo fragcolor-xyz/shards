@@ -49,7 +49,7 @@ struct Const {
     return CBTypeInfo(_valueInfo);
   }
 
-  CBVar activate(CBContext *context, CBVar input) { return _value; }
+  CBVar activate(CBContext *context, const CBVar &input) { return _value; }
 };
 
 struct Sleep {
@@ -71,10 +71,16 @@ struct Sleep {
 
   CBVar getParam(int index) { return Var(time); }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     cbpause(time);
     return input;
   }
+};
+
+struct StopChain {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) { return Var::Stop(); }
 };
 
 struct VariableBase {
@@ -167,7 +173,7 @@ struct Set : public VariableBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
     }
@@ -244,7 +250,7 @@ struct Get : public VariableBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
     }

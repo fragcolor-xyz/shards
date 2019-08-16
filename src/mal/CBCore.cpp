@@ -392,7 +392,7 @@ struct InnerCall {
     return returnType;
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     cloneVar(innerVar->m_var, input);
     auto res = EVAL(malActivate, nullptr);
     auto resStaticVar = STATIC_CAST(

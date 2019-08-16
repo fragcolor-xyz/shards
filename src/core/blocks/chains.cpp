@@ -125,7 +125,7 @@ struct RunChain : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -189,7 +189,7 @@ struct Dispatch : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -237,7 +237,7 @@ struct DispatchOnce : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -288,7 +288,7 @@ struct Do : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -337,7 +337,7 @@ struct DoOnce : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -391,7 +391,7 @@ struct Detach : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -439,7 +439,7 @@ struct DetachOnce : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
 
@@ -554,7 +554,7 @@ struct ChainLoader : public ChainRunner {
     return Var();
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (!watcher->results.empty()) {
       auto result = watcher->results.front();
       if (unlikely(result->hasError)) {
