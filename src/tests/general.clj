@@ -198,24 +198,24 @@
 (if (tick Root) nil (throw "Root tick failed"))
 (println (json testChain))
 
-(def! P (Node))
-(def! C (Node))
-(schedule P (Chain "producer" :Looped 
-  "Hello world!"
-  (IPC.Push "shared1")
-))
+; (def! P (Node))
+; (def! C (Node))
+; (schedule P (Chain "producer" :Looped 
+;   "Hello world!"
+;   (IPC.Push "shared1")
+; ))
 
-(schedule C (Chain "consumer" :Looped 
-  (IPC.Pop "shared1")
-  (Assert.Is "Hello world!" true)
-  (Log)
-))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
+; (schedule C (Chain "consumer" :Looped 
+;   (IPC.Pop "shared1")
+;   (Assert.Is "Hello world!" true)
+;   (Log)
+; ))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
 
 ; (def! inc (fn* [a] (+ a 1)))
 
