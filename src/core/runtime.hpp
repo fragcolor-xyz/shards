@@ -524,6 +524,8 @@ static CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
   } else if (strcmp(name, "Take") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreTake;
+  } else if (strcmp(name, "Push") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CorePush;
   } else if (strcmp(name, "Math.Add") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;
   } else if (strcmp(name, "Math.Subtract") == 0) {
@@ -663,6 +665,11 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreTake: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CorePush: {
+    auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
     return;
   }
