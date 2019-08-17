@@ -1,5 +1,4 @@
 #define STB_DS_IMPLEMENTATION 1
-#define CHAINBLOCKS_RUNTIME 1
 #define DLL_EXPORT 1
 
 #include "runtime.hpp"

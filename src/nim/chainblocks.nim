@@ -22,10 +22,10 @@ when not defined cmake:
     
     when defined windows:
       {.passL: "-static -lboost_context-mt".}
-      {.passC: "-static -DCHAINBLOCKS_RUNTIME".}
+      {.passC: "-static".}
     else:
       {.passL: "-static -pthread -lboost_context".}
-      {.passC: "-static -pthread -DCHAINBLOCKS_RUNTIME".}
+      {.passC: "-static -pthread".}
   else:
     when defined windows:
       {.passL: "-static".}

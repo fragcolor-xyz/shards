@@ -1,7 +1,3 @@
-#ifndef CHAINBLOCKS_RUNTIME
-#define CHAINBLOCKS_RUNTIME 1
-#endif
-
 #include "../runtime.hpp"
 
 namespace chainblocks {

@@ -1,4 +1,3 @@
-#define CHAINBLOCKS_RUNTIME
 #include "../core/runtime.hpp"
 
 #include <fstream>

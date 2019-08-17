@@ -166,7 +166,7 @@ endif()
 if(CLANG_TIDY_EXE)
   add_custom_target(
     tidycheck
-    COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${MY_PROJECT_SOURCE_FILES} -- -std=c++17 -DCHAINBLOCKS_RUNTIME -DDEBUG ${MY_PROJECT_HEADER_PATHS}
+    COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${MY_PROJECT_SOURCE_FILES} -- -std=c++17 -DDEBUG ${MY_PROJECT_HEADER_PATHS}
   )
 endif()
 ###

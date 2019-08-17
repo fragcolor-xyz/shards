@@ -6,7 +6,6 @@
 #undef String
 #include <algorithm>
 #include <set>
-#define CHAINBLOCKS_RUNTIME
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
 

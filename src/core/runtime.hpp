@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef CHAINBLOCKS_RUNTIME
-
 // ONLY CLANG AND GCC SUPPORTED FOR NOW
 
 #include <string.h> // memset
@@ -1147,5 +1145,3 @@ private:
   std::list<CBChain *> chainsTicking;
   std::string errorMsg;
 };
-
-#endif // CHAINBLOCKS_RUNTIME
