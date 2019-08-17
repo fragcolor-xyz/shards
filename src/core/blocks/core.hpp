@@ -72,7 +72,7 @@ struct BaseOpsBin {
 
   CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
 
   CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
 
