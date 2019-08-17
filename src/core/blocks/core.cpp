@@ -27,6 +27,20 @@ RUNTIME_BLOCK_getParam(Sleep);
 RUNTIME_BLOCK_activate(Sleep);
 RUNTIME_BLOCK_END(Sleep);
 
+// Register And
+RUNTIME_CORE_BLOCK_FACTORY(And);
+RUNTIME_BLOCK_inputTypes(And);
+RUNTIME_BLOCK_outputTypes(And);
+RUNTIME_BLOCK_activate(And);
+RUNTIME_BLOCK_END(And);
+
+// Register Or
+RUNTIME_CORE_BLOCK_FACTORY(Or);
+RUNTIME_BLOCK_inputTypes(Or);
+RUNTIME_BLOCK_outputTypes(Or);
+RUNTIME_BLOCK_activate(Or);
+RUNTIME_BLOCK_END(Or);
+
 // Register Stop
 RUNTIME_CORE_BLOCK_FACTORY(Stop);
 RUNTIME_BLOCK_inputTypes(Stop);
@@ -167,6 +181,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Sleep);
   REGISTER_CORE_BLOCK(Restart);
   REGISTER_CORE_BLOCK(Stop);
+  REGISTER_CORE_BLOCK(And);
+  REGISTER_CORE_BLOCK(Or);
   REGISTER_CORE_BLOCK(Take);
   REGISTER_CORE_BLOCK(Repeat);
 

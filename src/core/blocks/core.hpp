@@ -86,6 +86,40 @@ struct Sleep {
   }
 };
 
+struct And {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.boolValue) {
+      // Continue the flow
+      return input;
+    } else {
+      // return previous output as final chain output
+      // Reason: We are done, input IS FALSE
+      return ReturnPrevious;
+    }
+  }
+};
+
+struct Or {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.boolValue) {
+      // return previous output as final chain output
+      // Reason: We are done, input IS TRUE
+      return ReturnPrevious;
+    } else {
+      // Continue the flow
+      return input;
+    }
+  }
+};
+
 struct Stop {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
@@ -599,6 +633,8 @@ struct Repeat {
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
+RUNTIME_CORE_BLOCK_TYPE(And);
+RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Set);

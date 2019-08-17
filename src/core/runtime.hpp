@@ -664,7 +664,6 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
   auto input = chainInput;
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
-    input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
@@ -673,10 +672,15 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
       case CBChainState::Stop: {
         return false;
       }
+      case CBChainState::Return: {
+        output = input; // Invert them, we return previous output (input)
+        return true;
+      }
       case Continue:
         continue;
       }
     }
+    input = output;
   }
   return true;
 }
@@ -686,7 +690,6 @@ inline static bool activateBlocks(CBSeq blocks, CBContext *context,
   auto input = chainInput;
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
-    input = output;
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
@@ -695,10 +698,15 @@ inline static bool activateBlocks(CBSeq blocks, CBContext *context,
       case CBChainState::Stop: {
         return false;
       }
+      case CBChainState::Return: {
+        output = input; // Invert them, we return previous output (input)
+        return true;
+      }
       case Continue:
         continue;
       }
     }
+    input = output;
   }
   return true;
 }
@@ -722,7 +730,7 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     case CBChainState::Stop: {
       return {previousOutput, Stopped};
     }
-    case Continue:
+    default:
       continue;
     }
   }
@@ -778,6 +786,11 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           } else {
             return {previousOutput, Stopped};
           }
+        }
+        case CBChainState::Return: {
+          runChainPOSTCHAIN;
+          // Use input as output, return previous block result
+          return {input, Restarted};
         }
         case CBChainState::Continue:
           continue;

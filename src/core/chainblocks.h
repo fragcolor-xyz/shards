@@ -47,9 +47,10 @@ enum CBType : uint8_t {
 };
 
 enum CBChainState : uint8_t {
-  Continue, // Even if None returned, continue to next block
-  Restart,  // Restart the chain from the top
-  Stop      // Stop the chain execution
+  Continue, // Nothing happened, continue
+  Restart,  // Restart the local chain from the top (noticed not the root!)
+  Stop,      // Stop the chain execution (including root)
+  Return // Used in conditional paths, end this chain and return previous output
 };
 
 // These blocks exist in nim too but they are actually implemented here inline

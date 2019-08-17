@@ -56,6 +56,13 @@ struct Var : public CBVar {
     return res;
   }
 
+  static Var Return() {
+    Var res;
+    res.valueType = None;
+    res.payload.chainState = CBChainState::Return;
+    return res;
+  }
+
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,
                     uint32_t objectTypeId) {
@@ -129,6 +136,7 @@ static Var True = Var(true);
 static Var False = Var(false);
 static Var StopChain = Var::Stop();
 static Var RestartChain = Var::Restart();
+static Var ReturnPrevious = Var::Return();
 static Var Empty = Var();
 
 struct TypesInfo {
