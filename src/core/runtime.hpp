@@ -676,8 +676,12 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
         output = input; // Invert them, we return previous output (input)
         return true;
       }
-      case Continue:
+      case CBChainState::Rebase: {
+        input = chainInput;
         continue;
+      }
+      case Continue:
+        break;
       }
     }
     input = output;
@@ -702,8 +706,12 @@ inline static bool activateBlocks(CBSeq blocks, CBContext *context,
         output = input; // Invert them, we return previous output (input)
         return true;
       }
-      case Continue:
+      case CBChainState::Rebase: {
+        input = chainInput;
         continue;
+      }
+      case Continue:
+        break;
       }
     }
     input = output;
@@ -792,8 +800,12 @@ inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           // Use input as output, return previous block result
           return {input, Restarted};
         }
+        case CBChainState::Rebase:
+          // Rebase means we need to put back main input
+          input = chainInput;
+          break;
         case CBChainState::Continue:
-          continue;
+          break;
         }
       }
     } catch (boost::context::detail::forced_unwind const &e) {

@@ -16,6 +16,8 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
       os << "*ChainRestart*";
     else if (var.payload.chainState == CBChainState::Return)
       os << "*ChainReturn*";
+    else if (var.payload.chainState == CBChainState::Rebase)
+      os << "*ChainRebase*";
     break;
   case Any:
     os << "*Any*";

@@ -94,10 +94,9 @@ struct And {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
-      return input;
+      return RebaseChain;
     } else {
-      // return previous output as final chain output
-      // Reason: We are done, input IS FALSE
+      // Reason: We are done, input IS FALSE so we FAIL
       return ReturnPrevious;
     }
   }
@@ -110,12 +109,11 @@ struct Or {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
-      // return previous output as final chain output
-      // Reason: We are done, input IS TRUE
+      // Reason: We are done, input IS TRUE so we succeed
       return ReturnPrevious;
     } else {
-      // Continue the flow
-      return input;
+      // Continue the flow, with the initial input as next input!
+      return RebaseChain;
     }
   }
 };
