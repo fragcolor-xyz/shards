@@ -128,6 +128,28 @@ RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 
+// Register Is
+RUNTIME_CORE_BLOCK_FACTORY(Is);
+RUNTIME_BLOCK_destroy(Is);
+RUNTIME_BLOCK_inputTypes(Is);
+RUNTIME_BLOCK_outputTypes(Is);
+RUNTIME_BLOCK_parameters(Is);
+RUNTIME_BLOCK_setParam(Is);
+RUNTIME_BLOCK_getParam(Is);
+RUNTIME_BLOCK_activate(Is);
+RUNTIME_BLOCK_END(Is);
+
+// Register IsNot
+RUNTIME_CORE_BLOCK_FACTORY(IsNot);
+RUNTIME_BLOCK_destroy(IsNot);
+RUNTIME_BLOCK_inputTypes(IsNot);
+RUNTIME_BLOCK_outputTypes(IsNot);
+RUNTIME_BLOCK_parameters(IsNot);
+RUNTIME_BLOCK_setParam(IsNot);
+RUNTIME_BLOCK_getParam(IsNot);
+RUNTIME_BLOCK_activate(IsNot);
+RUNTIME_BLOCK_END(IsNot);
+
 namespace Math {
 MATH_BINARY_BLOCK(Add);
 MATH_BINARY_BLOCK(Subtract);
@@ -185,6 +207,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Or);
   REGISTER_CORE_BLOCK(Take);
   REGISTER_CORE_BLOCK(Repeat);
+  REGISTER_CORE_BLOCK(Is);
+  REGISTER_CORE_BLOCK(IsNot);
 
   REGISTER_BLOCK(Math, Add);
   REGISTER_BLOCK(Math, Subtract);

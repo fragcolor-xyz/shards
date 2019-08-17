@@ -69,6 +69,10 @@ enum CBInlineBlocks : uint8_t {
   CoreSwap,
   CoreTake,
   CorePush,
+  CoreIs,
+  CoreIsNot,
+  CoreAnd,
+  CoreOr,
 
   MathAdd,
   MathSubtract,

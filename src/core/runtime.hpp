@@ -405,6 +405,26 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core._value;
     return;
   }
+  case CoreIs: {
+    auto cblock = reinterpret_cast<chainblocks::IsRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreIsNot: {
+    auto cblock = reinterpret_cast<chainblocks::IsNotRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreAnd: {
+    auto cblock = reinterpret_cast<chainblocks::AndRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreOr: {
+    auto cblock = reinterpret_cast<chainblocks::OrRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
   case CoreSleep: {
     auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);

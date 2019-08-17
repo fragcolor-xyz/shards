@@ -61,6 +61,62 @@ struct Const {
   CBVar activate(CBContext *context, const CBVar &input) { return _value; }
 };
 
+static ParamsInfo compareParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Value", "The value to test against for equality.",
+                      CBTypesInfo(CoreInfo::anyInfo)));
+
+struct BaseOpsBin {
+  CBVar value{};
+
+  void destroy() { destroyVar(value); }
+
+  CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
+
+  void setParam(int index, CBVar inValue) {
+    switch (index) {
+    case 0:
+      cloneVar(value, inValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    auto res = CBVar();
+    switch (index) {
+    case 0:
+      res = value;
+      break;
+    default:
+      break;
+    }
+    return res;
+  }
+};
+
+struct Is : public BaseOpsBin {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input != value) {
+      return False;
+    }
+    return True;
+  }
+};
+
+struct IsNot : public BaseOpsBin {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input == value) {
+      return False;
+    }
+    return True;
+  }
+};
+
 struct Sleep {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Time", "The amount of time in seconds (float) to pause this chain.",
@@ -641,4 +697,6 @@ RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
+RUNTIME_CORE_BLOCK_TYPE(Is);
+RUNTIME_CORE_BLOCK_TYPE(IsNot);
 }; // namespace chainblocks

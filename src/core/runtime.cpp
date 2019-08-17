@@ -27,7 +27,6 @@ extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
 extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
-extern void registerOpsBinaryBlocks();
 extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
 
@@ -39,7 +38,6 @@ void registerCoreBlocks() {
   registerFlowBlocks();
   registerProcessBlocks();
   registerSeqsBlocks();
-  registerOpsBinaryBlocks();
   registerCastingBlocks();
 
   // also enums
@@ -75,6 +73,14 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreTake;
   } else if (strcmp(name, "Push") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CorePush;
+  } else if (strcmp(name, "CoreIs") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIs;
+  } else if (strcmp(name, "CoreIsNot") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIsNot;
+  } else if (strcmp(name, "CoreAnd") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreAnd;
+  } else if (strcmp(name, "CoreOr") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreOr;
   } else if (strcmp(name, "Math.Add") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;
   } else if (strcmp(name, "Math.Subtract") == 0) {
