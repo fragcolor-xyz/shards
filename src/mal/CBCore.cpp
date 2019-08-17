@@ -39,8 +39,6 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin));                       \
   }
 
-extern void NimMain();
-
 extern void chainblocks_RegisterAllBlocks();
 
 void registerKeywords(malEnvPtr env);
@@ -53,8 +51,6 @@ void installCBCore(const malEnvPtr &env) {
   chainblocks::installSignalHandlers();
 
   chainblocks_RegisterAllBlocks();
-
-  NimMain();
 
   registerKeywords(env);
 
@@ -305,6 +301,7 @@ CBType keywordToType(malKeyword *typeKeyword) {
 
 malValuePtr typeToKeyword(CBType type) {
   switch (type) {
+  case EndOfBlittableTypes:
   case None:
     return mal::keyword(":None");
   case Any:
@@ -395,7 +392,7 @@ struct InnerCall {
     return returnType;
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     cloneVar(innerVar->m_var, input);
     auto res = EVAL(malActivate, nullptr);
     auto resStaticVar = STATIC_CAST(

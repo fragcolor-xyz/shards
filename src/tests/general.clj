@@ -7,18 +7,42 @@
 
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")
+  
+  true
+  (Cond [
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)])
+  (Assert.Is false true)
 
   true
   (Cond [
-    (--> (When true) true) (--> (Msg "Cond was true!!") false)
-    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+    (--> (Is false) (Or) (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)])
   (Assert.Is false true)
+
+  true
+  (Cond [
+    (--> (Is false) (And) (Is true)) (--> (Assert.Is nil true))
+    (--> (Is true)) (--> (Msg "Cond was false!") true)])
+  (Assert.Is true true)
 
   false
   (Cond [
-    (--> (When true) true) (--> (Msg "Cond was true!!") false)
-    (--> (When false) true) (--> (Msg "Cond was false!") true)])
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)])
   (Assert.Is true true)
+
+  false
+  (Cond [
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)])
+  (Assert.Is true true)
+
+  false
+  (Cond [
+    (--> (Is false) (And) (IsNot false)) (--> (Assert.Is nil true))
+    (--> (Is false)) (--> (Msg "Cond was true!!") false)])
+  (Assert.Is false true)
 
   10
   (Cond [
@@ -62,84 +86,84 @@
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
-  nil
-  (AddVariable "list1") ; should reset the list..
+  (Const [])
+  (Set "list1")
   10
-  (AddVariable "list1")
+  (Push "list1")
   20
-  (AddVariable "list1")
+  (Push "list1")
   30
-  (AddVariable "list1")
-  (GetVariable "list1")
+  (Push "list1")
+  (Get "list1")
   (Log)
-  (GetItems 0)
+  (Take 0)
   (Assert.Is 10 true)
-  (GetVariable "list1")
-  (GetItems 1)
+  (Get "list1")
+  (Take 1)
   (Assert.Is 20 true)
-  (GetVariable "list1")
-  (GetItems 2)
+  (Get "list1")
+  (Take 2)
   (Assert.Is 30 true)
   (Log)
 
   (Repeat (-->
-    nil
-    (AddVariable "list1") ; should reset the list..
+    (Const [])
+    (Set "list1")
     10
-    (AddVariable "list1")
+    (Push "list1")
     20
-    (AddVariable "list1")
+    (Push "list1")
     30
-    (AddVariable "list1")
-    (GetVariable "list1")
+    (Push "list1")
+    (Get "list1")
     (Log)
-    (GetItems 0)
+    (Take 0)
     (Assert.Is 10 true)
-    (GetVariable "list1")
-    (GetItems 1)
+    (Get "list1")
+    (Take 1)
     (Assert.Is 20 true)
-    (GetVariable "list1")
-    (GetItems 2)
+    (Get "list1")
+    (Take 2)
     (Assert.Is 30 true)
     (Log)
   ) :Times 5)
 
   0
-  (SetVariable "counter")
+  (Set "counter")
   (Repeat (-->
-    (GetVariable "counter")
+    (Get "counter")
     (Math.Add 1)
-    (SetVariable "counter")
+    (Set "counter")
    ) :Times 5)
-  (GetVariable "counter")
+  (Get "counter")
   (Assert.Is 5 true)
   (Log)
 
   20
-  (SetVariable "a")
+  (Set "a")
   30
-  (SetVariable "b")
-  (SwapVariables "a" "b")
-  (GetVariable "a")
+  (Set "b")
+  (Swap "a" "b")
+  (Get "a")
   (Assert.Is 30)
-  (GetVariable "b")
+  (Get "b")
   (Assert.Is 20)
   (Log)
 
   "Value1"
-  (SetTableValue "tab1" "v1")
+  (Set "tab1" "v1")
   "Value2"
-  (SetTableValue "tab1" "v2")
-  (GetTableValue "tab1" "v1")
+  (Set "tab1" "v2")
+  (Get "tab1" "v1")
   (Assert.Is "Value1" true)
   (Log)
-  (GetTableValue "tab1" "v2")
+  (Get "tab1" "v2")
   (Assert.IsNot "Value1" true)
   (Log)
 
-  "chain:initChain[1]"
-  (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
-  (Log)
+  ; "chain:initChain[1]"
+  ; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
+  ; (Log)
 
   "My input"
   (Dispatch inner1)
@@ -153,30 +177,40 @@
   0
   (Math.And 0xFF)
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b1r
   0
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b2r
   59
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (SetVariable "x")
+  (Set "x")
   ; b3r
   156
   (Math.And 0xFF)
   (Math.Or (# "x"))
-  (SetVariable "x")
+  (Set "x")
   ; result
-  (GetVariable "x")
+  (Get "x")
   (Log)
 
   (Color 2 2 2 255)
   (Log)
+
+  (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
+  (Math.Multiply (Float 2.0))
+  (Log)
+  (Assert.Is [(Float 2) (Float 4) (Float 6) (Float 8)] true)
+
+  (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
+  (Math.Multiply [(Float 2.0) (Float 1.0) (Float 1.0) (Float 2.0)])
+  (Log)
+  (Assert.Is [(Float 2) (Float 2) (Float 3) (Float 8)] true)
 
   (Msg "All looking good!")
 ))
@@ -186,26 +220,26 @@
 ; test json support
 (schedule Root (ChainJson (json testChain)))
 (if (tick Root) nil (throw "Root tick failed"))
-(println (json testChain))
+; (println (json testChain))
 
-(def! P (Node))
-(def! C (Node))
-(schedule P (Chain "producer" :Looped 
-  "Hello world!"
-  (IPC.Push "shared1")
-))
+; (def! P (Node))
+; (def! C (Node))
+; (schedule P (Chain "producer" :Looped 
+;   "Hello world!"
+;   (IPC.Push "shared1")
+; ))
 
-(schedule C (Chain "consumer" :Looped 
-  (IPC.Pop "shared1")
-  (Assert.Is "Hello world!" true)
-  (Log)
-))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
-(if (tick P) nil (throw "P/C tick failed"))
-(if (tick C) nil (throw "P/C tick failed"))
+; (schedule C (Chain "consumer" :Looped 
+;   (IPC.Pop "shared1")
+;   (Assert.Is "Hello world!" true)
+;   (Log)
+; ))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
+; (if (tick P) nil (throw "P/C tick failed"))
+; (if (tick C) nil (throw "P/C tick failed"))
 
 ; (def! inc (fn* [a] (+ a 1)))
 

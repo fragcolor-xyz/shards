@@ -9,19 +9,18 @@
 
 namespace chainblocks {
 struct SharedTypes {
-  static inline TypesInfo strInfo = TypesInfo(CBType::String);
-  static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
-  static inline TypesInfo noneInfo = TypesInfo(CBType::None);
-  static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
-  static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static inline TypesInfo &strInfo = CoreInfo::strInfo;
+  static inline TypesInfo &anyInfo = CoreInfo::anyInfo;
+  static inline TypesInfo &noneInfo = CoreInfo::noneInfo;
+  static inline TypesInfo &boolInfo = CoreInfo::boolInfo;
+  static inline TypesInfo &floatInfo = CoreInfo::floatInfo;
   static inline TypesInfo chainInfo = TypesInfo(CBType::Chain);
-  static inline TypesInfo intInfo = TypesInfo(CBType::Int);
+  static inline TypesInfo &intInfo = CoreInfo::intInfo;
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
-  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
-  static inline TypesInfo blockSeqInfo =
-      TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
-  static inline TypesInfo intSeqInfo =
-      TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
+  static inline TypesInfo &tableInfo = CoreInfo::tableInfo;
+  static inline TypesInfo &blocksInfo = CoreInfo::blocksInfo;
+  static inline TypesInfo &blockSeqInfo = CoreInfo::blockSeqInfo;
+  static inline TypesInfo &intSeqInfo = CoreInfo::intSeqInfo;
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
   static inline TypesInfo int4Info = TypesInfo(CBType::Int4);

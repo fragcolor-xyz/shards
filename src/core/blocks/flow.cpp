@@ -161,7 +161,7 @@ struct Cond {
     return previousType;
   }
 
-  CBVar activate(CBContext *context, CBVar input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(_actions.size() == 0)) {
       if (_passthrough)
         return input;

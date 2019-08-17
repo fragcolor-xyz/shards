@@ -132,11 +132,13 @@ namespace chainblocks {
         if (index == _width_)                                                  \
           return true;                                                         \
         break;                                                                 \
+      default:                                                                 \
+        throw CBException("Cannot cast given input type.");                    \
       }                                                                        \
       return false;                                                            \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, CBVar input) {                          \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
       int index = 0;                                                           \
       CBVar output{};                                                          \
       output.valueType = _varName_##_width_;                                   \
@@ -161,6 +163,8 @@ namespace chainblocks {
         if (convert(output, index, input))                                     \
           return output;                                                       \
         break;                                                                 \
+      default:                                                                 \
+        throw CBException("Cannot cast given input type.");                    \
       }                                                                        \
       return output;                                                           \
     }                                                                          \
@@ -178,6 +182,23 @@ TO_SOMETHING(Float, 2, double, float2Value, stod, float2Info);
 TO_SOMETHING(Float, 3, float, float3Value, stof, float3Info);
 TO_SOMETHING(Float, 4, float, float4Value, stof, float4Info);
 
+struct ToString {
+  VarStringStream stream;
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    stream.write(input);
+    return Var(stream.str());
+  }
+};
+
+// Register ToString
+RUNTIME_CORE_BLOCK(ToString);
+RUNTIME_BLOCK_inputTypes(ToString);
+RUNTIME_BLOCK_outputTypes(ToString);
+RUNTIME_BLOCK_activate(ToString);
+RUNTIME_BLOCK_END(ToString);
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt2);
   REGISTER_CORE_BLOCK(ToInt3);
@@ -185,5 +206,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToFloat2);
   REGISTER_CORE_BLOCK(ToFloat3);
   REGISTER_CORE_BLOCK(ToFloat4);
+  REGISTER_CORE_BLOCK(ToString);
 }
 }; // namespace chainblocks

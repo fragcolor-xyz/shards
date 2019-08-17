@@ -47,9 +47,11 @@ enum CBType : uint8_t {
 };
 
 enum CBChainState : uint8_t {
-  Continue, // Even if None returned, continue to next block
-  Restart,  // Restart the chain from the top
-  Stop      // Stop the chain execution
+  Continue, // Nothing happened, continue
+  Rebase, // Continue this chain but put the local chain initial input as next input
+  Restart,  // Restart the local chain from the top (noticed not the root!)
+  Return, // Used in conditional paths, end this chain and return previous output
+  Stop,      // Stop the chain execution (including root)
 };
 
 // These blocks exist in nim too but they are actually implemented here inline
@@ -59,10 +61,22 @@ enum CBInlineBlocks : uint8_t {
 
   CoreConst,
   CoreSleep,
+  CoreStop,
+  CoreRestart,
   CoreRepeat,
-  CoreIf,
-  CoreGetVariable,
-  CoreSwapVariables,
+  CoreGet,
+  CoreSet,
+  CoreSwap,
+  CoreTake,
+  CorePush,
+  CoreIs,
+  CoreIsNot,
+  CoreAnd,
+  CoreOr,
+  CoreIsMore,
+  CoreIsLess,
+  CoreIsMoreEqual,
+  CoreIsLessEqual,
 
   MathAdd,
   MathSubtract,
@@ -215,7 +229,10 @@ struct CBTypeInfo {
     CBTypesInfo seqTypes;
 
     // If we are a table, the possible types present in this table
-    CBTypesInfo tableTypes;
+    struct {
+      CBStrings tableKeys;
+      CBTypesInfo tableTypes;
+    };
   };
 };
 

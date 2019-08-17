@@ -640,7 +640,7 @@ include ops
 when not defined(skipCoreBlocks):
   import os
   import nimline
-  include blocks/internal/[core, strings, calculate, ipc]
+  include blocks/internal/[core, strings, ipc]
 
 # always try this for safety
 assert sizeof(CBVar) == 32
