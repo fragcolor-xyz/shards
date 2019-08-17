@@ -108,7 +108,7 @@ struct BinaryBase : public Base {
     if (_operand.valueType == ContextVar) {
       _consumedInfo = ExposedInfo(ExposedInfo::Variable(
           _operand.payload.stringValue, "The consumed operand.",
-          CBTypeInfo(mathTypesInfo)));
+          CBTypeInfo(CoreInfo::anyInfo)));
       return CBExposedTypesInfo(_consumedInfo);
     }
     return nullptr;

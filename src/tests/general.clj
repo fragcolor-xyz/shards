@@ -212,6 +212,17 @@
   (Log)
   (Assert.Is [(Float 2) (Float 2) (Float 3) (Float 8)] true)
 
+  5 (ToFloat) (Math.Divide (Float 10))
+  (Assert.Is 0.5 true)
+
+  (Int 10) (ToFloat) (Set "fx")
+  (Get "fx") (Assert.Is (Float 10) true)
+  (Get "fx") (Assert.IsNot (Int 10) true)
+  (Float 5) (Math.Divide (# "fx")) (Assert.Is 0.5 true)
+  
+  ; 5 (ToFloat) (Math.Divide (Float 0))
+  ; (Assert.Is 0.5 true)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
