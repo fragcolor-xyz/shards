@@ -122,7 +122,7 @@ struct BinaryBase : public Base {
   CBVar getParam(int index) { return _operand; }
 };
 
-#define MATH_BINARY_OPERATION(NAME, OPERATOR, OPERATOR_STR)                    \
+#define MATH_BINARY_OPERATION(NAME, OPERATOR, OPERATOR_STR, DIV_BY_ZERO)       \
   struct NAME : public BinaryBase {                                            \
     void operate(CBVar &output, const CBVar &input, const CBVar &operand) {    \
       if (input.valueType != operand.valueType)                                \
@@ -130,56 +130,112 @@ struct BinaryBase : public Base {
                           "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
+        if (DIV_BY_ZERO)                                                       \
+          if (operand.payload.intValue == 0)                                   \
+            throw CBException("Error, division by 0!");                        \
         output.valueType = Int;                                                \
         output.payload.intValue =                                              \
             input.payload.intValue OPERATOR operand.payload.intValue;          \
         break;                                                                 \
       case Int2:                                                               \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 2; i++)                                         \
+            if (operand.payload.int2Value[i] == 0)                             \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Int2;                                               \
         output.payload.int2Value =                                             \
             input.payload.int2Value OPERATOR operand.payload.int2Value;        \
         break;                                                                 \
       case Int3:                                                               \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 3; i++)                                         \
+            if (operand.payload.int3Value[i] == 0)                             \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Int3;                                               \
         output.payload.int3Value =                                             \
             input.payload.int3Value OPERATOR operand.payload.int3Value;        \
         break;                                                                 \
       case Int4:                                                               \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 4; i++)                                         \
+            if (operand.payload.int4Value[i] == 0)                             \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Int4;                                               \
         output.payload.int4Value =                                             \
             input.payload.int4Value OPERATOR operand.payload.int4Value;        \
         break;                                                                 \
       case Int8:                                                               \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 8; i++)                                         \
+            if (operand.payload.int2Value[i] == 0)                             \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Int8;                                               \
         output.payload.int8Value =                                             \
             input.payload.int8Value OPERATOR operand.payload.int8Value;        \
         break;                                                                 \
       case Int16:                                                              \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 16; i++)                                        \
+            if (operand.payload.int2Value[i] == 0)                             \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Int16;                                              \
         output.payload.int16Value =                                            \
             input.payload.int16Value OPERATOR operand.payload.int16Value;      \
         break;                                                                 \
       case Float:                                                              \
+        if (DIV_BY_ZERO)                                                       \
+          if (operand.payload.floatValue == 0)                                 \
+            throw CBException("Error, division by 0!");                        \
         output.valueType = Float;                                              \
         output.payload.floatValue =                                            \
             input.payload.floatValue OPERATOR operand.payload.floatValue;      \
         break;                                                                 \
       case Float2:                                                             \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 2; i++)                                         \
+            if (operand.payload.float2Value[i] == 0)                           \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Float2;                                             \
         output.payload.float2Value =                                           \
             input.payload.float2Value OPERATOR operand.payload.float2Value;    \
         break;                                                                 \
       case Float3:                                                             \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 3; i++)                                         \
+            if (operand.payload.float3Value[i] == 0)                           \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Float3;                                             \
         output.payload.float3Value =                                           \
             input.payload.float3Value OPERATOR operand.payload.float3Value;    \
         break;                                                                 \
       case Float4:                                                             \
+        if (DIV_BY_ZERO) {                                                     \
+          for (auto i = 0; i < 4; i++)                                         \
+            if (operand.payload.float4Value[i] == 0)                           \
+              throw CBException("Error, division by 0!");                      \
+        }                                                                      \
         output.valueType = Float4;                                             \
         output.payload.float4Value =                                           \
             input.payload.float4Value OPERATOR operand.payload.float4Value;    \
         break;                                                                 \
       case Color:                                                              \
+        if (DIV_BY_ZERO) {                                                     \
+          if (operand.payload.colorValue.r == 0)                               \
+            throw CBException("Error, division by 0!");                        \
+          if (operand.payload.colorValue.g == 0)                               \
+            throw CBException("Error, division by 0!");                        \
+          if (operand.payload.colorValue.b == 0)                               \
+            throw CBException("Error, division by 0!");                        \
+          if (operand.payload.colorValue.a == 0)                               \
+            throw CBException("Error, division by 0!");                        \
+        }                                                                      \
         output.valueType = Color;                                              \
         output.payload.colorValue.r =                                          \
             input.payload.colorValue.r OPERATOR operand.payload.colorValue.r;  \
@@ -311,10 +367,10 @@ struct BinaryBase : public Base {
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
-MATH_BINARY_OPERATION(Add, +, "Add");
-MATH_BINARY_OPERATION(Subtract, -, "Subtract");
-MATH_BINARY_OPERATION(Multiply, *, "Multiply");
-MATH_BINARY_OPERATION(Divide, /, "Divide");
+MATH_BINARY_OPERATION(Add, +, "Add", 0);
+MATH_BINARY_OPERATION(Subtract, -, "Subtract", 0);
+MATH_BINARY_OPERATION(Multiply, *, "Multiply", 0);
+MATH_BINARY_OPERATION(Divide, /, "Divide", 1);
 MATH_BINARY_INT_OPERATION(Xor, ^, "Xor");
 MATH_BINARY_INT_OPERATION(And, &, "And");
 MATH_BINARY_INT_OPERATION(Or, |, "Or");
