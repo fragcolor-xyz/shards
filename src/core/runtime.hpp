@@ -94,12 +94,14 @@ void unregisterExitCallback(const char *eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
-static int cloneVar(CBVar &dst, const CBVar &src);
+ALWAYS_INLINE static inline int cloneVar(CBVar &dst, const CBVar &src);
 static int destroyVar(CBVar &var);
-static CBVar suspend(CBContext *context, double seconds);
+ALWAYS_INLINE static inline CBVar suspend(CBContext *context, double seconds);
 static CBVar *contextVariable(CBContext *ctx, const char *name);
-inline static bool activateBlocks(CBSeq blocks, CBContext *context,
-                                  const CBVar &chainInput, CBVar &output);
+ALWAYS_INLINE static inline bool activateBlocks(CBSeq blocks,
+                                                CBContext *context,
+                                                const CBVar &chainInput,
+                                                CBVar &output);
 }; // namespace chainblocks
 
 #define cbpause(_time_)                                                        \
@@ -267,7 +269,7 @@ static int destroyVar(CBVar &var) {
   return freeCount;
 }
 
-static int cloneVar(CBVar &dst, const CBVar &src) {
+ALWAYS_INLINE static inline int cloneVar(CBVar &dst, const CBVar &src) {
   int freeCount = 0;
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
@@ -366,7 +368,7 @@ static CBVar *contextVariable(CBContext *ctx, const char *name) {
 void registerCoreBlocks();
 CBlock *createBlock(const char *name);
 
-inline static CBVar suspend(CBContext *context, double seconds) {
+ALWAYS_INLINE static inline CBVar suspend(CBContext *context, double seconds) {
   if (seconds <= 0) {
     context->next = Duration(0);
   } else {
@@ -392,11 +394,12 @@ inline static CBVar suspend(CBContext *context, double seconds) {
 
 #include "runtime_macros.hpp"
 
-inline static bool activateBlocks(CBSeq blocks, CBContext *context,
-                                  const CBVar &input, CBVar &output);
+static bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &input,
+                           CBVar &output);
 
-inline static void activateBlock(CBlock *blk, CBContext *context,
-                                 const CBVar &input, CBVar &previousOutput) {
+ALWAYS_INLINE static inline void activateBlock(CBlock *blk, CBContext *context,
+                                               const CBVar &input,
+                                               CBVar &previousOutput) {
   switch (blk->inlineBlockId) {
   case CoreConst: {
     auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
@@ -696,9 +699,8 @@ inline static void activateBlock(CBlock *blk, CBContext *context,
   }
 }
 
-inline static bool activateBlocks(CBlocks blocks, int nblocks,
-                                  CBContext *context, const CBVar &chainInput,
-                                  CBVar &output) {
+static bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+                           const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
@@ -727,8 +729,8 @@ inline static bool activateBlocks(CBlocks blocks, int nblocks,
   return true;
 }
 
-inline static bool activateBlocks(CBSeq blocks, CBContext *context,
-                                  const CBVar &chainInput, CBVar &output) {
+static bool activateBlocks(CBSeq blocks, CBContext *context,
+                           const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
@@ -757,8 +759,8 @@ inline static bool activateBlocks(CBSeq blocks, CBContext *context,
   return true;
 }
 
-inline static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
-                                        CBVar chainInput) {
+static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+                                 CBVar chainInput) {
   auto previousOutput = CBVar();
 
   // Detect and pause if we need to here

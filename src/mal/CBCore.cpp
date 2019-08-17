@@ -4,10 +4,10 @@
 #include "StaticList.h"
 #include "Types.h"
 #undef String
-#include <algorithm>
-#include <set>
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
+#include <algorithm>
+#include <set>
 
 #define CHECK_ARGS_IS(expected)                                                \
   checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd))

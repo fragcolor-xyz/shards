@@ -124,7 +124,8 @@ struct BinaryBase : public Base {
 
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, OPERATOR_STR, DIV_BY_ZERO)       \
   struct NAME : public BinaryBase {                                            \
-    void operate(CBVar &output, const CBVar &input, const CBVar &operand) {    \
+    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
+                               const CBVar &operand) {                         \
       if (input.valueType != operand.valueType)                                \
         throw CBException("Operation not supported between different "         \
                           "types.");                                           \
@@ -252,7 +253,7 @@ struct BinaryBase : public Base {
       }                                                                        \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
         _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
       }                                                                        \
@@ -285,7 +286,8 @@ struct BinaryBase : public Base {
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR, OPERATOR_STR)                \
   struct NAME : public BinaryBase {                                            \
-    void operate(CBVar &output, const CBVar &input, const CBVar &operand) {    \
+    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
+                               const CBVar &operand) {                         \
       if (input.valueType != operand.valueType)                                \
         throw CBException("Operation not supported between different "         \
                           "types.");                                           \
@@ -337,7 +339,7 @@ struct BinaryBase : public Base {
       }                                                                        \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
         _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
       }                                                                        \
@@ -395,7 +397,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
 
 #define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF, FUNC_STR)                      \
   struct NAME : public UnaryBase {                                             \
-    void operate(CBVar &output, const CBVar &input) {                          \
+    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
       switch (input.valueType) {                                               \
       case Float:                                                              \
         output.valueType = Float;                                              \
@@ -425,7 +427,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
       }                                                                        \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       CBVar output{};                                                          \
       if (input.valueType == Seq) {                                            \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \

@@ -54,7 +54,9 @@ struct Const {
     return CBTypeInfo(_valueInfo);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return _value; }
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return _value;
+  }
 };
 
 static ParamsInfo compareParamsInfo = ParamsInfo(
@@ -97,7 +99,7 @@ struct BaseOpsBin {
 
 #define LOGIC_OP(NAME, OP)                                                     \
   struct NAME : public BaseOpsBin {                                            \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (input OP value) {                                                    \
         return True;                                                           \
       }                                                                        \
@@ -143,7 +145,7 @@ struct Sleep {
 
   CBVar getParam(int index) { return Var(time); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     cbpause(time);
     return input;
   }
@@ -154,7 +156,7 @@ struct And {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
       return RebaseChain;
@@ -170,7 +172,7 @@ struct Or {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
       return ReturnPrevious;
@@ -184,13 +186,15 @@ struct Or {
 struct Stop {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  CBVar activate(CBContext *context, const CBVar &input) { return Var::Stop(); }
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return Var::Stop();
+  }
 };
 
 struct Restart {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var::Restart();
   }
 };
@@ -285,7 +289,7 @@ struct Set : public VariableBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
     }
@@ -361,7 +365,7 @@ struct Get : public VariableBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
     }
@@ -435,7 +439,7 @@ struct Swap {
     throw CBException("Param index out of range.");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_targetA) {
       _targetA = contextVariable(context, _nameA.c_str());
       _targetB = contextVariable(context, _nameB.c_str());
@@ -496,7 +500,7 @@ struct Push : public SeqVariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
     }
@@ -584,7 +588,7 @@ struct Take {
 
   CBVar getParam(int index) { return indices; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.valueType != Seq) {
       throw CBException("Take expected a sequence!");
     }
@@ -674,7 +678,7 @@ struct Repeat {
     throw CBException("Parameter out of range.");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto repeats = _forever ? 1 : _times;
     while (repeats) {
       CBVar repeatOutput{};
