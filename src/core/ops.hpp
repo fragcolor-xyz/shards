@@ -151,6 +151,8 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
 }
 
 inline bool operator!=(const CBVar &a, const CBVar &b);
+inline bool operator>(const CBVar &a, const CBVar &b);
+inline bool operator>=(const CBVar &a, const CBVar &b);
 
 inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
@@ -277,7 +279,259 @@ inline bool operator==(const CBVar &a, const CBVar &b) {
   return false;
 }
 
+inline bool operator<(const CBVar &a, const CBVar &b) {
+  if (a.valueType != b.valueType)
+    return false;
+
+  switch (a.valueType) {
+  case Any:
+  case EndOfBlittableTypes:
+    return true;
+  case None:
+    return a.payload.chainState < b.payload.chainState;
+  case Object:
+    return a.payload.objectValue < b.payload.objectValue;
+  case Enum:
+    return a.payload.enumVendorId < b.payload.enumVendorId &&
+           a.payload.enumTypeId < b.payload.enumTypeId &&
+           a.payload.enumValue < b.payload.enumValue;
+  case Bool:
+    return a.payload.boolValue < b.payload.boolValue;
+  case Int:
+    return a.payload.intValue < b.payload.intValue;
+  case Float:
+    return a.payload.floatValue < b.payload.floatValue;
+  case Int2: {
+    CBInt2 vec = a.payload.int2Value < b.payload.int2Value;
+    for (auto i = 0; i < 2; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Int3: {
+    CBInt3 vec = a.payload.int3Value < b.payload.int3Value;
+    for (auto i = 0; i < 3; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Int4: {
+    CBInt4 vec = a.payload.int4Value < b.payload.int4Value;
+    for (auto i = 0; i < 4; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Int8: {
+    CBInt8 vec = a.payload.int8Value < b.payload.int8Value;
+    for (auto i = 0; i < 8; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Int16: {
+    auto vec = a.payload.int16Value < b.payload.int16Value;
+    for (auto i = 0; i < 16; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Float2: {
+    CBInt2 vec = a.payload.float2Value < b.payload.float2Value; // cast to int
+    for (auto i = 0; i < 2; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Float3: {
+    CBInt3 vec = a.payload.float3Value < b.payload.float3Value; // cast to int
+    for (auto i = 0; i < 3; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Float4: {
+    CBInt4 vec = a.payload.float4Value < b.payload.float4Value; // cast to int
+    for (auto i = 0; i < 4; i++)
+      if (vec[i] < 0)
+        return false;
+    return true;
+  }
+  case Color:
+    return a.payload.colorValue.r < b.payload.colorValue.r &&
+           a.payload.colorValue.g < b.payload.colorValue.g &&
+           a.payload.colorValue.b < b.payload.colorValue.b &&
+           a.payload.colorValue.a < b.payload.colorValue.a;
+  case Chain:
+    return a.payload.chainValue < b.payload.chainValue;
+  case Block:
+    return a.payload.blockValue < b.payload.blockValue;
+  case ContextVar:
+  case CBType::String:
+    return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
+  case Image:
+    return a.payload.imageValue.channels < b.payload.imageValue.channels &&
+           a.payload.imageValue.width < b.payload.imageValue.width &&
+           a.payload.imageValue.height < b.payload.imageValue.height &&
+           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
+                  a.payload.imageValue.channels * a.payload.imageValue.width *
+                      a.payload.imageValue.height) < 0;
+  case Seq:
+    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+      return false;
+
+    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
+      if (a.payload.seqValue[i] >= b.payload.seqValue[i])
+        return false;
+    }
+
+    return true;
+  case Table:
+    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+      return false;
+
+    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+        return false;
+
+      if (a.payload.tableValue[i].value >= b.payload.tableValue[i].value)
+        return false;
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+inline bool operator<=(const CBVar &a, const CBVar &b) {
+  if (a.valueType != b.valueType)
+    return false;
+
+  switch (a.valueType) {
+  case Any:
+  case EndOfBlittableTypes:
+    return true;
+  case None:
+    return a.payload.chainState <= b.payload.chainState;
+  case Object:
+    return a.payload.objectValue <= b.payload.objectValue;
+  case Enum:
+    return a.payload.enumVendorId <= b.payload.enumVendorId &&
+           a.payload.enumTypeId <= b.payload.enumTypeId &&
+           a.payload.enumValue <= b.payload.enumValue;
+  case Bool:
+    return a.payload.boolValue <= b.payload.boolValue;
+  case Int:
+    return a.payload.intValue <= b.payload.intValue;
+  case Float:
+    return a.payload.floatValue <= b.payload.floatValue;
+  case Int2: {
+    CBInt2 vec = a.payload.int2Value <= b.payload.int2Value;
+    for (auto i = 0; i < 2; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Int3: {
+    CBInt3 vec = a.payload.int3Value <= b.payload.int3Value;
+    for (auto i = 0; i < 3; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Int4: {
+    CBInt4 vec = a.payload.int4Value <= b.payload.int4Value;
+    for (auto i = 0; i < 4; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Int8: {
+    CBInt8 vec = a.payload.int8Value <= b.payload.int8Value;
+    for (auto i = 0; i < 8; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Int16: {
+    auto vec = a.payload.int16Value <= b.payload.int16Value;
+    for (auto i = 0; i < 16; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Float2: {
+    CBInt2 vec = a.payload.float2Value <= b.payload.float2Value; // cast to int
+    for (auto i = 0; i < 2; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Float3: {
+    CBInt3 vec = a.payload.float3Value <= b.payload.float3Value; // cast to int
+    for (auto i = 0; i < 3; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Float4: {
+    CBInt4 vec = a.payload.float4Value <= b.payload.float4Value; // cast to int
+    for (auto i = 0; i < 4; i++)
+      if (vec[i] <= 0)
+        return false;
+    return true;
+  }
+  case Color:
+    return a.payload.colorValue.r <= b.payload.colorValue.r &&
+           a.payload.colorValue.g <= b.payload.colorValue.g &&
+           a.payload.colorValue.b <= b.payload.colorValue.b &&
+           a.payload.colorValue.a <= b.payload.colorValue.a;
+  case Chain:
+    return a.payload.chainValue <= b.payload.chainValue;
+  case Block:
+    return a.payload.blockValue <= b.payload.blockValue;
+  case ContextVar:
+  case CBType::String:
+    return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
+  case Image:
+    return a.payload.imageValue.channels <= b.payload.imageValue.channels &&
+           a.payload.imageValue.width <= b.payload.imageValue.width &&
+           a.payload.imageValue.height <= b.payload.imageValue.height &&
+           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
+                  a.payload.imageValue.channels * a.payload.imageValue.width *
+                      a.payload.imageValue.height) <= 0;
+  case Seq:
+    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+      return false;
+
+    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
+      if (a.payload.seqValue[i] > b.payload.seqValue[i])
+        return false;
+    }
+
+    return true;
+  case Table:
+    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+      return false;
+
+    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+        return false;
+
+      if (a.payload.tableValue[i].value > b.payload.tableValue[i].value)
+        return false;
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
+inline bool operator>(const CBVar &a, const CBVar &b) { return b < a; }
+inline bool operator>=(const CBVar &a, const CBVar &b) { return b <= a; }
 
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 

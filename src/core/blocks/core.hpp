@@ -99,23 +99,34 @@ struct BaseOpsBin {
   }
 };
 
-struct Is : public BaseOpsBin {
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (input != value) {
-      return False;
-    }
-    return True;
-  }
-};
+#define LOGIC_OP(NAME, OP)                                                     \
+  struct NAME : public BaseOpsBin {                                            \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      if (input OP value) {                                                    \
+        return True;                                                           \
+      }                                                                        \
+      return False;                                                            \
+    }                                                                          \
+  };                                                                           \
+  RUNTIME_CORE_BLOCK_TYPE(NAME);
 
-struct IsNot : public BaseOpsBin {
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (input == value) {
-      return False;
-    }
-    return True;
-  }
-};
+LOGIC_OP(Is, ==)
+LOGIC_OP(IsNot, !=)
+LOGIC_OP(IsMore, >)
+LOGIC_OP(IsLess, <)
+LOGIC_OP(IsMoreEqual, >=)
+LOGIC_OP(IsLessEqual, <=)
+
+#define LOGIC_OP_DESC(NAME)                                                    \
+  RUNTIME_CORE_BLOCK_FACTORY(NAME);                                            \
+  RUNTIME_BLOCK_destroy(NAME);                                                 \
+  RUNTIME_BLOCK_inputTypes(NAME);                                              \
+  RUNTIME_BLOCK_outputTypes(NAME);                                             \
+  RUNTIME_BLOCK_parameters(NAME);                                              \
+  RUNTIME_BLOCK_setParam(NAME);                                                \
+  RUNTIME_BLOCK_getParam(NAME);                                                \
+  RUNTIME_BLOCK_activate(NAME);                                                \
+  RUNTIME_BLOCK_END(NAME);
 
 struct Sleep {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
@@ -697,6 +708,4 @@ RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
-RUNTIME_CORE_BLOCK_TYPE(Is);
-RUNTIME_CORE_BLOCK_TYPE(IsNot);
 }; // namespace chainblocks

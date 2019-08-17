@@ -128,27 +128,12 @@ RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 
-// Register Is
-RUNTIME_CORE_BLOCK_FACTORY(Is);
-RUNTIME_BLOCK_destroy(Is);
-RUNTIME_BLOCK_inputTypes(Is);
-RUNTIME_BLOCK_outputTypes(Is);
-RUNTIME_BLOCK_parameters(Is);
-RUNTIME_BLOCK_setParam(Is);
-RUNTIME_BLOCK_getParam(Is);
-RUNTIME_BLOCK_activate(Is);
-RUNTIME_BLOCK_END(Is);
-
-// Register IsNot
-RUNTIME_CORE_BLOCK_FACTORY(IsNot);
-RUNTIME_BLOCK_destroy(IsNot);
-RUNTIME_BLOCK_inputTypes(IsNot);
-RUNTIME_BLOCK_outputTypes(IsNot);
-RUNTIME_BLOCK_parameters(IsNot);
-RUNTIME_BLOCK_setParam(IsNot);
-RUNTIME_BLOCK_getParam(IsNot);
-RUNTIME_BLOCK_activate(IsNot);
-RUNTIME_BLOCK_END(IsNot);
+LOGIC_OP_DESC(Is);
+LOGIC_OP_DESC(IsNot);
+LOGIC_OP_DESC(IsMore);
+LOGIC_OP_DESC(IsLess);
+LOGIC_OP_DESC(IsMoreEqual);
+LOGIC_OP_DESC(IsLessEqual);
 
 namespace Math {
 MATH_BINARY_BLOCK(Add);
@@ -209,6 +194,10 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
+  REGISTER_CORE_BLOCK(IsMore);
+  REGISTER_CORE_BLOCK(IsLess);
+  REGISTER_CORE_BLOCK(IsMoreEqual);
+  REGISTER_CORE_BLOCK(IsLessEqual);
 
   REGISTER_BLOCK(Math, Add);
   REGISTER_BLOCK(Math, Subtract);

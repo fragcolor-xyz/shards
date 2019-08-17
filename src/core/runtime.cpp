@@ -73,13 +73,21 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreTake;
   } else if (strcmp(name, "Push") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CorePush;
-  } else if (strcmp(name, "CoreIs") == 0) {
+  } else if (strcmp(name, "Is") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreIs;
-  } else if (strcmp(name, "CoreIsNot") == 0) {
+  } else if (strcmp(name, "IsNot") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsNot;
-  } else if (strcmp(name, "CoreAnd") == 0) {
+  } else if (strcmp(name, "IsMore") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIsMore;
+  } else if (strcmp(name, "IsLess") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIsLess;
+  } else if (strcmp(name, "IsMoreEqual") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIsMoreEqual;
+  } else if (strcmp(name, "IsLessEqual") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreIsLessEqual;
+  } else if (strcmp(name, "And") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreAnd;
-  } else if (strcmp(name, "CoreOr") == 0) {
+  } else if (strcmp(name, "Or") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreOr;
   } else if (strcmp(name, "Math.Add") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;

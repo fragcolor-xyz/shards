@@ -73,6 +73,10 @@ enum CBInlineBlocks : uint8_t {
   CoreIsNot,
   CoreAnd,
   CoreOr,
+  CoreIsMore,
+  CoreIsLess,
+  CoreIsMoreEqual,
+  CoreIsLessEqual,
 
   MathAdd,
   MathSubtract,
