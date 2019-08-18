@@ -79,9 +79,9 @@ add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_compile_options(-mllvm -inline-threshold=100000)
+    # add_compile_options(-mllvm -inline-threshold=10000)
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-finline-limit=100000)
+    # add_compile_options(-finline-limit=10000)
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   # using Intel C++
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")

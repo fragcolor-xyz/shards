@@ -153,6 +153,34 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
+
+static inline bool _seqEq(const CBVar &a, const CBVar &b) {
+  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+    return false;
+
+  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
+    if (!(a.payload.seqValue[i] == b.payload.seqValue[i]))
+      return false;
+  }
+
+  return true;
+}
+
+static inline bool _tableEq(const CBVar &a, const CBVar &b) {
+  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+    return false;
+
+  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+      return false;
+
+    if (!(a.payload.tableValue[i].value == b.payload.tableValue[i].value))
+      return false;
+  }
+
+  return true;
+}
 
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
@@ -252,31 +280,39 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
                   a.payload.imageValue.channels * a.payload.imageValue.width *
                       a.payload.imageValue.height) == 0;
   case Seq:
-    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
-      return false;
-
-    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-      if (!(a.payload.seqValue[i] == b.payload.seqValue[i]))
-        return false;
-    }
-
-    return true;
+    return _seqEq(a, b);
   case Table:
-    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-      return false;
-
-    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
-        return false;
-
-      if (!(a.payload.tableValue[i].value == b.payload.tableValue[i].value))
-        return false;
-    }
-
-    return true;
+    return _tableEq(a, b);
   }
 
   return false;
+}
+
+static inline bool _seqLess(const CBVar &a, const CBVar &b) {
+  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+    return false;
+
+  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
+    if (a.payload.seqValue[i] >= b.payload.seqValue[i])
+      return false;
+  }
+
+  return true;
+}
+
+static inline bool _tableLess(const CBVar &a, const CBVar &b) {
+  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+    return false;
+
+  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+      return false;
+
+    if (a.payload.tableValue[i].value >= b.payload.tableValue[i].value)
+      return false;
+  }
+
+  return true;
 }
 
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
@@ -377,31 +413,39 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
                   a.payload.imageValue.channels * a.payload.imageValue.width *
                       a.payload.imageValue.height) < 0;
   case Seq:
-    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
-      return false;
-
-    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-      if (a.payload.seqValue[i] >= b.payload.seqValue[i])
-        return false;
-    }
-
-    return true;
+    return _seqLess(a, b);
   case Table:
-    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-      return false;
-
-    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
-        return false;
-
-      if (a.payload.tableValue[i].value >= b.payload.tableValue[i].value)
-        return false;
-    }
-
-    return true;
+    return _tableLess(a, b);
   }
 
   return false;
+}
+
+static inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
+  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+    return false;
+
+  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
+    if (a.payload.seqValue[i] > b.payload.seqValue[i])
+      return false;
+  }
+
+  return true;
+}
+
+static inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
+  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+    return false;
+
+  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+      return false;
+
+    if (a.payload.tableValue[i].value > b.payload.tableValue[i].value)
+      return false;
+  }
+
+  return true;
 }
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
@@ -502,28 +546,9 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
                   a.payload.imageValue.channels * a.payload.imageValue.width *
                       a.payload.imageValue.height) <= 0;
   case Seq:
-    if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
-      return false;
-
-    for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-      if (a.payload.seqValue[i] > b.payload.seqValue[i])
-        return false;
-    }
-
-    return true;
+    return _seqLessEq(a, b);
   case Table:
-    if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-      return false;
-
-    for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-      if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
-        return false;
-
-      if (a.payload.tableValue[i].value > b.payload.tableValue[i].value)
-        return false;
-    }
-
-    return true;
+    return _tableLessEq(a, b);
   }
 
   return false;
@@ -541,9 +566,9 @@ ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
   return b <= a;
 }
 
-ALWAYS_INLINE inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
+inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
-ALWAYS_INLINE inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
+inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)
     return false;
   switch (a.basicType) {
@@ -583,6 +608,6 @@ ALWAYS_INLINE inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   return true;
 }
 
-ALWAYS_INLINE inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
+inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
   return !(a == b);
 }
