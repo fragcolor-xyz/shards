@@ -611,3 +611,15 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
   return !(a == b);
 }
+
+inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b);
+
+inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
+  if (strcmp(a.name, b.name) != 0 || a.exposedType != b.exposedType)
+    return false;
+  return true;
+}
+
+inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
+  return !(a == b);
+}

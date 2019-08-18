@@ -13,6 +13,7 @@ buildAndRun:win:debug:
     # - .\cbl.exe ../src/tests/inner.clj
     - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
+    - .\cbl.exe ../src/tests/subchains.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 
@@ -31,6 +32,7 @@ buildAndRun:win:release:
     # - .\cbl.exe ../src/tests/inner.clj
     - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
+    - .\cbl.exe ../src/tests/subchains.clj
   tags:
     - WIN, NIM, BOOST, MINGW
 

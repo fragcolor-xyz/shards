@@ -59,7 +59,7 @@ struct ChainRunner {
     chainValidation.exposedInfo = nullptr;
 
     // Easy case, no chain...
-    if (passthrough || !chain)
+    if (!chain)
       return inputType;
 
     // We need to validate the sub chain to figure it out!
@@ -78,7 +78,7 @@ struct ChainRunner {
         },
         this, inputType);
 
-    return chainValidation.outputType;
+    return passthrough ? inputType : chainValidation.outputType;
   }
 
   CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }

@@ -24,6 +24,7 @@ struct Cond {
   std::vector<std::vector<CBlock *>> _actions;
   bool _passthrough = false;
   bool _threading = false;
+  CBValidationResult _chainValidation{};
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
@@ -58,6 +59,7 @@ struct Cond {
       }
     }
     destroyVar(_chains);
+    stbds_arrfree(_chainValidation.exposedInfo);
   }
 
   void setParam(int index, CBVar value) {
@@ -131,8 +133,9 @@ struct Cond {
   }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    if (_passthrough)
-      return inputType;
+    // Free any previous result!
+    stbds_arrfree(_chainValidation.exposedInfo);
+    _chainValidation.exposedInfo = nullptr;
 
     // Evaluate all actions, all must return the same type in order to be safe
     CBTypeInfo previousType{};
@@ -153,15 +156,33 @@ struct Cond {
           },
           this, inputType);
 
-      stbds_arrfree(validation.exposedInfo);
+      if (!_chainValidation.exposedInfo) {
+        // A first valid exposedInfo array is our gold
+        _chainValidation = validation;
+      } else {
+        auto curlen = stbds_arrlen(_chainValidation.exposedInfo);
+        auto newlen = stbds_arrlen(validation.exposedInfo);
+        if (curlen != newlen) {
+          throw CBException(
+              "Cond: number of exposed variables between actions mismatch.");
+        }
+        for (auto i = 0; i < curlen; i++) {
+          if (_chainValidation.exposedInfo[i] != validation.exposedInfo[i]) {
+            throw CBException(
+                "Cond: types of exposed variables between actions mismatch.");
+          }
+        }
+      }
       if (idx > 0 && validation.outputType != previousType)
         throw CBException("Cond: output types between actions mismatch.");
       idx++;
       previousType = validation.outputType;
     }
 
-    return previousType;
+    return _passthrough ? inputType : previousType;
   }
+
+  CBExposedTypesInfo exposedVariables() { return _chainValidation.exposedInfo; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(_actions.size() == 0)) {
@@ -208,6 +229,7 @@ RUNTIME_BLOCK_inputTypes(Cond);
 RUNTIME_BLOCK_outputTypes(Cond);
 RUNTIME_BLOCK_parameters(Cond);
 RUNTIME_BLOCK_inferTypes(Cond);
+RUNTIME_BLOCK_exposedVariables(Cond);
 RUNTIME_BLOCK_setParam(Cond);
 RUNTIME_BLOCK_getParam(Cond);
 RUNTIME_BLOCK_activate(Cond);
