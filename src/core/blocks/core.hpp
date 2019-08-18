@@ -109,12 +109,101 @@ struct BaseOpsBin {
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
 
-LOGIC_OP(Is, ==)
-LOGIC_OP(IsNot, !=)
-LOGIC_OP(IsMore, >)
-LOGIC_OP(IsLess, <)
-LOGIC_OP(IsMoreEqual, >=)
-LOGIC_OP(IsLessEqual, <=)
+LOGIC_OP(Is, ==);
+LOGIC_OP(IsNot, !=);
+LOGIC_OP(IsMore, >);
+LOGIC_OP(IsLess, <);
+LOGIC_OP(IsMoreEqual, >=);
+LOGIC_OP(IsLessEqual, <=);
+
+#define LOGIC_ANY_SEQ_OP(NAME, OP)                                             \
+  struct NAME : public BaseOpsBin {                                            \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      if (input.valueType == Seq && value.valueType == Seq) {                  \
+        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
+        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        if (ilen > vlen)                                                       \
+          throw CBException("Failed to compare, input len > value len.");      \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          if (input.payload.seqValue[i] OP value.payload.seqValue[i]) {        \
+            return True;                                                       \
+          }                                                                    \
+        }                                                                      \
+        return False;                                                          \
+      } else if (input.valueType == Seq && value.valueType != Seq) {           \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          if (input.payload.seqValue[i] OP value) {                            \
+            return True;                                                       \
+          }                                                                    \
+        }                                                                      \
+        return False;                                                          \
+      } else if (input.valueType != Seq && value.valueType == Seq) {           \
+        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
+          if (input OP value.payload.seqValue[i]) {                            \
+            return True;                                                       \
+          }                                                                    \
+        }                                                                      \
+        return False;                                                          \
+      } else if (input.valueType != Seq && value.valueType != Seq) {           \
+        if (input OP value) {                                                  \
+          return True;                                                         \
+        }                                                                      \
+        return False;                                                          \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+  RUNTIME_CORE_BLOCK_TYPE(NAME);
+
+#define LOGIC_ALL_SEQ_OP(NAME, OP)                                             \
+  struct NAME : public BaseOpsBin {                                            \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      if (input.valueType == Seq && value.valueType == Seq) {                  \
+        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
+        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        if (ilen > vlen)                                                       \
+          throw CBException("Failed to compare, input len > value len.");      \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          if (!(input.payload.seqValue[i] OP value.payload.seqValue[i])) {     \
+            return False;                                                      \
+          }                                                                    \
+        }                                                                      \
+        return True;                                                           \
+      } else if (input.valueType == Seq && value.valueType != Seq) {           \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          if (!(input.payload.seqValue[i] OP value)) {                         \
+            return False;                                                      \
+          }                                                                    \
+        }                                                                      \
+        return True;                                                           \
+      } else if (input.valueType != Seq && value.valueType == Seq) {           \
+        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
+          if (!(input OP value.payload.seqValue[i])) {                         \
+            return False;                                                      \
+          }                                                                    \
+        }                                                                      \
+        return True;                                                           \
+      } else if (input.valueType != Seq && value.valueType != Seq) {           \
+        if (!(input OP value)) {                                               \
+          return False;                                                        \
+        }                                                                      \
+        return True;                                                           \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+  RUNTIME_CORE_BLOCK_TYPE(NAME);
+
+LOGIC_ANY_SEQ_OP(Any, ==);
+LOGIC_ALL_SEQ_OP(All, ==);
+LOGIC_ANY_SEQ_OP(AnyNot, !=);
+LOGIC_ALL_SEQ_OP(AllNot, !=);
+LOGIC_ANY_SEQ_OP(AnyMore, >);
+LOGIC_ALL_SEQ_OP(AllMore, >);
+LOGIC_ANY_SEQ_OP(AnyLess, <);
+LOGIC_ALL_SEQ_OP(AllLess, <);
+LOGIC_ANY_SEQ_OP(AnyMoreEqual, >=);
+LOGIC_ALL_SEQ_OP(AllMoreEqual, >=);
+LOGIC_ANY_SEQ_OP(AnyLessEqual, <=);
+LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
 
 #define LOGIC_OP_DESC(NAME)                                                    \
   RUNTIME_CORE_BLOCK_FACTORY(NAME);                                            \

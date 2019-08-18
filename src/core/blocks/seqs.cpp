@@ -25,7 +25,7 @@ struct Flatten {
   void addInnerType(CBTypeInfo &info, std::vector<CBTypeInfo> &currentTypes) {
     switch (info.basicType) {
     case None:
-    case Any:
+    case CBType::Any:
     case EndOfBlittableTypes:
       // Nothing
       break;
@@ -90,7 +90,7 @@ struct Flatten {
   void add(const CBVar &input) {
     switch (input.valueType) {
     case None:
-    case Any:
+    case CBType::Any:
     case EndOfBlittableTypes:
       // Nothing
       break;
