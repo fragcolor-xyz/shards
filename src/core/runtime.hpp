@@ -768,14 +768,16 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
   return true;
 }
 
-inline bool tick(CBChain *chain, CBVar rootInput = CBVar()) {
+inline bool tick(CBChain *chain, CBVar rootInput = chainblocks::Empty) {
   if (!chain->context || !chain->coro || !(*chain->coro) || chain->returned ||
       !chain->started)
     return false; // check if not null and bool operator also to see if alive!
 
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
-    chain->rootTickInput = rootInput;
+    if (rootInput != chainblocks::Empty) {
+      chain->rootTickInput = rootInput;
+    }
     *chain->coro = chain->coro->resume();
   }
   return true;
@@ -852,7 +854,7 @@ struct CBNode {
     chainblocks::start(chain, input);
   }
 
-  bool tick(CBVar input = {}) {
+  bool tick(CBVar input = chainblocks::Empty) {
     auto noErrors = true;
     chainsTicking = chains;
     for (auto chain : chainsTicking) {
