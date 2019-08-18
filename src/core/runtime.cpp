@@ -251,6 +251,66 @@ void callExitCallbacks() {
     it->second();
   }
 }
+
+bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+                    const CBVar &chainInput, CBVar &output) {
+  auto input = chainInput;
+  for (auto i = 0; i < nblocks; i++) {
+    activateBlock(blocks[i], context, input, output);
+    if (output.valueType == None) {
+      switch (output.payload.chainState) {
+      case CBChainState::Restart: {
+        return true;
+      }
+      case CBChainState::Stop: {
+        return false;
+      }
+      case CBChainState::Return: {
+        output = input; // Invert them, we return previous output (input)
+        return true;
+      }
+      case CBChainState::Rebase: {
+        input = chainInput;
+        continue;
+      }
+      case Continue:
+        break;
+      }
+    }
+    input = output;
+  }
+  return true;
+}
+
+bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
+                    CBVar &output) {
+  auto input = chainInput;
+  for (auto i = 0; i < stbds_arrlen(blocks); i++) {
+    activateBlock(blocks[i].payload.blockValue, context, input, output);
+    if (output.valueType == None) {
+      switch (output.payload.chainState) {
+      case CBChainState::Restart: {
+        return true;
+      }
+      case CBChainState::Stop: {
+        return false;
+      }
+      case CBChainState::Return: {
+        output = input; // Invert them, we return previous output (input)
+        return true;
+      }
+      case CBChainState::Rebase: {
+        input = chainInput;
+        continue;
+      }
+      case Continue:
+        break;
+      }
+    }
+    input = output;
+  }
+  return true;
+}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS

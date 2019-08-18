@@ -150,11 +150,11 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   return os;
 }
 
-ALWAYS_INLINE static inline bool operator!=(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE static inline bool operator>(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE static inline bool operator>=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 
-ALWAYS_INLINE static inline bool operator==(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -279,7 +279,7 @@ ALWAYS_INLINE static inline bool operator==(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-ALWAYS_INLINE static inline bool operator<(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -404,7 +404,7 @@ ALWAYS_INLINE static inline bool operator<(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-ALWAYS_INLINE static inline bool operator<=(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -529,21 +529,19 @@ ALWAYS_INLINE static inline bool operator<=(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-ALWAYS_INLINE static inline bool operator!=(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
   return !(a == b);
 }
-ALWAYS_INLINE static inline bool operator>(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) {
   return b < a;
 }
-ALWAYS_INLINE static inline bool operator>=(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
   return b <= a;
 }
 
-ALWAYS_INLINE static inline bool operator!=(const CBTypeInfo &a,
-                                            const CBTypeInfo &b);
+ALWAYS_INLINE inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
-ALWAYS_INLINE static inline bool operator==(const CBTypeInfo &a,
-                                            const CBTypeInfo &b) {
+ALWAYS_INLINE inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)
     return false;
   switch (a.basicType) {
@@ -583,7 +581,6 @@ ALWAYS_INLINE static inline bool operator==(const CBTypeInfo &a,
   return true;
 }
 
-ALWAYS_INLINE static inline bool operator!=(const CBTypeInfo &a,
-                                            const CBTypeInfo &b) {
+ALWAYS_INLINE inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
   return !(a == b);
 }
