@@ -256,7 +256,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
       return false;
 
     for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-      if (a.payload.seqValue[i] != b.payload.seqValue[i])
+      if (!(a.payload.seqValue[i] == b.payload.seqValue[i]))
         return false;
     }
 
@@ -269,7 +269,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
       if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
         return false;
 
-      if (a.payload.tableValue[i].value != b.payload.tableValue[i].value)
+      if (!(a.payload.tableValue[i].value == b.payload.tableValue[i].value))
         return false;
     }
 
@@ -532,9 +532,11 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
   return !(a == b);
 }
+
 ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) {
   return b < a;
 }
+
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
   return b <= a;
 }
