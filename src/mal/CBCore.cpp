@@ -88,7 +88,7 @@ void installCBCore(const malEnvPtr &env) {
 
   rep("(def! inc (fn* [a] (+ a 1)))", env);
   rep("(def! dec (fn* (a) (- a 1)))", env);
-  rep("(def! identity (fn* (x) x))", env);
+  rep("(def! zero? (fn* (n) (= 0 n)))", env);
   rep("(def! identity (fn* (x) x))", env);
   rep("(def! gensym (let* [counter (atom 0)] (fn* [] (symbol (str \"G__\" "
       "(swap! counter inc))))))",
@@ -96,6 +96,17 @@ void installCBCore(const malEnvPtr &env) {
   rep("(defmacro! and (fn* (& xs) (cond (empty? xs) true (= 1 (count xs)) "
       "(first xs) true (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
       "(if ~condvar (and ~@(rest xs)) ~condvar))))))",
+      env);
+  rep("(def! _alias_add_implicit (fn* [special added] (fn* [x & xs] (list "
+      "special x (cons added xs)))))",
+      env);
+  rep("(defmacro! let  (_alias_add_implicit 'let* 'do))", env);
+  rep("(defmacro! when (_alias_add_implicit 'if   'do))", env);
+  rep("(defmacro! def  (_alias_add_implicit 'def! 'do))", env);
+  rep("(defmacro! fn   (_alias_add_implicit 'fn*  'do))", env);
+  rep("(defmacro! defn (_alias_add_implicit 'def! 'fn))", env);
+  rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
+      "args args-inner)))))",
       env);
 }
 
