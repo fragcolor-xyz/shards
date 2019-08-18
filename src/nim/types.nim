@@ -127,6 +127,10 @@ type
     exposedType*: CBTypeInfo
 
   CBExposedTypesInfo* {.importcpp: "CBExposedTypesInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBExposedTypeInfo]
+
+  CBValidationResult* {.importcpp: "CBValidationResult", header: "chainblocks.hpp".} = object
+    outputType*: CBTypeInfo
+    exposedInfo*: CBExposedTypesInfo
   
   CBChainState* {.importcpp: "CBChainState", header: "chainblocks.hpp".} = enum
     Continue, # Even if None returned, continue to next block

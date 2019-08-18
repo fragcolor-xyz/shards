@@ -4,11 +4,11 @@
 #include <iostream>
 #include <set>
 
-extern void chainblocks_RegisterAllBlocks();
+extern void cbRegisterAllBlocks();
 
 int main(int argc, const char *argv[]) {
   // boot strap all
-  chainblocks_RegisterAllBlocks();
+  cbRegisterAllBlocks();
 
   std::ofstream os;
   os.open("CBGenerated.hpp");

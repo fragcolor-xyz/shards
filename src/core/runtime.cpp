@@ -343,7 +343,7 @@ bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
-void chainblocks_RegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
+void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
 #endif
 
 // Utility
@@ -390,77 +390,72 @@ void releaseMemory(CBVar &self) {
 extern "C" {
 #endif
 
-EXPORTED void __cdecl chainblocks_RegisterBlock(
-    const char *fullName, CBBlockConstructor constructor) {
+EXPORTED void __cdecl cbRegisterBlock(const char *fullName,
+                                      CBBlockConstructor constructor) {
   chainblocks::registerBlock(fullName, constructor);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId,
-                                                     int32_t typeId,
-                                                     CBObjectInfo info) {
+EXPORTED void __cdecl cbRegisterObjectType(int32_t vendorId, int32_t typeId,
+                                           CBObjectInfo info) {
   chainblocks::registerObjectType(vendorId, typeId, info);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId,
-                                                   int32_t typeId,
-                                                   CBEnumInfo info) {
+EXPORTED void __cdecl cbRegisterEnumType(int32_t vendorId, int32_t typeId,
+                                         CBEnumInfo info) {
   chainblocks::registerEnumType(vendorId, typeId, info);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char *eventName,
-                                                          CBCallback callback) {
+EXPORTED void __cdecl cbRegisterRunLoopCallback(const char *eventName,
+                                                CBCallback callback) {
   chainblocks::registerRunLoopCallback(eventName, callback);
 }
 
-EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(
-    const char *eventName) {
+EXPORTED void __cdecl cbUnregisterRunLoopCallback(const char *eventName) {
   chainblocks::unregisterRunLoopCallback(eventName);
 }
 
-EXPORTED void __cdecl chainblocks_RegisterExitCallback(const char *eventName,
-                                                       CBCallback callback) {
+EXPORTED void __cdecl cbRegisterExitCallback(const char *eventName,
+                                             CBCallback callback) {
   chainblocks::registerExitCallback(eventName, callback);
 }
 
-EXPORTED void __cdecl chainblocks_UnregisterExitCallback(
-    const char *eventName) {
+EXPORTED void __cdecl cbUnregisterExitCallback(const char *eventName) {
   chainblocks::unregisterExitCallback(eventName);
 }
 
-EXPORTED CBVar *__cdecl chainblocks_ContextVariable(CBContext *context,
-                                                    const char *name) {
+EXPORTED CBVar *__cdecl cbContextVariable(CBContext *context,
+                                          const char *name) {
   return chainblocks::contextVariable(context, name);
 }
 
-EXPORTED void __cdecl chainblocks_SetError(CBContext *context,
-                                           const char *errorText) {
+EXPORTED void __cdecl cbSetError(CBContext *context, const char *errorText) {
   context->setError(errorText);
 }
 
-EXPORTED void __cdecl chainblocks_ThrowException(const char *errorText) {
+EXPORTED void __cdecl cbThrowException(const char *errorText) {
   throw chainblocks::CBException(errorText);
 }
 
-EXPORTED int __cdecl chainblocks_ContextState(CBContext *context) {
+EXPORTED int __cdecl cbContextState(CBContext *context) {
   if (context->aborted)
     return 1;
   return 0;
 }
 
-EXPORTED CBVar __cdecl chainblocks_Suspend(CBContext *context, double seconds) {
+EXPORTED CBVar __cdecl cbSuspend(CBContext *context, double seconds) {
   return chainblocks::suspend(context, seconds);
 }
 
-EXPORTED void __cdecl chainblocks_CloneVar(CBVar *dst, const CBVar *src) {
+EXPORTED void __cdecl cbCloneVar(CBVar *dst, const CBVar *src) {
   chainblocks::cloneVar(*dst, *src);
 }
 
-EXPORTED void __cdecl chainblocks_DestroyVar(CBVar *var) {
+EXPORTED void __cdecl cbDestroyVar(CBVar *var) {
   chainblocks::destroyVar(*var);
 }
 
 EXPORTED __cdecl CBRunChainOutput
-chainblocks_RunSubChain(CBChain *chain, CBContext *context, CBVar input) {
+cbRunSubChain(CBChain *chain, CBContext *context, CBVar input) {
   chain->finished = false; // Reset finished flag (atomic)
   auto runRes = chainblocks::runChain(chain, context, input);
   chain->finishedOutput = runRes.output; // Write result before setting flag
@@ -468,25 +463,28 @@ chainblocks_RunSubChain(CBChain *chain, CBContext *context, CBVar input) {
   return runRes;
 }
 
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateChain(
+EXPORTED CBValidationResult __cdecl cbValidateChain(
     CBChain *chain, CBValidationCallback callback, void *userData,
     CBTypeInfo inputType) {
   return validateConnections(chain, callback, userData, inputType);
 }
 
-EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock *block,
-                                                CBContext *context,
-                                                CBVar *input, CBVar *output) {
+EXPORTED void __cdecl cbActivateBlock(CBlock *block, CBContext *context,
+                                      CBVar *input, CBVar *output) {
   chainblocks::activateBlock(block, context, *input, *output);
 }
 
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(
+EXPORTED CBValidationResult __cdecl cbValidateConnections(
     const CBlocks chain, CBValidationCallback callback, void *userData,
     CBTypeInfo inputType) {
   return validateConnections(chain, callback, userData, inputType);
 }
 
-EXPORTED void __cdecl chainblocks_Log(int level, const char *format, ...) {
+EXPORTED void __cdecl cbFreeValidationResult(CBValidationResult result) {
+  stbds_arrfree(result.exposedInfo);
+}
+
+EXPORTED void __cdecl cbLog(int level, const char *format, ...) {
   auto temp = std::vector<char>{};
   auto length = std::size_t{63};
   std::va_list args;
@@ -1198,9 +1196,9 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-CBTypeInfo validateConnections(const std::vector<CBlock *> &chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType) {
+CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
+                                       CBValidationCallback callback,
+                                       void *userData, CBTypeInfo inputType) {
   auto ctx = ValidationContext();
   ctx.previousOutputType = inputType;
   ctx.cb = callback;
@@ -1211,18 +1209,24 @@ CBTypeInfo validateConnections(const std::vector<CBlock *> &chain,
     validateConnection(ctx);
   }
 
-  return ctx.previousOutputType;
+  CBValidationResult result = {ctx.previousOutputType};
+  for (auto &exposed : ctx.exposed) {
+    for (auto &type : exposed.second) {
+      stbds_arrpush(result.exposedInfo, type);
+    }
+  }
+  return result;
 }
 
-CBTypeInfo validateConnections(const CBChain *chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType) {
+CBValidationResult validateConnections(const CBChain *chain,
+                                       CBValidationCallback callback,
+                                       void *userData, CBTypeInfo inputType) {
   return validateConnections(chain->blocks, callback, userData, inputType);
 }
 
-CBTypeInfo validateConnections(const CBlocks chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType) {
+CBValidationResult validateConnections(const CBlocks chain,
+                                       CBValidationCallback callback,
+                                       void *userData, CBTypeInfo inputType) {
   std::vector<CBlock *> blocks;
   for (auto i = 0; stbds_arrlen(chain) > i; i++) {
     blocks.push_back(chain[i]);

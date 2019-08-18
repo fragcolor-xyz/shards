@@ -199,7 +199,7 @@ struct Var : public CBVar {
     // Dangerous... need to pull this out or something, TODO
     if (valueType == Seq) {
       for (auto i = 0; stbds_arrlen(payload.seqValue) > i; i++) {
-        chainblocks_DestroyVar(&payload.seqValue[i]);
+        cbDestroyVar(&payload.seqValue[i]);
       }
       stbds_arrfree(payload.seqValue);
     }
@@ -550,7 +550,7 @@ struct VarStringStream {
   CachedStreamBuf cache;
   CBVar previousValue{};
 
-  ~VarStringStream() { chainblocks_DestroyVar(&previousValue); }
+  ~VarStringStream() { cbDestroyVar(&previousValue); }
 
   void write(const CBVar &var) {
     if (var != previousValue) {
@@ -558,7 +558,7 @@ struct VarStringStream {
       std::ostream stream(&cache);
       stream << var;
       cache.done();
-      chainblocks_CloneVar(&previousValue, &var);
+      cbCloneVar(&previousValue, &var);
     }
   }
 

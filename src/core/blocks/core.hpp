@@ -150,6 +150,7 @@ LOGIC_OP(IsLessEqual, <=);
         }                                                                      \
         return False;                                                          \
       }                                                                        \
+      return False;                                                            \
     }                                                                          \
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -188,6 +189,7 @@ LOGIC_OP(IsLessEqual, <=);
         }                                                                      \
         return True;                                                           \
       }                                                                        \
+      return False;                                                            \
     }                                                                          \
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);

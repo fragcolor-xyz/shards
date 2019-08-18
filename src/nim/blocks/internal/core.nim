@@ -52,7 +52,8 @@ when true:
         inputType
       )
       if not failed:
-        return subResult
+        freeValidation(subResult)
+        return subResult.outputType
       else:
         return None
   template activate*(b: CBWaitChain; context: CBContext; input: CBVar): CBVar =

@@ -272,6 +272,11 @@ struct CBExposedTypeInfo {
   struct CBTypeInfo exposedType;
 };
 
+struct CBValidationResult {
+  CBTypeInfo outputType;
+  CBExposedTypesInfo exposedInfo;
+};
+
 // # Of CBVars and memory
 
 // ## Specifically String and Seq types
@@ -476,66 +481,67 @@ extern "C" {
 // be available in order to load and work with blocks collections within dlls
 
 // Adds a block to the runtime database
-EXPORTED void __cdecl chainblocks_RegisterBlock(const char *fullName,
+EXPORTED void __cdecl cbRegisterBlock(const char *fullName,
                                                 CBBlockConstructor constructor);
 // Adds a custom object type to the runtime database
-EXPORTED void __cdecl chainblocks_RegisterObjectType(int32_t vendorId,
+EXPORTED void __cdecl cbRegisterObjectType(int32_t vendorId,
                                                      int32_t typeId,
                                                      CBObjectInfo info);
 // Adds a custom enumeration type to the runtime database
-EXPORTED void __cdecl chainblocks_RegisterEnumType(int32_t vendorId,
+EXPORTED void __cdecl cbRegisterEnumType(int32_t vendorId,
                                                    int32_t typeId,
                                                    CBEnumInfo info);
 // Adds a custom call to call every chainblocks sleep internally (basically
 // every frame)
-EXPORTED void __cdecl chainblocks_RegisterRunLoopCallback(const char *eventName,
+EXPORTED void __cdecl cbRegisterRunLoopCallback(const char *eventName,
                                                           CBCallback callback);
 // Adds a custom call to be called on final application exit
-EXPORTED void __cdecl chainblocks_RegisterExitCallback(const char *eventName,
+EXPORTED void __cdecl cbRegisterExitCallback(const char *eventName,
                                                        CBCallback callback);
 // Removes a previously added run loop callback
-EXPORTED void __cdecl chainblocks_UnregisterRunLoopCallback(
+EXPORTED void __cdecl cbUnregisterRunLoopCallback(
     const char *eventName);
 // Removes a previously added exit callback
-EXPORTED void __cdecl chainblocks_UnregisterExitCallback(const char *eventName);
+EXPORTED void __cdecl cbUnregisterExitCallback(const char *eventName);
 
 // To be used within blocks, to fetch context variables
-EXPORTED CBVar *__cdecl chainblocks_ContextVariable(
+EXPORTED CBVar *__cdecl cbContextVariable(
     CBContext *context,
     const char *name); // remember those are valid only inside preChain,
                        // activate, postChain!
 
 // To be used within blocks, to set error messages and exceptions
-EXPORTED void __cdecl chainblocks_SetError(CBContext *context,
+EXPORTED void __cdecl cbSetError(CBContext *context,
                                            const char *errorText);
-EXPORTED void __cdecl chainblocks_ThrowException(const char *errorText);
+EXPORTED void __cdecl cbThrowException(const char *errorText);
 
 // To check if we aborted/canceled in this context, 0 = running, 1 = canceled,
 // might add more flags in the future
-EXPORTED int __cdecl chainblocks_ContextState(CBContext *context);
+EXPORTED int __cdecl cbContextState(CBContext *context);
 
 // To be used within blocks, to suspend the coroutine
-EXPORTED CBVar __cdecl chainblocks_Suspend(CBContext *context, double seconds);
+EXPORTED CBVar __cdecl cbSuspend(CBContext *context, double seconds);
 
 // Utility to deal with CBVars
-EXPORTED void __cdecl chainblocks_CloneVar(CBVar *dst, const CBVar *src);
-EXPORTED void __cdecl chainblocks_DestroyVar(CBVar *var);
+EXPORTED void __cdecl cbCloneVar(CBVar *dst, const CBVar *src);
+EXPORTED void __cdecl cbDestroyVar(CBVar *var);
 
 // Utility to use blocks within blocks
 EXPORTED __cdecl CBRunChainOutput
-chainblocks_RunSubChain(CBChain *chain, CBContext *context, CBVar input);
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateChain(
+cbRunSubChain(CBChain *chain, CBContext *context, CBVar input);
+EXPORTED CBValidationResult __cdecl cbValidateChain(
     CBChain *chain, CBValidationCallback callback, void *userData,
     CBTypeInfo inputType);
-EXPORTED void __cdecl chainblocks_ActivateBlock(CBlock *block,
+EXPORTED void __cdecl cbActivateBlock(CBlock *block,
                                                 CBContext *context,
                                                 CBVar *input, CBVar *output);
-EXPORTED CBTypeInfo __cdecl chainblocks_ValidateConnections(
+EXPORTED CBValidationResult __cdecl cbValidateConnections(
     CBlocks chain, CBValidationCallback callback, void *userData,
     CBTypeInfo inputType);
+EXPORTED void __cdecl cbFreeValidationResult(CBValidationResult result);
 
 // Logging
-EXPORTED void __cdecl chainblocks_Log(int level, const char *msg, ...);
+EXPORTED void __cdecl cbLog(int level, const char *msg, ...);
 
 #define CB_DEBUG 1
 #define CB_INFO 2
@@ -544,16 +550,16 @@ EXPORTED void __cdecl chainblocks_Log(int level, const char *msg, ...);
 #ifdef NDEBUG
 #define CB_LOG_DEBUG(...) (void)0
 #else
-#define CB_LOG_DEBUG(...) chainblocks_Log(CB_DEBUG, __VA_ARGS__)
+#define CB_LOG_DEBUG(...) cbLog(CB_DEBUG, __VA_ARGS__)
 #endif
 
 #ifdef CB_TRACING
-#define CB_LOG_TRACE(...) chainblocks_Log(CB_TRACE, __VA_ARGS__)
+#define CB_LOG_TRACE(...) cbLog(CB_TRACE, __VA_ARGS__)
 #else
 #define CB_LOG_TRACE(...) (void)0
 #endif
 
-#define CB_LOG(...) chainblocks_Log(CB_INFO, __VA_ARGS__)
+#define CB_LOG(...) cbLog(CB_INFO, __VA_ARGS__)
 
 #ifdef __cplusplus
 };

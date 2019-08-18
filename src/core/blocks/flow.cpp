@@ -138,7 +138,7 @@ struct Cond {
     CBTypeInfo previousType{};
     auto idx = 0;
     for (const auto &action : _actions) {
-      CBTypeInfo outputType = validateConnections(
+      auto validation = validateConnections(
           action,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
@@ -152,10 +152,12 @@ struct Cond {
             }
           },
           this, inputType);
-      if (idx > 0 && outputType != previousType)
+
+      stbds_arrfree(validation.exposedInfo);
+      if (idx > 0 && validation.outputType != previousType)
         throw CBException("Cond: output types between actions mismatch.");
       idx++;
-      previousType = outputType;
+      previousType = validation.outputType;
     }
 
     return previousType;

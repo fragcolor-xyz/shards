@@ -46,17 +46,24 @@ struct ChainRunner {
   bool doneOnce;
   bool passthrough;
   bool detached;
+  CBValidationResult chainValidation{};
+
+  void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // Free any previous result!
+    stbds_arrfree(chainValidation.exposedInfo);
+    chainValidation.exposedInfo = nullptr;
+
+    // Easy case, no chain...
     if (passthrough || !chain)
       return inputType;
 
     // We need to validate the sub chain to figure it out!
-
-    CBTypeInfo outputType = validateConnections(
+    chainValidation = validateConnections(
         chain,
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -71,8 +78,10 @@ struct ChainRunner {
         },
         this, inputType);
 
-    return outputType;
+    return chainValidation.outputType;
   }
+
+  CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }
 
   void cleanup() {
     if (chain)
@@ -140,7 +149,7 @@ struct RunChain : public ChainRunner {
         return input;
       } else {
         // Run within the root flow
-        auto runRes = chainblocks_RunSubChain(chain, context, input);
+        auto runRes = cbRunSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else if (passthrough) {
@@ -194,7 +203,7 @@ struct Dispatch : public ChainRunner {
       return input;
 
     // Run within the root flow
-    auto runRes = chainblocks_RunSubChain(chain, context, input);
+    auto runRes = cbRunSubChain(chain, context, input);
     if (unlikely(runRes.state == Failed || context->aborted)) {
       return Var::Stop();
     }
@@ -245,7 +254,7 @@ struct DispatchOnce : public ChainRunner {
       doneOnce = true;
 
       // Run within the root flow
-      auto runRes = chainblocks_RunSubChain(chain, context, input);
+      auto runRes = cbRunSubChain(chain, context, input);
       if (unlikely(runRes.state == Failed || context->aborted)) {
         return Var::Stop();
       }
@@ -293,7 +302,7 @@ struct Do : public ChainRunner {
       return input;
 
     // Run within the root flow
-    auto runRes = chainblocks_RunSubChain(chain, context, input);
+    auto runRes = cbRunSubChain(chain, context, input);
     if (unlikely(runRes.state == Failed || context->aborted)) {
       return Var::Stop();
     }
@@ -345,7 +354,7 @@ struct DoOnce : public ChainRunner {
       doneOnce = true;
 
       // Run within the root flow
-      auto runRes = chainblocks_RunSubChain(chain, context, input);
+      auto runRes = cbRunSubChain(chain, context, input);
       if (unlikely(runRes.state == Failed || context->aborted)) {
         return Var::Stop();
       }
@@ -584,7 +593,7 @@ struct ChainLoader : public ChainRunner {
         return input;
       } else {
         // Run within the root flow
-        auto runRes = chainblocks_RunSubChain(chain, context, input);
+        auto runRes = cbRunSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else {
@@ -597,89 +606,29 @@ struct ChainLoader : public ChainRunner {
   }
 };
 
+#define CHAIN_BLOCK_DEF(NAME)                                                  \
+  RUNTIME_CORE_BLOCK(NAME);                                                    \
+  RUNTIME_BLOCK_inputTypes(NAME);                                              \
+  RUNTIME_BLOCK_outputTypes(NAME);                                             \
+  RUNTIME_BLOCK_parameters(NAME);                                              \
+  RUNTIME_BLOCK_inferTypes(NAME);                                              \
+  RUNTIME_BLOCK_exposedVariables(NAME);                                        \
+  RUNTIME_BLOCK_setParam(NAME);                                                \
+  RUNTIME_BLOCK_getParam(NAME);                                                \
+  RUNTIME_BLOCK_activate(NAME);                                                \
+  RUNTIME_BLOCK_cleanup(NAME);                                                 \
+  RUNTIME_BLOCK_destroy(NAME);                                                 \
+  RUNTIME_BLOCK_END(NAME);
+
 // Register
-RUNTIME_CORE_BLOCK(RunChain);
-RUNTIME_BLOCK_inputTypes(RunChain);
-RUNTIME_BLOCK_outputTypes(RunChain);
-RUNTIME_BLOCK_parameters(RunChain);
-RUNTIME_BLOCK_inferTypes(RunChain);
-RUNTIME_BLOCK_setParam(RunChain);
-RUNTIME_BLOCK_getParam(RunChain);
-RUNTIME_BLOCK_activate(RunChain);
-RUNTIME_BLOCK_cleanup(RunChain);
-RUNTIME_BLOCK_END(RunChain);
-
-RUNTIME_CORE_BLOCK(Do);
-RUNTIME_BLOCK_inputTypes(Do);
-RUNTIME_BLOCK_outputTypes(Do);
-RUNTIME_BLOCK_parameters(Do);
-RUNTIME_BLOCK_inferTypes(Do);
-RUNTIME_BLOCK_setParam(Do);
-RUNTIME_BLOCK_getParam(Do);
-RUNTIME_BLOCK_activate(Do);
-RUNTIME_BLOCK_cleanup(Do);
-RUNTIME_BLOCK_END(Do);
-
-RUNTIME_CORE_BLOCK(DoOnce);
-RUNTIME_BLOCK_inputTypes(DoOnce);
-RUNTIME_BLOCK_outputTypes(DoOnce);
-RUNTIME_BLOCK_parameters(DoOnce);
-RUNTIME_BLOCK_inferTypes(DoOnce);
-RUNTIME_BLOCK_setParam(DoOnce);
-RUNTIME_BLOCK_getParam(DoOnce);
-RUNTIME_BLOCK_activate(DoOnce);
-RUNTIME_BLOCK_cleanup(DoOnce);
-RUNTIME_BLOCK_END(DoOnce);
-
-RUNTIME_CORE_BLOCK(Dispatch);
-RUNTIME_BLOCK_inputTypes(Dispatch);
-RUNTIME_BLOCK_outputTypes(Dispatch);
-RUNTIME_BLOCK_parameters(Dispatch);
-RUNTIME_BLOCK_setParam(Dispatch);
-RUNTIME_BLOCK_getParam(Dispatch);
-RUNTIME_BLOCK_activate(Dispatch);
-RUNTIME_BLOCK_cleanup(Dispatch);
-RUNTIME_BLOCK_END(Dispatch);
-
-RUNTIME_CORE_BLOCK(DispatchOnce);
-RUNTIME_BLOCK_inputTypes(DispatchOnce);
-RUNTIME_BLOCK_outputTypes(DispatchOnce);
-RUNTIME_BLOCK_parameters(DispatchOnce);
-RUNTIME_BLOCK_setParam(DispatchOnce);
-RUNTIME_BLOCK_getParam(DispatchOnce);
-RUNTIME_BLOCK_activate(DispatchOnce);
-RUNTIME_BLOCK_cleanup(DispatchOnce);
-RUNTIME_BLOCK_END(DispatchOnce);
-
-RUNTIME_CORE_BLOCK(DetachOnce);
-RUNTIME_BLOCK_inputTypes(DetachOnce);
-RUNTIME_BLOCK_outputTypes(DetachOnce);
-RUNTIME_BLOCK_parameters(DetachOnce);
-RUNTIME_BLOCK_setParam(DetachOnce);
-RUNTIME_BLOCK_getParam(DetachOnce);
-RUNTIME_BLOCK_activate(DetachOnce);
-RUNTIME_BLOCK_cleanup(DetachOnce);
-RUNTIME_BLOCK_END(DetachOnce);
-
-RUNTIME_CORE_BLOCK(Detach);
-RUNTIME_BLOCK_inputTypes(Detach);
-RUNTIME_BLOCK_outputTypes(Detach);
-RUNTIME_BLOCK_parameters(Detach);
-RUNTIME_BLOCK_setParam(Detach);
-RUNTIME_BLOCK_getParam(Detach);
-RUNTIME_BLOCK_activate(Detach);
-RUNTIME_BLOCK_cleanup(Detach);
-RUNTIME_BLOCK_END(Detach);
-
-RUNTIME_CORE_BLOCK(ChainLoader);
-RUNTIME_BLOCK_inputTypes(ChainLoader);
-RUNTIME_BLOCK_outputTypes(ChainLoader);
-RUNTIME_BLOCK_parameters(ChainLoader);
-RUNTIME_BLOCK_setParam(ChainLoader);
-RUNTIME_BLOCK_getParam(ChainLoader);
-RUNTIME_BLOCK_activate(ChainLoader);
-RUNTIME_BLOCK_cleanup(ChainLoader);
-RUNTIME_BLOCK_END(ChainLoader);
+CHAIN_BLOCK_DEF(RunChain);
+CHAIN_BLOCK_DEF(Do);
+CHAIN_BLOCK_DEF(DoOnce);
+CHAIN_BLOCK_DEF(Dispatch);
+CHAIN_BLOCK_DEF(DispatchOnce);
+CHAIN_BLOCK_DEF(DetachOnce);
+CHAIN_BLOCK_DEF(Detach);
+CHAIN_BLOCK_DEF(ChainLoader);
 
 void registerChainsBlocks() {
   REGISTER_CORE_BLOCK(RunChain);

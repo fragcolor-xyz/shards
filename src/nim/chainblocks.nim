@@ -361,18 +361,20 @@ when appType != "lib" or defined(forceCBRuntime):
   type 
     CBValidationCallback* {.importcpp: "CBValidationCallback", header: "runtime.hpp".} = proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.}
     ValidationResults* = seq[tuple[error: bool; message: string]]
-  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
-  proc validateConnections*(chain: CBlocks; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBTypeInfo {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
+  proc validateConnections*(chain: CBChainPtr; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBValidationResult {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
+  proc validateConnections*(chain: CBlocks; callback: CBValidationCallback; userData: pointer; inputType: CBTypeInfo = None): CBValidationResult {.importcpp: "validateConnections(#, #, #, #)", header: "runtime.hpp".}
+  proc freeValidation*(res: CBValidationResult) {.importcpp: "cbFreeValidationResult(#)", header: "runtime.hpp".}
   proc validateSetParam*(blk: ptr CBlock; index: cint;  value: var CBVar; callback: CBValidationCallback; userData: pointer) {.importcpp: "validateSetParam(#, #, #, #, #)", header: "runtime.hpp".}
   
   proc validate*(chain: CBChainPtr): ValidationResults =
-    discard validateConnections(
+    let validation = validateConnections(
       chain,
       proc(blk: ptr CBlock; error: cstring; nonfatalWarning: bool; userData: pointer) {.cdecl.} =
         var resp = cast[ptr ValidationResults](userData)
         resp[].add((not nonfatalWarning, $error)),
       addr result
     )
+    freeValidation(validation)
   
   proc validate*(blk: ptr CBlock; index: int;  value: var CBVar): ValidationResults =
     validateSetParam(

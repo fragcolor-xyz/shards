@@ -194,15 +194,16 @@ struct CBContext {
   void setError(const char *errorMsg) { error = errorMsg; }
 };
 
-CBTypeInfo validateConnections(const std::vector<CBlock *> &chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType = CBTypeInfo());
-CBTypeInfo validateConnections(const CBlocks chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType = CBTypeInfo());
-CBTypeInfo validateConnections(const CBChain *chain,
-                               CBValidationCallback callback, void *userData,
-                               CBTypeInfo inputType = CBTypeInfo());
+[[nodiscard]] CBValidationResult
+validateConnections(const std::vector<CBlock *> &chain,
+                    CBValidationCallback callback, void *userData,
+                    CBTypeInfo inputType = CBTypeInfo());
+[[nodiscard]] CBValidationResult
+validateConnections(const CBlocks chain, CBValidationCallback callback,
+                    void *userData, CBTypeInfo inputType = CBTypeInfo());
+[[nodiscard]] CBValidationResult
+validateConnections(const CBChain *chain, CBValidationCallback callback,
+                    void *userData, CBTypeInfo inputType = CBTypeInfo());
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
 
@@ -830,7 +831,7 @@ struct CBNode {
 
     // Validate the chain
     if (validate) {
-      validateConnections(
+      auto validation = validateConnections(
           chain->blocks,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
@@ -846,6 +847,7 @@ struct CBNode {
             }
           },
           this);
+      stbds_arrfree(validation.exposedInfo);
     }
 
     chains.push_back(chain);
