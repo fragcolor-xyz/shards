@@ -84,6 +84,7 @@ extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 
 CBlock *createBlock(const char *name);
+void registerCoreBlocks();
 void registerBlock(const char *fullName, CBBlockConstructor constructor);
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
@@ -94,23 +95,7 @@ void unregisterExitCallback(const char *eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
-ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src);
-ALWAYS_INLINE inline int destroyVar(CBVar &var);
-ALWAYS_INLINE inline CBVar suspend(CBContext *context, double seconds);
-inline CBVar *contextVariable(CBContext *ctx, const char *name);
-bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output);
-bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
-                    const CBVar &chainInput, CBVar &output);
 }; // namespace chainblocks
-
-#define cbpause(_time_)                                                        \
-  {                                                                            \
-    auto chainState = chainblocks::suspend(context, _time_);                   \
-    if (chainState.payload.chainState != Continue) {                           \
-      return chainState;                                                       \
-    }                                                                          \
-  }
 
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
@@ -231,166 +216,6 @@ void from_json(const json &j, CBChainPtr &chain);
 
 namespace chainblocks {
 void installSignalHandlers();
-
-ALWAYS_INLINE inline int destroyVar(CBVar &var) {
-  int freeCount = 0;
-  switch (var.valueType) {
-  case Seq: {
-    int len = stbds_arrlen(var.payload.seqValue);
-    for (int i = 0; i < len; i++) {
-      freeCount += destroyVar(var.payload.seqValue[i]);
-    }
-    stbds_arrfree(var.payload.seqValue);
-    freeCount++;
-  } break;
-  case String:
-  case ContextVar: {
-    delete[] var.payload.stringValue;
-    freeCount++;
-  } break;
-  case Image: {
-    delete[] var.payload.imageValue.data;
-    freeCount++;
-  } break;
-  case Table: {
-    auto len = stbds_shlen(var.payload.tableValue);
-    for (auto i = 0; i < len; i++) {
-      freeCount += destroyVar(var.payload.tableValue[i].value);
-    }
-    stbds_shfree(var.payload.tableValue);
-    freeCount++;
-  } break;
-  default:
-    break;
-  };
-
-  memset((void *)&var, 0x0, sizeof(CBVar));
-
-  return freeCount;
-}
-
-ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
-  int freeCount = 0;
-  if (src.valueType < EndOfBlittableTypes &&
-      dst.valueType < EndOfBlittableTypes) {
-    memcpy((void *)&dst, (const void *)&src, sizeof(CBVar));
-  } else if (src.valueType < EndOfBlittableTypes) {
-    freeCount += destroyVar(dst);
-    memcpy((void *)&dst, (const void *)&src, sizeof(CBVar));
-  } else {
-    switch (src.valueType) {
-    case Seq: {
-      int srcLen = stbds_arrlen(src.payload.seqValue);
-      // reuse if seq and we got enough capacity
-      if (dst.valueType != Seq ||
-          (int)stbds_arrcap(dst.payload.seqValue) < srcLen) {
-        freeCount += destroyVar(dst);
-        dst.valueType = Seq;
-        dst.payload.seqLen = -1;
-        dst.payload.seqValue = nullptr;
-      } else {
-        int dstLen = stbds_arrlen(dst.payload.seqValue);
-        if (srcLen < dstLen) {
-          // need to destroy leftovers
-          for (auto i = srcLen; i < dstLen; i++) {
-            freeCount += destroyVar(dst.payload.seqValue[i]);
-          }
-        }
-      }
-
-      stbds_arrsetlen(dst.payload.seqValue, (unsigned)srcLen);
-      for (auto i = 0; i < srcLen; i++) {
-        auto &subsrc = src.payload.seqValue[i];
-        memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
-        freeCount += cloneVar(dst.payload.seqValue[i], subsrc);
-      }
-    } break;
-    case String:
-    case ContextVar: {
-      auto srcLen = strlen(src.payload.stringValue);
-      if ((dst.valueType != String && dst.valueType != ContextVar) ||
-          strlen(dst.payload.stringValue) < srcLen) {
-        freeCount += destroyVar(dst);
-        dst.payload.stringValue = new char[srcLen + 1];
-      }
-
-      dst.valueType = src.valueType;
-      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
-             srcLen);
-      ((char *)dst.payload.stringValue)[srcLen] = '\0';
-    } break;
-    case Image: {
-      auto srcImgSize = src.payload.imageValue.height *
-                        src.payload.imageValue.width *
-                        src.payload.imageValue.channels;
-      auto dstImgSize = dst.payload.imageValue.height *
-                        dst.payload.imageValue.width *
-                        dst.payload.imageValue.channels;
-      if (dst.valueType != Image || srcImgSize > dstImgSize) {
-        freeCount += destroyVar(dst);
-        dst.valueType = Image;
-        dst.payload.imageValue.height = src.payload.imageValue.height;
-        dst.payload.imageValue.width = src.payload.imageValue.width;
-        dst.payload.imageValue.channels = src.payload.imageValue.channels;
-        dst.payload.imageValue.data = new uint8_t[dstImgSize];
-      }
-
-      memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
-             srcImgSize);
-    } break;
-    case Table: {
-      // Slowest case, it's a full copy using arena tho
-      freeCount += destroyVar(dst);
-      dst.valueType = Table;
-      dst.payload.tableLen = -1;
-      dst.payload.tableValue = nullptr;
-      stbds_sh_new_arena(dst.payload.tableValue);
-      auto srcLen = stbds_shlen(src.payload.tableValue);
-      for (auto i = 0; i < srcLen; i++) {
-        CBVar clone{};
-        freeCount += cloneVar(clone, src.payload.tableValue[i].value);
-        stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key,
-                    clone);
-      }
-    } break;
-    default:
-      break;
-    };
-  }
-  return freeCount;
-}
-
-inline CBVar *contextVariable(CBContext *ctx, const char *name) {
-  CBVar &v = ctx->variables[name];
-  return &v;
-}
-
-void registerCoreBlocks();
-CBlock *createBlock(const char *name);
-
-ALWAYS_INLINE inline CBVar suspend(CBContext *context, double seconds) {
-  if (seconds <= 0) {
-    context->next = Duration(0);
-  } else {
-    context->next = Clock::now().time_since_epoch() + Duration(seconds);
-  }
-  context->continuation = context->continuation.resume();
-  if (context->restarted) {
-    CBVar restart = {};
-    restart.valueType = None;
-    restart.payload.chainState = CBChainState::Restart;
-    return restart;
-  } else if (context->aborted) {
-    CBVar stop = {};
-    stop.valueType = None;
-    stop.payload.chainState = CBChainState::Stop;
-    return stop;
-  }
-  CBVar cont = {};
-  cont.valueType = None;
-  cont.payload.chainState = Continue;
-  return cont;
-}
 
 #include "runtime_macros.hpp"
 

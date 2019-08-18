@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../blocks_macros.hpp"
 #include "../chainblocks.hpp"
 
 namespace chainblocks {

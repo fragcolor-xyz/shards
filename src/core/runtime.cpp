@@ -252,6 +252,35 @@ void callExitCallbacks() {
   }
 }
 
+CBVar *contextVariable(CBContext *ctx, const char *name) {
+  CBVar &v = ctx->variables[name];
+  return &v;
+}
+
+CBVar suspend(CBContext *context, double seconds) {
+  if (seconds <= 0) {
+    context->next = Duration(0);
+  } else {
+    context->next = Clock::now().time_since_epoch() + Duration(seconds);
+  }
+  context->continuation = context->continuation.resume();
+  if (context->restarted) {
+    CBVar restart = {};
+    restart.valueType = None;
+    restart.payload.chainState = CBChainState::Restart;
+    return restart;
+  } else if (context->aborted) {
+    CBVar stop = {};
+    stop.valueType = None;
+    stop.payload.chainState = CBChainState::Stop;
+    return stop;
+  }
+  CBVar cont = {};
+  cont.valueType = None;
+  cont.payload.chainState = Continue;
+  return cont;
+}
+
 bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                     const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
