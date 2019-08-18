@@ -19,7 +19,7 @@ namespace chainblocks {
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(std::_strOp_(src.payload.stringValue));        \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       }                                                                        \
@@ -27,101 +27,101 @@ namespace chainblocks {
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.floatValue);                       \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Float2:                                                             \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float2Value[0]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float2Value[1]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Float3:                                                             \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float3Value[0]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float3Value[1]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float3Value[2]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Float4:                                                             \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float4Value[0]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float4Value[1]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float4Value[2]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.float4Value[3]);                   \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Int:                                                                \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.intValue);                         \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Int2:                                                               \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int2Value[0]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int2Value[1]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Int3:                                                               \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int3Value[0]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int3Value[1]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int3Value[2]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       case Int4:                                                               \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int4Value[0]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int4Value[1]);                     \
@@ -131,12 +131,12 @@ namespace chainblocks {
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int4Value[2]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         dst.payload._payload_[index] =                                         \
             static_cast<_type_>(src.payload.int4Value[3]);                     \
         index++;                                                               \
-        if (index == (_width_))                                                  \
+        if (index == (_width_))                                                \
           return true;                                                         \
         break;                                                                 \
       default:                                                                 \

@@ -66,7 +66,7 @@
     _name_ core;                                                               \
   };
 #define RUNTIME_BLOCK_FACTORY(_namespace_, _name_)                             \
-  (__cdecl CBlock *createBlock##_name_() {                                      \
+  __cdecl CBlock *createBlock##_name_() {                                      \
     CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
     result->name = static_cast<CBNameProc>(                                    \
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
@@ -90,7 +90,7 @@
     result->preChain = nullptr;                                                \
     result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
-    result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});)
+    result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK_TYPE(_name_)                                        \
   struct _name_##Runtime {                                                     \
@@ -98,7 +98,7 @@
     _name_ core;                                                               \
   };
 #define RUNTIME_CORE_BLOCK_FACTORY(_name_)                                     \
-  (__cdecl CBlock *createBlock##_name_() {                                      \
+  __cdecl CBlock *createBlock##_name_() {                                      \
     CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
     result->name =                                                             \
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
@@ -122,7 +122,7 @@
     result->preChain = nullptr;                                                \
     result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
-    result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});)
+    result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
 // of the call if the block is all inline
