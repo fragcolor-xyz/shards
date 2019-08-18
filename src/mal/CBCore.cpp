@@ -85,6 +85,18 @@ void installCBCore(const malEnvPtr &env) {
     malBuiltIn *handler = *it;
     env->set(handler->name(), handler);
   }
+
+  rep("(def! inc (fn* [a] (+ a 1)))", env);
+  rep("(def! dec (fn* (a) (- a 1)))", env);
+  rep("(def! identity (fn* (x) x))", env);
+  rep("(def! identity (fn* (x) x))", env);
+  rep("(def! gensym (let* [counter (atom 0)] (fn* [] (symbol (str \"G__\" "
+      "(swap! counter inc))))))",
+      env);
+  rep("(defmacro! and (fn* (& xs) (cond (empty? xs) true (= 1 (count xs)) "
+      "(first xs) true (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
+      "(if ~condvar (and ~@(rest xs)) ~condvar))))))",
+      env);
 }
 
 class malCBChain : public malValue {
