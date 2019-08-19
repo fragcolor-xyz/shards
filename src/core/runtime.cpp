@@ -1109,7 +1109,6 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
-  CBExposedTypesInfo consumables = nullptr;
 
   // make sure we have the vars we need, collect first
   for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
@@ -1121,13 +1120,6 @@ void validateConnection(ValidationContext &ctx) {
       // Warning only, delegate inferTypes to decide
       ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
     } else {
-      if (ctx.bottom->inferTypes) {
-        for (auto type : findIt->second) {
-          // Store for later use during inference of types!
-          stbds_arrpush(consumables, type);
-        }
-      }
-
       auto matching = false;
       for (auto type : findIt->second) {
         auto exposedType = type.exposedType;
@@ -1153,10 +1145,18 @@ void validateConnection(ValidationContext &ctx) {
   // infer and specialize types if we need to
   // If we don't we assume our output will be of the same type of the previous!
   if (ctx.bottom->inferTypes) {
+    CBExposedTypesInfo consumables = nullptr;
+    // Pass all we got in the context!
+    for (auto &info : ctx.exposed) {
+      for (auto &type : info.second) {
+        stbds_arrpush(consumables, type);
+      }
+    }
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType =
         ctx.bottom->inferTypes(ctx.bottom, previousOutput, consumables);
+
     stbds_arrfree(consumables);
   } else {
     // Short-cut if it's just one type and not any type
@@ -1174,6 +1174,7 @@ void validateConnection(ValidationContext &ctx) {
     auto &exposed_param = exposedVars[i];
     std::string name(exposed_param.name);
     auto findIt = ctx.exposed.find(name);
+#if 0 // Well not sure.. but for now silent this...
     if (findIt != ctx.exposed.end()) {
       // Ignore tables and seqs, this behavior is a bit hard coded but makes
       // sense as they support "adding" items
@@ -1184,6 +1185,7 @@ void validateConnection(ValidationContext &ctx) {
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       }
     }
+#endif
     // Tables expose multiple types
     if (exposed_param.exposedType.basicType == Table) {
       if (ctx.exposed[name].size() == 1 &&
@@ -1198,11 +1200,19 @@ void validateConnection(ValidationContext &ctx) {
 
 CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType) {
+                                       void *userData, CBTypeInfo inputType,
+                                       CBExposedTypesInfo consumables) {
   auto ctx = ValidationContext();
   ctx.previousOutputType = inputType;
   ctx.cb = callback;
   ctx.userData = userData;
+
+  if (consumables) {
+    for (auto i = 0; i < stbds_arrlen(consumables); i++) {
+      auto &info = consumables[i];
+      ctx.exposed[info.name].push_back(info);
+    }
+  }
 
   for (auto blk : chain) {
     ctx.bottom = blk;
@@ -1220,18 +1230,22 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
 
 CBValidationResult validateConnections(const CBChain *chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType) {
-  return validateConnections(chain->blocks, callback, userData, inputType);
+                                       void *userData, CBTypeInfo inputType,
+                                       CBExposedTypesInfo consumables) {
+  return validateConnections(chain->blocks, callback, userData, inputType,
+                             consumables);
 }
 
 CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType) {
+                                       void *userData, CBTypeInfo inputType,
+                                       CBExposedTypesInfo consumables) {
   std::vector<CBlock *> blocks;
   for (auto i = 0; stbds_arrlen(chain) > i; i++) {
     blocks.push_back(chain[i]);
   }
-  return validateConnections(blocks, callback, userData, inputType);
+  return validateConnections(blocks, callback, userData, inputType,
+                             consumables);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {

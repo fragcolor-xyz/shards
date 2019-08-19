@@ -197,13 +197,17 @@ struct CBContext {
 [[nodiscard]] CBValidationResult
 validateConnections(const std::vector<CBlock *> &chain,
                     CBValidationCallback callback, void *userData,
-                    CBTypeInfo inputType = CBTypeInfo());
+                    CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
 [[nodiscard]] CBValidationResult
 validateConnections(const CBlocks chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo());
+                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
 [[nodiscard]] CBValidationResult
 validateConnections(const CBChain *chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo());
+                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
+
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
 

@@ -154,7 +154,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, inputType);
+          this, inputType, consumables);
 
       if (!_chainValidation.exposedInfo) {
         // A first valid exposedInfo array is our gold

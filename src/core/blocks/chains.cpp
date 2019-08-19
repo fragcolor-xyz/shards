@@ -76,7 +76,7 @@ struct ChainRunner {
                       << errorTxt;
           }
         },
-        this, inputType);
+        this, inputType, consumables);
 
     return passthrough ? inputType : chainValidation.outputType;
   }
