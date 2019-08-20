@@ -9,9 +9,10 @@ static ParamsInfo condParamsInfo = ParamsInfo(
                       "A sequence of chains, interleaving condition test and "
                       "action to execute if the condition matches.",
                       CBTypesInfo(blockSeqsOrNoneInfo)),
-    ParamsInfo::Param("Passthrough",
-                      "The input of this block will be the output.",
-                      CBTypesInfo(SharedTypes::boolInfo)),
+    ParamsInfo::Param(
+        "Passthrough",
+        "The input of this block will be the output. (default: true)",
+        CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param("Threading",
                       "Will not short circuit after the first true test "
                       "expression. The threaded value gets used in only the "
@@ -22,7 +23,7 @@ struct Cond {
   CBVar _chains{};
   std::vector<std::vector<CBlock *>> _conditions;
   std::vector<std::vector<CBlock *>> _actions;
-  bool _passthrough = false;
+  bool _passthrough = true;
   bool _threading = false;
   CBValidationResult _chainValidation{};
 
@@ -173,7 +174,7 @@ struct Cond {
           }
         }
       }
-      if (idx > 0 && validation.outputType != previousType)
+      if (idx > 0 && !_passthrough && validation.outputType != previousType)
         throw CBException("Cond: output types between actions mismatch.");
       idx++;
       previousType = validation.outputType;
@@ -219,7 +220,7 @@ struct Cond {
       idx++;
     }
 
-    return finalOutput;
+    return _passthrough ? input : finalOutput;
   }
 };
 

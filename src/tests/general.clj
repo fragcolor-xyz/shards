@@ -11,51 +11,51 @@
   true
   (Cond [
     (--> (Is true)) (--> (Msg "Cond was true!!") false)
-    (--> (Is false)) (--> (Msg "Cond was false!") true)])
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is false true)
 
   true
   (Cond [
     (--> (Is false) (Or) (Is true)) (--> (Msg "Cond was true!!") false)
-    (--> (Is false)) (--> (Msg "Cond was false!") true)])
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is false true)
 
   true
   (Cond [
     (--> (Is false) (And) (Is true)) (--> (Assert.Is nil true))
-    (--> (Is true)) (--> (Msg "Cond was false!") true)])
+    (--> (Is true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is true true)
 
   false
   (Cond [
     (--> (Is true)) (--> (Msg "Cond was true!!") false)
-    (--> (Is false)) (--> (Msg "Cond was false!") true)])
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is true true)
 
   false
   (Cond [
     (--> (Is true)) (--> (Msg "Cond was true!!") false)
-    (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)])
+    (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is true true)
 
   false
   (Cond [
     (--> (Is false) (And) (IsNot false)) (--> (Assert.Is nil true))
-    (--> (Is false)) (--> (Msg "Cond was true!!") false)])
+    (--> (Is false)) (--> (Msg "Cond was true!!") false)] :Passthrough false)
   (Assert.Is false true)
 
   10
   (Cond [
     (--> true)    (--> (Msg "Cond was true!!") false)
     (--> (Is 10)) (--> (Msg "Cond was false!") true)
-  ] :Threading true)
+  ] :Threading true :Passthrough false)
   (Assert.Is true true)
 
   10
   (Cond [
     (--> true)    (--> (Msg "Cond was true!!") false)
     (--> (Is 10)) (--> (Msg "Cond was false!") true)
-  ] :Threading false)
+  ] :Threading false :Passthrough false)
   (Assert.Is false true)
 
   "Hello"
