@@ -137,7 +137,7 @@ struct WaitChain : public ChainBase {
       if (once)
         doneOnce = true;
 
-      while (!chain->finished) {
+      while (!hasEnded(chain)) {
         cbpause(0.0);
       }
 
