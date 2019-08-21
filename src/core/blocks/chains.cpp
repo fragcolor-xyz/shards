@@ -697,6 +697,18 @@ CHAIN_BLOCK_DEF(DetachOnce);
 CHAIN_BLOCK_DEF(Detach);
 CHAIN_BLOCK_DEF(ChainLoader);
 
+RUNTIME_CORE_BLOCK(WaitChain);
+RUNTIME_BLOCK_inputTypes(WaitChain);
+RUNTIME_BLOCK_outputTypes(WaitChain);
+RUNTIME_BLOCK_parameters(WaitChain);
+RUNTIME_BLOCK_inferTypes(WaitChain);
+RUNTIME_BLOCK_setParam(WaitChain);
+RUNTIME_BLOCK_getParam(WaitChain);
+RUNTIME_BLOCK_activate(WaitChain);
+RUNTIME_BLOCK_cleanup(WaitChain);
+RUNTIME_BLOCK_destroy(WaitChain);
+RUNTIME_BLOCK_END(WaitChain);
+
 void registerChainsBlocks() {
   REGISTER_CORE_BLOCK(RunChain);
   REGISTER_CORE_BLOCK(Do);
@@ -706,5 +718,6 @@ void registerChainsBlocks() {
   REGISTER_CORE_BLOCK(Detach);
   REGISTER_CORE_BLOCK(DetachOnce);
   REGISTER_CORE_BLOCK(ChainLoader);
+  REGISTER_CORE_BLOCK(WaitChain);
 }
 }; // namespace chainblocks
