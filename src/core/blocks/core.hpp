@@ -331,7 +331,7 @@ struct VariableBase {
   }
 };
 
-struct Set : public VariableBase {
+struct SetBase : public VariableBase {
   TypesInfo _tableTypeInfo{};
   TypesInfo _tableContentInfo{};
 
@@ -359,28 +359,6 @@ struct Set : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
-    // bake exposed types
-    if (_isTable) {
-      // we are a table!
-      _tableContentInfo = TypesInfo(inputType);
-      _tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(_tableContentInfo),
-                                 _key.c_str());
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
-    } else {
-      // just a variable!
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
-    }
-    return inputType;
-  }
-
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(_exposedInfo);
-  }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str());
@@ -407,6 +385,58 @@ struct Set : public VariableBase {
       cloneVar(*_target, input);
     }
     return input;
+  }
+};
+
+struct Set : public SetBase {
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // bake exposed types
+    if (_isTable) {
+      // we are a table!
+      _tableContentInfo = TypesInfo(inputType);
+      _tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(_tableContentInfo),
+                                 _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+    } else {
+      // Set... we warn if the variable is overwritten
+      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+        if (consumableVariables[i].name == _name) {
+          LOG(INFO) << "Set - Warning: setting an already exposed variable, "
+                       "use Update to avoid this warning, variable: "
+                    << _name;
+        }
+      }
+      // just a variable!
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
+    }
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+};
+
+struct Update : public SetBase {
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // bake exposed types
+    if (_isTable) {
+      // we are a table!
+      _tableContentInfo = TypesInfo(inputType);
+      _tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(_tableContentInfo),
+                                 _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+    } else {
+      // just a variable!
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
+    }
+    return inputType;
   }
 };
 
@@ -795,6 +825,7 @@ RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Set);
+RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);

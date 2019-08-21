@@ -183,18 +183,18 @@
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (Set "x")
+  (Update "x")
   ; b2r
   59
   (Math.And 0xFF)
   (Math.Or (# "x"))
   (Math.LShift 8)
-  (Set "x")
+  (Update "x")
   ; b3r
   156
   (Math.And 0xFF)
   (Math.Or (# "x"))
-  (Set "x")
+  (Update "x")
   ; result
   (Get "x")
   (Log)

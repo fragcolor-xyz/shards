@@ -64,6 +64,18 @@ RUNTIME_BLOCK_getParam(Set);
 RUNTIME_BLOCK_activate(Set);
 RUNTIME_BLOCK_END(Set);
 
+// Register Update
+RUNTIME_CORE_BLOCK_FACTORY(Update);
+RUNTIME_BLOCK_cleanup(Update);
+RUNTIME_BLOCK_inputTypes(Update);
+RUNTIME_BLOCK_outputTypes(Update);
+RUNTIME_BLOCK_parameters(Update);
+RUNTIME_BLOCK_inferTypes(Update);
+RUNTIME_BLOCK_setParam(Update);
+RUNTIME_BLOCK_getParam(Update);
+RUNTIME_BLOCK_activate(Update);
+RUNTIME_BLOCK_END(Update);
+
 // Register Push
 RUNTIME_CORE_BLOCK_FACTORY(Push);
 RUNTIME_BLOCK_cleanup(Push);
@@ -191,6 +203,7 @@ MATH_UNARY_BLOCK(Round);
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Set);
+  REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);
