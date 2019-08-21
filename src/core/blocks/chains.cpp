@@ -10,6 +10,18 @@ namespace bfs = boost::filesystem;
 
 namespace chainblocks {
 static TypesInfo chainTypes = TypesInfo::FromMany(CBType::Chain, CBType::None);
+
+static ParamsInfo waitChainParamsInfo = ParamsInfo(
+    ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
+    ParamsInfo::Param("Once",
+                      "Runs this sub-chain only once within the parent chain "
+                      "execution cycle.",
+                      CBTypesInfo(SharedTypes::boolInfo)),
+    ParamsInfo::Param(
+        "Passthrough",
+        "The input of this block will be the output. Always on if Detached.",
+        CBTypesInfo(SharedTypes::boolInfo)));
+
 static ParamsInfo runChainParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
     ParamsInfo::Param("Once",
@@ -40,12 +52,11 @@ static ParamsInfo chainloaderParamsInfo = ParamsInfo(
 static ParamsInfo chainOnlyParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
 
-struct ChainRunner {
+struct ChainBase {
   CBChain *chain;
   bool once;
   bool doneOnce;
   bool passthrough;
-  bool detached;
   CBValidationResult chainValidation{};
 
   void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
@@ -80,7 +91,67 @@ struct ChainRunner {
 
     return passthrough ? inputType : chainValidation.outputType;
   }
+};
 
+struct WaitChain : public ChainBase {
+  void cleanup() { doneOnce = false; }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(waitChainParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chain = value.payload.chainValue;
+      break;
+    case 1:
+      once = value.payload.boolValue;
+      break;
+    case 2:
+      passthrough = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(chain);
+    case 1:
+      return Var(once);
+    case 2:
+      return Var(passthrough);
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!chain)) {
+      return input;
+    } else if (!doneOnce) {
+      if (once)
+        doneOnce = true;
+
+      while (!chain->finished) {
+        cbpause(0.0);
+      }
+
+      return passthrough ? input : chain->finishedOutput;
+    } else {
+      return input;
+    }
+  }
+};
+
+struct ChainRunner : public ChainBase {
+  bool detached;
+
+  // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }
 
   void cleanup() {
@@ -118,16 +189,12 @@ struct RunChain : public ChainRunner {
     switch (index) {
     case 0:
       return Var(chain);
-      break;
     case 1:
       return Var(once);
-      break;
     case 2:
       return Var(passthrough);
-      break;
     case 3:
       return Var(detached);
-      break;
     default:
       break;
     }
