@@ -138,6 +138,26 @@ struct Cond {
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
 
+    // Validate condition chains, altho they do not influence anything we need
+    // to report errors
+    for (const auto &action : _conditions) {
+      auto validation = validateConnections(
+          action,
+          [](const CBlock *errorBlock, const char *errorTxt,
+             bool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              LOG(ERROR) << "Cond: failed inner chain validation, error: "
+                         << errorTxt;
+              throw CBException("Cond: failed inner chain validation.");
+            } else {
+              LOG(INFO) << "Cond: warning during inner chain validation: "
+                        << errorTxt;
+            }
+          },
+          this, inputType, consumables);
+      stbds_arrfree(validation.exposedInfo);
+    }
+
     // Evaluate all actions, all must return the same type in order to be safe
     CBTypeInfo previousType{};
     auto idx = 0;
