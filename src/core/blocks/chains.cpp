@@ -57,6 +57,7 @@ struct ChainBase {
   bool once;
   bool doneOnce;
   bool passthrough;
+  bool detached;
   CBValidationResult chainValidation{};
 
   void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
@@ -87,7 +88,8 @@ struct ChainBase {
                       << errorTxt;
           }
         },
-        this, inputType, consumables);
+        this, inputType,
+        !detached ? consumables : nullptr); // detached don't share context!
 
     return passthrough ? inputType : chainValidation.outputType;
   }
@@ -149,10 +151,10 @@ struct WaitChain : public ChainBase {
 };
 
 struct ChainRunner : public ChainBase {
-  bool detached;
-
   // Only chain runners should expose varaibles to the context
-  CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }
+  CBExposedTypesInfo exposedVariables() {
+    return !detached ? chainValidation.exposedInfo : nullptr;
+  }
 
   void cleanup() {
     if (chain)

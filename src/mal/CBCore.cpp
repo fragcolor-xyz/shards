@@ -93,6 +93,9 @@ void installCBCore(const malEnvPtr &env) {
   rep("(def! gensym (let* [counter (atom 0)] (fn* [] (symbol (str \"G__\" "
       "(swap! counter inc))))))",
       env);
+  rep("(defmacro! or (fn* [& xs] (if (< (count xs) 2) (first xs) (let* [r "
+      "(gensym)] `(let* (~r ~(first xs)) (if ~r ~r (or ~@(rest xs))))))))",
+      env);
   rep("(defmacro! and (fn* (& xs) (cond (empty? xs) true (= 1 (count xs)) "
       "(first xs) true (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
       "(if ~condvar (and ~@(rest xs)) ~condvar))))))",
