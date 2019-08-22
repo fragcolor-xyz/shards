@@ -1,7 +1,7 @@
 project("chainblocks")
 cmake_minimum_required(VERSION 3.14)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 
 ### CLANG SANITIZERS (mac / linux only)
 # Build Types
@@ -75,7 +75,7 @@ elseif(WIN32)
   add_compile_options(-static)
 endif()
 
-add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
+add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar -Wno-c++17-extensions)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -178,7 +178,7 @@ endif()
 if(CLANG_TIDY_EXE)
   add_custom_target(
     tidycheck
-    COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${MY_PROJECT_SOURCE_FILES} -- -std=c++17 -DDEBUG ${MY_PROJECT_HEADER_PATHS}
+    COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${MY_PROJECT_SOURCE_FILES} -- -std=c++11 -Wno-c++17-extensions -DDEBUG ${MY_PROJECT_HEADER_PATHS}
   )
 endif()
 ###

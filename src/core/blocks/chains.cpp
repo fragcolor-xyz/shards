@@ -600,7 +600,7 @@ struct ChainLoader : public ChainRunner {
     switch (index) {
     case 0:
       fileName = value.payload.stringValue;
-      watcher = std::make_unique<ChainFileWatcher>(fileName);
+      watcher.reset(new ChainFileWatcher(fileName));
       break;
     case 1:
       once = value.payload.boolValue;
