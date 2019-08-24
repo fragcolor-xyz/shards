@@ -12,10 +12,10 @@ struct SharedTypes {
   static inline TypesInfo &floatInfo = CoreInfo::floatInfo;
   static inline TypesInfo chainInfo = TypesInfo(CBType::Chain);
   static inline TypesInfo &intInfo = CoreInfo::intInfo;
-  static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
   static inline TypesInfo &tableInfo = CoreInfo::tableInfo;
+  static inline TypesInfo &blockInfo = CoreInfo::blockInfo;
   static inline TypesInfo &blocksInfo = CoreInfo::blocksInfo;
-  static inline TypesInfo &blockSeqInfo = CoreInfo::blockSeqInfo;
+  static inline TypesInfo &blocksSeqInfo = CoreInfo::blocksSeqInfo;
   static inline TypesInfo &intSeqInfo = CoreInfo::intSeqInfo;
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
@@ -27,6 +27,13 @@ struct SharedTypes {
       TypesInfo(CBType::Table, CBTypesInfo(strInfo));
   static inline TypesInfo intTableInfo =
       TypesInfo(CBType::Table, CBTypesInfo(intInfo));
+  static inline TypesInfo blocksOrNoneInfo =
+      TypesInfo::FromManyTypes(CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo blockSeqsOrNoneInfo =
+      TypesInfo::FromManyTypes(CBTypeInfo((SharedTypes::blocksSeqInfo)),
+                               CBTypeInfo(SharedTypes::noneInfo));
+  static inline TypesInfo intOrNoneInfo =
+      TypesInfo::FromManyTypes(CBTypeInfo((intInfo)), CBTypeInfo(noneInfo));
   static inline CBEnumInfo boolOpEnumInfo = {"BoolOp"};
 };
 

@@ -12,8 +12,10 @@ struct CoreInfo {
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
   static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
-  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
-  static inline TypesInfo blockSeqInfo =
+  static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
+  static inline TypesInfo blocksInfo =
+      TypesInfo(CBType::Seq, CBTypesInfo(blockInfo));
+  static inline TypesInfo blocksSeqInfo =
       TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
   static inline TypesInfo intSeqInfo =
       TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
@@ -756,7 +758,7 @@ struct Repeat {
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",
-                        CBTypesInfo(CoreInfo::blockSeqInfo)),
+                        CBTypesInfo(CoreInfo::blocksSeqInfo)),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
                         CBTypesInfo(CoreInfo::intInfo)),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",

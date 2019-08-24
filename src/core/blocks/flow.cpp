@@ -1,14 +1,11 @@
 #include "shared.hpp"
 
 namespace chainblocks {
-static TypesInfo blockSeqsOrNoneInfo = TypesInfo::FromManyTypes(
-    CBTypeInfo((SharedTypes::blockSeqInfo)), CBTypeInfo(SharedTypes::noneInfo));
-
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chains",
                       "A sequence of chains, interleaving condition test and "
                       "action to execute if the condition matches.",
-                      CBTypesInfo(blockSeqsOrNoneInfo)),
+                      CBTypesInfo(SharedTypes::blockSeqsOrNoneInfo)),
     ParamsInfo::Param(
         "Passthrough",
         "The input of this block will be the output. (default: true)",
