@@ -853,7 +853,7 @@ void from_json(const json &j, CBVar &var) {
     auto items = j.at("values").get<std::vector<json>>();
     var.payload.tableValue = nullptr;
     stbds_shdefault(var.payload.tableValue, CBVar());
-    for (auto item : items) {
+    for (const auto &item : items) {
       auto key = item.at("key").get<std::string>();
       auto value = item.at("value").get<CBVar>();
       CBNamedVar named{};

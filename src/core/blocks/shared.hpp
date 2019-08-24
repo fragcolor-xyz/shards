@@ -34,6 +34,8 @@ struct SharedTypes {
                                CBTypeInfo(SharedTypes::noneInfo));
   static inline TypesInfo intOrNoneInfo =
       TypesInfo::FromManyTypes(CBTypeInfo((intInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo strOrNoneInfo =
+      TypesInfo::FromManyTypes(CBTypeInfo((strInfo)), CBTypeInfo(noneInfo));
   static inline CBEnumInfo boolOpEnumInfo = {"BoolOp"};
 };
 

@@ -758,7 +758,7 @@ struct Repeat {
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",
-                        CBTypesInfo(CoreInfo::blocksSeqInfo)),
+                        CBTypesInfo(CoreInfo::blocksInfo)),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
                         CBTypesInfo(CoreInfo::intInfo)),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",

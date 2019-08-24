@@ -11,6 +11,17 @@
 (def otherChain (Chain "other"
   99))
 
+(def funcChain (Chain "func"
+  (Set "in")
+
+  (Is 10)
+  (Or)
+  (Is 20)
+  
+  (Get "in")
+  (Log)
+))
+
 (schedule root otherChain)
 
 (schedule root (Chain "root"
@@ -21,4 +32,12 @@
   (Log)
   (WaitChain otherChain)
   (Log)
-  (Assert.Is 99 true)))
+  (Assert.Is 99 true)
+  10
+  (Do funcChain)
+  12
+  (Do funcChain)
+  20
+  (Do funcChain)
+  (Msg "done")
+  ))
