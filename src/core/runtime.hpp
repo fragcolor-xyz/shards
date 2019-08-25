@@ -640,6 +640,15 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   return {previousOutput, Running};
 }
 
+inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
+                                    CBVar input) {
+  chain->finished = false; // Reset finished flag (atomic)
+  auto runRes = chainblocks::runChain(chain, context, input);
+  chain->finishedOutput = runRes.output; // Write result before setting flag
+  chain->finished = true;                // Set finished flag (atomic)
+  return runRes;
+}
+
 inline void cleanup(CBChain *chain) {
   // Run cleanup on all blocks, prepare them for a new start if necessary
   // Do this in reverse to allow a safer cleanup

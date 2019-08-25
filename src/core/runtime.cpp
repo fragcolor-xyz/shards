@@ -456,11 +456,7 @@ EXPORTED void __cdecl cbDestroyVar(CBVar *var) {
 
 EXPORTED __cdecl CBRunChainOutput
 cbRunSubChain(CBChain *chain, CBContext *context, CBVar input) {
-  chain->finished = false; // Reset finished flag (atomic)
-  auto runRes = chainblocks::runChain(chain, context, input);
-  chain->finishedOutput = runRes.output; // Write result before setting flag
-  chain->finished = true;                // Set finished flag (atomic)
-  return runRes;
+  return chainblocks::runSubChain(chain, context, input);
 }
 
 EXPORTED CBValidationResult __cdecl cbValidateChain(

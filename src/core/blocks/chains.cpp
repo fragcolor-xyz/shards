@@ -218,7 +218,7 @@ struct RunChain : public ChainRunner {
         return input;
       } else {
         // Run within the root flow
-        auto runRes = cbRunSubChain(chain, context, input);
+        auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else if (passthrough) {
@@ -272,7 +272,7 @@ struct Dispatch : public ChainRunner {
       return input;
 
     // Run within the root flow
-    auto runRes = cbRunSubChain(chain, context, input);
+    auto runRes = runSubChain(chain, context, input);
     if (unlikely(runRes.state == Failed || context->aborted)) {
       return Var::Stop();
     }
@@ -323,7 +323,7 @@ struct DispatchOnce : public ChainRunner {
       doneOnce = true;
 
       // Run within the root flow
-      auto runRes = cbRunSubChain(chain, context, input);
+      auto runRes = runSubChain(chain, context, input);
       if (unlikely(runRes.state == Failed || context->aborted)) {
         return Var::Stop();
       }
@@ -371,7 +371,7 @@ struct Do : public ChainRunner {
       return input;
 
     // Run within the root flow
-    auto runRes = cbRunSubChain(chain, context, input);
+    auto runRes = runSubChain(chain, context, input);
     if (unlikely(runRes.state == Failed || context->aborted)) {
       return Var::Stop();
     }
@@ -423,7 +423,7 @@ struct DoOnce : public ChainRunner {
       doneOnce = true;
 
       // Run within the root flow
-      auto runRes = cbRunSubChain(chain, context, input);
+      auto runRes = runSubChain(chain, context, input);
       if (unlikely(runRes.state == Failed || context->aborted)) {
         return Var::Stop();
       }
@@ -662,7 +662,7 @@ struct ChainLoader : public ChainRunner {
         return input;
       } else {
         // Run within the root flow
-        auto runRes = cbRunSubChain(chain, context, input);
+        auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return Var::Stop();
         } else {

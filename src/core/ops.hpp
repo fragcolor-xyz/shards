@@ -29,7 +29,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     os << "Enum: " << var.payload.enumValue;
     break;
   case Bool:
-    os << var.payload.boolValue;
+    os << (var.payload.boolValue ? "true" : "false");
     break;
   case Int:
     os << var.payload.intValue;
