@@ -292,6 +292,11 @@
   (Assert.Is 11 true)
   (Log)
 
+  (Repeat (-->
+    (Pop "myseq2flat")
+    (Log)
+  ) 6)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
