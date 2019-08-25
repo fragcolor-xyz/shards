@@ -78,16 +78,30 @@ RUNTIME_BLOCK_END(Update);
 
 // Register Push
 RUNTIME_CORE_BLOCK_FACTORY(Push);
+RUNTIME_BLOCK_destroy(Push);
 RUNTIME_BLOCK_cleanup(Push);
 RUNTIME_BLOCK_inputTypes(Push);
 RUNTIME_BLOCK_outputTypes(Push);
 RUNTIME_BLOCK_parameters(Push);
 RUNTIME_BLOCK_inferTypes(Push);
-RUNTIME_BLOCK_consumedVariables(Push);
+RUNTIME_BLOCK_exposedVariables(Push);
 RUNTIME_BLOCK_setParam(Push);
 RUNTIME_BLOCK_getParam(Push);
 RUNTIME_BLOCK_activate(Push);
 RUNTIME_BLOCK_END(Push);
+
+// Register Clear
+RUNTIME_CORE_BLOCK_FACTORY(Clear);
+RUNTIME_BLOCK_cleanup(Clear);
+RUNTIME_BLOCK_inputTypes(Clear);
+RUNTIME_BLOCK_outputTypes(Clear);
+RUNTIME_BLOCK_parameters(Clear);
+RUNTIME_BLOCK_inferTypes(Clear);
+RUNTIME_BLOCK_consumedVariables(Clear);
+RUNTIME_BLOCK_setParam(Clear);
+RUNTIME_BLOCK_getParam(Clear);
+RUNTIME_BLOCK_activate(Clear);
+RUNTIME_BLOCK_END(Clear);
 
 // Register Get
 RUNTIME_CORE_BLOCK_FACTORY(Get);
@@ -205,6 +219,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
+  REGISTER_CORE_BLOCK(Clear);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);
   REGISTER_CORE_BLOCK(Sleep);

@@ -9,7 +9,7 @@ struct Flatten {
     if (outputCache.valueType == Seq) {
       stbds_arrfree(outputCache.payload.seqValue);
     }
-    if(innerType.seqTypes) {
+    if (innerType.seqTypes) {
       stbds_arrfree(innerType.seqTypes);
     }
   }

@@ -575,7 +575,190 @@ struct Swap {
   }
 };
 
-struct SeqVariableBase : public VariableBase {
+struct Push : public VariableBase {
+  bool _firstPusher = false; // if we are the initializers!
+  bool _tableOwner = false;  // we are the first in the table too!
+  CBTypeInfo _seqInfo{};
+  CBTypeInfo _tableInfo{};
+
+  void destroy() {
+    if (_firstPusher) {
+      if (_seqInfo.seqTypes)
+        stbds_arrfree(_seqInfo.seqTypes);
+      if (_tableInfo.tableKeys)
+        stbds_arrfree(_tableInfo.tableKeys);
+      if (_tableInfo.tableTypes)
+        stbds_arrfree(_tableInfo.tableTypes);
+    }
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    if (_isTable) {
+      auto tableFound = false;
+      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
+        if (consumableVariables[i].name == _name &&
+            consumableVariables[i].exposedType.tableTypes) {
+          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
+          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
+          tableFound = true;
+          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
+            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
+              return inputType; // found lets escape
+            }
+          }
+        }
+      }
+      if (!tableFound) {
+        // Assume we are the first pushing
+        _tableOwner = true;
+      }
+      _firstPusher = true;
+      _tableInfo.basicType = Table;
+      if (_tableInfo.tableTypes) {
+        stbds_arrfree(_tableInfo.tableTypes);
+      }
+      if (_tableInfo.tableKeys) {
+        stbds_arrfree(_tableInfo.tableKeys);
+      }
+      _seqInfo.basicType = Seq;
+      if (_seqInfo.seqTypes) {
+        stbds_arrfree(_seqInfo.seqTypes);
+      }
+      stbds_arrpush(_seqInfo.seqTypes, inputType);
+      stbds_arrpush(_tableInfo.tableTypes, _seqInfo);
+      stbds_arrpush(_tableInfo.tableKeys, _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo)));
+    } else {
+      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+        auto &cv = consumableVariables[i];
+        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          return inputType; // found lets escape
+        }
+      }
+      // Assume we are the first pushing this variable
+      _firstPusher = true;
+      _seqInfo.basicType = Seq;
+      if (_seqInfo.seqTypes) {
+        stbds_arrfree(_seqInfo.seqTypes);
+      }
+      stbds_arrpush(_seqInfo.seqTypes, inputType);
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed sequence.", _seqInfo));
+    }
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (_firstPusher) {
+      return CBExposedTypesInfo(_exposedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
+  void cleanup() {
+    if (_firstPusher && _target) {
+      if (_isTable && _target->valueType == Table) {
+        ptrdiff_t index =
+            stbds_shgeti(_target->payload.tableValue, _key.c_str());
+        if (index != -1) {
+          auto &seq = _target->payload.tableValue[index].value;
+          if (seq.valueType == Seq) {
+            for (auto i = 0; i < stbds_arrlen(seq.payload.seqValue); i++) {
+              destroyVar(seq.payload.seqValue[i]);
+            }
+          }
+          stbds_shdel(_target->payload.tableValue, _key.c_str());
+        }
+        if (_tableOwner && stbds_shlen(_target->payload.tableValue) == 0) {
+          stbds_shfree(_target->payload.tableValue);
+          memset(_target, 0x0, sizeof(CBVar));
+        }
+      } else if (_target->valueType == Seq) {
+        for (auto i = 0; i < stbds_arrlen(_target->payload.seqValue); i++) {
+          destroyVar(_target->payload.seqValue[i]);
+        }
+        stbds_arrfree(_target->payload.seqValue);
+      }
+    }
+    _target = nullptr;
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = contextVariable(context, _name.c_str());
+    }
+    if (_isTable) {
+      if (_tableOwner) {
+        if (_target->valueType != Table) {
+          // Not initialized yet
+          _target->valueType = Table;
+          _target->payload.tableValue = nullptr;
+          _target->payload.tableLen = -1;
+        }
+      } else if (_target->valueType != Table) {
+        throw CBException("Variable is not a table, failed to Push.");
+      }
+
+      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (index == -1) {
+        if (_firstPusher) {
+          // First empty insertion
+          CBVar tmp{};
+          stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
+          index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+        } else {
+          throw CBException("Record not found in table, failed to Push.");
+        }
+      }
+
+      auto &seq = _target->payload.tableValue[index].value;
+      if (_firstPusher) {
+        if (seq.valueType != Seq) {
+          seq.valueType = Seq;
+          seq.payload.seqValue = nullptr;
+          seq.payload.seqLen = -1;
+        }
+      } else if (seq.valueType != Seq) {
+        throw CBException("Variable is not a sequence, failed to Push.");
+      }
+
+      CBVar tmp{};
+      // The Set block with the sequence will take care of memory!
+      cloneVar(tmp, input);
+      stbds_arrpush(seq.payload.seqValue, tmp);
+    } else {
+      if (_firstPusher) {
+        if (_target->valueType != Seq) {
+          _target->valueType = Seq;
+          _target->payload.seqValue = nullptr;
+          _target->payload.seqLen = -1;
+        }
+      } else if (_target->valueType != Seq) {
+        throw CBException("Variable is not a sequence, failed to Push.");
+      }
+
+      CBVar tmp{};
+      // The Set block with the sequence will take care of memory!
+      cloneVar(tmp, input);
+      stbds_arrpush(_target->payload.seqValue, tmp);
+    }
+    return input;
+  }
+};
+
+struct Clear : VariableBase {
+  void cleanup() { _target = nullptr; }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
@@ -600,7 +783,7 @@ struct SeqVariableBase : public VariableBase {
         }
       }
     }
-    throw CBException("Push: consumed variable is not a sequence.");
+    throw CBException("Variable is not a sequence.");
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -615,14 +798,6 @@ struct SeqVariableBase : public VariableBase {
     }
     return CBExposedTypesInfo(_exposedInfo);
   }
-};
-
-struct Push : public SeqVariableBase {
-  void cleanup() { _target = nullptr; }
-
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
@@ -643,19 +818,13 @@ struct Push : public SeqVariableBase {
         throw CBException("Variable is not a sequence, failed to Push.");
       }
 
-      CBVar tmp{};
-      // The Set block with the sequence will take care of memory!
-      cloneVar(tmp, input);
-      stbds_arrpush(seq.payload.seqValue, tmp);
+      stbds_arrsetlen(seq.payload.seqValue, 0);
     } else {
       if (_target->valueType != Seq) {
         throw CBException("Variable is not a sequence, failed to Push.");
       }
 
-      CBVar tmp{};
-      // The Set block with the sequence will take care of memory!
-      cloneVar(tmp, input);
-      stbds_arrpush(_target->payload.seqValue, tmp);
+      stbds_arrsetlen(_target->payload.seqValue, 0);
     }
     return input;
   }
@@ -837,5 +1006,6 @@ RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
 RUNTIME_CORE_BLOCK_TYPE(Push);
+RUNTIME_CORE_BLOCK_TYPE(Clear);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks
