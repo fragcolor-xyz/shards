@@ -12,13 +12,10 @@
   99))
 
 (def funcChain (Chain "func"
-  (Set "in")
-
   (Is 10)
   (Or)
   (Is 20)
-  
-  (Get "in")
+  (Or)
   (Log)
 ))
 
@@ -34,10 +31,10 @@
   (Log)
   (Assert.Is 99 true)
   10
-  (Do funcChain)
+  (Dispatch funcChain)
   12
-  (Do funcChain)
+  (Dispatch funcChain)
   20
-  (Do funcChain)
+  (Dispatch funcChain)
   (Msg "done")
   ))
