@@ -280,6 +280,18 @@
   (Assert.Is 13 true)
   (Log)
 
+  (Int2 10 11) (Push "myseq2")
+  (Int2 20 21) (Push "myseq2")
+  (Int2 30 31) (Push "myseq2")
+  (Get "myseq2")
+  (Flatten)
+  (Set "myseq2flat")
+  (Get "myseq2flat")
+  (Take 0)
+  (Math.Add 1)
+  (Assert.Is 11 true)
+  (Log)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
