@@ -1019,23 +1019,14 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
   }
   case Seq: {
     if (strict) {
-      auto atypes = stbds_arrlen(exposedType.seqTypes);
-      auto btypes = stbds_arrlen(consumedType.seqTypes);
-      for (auto i = 0; i < atypes; i++) {
-        // Go thru all exposed types and make sure we get a positive match with
-        // the consumer
-        auto atype = exposedType.seqTypes[i];
-        auto matched = false;
-        for (auto y = 0; y < btypes; y++) {
-          auto btype = consumedType.seqTypes[y];
-          if (matchTypes(atype, btype, isParameter)) {
-            matched = true;
-            break;
-          }
-        }
-        if (!matched) {
+      if (exposedType.seqType && consumedType.seqType) {
+        if (!matchTypes(*exposedType.seqType, *consumedType.seqType,
+                        isParameter)) {
           return false;
         }
+      } else if (exposedType.seqType == nullptr ||
+                 consumedType.seqType == nullptr) {
+        return false;
       }
     }
     break;
@@ -1247,10 +1238,8 @@ CBValidationResult validateConnections(const CBlocks chain,
 void freeDerivedInfo(CBTypeInfo info) {
   switch (info.basicType) {
   case Seq: {
-    for (auto i = 0; stbds_arrlen(info.seqTypes) > i; i++) {
-      freeDerivedInfo(info.seqTypes[i]);
-    }
-    stbds_arrfree(info.seqTypes);
+    freeDerivedInfo(*info.seqType);
+    delete info.seqType;
   }
   case Table: {
     for (auto i = 0; stbds_arrlen(info.tableTypes) > i; i++) {
@@ -1268,7 +1257,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
-  varType.seqTypes = nullptr;
+  varType.seqType = nullptr;
   varType.tableTypes = nullptr;
   switch (value.valueType) {
   case Object: {
@@ -1282,9 +1271,9 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Seq: {
-    for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
-      stbds_arrpush(varType.seqTypes,
-                    deriveTypeInfo(value.payload.seqValue[i]));
+    varType.seqType = new CBTypeInfo();
+    if (stbds_arrlen(value.payload.seqValue) > 0) {
+      *varType.seqType = deriveTypeInfo(value.payload.seqValue[0]);
     }
     break;
   }

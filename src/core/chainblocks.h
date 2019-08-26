@@ -233,8 +233,8 @@ struct CBTypeInfo {
       int32_t enumTypeId;
     };
 
-    // If we are a seq, the possible types present in this seq
-    CBTypesInfo seqTypes;
+    // If we are a seq, the possible type present in this seq
+    CBTypeInfo* seqType;
 
     // If we are a table, the possible types present in this table
     struct {

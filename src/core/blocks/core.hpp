@@ -13,28 +13,25 @@ struct CoreInfo {
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
   static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
-  static inline TypesInfo blocksInfo =
-      TypesInfo(CBType::Seq, CBTypesInfo(blockInfo));
+  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
+  static inline TypeInfo blockSeq = TypeInfo::Sequence(CBType::Block);
   static inline TypesInfo blocksSeqInfo =
-      TypesInfo(CBType::Seq, CBTypesInfo(blocksInfo));
-  static inline TypesInfo intSeqInfo =
-      TypesInfo(CBType::Seq, CBTypesInfo(intInfo));
+      TypesInfo(TypeInfo::Sequence(blockSeq));
+  static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
 };
 
 struct Const {
-  static inline TypesInfo constBaseTypesInfo = TypesInfo::FromMany(
-      CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
+  static inline TypesInfo constTypesInfo = TypesInfo::FromMany(
+      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
       CBType::Float4, CBType::None, CBType::String, CBType::Color,
       CBType::Bool);
-  static inline TypesInfo constTypesInfo =
-      TypesInfo(CBTypesInfo(constBaseTypesInfo), true);
   static inline ParamsInfo constParamsInfo = ParamsInfo(
       ParamsInfo::Param("Value", "The constant value to insert in the chain.",
                         CBTypesInfo(constTypesInfo)));
 
   CBVar _value{};
-  TypesInfo _valueInfo;
+  TypeInfo _valueInfo;
 
   void destroy() { destroyVar(_value); }
 
@@ -53,8 +50,8 @@ struct Const {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     // TODO derive info for special types like Seq, Hashes etc
-    _valueInfo = TypesInfo(_value.valueType);
-    return CBTypeInfo(_valueInfo);
+    _valueInfo = TypeInfo(_value.valueType);
+    return _valueInfo;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -334,8 +331,8 @@ struct VariableBase {
 };
 
 struct SetBase : public VariableBase {
-  TypesInfo _tableTypeInfo{};
-  TypesInfo _tableContentInfo{};
+  TypeInfo _tableTypeInfo{};
+  TypeInfo _tableContentInfo{};
 
   void cleanup() {
     if (_target) {
@@ -396,11 +393,10 @@ struct Set : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypesInfo(inputType);
-      _tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(_tableContentInfo),
-                                 _key.c_str());
+      _tableContentInfo = TypeInfo(inputType);
+      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+          _name.c_str(), "The exposed table.", _tableTypeInfo));
     } else {
       // Set... we warn if the variable is overwritten
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
@@ -428,11 +424,10 @@ struct Update : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypesInfo(inputType);
-      _tableTypeInfo = TypesInfo(CBType::Table, CBTypesInfo(_tableContentInfo),
-                                 _key.c_str());
+      _tableContentInfo = TypeInfo(inputType);
+      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableTypeInfo)));
+          _name.c_str(), "The exposed table.", _tableTypeInfo));
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
@@ -579,12 +574,11 @@ struct Push : public VariableBase {
   bool _firstPusher = false; // if we are the initializers!
   bool _tableOwner = false;  // we are the first in the table too!
   CBTypeInfo _seqInfo{};
+  CBTypeInfo _seqInnerInfo{};
   CBTypeInfo _tableInfo{};
 
   void destroy() {
     if (_firstPusher) {
-      if (_seqInfo.seqTypes)
-        stbds_arrfree(_seqInfo.seqTypes);
       if (_tableInfo.tableKeys)
         stbds_arrfree(_tableInfo.tableKeys);
       if (_tableInfo.tableTypes)
@@ -622,10 +616,8 @@ struct Push : public VariableBase {
         stbds_arrfree(_tableInfo.tableKeys);
       }
       _seqInfo.basicType = Seq;
-      if (_seqInfo.seqTypes) {
-        stbds_arrfree(_seqInfo.seqTypes);
-      }
-      stbds_arrpush(_seqInfo.seqTypes, inputType);
+      _seqInnerInfo = inputType;
+      _seqInfo.seqType = &_seqInnerInfo;
       stbds_arrpush(_tableInfo.tableTypes, _seqInfo);
       stbds_arrpush(_tableInfo.tableKeys, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
@@ -640,10 +632,8 @@ struct Push : public VariableBase {
       // Assume we are the first pushing this variable
       _firstPusher = true;
       _seqInfo.basicType = Seq;
-      if (_seqInfo.seqTypes) {
-        stbds_arrfree(_seqInfo.seqTypes);
-      }
-      stbds_arrpush(_seqInfo.seqTypes, inputType);
+      _seqInnerInfo = inputType;
+      _seqInfo.seqType = &_seqInnerInfo;
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed sequence.", _seqInfo));
     }
@@ -899,16 +889,14 @@ struct Pop : SeqUser {
 };
 
 struct Take {
-  static inline TypesInfo indicesTypes = TypesInfo::FromManyTypes(
-      CBTypeInfo(CoreInfo::intInfo), CBTypeInfo((CoreInfo::intSeqInfo)));
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CBTypesInfo(indicesTypes)));
+      CBTypesInfo(CoreInfo::intsInfo)));
 
   CBSeq cachedResult;
   CBVar indices;
-  TypesInfo outputInfo;
-  TypesInfo inputInfo;
+  TypeInfo outputInfo;
+  TypeInfo inputInfo;
 
   void destroy() {
     if (cachedResult) {
@@ -929,14 +917,14 @@ struct Take {
                         CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
     if (indices.valueType == Seq) {
-      inputInfo = TypesInfo(inputType);
-      outputInfo = TypesInfo(CBType::Seq, CBTypesInfo(inputInfo));
+      inputInfo = TypeInfo(inputType);
+      outputInfo = TypeInfo::Sequence(inputInfo);
       return CBTypeInfo(outputInfo);
     } else {
       // Not sure how to do this... seqs can have multiple types..
       // We dunno exactly indices+types pairs
-      if (inputType.basicType == Seq && inputType.seqTypes) {
-        return inputType.seqTypes[0];
+      if (inputType.basicType == Seq && inputType.seqType) {
+        return *inputType.seqType;
       }
       return inputType;
     }

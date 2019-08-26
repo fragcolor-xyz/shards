@@ -16,7 +16,7 @@ struct SharedTypes {
   static inline TypesInfo &blockInfo = CoreInfo::blockInfo;
   static inline TypesInfo &blocksInfo = CoreInfo::blocksInfo;
   static inline TypesInfo &blocksSeqInfo = CoreInfo::blocksSeqInfo;
-  static inline TypesInfo &intSeqInfo = CoreInfo::intSeqInfo;
+  static inline TypesInfo &intsInfo = CoreInfo::intsInfo;
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
   static inline TypesInfo int4Info = TypesInfo(CBType::Int4);
@@ -27,15 +27,15 @@ struct SharedTypes {
       TypesInfo(CBType::Table, CBTypesInfo(strInfo));
   static inline TypesInfo intTableInfo =
       TypesInfo(CBType::Table, CBTypesInfo(intInfo));
-  static inline TypesInfo blocksOrNoneInfo =
-      TypesInfo::FromManyTypes(CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo blocksOrNoneInfo = TypesInfo::FromMany(
+      false, CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));
   static inline TypesInfo blockSeqsOrNoneInfo =
-      TypesInfo::FromManyTypes(CBTypeInfo((SharedTypes::blocksSeqInfo)),
-                               CBTypeInfo(SharedTypes::noneInfo));
+      TypesInfo::FromMany(false, CBTypeInfo((SharedTypes::blocksSeqInfo)),
+                          CBTypeInfo(SharedTypes::noneInfo));
   static inline TypesInfo intOrNoneInfo =
-      TypesInfo::FromManyTypes(CBTypeInfo((intInfo)), CBTypeInfo(noneInfo));
+      TypesInfo::FromMany(false, CBTypeInfo((intInfo)), CBTypeInfo(noneInfo));
   static inline TypesInfo strOrNoneInfo =
-      TypesInfo::FromManyTypes(CBTypeInfo((strInfo)), CBTypeInfo(noneInfo));
+      TypesInfo::FromMany(false, CBTypeInfo((strInfo)), CBTypeInfo(noneInfo));
   static inline CBEnumInfo boolOpEnumInfo = {"BoolOp"};
 };
 

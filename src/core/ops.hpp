@@ -19,7 +19,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     else if (var.payload.chainState == CBChainState::Rebase)
       os << "*ChainRebase*";
     break;
-  case Any:
+  case CBType::Any:
     os << "*Any*";
     break;
   case Object:
@@ -187,7 +187,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case Any:
+  case CBType::Any:
   case EndOfBlittableTypes:
     return true;
   case None:
@@ -320,7 +320,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case Any:
+  case CBType::Any:
   case EndOfBlittableTypes:
     return true;
   case None:
@@ -453,7 +453,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case Any:
+  case CBType::Any:
   case EndOfBlittableTypes:
     return true;
   case None:
@@ -581,15 +581,11 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       return false;
     return a.enumTypeId == b.enumTypeId;
   case Seq: {
-    auto atypes = stbds_arrlen(a.seqTypes);
-    auto btypes = stbds_arrlen(b.seqTypes);
-    if (atypes != btypes)
-      return false;
-    for (auto i = 0; i < atypes; i++) {
-      if (a.seqTypes[i] != b.seqTypes[i])
-        return false;
-    }
-    return true;
+    if (a.seqType && b.seqType)
+      return *a.seqType == *b.seqType;
+    if (a.seqType == nullptr && b.seqType == nullptr)
+      return true;
+    return false;
   }
   case Table: {
     auto atypes = stbds_arrlen(a.tableTypes);
