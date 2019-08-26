@@ -106,7 +106,7 @@ type
     objectTypeId*: int32
     enumVendorId*: int32
     enumTypeId*: int32
-    seqTypes*: CBTypesInfo
+    seqType*: ptr CBTypeInfo
     tableTypes*: CBTypesInfo
 
   CBTypesInfo* {.importcpp: "CBTypesInfo", header: "chainblocks.hpp".} = ptr UncheckedArray[CBTypeInfo]

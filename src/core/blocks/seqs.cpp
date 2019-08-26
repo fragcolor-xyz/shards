@@ -2,30 +2,23 @@
 
 namespace chainblocks {
 struct Flatten {
-  CBTypeInfo innerType{};
   CBVar outputCache{};
 
   void destroy() {
     if (outputCache.valueType == Seq) {
       stbds_arrfree(outputCache.payload.seqValue);
     }
-    if (innerType.seqTypes) {
-      stbds_arrfree(innerType.seqTypes);
-    }
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  bool includes(std::vector<CBTypeInfo> &currentTypes, CBTypeInfo &info) {
-    for (auto type : currentTypes) {
-      if (type == info)
-        return true;
+  void verifyInnerType(CBTypeInfo &info, CBTypeInfo &currentType) {
+    if (currentType.basicType != None) {
+      if (currentType != info) {
+        throw CBException("Flatten failed, inner types are not matching.");
+      }
     }
-    return false;
-  }
-
-  void addInnerType(CBTypeInfo &info, std::vector<CBTypeInfo> &currentTypes) {
     switch (info.basicType) {
     case None:
     case CBType::Any:
@@ -41,37 +34,33 @@ struct Flatten {
     case Image:
     case Int:
     case Float:
-    case Bool:
-      if (!includes(currentTypes, info))
-        stbds_arrpush(innerType.seqTypes, info);
+    case Bool: {
+      currentType = info;
       break;
+    }
     case Color:
     case Int2:
     case Int3:
     case Int4:
     case Int8:
     case Int16: {
-      auto intInfo = CBTypeInfo(SharedTypes::intInfo);
-      if (!includes(currentTypes, intInfo))
-        stbds_arrpush(innerType.seqTypes, intInfo);
+      currentType = CBTypeInfo(SharedTypes::intInfo);
       break;
     }
     case Float2:
     case Float3:
     case Float4: {
-      auto floatInfo = CBTypeInfo(SharedTypes::floatInfo);
-      if (!includes(currentTypes, floatInfo))
-        stbds_arrpush(innerType.seqTypes, floatInfo);
+      currentType = CBTypeInfo(SharedTypes::floatInfo);
       break;
     }
     case Seq:
-      for (auto i = 0; i < stbds_arrlen(info.seqTypes); i++) {
-        addInnerType(info.seqTypes[i], currentTypes);
+      if (info.seqType) {
+        verifyInnerType(*info.seqType, currentType);
       }
       break;
     case Table: {
       for (auto i = 0; i < stbds_arrlen(info.tableTypes); i++) {
-        addInnerType(info.tableTypes[i], currentTypes);
+        verifyInnerType(info.tableTypes[i], currentType);
       }
       break;
     }
@@ -80,14 +69,9 @@ struct Flatten {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    // Reset innerType
-    innerType.basicType = Seq;
-    stbds_arrfree(innerType.seqTypes);
-    innerType.seqTypes = nullptr;
-    // Store added types to avoid dupes / TODO use set and hashing...
-    std::vector<CBTypeInfo> addedTypes;
-    addInnerType(inputType, addedTypes);
-    return innerType;
+    CBTypeInfo current{};
+    verifyInnerType(inputType, current);
+    return current;
   }
 
   void add(const CBVar &input) {

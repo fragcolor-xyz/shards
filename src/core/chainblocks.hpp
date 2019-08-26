@@ -315,131 +315,229 @@ static Var ReturnPrevious = Var::Return();
 static Var RebaseChain = Var::Rebase();
 static Var Empty = Var();
 
-struct TypesInfo {
-  // TODO this is messy, need to make some decisions on storage and clean up!!
-  TypesInfo() {
-    _innerInfo = nullptr;
-    CBTypeInfo t = {None};
-    stbds_arrpush(_innerInfo, t);
+struct TypeInfo : public CBTypeInfo {
+  TypeInfo() { basicType = None; }
+
+  TypeInfo(CBType type) {
+    basicType = type;
+    tableKeys = nullptr;
+    tableTypes = nullptr;
   }
 
-  TypesInfo(const TypesInfo &other) {
-    _innerInfo = nullptr;
-    for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
-      if (other._innerInfo[i].basicType == Table) {
-        auto otherInfo = other._innerInfo[i];
-        _innerInfo[i].tableKeys = nullptr;
-        for (auto y = 0; y < stbds_arrlen(otherInfo.tableKeys); y++) {
-          stbds_arrpush(_innerInfo[i].tableKeys, otherInfo.tableKeys[y]);
+  TypeInfo(CBTypeInfo other) {
+    basicType = other.basicType;
+    tableKeys = nullptr;
+    tableTypes = nullptr;
+
+    switch (basicType) {
+    case CBType::Object: {
+      objectVendorId = other.objectVendorId;
+      objectTypeId = other.objectTypeId;
+    } break;
+    case Enum: {
+      enumVendorId = other.enumVendorId;
+      enumTypeId = other.enumTypeId;
+    } break;
+    case Seq: {
+      if (other.seqType) {
+        seqType = other.seqType;
+      }
+    } break;
+    case Table: {
+      if (other.tableTypes) {
+        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
+          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        }
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
         }
       }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  static TypeInfo Object(int32_t objectVendorId, int32_t objectTypeId) {
+    TypeInfo result;
+    result.basicType = CBType::Object;
+    result.objectVendorId = objectVendorId;
+    result.objectTypeId = objectTypeId;
+    return result;
+  }
+
+  static TypeInfo Sequence(TypeInfo &contentType) {
+    TypeInfo result;
+    result.basicType = Seq;
+    result.seqType = &contentType;
+    return result;
+  }
+
+  static TypeInfo TableRecord(CBTypeInfo contentType, const char *keyName) {
+    TypeInfo result;
+    result.basicType = Table;
+    result.tableTypes = nullptr;
+    result.tableKeys = nullptr;
+    stbds_arrpush(result.tableTypes, contentType);
+    stbds_arrpush(result.tableKeys, keyName);
+    return result;
+  }
+
+  TypeInfo(const TypeInfo &other) {
+    basicType = other.basicType;
+    tableKeys = nullptr;
+    tableTypes = nullptr;
+
+    switch (basicType) {
+    case CBType::Object: {
+      objectVendorId = other.objectVendorId;
+      objectTypeId = other.objectTypeId;
+    } break;
+    case Enum: {
+      enumVendorId = other.enumVendorId;
+      enumTypeId = other.enumTypeId;
+    } break;
+    case Seq: {
+      if (other.seqType) {
+        seqType = other.seqType;
+      }
+    } break;
+    case Table: {
+      tableKeys = nullptr;
+      tableTypes = nullptr;
+      if (other.tableTypes) {
+        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
+          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        }
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
+        }
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  TypeInfo &operator=(const TypeInfo &other) {
+    switch (basicType) {
+    case Seq: {
+      if (seqType)
+        delete seqType;
+    } break;
+    case Table: {
+      if (other.tableTypes) {
+        stbds_arrfree(tableKeys);
+        stbds_arrfree(tableTypes);
+      }
+    } break;
+    default:
+      break;
+    }
+
+    basicType = other.basicType;
+    tableKeys = nullptr;
+    tableTypes = nullptr;
+
+    switch (basicType) {
+    case CBType::Object: {
+      objectVendorId = other.objectVendorId;
+      objectTypeId = other.objectTypeId;
+    } break;
+    case Enum: {
+      enumVendorId = other.enumVendorId;
+      enumTypeId = other.enumTypeId;
+    } break;
+    case Seq: {
+      if (other.seqType) {
+        seqType = other.seqType;
+      }
+    } break;
+    case Table: {
+      if (other.tableTypes) {
+        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
+          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        }
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
+        }
+      }
+    } break;
+    default:
+      break;
+    }
+
+    return *this;
+  }
+
+  ~TypeInfo() {
+    if (basicType == Table) {
+      if (tableTypes) {
+        stbds_arrfree(tableTypes);
+        stbds_arrfree(tableKeys);
+      }
+    }
+  }
+};
+
+struct TypesInfo {
+  TypesInfo() { _innerInfo = nullptr; }
+
+  TypesInfo(const TypesInfo &other) {
+    _innerTypes = other._innerTypes;
+    _innerInfo = nullptr;
+    for (auto &type : _innerTypes) {
+      stbds_arrpush(_innerInfo, type);
     }
   }
 
   TypesInfo &operator=(const TypesInfo &other) {
+    _innerTypes = other._innerTypes;
     stbds_arrsetlen(_innerInfo, 0);
-    for (auto i = 0; stbds_arrlen(other._innerInfo) > i; i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
-      if (other._innerInfo[i].basicType == Table) {
-        auto otherInfo = other._innerInfo[i];
-        _innerInfo[i].tableKeys = nullptr;
-        for (auto y = 0; y < stbds_arrlen(otherInfo.tableKeys); y++) {
-          stbds_arrpush(_innerInfo[i].tableKeys, otherInfo.tableKeys[y]);
-        }
-      }
+    for (auto &type : _innerTypes) {
+      stbds_arrpush(_innerInfo, type);
     }
     return *this;
   }
 
-  explicit TypesInfo(CBTypeInfo singleType, bool canBeSeq = false) {
+  explicit TypesInfo(TypeInfo singleType, bool canBeSeq = false) {
     _innerInfo = nullptr;
-    stbds_arrpush(_innerInfo, singleType);
+    _innerTypes.reserve(canBeSeq ? 2 : 1);
+    _innerTypes.push_back(singleType);
+    stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
-      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
-      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
+      _innerTypes.push_back(TypeInfo::Sequence(_innerTypes.back()));
+      stbds_arrpush(_innerInfo, _innerTypes.back());
     }
   }
 
-  explicit TypesInfo(CBTypesInfo types, bool canBeSeq = false) {
-    _innerInfo = nullptr;
-    for (auto i = 0; i < stbds_arrlen(types); i++) {
-      stbds_arrpush(_innerInfo, types[i]);
-    }
-    if (canBeSeq) {
-      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
-      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
-    }
-  }
-
-  static TypesInfo Object(int32_t objectVendorId, int32_t objectTypeId,
-                          bool canBeSeq = false) {
+  template <typename... Args>
+  static TypesInfo FromMany(bool canBeSeq, Args... types) {
     TypesInfo result;
     result._innerInfo = nullptr;
-    CBTypeInfo objType = {CBType::Object};
-    objType.objectVendorId = objectVendorId;
-    objType.objectTypeId = objectTypeId;
-    stbds_arrpush(result._innerInfo, objType);
-    if (canBeSeq) {
-      result._subTypes.emplace_back(CBType::Seq, CBTypesInfo(result));
-      stbds_arrpush(result._innerInfo, CBTypeInfo(result._subTypes[0]));
-    }
-    return result;
-  }
+    std::vector<TypeInfo> vec = {types...};
 
-  TypesInfo(CBType singleType, CBTypesInfo contentsInfo,
-            const char *name = nullptr) {
-    _innerInfo = nullptr;
-    CBTypeInfo t = {singleType};
-    stbds_arrpush(_innerInfo, t);
+    // Preallocate in order to be able to have always valid addresses
+    auto size = vec.size();
+    if (canBeSeq)
+      size *= 2;
+    result._innerTypes.reserve(size);
 
-    assert(_innerInfo[0].basicType == Table || _innerInfo[0].basicType == Seq);
-
-    if (_innerInfo[0].basicType == Table) {
-      _innerInfo[0].tableTypes = CBTypesInfo(contentsInfo);
-      _innerInfo[0].tableKeys = nullptr;
-      stbds_arrpush(_innerInfo[0].tableKeys, name);
-    } else if (_innerInfo[0].basicType == Seq)
-      _innerInfo[0].seqTypes = CBTypesInfo(contentsInfo);
-  }
-
-  explicit TypesInfo(CBType singleType, bool canBeSeq = false) {
-    _innerInfo = nullptr;
-    CBTypeInfo t = {singleType};
-    stbds_arrpush(_innerInfo, t);
-    if (canBeSeq) {
-      _subTypes.emplace_back(CBType::Seq, CBTypesInfo(*this));
-      stbds_arrpush(_innerInfo, CBTypeInfo(_subTypes[0]));
-    }
-  }
-
-  template <typename... Args> static TypesInfo FromMany(Args... types) {
-    TypesInfo result;
-    result._innerInfo = nullptr;
-    std::vector<CBType> vec = {types...};
-    for (auto type : vec) {
-      CBTypeInfo t = {type};
-      stbds_arrpush(result._innerInfo, t);
-    }
-    return result;
-  }
-
-  template <typename... Args> static TypesInfo FromManyTypes(Args... types) {
-    TypesInfo result;
-    result._innerInfo = nullptr;
-    std::vector<CBTypeInfo> vec = {types...};
-    for (auto type : vec) {
-      stbds_arrpush(result._innerInfo, type);
+    for (auto &type : vec) {
+      result._innerTypes.push_back(type);
+      auto &nonSeq = result._innerTypes.back();
+      stbds_arrpush(result._innerInfo, nonSeq);
+      if (canBeSeq) {
+        result._innerTypes.push_back(TypeInfo::Sequence(nonSeq));
+        auto &seqType = result._innerTypes.back();
+        stbds_arrpush(result._innerInfo, seqType);
+      }
     }
     return result;
   }
 
   ~TypesInfo() {
     if (_innerInfo) {
-      if (stbds_arrlen(_innerInfo) > 0) {
-        if (_innerInfo[0].basicType == Table && _innerInfo[0].tableKeys)
-          stbds_arrfree(_innerInfo[0].tableKeys);
-      }
       stbds_arrfree(_innerInfo);
     }
   }
@@ -448,8 +546,8 @@ struct TypesInfo {
 
   explicit operator CBTypeInfo() const { return _innerInfo[0]; }
 
-  CBTypesInfo _innerInfo;
-  std::vector<TypesInfo> _subTypes;
+  CBTypesInfo _innerInfo{};
+  std::vector<TypeInfo> _innerTypes;
 };
 
 struct ParamsInfo {

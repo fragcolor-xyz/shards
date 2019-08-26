@@ -150,10 +150,8 @@
   (Assert.Is 20)
   (Log)
 
-  "Value1"
-  (Set "tab1" "v1")
-  "Value2"
-  (Set "tab1" "v2")
+  "Value1" (Set "tab1" "v1")
+  "Value2" (Set "tab1" "v2")
   (Get "tab1" "v1")
   (Assert.Is "Value1" true)
   (Log)

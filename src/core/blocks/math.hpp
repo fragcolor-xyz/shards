@@ -5,12 +5,10 @@
 namespace chainblocks {
 namespace Math {
 struct Base {
-  static inline TypesInfo mathBaseTypesInfo = TypesInfo::FromMany(
-      CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
+  static inline TypesInfo mathTypesInfo = TypesInfo::FromMany(
+      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
       CBType::Float4, CBType::Color);
-  static inline TypesInfo mathTypesInfo =
-      TypesInfo(CBTypesInfo(mathBaseTypesInfo), true);
 
   CBVar _cachedSeq{};
 
@@ -37,13 +35,11 @@ struct BinaryBase : public Base {
   enum OpType { Normal, Seq1, SeqSeq };
 
   static inline TypesInfo mathBaseTypesInfo1 = TypesInfo::FromMany(
-      CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
+      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
       CBType::Float4, CBType::Color, CBType::ContextVar);
-  static inline TypesInfo mathTypesInfo1 =
-      TypesInfo(CBTypesInfo(mathBaseTypesInfo1), true);
   static inline ParamsInfo mathParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", "The operand.", CBTypesInfo(mathTypesInfo1)));
+      "Operand", "The operand.", CBTypesInfo(mathBaseTypesInfo1)));
 
   CBVar _operand{};
   CBVar *_ctxOperand{};
