@@ -340,8 +340,7 @@ struct TypeInfo : public CBTypeInfo {
     } break;
     case Seq: {
       if (other.seqType) {
-        seqType = new CBTypeInfo();
-        *seqType = *other.seqType;
+        seqType = other.seqType;
       }
     } break;
     case Table: {
@@ -367,19 +366,10 @@ struct TypeInfo : public CBTypeInfo {
     return result;
   }
 
-  static TypeInfo Sequence(CBType contentType) {
+  static TypeInfo Sequence(TypeInfo &contentType) {
     TypeInfo result;
     result.basicType = Seq;
-    result.seqType = new CBTypeInfo;
-    *result.seqType = {contentType};
-    return result;
-  }
-
-  static TypeInfo Sequence(CBTypeInfo contentType) {
-    TypeInfo result;
-    result.basicType = Seq;
-    result.seqType = new CBTypeInfo;
-    *result.seqType = contentType;
+    result.seqType = &contentType;
     return result;
   }
 
@@ -409,8 +399,7 @@ struct TypeInfo : public CBTypeInfo {
     } break;
     case Seq: {
       if (other.seqType) {
-        seqType = new CBTypeInfo();
-        *seqType = *other.seqType;
+        seqType = other.seqType;
       }
     } break;
     case Table: {
@@ -461,8 +450,7 @@ struct TypeInfo : public CBTypeInfo {
     } break;
     case Seq: {
       if (other.seqType) {
-        seqType = new CBTypeInfo();
-        *seqType = *other.seqType;
+        seqType = other.seqType;
       }
     } break;
     case Table: {
@@ -483,10 +471,7 @@ struct TypeInfo : public CBTypeInfo {
   }
 
   ~TypeInfo() {
-    if (basicType == Seq) {
-      if (seqType)
-        delete seqType;
-    } else if (basicType == Table) {
+    if (basicType == Table) {
       if (tableTypes) {
         stbds_arrfree(tableTypes);
         stbds_arrfree(tableKeys);
@@ -520,7 +505,7 @@ struct TypesInfo {
     _innerTypes.push_back(singleType);
     stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
-      _innerTypes.push_back(TypeInfo::Sequence(singleType));
+      _innerTypes.push_back(TypeInfo::Sequence(_innerTypes.back()));
       stbds_arrpush(_innerInfo, _innerTypes.back());
     }
   }
@@ -530,12 +515,14 @@ struct TypesInfo {
     TypesInfo result;
     result._innerInfo = nullptr;
     std::vector<TypeInfo> vec = {types...};
-    for (auto type : vec) {
+    for (auto &type : vec) {
       result._innerTypes.push_back(type);
-      stbds_arrpush(result._innerInfo, result._innerTypes.back());
+      auto &nonSeq = result._innerTypes.back();
+      stbds_arrpush(result._innerInfo, nonSeq);
       if (canBeSeq) {
-        result._innerTypes.push_back(TypeInfo::Sequence(type));
-        stbds_arrpush(result._innerInfo, result._innerTypes.back());
+        result._innerTypes.push_back(TypeInfo::Sequence(nonSeq));
+        auto &seqType = result._innerTypes.back();
+        stbds_arrpush(result._innerInfo, seqType);
       }
     }
     return result;

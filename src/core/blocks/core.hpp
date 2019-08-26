@@ -13,8 +13,9 @@ struct CoreInfo {
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
   static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
+  static inline TypeInfo blockType = TypeInfo(CBType::Block);
   static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
-  static inline TypeInfo blockSeq = TypeInfo::Sequence(CBType::Block);
+  static inline TypeInfo blockSeq = TypeInfo::Sequence(blockType);
   static inline TypesInfo blocksSeqInfo =
       TypesInfo(TypeInfo::Sequence(blockSeq));
   static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
