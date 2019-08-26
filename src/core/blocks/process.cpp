@@ -10,7 +10,7 @@
 namespace chainblocks {
 namespace Process {
 static TypesInfo execTableContentsInfo =
-    TypesInfo::FromMany(CBType::Int, CBType::String);
+    TypesInfo::FromMany(false, CBType::Int, CBType::String);
 static TypesInfo execTableInfo =
     TypesInfo(CBType::Table, CBTypesInfo(execTableContentsInfo));
 

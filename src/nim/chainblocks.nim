@@ -62,11 +62,9 @@ converter toCBTypesInfo*(s: tuple[types: set[CBType]; canBeSeq: bool]): CBTypesI
   initSeq(result)
   for t in s.types:
     global.stbds_arrpush(result, CBTypeInfo(basicType: t)).to(void)
-  if s.canBeSeq:
-    global.stbds_arrpush(result, CBTypeInfo(basicType: Seq)).to(void)
-    initSeq(result[result.len - 1].seqTypes)
-    for t in s.types:
-      global.stbds_arrpush(result[result.len - 1].seqTypes, CBTypeInfo(basicType: t)).to(void)
+    if s.canBeSeq:
+      global.stbds_arrpush(result, CBTypeInfo(basicType: Seq)).to(void)
+      result[result.len - 1].seqType = addr result[result.len - 2]
 
 
 converter toCBTypesInfo*(s: set[CBType]): CBTypesInfo {.inline, noinit.} = (s, false)

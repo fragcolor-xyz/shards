@@ -9,7 +9,8 @@
 namespace bfs = boost::filesystem;
 
 namespace chainblocks {
-static TypesInfo chainTypes = TypesInfo::FromMany(CBType::Chain, CBType::None);
+static TypesInfo chainTypes =
+    TypesInfo::FromMany(false, CBType::Chain, CBType::None);
 
 static ParamsInfo waitChainParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),

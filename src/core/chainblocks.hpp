@@ -348,8 +348,8 @@ struct TypeInfo : public CBTypeInfo {
         for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
           stbds_arrpush(tableTypes, other.tableTypes[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
         }
       }
     } break;
@@ -409,8 +409,8 @@ struct TypeInfo : public CBTypeInfo {
         for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
           stbds_arrpush(tableTypes, other.tableTypes[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
         }
       }
     } break;
@@ -458,8 +458,8 @@ struct TypeInfo : public CBTypeInfo {
         for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
           stbds_arrpush(tableTypes, other.tableTypes[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
+          stbds_arrpush(tableKeys, other.tableKeys[i]);
         }
       }
     } break;
@@ -502,6 +502,7 @@ struct TypesInfo {
 
   explicit TypesInfo(TypeInfo singleType, bool canBeSeq = false) {
     _innerInfo = nullptr;
+    _innerTypes.reserve(canBeSeq ? 2 : 1);
     _innerTypes.push_back(singleType);
     stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
@@ -515,6 +516,13 @@ struct TypesInfo {
     TypesInfo result;
     result._innerInfo = nullptr;
     std::vector<TypeInfo> vec = {types...};
+
+    // Preallocate in order to be able to have always valid addresses
+    auto size = vec.size();
+    if (canBeSeq)
+      size *= 2;
+    result._innerTypes.reserve(size);
+
     for (auto &type : vec) {
       result._innerTypes.push_back(type);
       auto &nonSeq = result._innerTypes.back();

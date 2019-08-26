@@ -32,7 +32,8 @@ struct Const {
                         CBTypesInfo(constTypesInfo)));
 
   CBVar _value{};
-  TypeInfo _valueInfo;
+  TypeInfo _valueInfo{};
+  TypeInfo _innerInfo{};
 
   void destroy() { destroyVar(_value); }
 
@@ -50,8 +51,12 @@ struct Const {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    // TODO derive info for special types like Seq, Hashes etc
-    _valueInfo = TypeInfo(_value.valueType);
+    if (_value.valueType == Seq && _value.payload.seqValue) {
+      _innerInfo = TypeInfo(_value.payload.seqValue[0].valueType);
+      _valueInfo = TypeInfo::Sequence(_innerInfo);
+    } else {
+      _valueInfo = TypeInfo(_value.valueType);
+    }
     return _valueInfo;
   }
 
@@ -449,12 +454,15 @@ struct Get : public VariableBase {
                         CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
-        if (consumableVariables[i].name == _name &&
+        auto &name = consumableVariables[i].name;
+        if (name == _name &&
+            consumableVariables[i].exposedType.basicType == Table &&
             consumableVariables[i].exposedType.tableTypes) {
           auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
           auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
           for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            if (_key == tableKeys[y]) {
+            auto &key = tableKeys[y];
+            if (_key == key) {
               return tableTypes[y];
             }
           }
