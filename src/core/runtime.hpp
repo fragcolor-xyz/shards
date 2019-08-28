@@ -901,6 +901,8 @@ struct CBNode {
 
   bool empty() { return chains.empty(); }
 
+  phmap::node_hash_map<std::string, CBVar> variables;
+
 private:
   std::list<CBChain *> chains;
   std::list<CBChain *> chainsTicking;

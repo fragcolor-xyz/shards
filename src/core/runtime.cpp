@@ -252,9 +252,14 @@ void callExitCallbacks() {
   }
 }
 
-CBVar *contextVariable(CBContext *ctx, const char *name) {
-  CBVar &v = ctx->variables[name];
-  return &v;
+CBVar *contextVariable(CBContext *ctx, const char *name, bool global) {
+  if (!global) {
+    CBVar &v = ctx->variables[name];
+    return &v;
+  } else {
+    CBVar &v = ctx->chain->node->variables[name];
+    return &v;
+  }
 }
 
 CBVar suspend(CBContext *context, double seconds) {

@@ -18,7 +18,7 @@ bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
                     CBVar &output);
 bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                     const CBVar &chainInput, CBVar &output);
-CBVar *contextVariable(CBContext *ctx, const char *name);
+CBVar *contextVariable(CBContext *ctx, const char *name, bool global = false);
 CBVar suspend(CBContext *context, double seconds);
 
 #define cbpause(_time_)                                                        \

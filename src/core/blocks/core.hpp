@@ -301,6 +301,7 @@ struct VariableBase {
   std::string _name;
   std::string _key;
   ExposedInfo _exposedInfo{};
+  bool _global = false; // if we should use a node global
   bool _isTable = false;
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
@@ -309,7 +310,11 @@ struct VariableBase {
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
-                        CBTypesInfo(CoreInfo::strInfo)));
+                        CBTypesInfo(CoreInfo::strInfo)),
+      ParamsInfo::Param(
+          "Global",
+          "If the variable should be shared between chains in the same node.",
+          CBTypesInfo(CoreInfo::boolInfo)));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(variableParamsInfo);
@@ -324,6 +329,8 @@ struct VariableBase {
         _isTable = true;
       else
         _isTable = false;
+    } else if (index == 2) {
+      _global = value.payload.boolValue;
     }
   }
 
@@ -332,6 +339,8 @@ struct VariableBase {
       return Var(_name.c_str());
     else if (index == 1)
       return Var(_key.c_str());
+    else if (index == 2)
+      return Var(_global);
     throw CBException("Param index out of range.");
   }
 };
@@ -366,7 +375,7 @@ struct SetBase : public VariableBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str());
+      _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -495,7 +504,7 @@ struct Get : public VariableBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str());
+      _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
       if (_target->valueType == Table) {
@@ -691,7 +700,7 @@ struct Push : public VariableBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str());
+      _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
       if (_tableOwner) {
@@ -802,7 +811,7 @@ struct SeqUser : VariableBase {
 struct Clear : SeqUser {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str());
+      _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -861,7 +870,7 @@ struct Pop : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str());
+      _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
       if (_target->valueType != Table) {
