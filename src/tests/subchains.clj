@@ -19,6 +19,24 @@
   (Log)
 ))
 
+(def tickedChain (Chain "ticked"
+  (Msg "message 1")
+  1
+  (Sleep (Float 0))
+  
+  (Msg "message 2")
+  2
+  (Sleep (Float 0))
+  
+  (Msg "message 3")
+  3
+  (Sleep (Float 0))
+  
+  (Msg "message 4")
+  4
+  (Sleep (Float 0))
+))
+
 (schedule root otherChain)
 
 (schedule root (Chain "root"
@@ -36,5 +54,25 @@
   (Dispatch funcChain)
   20
   (Dispatch funcChain)
+
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 1 true)
+  (Msg "next step")
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 2 true)
+  (Msg "next step")
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 3 true)
+  (Msg "next step")
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 4 true)
+  (Msg "next step")
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 4 true)
+  (Msg "next step")
+  (RunChain tickedChain :Mode RunChainMode.Stepped)
+  (Assert.Is 1 true)
+  (Msg "next step")
+
   (Msg "done")
-  ))
+))

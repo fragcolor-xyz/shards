@@ -31,12 +31,17 @@ static ParamsInfo runChainParamsInfo = ParamsInfo(
                       CBTypesInfo(SharedTypes::boolInfo)),
     ParamsInfo::Param(
         "Passthrough",
-        "The input of this block will be the output. Always on if Detached.",
+        "The input of this block will be the output. Not used if Detached.",
         CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param("Detached",
-                      "Runs the sub-chain as a completely separate parallel "
-                      "chain in the same node.",
-                      CBTypesInfo(SharedTypes::boolInfo)));
+    ParamsInfo::Param(
+        "Mode",
+        "The way to run the chain. Inline: will run the sub chain inline "
+        "within the root chain, a pause in the child chain will pause the root "
+        "too; Detached: will run the chain separately in the same node, a "
+        "pause in this chain will not pause the root; Stepped: the chain will "
+        "run as a child, the root will tick the chain every activation of this "
+        "block and so a child pause won't pause the root.",
+        CBTypesInfo(SharedTypes::runChainModeInfo)));
 
 static ParamsInfo chainloaderParamsInfo = ParamsInfo(
     ParamsInfo::Param("File", "The json file of the chain to run and watch.",
@@ -45,20 +50,27 @@ static ParamsInfo chainloaderParamsInfo = ParamsInfo(
                       "Runs this sub-chain only once within the parent chain "
                       "execution cycle.",
                       CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param("Detached",
-                      "Runs the sub-chain as a completely separate parallel "
-                      "chain in the same node.",
-                      CBTypesInfo(SharedTypes::boolInfo)));
+    ParamsInfo::Param(
+        "Mode",
+        "The way to run the chain. Inline: will run the sub chain inline "
+        "within the root chain, a pause in the child chain will pause the root "
+        "too; Detached: will run the chain separately in the same node, a "
+        "pause in this chain will not pause the root; Stepped: the chain will "
+        "run as a child, the root will tick the chain every activation of this "
+        "block and so a child pause won't pause the root.",
+        CBTypesInfo(SharedTypes::runChainModeInfo)));
 
 static ParamsInfo chainOnlyParamsInfo = ParamsInfo(
     ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
+
+enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
   CBChain *chain;
   bool once;
   bool doneOnce;
   bool passthrough;
-  bool detached;
+  RunChainMode mode;
   CBValidationResult chainValidation{};
 
   void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
@@ -90,9 +102,13 @@ struct ChainBase {
           }
         },
         this, inputType,
-        !detached ? consumables : nullptr); // detached don't share context!
+        mode == RunChainMode::Inline
+            ? consumables
+            : nullptr); // detached don't share context!
 
-    return passthrough ? inputType : chainValidation.outputType;
+    return passthrough || mode == RunChainMode::Detached
+               ? inputType
+               : chainValidation.outputType;
   }
 };
 
@@ -154,7 +170,7 @@ struct WaitChain : public ChainBase {
 struct ChainRunner : public ChainBase {
   // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() {
-    return !detached ? chainValidation.exposedInfo : nullptr;
+    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : nullptr;
   }
 
   void cleanup() {
@@ -181,7 +197,7 @@ struct RunChain : public ChainRunner {
       passthrough = value.payload.boolValue;
       break;
     case 3:
-      detached = value.payload.boolValue;
+      mode = RunChainMode(value.payload.enumValue);
       break;
     default:
       break;
@@ -197,7 +213,7 @@ struct RunChain : public ChainRunner {
     case 2:
       return Var(passthrough);
     case 3:
-      return Var(detached);
+      return Var::Enum(mode, 'frag', 'runC');
     default:
       break;
     }
@@ -212,11 +228,27 @@ struct RunChain : public ChainRunner {
       if (once)
         doneOnce = true;
 
-      if (detached) {
+      if (mode == RunChainMode::Inline) {
         if (!chainblocks::isRunning(chain)) {
           context->chain->node->schedule(chain, input);
         }
         return input;
+      } else if (mode == RunChainMode::Stepped) {
+        // Allow to re run chains
+        if (chainblocks::hasEnded(chain)) {
+          chainblocks::stop(chain);
+        }
+        // Prepare if no callc was called
+        if (!chain->coro) {
+          chainblocks::prepare(chain);
+        }
+        // Ticking or starting
+        if (!chainblocks::isRunning(chain)) {
+          chainblocks::start(chain, input);
+        } else {
+          chainblocks::tick(chain, input);
+        }
+        return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
         auto runRes = runSubChain(chain, context, input);
@@ -240,7 +272,7 @@ struct Dispatch : public ChainRunner {
   Dispatch() : ChainRunner() {
     passthrough = true;
     once = false;
-    detached = false;
+    mode = RunChainMode::Inline;
   }
 
   static CBParametersInfo parameters() {
@@ -288,7 +320,7 @@ struct DispatchOnce : public ChainRunner {
   DispatchOnce() : ChainRunner() {
     passthrough = true;
     once = true;
-    detached = false;
+    mode = RunChainMode::Inline;
   }
 
   static CBParametersInfo parameters() {
@@ -339,7 +371,7 @@ struct Do : public ChainRunner {
   Do() : ChainRunner() {
     passthrough = false;
     once = false;
-    detached = false;
+    mode = RunChainMode::Inline;
   }
 
   static CBParametersInfo parameters() {
@@ -388,7 +420,7 @@ struct DoOnce : public ChainRunner {
   DoOnce() : ChainRunner() {
     passthrough = false;
     once = true;
-    detached = false;
+    mode = RunChainMode::Inline;
   }
 
   static CBParametersInfo parameters() {
@@ -442,7 +474,7 @@ struct Detach : public ChainRunner {
   Detach() : ChainRunner() {
     passthrough = true;
     once = false;
-    detached = true;
+    mode = RunChainMode::Detached;
   }
 
   static CBParametersInfo parameters() {
@@ -490,7 +522,7 @@ struct DetachOnce : public ChainRunner {
   DetachOnce() : ChainRunner() {
     passthrough = true;
     once = true;
-    detached = true;
+    mode = RunChainMode::Detached;
   }
 
   static CBParametersInfo parameters() {
@@ -609,7 +641,7 @@ struct ChainLoader : public ChainRunner {
       once = value.payload.boolValue;
       break;
     case 2:
-      detached = value.payload.boolValue;
+      mode = RunChainMode(value.payload.enumValue);
       break;
     default:
       break;
@@ -625,7 +657,7 @@ struct ChainLoader : public ChainRunner {
       return Var(once);
       break;
     case 2:
-      return Var(detached);
+      return Var::Enum(mode, 'frag', 'runC');
       break;
     default:
       break;
@@ -656,10 +688,12 @@ struct ChainLoader : public ChainRunner {
       if (once)
         doneOnce = true;
 
-      if (detached) {
+      if (mode == RunChainMode::Detached) {
         if (!chainblocks::isRunning(chain)) {
           context->chain->node->schedule(chain, input);
         }
+        return input;
+      } else if (mode == RunChainMode::Detached) {
         return input;
       } else {
         // Run within the root flow

@@ -249,6 +249,16 @@ struct Var : public CBVar {
     return res;
   }
 
+  template <typename T>
+  static Var Enum(T value, uint32_t enumVendorId, uint32_t enumTypeId) {
+    Var res;
+    res.valueType = CBType::Enum;
+    res.payload.enumValue = CBEnum(value);
+    res.payload.enumVendorId = enumVendorId;
+    res.payload.enumTypeId = enumTypeId;
+    return res;
+  }
+
   explicit Var(int src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
@@ -334,7 +344,7 @@ struct TypeInfo : public CBTypeInfo {
       objectVendorId = other.objectVendorId;
       objectTypeId = other.objectTypeId;
     } break;
-    case Enum: {
+    case CBType::Enum: {
       enumVendorId = other.enumVendorId;
       enumTypeId = other.enumTypeId;
     } break;
@@ -366,6 +376,14 @@ struct TypeInfo : public CBTypeInfo {
     return result;
   }
 
+  static TypeInfo Enum(int32_t enumVendorId, int32_t enumTypeId) {
+    TypeInfo result;
+    result.basicType = CBType::Enum;
+    result.enumVendorId = enumVendorId;
+    result.enumTypeId = enumTypeId;
+    return result;
+  }
+
   static TypeInfo Sequence(TypeInfo &contentType) {
     TypeInfo result;
     result.basicType = Seq;
@@ -393,7 +411,7 @@ struct TypeInfo : public CBTypeInfo {
       objectVendorId = other.objectVendorId;
       objectTypeId = other.objectTypeId;
     } break;
-    case Enum: {
+    case CBType::Enum: {
       enumVendorId = other.enumVendorId;
       enumTypeId = other.enumTypeId;
     } break;
@@ -444,7 +462,7 @@ struct TypeInfo : public CBTypeInfo {
       objectVendorId = other.objectVendorId;
       objectTypeId = other.objectTypeId;
     } break;
-    case Enum: {
+    case CBType::Enum: {
       enumVendorId = other.enumVendorId;
       enumTypeId = other.enumTypeId;
     } break;

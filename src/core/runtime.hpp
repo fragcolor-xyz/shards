@@ -150,6 +150,7 @@ struct CBChain {
   bool failed;
 
   CBVar rootTickInput;
+  CBVar previousOutput;
   CBVar finishedOutput;
   bool ownedOutput;
 
@@ -528,7 +529,7 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
 
 static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                                  CBVar chainInput) {
-  auto previousOutput = CBVar();
+  chain->previousOutput = CBVar();
 
   // Detect and pause if we need to here
   // avoid pausing in the middle or so, that is for a proper debug mode runner,
@@ -540,10 +541,10 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     // Since we suspended we need to make sure we should continue when resuming
     switch (suspendRes.payload.chainState) {
     case CBChainState::Restart: {
-      return {previousOutput, Restarted};
+      return {chain->previousOutput, Restarted};
     }
     case CBChainState::Stop: {
-      return {previousOutput, Stopped};
+      return {chain->previousOutput, Stopped};
     }
     default:
       continue;
@@ -580,14 +581,14 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
-      activateBlock(blk, context, input, previousOutput);
-      input = previousOutput;
+      activateBlock(blk, context, input, chain->previousOutput);
+      input = chain->previousOutput;
 
-      if (previousOutput.valueType == None) {
-        switch (previousOutput.payload.chainState) {
+      if (chain->previousOutput.valueType == None) {
+        switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
           runChainPOSTCHAIN;
-          return {previousOutput, Restarted};
+          return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
           runChainPOSTCHAIN;
@@ -597,9 +598,9 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
             LOG(ERROR) << "Block activation error, failed block: "
                        << std::string(blk->name(blk));
             LOG(ERROR) << "Last error: " << std::string(context->error);
-            return {previousOutput, Failed};
+            return {chain->previousOutput, Failed};
           } else {
-            return {previousOutput, Stopped};
+            return {chain->previousOutput, Stopped};
           }
         }
         case CBChainState::Return: {
@@ -625,19 +626,19 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       LOG(ERROR) << e.what();
       ;
       runChainPOSTCHAIN;
-      return {previousOutput, Failed};
+      return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       if (context->error.length() > 0)
         LOG(ERROR) << "Last error: " << std::string(context->error);
       runChainPOSTCHAIN;
-      return {previousOutput, Failed};
+      return {chain->previousOutput, Failed};
     }
   }
 
   runChainPOSTCHAIN;
-  return {previousOutput, Running};
+  return {chain->previousOutput, Running};
 }
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,

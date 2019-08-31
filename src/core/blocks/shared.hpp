@@ -37,6 +37,9 @@ struct SharedTypes {
   static inline TypesInfo strOrNoneInfo =
       TypesInfo::FromMany(false, CBTypeInfo((strInfo)), CBTypeInfo(noneInfo));
   static inline CBEnumInfo boolOpEnumInfo = {"BoolOp"};
+  static inline CBEnumInfo runChainModeEnumInfo = {"RunChainMode"};
+  static inline TypeInfo runChainMode = TypeInfo::Enum('frag', 'runC');
+  static inline TypesInfo runChainModeInfo = TypesInfo(runChainMode);
 };
 
 static void initEnums() {
@@ -47,5 +50,10 @@ static void initEnums() {
   stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "MoreEqual");
   stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "LessEqual");
   registerEnumType('frag', 'bool', (SharedTypes::boolOpEnumInfo));
+
+  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Inline");
+  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Detached");
+  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Stepped");
+  registerEnumType('frag', 'runC', (SharedTypes::runChainModeEnumInfo));
 }
 }; // namespace chainblocks

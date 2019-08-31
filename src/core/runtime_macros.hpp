@@ -11,13 +11,13 @@
         if (context->error.length() > 0)                                       \
           LOG(ERROR) << "Last error: " << std::string(context->error);         \
         LOG(ERROR) << e.what() << "\n";                                        \
-        return {previousOutput, Failed};                                       \
+        return {chain->previousOutput, Failed};                                       \
       } catch (...) {                                                          \
         LOG(ERROR) << "Post chain failure, failed block: "                     \
                    << std::string(blk->name(blk));                             \
         if (context->error.length() > 0)                                       \
           LOG(ERROR) << "Last error: " << std::string(context->error);         \
-        return {previousOutput, Failed};                                       \
+        return {chain->previousOutput, Failed};                                       \
       }                                                                        \
     }                                                                          \
   }
