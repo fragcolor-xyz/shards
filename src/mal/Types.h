@@ -75,9 +75,9 @@ private:
 
 class malNumber : public malValue {
 public:
-    malNumber(double value) : m_value(value) { }
+    malNumber(double value, bool isInteger) : m_value(value), m_integer(isInteger) { }
     malNumber(const malNumber& that, malValuePtr meta)
-        : malValue(meta), m_value(that.m_value) { }
+        : malValue(meta), m_value(that.m_value), m_integer(that.m_integer) { }
 
     virtual String print(bool readably) const {
         int64_t floatTest = m_value * 10;
@@ -89,6 +89,7 @@ public:
     }
 
     double value() const { return m_value; }
+    bool isInteger() const { return m_integer; }
 
     virtual bool doIsEqualTo(const malValue* rhs) const {
         return m_value == static_cast<const malNumber*>(rhs)->m_value;
@@ -98,6 +99,7 @@ public:
 
 private:
     const double m_value;
+    const bool m_integer;
 };
 
 class malStringBase : public malValue {
@@ -358,8 +360,8 @@ namespace mal {
     malValuePtr hash(malValueIter argsBegin, malValueIter argsEnd,
                      bool isEvaluated);
     malValuePtr hash(const malHash::Map& map);
-    malValuePtr number(double value);
-    malValuePtr number(const String& token);
+    malValuePtr number(double value, bool isInteger);
+    malValuePtr number(const String& token, bool isInteger);
     malValuePtr keyword(const String& token);
     malValuePtr lambda(const StringVec&, malValuePtr, malEnvPtr);
     malValuePtr list(malValueVec* items);

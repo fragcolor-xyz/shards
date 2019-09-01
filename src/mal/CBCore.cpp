@@ -471,10 +471,8 @@ std::vector<CBlock *> blockify(const malValuePtr &arg) {
     WRAP_TO_CONST(strVar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
-    int64_t floatTest = value * 10;
-    bool isInteger = (floatTest % 10) == 0;
-    CBVar var;
-    if (isInteger) {
+    CBVar var{};
+    if (v->isInteger()) {
       var.valueType = Int;
       var.payload.intValue = value;
     } else {
@@ -529,10 +527,8 @@ CBVar varify(malCBBlock *mblk, const malValuePtr &arg) {
     return var;
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
-    int64_t floatTest = value * 10;
-    bool isInteger = (floatTest % 10) == 0;
     CBVar var{};
-    if (isInteger) {
+    if (v->isInteger()) {
       var.valueType = Int;
       var.payload.intValue = value;
     } else {

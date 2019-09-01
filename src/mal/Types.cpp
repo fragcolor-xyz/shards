@@ -34,12 +34,12 @@ namespace mal {
         return malValuePtr(new malHash(argsBegin, argsEnd, isEvaluated));
     }
 
-    malValuePtr number(double value) {
-        return malValuePtr(new malNumber(value));
+    malValuePtr number(double value, bool isInteger) {
+        return malValuePtr(new malNumber(value, isInteger));
     };
 
-    malValuePtr number(const String& token) {
-        return number(std::stof(token));
+    malValuePtr number(const String& token, bool isInteger) {
+        return number(std::stof(token), isInteger);
     };
 
     malValuePtr keyword(const String& token) {

@@ -207,15 +207,15 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
     
     if (std::regex_match(token, intRegex)) {
-        return mal::number(token);
+        return mal::number(token, true);
     }
 
     if (std::regex_match(token, floatRegex)) {
-        return mal::number(token);
+        return mal::number(token, false);
     }
 
     if (std::regex_match(token, hexRegex)) {
-        return mal::number(token);
+        return mal::number(token, true);
     }
     
     return mal::symbol(token);

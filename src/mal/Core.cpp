@@ -57,7 +57,7 @@ static StaticList<malBuiltIn*> handlers;
         if (checkDivByZero) { \
             MAL_CHECK(rhs->value() != 0, "Division by zero"); \
         } \
-        return mal::number(lhs->value() op rhs->value()); \
+        return mal::number(lhs->value() op rhs->value(), true); \
     }
 
 BUILTIN_ISA("atom?",        malAtom);
@@ -83,11 +83,11 @@ BUILTIN("-")
     int argCount = CHECK_ARGS_BETWEEN(1, 2);
     ARG(malNumber, lhs);
     if (argCount == 1) {
-        return mal::number(- lhs->value());
+        return mal::number(- lhs->value(), false);
     }
 
     ARG(malNumber, rhs);
-    return mal::number(lhs->value() - rhs->value());
+    return mal::number(lhs->value() - rhs->value(), false);
 }
 
 BUILTIN("%")
@@ -99,7 +99,7 @@ BUILTIN("%")
     int64_t l = static_cast<int64_t>(lhs->value());
     int64_t r = static_cast<int64_t>(rhs->value());
     MAL_CHECK(r != 0, "Division by zero");
-    return mal::number(l % r);
+    return mal::number(l % r, true);
 }
 
 BUILTIN("<=")
@@ -233,11 +233,11 @@ BUILTIN("count")
 {
     CHECK_ARGS_IS(1);
     if (*argsBegin == mal::nilValue()) {
-        return mal::number(0);
+        return mal::number(0, true);
     }
 
     ARG(malSequence, seq);
-    return mal::number(seq->count());
+    return mal::number(seq->count(), true);
 }
 
 BUILTIN("deref")
@@ -514,7 +514,7 @@ BUILTIN("time-ms")
         high_resolution_clock::now().time_since_epoch()
     );
 
-    return mal::number(ms.count());
+    return mal::number(ms.count(), true);
 }
 
 BUILTIN("vals")
