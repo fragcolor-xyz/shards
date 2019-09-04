@@ -7,6 +7,21 @@
 
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")
+
+  3.14
+  (AsInt64)
+  (Log)
+  (AsFloat64)
+  (Log)
+  (Assert.Is 3.14 true)
+
+  1078523331
+  (AsFloat32)
+  (Log)
+
+  1286304790
+  (AsFloat32)
+  (Log)
   
   true
   (Cond [

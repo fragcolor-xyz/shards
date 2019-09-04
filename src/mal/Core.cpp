@@ -57,7 +57,7 @@ static StaticList<malBuiltIn*> handlers;
         if (checkDivByZero) { \
             MAL_CHECK(rhs->value() != 0, "Division by zero"); \
         } \
-        return mal::number(lhs->value() op rhs->value(), true); \
+        return mal::number(lhs->value() op rhs->value(), lhs->isInteger() && rhs->isInteger()); \
     }
 
 BUILTIN_ISA("atom?",        malAtom);
@@ -83,11 +83,11 @@ BUILTIN("-")
     int argCount = CHECK_ARGS_BETWEEN(1, 2);
     ARG(malNumber, lhs);
     if (argCount == 1) {
-        return mal::number(- lhs->value(), false);
+        return mal::number(- lhs->value(), lhs->isInteger());
     }
 
     ARG(malNumber, rhs);
-    return mal::number(lhs->value() - rhs->value(), false);
+    return mal::number(lhs->value() - rhs->value(), lhs->isInteger() && rhs->isInteger());
 }
 
 BUILTIN("%")
