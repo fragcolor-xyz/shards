@@ -155,7 +155,7 @@ ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
 
-static inline bool _seqEq(const CBVar &a, const CBVar &b) {
+inline bool _seqEq(const CBVar &a, const CBVar &b) {
   if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
     return false;
 
@@ -167,7 +167,7 @@ static inline bool _seqEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-static inline bool _tableEq(const CBVar &a, const CBVar &b) {
+inline bool _tableEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
@@ -288,7 +288,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-static inline bool _seqLess(const CBVar &a, const CBVar &b) {
+inline bool _seqLess(const CBVar &a, const CBVar &b) {
   if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
     return false;
 
@@ -300,7 +300,7 @@ static inline bool _seqLess(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-static inline bool _tableLess(const CBVar &a, const CBVar &b) {
+inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
@@ -421,7 +421,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-static inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
+inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
   if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
     return false;
 
@@ -433,7 +433,7 @@ static inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-static inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
+inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 

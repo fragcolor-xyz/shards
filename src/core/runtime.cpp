@@ -28,6 +28,7 @@ extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
 extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
+extern void registerSerializationBlocks();
 
 void registerCoreBlocks() {
   registerBlocksCoreBlocks();
@@ -38,6 +39,7 @@ void registerCoreBlocks() {
   registerProcessBlocks();
   registerSeqsBlocks();
   registerCastingBlocks();
+  registerSerializationBlocks();
 
   // also enums
   initEnums();
