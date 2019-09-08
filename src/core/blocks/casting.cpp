@@ -292,189 +292,6 @@ struct ToString {
 };
 
 // As, reinterpret
-// TODO Write proper inputTypes Info
-#define AS_SOMETHING(_varName_, _width_, _type_, _payload_, _strOp_, _info_)   \
-  struct As##_varName_##_width_ {                                              \
-    static inline TypesInfo &singleOutput = SharedTypes::_info_;               \
-    CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
-    CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
-                                                                               \
-    CBTypeInfo inferTypes(CBTypeInfo inputType,                                \
-                          CBExposedTypesInfo consumableVariables) {            \
-      return CBTypeInfo(singleOutput);                                         \
-    }                                                                          \
-                                                                               \
-    bool convert(CBVar &dst, int &index, CBVar &src) {                         \
-      switch (src.valueType) {                                                 \
-      case String: {                                                           \
-        auto val = std::_strOp_(src.payload.stringValue);                      \
-        dst.payload._payload_[index] = reinterpret_cast<_type_ &>(val);        \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      }                                                                        \
-      case Float:                                                              \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.floatValue);                \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float2:                                                             \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float2Value[0]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float2Value[1]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float3:                                                             \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float3Value[0]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float3Value[1]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float3Value[2]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float4:                                                             \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float4Value[0]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float4Value[1]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float4Value[2]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.float4Value[3]);            \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int:                                                                \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.intValue);                  \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int2:                                                               \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int2Value[0]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int2Value[1]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int3:                                                               \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int3Value[0]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int3Value[1]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int3Value[2]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int4:                                                               \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int4Value[0]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int4Value[1]);              \
-        index++;                                                               \
-        if (index == 4)                                                        \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int4Value[2]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            reinterpret_cast<_type_ &>(src.payload.int4Value[3]);              \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
-      }                                                                        \
-      return false;                                                            \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      int index = 0;                                                           \
-      CBVar output{};                                                          \
-      output.valueType = _varName_##_width_;                                   \
-      switch (input.valueType) {                                               \
-      case Seq: {                                                              \
-        for (auto i = 0;                                                       \
-             i < _width_, i < stbds_arrlen(input.payload.seqValue); i++) {     \
-          if (convert(output, index, input.payload.seqValue[i]))               \
-            return output;                                                     \
-        }                                                                      \
-        break;                                                                 \
-      }                                                                        \
-      case Int:                                                                \
-      case Int2:                                                               \
-      case Int3:                                                               \
-      case Int4:                                                               \
-      case Float:                                                              \
-      case Float2:                                                             \
-      case Float3:                                                             \
-      case Float4:                                                             \
-      case String:                                                             \
-        if (convert(output, index, const_cast<CBVar &>(input)))                \
-          return output;                                                       \
-        break;                                                                 \
-      default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
-      }                                                                        \
-      return output;                                                           \
-    }                                                                          \
-  };                                                                           \
-  RUNTIME_CORE_BLOCK(As##_varName_##_width_);                                  \
-  RUNTIME_BLOCK_inputTypes(As##_varName_##_width_);                            \
-  RUNTIME_BLOCK_outputTypes(As##_varName_##_width_);                           \
-  RUNTIME_BLOCK_inferTypes(As##_varName_##_width_);                            \
-  RUNTIME_BLOCK_activate(As##_varName_##_width_);                              \
-  RUNTIME_BLOCK_END(As##_varName_##_width_);
-
-// TODO improve this
 #define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
                             _info_)                                            \
   struct As##_varName_2 {                                                      \
@@ -498,34 +315,40 @@ struct ToString {
         dst.payload._payload_ =                                                \
             reinterpret_cast<_type_ &>(src.payload.floatValue);                \
         break;                                                                 \
-      case Float2:                                                             \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.float2Value[0]);            \
+      case Float2: {                                                           \
+        auto val = src.payload.float2Value[0];                                 \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
-      case Float3:                                                             \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.float3Value[0]);            \
+      }                                                                        \
+      case Float3: {                                                           \
+        auto val = src.payload.float3Value[0];                                 \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
-      case Float4:                                                             \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.float4Value[0]);            \
+      }                                                                        \
+      case Float4: {                                                           \
+        auto val = src.payload.float4Value[0];                                 \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
+      }                                                                        \
       case Int:                                                                \
         dst.payload._payload_ =                                                \
             reinterpret_cast<_type_ &>(src.payload.intValue);                  \
         break;                                                                 \
-      case Int2:                                                               \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.int2Value[0]);              \
+      case Int2: {                                                             \
+        auto val = src.payload.int2Value[0];                                   \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
-      case Int3:                                                               \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.int3Value[0]);              \
+      }                                                                        \
+      case Int3: {                                                             \
+        auto val = src.payload.int3Value[0];                                   \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
-      case Int4:                                                               \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.int4Value[0]);              \
+      }                                                                        \
+      case Int4: {                                                             \
+        auto val = src.payload.int4Value[0];                                   \
+        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
         break;                                                                 \
+      }                                                                        \
       default:                                                                 \
         throw CBException("Cannot cast given input type.");                    \
       }                                                                        \
@@ -571,14 +394,8 @@ struct ToString {
 
 AS_SOMETHING_SIMPLE(Int, Int32, int32_t, intValue, stoi, intInfo);
 AS_SOMETHING_SIMPLE(Int, Int64, int64_t, intValue, stoi, intInfo);
-// AS_SOMETHING(Int, 2, int64_t, int2Value, stoi, int2Info);
-// AS_SOMETHING(Int, 3, int32_t, int3Value, stoi, int3Info);
-// AS_SOMETHING(Int, 4, int32_t, int4Value, stoi, int4Info);
 AS_SOMETHING_SIMPLE(Float, Float32, float, floatValue, stof, floatInfo);
 AS_SOMETHING_SIMPLE(Float, Float64, double, floatValue, stod, floatInfo);
-// AS_SOMETHING(Float, 2, double, float2Value, stod, float2Info);
-// AS_SOMETHING(Float, 3, float, float3Value, stof, float3Info);
-// AS_SOMETHING(Float, 4, float, float4Value, stof, float4Info);
 
 // Register ToString
 RUNTIME_CORE_BLOCK(ToString);
