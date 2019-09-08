@@ -1,0 +1,3 @@
+[submodule "deps/cereal"]
+	path = deps/cereal
+	url = https://github.com/fragcolor-xyz/cereal.git
