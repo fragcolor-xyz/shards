@@ -1131,6 +1131,17 @@ void validateConnection(ValidationContext &ctx) {
         std::string err(
             "Required consumed types do not match currently exposed ones: " +
             name);
+        err += " exposed types:";
+        for (auto info : ctx.exposed) {
+          err += " (" + info.first + " [";
+
+          for (auto type : info.second) {
+            err += type2Name(type.exposedType.basicType) + " ";
+          }
+          err.erase(err.end() - 1);
+
+          err += "])";
+        }
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
     }

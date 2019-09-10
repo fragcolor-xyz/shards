@@ -18,6 +18,7 @@ struct SharedTypes {
   static inline TypesInfo &blocksSeqInfo = CoreInfo::blocksSeqInfo;
   static inline TypesInfo &intsInfo = CoreInfo::intsInfo;
   static inline TypesInfo colorInfo = TypesInfo(CBType::Color);
+  static inline TypesInfo ctxVarInfo = TypesInfo(CBType::ContextVar);
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
   static inline TypesInfo int4Info = TypesInfo(CBType::Int4);
@@ -30,6 +31,8 @@ struct SharedTypes {
       TypesInfo(CBType::Table, CBTypesInfo(intInfo));
   static inline TypesInfo blocksOrNoneInfo = TypesInfo::FromMany(
       false, CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo ctxOrNoneInfo = TypesInfo::FromMany(
+      false, CBTypeInfo((ctxVarInfo)), CBTypeInfo(noneInfo));
   static inline TypesInfo blockSeqsOrNoneInfo =
       TypesInfo::FromMany(false, CBTypeInfo((SharedTypes::blocksSeqInfo)),
                           CBTypeInfo(SharedTypes::noneInfo));

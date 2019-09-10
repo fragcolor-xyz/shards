@@ -106,7 +106,8 @@ struct ChainBase {
             ? consumables
             : nullptr); // detached don't share context!
 
-    return passthrough || mode == RunChainMode::Detached
+    return passthrough || mode == RunChainMode::Detached ||
+                   mode == RunChainMode::Stepped
                ? inputType
                : chainValidation.outputType;
   }
@@ -693,7 +694,21 @@ struct ChainLoader : public ChainRunner {
           context->chain->node->schedule(chain, input);
         }
         return input;
-      } else if (mode == RunChainMode::Detached) {
+      } else if (mode == RunChainMode::Stepped) {
+        // Allow to re run chains
+        if (chainblocks::hasEnded(chain)) {
+          chainblocks::stop(chain);
+        }
+        // Prepare if no callc was called
+        if (!chain->coro) {
+          chainblocks::prepare(chain);
+        }
+        // Ticking or starting
+        if (!chainblocks::isRunning(chain)) {
+          chainblocks::start(chain, input);
+        } else {
+          chainblocks::tick(chain, input);
+        }
         return input;
       } else {
         // Run within the root flow

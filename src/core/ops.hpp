@@ -150,6 +150,83 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   return os;
 }
 
+inline std::string type2Name(CBType type) {
+  std::string name = "";
+  switch (type) {
+  case EndOfBlittableTypes:
+    break;
+  case None:
+    name = "None";
+    break;
+  case CBType::Any:
+    name = "Any";
+    break;
+  case Object:
+    name = "Object";
+    break;
+  case Enum:
+    name = "Enum";
+    break;
+  case Bool:
+    name = "Bool";
+    break;
+  case Int:
+    name = "Int";
+    break;
+  case Int2:
+    name = "Int2";
+    break;
+  case Int3:
+    name = "Int3";
+    break;
+  case Int4:
+    name = "Int4";
+    break;
+  case Int8:
+    name = "Int8";
+    break;
+  case Int16:
+    name = "Int16";
+    break;
+  case Float:
+    name = "Float";
+    break;
+  case Float2:
+    name = "Float2";
+    break;
+  case Float3:
+    name = "Float3";
+    break;
+  case Float4:
+    name = "Float4";
+    break;
+  case Color:
+    name = "Color";
+    break;
+  case Chain:
+    break;
+  case Block:
+    name = "Block";
+    break;
+  case CBType::String:
+    name = "String";
+    break;
+  case ContextVar:
+    name = "ContextVar";
+    break;
+  case Image:
+    name = "Image";
+    break;
+  case Seq:
+    name = "Seq";
+    break;
+  case Table:
+    name = "Table";
+    break;
+  }
+  return name;
+}
+
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);

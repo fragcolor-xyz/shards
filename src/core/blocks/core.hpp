@@ -939,8 +939,6 @@ struct Take {
       outputInfo = TypeInfo::Sequence(inputInfo);
       return CBTypeInfo(outputInfo);
     } else {
-      // Not sure how to do this... seqs can have multiple types..
-      // We dunno exactly indices+types pairs
       if (inputType.basicType == Seq && inputType.seqType) {
         return *inputType.seqType;
       }
