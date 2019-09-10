@@ -304,6 +304,11 @@ struct Var : public CBVar {
     payload.tableValue = src;
   }
 
+  explicit Var(CBColor color) : CBVar() {
+    valueType = Color;
+    payload.colorValue = color;
+  }
+
   explicit Var(const std::vector<CBlock *> &blocks) : CBVar() {
     valueType = Seq;
     payload.seqValue = nullptr;
