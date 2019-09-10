@@ -231,7 +231,7 @@ struct RunChain : public ChainRunner {
 
       if (mode == RunChainMode::Inline) {
         if (!chainblocks::isRunning(chain)) {
-          context->chain->node->schedule(chain, input);
+          context->chain->node->schedule(chain, input, false);
         }
         return input;
       } else if (mode == RunChainMode::Stepped) {
@@ -510,7 +510,7 @@ struct Detach : public ChainRunner {
     assert(context && context->chain && context->chain->node);
 
     if (!chainblocks::isRunning(chain)) {
-      context->chain->node->schedule(chain, input);
+      context->chain->node->schedule(chain, input, false);
     }
     return input;
   }
@@ -560,7 +560,7 @@ struct DetachOnce : public ChainRunner {
     if (!doneOnce) {
       doneOnce = true;
       if (!chainblocks::isRunning(chain)) {
-        context->chain->node->schedule(chain, input);
+        context->chain->node->schedule(chain, input, false);
       }
     }
     return input;
@@ -691,7 +691,7 @@ struct ChainLoader : public ChainRunner {
 
       if (mode == RunChainMode::Detached) {
         if (!chainblocks::isRunning(chain)) {
-          context->chain->node->schedule(chain, input);
+          context->chain->node->schedule(chain, input, false);
         }
         return input;
       } else if (mode == RunChainMode::Stepped) {
