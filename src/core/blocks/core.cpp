@@ -71,6 +71,7 @@ RUNTIME_BLOCK_inputTypes(Update);
 RUNTIME_BLOCK_outputTypes(Update);
 RUNTIME_BLOCK_parameters(Update);
 RUNTIME_BLOCK_inferTypes(Update);
+RUNTIME_BLOCK_consumedVariables(Update);
 RUNTIME_BLOCK_setParam(Update);
 RUNTIME_BLOCK_getParam(Update);
 RUNTIME_BLOCK_activate(Update);

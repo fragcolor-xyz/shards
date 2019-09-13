@@ -436,6 +436,38 @@ struct Set : public SetBase {
 struct Update : public SetBase {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
+    // make sure we update to the same type
+    if (_isTable) {
+      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
+        auto &name = consumableVariables[i].name;
+        if (name == _name &&
+            consumableVariables[i].exposedType.basicType == Table &&
+            consumableVariables[i].exposedType.tableTypes) {
+          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
+          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
+          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
+            auto &key = tableKeys[y];
+            if (_key == key) {
+              if (inputType != tableTypes[y]) {
+                throw CBException(
+                    "Update: error, update is changing the variable type.");
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+        auto &cv = consumableVariables[i];
+        if (_name == cv.name) {
+          if (inputType != cv.exposedType) {
+            throw CBException(
+                "Update: error, update is changing the variable type.");
+          }
+        }
+      }
+    }
+
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -448,7 +480,12 @@ struct Update : public SetBase {
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
     }
+
     return inputType;
+  }
+
+  CBExposedTypesInfo consumedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
   }
 };
 
