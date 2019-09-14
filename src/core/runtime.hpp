@@ -97,6 +97,26 @@ void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
 }; // namespace chainblocks
 
+void freeDerivedInfo(CBTypeInfo info);
+CBTypeInfo deriveTypeInfo(CBVar &value);
+
+[[nodiscard]] CBValidationResult
+validateConnections(const std::vector<CBlock *> &chain,
+                    CBValidationCallback callback, void *userData,
+                    CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
+[[nodiscard]] CBValidationResult
+validateConnections(const CBlocks chain, CBValidationCallback callback,
+                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
+[[nodiscard]] CBValidationResult
+validateConnections(const CBChain *chain, CBValidationCallback callback,
+                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
+                    CBExposedTypesInfo consumables = nullptr);
+
+bool validateSetParam(CBlock *block, int index, CBVar &value,
+                      CBValidationCallback callback, void *userData);
+
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
 
@@ -194,23 +214,6 @@ struct CBContext {
 
   void setError(const char *errorMsg) { error = errorMsg; }
 };
-
-[[nodiscard]] CBValidationResult
-validateConnections(const std::vector<CBlock *> &chain,
-                    CBValidationCallback callback, void *userData,
-                    CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
-[[nodiscard]] CBValidationResult
-validateConnections(const CBlocks chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
-[[nodiscard]] CBValidationResult
-validateConnections(const CBChain *chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
-
-bool validateSetParam(CBlock *block, int index, CBVar &value,
-                      CBValidationCallback callback, void *userData);
 
 using json = nlohmann::json;
 // The following procedures implement json.hpp protocol in order to allow easy

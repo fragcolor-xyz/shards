@@ -490,7 +490,61 @@ struct Update : public SetBase {
 };
 
 struct Get : public VariableBase {
+  CBVar _defaultValue{};
+  CBTypeInfo _defaultType{};
+
+  static inline ParamsInfo variableParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Name", "The name of the variable.",
+                        CBTypesInfo(CoreInfo::strInfo)),
+      ParamsInfo::Param("Key",
+                        "The key of the value to read/write from/in the table "
+                        "(this variable will become a table).",
+                        CBTypesInfo(CoreInfo::strInfo)),
+      ParamsInfo::Param(
+          "Default",
+          "The default value to use to infer types and output if the variable "
+          "is not set, key is not there and/or type mismatches.",
+          CBTypesInfo(CoreInfo::anyInfo)),
+      ParamsInfo::Param(
+          "Global",
+          "If the variable should be shared between chains in the same node.",
+          CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(variableParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _name = value.payload.stringValue;
+    else if (index == 1) {
+      _key = value.payload.stringValue;
+      if (_key.size() > 0)
+        _isTable = true;
+      else
+        _isTable = false;
+    } else if (index == 2) {
+      _defaultValue = value;
+    } else if (index == 3) {
+      _global = value.payload.boolValue;
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Var(_name.c_str());
+    else if (index == 1)
+      return Var(_key.c_str());
+    else if (index == 2)
+      return _defaultValue;
+    else if (index == 3)
+      return Var(_global);
+    throw CBException("Param index out of range.");
+  }
+
   void cleanup() { _target = nullptr; }
+
+  void destroy() { freeDerivedInfo(_defaultType); }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
 
@@ -514,7 +568,14 @@ struct Get : public VariableBase {
           }
         }
       }
-      throw CBException("Get: Could not infer an output type, key not found.");
+      if (_defaultValue.valueType != None) {
+        freeDerivedInfo(_defaultType);
+        _defaultType = deriveTypeInfo(_defaultValue);
+        return _defaultType;
+      } else {
+        throw CBException(
+            "Get: Could not infer an output type, key not found.");
+      }
     } else {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
         auto &cv = consumableVariables[i];
@@ -523,7 +584,13 @@ struct Get : public VariableBase {
         }
       }
     }
-    throw CBException("Get: Could not infer an output type.");
+    if (_defaultValue.valueType != None) {
+      freeDerivedInfo(_defaultType);
+      _defaultType = deriveTypeInfo(_defaultValue);
+      return _defaultType;
+    } else {
+      throw CBException("Get: Could not infer an output type.");
+    }
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -548,19 +615,37 @@ struct Get : public VariableBase {
         ptrdiff_t index =
             stbds_shgeti(_target->payload.tableValue, _key.c_str());
         if (index == -1) {
-          // TODO should we throw?
+          if (_defaultType.basicType != None) {
+            return _defaultValue;
+          } else {
+            return Var::Restart();
+          }
+        }
+        auto &value = _target->payload.tableValue[index].value;
+        if (unlikely(_defaultValue.valueType != None &&
+                     value.valueType != _defaultValue.valueType)) {
+          return _defaultValue;
+        } else {
+          return value;
+        }
+      } else {
+        if (_defaultType.basicType != None) {
+          return _defaultValue;
+        } else {
           return Var::Restart();
         }
-        return _target->payload.tableValue[index].value;
-      } else {
-        // TODO should we throw?
-        return Var::Restart();
       }
     } else {
-      return *_target;
+      auto &value = *_target;
+      if (unlikely(_defaultValue.valueType != None &&
+                   value.valueType != _defaultValue.valueType)) {
+        return _defaultValue;
+      } else {
+        return value;
+      }
     }
   }
-};
+}; // namespace chainblocks
 
 struct Swap {
   static inline ParamsInfo swapParamsInfo =
@@ -1038,6 +1123,44 @@ struct Repeat {
   int _times = 0;
   CBVar _blocks{};
   bool _forever = false;
+  CBValidationResult chainValidation{};
+
+  void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // Free any previous result!
+    stbds_arrfree(chainValidation.exposedInfo);
+    chainValidation.exposedInfo = nullptr;
+
+    std::vector<CBlock *> blocks;
+    if (_blocks.valueType == Block) {
+      blocks.push_back(_blocks.payload.blockValue);
+    } else {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        blocks.push_back(_blocks.payload.seqValue[i].payload.blockValue);
+      }
+    }
+
+    // We need to validate the sub chain to figure it out!
+    chainValidation = validateConnections(
+        blocks,
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
+                       << errorTxt;
+            throw CBException("RunChain: failed inner chain validation");
+          } else {
+            LOG(INFO) << "RunChain: warning during inner chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, inputType, consumables);
+
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",

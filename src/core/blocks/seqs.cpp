@@ -3,6 +3,9 @@
 namespace chainblocks {
 struct Flatten {
   CBVar outputCache{};
+  TypeInfo outputType{};
+  TypeInfo seqType{};
+  TypesInfo outputFinalType{};
 
   void destroy() {
     if (outputCache.valueType == Seq) {
@@ -71,7 +74,10 @@ struct Flatten {
                         CBExposedTypesInfo consumableVariables) {
     CBTypeInfo current{};
     verifyInnerType(inputType, current);
-    return current;
+    outputType = TypeInfo(current);
+    seqType = TypeInfo::Sequence(outputType);
+    outputFinalType = TypesInfo(seqType);
+    return CBTypeInfo(outputFinalType);
   }
 
   void add(const CBVar &input) {

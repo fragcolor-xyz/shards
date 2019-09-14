@@ -120,6 +120,7 @@ RUNTIME_BLOCK_END(Clear);
 // Register Get
 RUNTIME_CORE_BLOCK_FACTORY(Get);
 RUNTIME_BLOCK_cleanup(Get);
+RUNTIME_BLOCK_destroy(Get);
 RUNTIME_BLOCK_inputTypes(Get);
 RUNTIME_BLOCK_outputTypes(Get);
 RUNTIME_BLOCK_parameters(Get);
@@ -162,6 +163,9 @@ RUNTIME_BLOCK_parameters(Repeat);
 RUNTIME_BLOCK_setParam(Repeat);
 RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
+RUNTIME_BLOCK_destroy(Repeat);
+RUNTIME_BLOCK_exposedVariables(Repeat);
+RUNTIME_BLOCK_inferTypes(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 
 LOGIC_OP_DESC(Is);

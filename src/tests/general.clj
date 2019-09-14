@@ -122,14 +122,9 @@
   (Log)
 
   (Repeat (-->
-    (Const [])
-    (Set "list1")
-    10
-    (Push "list1")
-    20
-    (Push "list1")
-    30
-    (Push "list1")
+    10 (Push "list1")
+    20 (Push "list1")
+    30 (Push "list1")
     (Get "list1")
     (Log)
     (Take 0)
@@ -148,7 +143,7 @@
   (Repeat (-->
     (Get "counter")
     (Math.Add 1)
-    (Set "counter")
+    (Update "counter")
    ) :Times 5)
   (Get "counter")
   (Assert.Is 5 true)
@@ -309,6 +304,14 @@
     (Pop "myseq2flat")
     (Log)
   ) 6)
+
+  (Repeat (-->
+    (Get "index" :Default 0)
+    (Math.Add 1)
+    (Set "index")
+  ) 6)
+  (Get "index")
+  (Assert.Is 6 true)
 
   (Msg "All looking good!")
 ))
