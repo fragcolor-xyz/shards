@@ -1,10 +1,18 @@
-## Semantic guidelines
+## Chains flow
 
-### **When***Something* blocks
-Generally this kind of blocks will check for some condition and if the condition is true they will continue the flow.<br>
-In the case of not matching the condition they will stop the local flow.<br>
-If not matching and being used in the body of the main chain the main chain will restart.
+`enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };`
 
-### **Wait***Something* blocks
-Generally this kind of blocks will check for some condition and if the condition is true they will continue the flow.<br>
-In the case of not matching the condition they will pause the chain execution until they match.
+#### `Running`:
+The chain executed normally and finished one cycle normally.
+
+#### `Restarted`:
+The chain executed normally until a block requested a chain restart, this might be normal, depending on chain behavior, anyway it's not considered fatal or a error by the system.
+* If this was a `Inline` sub chain (`Do, Dispatch`): 
+  * The root chain will restart as well.
+
+#### `Stopped`:
+
+#### `Failed`:
+
+
+
