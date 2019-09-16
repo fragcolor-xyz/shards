@@ -131,7 +131,7 @@
     return reinterpret_cast<_name_##Runtime *>(block)->core.name();            \
   });
 #define RUNTIME_BLOCK_help(_name_)                                             \
-  result->help = static_cast<CBSetupProc>([](CBlock *block) {                  \
+  result->help = static_cast<CBHelpProc>([](CBlock *block) {                  \
     return reinterpret_cast<_name_##Runtime *>(block)->core.help();            \
   });
 
