@@ -196,6 +196,31 @@ ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
   return freeCount;
 }
 
+class IterableSeq {
+public:
+  IterableSeq(CBSeq seq) : _seq(seq) {}
+  class iterator {
+  public:
+    iterator(CBVar *ptr) : ptr(ptr) {}
+    iterator operator++() {
+      ++ptr;
+      return *this;
+    }
+    bool operator!=(const iterator &other) const { return ptr != other.ptr; }
+    const CBVar &operator*() const { return *ptr; }
+
+  private:
+    CBVar *ptr;
+  };
+
+private:
+  CBSeq _seq;
+
+public:
+  iterator begin() const { return iterator(&_seq[0]); }
+  iterator end() const { return iterator(&_seq[0] + stbds_arrlen(_seq)); }
+};
+
 struct Var : public CBVar {
   ~Var() {
     // Dangerous... need to pull this out or something, TODO
