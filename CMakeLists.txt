@@ -204,6 +204,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
+set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DDLL_EXPORT")
 add_dependencies(cbruntime format)
 
 set(CB_RUNTIME_LIBS cbruntime)
