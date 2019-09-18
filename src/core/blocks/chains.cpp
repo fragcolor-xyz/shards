@@ -106,8 +106,7 @@ struct ChainBase {
             ? consumables
             : nullptr); // detached don't share context!
 
-    return passthrough || mode == RunChainMode::Detached ||
-                   mode == RunChainMode::Stepped
+    return passthrough || mode == RunChainMode::Detached
                ? inputType
                : chainValidation.outputType;
   }
@@ -229,7 +228,7 @@ struct RunChain : public ChainRunner {
       if (once)
         doneOnce = true;
 
-      if (mode == RunChainMode::Inline) {
+      if (mode == RunChainMode::Detached) {
         if (!chainblocks::isRunning(chain)) {
           context->chain->node->schedule(chain, input, false);
         }
@@ -264,306 +263,6 @@ struct RunChain : public ChainRunner {
     } else {
       return input;
     }
-  }
-};
-
-struct Dispatch : public ChainRunner {
-  // Always passes back the input as output
-
-  Dispatch() : ChainRunner() {
-    passthrough = true;
-    once = false;
-    mode = RunChainMode::Inline;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    // Run within the root flow
-    auto runRes = runSubChain(chain, context, input);
-    if (unlikely(runRes.state == Failed || context->aborted)) {
-      return Var::Stop();
-    }
-    // Pass back the input
-    return input;
-  }
-};
-
-struct DispatchOnce : public ChainRunner {
-  // Always passes back the input as output
-
-  DispatchOnce() : ChainRunner() {
-    passthrough = true;
-    once = true;
-    mode = RunChainMode::Inline;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    if (!doneOnce) {
-      doneOnce = true;
-
-      // Run within the root flow
-      auto runRes = runSubChain(chain, context, input);
-      if (unlikely(runRes.state == Failed || context->aborted)) {
-        return Var::Stop();
-      }
-    }
-    return input;
-  }
-};
-
-struct Do : public ChainRunner {
-  // Always passes as output the actual inner chain output
-
-  Do() : ChainRunner() {
-    passthrough = false;
-    once = false;
-    mode = RunChainMode::Inline;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    // Run within the root flow
-    auto runRes = runSubChain(chain, context, input);
-    if (unlikely(runRes.state == Failed || context->aborted)) {
-      return Var::Stop();
-    }
-    // Pass the actual output
-    return runRes.output;
-  }
-};
-
-struct DoOnce : public ChainRunner {
-  // Always passes as output the actual inner chain output, once, other times
-  // it's a passthru
-
-  DoOnce() : ChainRunner() {
-    passthrough = false;
-    once = true;
-    mode = RunChainMode::Inline;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    if (!doneOnce) {
-      doneOnce = true;
-
-      // Run within the root flow
-      auto runRes = runSubChain(chain, context, input);
-      if (unlikely(runRes.state == Failed || context->aborted)) {
-        return Var::Stop();
-      }
-      return runRes.output;
-    } else {
-      return input;
-    }
-  }
-};
-
-struct Detach : public ChainRunner {
-  // Detaches completely into a new chain on the same node
-  // it's a passthru
-
-  Detach() : ChainRunner() {
-    passthrough = true;
-    once = false;
-    mode = RunChainMode::Detached;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    assert(context && context->chain && context->chain->node);
-
-    if (!chainblocks::isRunning(chain)) {
-      context->chain->node->schedule(chain, input, false);
-    }
-    return input;
-  }
-};
-
-struct DetachOnce : public ChainRunner {
-  // Detaches completely into a new chain on the same node
-  // it's a passthru
-
-  DetachOnce() : ChainRunner() {
-    passthrough = true;
-    once = true;
-    mode = RunChainMode::Detached;
-  }
-
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(chainOnlyParamsInfo);
-  }
-
-  void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
-      chain = value.payload.chainValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(chain);
-      break;
-    default:
-      break;
-    }
-    return Var();
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
-
-    assert(context && context->chain && context->chain->node);
-
-    if (!doneOnce) {
-      doneOnce = true;
-      if (!chainblocks::isRunning(chain)) {
-        context->chain->node->schedule(chain, input, false);
-      }
-    }
-    return input;
   }
 };
 
@@ -741,12 +440,6 @@ struct ChainLoader : public ChainRunner {
 
 // Register
 CHAIN_BLOCK_DEF(RunChain);
-CHAIN_BLOCK_DEF(Do);
-CHAIN_BLOCK_DEF(DoOnce);
-CHAIN_BLOCK_DEF(Dispatch);
-CHAIN_BLOCK_DEF(DispatchOnce);
-CHAIN_BLOCK_DEF(DetachOnce);
-CHAIN_BLOCK_DEF(Detach);
 CHAIN_BLOCK_DEF(ChainLoader);
 
 RUNTIME_CORE_BLOCK(WaitChain);
@@ -763,12 +456,6 @@ RUNTIME_BLOCK_END(WaitChain);
 
 void registerChainsBlocks() {
   REGISTER_CORE_BLOCK(RunChain);
-  REGISTER_CORE_BLOCK(Do);
-  REGISTER_CORE_BLOCK(DoOnce);
-  REGISTER_CORE_BLOCK(Dispatch);
-  REGISTER_CORE_BLOCK(DispatchOnce);
-  REGISTER_CORE_BLOCK(Detach);
-  REGISTER_CORE_BLOCK(DetachOnce);
   REGISTER_CORE_BLOCK(ChainLoader);
   REGISTER_CORE_BLOCK(WaitChain);
 }

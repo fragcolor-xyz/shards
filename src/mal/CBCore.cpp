@@ -111,6 +111,27 @@ void installCBCore(const malEnvPtr &env) {
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
       "args args-inner)))))",
       env);
+  rep("(def! Do (fn* [chain] (RunChain chain :Once false :Passthrough false "
+      ":Mode RunChainMode.Inline)))",
+      env);
+  rep("(def! DoOnce (fn* [chain] (RunChain chain :Once true :Passthrough false "
+      ":Mode RunChainMode.Inline)))",
+      env);
+  rep("(def! Dispatch (fn* [chain] (RunChain chain :Once false :Passthrough "
+      "true :Mode RunChainMode.Inline)))",
+      env);
+  rep("(def! DispatchOnce (fn* [chain] (RunChain chain :Once true :Passthrough "
+      "true :Mode RunChainMode.Inline)))",
+      env);
+  rep("(def! Detach (fn* [chain] (RunChain chain :Once false :Passthrough true "
+      ":Mode RunChainMode.Detached)))",
+      env);
+  rep("(def! DetachOnce (fn* [chain] (RunChain chain :Once true :Passthrough "
+      "true :Mode RunChainMode.Detached)))",
+      env);
+  rep("(def! Step (fn* [chain] (RunChain chain :Once false :Passthrough "
+      "false :Mode RunChainMode.Stepped)))",
+      env);
 }
 
 class malCBChain : public malValue {
