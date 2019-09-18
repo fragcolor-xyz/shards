@@ -14,10 +14,12 @@
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
-bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output);
-bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
-                    const CBVar &chainInput, CBVar &output);
+enum FlowState { Stopping, Continuing, Returning };
+
+FlowState activateBlocks(CBSeq blocks, CBContext *context,
+                         const CBVar &chainInput, CBVar &output);
+FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+                         const CBVar &chainInput, CBVar &output);
 CBVar *contextVariable(CBContext *ctx, const char *name, bool global = false);
 CBVar suspend(CBContext *context, double seconds);
 
@@ -207,7 +209,7 @@ struct Var : public CBVar {
 
   explicit Var() : CBVar() {
     valueType = None;
-    payload.chainState = Continue;
+    payload.chainState = CBChainState::Continue;
   }
 
   static Var Stop() {

@@ -51,6 +51,13 @@ RUNTIME_BLOCK_outputTypes(Restart);
 RUNTIME_BLOCK_activate(Restart);
 RUNTIME_BLOCK_END(Restart);
 
+// Register Return
+RUNTIME_CORE_BLOCK_FACTORY(Return);
+RUNTIME_BLOCK_inputTypes(Return);
+RUNTIME_BLOCK_outputTypes(Return);
+RUNTIME_BLOCK_activate(Return);
+RUNTIME_BLOCK_END(Return);
+
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
 RUNTIME_BLOCK_cleanup(Set);
@@ -243,6 +250,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Swap);
   REGISTER_CORE_BLOCK(Sleep);
   REGISTER_CORE_BLOCK(Restart);
+  REGISTER_CORE_BLOCK(Return);
   REGISTER_CORE_BLOCK(Stop);
   REGISTER_CORE_BLOCK(And);
   REGISTER_CORE_BLOCK(Or);

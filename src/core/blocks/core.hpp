@@ -296,6 +296,14 @@ struct Restart {
   }
 };
 
+struct Return {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return Var::Return();
+  }
+};
+
 struct VariableBase {
   CBVar *_target = nullptr;
   std::string _name;
@@ -1213,10 +1221,13 @@ struct Repeat {
     while (repeats) {
       CBVar repeatOutput{};
       repeatOutput.valueType = None;
-      repeatOutput.payload.chainState = Continue;
-      if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
-                                   repeatOutput))) {
+      repeatOutput.payload.chainState = CBChainState::Continue;
+      auto state = activateBlocks(_blocks.payload.seqValue, context, input,
+                                  repeatOutput);
+      if (unlikely(state == FlowState::Stopping)) {
         return StopChain;
+      } else if (unlikely(state == FlowState::Returning)) {
+        break;
       }
 
       if (!_forever)
@@ -1232,6 +1243,7 @@ RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
+RUNTIME_CORE_BLOCK_TYPE(Return);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);

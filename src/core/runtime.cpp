@@ -288,22 +288,22 @@ CBVar suspend(CBContext *context, double seconds) {
   return cont;
 }
 
-bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
-                    const CBVar &chainInput, CBVar &output) {
+FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+                         const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        return true;
+        return Continuing;
       }
       case CBChainState::Stop: {
-        return false;
+        return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        return true;
+        return Returning;
       }
       case CBChainState::Rebase: {
         input = chainInput;
@@ -315,25 +315,25 @@ bool activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
     }
     input = output;
   }
-  return true;
+  return Continuing;
 }
 
-bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output) {
+FlowState activateBlocks(CBSeq blocks, CBContext *context,
+                         const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        return true;
+        return Continuing;
       }
       case CBChainState::Stop: {
-        return false;
+        return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        return true;
+        return Returning;
       }
       case CBChainState::Rebase: {
         input = chainInput;
@@ -345,7 +345,7 @@ bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
     }
     input = output;
   }
-  return true;
+  return Continuing;
 }
 }; // namespace chainblocks
 

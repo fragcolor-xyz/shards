@@ -222,9 +222,12 @@ struct Cond {
         // Do the action if true!
         // And stop here
         output = Empty;
-        if (unlikely(!activateBlocks(&_actions[idx][0], _actions[idx].size(),
-                                     context, actionInput, output))) {
+        auto state = activateBlocks(&_actions[idx][0], _actions[idx].size(),
+                                    context, actionInput, output);
+        if (unlikely(state == FlowState::Stopping)) {
           return StopChain;
+        } else if (unlikely(state == FlowState::Returning)) {
+          return Var::Return();
         } else if (_threading) {
           // set the output as the next action input (not cond tho!)
           finalOutput = output;

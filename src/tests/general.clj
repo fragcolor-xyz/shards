@@ -313,6 +313,15 @@
   (Get "index")
   (Assert.Is 6 true)
 
+  (Repeat (-->
+    (Get "index2" :Default 0)
+    (Math.Add 1)
+    (Set "index2")
+    (Cond [(--> (Is 6)) (--> (Return))])
+  ) :Forever true)
+  (Get "index2")
+  (Assert.Is 6 true)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)
