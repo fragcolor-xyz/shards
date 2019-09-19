@@ -594,13 +594,15 @@ CBVar varify(malCBBlock *mblk, const malValuePtr &arg) {
     var.valueType = Block;
     var.payload.blockValue = block;
     return var;
-  } else if (const malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
+  } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
     CBVar var{};
     var.valueType = Chain;
     var.payload.chainValue = chain;
     if (mblk)
       mblk->addChain(v);
+    else
+      v->consume();
     return var;
   } else {
     throw chainblocks::CBException("Invalid variable");
