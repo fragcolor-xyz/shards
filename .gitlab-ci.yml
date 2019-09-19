@@ -1,16 +1,10 @@
 buildAndRun:win:debug:
   script:
-    - $currentDir = Get-Location
-    - $nimbleDir = "$currentDir/nimbledir"
-    - cd src/nim
-    - nimble install --depsOnly --nimbleDir:$nimbleDir -y
-    - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
-    # - .\cbl.exe ../src/tests/inner.clj
     - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
     - .\cbl.exe ../src/tests/subchains.clj
@@ -19,22 +13,16 @@ buildAndRun:win:debug:
 
 buildAndRun:win:release:  
   script:
-    - $currentDir = Get-Location
-    - $nimbleDir = "$currentDir/nimbledir"
-    - cd src/nim
-    - nimble install --depsOnly --nimbleDir:$nimbleDir -y
-    - cd $currentDir
     - mkdir build
     - cd build
-    - cmake -G Ninja -DNIMBLE_PATH="$nimbleDir/pkgs" -DCMAKE_BUILD_TYPE=Release ..
+    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
-    # - .\cbl.exe ../src/tests/inner.clj
     - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
     - .\cbl.exe ../src/tests/subchains.clj
   tags:
-    - WIN, NIM, BOOST, MINGW
+    - WIN, BOOST, MINGW
 
 buildAndRun:linux:debug:
   script:
