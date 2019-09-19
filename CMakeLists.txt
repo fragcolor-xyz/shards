@@ -204,7 +204,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
-set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DDLL_EXPORT")
+set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cbruntime format)
 
 set(CB_RUNTIME_LIBS cbruntime)
@@ -261,6 +261,6 @@ add_executable(
 )
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED -DDLL_EXPORT")
+set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED -DCB_DLL_EXPORT")
 target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS})
 ###

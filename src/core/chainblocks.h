@@ -462,7 +462,7 @@ typedef void(__cdecl *CBValidationCallback)(const CBlock *errorBlock,
                                             void *userData);
 
 #ifdef _WIN32
-#ifdef DLL_EXPORT
+#ifdef CB_DLL_EXPORT
 #define EXPORTED __declspec(dllexport)
 #elif DLL_IMPORT
 #define EXPORTED __declspec(dllimport)
