@@ -25,13 +25,19 @@ static ReadLine s_readLine("~/.mal-history");
 
 static malEnvPtr replEnv(new malEnv);
 
-int malmain(int argc, char* argv[])
-{
-    String prompt = "user> ";
-    String input;
+void malinit() {
     installCore(replEnv);
     installCBCore(replEnv);
     installFunctions(replEnv);
+}
+
+malValuePtr maleval(const char* str) {
+    return EVAL(READ(str), replEnv);
+}
+
+int malmain(int argc, char* argv[])
+{
+    malinit();
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
         String filename = escape(argv[1]);
@@ -41,6 +47,8 @@ int malmain(int argc, char* argv[])
         return 0;
     }
 #ifndef NO_MAL_MAIN
+    String prompt = "user> ";
+    String input;
     rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
     while (s_readLine.get(prompt, input)) {
         String out = safeRep(input, replEnv);

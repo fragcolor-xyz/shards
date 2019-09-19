@@ -599,7 +599,8 @@ CBVar varify(malCBBlock *mblk, const malValuePtr &arg) {
     CBVar var{};
     var.valueType = Chain;
     var.payload.chainValue = chain;
-    mblk->addChain(v);
+    if (mblk)
+      mblk->addChain(v);
     return var;
   } else {
     throw chainblocks::CBException("Invalid variable");
@@ -990,6 +991,19 @@ BUILTIN_ISA("Var?", malCBVar);
 BUILTIN_ISA("Node?", malCBNode);
 BUILTIN_ISA("Chain?", malCBChain);
 BUILTIN_ISA("Block?", malCBBlock);
+
+extern "C" {
+EXPORTED __cdecl void cbLispInit() { malinit(); }
+
+EXPORTED __cdecl CBVar cbLispEval(const char *str) {
+  try {
+    auto res = maleval(str);
+    return varify(nullptr, res);
+  } catch (...) {
+    return chainblocks::Empty;
+  }
+}
+};
 
 #ifdef HAS_CB_GENERATED
 #include "CBGenerated.hpp"
