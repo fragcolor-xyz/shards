@@ -864,7 +864,8 @@ struct Push : public VariableBase {
           seq.payload.seqLen = -1;
         }
       } else if (seq.valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Push.");
+        throw CBException(
+            "Variable (in table) is not a sequence, failed to Push.");
       }
 
       CBVar tmp{};
@@ -955,7 +956,8 @@ struct Clear : SeqUser {
 
       auto &seq = _target->payload.tableValue[index].value;
       if (seq.valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Push.");
+        throw CBException(
+            "Variable (in table) is not a sequence, failed to Push.");
       }
 
       stbds_arrsetlen(seq.payload.seqValue, 0);
@@ -1004,7 +1006,8 @@ struct Pop : SeqUser {
     }
     if (_isTable) {
       if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Push.");
+        throw CBException(
+            "Variable (in table) is not a table, failed to Push.");
       }
 
       ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
@@ -1014,7 +1017,8 @@ struct Pop : SeqUser {
 
       auto &seq = _target->payload.tableValue[index].value;
       if (seq.valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Push.");
+        throw CBException(
+            "Variable (in table) is not a sequence, failed to Push.");
       }
 
       if (stbds_arrlen(seq.payload.seqValue) == 0) {
