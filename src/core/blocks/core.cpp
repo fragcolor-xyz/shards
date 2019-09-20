@@ -101,6 +101,7 @@ RUNTIME_BLOCK_END(Push);
 // Register Pop
 RUNTIME_CORE_BLOCK_FACTORY(Pop);
 RUNTIME_BLOCK_cleanup(Pop);
+RUNTIME_BLOCK_destroy(Pop);
 RUNTIME_BLOCK_inputTypes(Pop);
 RUNTIME_BLOCK_outputTypes(Pop);
 RUNTIME_BLOCK_parameters(Pop);
