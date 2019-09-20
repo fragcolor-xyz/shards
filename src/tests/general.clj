@@ -101,8 +101,6 @@
   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
   (Log)
 
-  (Const [])
-  (Set "list1")
   10
   (Push "list1")
   20
@@ -321,6 +319,14 @@
   ) :Forever true)
   (Get "index2")
   (Assert.Is 6 true)
+
+  (Repeat (-->
+    10 (Set "tableInList" "x")
+    20 (Set "tableInList" "y")
+    30 (Set "tableInList" "z")
+    (Get "tableInList") (Push "newListInRepeat")
+  ) 5)
+  (Get "newListInRepeat") (Log)
 
   (Msg "All looking good!")
 ))
