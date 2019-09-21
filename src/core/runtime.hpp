@@ -226,8 +226,6 @@ void from_json(const json &j, CBChainPtr &chain);
 namespace chainblocks {
 void installSignalHandlers();
 
-#include "runtime_macros.hpp"
-
 ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
                                         const CBVar &input,
                                         CBVar &previousOutput) {
@@ -558,29 +556,6 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   context->paused = false;
   chain->context = context;
 
-  for (auto blk : chain->blocks) {
-    if (blk->preChain) {
-      try {
-        blk->preChain(blk, context);
-      } catch (boost::context::detail::forced_unwind const &e) {
-        throw; // required for Boost Coroutine!
-      } catch (const std::exception &e) {
-        LOG(ERROR) << "Pre chain failure, failed block: "
-                   << std::string(blk->name(blk));
-        if (context->error.length() > 0)
-          LOG(ERROR) << "Last error: " << std::string(context->error);
-        LOG(ERROR) << e.what();
-        return {CBVar(), Failed};
-      } catch (...) {
-        LOG(ERROR) << "Pre chain failure, failed block: "
-                   << std::string(blk->name(blk));
-        if (context->error.length() > 0)
-          LOG(ERROR) << "Last error: " << std::string(context->error);
-        return {CBVar(), Failed};
-      }
-    }
-  }
-
   auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
@@ -590,12 +565,9 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
-          runChainPOSTCHAIN;
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          runChainPOSTCHAIN;
-
           // Print errors if any, we might have stopped because of some error!
           if (unlikely(context->error.length() > 0)) {
             LOG(ERROR) << "Block activation error, failed block: "
@@ -607,7 +579,6 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           }
         }
         case CBChainState::Return: {
-          runChainPOSTCHAIN;
           // Use input as output, return previous block result
           return {input, Restarted};
         }
@@ -627,20 +598,16 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (context->error.length() > 0)
         LOG(ERROR) << "Last error: " << std::string(context->error);
       LOG(ERROR) << e.what();
-      ;
-      runChainPOSTCHAIN;
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       if (context->error.length() > 0)
         LOG(ERROR) << "Last error: " << std::string(context->error);
-      runChainPOSTCHAIN;
       return {chain->previousOutput, Failed};
     }
   }
 
-  runChainPOSTCHAIN;
   return {chain->previousOutput, Running};
 }
 

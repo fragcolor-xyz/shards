@@ -411,9 +411,7 @@ typedef CBTypeInfo(__cdecl *CBInferTypesProc)(
     CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
-typedef void(__cdecl *CBPreChainProc)(struct CBlock *, CBContext *);
 typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, CBVar);
-typedef void(__cdecl *CBPostChainProc)(struct CBlock *, CBContext *);
 
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
@@ -429,11 +427,6 @@ struct CBlock {
   CBSetupProc setup;     // A one time construtor setup for the block
   CBDestroyProc destroy; // A one time finalizer for the block, blocks should
                          // also free all the memory in here!
-
-  CBPreChainProc
-      preChain; // Called inside the coro before a chain starts, optional
-  CBPostChainProc
-      postChain; // Called inside the coro afer a chain ends, optional
 
   CBInputTypesProc inputTypes;
   CBOutputTypesProc outputTypes;

@@ -24,8 +24,6 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->preChain = nullptr;                                                \
-    result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -55,8 +53,6 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->preChain = nullptr;                                                \
-    result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -87,8 +83,6 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->preChain = nullptr;                                                \
-    result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -119,8 +113,6 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->preChain = nullptr;                                                \
-    result->postChain = nullptr;                                               \
     result->inferTypes = nullptr;                                              \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
