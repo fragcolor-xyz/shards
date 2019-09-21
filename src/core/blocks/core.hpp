@@ -915,6 +915,76 @@ struct SeqUser : VariableBase {
   }
 };
 
+struct Count : SeqUser {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    if (_isTable) {
+      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
+        if (consumableVariables[i].name == _name &&
+            consumableVariables[i].exposedType.tableTypes) {
+          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
+          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
+          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
+            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
+              return CBTypeInfo(CoreInfo::intInfo);
+            }
+          }
+        }
+      }
+      throw CBException(
+          "Count: key not found or key value is not a sequence!.");
+    } else {
+      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
+        auto &cv = consumableVariables[i];
+        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          return CBTypeInfo(CoreInfo::intInfo);
+        }
+      }
+    }
+    throw CBException("Count: variable is not a sequence.");
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = contextVariable(context, _name.c_str(), _global);
+    }
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        throw CBException("Variable is not a table, failed to Count.");
+      }
+
+      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (index == -1) {
+        throw CBException("Record not found in table, failed to Count.");
+      }
+
+      auto &seq = _target->payload.tableValue[index].value;
+      if (seq.valueType != Seq) {
+        throw CBException(
+            "Variable (in table) is not a sequence, failed to Count.");
+      }
+
+      return Var(int64_t(stbds_arrlen(seq.payload.seqValue)));
+    } else {
+      if (_target->valueType != Seq) {
+        throw CBException("Variable is not a sequence, failed to Count.");
+      }
+
+      if (!_blittable) {
+        // Clean allocation garbage in case it's not blittable!
+        for (auto i = 0; i < stbds_arrlen(_target->payload.seqValue); i++) {
+          destroyVar(_target->payload.seqValue[i]);
+        }
+      }
+
+      return Var(int64_t(stbds_arrlen(_target->payload.seqValue)));
+    }
+  }
+};
+
 struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
@@ -1426,6 +1496,7 @@ RUNTIME_CORE_BLOCK_TYPE(Take);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
+RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 RUNTIME_CORE_BLOCK_TYPE(Sort);
 }; // namespace chainblocks

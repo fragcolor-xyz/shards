@@ -369,6 +369,8 @@
   (Get "unsortedList") (Sort :Desc true)
   (Log)
   (Assert.Is [5 4 2 1 1 0] true)
+  (Count "unsortedList")
+  (Assert.Is 6 true)
 
   (Msg "All looking good!")
 ))

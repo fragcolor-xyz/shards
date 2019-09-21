@@ -112,6 +112,18 @@ RUNTIME_BLOCK_getParam(Pop);
 RUNTIME_BLOCK_activate(Pop);
 RUNTIME_BLOCK_END(Pop);
 
+// Register Count
+RUNTIME_CORE_BLOCK_FACTORY(Count);
+RUNTIME_BLOCK_inputTypes(Count);
+RUNTIME_BLOCK_outputTypes(Count);
+RUNTIME_BLOCK_parameters(Count);
+RUNTIME_BLOCK_inferTypes(Count);
+RUNTIME_BLOCK_consumedVariables(Count);
+RUNTIME_BLOCK_setParam(Count);
+RUNTIME_BLOCK_getParam(Count);
+RUNTIME_BLOCK_activate(Count);
+RUNTIME_BLOCK_END(Count);
+
 // Register Clear
 RUNTIME_CORE_BLOCK_FACTORY(Clear);
 RUNTIME_BLOCK_cleanup(Clear);
@@ -258,6 +270,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Push);
   REGISTER_CORE_BLOCK(Pop);
   REGISTER_CORE_BLOCK(Clear);
+  REGISTER_CORE_BLOCK(Count);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);
   REGISTER_CORE_BLOCK(Sleep);
