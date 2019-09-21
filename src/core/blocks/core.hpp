@@ -1295,6 +1295,41 @@ struct Repeat {
   }
 };
 
+struct Sort {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  struct {
+    bool operator()(CBVar &a, CBVar &b) const { return a > b; }
+  } sortAsc;
+
+  struct {
+    bool operator()(CBVar &a, CBVar &b) const { return a < b; }
+  } sortDesc;
+
+  template <class Compare>
+  static void insertSort(CBVar seq[], int n, Compare comp) {
+    int i, j;
+    CBVar key;
+    for (i = 1; i < n; i++) {
+      key = seq[i];
+      j = i - 1;
+      while (j >= 0 && comp(seq[j], key)) {
+        seq[j + 1] = seq[j];
+        j = j - 1;
+      }
+      seq[j + 1] = key;
+    }
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    // Sort in place
+    auto len = stbds_arrlen(input.payload.seqValue);
+    insertSort(input.payload.seqValue, len, sortAsc);
+    return input;
+  }
+};
+
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(And);
@@ -1311,4 +1346,5 @@ RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
+RUNTIME_CORE_BLOCK_TYPE(Sort);
 }; // namespace chainblocks

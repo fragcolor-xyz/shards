@@ -328,6 +328,15 @@
   ) 5)
   (Get "newListInRepeat") (Log)
 
+  2 (Push "unsortedList")
+  4 (Push "unsortedList")
+  1 (Push "unsortedList")
+  0 (Push "unsortedList")
+  1 (Push "unsortedList")
+  5 (Push "unsortedList")
+  (Get "unsortedList") (Sort)
+  (Log)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)

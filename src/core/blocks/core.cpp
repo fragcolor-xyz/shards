@@ -163,7 +163,7 @@ RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
-// Register Take
+// Register Repeat
 RUNTIME_CORE_BLOCK_FACTORY(Repeat);
 RUNTIME_BLOCK_inputTypes(Repeat);
 RUNTIME_BLOCK_outputTypes(Repeat);
@@ -175,6 +175,13 @@ RUNTIME_BLOCK_destroy(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
 RUNTIME_BLOCK_inferTypes(Repeat);
 RUNTIME_BLOCK_END(Repeat);
+
+// Register Sort
+RUNTIME_CORE_BLOCK_FACTORY(Sort);
+RUNTIME_BLOCK_inputTypes(Sort);
+RUNTIME_BLOCK_outputTypes(Sort);
+RUNTIME_BLOCK_activate(Sort);
+RUNTIME_BLOCK_END(Sort);
 
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
@@ -257,6 +264,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Or);
   REGISTER_CORE_BLOCK(Take);
   REGISTER_CORE_BLOCK(Repeat);
+  REGISTER_CORE_BLOCK(Sort);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);
