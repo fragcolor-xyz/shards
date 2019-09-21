@@ -307,6 +307,12 @@ struct Var : public CBVar {
     payload.boolValue = src;
   }
 
+  explicit Var(CBSeq seq) : CBVar() {
+    valueType = Seq;
+    payload.seqLen = -1;
+    payload.seqValue = seq;
+  }
+
   explicit Var(CBChain *src) : CBVar() {
     valueType = Chain;
     payload.chainValue = src;

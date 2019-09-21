@@ -5,8 +5,10 @@
 
 namespace chainblocks {
 struct CoreInfo {
+  static inline TypeInfo intType = TypeInfo(CBType::Int);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
+  static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
   static inline TypesInfo anySeqInfo = TypesInfo(CBType::Seq);
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
@@ -20,6 +22,7 @@ struct CoreInfo {
   static inline TypesInfo blocksSeqInfo =
       TypesInfo(TypeInfo::Sequence(blockSeq));
   static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
+  static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
 };
 
 struct Const {
@@ -1105,8 +1108,8 @@ struct Take {
       "Indices", "One or multiple indices to filter from a sequence.",
       CBTypesInfo(CoreInfo::intsInfo)));
 
-  CBSeq cachedResult;
-  CBVar indices;
+  CBSeq cachedResult = nullptr;
+  CBVar indices{};
 
   void destroy() {
     if (cachedResult) {
@@ -1296,8 +1299,51 @@ struct Repeat {
 };
 
 struct Sort {
+  std::vector<CBSeq> _multiSortColumns;
+  std::vector<CBVar> _multiSortKeys;
+
+  CBVar _columns{};
+  bool _desc = false;
+
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Columns",
+                        "Other columns to sort using the input (they must be "
+                        "of the same length).",
+                        CBTypesInfo(CoreInfo::varSeqInfo)),
+      ParamsInfo::Param(
+          "Desc",
+          "If sorting should be in descending order, defaults ascending.",
+          CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_columns, value);
+      break;
+    case 1:
+      _desc = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _columns;
+    case 1:
+      return Var(_desc);
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
 
   struct {
     bool operator()(CBVar &a, CBVar &b) const { return a > b; }
@@ -1307,25 +1353,45 @@ struct Sort {
     bool operator()(CBVar &a, CBVar &b) const { return a < b; }
   } sortDesc;
 
-  template <class Compare>
-  static void insertSort(CBVar seq[], int n, Compare comp) {
+  template <class Compare> void insertSort(CBVar seq[], int n, Compare comp) {
     int i, j;
     CBVar key;
     for (i = 1; i < n; i++) {
       key = seq[i];
+      _multiSortKeys.clear();
+      for (auto &col : _multiSortColumns) {
+        _multiSortKeys.push_back(col[i]);
+      }
       j = i - 1;
       while (j >= 0 && comp(seq[j], key)) {
         seq[j + 1] = seq[j];
+        for (auto &col : _multiSortColumns) {
+          col[j + 1] = col[j];
+        }
         j = j - 1;
       }
       seq[j + 1] = key;
+      auto z = 0;
+      for (auto &col : _multiSortColumns) {
+        col[j + 1] = _multiSortKeys[z++];
+      }
     }
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
-    insertSort(input.payload.seqValue, len, sortAsc);
+
+    if (_columns.valueType != None) {
+      _multiSortColumns.clear();
+    }
+
+    if (!_desc) {
+      insertSort(input.payload.seqValue, len, sortAsc);
+    } else {
+      insertSort(input.payload.seqValue, len, sortDesc);
+    }
+
     return input;
   }
 };
