@@ -895,7 +895,6 @@ struct SeqUser : VariableBase {
 
   void cleanup() { _target = nullptr; }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   CBExposedTypesInfo consumedVariables() {
@@ -913,6 +912,8 @@ struct SeqUser : VariableBase {
 };
 
 struct Clear : SeqUser {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
@@ -1000,6 +1001,8 @@ struct Clear : SeqUser {
 };
 
 struct Pop : SeqUser {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+
   CBVar _output{};
 
   void destroy() { destroyVar(_output); }
