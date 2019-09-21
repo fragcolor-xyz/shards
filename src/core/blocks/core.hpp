@@ -1324,6 +1324,8 @@ struct Sort {
     switch (index) {
     case 0:
       cloneVar(_columns, value);
+      // resets vars fetch in activate
+      _multiSortColumns.clear();
       break;
     case 1:
       _desc = value.payload.boolValue;
@@ -1378,12 +1380,25 @@ struct Sort {
     }
   }
 
+  void cleanup() { _multiSortColumns.clear(); }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
 
-    if (_columns.valueType != None) {
-      _multiSortColumns.clear();
+    if (_multiSortColumns.size() == 0 && _columns.valueType == Seq) {
+      auto seq = IterableSeq(_columns.payload.seqValue);
+      for (auto &col : seq) {
+        auto target = contextVariable(context, col.payload.stringValue);
+        if (target && target->valueType == Seq) {
+          auto mseqLen = stbds_arrlen(target->payload.seqValue);
+          if (len != mseqLen) {
+            throw CBException("Sort: All the sequences to be sorted must have "
+                              "the same length as the input sequence.");
+          }
+          _multiSortColumns.push_back(target->payload.seqValue);
+        }
+      }
     }
 
     if (!_desc) {

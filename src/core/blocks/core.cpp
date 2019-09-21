@@ -181,6 +181,10 @@ RUNTIME_CORE_BLOCK_FACTORY(Sort);
 RUNTIME_BLOCK_inputTypes(Sort);
 RUNTIME_BLOCK_outputTypes(Sort);
 RUNTIME_BLOCK_activate(Sort);
+RUNTIME_BLOCK_parameters(Sort);
+RUNTIME_BLOCK_setParam(Sort);
+RUNTIME_BLOCK_getParam(Sort);
+RUNTIME_BLOCK_cleanup(Sort);
 RUNTIME_BLOCK_END(Sort);
 
 LOGIC_OP_DESC(Is);
