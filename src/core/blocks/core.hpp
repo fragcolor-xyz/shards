@@ -8,6 +8,7 @@ struct CoreInfo {
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
+  static inline TypesInfo anySeqInfo = TypesInfo(CBType::Seq);
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
@@ -1106,8 +1107,6 @@ struct Take {
 
   CBSeq cachedResult;
   CBVar indices;
-  TypeInfo outputInfo;
-  TypeInfo inputInfo;
 
   void destroy() {
     if (cachedResult) {
@@ -1116,7 +1115,7 @@ struct Take {
     destroyVar(indices);
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
@@ -1128,15 +1127,15 @@ struct Take {
                         CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
     if (indices.valueType == Seq) {
-      inputInfo = TypeInfo(inputType);
-      outputInfo = TypeInfo::Sequence(inputInfo);
-      return CBTypeInfo(outputInfo);
+      if (inputType.basicType == Seq) {
+        return inputType; // multiple values
+      }
     } else {
       if (inputType.basicType == Seq && inputType.seqType) {
-        return *inputType.seqType;
+        return *inputType.seqType; // single value
       }
-      return inputType;
     }
+    throw CBException("Take expected a sequence as input.");
   }
 
   void setParam(int index, CBVar value) {
@@ -1152,10 +1151,6 @@ struct Take {
   CBVar getParam(int index) { return indices; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (input.valueType != Seq) {
-      throw CBException("Take expected a sequence!");
-    }
-
     auto inputLen = stbds_arrlen(input.payload.seqValue);
 
     if (indices.valueType == Int) {

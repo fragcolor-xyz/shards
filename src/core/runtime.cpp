@@ -998,7 +998,7 @@ void from_json(const json &j, CBChainPtr &chain) {
 }
 
 bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
-                bool isParameter, bool strict = true) {
+                bool isParameter, bool strict) {
   if (consumedType.basicType == Any ||
       (!isParameter && consumedType.basicType == None))
     return true;
@@ -1027,7 +1027,7 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
     if (strict) {
       if (exposedType.seqType && consumedType.seqType) {
         if (!matchTypes(*exposedType.seqType, *consumedType.seqType,
-                        isParameter)) {
+                        isParameter, strict)) {
           return false;
         }
       } else if (exposedType.seqType == nullptr ||
@@ -1048,7 +1048,7 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
         auto matched = false;
         for (auto y = 0; y < btypes; y++) {
           auto btype = consumedType.tableTypes[y];
-          if (matchTypes(atype, btype, isParameter)) {
+          if (matchTypes(atype, btype, isParameter, strict)) {
             matched = true;
             break;
           }
@@ -1090,7 +1090,7 @@ void validateConnection(ValidationContext &ctx) {
   // validate our generic input
   for (auto i = 0; stbds_arrlen(inputInfos) > i; i++) {
     auto &inputInfo = inputInfos[i];
-    if (matchTypes(previousOutput, inputInfo, false)) {
+    if (matchTypes(previousOutput, inputInfo, false, false)) {
       inputMatches = true;
       break;
     }
@@ -1322,7 +1322,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   auto varType = deriveTypeInfo(value);
 
   for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
-    if (matchTypes(varType, param.valueTypes[i], true)) {
+    if (matchTypes(varType, param.valueTypes[i], true, true)) {
       return true; // we are good just exit
     }
   }
