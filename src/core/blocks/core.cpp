@@ -114,6 +114,7 @@ RUNTIME_BLOCK_END(Pop);
 
 // Register Count
 RUNTIME_CORE_BLOCK_FACTORY(Count);
+RUNTIME_BLOCK_cleanup(Count);
 RUNTIME_BLOCK_inputTypes(Count);
 RUNTIME_BLOCK_outputTypes(Count);
 RUNTIME_BLOCK_parameters(Count);
@@ -128,8 +129,6 @@ RUNTIME_BLOCK_cleanup(Clear);
 RUNTIME_BLOCK_inputTypes(Clear);
 RUNTIME_BLOCK_outputTypes(Clear);
 RUNTIME_BLOCK_parameters(Clear);
-RUNTIME_BLOCK_inferTypes(Clear);
-RUNTIME_BLOCK_consumedVariables(Clear);
 RUNTIME_BLOCK_setParam(Clear);
 RUNTIME_BLOCK_getParam(Clear);
 RUNTIME_BLOCK_activate(Clear);

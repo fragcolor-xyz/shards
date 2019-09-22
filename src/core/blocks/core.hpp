@@ -971,46 +971,6 @@ struct Count : SeqUser {
 struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
-    if (_isTable) {
-      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
-        if (consumableVariables[i].name == _name &&
-            consumableVariables[i].exposedType.tableTypes) {
-          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
-          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
-              if (tableTypes[y].seqType != nullptr &&
-                  tableTypes[y].seqType->basicType < EndOfBlittableTypes) {
-                _blittable = true;
-              } else {
-                _blittable = false;
-              }
-              return inputType; // found lets escape
-            }
-          }
-        }
-      }
-      throw CBException(
-          "Clear: key not found or key value is not a sequence!.");
-    } else {
-      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
-        auto &cv = consumableVariables[i];
-        if (_name == cv.name && cv.exposedType.basicType == Seq) {
-          if (cv.exposedType.seqType != nullptr &&
-              cv.exposedType.seqType->basicType < EndOfBlittableTypes) {
-            _blittable = true;
-          } else {
-            _blittable = false;
-          }
-          return inputType; // found lets escape
-        }
-      }
-    }
-    throw CBException("Variable is not a sequence.");
-  }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
@@ -1030,27 +990,33 @@ struct Clear : SeqUser {
         return input;
       }
 
-      if (!_blittable) {
-        // Clean allocation garbage in case it's not blittable!
-        for (auto i = 0; i < stbds_arrlen(seq.payload.seqValue); i++) {
-          destroyVar(seq.payload.seqValue[i]);
+      auto len = stbds_arrlen(seq.payload.seqValue);
+      if (len > 0) {
+        if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+          // Clean allocation garbage in case it's not blittable!
+          for (auto i = 0; i < len; i++) {
+            destroyVar(seq.payload.seqValue[i]);
+          }
         }
-      }
 
-      stbds_arrsetlen(seq.payload.seqValue, 0);
+        stbds_arrsetlen(seq.payload.seqValue, 0);
+      }
     } else {
       if (_target->valueType != Seq) {
         return input;
       }
 
-      if (!_blittable) {
-        // Clean allocation garbage in case it's not blittable!
-        for (auto i = 0; i < stbds_arrlen(_target->payload.seqValue); i++) {
-          destroyVar(_target->payload.seqValue[i]);
+      auto len = stbds_arrlen(_target->payload.seqValue);
+      if (len > 0) {
+        if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+          // Clean allocation garbage in case it's not blittable!
+          for (auto i = 0; i < len; i++) {
+            destroyVar(_target->payload.seqValue[i]);
+          }
         }
-      }
 
-      stbds_arrsetlen(_target->payload.seqValue, 0);
+        stbds_arrsetlen(_target->payload.seqValue, 0);
+      }
     }
     return input;
   }
