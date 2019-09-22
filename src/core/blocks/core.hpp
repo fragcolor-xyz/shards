@@ -862,75 +862,63 @@ struct Push : public VariableBase {
       _target = contextVariable(context, _name.c_str(), _global);
     }
     if (_isTable) {
-      if (_tableOwner) {
-        if (_target->valueType != Table) {
-          // Not initialized yet
-          _target->valueType = Table;
-          _target->payload.tableValue = nullptr;
-          _target->payload.tableLen = -1;
-        }
-      } else if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Push.");
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue = nullptr;
+        _target->payload.tableLen = -1;
       }
 
       ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
       if (index == -1) {
-        if (_firstPusher) {
-          // First empty insertion
-          CBVar tmp{};
-          stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
-          index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-        } else {
-          throw CBException("Record not found in table, failed to Push.");
-        }
+        // First empty insertion
+        CBVar tmp{};
+        stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
+        index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
       }
 
       auto &seq = _target->payload.tableValue[index].value;
-      if (_firstPusher) {
-        if (seq.valueType != Seq) {
-          seq.valueType = Seq;
-          seq.payload.seqValue = nullptr;
-          seq.payload.seqLen = -1;
-        } else if (_clear) {
-          auto len = stbds_arrlen(seq.payload.seqValue);
-          if (len > 0) {
-            if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-              // Clean allocation garbage in case it's not blittable!
-              for (auto i = 0; i < len; i++) {
-                destroyVar(seq.payload.seqValue[i]);
-              }
+
+      if (seq.valueType != Seq) {
+        seq.valueType = Seq;
+        seq.payload.seqValue = nullptr;
+        seq.payload.seqLen = -1;
+      }
+
+      if (_firstPusher && _clear) {
+        auto len = stbds_arrlen(seq.payload.seqValue);
+        if (len > 0) {
+          if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+            // Clean allocation garbage in case it's not blittable!
+            for (auto i = 0; i < len; i++) {
+              destroyVar(seq.payload.seqValue[i]);
             }
-            stbds_arrsetlen(seq.payload.seqValue, 0);
           }
+          stbds_arrsetlen(seq.payload.seqValue, 0);
         }
-      } else if (seq.valueType != Seq) {
-        throw CBException(
-            "Variable (in table) is not a sequence, failed to Push.");
       }
 
       CBVar tmp{};
       cloneVar(tmp, input);
       stbds_arrpush(seq.payload.seqValue, tmp);
     } else {
-      if (_firstPusher) {
-        if (_target->valueType != Seq) {
-          _target->valueType = Seq;
-          _target->payload.seqValue = nullptr;
-          _target->payload.seqLen = -1;
-        } else if (_clear) {
-          auto len = stbds_arrlen(_target->payload.seqValue);
-          if (len > 0) {
-            if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-              // Clean allocation garbage in case it's not blittable!
-              for (auto i = 0; i < len; i++) {
-                destroyVar(_target->payload.seqValue[i]);
-              }
+      if (_target->valueType != Seq) {
+        _target->valueType = Seq;
+        _target->payload.seqValue = nullptr;
+        _target->payload.seqLen = -1;
+      }
+      
+      if (_firstPusher && _clear) {
+        auto len = stbds_arrlen(_target->payload.seqValue);
+        if (len > 0) {
+          if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+            // Clean allocation garbage in case it's not blittable!
+            for (auto i = 0; i < len; i++) {
+              destroyVar(_target->payload.seqValue[i]);
             }
-            stbds_arrsetlen(_target->payload.seqValue, 0);
           }
+          stbds_arrsetlen(_target->payload.seqValue, 0);
         }
-      } else if (_target->valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Push.");
       }
 
       CBVar tmp{};
