@@ -919,34 +919,6 @@ struct Count : SeqUser {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
-    if (_isTable) {
-      for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
-        if (consumableVariables[i].name == _name &&
-            consumableVariables[i].exposedType.tableTypes) {
-          auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
-          auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
-              return CBTypeInfo(CoreInfo::intInfo);
-            }
-          }
-        }
-      }
-      throw CBException(
-          "Count: key not found or key value is not a sequence!.");
-    } else {
-      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
-        auto &cv = consumableVariables[i];
-        if (_name == cv.name && cv.exposedType.basicType == Seq) {
-          return CBTypeInfo(CoreInfo::intInfo);
-        }
-      }
-    }
-    throw CBException("Count: variable is not a sequence.");
-  }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
@@ -958,26 +930,18 @@ struct Count : SeqUser {
 
       ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
       if (index == -1) {
-        throw CBException("Record not found in table, failed to Count.");
+        return Var(0);
       }
 
       auto &seq = _target->payload.tableValue[index].value;
       if (seq.valueType != Seq) {
-        throw CBException(
-            "Variable (in table) is not a sequence, failed to Count.");
+        return Var(0);
       }
 
       return Var(int64_t(stbds_arrlen(seq.payload.seqValue)));
     } else {
       if (_target->valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Count.");
-      }
-
-      if (!_blittable) {
-        // Clean allocation garbage in case it's not blittable!
-        for (auto i = 0; i < stbds_arrlen(_target->payload.seqValue); i++) {
-          destroyVar(_target->payload.seqValue[i]);
-        }
+        return Var(0);
       }
 
       return Var(int64_t(stbds_arrlen(_target->payload.seqValue)));
@@ -1039,13 +1003,12 @@ struct Clear : SeqUser {
 
       ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
       if (index == -1) {
-        throw CBException("Record not found in table, failed to Clear.");
+        return input;
       }
 
       auto &seq = _target->payload.tableValue[index].value;
       if (seq.valueType != Seq) {
-        throw CBException(
-            "Variable (in table) is not a sequence, failed to Clear.");
+        return input;
       }
 
       if (!_blittable) {
@@ -1058,7 +1021,7 @@ struct Clear : SeqUser {
       stbds_arrsetlen(seq.payload.seqValue, 0);
     } else {
       if (_target->valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Clear.");
+        return input;
       }
 
       if (!_blittable) {
@@ -1456,10 +1419,23 @@ struct Sort {
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
 
-    if (_multiSortColumns.size() == 0 && _columns.valueType == Seq) {
-      auto seq = IterableSeq(_columns.payload.seqValue);
-      for (auto &col : seq) {
-        auto target = contextVariable(context, col.payload.stringValue);
+    if (_multiSortColumns.size() == 0) {
+      if (_columns.valueType == Seq) {
+        auto seq = IterableSeq(_columns.payload.seqValue);
+        for (auto &col : seq) {
+          auto target = contextVariable(context, col.payload.stringValue);
+          if (target && target->valueType == Seq) {
+            auto mseqLen = stbds_arrlen(target->payload.seqValue);
+            if (len != mseqLen) {
+              throw CBException(
+                  "Sort: All the sequences to be sorted must have "
+                  "the same length as the input sequence.");
+            }
+            _multiSortColumns.push_back(target->payload.seqValue);
+          }
+        }
+      } else { // normal single context var
+        auto target = contextVariable(context, _columns.payload.stringValue);
         if (target && target->valueType == Seq) {
           auto mseqLen = stbds_arrlen(target->payload.seqValue);
           if (len != mseqLen) {

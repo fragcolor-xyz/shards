@@ -117,8 +117,6 @@ RUNTIME_CORE_BLOCK_FACTORY(Count);
 RUNTIME_BLOCK_inputTypes(Count);
 RUNTIME_BLOCK_outputTypes(Count);
 RUNTIME_BLOCK_parameters(Count);
-RUNTIME_BLOCK_inferTypes(Count);
-RUNTIME_BLOCK_consumedVariables(Count);
 RUNTIME_BLOCK_setParam(Count);
 RUNTIME_BLOCK_getParam(Count);
 RUNTIME_BLOCK_activate(Count);
