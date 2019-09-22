@@ -738,11 +738,38 @@ struct Swap {
 };
 
 struct Push : public VariableBase {
+  bool _clear = true;
   bool _firstPusher = false; // if we are the initializers!
   bool _tableOwner = false;  // we are the first in the table too!
   CBTypeInfo _seqInfo{};
   CBTypeInfo _seqInnerInfo{};
   CBTypeInfo _tableInfo{};
+
+  static inline ParamsInfo pushParams = ParamsInfo(
+      variableParamsInfo,
+      ParamsInfo::Param(
+          "Clear",
+          "If we should clear this sequence at every chain iteration; works "
+          "only if this is the first push; default: true.",
+          CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
+
+  void setParam(int index, CBVar value) {
+    if (index <= 2)
+      VariableBase::setParam(index, value);
+    else if (index == 3) {
+      _clear = value.payload.boolValue;
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index <= 2)
+      return VariableBase::getParam(index);
+    else if (index == 3)
+      return Var(_clear);
+    throw CBException("Param index out of range.");
+  }
 
   void destroy() {
     if (_firstPusher) {
@@ -885,6 +912,17 @@ struct Push : public VariableBase {
           seq.valueType = Seq;
           seq.payload.seqValue = nullptr;
           seq.payload.seqLen = -1;
+        } else if (_clear) {
+          auto len = stbds_arrlen(seq.payload.seqValue);
+          if (len > 0) {
+            if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+              // Clean allocation garbage in case it's not blittable!
+              for (auto i = 0; i < len; i++) {
+                destroyVar(seq.payload.seqValue[i]);
+              }
+            }
+            stbds_arrsetlen(seq.payload.seqValue, 0);
+          }
         }
       } else if (seq.valueType != Seq) {
         throw CBException(
@@ -900,6 +938,17 @@ struct Push : public VariableBase {
           _target->valueType = Seq;
           _target->payload.seqValue = nullptr;
           _target->payload.seqLen = -1;
+        } else if (_clear) {
+          auto len = stbds_arrlen(_target->payload.seqValue);
+          if (len > 0) {
+            if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+              // Clean allocation garbage in case it's not blittable!
+              for (auto i = 0; i < len; i++) {
+                destroyVar(_target->payload.seqValue[i]);
+              }
+            }
+            stbds_arrsetlen(_target->payload.seqValue, 0);
+          }
         }
       } else if (_target->valueType != Seq) {
         throw CBException("Variable is not a sequence, failed to Push.");
@@ -998,7 +1047,6 @@ struct Clear : SeqUser {
             destroyVar(seq.payload.seqValue[i]);
           }
         }
-
         stbds_arrsetlen(seq.payload.seqValue, 0);
       }
     } else {
@@ -1014,7 +1062,6 @@ struct Clear : SeqUser {
             destroyVar(_target->payload.seqValue[i]);
           }
         }
-
         stbds_arrsetlen(_target->payload.seqValue, 0);
       }
     }

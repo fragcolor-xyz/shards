@@ -398,32 +398,26 @@
 (if (tick Root) nil (throw "Root tick failed"))
 ; (println (json testChain))
 
-; (def! P (Node))
-; (def! C (Node))
-; (schedule P (Chain "producer" :Looped 
-;   "Hello world!"
-;   (IPC.Push "shared1")
-; ))
+(def loopedChain (Chain "LoopedChain" :Looped
+  10 (Push "loopVar")
+  11 (Push "loopVar")
+  12 (Push "loopVar")
+  (Count "loopVar")
+  (Assert.Is 3 true)))
 
-; (schedule C (Chain "consumer" :Looped 
-;   (IPC.Pop "shared1")
-;   (Assert.Is "Hello world!" true)
-;   (Log)
-; ))
-; (if (tick P) nil (throw "P/C tick failed"))
-; (if (tick C) nil (throw "P/C tick failed"))
-; (if (tick P) nil (throw "P/C tick failed"))
-; (if (tick C) nil (throw "P/C tick failed"))
-; (if (tick P) nil (throw "P/C tick failed"))
-; (if (tick C) nil (throw "P/C tick failed"))
+ (def loopedChain2 (Chain "LoopedChain" :Looped
+  10 (Push "loopVar" :Clear false)
+  11 (Push "loopVar")
+  12 (Push "loopVar")
+  (Count "loopVar")))
 
-; (def! inc (fn* [a] (+ a 1)))
+(prepare loopedChain)
+(start loopedChain)
+(tick loopedChain)
+(tick loopedChain)
 
-; (def! Loop (fn* [counter] (do
-;   (tick Root)
-;   (sleep 0.1)
-;   (prn counter)
-;   (Loop (inc counter))
-; )))
-
-; (Loop 0)
+(prepare loopedChain2)
+(start loopedChain2)
+(tick loopedChain2)
+(tick loopedChain2)
+(if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
