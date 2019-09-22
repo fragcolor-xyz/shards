@@ -1287,9 +1287,9 @@ struct Limit {
     if (_max == 1) {
       auto index = 0;
       if (index >= inputLen) {
-        LOG(ERROR) << "Take out of range! len:" << inputLen
+        LOG(ERROR) << "Limit out of range! len:" << inputLen
                    << " wanted index: " << index;
-        throw CBException("Take out of range!");
+        throw CBException("Limit out of range!");
       }
 
       return input.payload.seqValue[index];
@@ -1299,15 +1299,14 @@ struct Limit {
     auto nindices = std::min(inputLen, _max);
     stbds_arrsetlen(_cachedResult, nindices);
     for (auto i = 0; i < nindices; i++) {
-      if (i >= inputLen) {
-        LOG(ERROR) << "Take out of range! len:" << inputLen
-                   << " wanted index: " << i;
-        throw CBException("Take out of range!");
-      }
       _cachedResult[i] = input.payload.seqValue[i];
     }
 
-    return Var(_cachedResult);
+    CBVar result{};
+    result.valueType = Seq;
+    result.payload.seqLen = -1;
+    result.payload.seqValue = _cachedResult;
+    return result;
   }
 };
 

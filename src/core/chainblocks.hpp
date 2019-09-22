@@ -223,16 +223,6 @@ public:
 };
 
 struct Var : public CBVar {
-  ~Var() {
-    // Dangerous... need to pull this out or something, TODO
-    if (valueType == Seq) {
-      for (auto i = 0; stbds_arrlen(payload.seqValue) > i; i++) {
-        cbDestroyVar(&payload.seqValue[i]);
-      }
-      stbds_arrfree(payload.seqValue);
-    }
-  }
-
   explicit Var() : CBVar() {
     valueType = None;
     payload.chainState = CBChainState::Continue;
