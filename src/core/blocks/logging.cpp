@@ -13,7 +13,7 @@ struct LoggingBase {
 
 struct Log : public LoggingBase {
   static CBVar activate(CBContext *context, const CBVar &input) {
-    CLOG(INFO, context->logger_name.c_str()) << input;
+    CLOG(INFO, context->loggerName.c_str()) << input;
     return input;
   }
 };
@@ -49,7 +49,7 @@ struct Msg : public LoggingBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CLOG(INFO, context->logger_name.c_str()) << msg;
+    CLOG(INFO, context->loggerName.c_str()) << msg;
     return input;
   }
 };

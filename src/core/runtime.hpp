@@ -182,15 +182,15 @@ struct CBChain {
 struct CBContext {
   CBContext(CBCoro &&sink, CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
-        shouldPause(false), paused(false), continuation(std::move(sink)) {
+        shouldPause(false), paused(false), continuation(std::move(sink)), iterationCount(0) {
     static std::regex re(
         R"([^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\-\._]+)");
-    logger_name = std::regex_replace(chain->name, re, "_");
-    logger_name = "chain." + logger_name;
-    el::Loggers::getLogger(logger_name.c_str());
+    loggerName = std::regex_replace(chain->name, re, "_");
+    loggerName = "chain." + loggerName;
+    el::Loggers::getLogger(loggerName.c_str());
   }
 
-  ~CBContext() { el::Loggers::unregisterLogger(logger_name.c_str()); }
+  ~CBContext() { el::Loggers::unregisterLogger(loggerName.c_str()); }
 
   CBChain *chain;
 
@@ -210,7 +210,10 @@ struct CBContext {
   Duration next;
 
   // Have a logger per context
-  std::string logger_name;
+  std::string loggerName;
+
+  // Iteration counter
+  uint64_t iterationCount;
 
   void setError(const char *errorMsg) { error = errorMsg; }
 };
@@ -669,6 +672,7 @@ static boost::context::continuation run(CBChain *chain,
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     chain->finishedOutput = runRes.output; // Write result before setting flag
     chain->finished = true;                // Set finished flag (atomic)
+    context.iterationCount++; // increatse iteration counter
     if (runRes.state == Failed) {
       chain->failed = true;
       context.aborted = true;
