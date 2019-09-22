@@ -2,10 +2,11 @@
 
 namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Chains",
-                      "A sequence of chains, interleaving condition test and "
-                      "action to execute if the condition matches.",
-                      CBTypesInfo(SharedTypes::blockSeqsOrNoneInfo)),
+    ParamsInfo::Param(
+        "Chains",
+        "A sequence of chains, interleaving condition test predicate and "
+        "action to execute if the condition matches.",
+        CBTypesInfo(SharedTypes::blockSeqsOrNoneInfo)),
     ParamsInfo::Param(
         "Passthrough",
         "The input of this block will be the output. (default: true)",

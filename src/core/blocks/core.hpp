@@ -907,7 +907,7 @@ struct Push : public VariableBase {
         _target->payload.seqValue = nullptr;
         _target->payload.seqLen = -1;
       }
-      
+
       if (_firstPusher && _clear) {
         auto len = stbds_arrlen(_target->payload.seqValue);
         if (len > 0) {
@@ -1290,18 +1290,40 @@ struct Limit {
   }
 };
 
-struct Repeat {
-  int _times = 0;
+struct BlocksUser {
   CBVar _blocks{};
-  bool _forever = false;
-  CBValidationResult chainValidation{};
+  CBValidationResult _chainValidation{};
 
-  void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
+  void destroy() {
+    if (_blocks.valueType == Seq) {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+        blk->cleanup(blk);
+        blk->destroy(blk);
+      }
+    } else if (_blocks.valueType == Block) {
+      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
+      _blocks.payload.blockValue->destroy(_blocks.payload.blockValue);
+    }
+    destroyVar(_blocks);
+    stbds_arrfree(_chainValidation.exposedInfo);
+  }
+
+  void cleanup() {
+    if (_blocks.valueType == Seq) {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+        blk->cleanup(blk);
+      }
+    } else if (_blocks.valueType == Block) {
+      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
+    }
+  }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // Free any previous result!
-    stbds_arrfree(chainValidation.exposedInfo);
-    chainValidation.exposedInfo = nullptr;
+    stbds_arrfree(_chainValidation.exposedInfo);
+    _chainValidation.exposedInfo = nullptr;
 
     std::vector<CBlock *> blocks;
     if (_blocks.valueType == Block) {
@@ -1311,19 +1333,15 @@ struct Repeat {
         blocks.push_back(_blocks.payload.seqValue[i].payload.blockValue);
       }
     }
-
-    // We need to validate the sub chain to figure it out!
-    chainValidation = validateConnections(
+    _chainValidation = validateConnections(
         blocks,
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                       << errorTxt;
-            throw CBException("RunChain: failed inner chain validation");
+            LOG(ERROR) << "Failed inner chain validation, error: " << errorTxt;
+            throw CBException("Failed inner chain validation.");
           } else {
-            LOG(INFO) << "RunChain: warning during inner chain validation: "
-                      << errorTxt;
+            LOG(INFO) << "Warning during inner chain validation: " << errorTxt;
           }
         },
         this, inputType, consumables);
@@ -1331,7 +1349,12 @@ struct Repeat {
     return inputType;
   }
 
-  CBExposedTypesInfo exposedVariables() { return chainValidation.exposedInfo; }
+  CBExposedTypesInfo exposedVariables() { return _chainValidation.exposedInfo; }
+};
+
+struct Repeat : public BlocksUser {
+  int _times = 0;
+  bool _forever = false;
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",
@@ -1400,27 +1423,18 @@ struct Repeat {
   }
 };
 
-struct Sort {
+struct JointOp {
   std::vector<CBSeq> _multiSortColumns;
-  std::vector<CBVar> _multiSortKeys;
-
   CBVar _columns{};
-  bool _desc = false;
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Columns",
-                        "Other columns to sort using the input (they must be "
-                        "of the same length).",
-                        CBTypesInfo(CoreInfo::varSeqInfo)),
-      ParamsInfo::Param(
-          "Desc",
-          "If sorting should be in descending order, defaults ascending.",
-          CBTypesInfo(CoreInfo::boolInfo)));
-
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static inline ParamsInfo joinOpParams = ParamsInfo(ParamsInfo::Param(
+      "Join",
+      "Other columns to join sort/filter using the input (they must be "
+      "of the same length).",
+      CBTypesInfo(CoreInfo::varSeqInfo)));
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -1428,9 +1442,6 @@ struct Sort {
       cloneVar(_columns, value);
       // resets vars fetch in activate
       _multiSortColumns.clear();
-      break;
-    case 1:
-      _desc = value.payload.boolValue;
       break;
     default:
       break;
@@ -1441,90 +1452,13 @@ struct Sort {
     switch (index) {
     case 0:
       return _columns;
-    case 1:
-      return Var(_desc);
     default:
       break;
     }
     throw CBException("Parameter out of range.");
   }
 
-  struct {
-    bool operator()(CBVar &a, CBVar &b) const { return a > b; }
-  } sortAsc;
-
-  struct {
-    bool operator()(CBVar &a, CBVar &b) const { return a < b; }
-  } sortDesc;
-
-  template <class Compare> void insertSort(CBVar seq[], int n, Compare comp) {
-    int i, j;
-    CBVar key;
-    for (i = 1; i < n; i++) {
-      key = seq[i];
-      _multiSortKeys.clear();
-      for (auto &col : _multiSortColumns) {
-        _multiSortKeys.push_back(col[i]);
-      }
-      j = i - 1;
-      while (j >= 0 && comp(seq[j], key)) {
-        seq[j + 1] = seq[j];
-        for (auto &col : _multiSortColumns) {
-          col[j + 1] = col[j];
-        }
-        j = j - 1;
-      }
-      seq[j + 1] = key;
-      auto z = 0;
-      for (auto &col : _multiSortColumns) {
-        col[j + 1] = _multiSortKeys[z++];
-      }
-    }
-  }
-
   void cleanup() { _multiSortColumns.clear(); }
-
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    // Sort in place
-    auto len = stbds_arrlen(input.payload.seqValue);
-
-    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
-      if (_columns.valueType == Seq) {
-        auto seq = IterableSeq(_columns.payload.seqValue);
-        for (auto &col : seq) {
-          auto target = contextVariable(context, col.payload.stringValue);
-          if (target && target->valueType == Seq) {
-            auto mseqLen = stbds_arrlen(target->payload.seqValue);
-            if (len != mseqLen) {
-              throw CBException(
-                  "Sort: All the sequences to be sorted must have "
-                  "the same length as the input sequence.");
-            }
-            _multiSortColumns.push_back(target->payload.seqValue);
-          }
-        }
-      } else if (_columns.valueType ==
-                 ContextVar) { // normal single context var
-        auto target = contextVariable(context, _columns.payload.stringValue);
-        if (target && target->valueType == Seq) {
-          auto mseqLen = stbds_arrlen(target->payload.seqValue);
-          if (len != mseqLen) {
-            throw CBException("Sort: All the sequences to be sorted must have "
-                              "the same length as the input sequence.");
-          }
-          _multiSortColumns.push_back(target->payload.seqValue);
-        }
-      }
-    }
-
-    if (!_desc) {
-      insertSort(input.payload.seqValue, len, sortAsc);
-    } else {
-      insertSort(input.payload.seqValue, len, sortDesc);
-    }
-
-    return input;
-  }
 };
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
@@ -1545,5 +1479,4 @@ RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
 RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
-RUNTIME_CORE_BLOCK_TYPE(Sort);
 }; // namespace chainblocks

@@ -1,6 +1,163 @@
 #include "../runtime.hpp"
 
 namespace chainblocks {
+struct Sort : public JointOp {
+  std::vector<CBVar> _multiSortKeys;
+
+  bool _desc = false;
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      joinOpParams,
+      ParamsInfo::Param(
+          "Desc",
+          "If sorting should be in descending order, defaults ascending.",
+          CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      return JointOp::setParam(index, value);
+    case 1:
+      _desc = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return JointOp::getParam(index);
+    case 1:
+      return Var(_desc);
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  struct {
+    bool operator()(CBVar &a, CBVar &b) const { return a > b; }
+  } sortAsc;
+
+  struct {
+    bool operator()(CBVar &a, CBVar &b) const { return a < b; }
+  } sortDesc;
+
+  template <class Compare> void insertSort(CBVar seq[], int n, Compare comp) {
+    int i, j;
+    CBVar key;
+    for (i = 1; i < n; i++) {
+      key = seq[i];
+      _multiSortKeys.clear();
+      for (auto &col : _multiSortColumns) {
+        _multiSortKeys.push_back(col[i]);
+      }
+      j = i - 1;
+      while (j >= 0 && comp(seq[j], key)) {
+        seq[j + 1] = seq[j];
+        for (auto &col : _multiSortColumns) {
+          col[j + 1] = col[j];
+        }
+        j = j - 1;
+      }
+      seq[j + 1] = key;
+      auto z = 0;
+      for (auto &col : _multiSortColumns) {
+        col[j + 1] = _multiSortKeys[z++];
+      }
+    }
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    // Sort in place
+    auto len = stbds_arrlen(input.payload.seqValue);
+
+    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
+      if (_columns.valueType == Seq) {
+        auto seq = IterableSeq(_columns.payload.seqValue);
+        for (auto &col : seq) {
+          auto target = contextVariable(context, col.payload.stringValue);
+          if (target && target->valueType == Seq) {
+            auto mseqLen = stbds_arrlen(target->payload.seqValue);
+            if (len != mseqLen) {
+              throw CBException(
+                  "Sort: All the sequences to be sorted must have "
+                  "the same length as the input sequence.");
+            }
+            _multiSortColumns.push_back(target->payload.seqValue);
+          }
+        }
+      } else if (_columns.valueType ==
+                 ContextVar) { // normal single context var
+        auto target = contextVariable(context, _columns.payload.stringValue);
+        if (target && target->valueType == Seq) {
+          auto mseqLen = stbds_arrlen(target->payload.seqValue);
+          if (len != mseqLen) {
+            throw CBException("Sort: All the sequences to be sorted must have "
+                              "the same length as the input sequence.");
+          }
+          _multiSortColumns.push_back(target->payload.seqValue);
+        }
+      }
+    }
+
+    if (!_desc) {
+      insertSort(input.payload.seqValue, len, sortAsc);
+    } else {
+      insertSort(input.payload.seqValue, len, sortDesc);
+    }
+
+    return input;
+  }
+};
+
+struct RemoveIf : public JointOp, public BlocksUser {
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      joinOpParams,
+      ParamsInfo::Param(
+          "Desc",
+          "If sorting should be in descending order, defaults ascending.",
+          CBTypesInfo(CoreInfo::boolInfo)),
+      ParamsInfo::Param("Predicate",
+                        "The blocks to use as predicate, if true the item will "
+                        "be popped from the sequence.",
+                        CBTypesInfo(CoreInfo::blocksInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      return JointOp::setParam(index, value);
+    case 1:
+      cloneVar(_blocks, value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return JointOp::getParam(index);
+    case 1:
+      return _blocks;
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return input;
+  }
+};
+
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
 RUNTIME_BLOCK_destroy(Const);
@@ -193,12 +350,13 @@ RUNTIME_BLOCK_setParam(Repeat);
 RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_destroy(Repeat);
+RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
 RUNTIME_BLOCK_inferTypes(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 
 // Register Sort
-RUNTIME_CORE_BLOCK_FACTORY(Sort);
+RUNTIME_CORE_BLOCK(Sort);
 RUNTIME_BLOCK_inputTypes(Sort);
 RUNTIME_BLOCK_outputTypes(Sort);
 RUNTIME_BLOCK_activate(Sort);
@@ -207,6 +365,19 @@ RUNTIME_BLOCK_setParam(Sort);
 RUNTIME_BLOCK_getParam(Sort);
 RUNTIME_BLOCK_cleanup(Sort);
 RUNTIME_BLOCK_END(Sort);
+
+// Register Repeat
+RUNTIME_CORE_BLOCK(RemoveIf);
+RUNTIME_BLOCK_inputTypes(RemoveIf);
+RUNTIME_BLOCK_outputTypes(RemoveIf);
+RUNTIME_BLOCK_parameters(RemoveIf);
+RUNTIME_BLOCK_setParam(RemoveIf);
+RUNTIME_BLOCK_getParam(RemoveIf);
+RUNTIME_BLOCK_activate(RemoveIf);
+RUNTIME_BLOCK_destroy(RemoveIf);
+RUNTIME_BLOCK_cleanup(Repeat);
+RUNTIME_BLOCK_inferTypes(RemoveIf);
+RUNTIME_BLOCK_END(RemoveIf);
 
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
@@ -298,6 +469,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);
+  REGISTER_CORE_BLOCK(RemoveIf);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);

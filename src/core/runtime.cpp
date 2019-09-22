@@ -1345,6 +1345,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
   for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
     if (matchTypes(varType, param.valueTypes[i], true, true)) {
+      freeDerivedInfo(varType);
       return true; // we are good just exit
     }
   }
@@ -1354,8 +1355,10 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
     // Validate each type in the seq
     for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
       if (validateSetParam(block, index, value.payload.seqValue[i], callback,
-                           userData))
+                           userData)) {
+        freeDerivedInfo(varType);
         return true;
+      }
     }
   }
 
