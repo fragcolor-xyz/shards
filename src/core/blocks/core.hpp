@@ -520,52 +520,31 @@ struct Get : public VariableBase {
   CBVar _defaultValue{};
   CBTypeInfo _defaultType{};
 
-  static inline ParamsInfo variableParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Name", "The name of the variable.",
-                        CBTypesInfo(CoreInfo::strInfo)),
-      ParamsInfo::Param("Key",
-                        "The key of the value to read/write from/in the table "
-                        "(this variable will become a table).",
-                        CBTypesInfo(CoreInfo::strInfo)),
+  static inline ParamsInfo getParamsInfo = ParamsInfo(
+      variableParamsInfo,
       ParamsInfo::Param(
           "Default",
           "The default value to use to infer types and output if the variable "
           "is not set, key is not there and/or type mismatches.",
-          CBTypesInfo(CoreInfo::anyInfo)),
-      ParamsInfo::Param(
-          "Global",
-          "If the variable should be shared between chains in the same node.",
-          CBTypesInfo(CoreInfo::boolInfo)));
+          CBTypesInfo(CoreInfo::anyInfo)));
 
   static CBParametersInfo parameters() {
-    return CBParametersInfo(variableParamsInfo);
+    return CBParametersInfo(getParamsInfo);
   }
 
   void setParam(int index, CBVar value) {
-    if (index == 0)
-      _name = value.payload.stringValue;
-    else if (index == 1) {
-      _key = value.payload.stringValue;
-      if (_key.size() > 0)
-        _isTable = true;
-      else
-        _isTable = false;
-    } else if (index == 2) {
+    if (index <= 2)
+      VariableBase::setParam(index, value);
+    else if (index == 3) {
       _defaultValue = value;
-    } else if (index == 3) {
-      _global = value.payload.boolValue;
     }
   }
 
   CBVar getParam(int index) {
-    if (index == 0)
-      return Var(_name.c_str());
-    else if (index == 1)
-      return Var(_key.c_str());
-    else if (index == 2)
-      return _defaultValue;
+    if (index <= 2)
+      return VariableBase::getParam(index);
     else if (index == 3)
-      return Var(_global);
+      return _defaultValue;
     throw CBException("Param index out of range.");
   }
 
