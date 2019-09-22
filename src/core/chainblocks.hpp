@@ -34,13 +34,14 @@ CBVar suspend(CBContext *context, double seconds);
 class CBException : public std::exception {
 public:
   explicit CBException(const char *errmsg) : errorMessage(errmsg) {}
+  explicit CBException(std::string &errmsg) : errorMessage(errmsg) {}
 
   [[nodiscard]] const char *what() const noexcept override {
-    return errorMessage;
+    return errorMessage.c_str();
   }
 
 private:
-  const char *errorMessage;
+  std::string errorMessage;
 };
 
 ALWAYS_INLINE inline int destroyVar(CBVar &var);

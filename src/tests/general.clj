@@ -382,6 +382,9 @@
   (Get "meanTest") (Math.Mean) (Log)
   (Assert.Is 1.5 true)
 
+  2 (Set "tableX" "keyX")
+  1 (Math.Add (# "tableX" "keyX")) (Assert.Is 3 true)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)

@@ -808,11 +808,18 @@ BUILTIN("sleep") {
 }
 
 BUILTIN("#") {
-  CHECK_ARGS_IS(1);
+  CHECK_ARGS_BETWEEN(1, 2);
   ARG(malString, value);
+  auto s = value->value();
+
+  if (argsBegin != argsEnd) {
+    ARG(malString, key);
+    auto k = key->value();
+    s = s + " " + k;
+  }
+
   CBVar tmp;
   tmp.valueType = ContextVar;
-  auto s = value->value();
   tmp.payload.stringValue = s.c_str();
   auto var = CBVar();
   chainblocks::cloneVar(var, tmp);

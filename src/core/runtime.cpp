@@ -30,6 +30,9 @@ extern void registerBlocksCoreBlocks();
 extern void registerSerializationBlocks();
 
 void registerCoreBlocks() {
+  assert(sizeof(CBVarPayload) == 16);
+  assert(sizeof(CBVar) == 32);
+
   registerBlocksCoreBlocks();
   registerAssertBlocks();
   registerChainsBlocks();
@@ -254,12 +257,27 @@ void callExitCallbacks() {
 }
 
 CBVar *contextVariable(CBContext *ctx, const char *name, bool global) {
-  if (!global) {
-    CBVar &v = ctx->variables[name];
-    return &v;
+  if (unlikely(strchr(name, ' ') != NULL)) {
+    // When there is a space we assume Table Var + Key
+    std::string tmp(name);
+    auto x = 0;
+    auto y = tmp.find(' ');
+    auto sub = tmp.substr(x, (y - x));
+    auto var = contextVariable(ctx, sub.c_str(), global);
+    if (var->valueType != Table) {
+      auto msg = "Expected a table variable: " + sub;
+      throw CBException(msg);
+    }
+    auto key = tmp.substr(y + 1);
+    return &stbds_shget(var->payload.tableValue, key.c_str());
   } else {
-    CBVar &v = ctx->chain->node->variables[name];
-    return &v;
+    if (!global) {
+      CBVar &v = ctx->variables[name];
+      return &v;
+    } else {
+      CBVar &v = ctx->chain->node->variables[name];
+      return &v;
+    }
   }
 }
 
