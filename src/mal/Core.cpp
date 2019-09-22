@@ -210,6 +210,11 @@ BUILTIN("cons")
 {
     CHECK_ARGS_IS(2);
     malValuePtr first = *argsBegin++;
+    if (*argsBegin == mal::nilValue()) {
+        malValueVec* items = new malValueVec(1);
+        items->at(0) = first;
+        return mal::list(items);
+    }
     ARG(malSequence, rest);
 
     malValueVec* items = new malValueVec(1 + rest->count());

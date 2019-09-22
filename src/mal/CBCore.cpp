@@ -132,6 +132,9 @@ void installCBCore(const malEnvPtr &env) {
   rep("(def! Step (fn* [chain] (RunChain chain :Once false :Passthrough "
       "false :Mode RunChainMode.Stepped)))",
       env);
+  rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
+      "to))))",
+      env);
 }
 
 class malCBChain : public malValue {
