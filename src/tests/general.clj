@@ -355,6 +355,9 @@
   (Get "unsortedList2") (Sort [(# "unsortedList3")])
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
+  (Get "unsortedList2") (Sort (# "unsortedList3"))
+  (Log)
+  (Assert.Is [0 1 1 2 4 5] true)
   (Get "unsortedList3") 
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
@@ -371,6 +374,13 @@
   (Assert.Is [5 4 2 1 1 0] true)
   (Count "unsortedList")
   (Assert.Is 6 true)
+
+  1.0 (Push "meanTest")
+  2.0 (Push "meanTest")
+  0.0 (Push "meanTest")
+  3.0 (Push "meanTest")
+  (Get "meanTest") (Math.Mean) (Log)
+  (Assert.Is 1.5 true)
 
   (Msg "All looking good!")
 ))

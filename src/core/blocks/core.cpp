@@ -173,6 +173,18 @@ RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
+// Register Limit
+RUNTIME_CORE_BLOCK_FACTORY(Limit);
+RUNTIME_BLOCK_destroy(Limit);
+RUNTIME_BLOCK_inputTypes(Limit);
+RUNTIME_BLOCK_outputTypes(Limit);
+RUNTIME_BLOCK_parameters(Limit);
+RUNTIME_BLOCK_inferTypes(Limit);
+RUNTIME_BLOCK_setParam(Limit);
+RUNTIME_BLOCK_getParam(Limit);
+RUNTIME_BLOCK_activate(Limit);
+RUNTIME_BLOCK_END(Limit);
+
 // Register Repeat
 RUNTIME_CORE_BLOCK_FACTORY(Repeat);
 RUNTIME_BLOCK_inputTypes(Repeat);
@@ -259,6 +271,12 @@ MATH_UNARY_BLOCK(Ceil);
 MATH_UNARY_BLOCK(Floor);
 MATH_UNARY_BLOCK(Trunc);
 MATH_UNARY_BLOCK(Round);
+
+RUNTIME_BLOCK(Math, Mean);
+RUNTIME_BLOCK_inputTypes(Mean);
+RUNTIME_BLOCK_outputTypes(Mean);
+RUNTIME_BLOCK_activate(Mean);
+RUNTIME_BLOCK_END(Mean);
 }; // namespace Math
 
 void registerBlocksCoreBlocks() {
@@ -340,5 +358,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_BLOCK(Math, Floor);
   REGISTER_BLOCK(Math, Trunc);
   REGISTER_BLOCK(Math, Round);
+
+  REGISTER_BLOCK(Math, Mean);
 }
 }; // namespace chainblocks

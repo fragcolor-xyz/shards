@@ -6,6 +6,7 @@
 namespace chainblocks {
 struct CoreInfo {
   static inline TypeInfo intType = TypeInfo(CBType::Int);
+  static inline TypeInfo floatType = TypeInfo(CBType::Float);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
@@ -23,6 +24,8 @@ struct CoreInfo {
       TypesInfo(TypeInfo::Sequence(blockSeq));
   static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
   static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
+  static inline TypesInfo floatSeqInfo =
+      TypesInfo(TypeInfo::Sequence(floatType));
 };
 
 struct Const {
@@ -1221,6 +1224,77 @@ struct Take {
   }
 };
 
+struct Limit {
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Max", "How many maximum elements to take from the input sequence.",
+      CBTypesInfo(CoreInfo::intInfo)));
+
+  CBSeq _cachedResult = nullptr;
+  int64_t _max = 0;
+
+  void destroy() {
+    if (_cachedResult) {
+      stbds_arrfree(_cachedResult);
+    }
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // Figure if we output a sequence or not
+    if (_max > 1) {
+      if (inputType.basicType == Seq) {
+        return inputType; // multiple values
+      }
+    } else {
+      if (inputType.basicType == Seq && inputType.seqType) {
+        return *inputType.seqType; // single value
+      }
+    }
+    throw CBException("Take expected a sequence as input.");
+  }
+
+  void setParam(int index, CBVar value) { _max = value.payload.intValue; }
+
+  CBVar getParam(int index) { return Var(_max); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+
+    if (_max == 1) {
+      auto index = 0;
+      if (index >= inputLen) {
+        LOG(ERROR) << "Take out of range! len:" << inputLen
+                   << " wanted index: " << index;
+        throw CBException("Take out of range!");
+      }
+
+      return input.payload.seqValue[index];
+    }
+
+    // Else it's a seq
+    auto nindices = std::min(inputLen, _max);
+    stbds_arrsetlen(_cachedResult, nindices);
+    for (auto i = 0; i < nindices; i++) {
+      if (i >= inputLen) {
+        LOG(ERROR) << "Take out of range! len:" << inputLen
+                   << " wanted index: " << i;
+        throw CBException("Take out of range!");
+      }
+      _cachedResult[i] = input.payload.seqValue[i];
+    }
+
+    return Var(_cachedResult);
+  }
+};
+
 struct Repeat {
   int _times = 0;
   CBVar _blocks{};
@@ -1419,7 +1493,7 @@ struct Sort {
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
 
-    if (_multiSortColumns.size() == 0) {
+    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
       if (_columns.valueType == Seq) {
         auto seq = IterableSeq(_columns.payload.seqValue);
         for (auto &col : seq) {
@@ -1434,7 +1508,8 @@ struct Sort {
             _multiSortColumns.push_back(target->payload.seqValue);
           }
         }
-      } else { // normal single context var
+      } else if (_columns.valueType ==
+                 ContextVar) { // normal single context var
         auto target = contextVariable(context, _columns.payload.stringValue);
         if (target && target->valueType == Seq) {
           auto mseqLen = stbds_arrlen(target->payload.seqValue);
@@ -1469,6 +1544,7 @@ RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
+RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);

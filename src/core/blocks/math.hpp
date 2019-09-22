@@ -479,5 +479,23 @@ MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf, "Round");
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_activate(NAME);                                                \
   RUNTIME_BLOCK_END(NAME);
+
+struct Mean {
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo(CoreInfo::floatSeqInfo);
+  }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::floatInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+    double mean = 0.0;
+    auto seq = IterableSeq(input.payload.seqValue);
+    for (auto &f : seq) {
+      mean += f.payload.floatValue;
+    }
+    mean /= double(inputLen);
+    return Var(mean);
+  }
+};
 }; // namespace Math
 }; // namespace chainblocks

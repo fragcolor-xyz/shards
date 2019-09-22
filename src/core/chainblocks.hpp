@@ -299,7 +299,7 @@ struct Var : public CBVar {
 
   explicit Var(double src) : CBVar() {
     valueType = Float;
-    payload.intValue = src;
+    payload.floatValue = src;
   }
 
   explicit Var(bool src) : CBVar() {
