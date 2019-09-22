@@ -115,7 +115,7 @@ struct Sort : public JointOp {
   }
 };
 
-struct RemoveIf : public JointOp, public BlocksUser {
+struct Remove : public JointOp, public BlocksUser {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
       ParamsInfo::Param(
@@ -367,17 +367,17 @@ RUNTIME_BLOCK_cleanup(Sort);
 RUNTIME_BLOCK_END(Sort);
 
 // Register Repeat
-RUNTIME_CORE_BLOCK(RemoveIf);
-RUNTIME_BLOCK_inputTypes(RemoveIf);
-RUNTIME_BLOCK_outputTypes(RemoveIf);
-RUNTIME_BLOCK_parameters(RemoveIf);
-RUNTIME_BLOCK_setParam(RemoveIf);
-RUNTIME_BLOCK_getParam(RemoveIf);
-RUNTIME_BLOCK_activate(RemoveIf);
-RUNTIME_BLOCK_destroy(RemoveIf);
+RUNTIME_CORE_BLOCK(Remove);
+RUNTIME_BLOCK_inputTypes(Remove);
+RUNTIME_BLOCK_outputTypes(Remove);
+RUNTIME_BLOCK_parameters(Remove);
+RUNTIME_BLOCK_setParam(Remove);
+RUNTIME_BLOCK_getParam(Remove);
+RUNTIME_BLOCK_activate(Remove);
+RUNTIME_BLOCK_destroy(Remove);
 RUNTIME_BLOCK_cleanup(Repeat);
-RUNTIME_BLOCK_inferTypes(RemoveIf);
-RUNTIME_BLOCK_END(RemoveIf);
+RUNTIME_BLOCK_inferTypes(Remove);
+RUNTIME_BLOCK_END(Remove);
 
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
@@ -469,7 +469,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);
-  REGISTER_CORE_BLOCK(RemoveIf);
+  REGISTER_CORE_BLOCK(Remove);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);
