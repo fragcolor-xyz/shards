@@ -619,9 +619,25 @@ struct ParamsInfo {
     return *this;
   }
 
-  template <typename... Types> explicit ParamsInfo(Types... types) {
-    std::vector<CBParameterInfo> vec = {types...};
+  template <typename... Types>
+  explicit ParamsInfo(CBParameterInfo first, Types... types) {
+    std::vector<CBParameterInfo> vec = {first, types...};
     _innerInfo = nullptr;
+    for (auto pi : vec) {
+      stbds_arrpush(_innerInfo, pi);
+    }
+  }
+
+  template <typename... Types>
+  explicit ParamsInfo(const ParamsInfo &other, CBParameterInfo first,
+                      Types... types) {
+    _innerInfo = nullptr;
+
+    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
+      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    }
+
+    std::vector<CBParameterInfo> vec = {first, types...};
     for (auto pi : vec) {
       stbds_arrpush(_innerInfo, pi);
     }
