@@ -1125,6 +1125,10 @@ void validateConnection(ValidationContext &ctx) {
   for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
     auto &consumed_param = consumedVar[i];
     std::string name(consumed_param.name);
+    if (name.find(' ')) { // take only the first part of variable name
+      // the remaining should be a table key which we don't care here
+      name = name.substr(0, name.find(' '));
+    }
     auto findIt = ctx.exposed.find(name);
     if (findIt == ctx.exposed.end()) {
       std::string err("Required consumed variable not found: " + name);
