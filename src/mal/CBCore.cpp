@@ -726,6 +726,21 @@ BUILTIN("schedule") {
 BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
   ARG(malCBChain, chain);
+  auto chainValidation = validateConnections(
+      chain->value(),
+      [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+         void *userData) {
+        if (!nonfatalWarning) {
+          auto msg = "RunChain: failed inner chain validation, error: " +
+                     std::string(errorTxt);
+          throw chainblocks::CBException(msg);
+        } else {
+          LOG(INFO) << "RunChain: warning during inner chain validation: "
+                    << errorTxt;
+        }
+      },
+      nullptr); // detached don't share context!
+  stbds_arrfree(chainValidation.exposedInfo);
   chainblocks::prepare(chain->value());
   return mal::nilValue();
 }
