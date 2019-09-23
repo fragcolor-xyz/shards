@@ -10,6 +10,8 @@ struct CoreInfo {
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo intVarInfo =
       TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
+  static inline TypesInfo intsVarInfo =
+      TypesInfo::FromMany(true, CBType::Int, CBType::ContextVar);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
@@ -1149,17 +1151,21 @@ struct Pop : SeqUser {
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CBTypesInfo(CoreInfo::intsInfo)));
+      CBTypesInfo(CoreInfo::intsVarInfo)));
 
-  CBSeq cachedResult = nullptr;
-  CBVar indices{};
+  CBSeq _cachedResult = nullptr;
+  CBVar _indices{};
+  CBVar *_indicesVar = nullptr;
+  ExposedInfo _exposedInfo{};
 
   void destroy() {
-    if (cachedResult) {
-      stbds_arrfree(cachedResult);
+    if (_cachedResult) {
+      stbds_arrfree(_cachedResult);
     }
-    destroyVar(indices);
+    destroyVar(_indices);
   }
+
+  void cleanup() { _indicesVar = nullptr; }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
 
@@ -1172,32 +1178,73 @@ struct Take {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
-    if (indices.valueType == Seq) {
+    if (_indices.valueType == Seq) {
       if (inputType.basicType == Seq) {
         return inputType; // multiple values
       }
-    } else {
+    } else if (_indices.valueType == Int) {
       if (inputType.basicType == Seq && inputType.seqType) {
         return *inputType.seqType; // single value
+      }
+    } else { // ContextVar
+      IterableExposedInfo infos(consumableVariables);
+      for (auto &info : infos) {
+        if (strcmp(info.name, _indices.payload.stringValue) == 0) {
+          if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
+              info.exposedType.seqType->basicType == Int) {
+            if (inputType.basicType == Seq) {
+              return inputType; // multiple values
+            }
+          } else if (info.exposedType.basicType == Int) {
+            if (inputType.basicType == Seq && inputType.seqType) {
+              return *inputType.seqType; // single value
+            }
+          } else {
+            auto msg = "Take indices variable " + std::string(info.name) +
+                       " expected to be either a Seq or a Int";
+            throw CBException(msg);
+          }
+        }
       }
     }
     throw CBException("Take expected a sequence as input.");
   }
 
+  CBExposedTypesInfo consumedVariables() {
+    if (_indices.valueType == ContextVar) {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _indices.payload.stringValue, "The consumed variable.",
+          CBTypeInfo(CoreInfo::intsInfo)));
+      return CBExposedTypesInfo(_exposedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(indices, value);
+      cloneVar(_indices, value);
+      _indicesVar = nullptr;
       break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) { return indices; }
+  CBVar getParam(int index) { return _indices; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto inputLen = stbds_arrlen(input.payload.seqValue);
+    auto &indices = _indices;
+
+    if (_indices.valueType == ContextVar && !_indicesVar) {
+      _indicesVar = contextVariable(context, _indices.payload.stringValue);
+    }
+
+    if (_indicesVar) {
+      indices = *_indicesVar;
+    }
 
     if (indices.valueType == Int) {
       auto index = indices.payload.intValue;
@@ -1206,28 +1253,22 @@ struct Take {
                    << " wanted index: " << index;
         throw CBException("Take out of range!");
       }
-
       return input.payload.seqValue[index];
-    }
-
-    // Else it's a seq
-    auto nindices = stbds_arrlen(indices.payload.seqValue);
-    stbds_arrsetlen(cachedResult, nindices);
-    for (auto i = 0; nindices > i; i++) {
-      auto index = indices.payload.seqValue[i].payload.intValue;
-      if (index >= inputLen) {
-        LOG(ERROR) << "Take out of range! len:" << inputLen
-                   << " wanted index: " << index;
-        throw CBException("Take out of range!");
+    } else {
+      // Else it's a seq
+      auto nindices = stbds_arrlen(indices.payload.seqValue);
+      stbds_arrsetlen(_cachedResult, nindices);
+      for (auto i = 0; nindices > i; i++) {
+        auto index = indices.payload.seqValue[i].payload.intValue;
+        if (index >= inputLen) {
+          LOG(ERROR) << "Take out of range! len:" << inputLen
+                     << " wanted index: " << index;
+          throw CBException("Take out of range!");
+        }
+        _cachedResult[i] = input.payload.seqValue[index];
       }
-      cachedResult[i] = input.payload.seqValue[index];
+      return Var(_cachedResult);
     }
-
-    CBVar result{};
-    result.valueType = Seq;
-    result.payload.seqLen = -1;
-    result.payload.seqValue = cachedResult;
-    return result;
   }
 };
 
@@ -1265,7 +1306,7 @@ struct Limit {
         return *inputType.seqType; // single value
       }
     }
-    throw CBException("Take expected a sequence as input.");
+    throw CBException("Limit expected a sequence as input.");
   }
 
   void setParam(int index, CBVar value) { _max = value.payload.intValue; }

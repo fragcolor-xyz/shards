@@ -197,30 +197,33 @@ ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
   return freeCount;
 }
 
-class IterableSeq {
+template <typename T, typename V> class IterableStb {
 public:
-  IterableSeq(CBSeq seq) : _seq(seq) {}
+  IterableStb(T seq) : _seq(seq) {}
   class iterator {
   public:
-    iterator(CBVar *ptr) : ptr(ptr) {}
+    iterator(V *ptr) : ptr(ptr) {}
     iterator operator++() {
       ++ptr;
       return *this;
     }
     bool operator!=(const iterator &other) const { return ptr != other.ptr; }
-    const CBVar &operator*() const { return *ptr; }
+    const V &operator*() const { return *ptr; }
 
   private:
-    CBVar *ptr;
+    V *ptr;
   };
 
 private:
-  CBSeq _seq;
+  T _seq;
 
 public:
   iterator begin() const { return iterator(&_seq[0]); }
   iterator end() const { return iterator(&_seq[0] + stbds_arrlen(_seq)); }
 };
+
+typedef IterableStb<CBSeq, CBVar> IterableSeq;
+typedef IterableStb<CBExposedTypesInfo, CBExposedTypeInfo> IterableExposedInfo;
 
 struct Var : public CBVar {
   explicit Var() : CBVar() {

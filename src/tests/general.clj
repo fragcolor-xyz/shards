@@ -405,6 +405,15 @@
   (Get "meanTest") (Math.Mean) (Log)
   (Assert.Is 1.5 true)
 
+  1 (Set "indexAsVar")
+  (Get "meanTest")
+  (Take (# "indexAsVar"))
+  (Assert.Is 2.0 true)
+  (Const [1 2]) (Set "indexAsVar2")
+  (Get "meanTest")
+  (Take (# "indexAsVar2"))
+  (Assert.Is [2.0 0.0] true)
+
   (Repeat (-->
     (Pop "meanTest")
     (Math.Add 1.0)
@@ -428,15 +437,15 @@
 
   0 (Math.Add 10) (Assert.Is 10 true)
 
-  (Msg "All looking good!")
-))
+  (Msg "All looking good!")))
+
 (schedule Root testChain)
 (if (tick Root) nil (throw "Root tick failed"))
 
-; test json support
-(schedule Root (ChainJson (json testChain)))
-(if (tick Root) nil (throw "Root tick failed"))
-; (println (json testChain))
+; ; test json support
+; (schedule Root (ChainJson (json testChain)))
+; (if (tick Root) nil (throw "Root tick failed"))
+; ; (println (json testChain))
 
 (def loopedChain (Chain "LoopedChain" :Looped
   10 (Push "loopVar")

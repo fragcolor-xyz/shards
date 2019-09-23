@@ -318,6 +318,8 @@ RUNTIME_BLOCK_END(Swap);
 // Register Take
 RUNTIME_CORE_BLOCK_FACTORY(Take);
 RUNTIME_BLOCK_destroy(Take);
+RUNTIME_BLOCK_cleanup(Take);
+RUNTIME_BLOCK_consumedVariables(Take);
 RUNTIME_BLOCK_inputTypes(Take);
 RUNTIME_BLOCK_outputTypes(Take);
 RUNTIME_BLOCK_parameters(Take);
