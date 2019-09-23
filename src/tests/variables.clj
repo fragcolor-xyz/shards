@@ -77,9 +77,9 @@
   (Log)
 
   (Const [6 7 8 9])
-  (Set "b")
+  (Set "c")
   (Log)
-  (Get "b")
+  (Get "c")
   (Assert.Is [6 7 8 9] true)
   (Take [0 1])
   (Assert.Is [6 7] true)
