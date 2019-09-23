@@ -1084,8 +1084,27 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
   return true;
 }
 
+namespace std {
+template <> struct hash<CBExposedTypeInfo> {
+  std::size_t operator()(const CBExposedTypeInfo &typeInfo) const {
+    using std::hash;
+    using std::size_t;
+    using std::string;
+    auto res = hash<string>()(typeInfo.name);
+    if (typeInfo.exposedType.basicType == Table &&
+        typeInfo.exposedType.tableTypes && typeInfo.exposedType.tableKeys) {
+      for (auto i = 0; i < stbds_arrlen(typeInfo.exposedType.tableKeys); i++) {
+        res = res ^ hash<string>()(typeInfo.exposedType.tableKeys[i]);
+      }
+    }
+    return res;
+  }
+};
+} // namespace std
+
 struct ValidationContext {
-  phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>> exposed;
+  phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
+      exposed;
 
   CBTypeInfo previousOutputType{};
 
@@ -1157,7 +1176,14 @@ void validateConnection(ValidationContext &ctx) {
           err += " (" + info.first + " [";
 
           for (auto type : info.second) {
-            err += type2Name(type.exposedType.basicType) + " ";
+            if (type.exposedType.basicType == Table &&
+                type.exposedType.tableTypes && type.exposedType.tableKeys) {
+              err += "(" + type2Name(type.exposedType.basicType) + " [" +
+                     type2Name(type.exposedType.tableTypes[0].basicType) + " " +
+                     type.exposedType.tableKeys[0] + "])";
+            } else {
+              err += type2Name(type.exposedType.basicType) + " ";
+            }
           }
           err.erase(err.end() - 1);
 
@@ -1212,15 +1238,7 @@ void validateConnection(ValidationContext &ctx) {
       }
     }
 #endif
-    // Tables expose multiple types
-    if (exposed_param.exposedType.basicType == Table) {
-      if (ctx.exposed[name].size() == 1 &&
-          ctx.exposed[name][0].exposedType.basicType != Table)
-        ctx.exposed[name].clear(); // reset in this case!
-      ctx.exposed[name].push_back(exposed_param);
-    } else {
-      ctx.exposed[name] = {exposed_param};
-    }
+    ctx.exposed[name].insert(exposed_param);
   }
 }
 
@@ -1236,7 +1254,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   if (consumables) {
     for (auto i = 0; i < stbds_arrlen(consumables); i++) {
       auto &info = consumables[i];
-      ctx.exposed[info.name].push_back(info);
+      ctx.exposed[info.name].insert(info);
     }
   }
 
