@@ -536,7 +536,7 @@ struct Get : public VariableBase {
     if (index <= 2)
       VariableBase::setParam(index, value);
     else if (index == 3) {
-      _defaultValue = value;
+      cloneVar(_defaultValue, value);
     }
   }
 
