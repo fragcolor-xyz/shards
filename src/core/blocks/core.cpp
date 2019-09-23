@@ -73,44 +73,14 @@ struct Sort : public JointOp {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    JointOp::ensureJoinSetup(context, input);
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
-
-    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
-      if (_columns.valueType == Seq) {
-        auto seq = IterableSeq(_columns.payload.seqValue);
-        for (auto &col : seq) {
-          auto target = contextVariable(context, col.payload.stringValue);
-          if (target && target->valueType == Seq) {
-            auto mseqLen = stbds_arrlen(target->payload.seqValue);
-            if (len != mseqLen) {
-              throw CBException(
-                  "Sort: All the sequences to be sorted must have "
-                  "the same length as the input sequence.");
-            }
-            _multiSortColumns.push_back(target->payload.seqValue);
-          }
-        }
-      } else if (_columns.valueType ==
-                 ContextVar) { // normal single context var
-        auto target = contextVariable(context, _columns.payload.stringValue);
-        if (target && target->valueType == Seq) {
-          auto mseqLen = stbds_arrlen(target->payload.seqValue);
-          if (len != mseqLen) {
-            throw CBException("Sort: All the sequences to be sorted must have "
-                              "the same length as the input sequence.");
-          }
-          _multiSortColumns.push_back(target->payload.seqValue);
-        }
-      }
-    }
-
     if (!_desc) {
       insertSort(input.payload.seqValue, len, sortAsc);
     } else {
       insertSort(input.payload.seqValue, len, sortDesc);
     }
-
     return input;
   }
 };
@@ -118,10 +88,6 @@ struct Sort : public JointOp {
 struct Remove : public JointOp, public BlocksUser {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
-      ParamsInfo::Param(
-          "Desc",
-          "If sorting should be in descending order, defaults ascending.",
-          CBTypesInfo(CoreInfo::boolInfo)),
       ParamsInfo::Param("Predicate",
                         "The blocks to use as predicate, if true the item will "
                         "be popped from the sequence.",
@@ -154,6 +120,31 @@ struct Remove : public JointOp, public BlocksUser {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    JointOp::ensureJoinSetup(context, input);
+    // Remove in place, will possibly remove any sorting!
+    auto len = stbds_arrlen(input.payload.seqValue);
+    for (auto i = len - 1; i >= 0; i--) {
+      auto &var = input.payload.seqValue[i];
+      CBVar output{};
+      if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, var,
+                                   output))) {
+        return StopChain;
+      } else if (output == True) {
+        // remove from input
+        if (var.valueType >= EndOfBlittableTypes) {
+          destroyVar(var);
+        }
+        stbds_arrdelswap(input.payload.seqValue, i);
+        // remove from joined
+        for (auto &col : _multiSortColumns) {
+          auto &jvar = col[i];
+          if (var.valueType >= EndOfBlittableTypes) {
+            destroyVar(jvar);
+          }
+          stbds_arrdelswap(col, i);
+        }
+      }
+    }
     return input;
   }
 };

@@ -1459,6 +1459,38 @@ struct JointOp {
   }
 
   void cleanup() { _multiSortColumns.clear(); }
+
+  void ensureJoinSetup(CBContext *context, const CBVar &input) {
+    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
+      auto len = stbds_arrlen(input.payload.seqValue);
+      if (_columns.valueType == Seq) {
+        auto seq = IterableSeq(_columns.payload.seqValue);
+        for (auto &col : seq) {
+          auto target = contextVariable(context, col.payload.stringValue);
+          if (target && target->valueType == Seq) {
+            auto mseqLen = stbds_arrlen(target->payload.seqValue);
+            if (len != mseqLen) {
+              throw CBException(
+                  "Sort: All the sequences to be sorted must have "
+                  "the same length as the input sequence.");
+            }
+            _multiSortColumns.push_back(target->payload.seqValue);
+          }
+        }
+      } else if (_columns.valueType ==
+                 ContextVar) { // normal single context var
+        auto target = contextVariable(context, _columns.payload.stringValue);
+        if (target && target->valueType == Seq) {
+          auto mseqLen = stbds_arrlen(target->payload.seqValue);
+          if (len != mseqLen) {
+            throw CBException("Sort: All the sequences to be sorted must have "
+                              "the same length as the input sequence.");
+          }
+          _multiSortColumns.push_back(target->payload.seqValue);
+        }
+      }
+    }
+  }
 };
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
