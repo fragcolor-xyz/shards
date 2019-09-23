@@ -194,6 +194,9 @@ public:
   ~malCBBlock() {
     if (m_block)
       m_block->destroy(m_block);
+    for (auto &ref : m_innerRefs) {
+      ref->release();
+    }
   }
 
   virtual MalString print(bool readably) const {
@@ -235,7 +238,12 @@ public:
     consume();
   }
 
-  ~malCBNode() { delete m_node; }
+  ~malCBNode() {
+    delete m_node;
+    for (auto &ref : m_innerRefs) {
+      ref->release();
+    }
+  }
 
   virtual MalString print(bool readably) const {
     std::ostringstream stream;

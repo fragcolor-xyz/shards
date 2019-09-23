@@ -1236,7 +1236,7 @@ struct Take {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto inputLen = stbds_arrlen(input.payload.seqValue);
-    auto &indices = _indices;
+    auto indices = _indices;
 
     if (_indices.valueType == ContextVar && !_indicesVar) {
       _indicesVar = contextVariable(context, _indices.payload.stringValue);
