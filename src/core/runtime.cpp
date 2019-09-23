@@ -60,6 +60,8 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (strcmp(name, "Stop") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreStop;
+  } else if (strcmp(name, "Input") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreInput;
   } else if (strcmp(name, "Restart") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
   } else if (strcmp(name, "Sleep") == 0) {
@@ -308,6 +310,7 @@ CBVar suspend(CBContext *context, double seconds) {
 FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
+  context->input = input;
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
@@ -338,6 +341,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
 FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
+  context->input = input;
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
@@ -1107,6 +1111,7 @@ struct ValidationContext {
       exposed;
 
   CBTypeInfo previousOutputType{};
+  CBTypeInfo originalInputType{};
 
   CBlock *bottom{};
 
@@ -1247,6 +1252,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
                                        void *userData, CBTypeInfo inputType,
                                        CBExposedTypesInfo consumables) {
   auto ctx = ValidationContext();
+  ctx.originalInputType = inputType;
   ctx.previousOutputType = inputType;
   ctx.cb = callback;
   ctx.userData = userData;
@@ -1259,8 +1265,13 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   for (auto blk : chain) {
-    ctx.bottom = blk;
-    validateConnection(ctx);
+    if(blk->name(blk) == "Input") {
+      // Hard code behavior for Input block
+      ctx.previousOutputType = ctx.originalInputType;
+    } else {
+      ctx.bottom = blk;
+      validateConnection(ctx);
+    }
   }
 
   CBValidationResult result = {ctx.previousOutputType};

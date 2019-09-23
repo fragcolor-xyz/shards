@@ -161,6 +161,13 @@ RUNTIME_BLOCK_getParam(Const);
 RUNTIME_BLOCK_activate(Const);
 RUNTIME_BLOCK_END(Const);
 
+// Register Input
+RUNTIME_CORE_BLOCK_FACTORY(Input);
+RUNTIME_BLOCK_inputTypes(Input);
+RUNTIME_BLOCK_outputTypes(Input);
+RUNTIME_BLOCK_activate(Input);
+RUNTIME_BLOCK_END(Input);
+
 // Register Sleep
 RUNTIME_CORE_BLOCK_FACTORY(Sleep);
 RUNTIME_BLOCK_inputTypes(Sleep);
@@ -443,6 +450,7 @@ RUNTIME_BLOCK_END(Mean);
 
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
+  REGISTER_CORE_BLOCK(Input);
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);

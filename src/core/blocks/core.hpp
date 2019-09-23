@@ -232,6 +232,15 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
   RUNTIME_BLOCK_activate(NAME);                                                \
   RUNTIME_BLOCK_END(NAME);
 
+struct Input {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return context->input;
+  }
+};
+
 struct Sleep {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Time", "The amount of time in seconds (float) to pause this chain.",
@@ -1534,6 +1543,7 @@ struct JointOp {
 };
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
+RUNTIME_CORE_BLOCK_TYPE(Input);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);

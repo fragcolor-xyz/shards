@@ -216,6 +216,9 @@ struct CBContext {
   // Iteration counter
   uint64_t iterationCount;
 
+  // The original input of this context current flow
+  CBVar input{};
+
   void setError(const char *errorMsg) { error = errorMsg; }
 };
 
@@ -281,6 +284,11 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreSleep: {
     auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreInput: {
+    auto cblock = reinterpret_cast<chainblocks::InputRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
     return;
   }
@@ -557,8 +565,9 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   }
 
   chain->started = true;
-  context->paused = false;
   chain->context = context;
+  context->paused = false;
+  context->input = chainInput;
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {

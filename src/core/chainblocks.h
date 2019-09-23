@@ -61,6 +61,7 @@ enum CBInlineBlocks : uint8_t {
 
   CoreConst,
   CoreSleep,
+  CoreInput,
   CoreStop,
   CoreRestart,
   CoreRepeat,
