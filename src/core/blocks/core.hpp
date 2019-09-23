@@ -1061,7 +1061,7 @@ struct Pop : SeqUser {
               } else {
                 _blittable = false;
               }
-              return tableTypes[y]; // found lets escape
+              return *tableTypes[y].seqType; // found lets escape
             }
           }
         }
@@ -1077,7 +1077,7 @@ struct Pop : SeqUser {
           } else {
             _blittable = false;
           }
-          return cv.exposedType; // found lets escape
+          return *cv.exposedType.seqType; // found lets escape
         }
       }
     }

@@ -405,6 +405,12 @@
   (Get "meanTest") (Math.Mean) (Log)
   (Assert.Is 1.5 true)
 
+  (Repeat (-->
+    (Pop "meanTest")
+    (Math.Add 1.0)
+    (Log)
+  ) 4)
+
   2 (Set "tableX" "keyX")
   1 (Math.Add (# "tableX" "keyX")) (Assert.Is 3 true)
 
@@ -419,6 +425,8 @@
   ) (# "repeatsn"))
   (Get "repeatsCount")
   (Assert.Is 10 true)
+
+  0 (Math.Add 10) (Assert.Is 10 true)
 
   (Msg "All looking good!")
 ))
