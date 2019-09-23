@@ -26,6 +26,7 @@ using Time = std::chrono::time_point<Clock, Duration>;
 // Required external dependencies
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
+typedef boost::context::continuation CBCoro;
 // For sleep
 #if _WIN32
 #include <Windows.h>
@@ -116,11 +117,6 @@ validateConnections(const CBChain *chain, CBValidationCallback callback,
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
-
-#include "blocks/core.hpp"
-#include "blocks/math.hpp"
-
-typedef boost::context::continuation CBCoro;
 
 struct CBChain {
   CBChain(const char *chain_name)
@@ -222,6 +218,9 @@ struct CBContext {
   void setError(const char *errorMsg) { error = errorMsg; }
 };
 
+#include "blocks/core.hpp"
+#include "blocks/math.hpp"
+
 using json = nlohmann::json;
 // The following procedures implement json.hpp protocol in order to allow easy
 // integration! they must stay outside the namespace!
@@ -231,6 +230,26 @@ void to_json(json &j, const CBChainPtr &chain);
 void from_json(const json &j, CBChainPtr &chain);
 
 namespace chainblocks {
+class CurrentContextInput {
+private:
+  CBContext *_context;
+  CBVar _previousInput;
+
+public:
+  ~CurrentContextInput() {
+    // Restore
+    _context->input = _previousInput;
+  }
+
+  CurrentContextInput(CBContext *context, const CBVar &input) {
+    // Store
+    _context = context;
+    _previousInput = context->input;
+    // Swap to new
+    _context->input = input;
+  }
+};
+
 void installSignalHandlers();
 
 ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
@@ -567,7 +586,7 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->started = true;
   chain->context = context;
   context->paused = false;
-  context->input = chainInput;
+  chainblocks::CurrentContextInput ctxInput(context, chainInput);
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {

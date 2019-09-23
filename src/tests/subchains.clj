@@ -6,7 +6,10 @@
   (Cond [
     (--> true) (--> 1 (Set "var2"))
     (--> false) (--> 1 (Set "var2"))
-  ])))
+  ])
+  (Input) ; test Input
+  (Log)
+  (Assert.Is "Initial input" true)))
 
 (def otherChain (Chain "other"
   99))
@@ -40,6 +43,7 @@
 (schedule root otherChain)
 
 (schedule root (Chain "root"
+  "Initial input"
   (DispatchOnce (mychain))
   (Get "var1")
   (Log)

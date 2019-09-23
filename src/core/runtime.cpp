@@ -310,7 +310,7 @@ CBVar suspend(CBContext *context, double seconds) {
 FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
-  context->input = input;
+  chainblocks::CurrentContextInput ctxInput(context, chainInput);
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
@@ -341,7 +341,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
 FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
-  context->input = input;
+  chainblocks::CurrentContextInput ctxInput(context, chainInput);
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
@@ -1265,7 +1265,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   for (auto blk : chain) {
-    if(blk->name(blk) == "Input") {
+    if (blk->name(blk) == "Input") {
       // Hard code behavior for Input block
       ctx.previousOutputType = ctx.originalInputType;
     } else {
