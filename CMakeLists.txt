@@ -118,7 +118,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
   # ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
-  # ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp

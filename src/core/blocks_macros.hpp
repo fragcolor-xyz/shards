@@ -9,7 +9,8 @@
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {});        \
+    result->destroy =                                                          \
+        static_cast<CBDestroyProc>([](CBlock *block) { delete block; });       \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -38,7 +39,8 @@
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {});        \
+    result->destroy =                                                          \
+        static_cast<CBDestroyProc>([](CBlock *block) { delete block; });       \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -68,7 +70,8 @@
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {});        \
+    result->destroy =                                                          \
+        static_cast<CBDestroyProc>([](CBlock *block) { delete block; });       \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -98,7 +101,8 @@
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {});        \
+    result->destroy =                                                          \
+        static_cast<CBDestroyProc>([](CBlock *block) { delete block; });       \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -123,7 +127,7 @@
     return reinterpret_cast<_name_##Runtime *>(block)->core.name();            \
   });
 #define RUNTIME_BLOCK_help(_name_)                                             \
-  result->help = static_cast<CBHelpProc>([](CBlock *block) {                  \
+  result->help = static_cast<CBHelpProc>([](CBlock *block) {                   \
     return reinterpret_cast<_name_##Runtime *>(block)->core.help();            \
   });
 
@@ -134,6 +138,7 @@
 #define RUNTIME_BLOCK_destroy(_name_)                                          \
   result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {             \
     reinterpret_cast<_name_##Runtime *>(block)->core.destroy();                \
+    delete block;                                                              \
   });
 
 #define RUNTIME_BLOCK_inputTypes(_name_)                                       \
