@@ -343,6 +343,7 @@ RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_destroy(Repeat);
 RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
+RUNTIME_BLOCK_consumedVariables(Repeat);
 RUNTIME_BLOCK_inferTypes(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 

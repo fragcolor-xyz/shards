@@ -411,6 +411,15 @@
   (Get "unsortedList") (Limit 2) (Set "limitTest") (Count "limitTest")
   (Assert.Is 2 true)
 
+  10 (Set "repeatsn")
+  (Repeat (-->
+    (Get "repeatsCount" :Default 0)
+    (Math.Add 1)
+    (Set "repeatsCount")
+  ) (# "repeatsn"))
+  (Get "repeatsCount")
+  (Assert.Is 10 true)
+
   (Msg "All looking good!")
 ))
 (schedule Root testChain)

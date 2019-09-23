@@ -8,6 +8,8 @@ struct CoreInfo {
   static inline TypeInfo intType = TypeInfo(CBType::Int);
   static inline TypeInfo floatType = TypeInfo(CBType::Float);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
+  static inline TypesInfo intVarInfo =
+      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
@@ -1353,14 +1355,22 @@ struct BlocksUser {
 };
 
 struct Repeat : public BlocksUser {
-  int _times = 0;
+  std::string _ctxVar;
+  CBVar *_ctxTimes = nullptr;
+  int64_t _times = 0;
   bool _forever = false;
+  ExposedInfo _consumedInfo{};
+
+  void cleanup() {
+    BlocksUser::cleanup();
+    _ctxTimes = nullptr;
+  }
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",
                         CBTypesInfo(CoreInfo::blocksInfo)),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
-                        CBTypesInfo(CoreInfo::intInfo)),
+                        CBTypesInfo(CoreInfo::intVarInfo)),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",
                         CBTypesInfo(CoreInfo::boolInfo)));
 
@@ -1378,7 +1388,13 @@ struct Repeat : public BlocksUser {
       cloneVar(_blocks, value);
       break;
     case 1:
-      _times = value.payload.intValue;
+      if (value.valueType == Int) {
+        _ctxVar.clear();
+        _times = value.payload.intValue;
+      } else {
+        _ctxVar.assign(value.payload.stringValue);
+        _ctxTimes = nullptr;
+      }
       break;
     case 2:
       _forever = value.payload.boolValue;
@@ -1393,7 +1409,13 @@ struct Repeat : public BlocksUser {
     case 0:
       return _blocks;
     case 1:
-      return Var(_times);
+      if (_ctxVar.size() == 0) {
+        return Var(_times);
+      } else {
+        auto ctxTimes = Var(_ctxVar);
+        ctxTimes.valueType = ContextVar;
+        return ctxTimes;
+      }
     case 2:
       return Var(_forever);
     default:
@@ -1402,8 +1424,26 @@ struct Repeat : public BlocksUser {
     throw CBException("Parameter out of range.");
   }
 
+  CBExposedTypesInfo consumedVariables() {
+    if (_ctxVar.size() == 0) {
+      return nullptr;
+    } else {
+      _consumedInfo = ExposedInfo(ExposedInfo::Variable(
+          _ctxVar.c_str(), "The Int number of repeats variable.",
+          CBTypeInfo(CoreInfo::intInfo)));
+      return CBExposedTypesInfo(_consumedInfo);
+    }
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto repeats = _forever ? 1 : _times;
+
+    if (_ctxVar.size()) {
+      if (!_ctxTimes)
+        _ctxTimes = contextVariable(context, _ctxVar.c_str());
+      repeats = _ctxTimes->payload.intValue;
+    }
+
     while (repeats) {
       CBVar repeatOutput{};
       repeatOutput.valueType = None;
