@@ -1564,7 +1564,7 @@ struct JointOp {
               auto mseqLen = stbds_arrlen(target->payload.seqValue);
               if (len != mseqLen) {
                 throw CBException(
-                    "Sort: All the sequences to be sorted must have "
+                    "JointOp: All the sequences to be processed must have "
                     "the same length as the input sequence.");
               }
               _multiSortColumns.push_back(target->payload.seqValue);
@@ -1577,7 +1577,7 @@ struct JointOp {
             auto mseqLen = stbds_arrlen(target->payload.seqValue);
             if (len != mseqLen) {
               throw CBException(
-                  "Sort: All the sequences to be sorted must have "
+                  "JointOp: All the sequences to be processed must have "
                   "the same length as the input sequence.");
             }
             _multiSortColumns.push_back(target->payload.seqValue);
@@ -1587,8 +1587,27 @@ struct JointOp {
         for (auto &seq : _multiSortColumns) {
           auto mseqLen = stbds_arrlen(seq);
           if (len != mseqLen) {
-            throw CBException("Sort: All the sequences to be sorted must have "
-                              "the same length as the input sequence.");
+#ifndef NDEBUG
+            LOG(DEBUG) << "Failing original len: " << len;
+            if (_columns.valueType == ContextVar) {
+              LOG(DEBUG) << "Failing columns: " << _columns.payload.stringValue;
+              LOG(DEBUG) << "Failing len: " << mseqLen;
+            } else if (_columns.valueType == Seq) {
+              IterableSeq cseq(_columns.payload.seqValue);
+              for (auto &val : cseq) {
+                if (val.valueType == ContextVar) {
+                  LOG(DEBUG) << "Failing columns: " << val.payload.stringValue;
+                }
+              }
+              for (auto &seq : _multiSortColumns) {
+                auto mseqLen = stbds_arrlen(seq);
+                LOG(DEBUG) << "Failing len: " << mseqLen;
+              }
+            }
+#endif
+            throw CBException(
+                "JointOp: All the sequences to be processed must have "
+                "the same length as the input sequence.");
           }
         }
       }
