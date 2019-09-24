@@ -1,6 +1,89 @@
 #include "../runtime.hpp"
 
 namespace chainblocks {
+struct JointOp {
+  std::vector<CBVar *> _multiSortColumns;
+  CBVar _columns{};
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static inline ParamsInfo joinOpParams = ParamsInfo(ParamsInfo::Param(
+      "Join",
+      "Other columns to join sort/filter using the input (they must be "
+      "of the same length).",
+      CBTypesInfo(CoreInfo::varSeqInfo)));
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_columns, value);
+      // resets vars fetch in activate
+      _multiSortColumns.clear();
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _columns;
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  void cleanup() { _multiSortColumns.clear(); }
+
+  void ensureJoinSetup(CBContext *context, const CBVar &input) {
+    if (_columns.valueType != None) {
+      auto len = stbds_arrlen(input.payload.seqValue);
+      if (_multiSortColumns.size() == 0) {
+        if (_columns.valueType == Seq) {
+          auto seq = IterableSeq(_columns.payload.seqValue);
+          for (const auto &col : seq) {
+            auto target = contextVariable(context, col.payload.stringValue);
+            if (target && target->valueType == Seq) {
+              auto mseqLen = stbds_arrlen(target->payload.seqValue);
+              if (len != mseqLen) {
+                throw CBException(
+                    "JointOp: All the sequences to be processed must have "
+                    "the same length as the input sequence.");
+              }
+              _multiSortColumns.push_back(target);
+            }
+          }
+        } else if (_columns.valueType ==
+                   ContextVar) { // normal single context var
+          auto target = contextVariable(context, _columns.payload.stringValue);
+          if (target && target->valueType == Seq) {
+            auto mseqLen = stbds_arrlen(target->payload.seqValue);
+            if (len != mseqLen) {
+              throw CBException(
+                  "JointOp: All the sequences to be processed must have "
+                  "the same length as the input sequence.");
+            }
+            _multiSortColumns.push_back(target);
+          }
+        }
+      } else {
+        for (const auto &seqVar : _multiSortColumns) {
+          const auto &seq = seqVar->payload.seqValue;
+          auto mseqLen = stbds_arrlen(seq);
+          if (len != mseqLen) {
+            throw CBException(
+                "JointOp: All the sequences to be processed must have "
+                "the same length as the input sequence.");
+          }
+        }
+      }
+    }
+  }
+};
+
 struct Sort : public JointOp {
   std::vector<CBVar> _multiSortKeys;
 
@@ -53,20 +136,23 @@ struct Sort : public JointOp {
     for (i = 1; i < n; i++) {
       key = seq[i];
       _multiSortKeys.clear();
-      for (auto &col : _multiSortColumns) {
+      for (const auto &seqVar : _multiSortColumns) {
+        const auto &col = seqVar->payload.seqValue;
         _multiSortKeys.push_back(col[i]);
       }
       j = i - 1;
       while (j >= 0 && comp(seq[j], key)) {
         seq[j + 1] = seq[j];
-        for (auto &col : _multiSortColumns) {
+        for (const auto &seqVar : _multiSortColumns) {
+          const auto &col = seqVar->payload.seqValue;
           col[j + 1] = col[j];
         }
         j = j - 1;
       }
       seq[j + 1] = key;
       auto z = 0;
-      for (auto &col : _multiSortColumns) {
+      for (const auto &seqVar : _multiSortColumns) {
+        const auto &col = seqVar->payload.seqValue;
         col[j + 1] = _multiSortKeys[z++];
       }
     }
@@ -136,12 +222,13 @@ struct Remove : public JointOp, public BlocksUser {
         }
         stbds_arrdelswap(input.payload.seqValue, i);
         // remove from joined
-        for (auto &col : _multiSortColumns) {
-          auto &jvar = col[i];
+        for (const auto &seqVar : _multiSortColumns) {
+          const auto &seq = seqVar->payload.seqValue;
+          auto &jvar = seq[i];
           if (var.valueType >= EndOfBlittableTypes) {
             destroyVar(jvar);
           }
-          stbds_arrdelswap(col, i);
+          stbds_arrdelswap(seq, i);
         }
       }
     }
