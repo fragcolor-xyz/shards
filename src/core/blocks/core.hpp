@@ -613,16 +613,20 @@ struct Get : public VariableBase {
   }
 
   CBExposedTypesInfo consumedVariables() {
-    if (_isTable) {
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                CBTypeInfo(CoreInfo::tableInfo)));
+    if (_defaultValue.valueType != None) {
+      return nullptr;
     } else {
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
-                                CBTypeInfo(CoreInfo::anyInfo)));
+      if (_isTable) {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
+                                  CBTypeInfo(CoreInfo::tableInfo)));
+      } else {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
+                                  CBTypeInfo(CoreInfo::anyInfo)));
+      }
+      return CBExposedTypesInfo(_exposedInfo);
     }
-    return CBExposedTypesInfo(_exposedInfo);
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1212,9 +1216,13 @@ struct Take {
 
   CBExposedTypesInfo consumedVariables() {
     if (_indices.valueType == ContextVar) {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _indices.payload.stringValue, "The consumed variable.",
-          CBTypeInfo(CoreInfo::intsInfo)));
+      _exposedInfo =
+          ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue,
+                                            "The consumed variable.",
+                                            CBTypeInfo(CoreInfo::intInfo)),
+                      ExposedInfo::Variable(_indices.payload.stringValue,
+                                            "The consumed variables.",
+                                            CBTypeInfo(CoreInfo::intSeqInfo)));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
       return nullptr;

@@ -1055,6 +1055,10 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
       } else if (exposedType.seqType == nullptr ||
                  consumedType.seqType == nullptr) {
         return false;
+      } else if (exposedType.seqType && consumedType.seqType == nullptr &&
+                 !isParameter) {
+        // Assume consumer is not strict
+        return true;
       }
     }
     break;
@@ -1063,7 +1067,8 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
     if (strict) {
       auto atypes = stbds_arrlen(exposedType.tableTypes);
       auto btypes = stbds_arrlen(consumedType.tableTypes);
-      for (auto i = 0; i < atypes; i++) {
+      //  btypes != 0 assume consumer is not strict
+      for (auto i = 0; i < atypes, (isParameter || btypes != 0); i++) {
         // Go thru all exposed types and make sure we get a positive match with
         // the consumer
         auto atype = exposedType.tableTypes[i];
@@ -1095,11 +1100,15 @@ template <> struct hash<CBExposedTypeInfo> {
     using std::size_t;
     using std::string;
     auto res = hash<string>()(typeInfo.name);
+    res = res ^ hash<int>()(typeInfo.exposedType.basicType);
     if (typeInfo.exposedType.basicType == Table &&
         typeInfo.exposedType.tableTypes && typeInfo.exposedType.tableKeys) {
       for (auto i = 0; i < stbds_arrlen(typeInfo.exposedType.tableKeys); i++) {
         res = res ^ hash<string>()(typeInfo.exposedType.tableKeys[i]);
       }
+    } else if (typeInfo.exposedType.basicType == Seq &&
+               typeInfo.exposedType.seqType) {
+      res = res ^ hash<int>()(typeInfo.exposedType.seqType->basicType);
     }
     return res;
   }
@@ -1143,67 +1152,6 @@ void validateConnection(ValidationContext &ctx) {
     ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
   }
 
-  // auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
-
-  // // make sure we have the vars we need, collect first
-  // for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
-  //   auto &consumed_param = consumedVar[i];
-  //   std::string name(consumed_param.name);
-  //   if (name.find(' ')) { // take only the first part of variable name
-  //     // the remaining should be a table key which we don't care here
-  //     name = name.substr(0, name.find(' '));
-  //   }
-  //   auto findIt = ctx.exposed.find(name);
-  //   if (findIt == ctx.exposed.end()) {
-  //     std::string err("Required consumed variable not found: " + name);
-  //     // Warning only, delegate inferTypes to decide
-  //     ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
-  //   } else {
-  //     auto matching = false;
-  //     for (auto type : findIt->second) {
-  //       auto exposedType = type.exposedType;
-  //       auto requiredType = consumedVar[i].exposedType;
-  //       // Finally deep compare types
-  //       if (matchTypes(exposedType, requiredType, false, false)) {
-  //         // We matched in non strict mode, meaning seq and table inner types
-  //         // are ignored At this point this is ok, strict checking should
-  //         happen
-  //         // inside infer anyway
-  //         matching = true;
-  //         break;
-  //       }
-  //     }
-  //     if (!matching) {
-  //       std::string err(
-  //           "Required consumed types do not match currently exposed ones: " +
-  //           name);
-  //       err += " exposed types:";
-  //       for (auto info : ctx.exposed) {
-  //         err += " (" + info.first + " [";
-
-  //         for (auto type : info.second) {
-  //           if (type.exposedType.basicType == Table &&
-  //               type.exposedType.tableTypes && type.exposedType.tableKeys) {
-  //             err += "(" + type2Name(type.exposedType.basicType) + " [" +
-  //                    type2Name(type.exposedType.tableTypes[0].basicType) + "
-  //                    " + type.exposedType.tableKeys[0] + "]) ";
-  //           } else if (type.exposedType.basicType == Seq &&
-  //                      type.exposedType.seqType) {
-  //             err += "(" + type2Name(type.exposedType.basicType) + " [" +
-  //                    type2Name(type.exposedType.seqType->basicType) + "]) ";
-  //           } else {
-  //             err += type2Name(type.exposedType.basicType) + " ";
-  //           }
-  //         }
-  //         err.erase(err.end() - 1);
-
-  //         err += "])";
-  //       }
-  //       ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
-  //     }
-  //   }
-  // }
-
   // infer and specialize types if we need to
   // If we don't we assume our output will be of the same type of the previous!
   if (ctx.bottom->inferTypes) {
@@ -1235,8 +1183,79 @@ void validateConnection(ValidationContext &ctx) {
   for (auto i = 0; stbds_arrlen(exposedVars) > i; i++) {
     auto &exposed_param = exposedVars[i];
     std::string name(exposed_param.name);
-    auto findIt = ctx.exposed.find(name);
     ctx.exposed[name].insert(exposed_param);
+  }
+
+  // Finally do checks on what we consume
+  auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
+
+  phmap::node_hash_map<std::string, std::vector<CBExposedTypeInfo>>
+      consumedVars;
+  for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
+    auto &consumed_param = consumedVar[i];
+    std::string name(consumed_param.name);
+    consumedVars[name].push_back(consumed_param);
+  }
+
+  // make sure we have the vars we need, collect first
+  for (const auto &consumed : consumedVars) {
+    auto matching = false;
+
+    for (const auto &consumed_param : consumed.second) {
+      std::string name(consumed_param.name);
+      if (name.find(' ') != -1) { // take only the first part of variable name
+        // the remaining should be a table key which we don't care here
+        name = name.substr(0, name.find(' '));
+      }
+      auto findIt = ctx.exposed.find(name);
+      if (findIt == ctx.exposed.end()) {
+        std::string err("Required consumed variable not found: " + name);
+        // Warning only, delegate inferTypes to decide
+        ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+      } else {
+
+        for (auto type : findIt->second) {
+          auto exposedType = type.exposedType;
+          auto requiredType = consumed_param.exposedType;
+          // Finally deep compare types
+          if (matchTypes(exposedType, requiredType, false, true)) {
+            matching = true;
+            break;
+          }
+        }
+      }
+      if (matching)
+        break;
+    }
+
+    if (!matching) {
+      std::string err(
+          "Required consumed types do not match currently exposed ones: " +
+          consumed.first);
+      err += " exposed types:";
+      for (auto info : ctx.exposed) {
+        err += " (" + info.first + " [";
+
+        for (auto type : info.second) {
+          if (type.exposedType.basicType == Table &&
+              type.exposedType.tableTypes && type.exposedType.tableKeys) {
+            err += "(" + type2Name(type.exposedType.basicType) + " [" +
+                   type2Name(type.exposedType.tableTypes[0].basicType) + " " +
+                   type.exposedType.tableKeys[0] + "]) ";
+          } else if (type.exposedType.basicType == Seq &&
+                     type.exposedType.seqType) {
+            err += "(" + type2Name(type.exposedType.basicType) + " [" +
+                   type2Name(type.exposedType.seqType->basicType) + "]) ";
+          } else {
+            err += type2Name(type.exposedType.basicType) + " ";
+          }
+        }
+        err.erase(err.end() - 1);
+
+        err += "])";
+      }
+      ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+    }
   }
 }
 
