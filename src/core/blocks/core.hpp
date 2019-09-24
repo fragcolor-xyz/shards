@@ -1331,22 +1331,16 @@ struct Limit {
                    << " wanted index: " << index;
         throw CBException("Limit out of range!");
       }
-
       return input.payload.seqValue[index];
+    } else {
+      // Else it's a seq
+      auto nindices = std::min(inputLen, _max);
+      stbds_arrsetlen(_cachedResult, nindices);
+      for (auto i = 0; i < nindices; i++) {
+        _cachedResult[i] = input.payload.seqValue[i];
+      }
+      return Var(_cachedResult);
     }
-
-    // Else it's a seq
-    auto nindices = std::min(inputLen, _max);
-    stbds_arrsetlen(_cachedResult, nindices);
-    for (auto i = 0; i < nindices; i++) {
-      _cachedResult[i] = input.payload.seqValue[i];
-    }
-
-    CBVar result{};
-    result.valueType = Seq;
-    result.payload.seqLen = -1;
-    result.payload.seqValue = _cachedResult;
-    return result;
   }
 };
 
@@ -1559,12 +1553,26 @@ struct JointOp {
   void cleanup() { _multiSortColumns.clear(); }
 
   void ensureJoinSetup(CBContext *context, const CBVar &input) {
-    if (_columns.valueType != None && _multiSortColumns.size() == 0) {
+    if (_columns.valueType != None) {
       auto len = stbds_arrlen(input.payload.seqValue);
-      if (_columns.valueType == Seq) {
-        auto seq = IterableSeq(_columns.payload.seqValue);
-        for (auto &col : seq) {
-          auto target = contextVariable(context, col.payload.stringValue);
+      if (_multiSortColumns.size() == 0) {
+        if (_columns.valueType == Seq) {
+          auto seq = IterableSeq(_columns.payload.seqValue);
+          for (auto &col : seq) {
+            auto target = contextVariable(context, col.payload.stringValue);
+            if (target && target->valueType == Seq) {
+              auto mseqLen = stbds_arrlen(target->payload.seqValue);
+              if (len != mseqLen) {
+                throw CBException(
+                    "Sort: All the sequences to be sorted must have "
+                    "the same length as the input sequence.");
+              }
+              _multiSortColumns.push_back(target->payload.seqValue);
+            }
+          }
+        } else if (_columns.valueType ==
+                   ContextVar) { // normal single context var
+          auto target = contextVariable(context, _columns.payload.stringValue);
           if (target && target->valueType == Seq) {
             auto mseqLen = stbds_arrlen(target->payload.seqValue);
             if (len != mseqLen) {
@@ -1575,16 +1583,13 @@ struct JointOp {
             _multiSortColumns.push_back(target->payload.seqValue);
           }
         }
-      } else if (_columns.valueType ==
-                 ContextVar) { // normal single context var
-        auto target = contextVariable(context, _columns.payload.stringValue);
-        if (target && target->valueType == Seq) {
-          auto mseqLen = stbds_arrlen(target->payload.seqValue);
+      } else {
+        for (auto &seq : _multiSortColumns) {
+          auto mseqLen = stbds_arrlen(seq);
           if (len != mseqLen) {
             throw CBException("Sort: All the sequences to be sorted must have "
                               "the same length as the input sequence.");
           }
-          _multiSortColumns.push_back(target->payload.seqValue);
         }
       }
     }
