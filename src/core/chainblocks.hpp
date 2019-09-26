@@ -663,6 +663,8 @@ struct ParamsInfo {
 };
 
 struct ExposedInfo {
+  ExposedInfo() { _innerInfo = nullptr; }
+
   ExposedInfo(const ExposedInfo &other) {
     _innerInfo = nullptr;
     for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
@@ -678,8 +680,23 @@ struct ExposedInfo {
     return *this;
   }
 
-  template <typename... Types> explicit ExposedInfo(Types... types) {
+  template <typename... Types>
+  explicit ExposedInfo(const ExposedInfo &other, Types... types) {
+    _innerInfo = nullptr;
+
+    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
+      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    }
+
     std::vector<CBExposedTypeInfo> vec = {types...};
+    for (auto pi : vec) {
+      stbds_arrpush(_innerInfo, pi);
+    }
+  }
+
+  template <typename... Types>
+  explicit ExposedInfo(CBExposedTypeInfo first, Types... types) {
+    std::vector<CBExposedTypeInfo> vec = {first, types...};
     _innerInfo = nullptr;
     for (auto pi : vec) {
       stbds_arrpush(_innerInfo, pi);

@@ -281,6 +281,11 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core.activate(context, input);
     return;
   }
+  case CoreNot: {
+    auto cblock = reinterpret_cast<chainblocks::NotRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
   case CoreIsMore: {
     auto cblock = reinterpret_cast<chainblocks::IsMoreRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);

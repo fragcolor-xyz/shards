@@ -279,6 +279,13 @@ RUNTIME_BLOCK_outputTypes(Or);
 RUNTIME_BLOCK_activate(Or);
 RUNTIME_BLOCK_END(Or);
 
+// Register Not
+RUNTIME_CORE_BLOCK_FACTORY(Not);
+RUNTIME_BLOCK_inputTypes(Not);
+RUNTIME_BLOCK_outputTypes(Not);
+RUNTIME_BLOCK_activate(Not);
+RUNTIME_BLOCK_END(Not);
+
 // Register Stop
 RUNTIME_CORE_BLOCK_FACTORY(Stop);
 RUNTIME_BLOCK_inputTypes(Stop);
@@ -554,6 +561,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Stop);
   REGISTER_CORE_BLOCK(And);
   REGISTER_CORE_BLOCK(Or);
+  REGISTER_CORE_BLOCK(Not);
   REGISTER_CORE_BLOCK(Take);
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);

@@ -300,6 +300,16 @@ struct Or {
   }
 };
 
+struct Not {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(!input.payload.boolValue);
+  }
+};
+
 struct Stop {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
@@ -1520,6 +1530,7 @@ RUNTIME_CORE_BLOCK_TYPE(Input);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
+RUNTIME_CORE_BLOCK_TYPE(Not);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);

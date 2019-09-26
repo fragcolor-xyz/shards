@@ -94,6 +94,8 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreAnd;
   } else if (strcmp(name, "Or") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreOr;
+  } else if (strcmp(name, "Not") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreNot;
   } else if (strcmp(name, "Math.Add") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;
   } else if (strcmp(name, "Math.Subtract") == 0) {
