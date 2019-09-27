@@ -1070,7 +1070,7 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
       auto atypes = stbds_arrlen(exposedType.tableTypes);
       auto btypes = stbds_arrlen(consumedType.tableTypes);
       //  btypes != 0 assume consumer is not strict
-      for (auto i = 0; i < atypes, (isParameter || btypes != 0); i++) {
+      for (auto i = 0; i < atypes && (isParameter || btypes != 0); i++) {
         // Go thru all exposed types and make sure we get a positive match with
         // the consumer
         auto atype = exposedType.tableTypes[i];
