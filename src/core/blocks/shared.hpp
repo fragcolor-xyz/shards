@@ -42,6 +42,8 @@ struct SharedTypes {
       TypesInfo::FromMany(false, CBTypeInfo((intInfo)), CBTypeInfo(noneInfo));
   static inline TypesInfo strOrNoneInfo =
       TypesInfo::FromMany(false, CBTypeInfo((strInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo colorOrNoneInfo =
+      TypesInfo::FromMany(false, CBTypeInfo((colorInfo)), CBTypeInfo(noneInfo));
   static inline CBEnumInfo boolOpEnumInfo = {"BoolOp"};
   static inline CBEnumInfo runChainModeEnumInfo = {"RunChainMode"};
   static inline TypeInfo runChainMode = TypeInfo::Enum('frag', 'runC');
