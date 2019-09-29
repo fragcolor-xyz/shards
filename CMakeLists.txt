@@ -67,7 +67,7 @@ endif()
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(NOT APPLE)
+  if(WIN32)
     add_link_options(-fuse-ld=lld)
   endif()
 elseif(WIN32)

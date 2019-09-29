@@ -21,7 +21,6 @@
 #include <vector>
 using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<double>;
-using Time = std::chrono::time_point<Clock, Duration>;
 
 // Required external dependencies
 // For coroutines/context switches
