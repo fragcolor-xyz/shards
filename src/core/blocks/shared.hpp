@@ -51,6 +51,8 @@ struct SharedTypes {
   static inline CBEnumInfo runChainModeEnumInfo = {"RunChainMode"};
   static inline TypeInfo runChainMode = TypeInfo::Enum('frag', 'runC');
   static inline TypesInfo runChainModeInfo = TypesInfo(runChainMode);
+  static inline TypesInfo floatsInfo =
+      TypesInfo::FromMany(true, CBTypeInfo(floatInfo));
   static inline TypesInfo vectorsInfo =
       TypesInfo::FromMany(true, float2Type, float3Type, float4Type);
   static inline TypesInfo vectorsCtxInfo = TypesInfo::FromMany(

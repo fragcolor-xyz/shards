@@ -2,6 +2,7 @@
 
 #include "3rdparty/easylogging++.h"
 #include "chainblocks.h"
+#include <cfloat>
 
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
@@ -280,7 +281,8 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Int:
     return a.payload.intValue == b.payload.intValue;
   case Float:
-    return a.payload.floatValue == b.payload.floatValue;
+    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <=
+           FLT_EPSILON;
   case Int2: {
     CBInt2 vec = a.payload.int2Value == b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
@@ -317,21 +319,36 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return true;
   }
   case Float2: {
-    CBInt2 vec = a.payload.float2Value == b.payload.float2Value; // cast to int
+    const CBFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
+    auto diff = a.payload.float2Value - b.payload.float2Value;
+    diff[0] = __builtin_fabs(diff[0]);
+    diff[1] = __builtin_fabs(diff[1]);
+    CBInt2 vec = diff <= vepsi;
     for (auto i = 0; i < 2; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Float3: {
-    CBInt3 vec = a.payload.float3Value == b.payload.float3Value; // cast to int
+    const CBFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    auto diff = a.payload.float3Value - b.payload.float3Value;
+    diff[0] = __builtin_fabs(diff[0]);
+    diff[1] = __builtin_fabs(diff[1]);
+    diff[2] = __builtin_fabs(diff[2]);
+    CBInt3 vec = diff <= vepsi;
     for (auto i = 0; i < 3; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Float4: {
-    CBInt4 vec = a.payload.float4Value == b.payload.float4Value; // cast to int
+    const CBFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    auto diff = a.payload.float4Value - b.payload.float4Value;
+    diff[0] = __builtin_fabs(diff[0]);
+    diff[1] = __builtin_fabs(diff[1]);
+    diff[2] = __builtin_fabs(diff[2]);
+    diff[3] = __builtin_fabs(diff[3]);
+    CBInt4 vec = diff <= vepsi;
     for (auto i = 0; i < 4; i++)
       if (vec[i] == 0)
         return false;
