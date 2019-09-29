@@ -130,6 +130,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/math.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
@@ -201,6 +202,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )

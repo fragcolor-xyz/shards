@@ -29,6 +29,12 @@ extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
 extern void registerSerializationBlocks();
 
+namespace Math {
+namespace LinAlg {
+extern void registerBlocks();
+};
+}; // namespace Math
+
 void registerCoreBlocks() {
   assert(sizeof(CBVarPayload) == 16);
   assert(sizeof(CBVar) == 32);
@@ -42,6 +48,7 @@ void registerCoreBlocks() {
   registerSeqsBlocks();
   registerCastingBlocks();
   registerSerializationBlocks();
+  Math::LinAlg::registerBlocks();
 
   // also enums
   initEnums();

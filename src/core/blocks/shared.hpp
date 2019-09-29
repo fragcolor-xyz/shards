@@ -25,6 +25,9 @@ struct SharedTypes {
   static inline TypesInfo float2Info = TypesInfo(CBType::Float2);
   static inline TypesInfo float3Info = TypesInfo(CBType::Float3);
   static inline TypesInfo float4Info = TypesInfo(CBType::Float4);
+  static inline TypeInfo float2Type = TypeInfo(CBType::Float2);
+  static inline TypeInfo float3Type = TypeInfo(CBType::Float3);
+  static inline TypeInfo float4Type = TypeInfo(CBType::Float4);
   static inline TypeInfo strTable =
       TypeInfo::TableRecord(CBTypeInfo(strInfo), "");
   static inline TypesInfo strTableInfo = TypesInfo(CBTypeInfo(strTable));
@@ -48,6 +51,10 @@ struct SharedTypes {
   static inline CBEnumInfo runChainModeEnumInfo = {"RunChainMode"};
   static inline TypeInfo runChainMode = TypeInfo::Enum('frag', 'runC');
   static inline TypesInfo runChainModeInfo = TypesInfo(runChainMode);
+  static inline TypesInfo vectorsInfo =
+      TypesInfo::FromMany(true, float2Type, float3Type, float4Type);
+  static inline TypesInfo vectorsCtxInfo = TypesInfo::FromMany(
+      true, float2Type, float3Type, float4Type, CBTypeInfo(ctxVarInfo));
 };
 
 static void initEnums() {
