@@ -39,7 +39,10 @@ namespace mal {
     };
 
     malValuePtr number(const String& token, bool isInteger) {
-        return number(std::stof(token), isInteger);
+        if(isInteger)
+            return number(double(std::stoll(token)), isInteger);
+        else
+            return number(std::stod(token), isInteger);
     };
 
     malValuePtr keyword(const String& token) {

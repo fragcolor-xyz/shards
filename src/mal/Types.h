@@ -80,9 +80,7 @@ public:
         : malValue(meta), m_value(that.m_value), m_integer(that.m_integer) { }
 
     virtual String print(bool readably) const {
-        int64_t floatTest = m_value * 10;
-        bool isInteger = (floatTest % 10) == 0;
-        if(isInteger)
+        if(m_integer)
             return std::to_string(static_cast<int64_t>(m_value));
         else
             return std::to_string(m_value);
