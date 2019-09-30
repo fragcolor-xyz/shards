@@ -291,6 +291,16 @@ struct ToString {
   }
 };
 
+struct ToHex {
+  VarStringStream stream;
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    stream.tryWriteHex(input);
+    return Var(stream.str());
+  }
+};
+
 // As, reinterpret
 #define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
                             _info_)                                            \
@@ -404,6 +414,13 @@ RUNTIME_BLOCK_outputTypes(ToString);
 RUNTIME_BLOCK_activate(ToString);
 RUNTIME_BLOCK_END(ToString);
 
+// Register ToHex
+RUNTIME_CORE_BLOCK(ToHex);
+RUNTIME_BLOCK_inputTypes(ToHex);
+RUNTIME_BLOCK_outputTypes(ToHex);
+RUNTIME_BLOCK_activate(ToHex);
+RUNTIME_BLOCK_END(ToHex);
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -414,6 +431,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToFloat3);
   REGISTER_CORE_BLOCK(ToFloat4);
   REGISTER_CORE_BLOCK(ToString);
+  REGISTER_CORE_BLOCK(ToHex);
 
   REGISTER_CORE_BLOCK(AsInt32);
   REGISTER_CORE_BLOCK(AsInt64);

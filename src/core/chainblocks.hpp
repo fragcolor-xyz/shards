@@ -761,6 +761,20 @@ struct VarStringStream {
     }
   }
 
+  void tryWriteHex(const CBVar &var) {
+    if (var != previousValue) {
+      cache.reset();
+      std::ostream stream(&cache);
+      if (var.valueType == Int) {
+        stream << "0x" << std::hex << var.payload.intValue;
+      } else {
+        stream << var;
+      }
+      cache.done();
+      cbCloneVar(&previousValue, &var);
+    }
+  }
+
   const char *str() { return cache.str(); }
 };
 }; // namespace chainblocks
