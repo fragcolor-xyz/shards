@@ -65,8 +65,8 @@ struct VectorBinaryBase : public BinaryBase {
       return _cachedSeq;
     } else {
       stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue),
-                i < stbds_arrlen(operand.payload.seqValue);
+      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) &&
+                       i < stbds_arrlen(operand.payload.seqValue);
            i++) {
         operate(output, input.payload.seqValue[i], operand.payload.seqValue[i]);
         stbds_arrpush(_cachedSeq.payload.seqValue, output);
@@ -86,10 +86,10 @@ struct Cross : public VectorBinaryBase {
       case Float3: {
         const CBInt3 mask1 = {1, 2, 0};
         const CBInt3 mask2 = {2, 0, 1};
-        auto a1 = __builtin_shuffle(input.payload.float3Value, mask1);
-        auto a2 = __builtin_shuffle(input.payload.float3Value, mask2);
-        auto b1 = __builtin_shuffle(operand.payload.float3Value, mask1);
-        auto b2 = __builtin_shuffle(operand.payload.float3Value, mask2);
+        auto a1 = shufflevector(input.payload.float3Value, mask1);
+        auto a2 = shufflevector(input.payload.float3Value, mask2);
+        auto b1 = shufflevector(operand.payload.float3Value, mask1);
+        auto b2 = shufflevector(operand.payload.float3Value, mask2);
         output.valueType = Float3;
         output.payload.float3Value = a1 * b2 - a2 * b1;
       } break;

@@ -161,6 +161,12 @@ typedef CBString *CBStrings; // a stb array
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
+#ifdef __clang__
+#define shufflevector __builtin_shufflevector
+#else
+#define shufflevector __builtin_shuffle
+#endif
+
 typedef int64_t CBInt2 __attribute__((vector_size(16)));
 typedef int32_t CBInt3 __attribute__((vector_size(16)));
 typedef int32_t CBInt4 __attribute__((vector_size(16)));

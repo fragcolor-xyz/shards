@@ -354,17 +354,17 @@ struct Var : public CBVar {
     payload.colorValue = color;
   }
 
-  explicit Var(const std::vector<CBlock *> &blocks) : CBVar() {
-    valueType = Seq;
-    payload.seqValue = nullptr;
-    payload.seqLen = -1;
-    for (auto block : blocks) {
-      CBVar blockVar{};
-      blockVar.valueType = Block;
-      blockVar.payload.blockValue = block;
-      stbds_arrpush(payload.seqValue, blockVar);
-    }
-  }
+  // explicit Var(const std::vector<CBlock *> &blocks) : CBVar() {
+  //   valueType = Seq;
+  //   payload.seqValue = nullptr;
+  //   payload.seqLen = -1;
+  //   for (auto block : blocks) {
+  //     CBVar blockVar{};
+  //     blockVar.valueType = Block;
+  //     blockVar.payload.blockValue = block;
+  //     stbds_arrpush(payload.seqValue, blockVar);
+  //   }
+  // }
 };
 
 static Var True = Var(true);
@@ -374,6 +374,39 @@ static Var RestartChain = Var::Restart();
 static Var ReturnPrevious = Var::Return();
 static Var RebaseChain = Var::Rebase();
 static Var Empty = Var();
+
+struct ContextableVar {
+  CBVar _v{};
+  CBVar *_cp = nullptr;
+
+  ContextableVar() {}
+  ContextableVar(CBVar initialValue) {
+    // notice, no cloning here!, purely utility
+    _v = initialValue;
+  }
+
+  ~ContextableVar() { destroyVar(_v); }
+
+  void setParam(const CBVar &value) {
+    cloneVar(_v, value);
+    _cp = nullptr; // reset this!
+  }
+
+  CBVar getParam() { return _v; }
+
+  CBVar get(CBContext *ctx, bool global = false) {
+    if (_v.valueType == ContextVar) {
+      if (!_cp) {
+        _cp = contextVariable(ctx, _v.payload.stringValue, global);
+        return *_cp;
+      } else {
+        return *_cp;
+      }
+    } else {
+      return _v;
+    }
+  }
+};
 
 struct TypeInfo : public CBTypeInfo {
   TypeInfo() { basicType = None; }
