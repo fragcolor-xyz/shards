@@ -231,6 +231,59 @@ struct Var : public CBVar {
     payload.chainState = CBChainState::Continue;
   }
 
+  explicit Var(const CBVar &other) : CBVar() {
+    memcpy((void *)this, (void *)&other, sizeof(CBVar));
+  }
+
+  explicit operator int() const {
+    if (valueType != Int) {
+      throw CBException("Invalid variable casting! expected Int");
+    }
+    return static_cast<int>(payload.intValue);
+  }
+
+  explicit operator uintptr_t() const {
+    if (valueType != Int) {
+      throw CBException("Invalid variable casting! expected Int");
+    }
+    return static_cast<uintptr_t>(payload.intValue);
+  }
+
+  explicit operator int16_t() const {
+    if (valueType != Int) {
+      throw CBException("Invalid variable casting! expected Int");
+    }
+    return static_cast<int16_t>(payload.intValue);
+  }
+
+  explicit operator uint8_t() const {
+    if (valueType != Int) {
+      throw CBException("Invalid variable casting! expected Int");
+    }
+    return static_cast<uint8_t>(payload.intValue);
+  }
+
+  explicit operator int64_t() const {
+    if (valueType != Int) {
+      throw CBException("Invalid variable casting! expected Int");
+    }
+    return payload.intValue;
+  }
+
+  explicit operator float() const {
+    if (valueType != Float) {
+      throw CBException("Invalid variable casting! expected Float");
+    }
+    return static_cast<float>(payload.floatValue);
+  }
+
+  explicit operator double() const {
+    if (valueType != Float) {
+      throw CBException("Invalid variable casting! expected Float");
+    }
+    return payload.floatValue;
+  }
+
   static Var Stop() {
     Var res;
     res.valueType = None;
@@ -353,18 +406,6 @@ struct Var : public CBVar {
     valueType = Color;
     payload.colorValue = color;
   }
-
-  // explicit Var(const std::vector<CBlock *> &blocks) : CBVar() {
-  //   valueType = Seq;
-  //   payload.seqValue = nullptr;
-  //   payload.seqLen = -1;
-  //   for (auto block : blocks) {
-  //     CBVar blockVar{};
-  //     blockVar.valueType = Block;
-  //     blockVar.payload.blockValue = block;
-  //     stbds_arrpush(payload.seqValue, blockVar);
-  //   }
-  // }
 };
 
 static Var True = Var(true);
@@ -405,6 +446,15 @@ struct ContextableVar {
     } else {
       return _v;
     }
+  }
+
+  bool isVariable() { return _v.valueType == ContextVar; }
+
+  const char *variableName() {
+    if (isVariable())
+      return _v.payload.stringValue;
+    else
+      return nullptr;
   }
 };
 

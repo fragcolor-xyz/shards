@@ -301,6 +301,16 @@ struct ToHex {
   }
 };
 
+struct VarAddr {
+  VarStringStream stream;
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto v = contextVariable(context, input.payload.stringValue);
+    return Var(reinterpret_cast<int64_t>(v));
+  }
+};
+
 // As, reinterpret
 #define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
                             _info_)                                            \
@@ -421,6 +431,13 @@ RUNTIME_BLOCK_outputTypes(ToHex);
 RUNTIME_BLOCK_activate(ToHex);
 RUNTIME_BLOCK_END(ToHex);
 
+// Register VarAddr
+RUNTIME_CORE_BLOCK(VarAddr);
+RUNTIME_BLOCK_inputTypes(VarAddr);
+RUNTIME_BLOCK_outputTypes(VarAddr);
+RUNTIME_BLOCK_activate(VarAddr);
+RUNTIME_BLOCK_END(VarAddr);
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -432,7 +449,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToFloat4);
   REGISTER_CORE_BLOCK(ToString);
   REGISTER_CORE_BLOCK(ToHex);
-
+  REGISTER_CORE_BLOCK(VarAddr);
   REGISTER_CORE_BLOCK(AsInt32);
   REGISTER_CORE_BLOCK(AsInt64);
   REGISTER_CORE_BLOCK(AsFloat32);
