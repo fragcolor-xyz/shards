@@ -45,6 +45,11 @@ namespace mal {
             return number(std::stod(token), isInteger);
     };
 
+     malValuePtr numberHex(const String& token) {
+        auto n = std::stoull(token, nullptr, 16);
+        return number(double(n), true);
+    };
+
     malValuePtr keyword(const String& token) {
         return malValuePtr(new malKeyword(token));
     };

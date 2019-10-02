@@ -215,7 +215,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
 
     if (std::regex_match(token, hexRegex)) {
-        return mal::number(token, true);
+        return mal::numberHex(token);
     }
     
     return mal::symbol(token);

@@ -360,6 +360,7 @@ namespace mal {
     malValuePtr hash(const malHash::Map& map);
     malValuePtr number(double value, bool isInteger);
     malValuePtr number(const String& token, bool isInteger);
+    malValuePtr numberHex(const String& token);
     malValuePtr keyword(const String& token);
     malValuePtr lambda(const StringVec&, malValuePtr, malEnvPtr);
     malValuePtr list(malValueVec* items);
