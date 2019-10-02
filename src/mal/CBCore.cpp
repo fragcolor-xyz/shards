@@ -135,6 +135,13 @@ void installCBCore(const malEnvPtr &env) {
   rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
       "to))))",
       env);
+#ifdef _WIN32
+  rep("(def platform \"windows\")", env);
+#elif __linux__
+  rep("(def platform \"linux\")", env);
+#elif __APPLE__
+  rep("(def platform \"apple\")", env);
+#endif
 }
 
 class malCBChain : public malValue {

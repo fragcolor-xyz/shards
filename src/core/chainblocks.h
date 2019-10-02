@@ -36,6 +36,7 @@ enum CBType : uint8_t {
   Color,  // A vector of 4 uint8
   Chain,  // sub chains, e.g. IF/ELSE
   Block,  // a block, useful for future introspection blocks!
+  Bytes,
 
   EndOfBlittableTypes, // anything below this is not blittable
 
@@ -370,6 +371,11 @@ ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
       CBEnum enumValue;
       int32_t enumVendorId;
       int32_t enumTypeId;
+    };
+
+    struct {
+      uint8_t* bytesValue;
+      uint64_t bytesSize;
     };
   };
 };

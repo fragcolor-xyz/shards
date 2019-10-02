@@ -37,6 +37,7 @@ struct Flatten {
     case Image:
     case Int:
     case Float:
+    case Bytes:
     case Bool: {
       currentType = info;
       break;
@@ -96,6 +97,7 @@ struct Flatten {
     case Image:
     case Int:
     case Float:
+    case Bytes:
     case Bool:
       stbds_arrpush(outputCache.payload.seqValue, input);
       break;

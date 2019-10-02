@@ -24,7 +24,13 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     os << "*Any*";
     break;
   case Object:
-    os << "Object: " << reinterpret_cast<uintptr_t>(var.payload.objectValue);
+    os << "Object: 0x" << std::hex
+       << reinterpret_cast<uintptr_t>(var.payload.objectValue);
+    break;
+  case Bytes:
+    os << "Bytes: 0x" << std::hex
+       << reinterpret_cast<uintptr_t>(var.payload.bytesValue)
+       << " size: " << var.payload.bytesSize;
     break;
   case Enum:
     os << "Enum: " << var.payload.enumValue;
@@ -170,6 +176,9 @@ inline std::string type2Name(CBType type) {
     break;
   case Bool:
     name = "Bool";
+    break;
+  case Bytes:
+    name = "Bytes";
     break;
   case Int:
     name = "Int";
@@ -377,6 +386,10 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return _seqEq(a, b);
   case Table:
     return _tableEq(a, b);
+  case CBType::Bytes:
+    return a.payload.bytesSize == b.payload.bytesSize &&
+           memcmp(a.payload.bytesValue, b.payload.bytesValue,
+                  a.payload.bytesSize) == 0;
   }
 
   return false;
@@ -422,8 +435,8 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Object:
     return a.payload.objectValue < b.payload.objectValue;
   case Enum:
-    return a.payload.enumVendorId < b.payload.enumVendorId &&
-           a.payload.enumTypeId < b.payload.enumTypeId &&
+    return a.payload.enumVendorId == b.payload.enumVendorId &&
+           a.payload.enumTypeId == b.payload.enumTypeId &&
            a.payload.enumValue < b.payload.enumValue;
   case Bool:
     return a.payload.boolValue < b.payload.boolValue;
@@ -500,9 +513,9 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
   case Image:
-    return a.payload.imageValue.channels < b.payload.imageValue.channels &&
-           a.payload.imageValue.width < b.payload.imageValue.width &&
-           a.payload.imageValue.height < b.payload.imageValue.height &&
+    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
+           a.payload.imageValue.width == b.payload.imageValue.width &&
+           a.payload.imageValue.height == b.payload.imageValue.height &&
            memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
                   a.payload.imageValue.channels * a.payload.imageValue.width *
                       a.payload.imageValue.height) < 0;
@@ -510,6 +523,10 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return _seqLess(a, b);
   case Table:
     return _tableLess(a, b);
+  case Bytes:
+    return a.payload.bytesSize == b.payload.bytesSize &&
+           memcmp(a.payload.bytesValue, b.payload.bytesValue,
+                  a.payload.bytesSize) < 0;
   }
 
   return false;
@@ -555,8 +572,8 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Object:
     return a.payload.objectValue <= b.payload.objectValue;
   case Enum:
-    return a.payload.enumVendorId <= b.payload.enumVendorId &&
-           a.payload.enumTypeId <= b.payload.enumTypeId &&
+    return a.payload.enumVendorId == b.payload.enumVendorId &&
+           a.payload.enumTypeId == b.payload.enumTypeId &&
            a.payload.enumValue <= b.payload.enumValue;
   case Bool:
     return a.payload.boolValue <= b.payload.boolValue;
@@ -633,9 +650,9 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
   case Image:
-    return a.payload.imageValue.channels <= b.payload.imageValue.channels &&
-           a.payload.imageValue.width <= b.payload.imageValue.width &&
-           a.payload.imageValue.height <= b.payload.imageValue.height &&
+    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
+           a.payload.imageValue.width == b.payload.imageValue.width &&
+           a.payload.imageValue.height == b.payload.imageValue.height &&
            memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
                   a.payload.imageValue.channels * a.payload.imageValue.width *
                       a.payload.imageValue.height) <= 0;
@@ -643,6 +660,10 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return _seqLessEq(a, b);
   case Table:
     return _tableLessEq(a, b);
+  case Bytes:
+    return a.payload.bytesSize == b.payload.bytesSize &&
+           memcmp(a.payload.bytesValue, b.payload.bytesValue,
+                  a.payload.bytesSize) <= 0;
   }
 
   return false;

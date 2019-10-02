@@ -163,7 +163,7 @@ ALWAYS_INLINE inline int destroyVar(CBVar &var) {
   case Table:
   case Seq:
     return _destroyVarSlow(var);
-  case String:
+  case CBType::String:
   case ContextVar: {
     delete[] var.payload.stringValue;
     freeCount++;
@@ -331,6 +331,12 @@ struct Var : public CBVar {
     res.payload.enumVendorId = enumVendorId;
     res.payload.enumTypeId = enumTypeId;
     return res;
+  }
+
+  Var(uint8_t *ptr, int64_t size) : CBVar() {
+    valueType = Bytes;
+    payload.bytesSize = size;
+    payload.bytesValue = ptr;
   }
 
   explicit Var(int src) : CBVar() {
