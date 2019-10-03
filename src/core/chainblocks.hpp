@@ -855,7 +855,7 @@ struct VarStringStream {
       cache.reset();
       std::ostream stream(&cache);
       if (var.valueType == Int) {
-        stream << "0x" << std::hex << var.payload.intValue;
+        stream << "0x" << std::hex << var.payload.intValue << std::dec;
       } else {
         stream << var;
       }
