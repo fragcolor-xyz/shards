@@ -44,6 +44,8 @@ int malmain(int argc, char* argv[])
         String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
         if (out.length() > 0 && out != "nil")
             std::cout << out << "\n";
+        replEnv->release();
+        delete replEnv.ptr();
         return 0;
     }
 #ifndef NO_MAL_MAIN

@@ -238,7 +238,7 @@ private:
 
 class malCBNode : public malValue {
 public:
-  malCBNode() : m_node(new CBNode()) {}
+  malCBNode() : m_node(new CBNode()) { DLOG(TRACE) << "Created a CBNode"; }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta)
       : malValue(meta), m_node(that.m_node), m_innerRefs(that.m_innerRefs) {
@@ -250,6 +250,7 @@ public:
     for (auto &ref : m_innerRefs) {
       ref->release();
     }
+    DLOG(TRACE) << "Deleted a CBNode";
   }
 
   virtual MalString print(bool readably) const {

@@ -11,6 +11,8 @@
 #include <cassert>
 #include <type_traits>
 
+#define TRACE_LINE DLOG(TRACE) << "#trace#"
+
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
