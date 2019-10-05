@@ -420,6 +420,10 @@ void releaseMemory(CBVar &self) {
     self.payload.tableValue = nullptr;
   } else if (self.valueType == Image) {
     dealloc(self.payload.imageValue);
+  } else if (self.valueType == Bytes) {
+    delete[] self.payload.bytesValue;
+    self.payload.bytesValue = nullptr;
+    self.payload.bytesSize = 0;
   }
 }
 
@@ -661,7 +665,8 @@ void to_json(json &j, const CBVar &var) {
       auto binsize = var.payload.imageValue.width *
                      var.payload.imageValue.height *
                      var.payload.imageValue.channels;
-      std::vector<uint8_t> buffer(binsize);
+      std::vector<uint8_t> buffer;
+      buffer.resize(binsize);
       memcpy(&buffer[0], var.payload.imageValue.data, binsize);
       j = json{{"type", valType},
                {"width", var.payload.imageValue.width},
@@ -671,6 +676,13 @@ void to_json(json &j, const CBVar &var) {
     } else {
       j = json{{"type", 0}, {"value", int(Continue)}};
     }
+    break;
+  }
+  case Bytes: {
+    std::vector<uint8_t> buffer;
+    buffer.resize(var.payload.bytesSize);
+    if (var.payload.bytesSize > 0)
+      memcpy(&buffer[0], var.payload.imageValue.data, var.payload.bytesSize);
     break;
   }
   case Enum: {
@@ -863,6 +875,12 @@ void from_json(const json &j, CBVar &var) {
                    var.payload.imageValue.height *
                    var.payload.imageValue.channels;
     memcpy(var.payload.imageValue.data, &buffer[0], binsize);
+    break;
+  }
+  case Bytes: {
+    auto buffer = j.at("data").get<std::vector<uint8_t>>();
+    var.payload.bytesValue = new uint8_t[buffer.size()];
+    memcpy(var.payload.bytesValue, &buffer[0], buffer.size());
     break;
   }
   case Enum: {

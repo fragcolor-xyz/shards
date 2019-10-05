@@ -409,6 +409,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":ContextVar");
   case Image:
     return mal::keyword(":Image");
+  case Bytes:
+    return mal::keyword(":Bytes");
   case Seq:
     return mal::keyword(":Seq");
   case Table:
