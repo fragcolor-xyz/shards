@@ -13,7 +13,6 @@
 #include <stdint.h>
 
 // Included 3rdparty
-#include "3rdparty/gb_string.h"
 #include "3rdparty/stb_ds.h"
 
 // All the available types
