@@ -71,7 +71,7 @@ struct IsNot : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input == value) {
       LOG(ERROR) << "Failed assertion IsNot, input: " << input
-                 << " expected: " << value;
+                 << " not expected: " << value;
       if (aborting)
         abort();
       else
