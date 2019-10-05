@@ -683,6 +683,7 @@ void to_json(json &j, const CBVar &var) {
     buffer.resize(var.payload.bytesSize);
     if (var.payload.bytesSize > 0)
       memcpy(&buffer[0], var.payload.imageValue.data, var.payload.bytesSize);
+    j = json{{"type", valType}, {"data", buffer}};
     break;
   }
   case Enum: {
@@ -878,6 +879,7 @@ void from_json(const json &j, CBVar &var) {
     break;
   }
   case Bytes: {
+    var.valueType = Bytes;
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     var.payload.bytesValue = new uint8_t[buffer.size()];
     memcpy(var.payload.bytesValue, &buffer[0], buffer.size());

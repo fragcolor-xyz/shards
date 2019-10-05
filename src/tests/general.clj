@@ -445,7 +445,7 @@
 ; test json support
 (schedule Root (ChainJson (json testChain)))
 (if (tick Root) nil (throw "Root tick failed"))
-; (println (json testChain))
+(println (json testChain))
 
 (def Root (Node))
 (def testChain nil)
