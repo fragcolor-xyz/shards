@@ -437,6 +437,16 @@
 
   0 (Math.Add 10) (Assert.Is 10 true)
 
+  0x0000000000070090
+  (BitSwap64)
+  (Assert.Is 0x9000070000000000 true)
+  (ToHex) (Log)
+
+  0x00070090
+  (BitSwap32)
+  (Assert.Is 0x90000700 true)
+  (ToHex) (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
@@ -445,7 +455,7 @@
 ; test json support
 (schedule Root (ChainJson (json testChain)))
 (if (tick Root) nil (throw "Root tick failed"))
-(println (json testChain))
+; (println (json testChain))
 
 (def Root (Node))
 (def testChain nil)

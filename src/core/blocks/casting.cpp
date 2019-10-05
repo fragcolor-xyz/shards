@@ -311,6 +311,26 @@ struct VarAddr {
   }
 };
 
+struct BitSwap32 {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto i32 = static_cast<uint32_t>(input.payload.intValue);
+    i32 = __builtin_bswap32(i32);
+    return Var(static_cast<int64_t>(i32));
+  }
+};
+
+struct BitSwap64 {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto i64 = static_cast<uint64_t>(input.payload.intValue);
+    i64 = __builtin_bswap64(i64);
+    return Var(static_cast<int64_t>(i64));
+  }
+};
+
 // As, reinterpret
 #define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
                             _info_)                                            \
@@ -438,6 +458,20 @@ RUNTIME_BLOCK_outputTypes(VarAddr);
 RUNTIME_BLOCK_activate(VarAddr);
 RUNTIME_BLOCK_END(VarAddr);
 
+// Register BitSwap32
+RUNTIME_CORE_BLOCK(BitSwap32);
+RUNTIME_BLOCK_inputTypes(BitSwap32);
+RUNTIME_BLOCK_outputTypes(BitSwap32);
+RUNTIME_BLOCK_activate(BitSwap32);
+RUNTIME_BLOCK_END(BitSwap32);
+
+// Register BitSwap64
+RUNTIME_CORE_BLOCK(BitSwap64);
+RUNTIME_BLOCK_inputTypes(BitSwap64);
+RUNTIME_BLOCK_outputTypes(BitSwap64);
+RUNTIME_BLOCK_activate(BitSwap64);
+RUNTIME_BLOCK_END(BitSwap64);
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -450,6 +484,8 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToString);
   REGISTER_CORE_BLOCK(ToHex);
   REGISTER_CORE_BLOCK(VarAddr);
+  REGISTER_CORE_BLOCK(BitSwap32);
+  REGISTER_CORE_BLOCK(BitSwap64);
   REGISTER_CORE_BLOCK(AsInt32);
   REGISTER_CORE_BLOCK(AsInt64);
   REGISTER_CORE_BLOCK(AsFloat32);
