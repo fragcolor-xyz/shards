@@ -275,6 +275,26 @@ BUILTIN("eval")
     return EVAL(*argsBegin, NULL);
 }
 
+template <typename I> std::string n2hexstr(I w, size_t hex_len = sizeof(I)<<1) {
+    static const char* digits = "0123456789ABCDEF";
+    std::string rc(hex_len,'0');
+    for (size_t i=0, j=(hex_len-1)*4 ; i<hex_len; ++i,j-=4)
+        rc[i] = digits[(w>>j) & 0x0f];
+    return rc;
+}
+
+BUILTIN("hex") 
+{
+    CHECK_ARGS_IS(1);
+    ARG(malNumber, num);
+    if(num->isInteger()) {
+        return mal::string("0x" + n2hexstr(static_cast<uint64_t>(num->value())));
+    } else {
+        auto dval = num->value();
+        return mal::string("0x" + n2hexstr(*reinterpret_cast<uint64_t*>(&dval)));
+    }
+}
+
 BUILTIN("first")
 {
     CHECK_ARGS_IS(1);
