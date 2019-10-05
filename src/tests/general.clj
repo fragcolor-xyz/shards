@@ -439,8 +439,8 @@
 
   0x0000000000070090
   (BitSwap64)
-  (Assert.Is 0x9000070000000000 true)
   (ToHex) (Log)
+  (Assert.Is "0x9000070000000000" true)
 
   0x00070090
   (BitSwap32)
