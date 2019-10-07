@@ -37,7 +37,7 @@ enum CBType : uint8_t {
   Block,  // a block, useful for future introspection blocks!
   Bytes,
 
-  EndOfBlittableTypes, // anything below this is not blittable
+  EndOfBlittableTypes, // anything below this is not blittable (not exactly but for cloneVar mostly)
 
   String,
   ContextVar, // A string label to find from CBContext variables

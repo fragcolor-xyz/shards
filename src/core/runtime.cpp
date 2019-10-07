@@ -1177,7 +1177,8 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   if (!inputMatches) {
-    std::string err("Could not find a matching input type");
+    std::string err("Could not find a matching input type, block: " +
+                    std::string(ctx.bottom->name(ctx.bottom)));
     ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
   }
 
@@ -1306,8 +1307,12 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   for (auto blk : chain) {
-    if (strcmp(blk->name(blk), "Input") == 0) {
-      // Hard code behavior for Input block
+
+    if (strcmp(blk->name(blk), "Input") == 0 ||
+        strcmp(blk->name(blk), "And") == 0 ||
+        strcmp(blk->name(blk), "Or") == 0) {
+      // Hard code behavior for Input block and And and Or, in order to validate
+      // with actual chain input the followup
       ctx.previousOutputType = ctx.originalInputType;
     } else {
       ctx.bottom = blk;

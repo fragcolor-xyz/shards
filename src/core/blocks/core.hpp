@@ -270,9 +270,7 @@ struct Sleep {
 
 struct And {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
@@ -286,9 +284,7 @@ struct And {
 
 struct Or {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
@@ -302,9 +298,7 @@ struct Or {
 
 struct Not {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var(!input.payload.boolValue);
   }
@@ -331,6 +325,14 @@ struct Return {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var::Return();
+  }
+};
+
+struct IsValidNumber {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::floatInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(std::isnormal(input.payload.floatValue));
   }
 };
 
@@ -1534,6 +1536,7 @@ RUNTIME_CORE_BLOCK_TYPE(Not);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);
+RUNTIME_CORE_BLOCK_TYPE(IsValidNumber);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);

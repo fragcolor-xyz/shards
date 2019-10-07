@@ -437,6 +437,72 @@ AS_SOMETHING_SIMPLE(Int, Int64, int64_t, intValue, stoi, intInfo);
 AS_SOMETHING_SIMPLE(Float, Float32, float, floatValue, stof, floatInfo);
 AS_SOMETHING_SIMPLE(Float, Float64, double, floatValue, stod, floatInfo);
 
+// actual type = AT = the c type
+template <CBType OT, typename AT> struct BytesToX {
+  static inline TypeInfo outputType = TypeInfo(OT);
+  static inline TypesInfo outputInfo =
+      TypesInfo(TypeInfo::Sequence(outputType));
+
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(outputInfo); }
+
+  CBSeq _outputCache = nullptr;
+
+  void destroy() {
+    if (_outputCache) {
+      stbds_arrfree(_outputCache);
+      _outputCache = nullptr;
+    }
+  }
+
+  void convert(CBVar &dst, uint8_t *addr) {
+    // compile time magic
+    if constexpr (std::is_same<AT, int32_t>::value ||
+                  std::is_same<AT, int64_t>::value) {
+      dst.valueType = Int;
+      auto p = reinterpret_cast<AT *>(addr);
+      dst.payload.intValue = static_cast<int64_t>(*p);
+    } else if constexpr (std::is_same<AT, float>::value ||
+                         std::is_same<AT, double>::value) {
+      dst.valueType = Float;
+      auto p = reinterpret_cast<AT *>(addr);
+      dst.payload.floatValue = static_cast<double>(*p);
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto tsize = sizeof(AT);
+    if (unlikely(input.payload.bytesSize < tsize)) {
+      throw CBException("BytesToX, Not enough bytes to convert to " +
+                        type2Name(OT));
+    } else if (input.payload.bytesSize == tsize) {
+      // exact size, 1 value
+      stbds_arrsetlen(_outputCache, 1);
+      convert(_outputCache[0], input.payload.bytesValue);
+    } else {
+      // many values
+      auto len = input.payload.bytesSize / tsize; // int division, fine
+      stbds_arrsetlen(_outputCache, len);
+      for (auto i = 0; i < len; i++) {
+        convert(_outputCache[i], input.payload.bytesValue + (sizeof(AT) * i));
+      }
+    }
+    return Var(_outputCache);
+  }
+};
+
+#define BYTES_TO_BLOCK(_name_, _cbtype_, _ctype_)                              \
+  struct BytesTo##_name_ : public BytesToX<_cbtype_, _ctype_> {};              \
+  RUNTIME_CORE_BLOCK(BytesTo##_name_);                                         \
+  RUNTIME_BLOCK_destroy(BytesTo##_name_);                                      \
+  RUNTIME_BLOCK_inputTypes(BytesTo##_name_);                                   \
+  RUNTIME_BLOCK_outputTypes(BytesTo##_name_);                                  \
+  RUNTIME_BLOCK_activate(BytesTo##_name_);                                     \
+  RUNTIME_BLOCK_END(BytesTo##_name_);
+
+BYTES_TO_BLOCK(Float32, Float, float);
+BYTES_TO_BLOCK(Float64, Float, double);
+
 // Register ToString
 RUNTIME_CORE_BLOCK(ToString);
 RUNTIME_BLOCK_inputTypes(ToString);
@@ -490,5 +556,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(AsInt64);
   REGISTER_CORE_BLOCK(AsFloat32);
   REGISTER_CORE_BLOCK(AsFloat64);
+  REGISTER_CORE_BLOCK(BytesToFloat32);
+  REGISTER_CORE_BLOCK(BytesToFloat64);
 }
 }; // namespace chainblocks

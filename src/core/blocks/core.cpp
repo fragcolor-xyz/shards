@@ -205,6 +205,13 @@ struct Remove : public JointOp, public BlocksUser {
     throw CBException("Parameter out of range.");
   }
 
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // need to replace input type of inner chain with inner of seq
+    assert(inputType.seqType);
+    BlocksUser::inferTypes(*inputType.seqType, consumables);
+    return inputType;
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context, input);
     // Remove in place, will possibly remove any sorting!
@@ -306,6 +313,13 @@ RUNTIME_BLOCK_inputTypes(Return);
 RUNTIME_BLOCK_outputTypes(Return);
 RUNTIME_BLOCK_activate(Return);
 RUNTIME_BLOCK_END(Return);
+
+// Register IsNan
+RUNTIME_CORE_BLOCK_FACTORY(IsValidNumber);
+RUNTIME_BLOCK_inputTypes(IsValidNumber);
+RUNTIME_BLOCK_outputTypes(IsValidNumber);
+RUNTIME_BLOCK_activate(IsValidNumber);
+RUNTIME_BLOCK_END(IsValidNumber);
 
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
@@ -562,6 +576,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(And);
   REGISTER_CORE_BLOCK(Or);
   REGISTER_CORE_BLOCK(Not);
+  REGISTER_CORE_BLOCK(IsValidNumber);
   REGISTER_CORE_BLOCK(Take);
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);
