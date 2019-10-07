@@ -447,6 +447,9 @@
   (Assert.Is 0x90000700 true)
   (ToHex) (Log)
 
+  "Hello file append..."
+  (WriteFile "test.bin")
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
@@ -483,3 +486,14 @@
 (tick loopedChain2)
 (tick loopedChain2)
 (if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
+
+(def fileReader (Chain "readFile"
+  (ReadFile "test.bin")
+  (ExpectString)
+  (Log)
+  (Assert.Is "Hello file append..." true)
+))
+
+(prepare fileReader)
+(start fileReader)
+(stop fileReader)

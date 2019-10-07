@@ -534,6 +534,7 @@ EXPECT_BLOCK(Int2, Int2);
 EXPECT_BLOCK(Int3, Int3);
 EXPECT_BLOCK(Int4, Int4);
 EXPECT_BLOCK(Bytes, Bytes);
+EXPECT_BLOCK(String, String);
 
 // Register ToString
 RUNTIME_CORE_BLOCK(ToString);
@@ -599,5 +600,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectFloat3);
   REGISTER_CORE_BLOCK(ExpectFloat4);
   REGISTER_CORE_BLOCK(ExpectBytes);
+  REGISTER_CORE_BLOCK(ExpectString);
 }
 }; // namespace chainblocks
