@@ -503,6 +503,38 @@ template <CBType OT, typename AT> struct BytesToX {
 BYTES_TO_BLOCK(Float32, Float, float);
 BYTES_TO_BLOCK(Float64, Float, double);
 
+template <CBType ET> struct ExpectX {
+  static inline TypeInfo outputType = TypeInfo(ET);
+  static inline TypesInfo outputInfo = TypesInfo(outputType);
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(outputInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(input.valueType != ET)) {
+      throw CBException("Expected type " + type2Name(ET) + " got instead " +
+                        type2Name(input.valueType));
+    }
+    return input;
+  }
+};
+
+#define EXPECT_BLOCK(_name_, _cbtype_)                                         \
+  struct Expect##_name_ : public ExpectX<_cbtype_> {};                         \
+  RUNTIME_CORE_BLOCK(Expect##_name_);                                          \
+  RUNTIME_BLOCK_inputTypes(Expect##_name_);                                    \
+  RUNTIME_BLOCK_outputTypes(Expect##_name_);                                   \
+  RUNTIME_BLOCK_activate(Expect##_name_);                                      \
+  RUNTIME_BLOCK_END(Expect##_name_);
+
+EXPECT_BLOCK(Float, Float);
+EXPECT_BLOCK(Float2, Float2);
+EXPECT_BLOCK(Float3, Float3);
+EXPECT_BLOCK(Float4, Float4);
+EXPECT_BLOCK(Int, Int);
+EXPECT_BLOCK(Int2, Int2);
+EXPECT_BLOCK(Int3, Int3);
+EXPECT_BLOCK(Int4, Int4);
+EXPECT_BLOCK(Bytes, Bytes);
+
 // Register ToString
 RUNTIME_CORE_BLOCK(ToString);
 RUNTIME_BLOCK_inputTypes(ToString);
@@ -558,5 +590,14 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(AsFloat64);
   REGISTER_CORE_BLOCK(BytesToFloat32);
   REGISTER_CORE_BLOCK(BytesToFloat64);
+  REGISTER_CORE_BLOCK(ExpectInt);
+  REGISTER_CORE_BLOCK(ExpectInt2);
+  REGISTER_CORE_BLOCK(ExpectInt3);
+  REGISTER_CORE_BLOCK(ExpectInt4);
+  REGISTER_CORE_BLOCK(ExpectFloat);
+  REGISTER_CORE_BLOCK(ExpectFloat2);
+  REGISTER_CORE_BLOCK(ExpectFloat3);
+  REGISTER_CORE_BLOCK(ExpectFloat4);
+  REGISTER_CORE_BLOCK(ExpectBytes);
 }
 }; // namespace chainblocks
