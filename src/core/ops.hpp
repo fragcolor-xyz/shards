@@ -30,7 +30,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   case Bytes:
     os << "Bytes: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.bytesValue)
-       << " size: " << var.payload.bytesSize << std::dec;
+       << " size: " << std::dec << var.payload.bytesSize;
     break;
   case Enum:
     os << "Enum: " << var.payload.enumValue;
