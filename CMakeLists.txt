@@ -65,7 +65,7 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
   set(BASE_TESTING 1)
 endif()
 
-add_compile_definitions(ELPP_DEFAULT_LOG_FILE="chainblocks.log")
+add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log")
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -243,6 +243,46 @@ struct Remove : public JointOp, public BlocksUser {
   }
 };
 
+struct Profile : public BlocksUser {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
+      "Action", "The action to profile.", CBTypesInfo(CoreInfo::blocksInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_blocks, value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    TIMED_FUNC(timerObj);
+    CBVar output{};
+    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
+                                 output))) {
+      return StopChain;
+    }
+    return input;
+  }
+};
+
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
 RUNTIME_BLOCK_destroy(Const);
@@ -475,7 +515,7 @@ RUNTIME_BLOCK_getParam(Sort);
 RUNTIME_BLOCK_cleanup(Sort);
 RUNTIME_BLOCK_END(Sort);
 
-// Register Repeat
+// Register
 RUNTIME_CORE_BLOCK(Remove);
 RUNTIME_BLOCK_inputTypes(Remove);
 RUNTIME_BLOCK_outputTypes(Remove);
@@ -487,6 +527,19 @@ RUNTIME_BLOCK_destroy(Remove);
 RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_inferTypes(Remove);
 RUNTIME_BLOCK_END(Remove);
+
+// Register
+RUNTIME_CORE_BLOCK(Profile);
+RUNTIME_BLOCK_inputTypes(Profile);
+RUNTIME_BLOCK_outputTypes(Profile);
+RUNTIME_BLOCK_parameters(Profile);
+RUNTIME_BLOCK_setParam(Profile);
+RUNTIME_BLOCK_getParam(Profile);
+RUNTIME_BLOCK_activate(Profile);
+RUNTIME_BLOCK_destroy(Profile);
+RUNTIME_BLOCK_cleanup(Profile);
+RUNTIME_BLOCK_inferTypes(Profile);
+RUNTIME_BLOCK_END(Profile);
 
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
@@ -582,6 +635,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);
   REGISTER_CORE_BLOCK(Remove);
+  REGISTER_CORE_BLOCK(Profile);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);
