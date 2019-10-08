@@ -1,0 +1,3 @@
+[submodule "deps/rpmalloc"]
+	path = deps/rpmalloc
+	url = https://github.com/chainblocks/rpmalloc.git
