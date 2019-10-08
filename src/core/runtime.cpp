@@ -105,6 +105,8 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (strcmp(name, "Set") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
+  } else if (strcmp(name, "Update") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreUpdate;
   } else if (strcmp(name, "Swap") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
   } else if (strcmp(name, "Take") == 0) {
@@ -345,7 +347,6 @@ CBVar suspend(CBContext *context, double seconds) {
 FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
-  chainblocks::CurrentContextInput ctxInput(context, chainInput);
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
@@ -376,7 +377,6 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
 FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
-  chainblocks::CurrentContextInput ctxInput(context, chainInput);
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {

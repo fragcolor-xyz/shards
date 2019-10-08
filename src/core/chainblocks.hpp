@@ -189,10 +189,10 @@ ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
   int freeCount = 0;
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
-    memcpy((void *)&dst, (const void *)&src, sizeof(CBVar));
+    dst = src;
   } else if (src.valueType < EndOfBlittableTypes) {
     freeCount += destroyVar(dst);
-    memcpy((void *)&dst, (const void *)&src, sizeof(CBVar));
+    dst = src;
   } else {
     return _cloneVarSlow(dst, src);
   }

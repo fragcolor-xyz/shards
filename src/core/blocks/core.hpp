@@ -239,7 +239,8 @@ struct Input {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return context->input;
+    return RebaseChain;
+    ;
   }
 };
 
@@ -343,6 +344,7 @@ struct VariableBase {
   ExposedInfo _exposedInfo{};
   bool _global = false; // if we should use a node global
   bool _isTable = false;
+  bool _shortCut = false; // performance trick to have a small LR per call
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", "The name of the variable.",
@@ -361,9 +363,11 @@ struct VariableBase {
   }
 
   void setParam(int index, CBVar value) {
-    if (index == 0)
+    if (index == 0) {
       _name = value.payload.stringValue;
-    else if (index == 1) {
+      _shortCut = false;
+      _target = nullptr;
+    } else if (index == 1) {
       _key = value.payload.stringValue;
       if (_key.size() > 0)
         _isTable = true;
@@ -422,6 +426,11 @@ struct SetBase : public VariableBase {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_shortCut) {
+      cloneVar(*_target, input);
+      return input;
+    }
+
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
     }
@@ -443,6 +452,8 @@ struct SetBase : public VariableBase {
         stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
       }
     } else {
+      // Fastest path, flag it as shortcut
+      _shortCut = true;
       // Clone will try to recyle memory and such
       cloneVar(*_target, input);
     }
@@ -642,6 +653,9 @@ struct Get : public VariableBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_shortCut)
+      return *_target;
+
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
     }
@@ -676,6 +690,8 @@ struct Get : public VariableBase {
                    value.valueType != _defaultValue.valueType)) {
         return _defaultValue;
       } else {
+        // Fastest path, flag it as shortcut
+        _shortCut = true;
         return value;
       }
     }

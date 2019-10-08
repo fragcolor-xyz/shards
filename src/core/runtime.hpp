@@ -211,9 +211,6 @@ struct CBContext {
   // Iteration counter
   uint64_t iterationCount;
 
-  // The original input of this context current flow
-  CBVar input{};
-
   void setError(const char *errorMsg) { error = errorMsg; }
 };
 
@@ -229,25 +226,6 @@ void to_json(json &j, const CBChainPtr &chain);
 void from_json(const json &j, CBChainPtr &chain);
 
 namespace chainblocks {
-class CurrentContextInput {
-private:
-  CBContext *_context;
-  CBVar _previousInput;
-
-public:
-  ~CurrentContextInput() {
-    // Restore
-    _context->input = _previousInput;
-  }
-
-  CurrentContextInput(CBContext *context, const CBVar &input) {
-    // Store
-    _context = context;
-    _previousInput = context->input;
-    // Swap to new
-    _context->input = input;
-  }
-};
 
 void installSignalHandlers();
 
@@ -347,6 +325,11 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreSet: {
     auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
+    previousOutput = cblock->core.activate(context, input);
+    return;
+  }
+  case CoreUpdate: {
+    auto cblock = reinterpret_cast<chainblocks::UpdateRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
     return;
   }
@@ -590,7 +573,6 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->started = true;
   chain->context = context;
   context->paused = false;
-  chainblocks::CurrentContextInput ctxInput(context, chainInput);
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {

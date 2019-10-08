@@ -74,6 +74,7 @@ enum CBInlineBlocks : uint8_t {
   CoreRepeat,
   CoreGet,
   CoreSet,
+  CoreUpdate,
   CoreSwap,
   CoreTake,
   CorePush,
