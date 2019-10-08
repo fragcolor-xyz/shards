@@ -7,6 +7,30 @@
 #include <cstdarg>
 #include <string.h>
 
+void *operator new(std::size_t s) {
+  rpmalloc_initialize();
+  return rpmalloc(s);
+}
+void *operator new[](std::size_t s) {
+  rpmalloc_initialize();
+  return rpmalloc(s);
+}
+void *operator new(std::size_t s, const std::nothrow_t &tag) {
+  rpmalloc_initialize();
+  return rpmalloc(s);
+}
+void *operator new[](std::size_t s, const std::nothrow_t &tag) {
+  rpmalloc_initialize();
+  return rpmalloc(s);
+}
+
+void operator delete(void *ptr) { rpfree(ptr); }
+void operator delete[](void *ptr) { rpfree(ptr); }
+void operator delete(void *ptr, const std::nothrow_t &tag) { rpfree(ptr); }
+void operator delete[](void *ptr, const std::nothrow_t &tag) { rpfree(ptr); }
+void operator delete(void *ptr, std::size_t sz) { rpfree(ptr); }
+void operator delete[](void *ptr, std::size_t sz) { rpfree(ptr); }
+
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
@@ -36,6 +60,8 @@ extern void registerBlocks();
 }; // namespace Math
 
 void registerCoreBlocks() {
+  rpmalloc_initialize();
+
   assert(sizeof(CBVarPayload) == 16);
   assert(sizeof(CBVar) == 32);
 

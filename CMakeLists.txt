@@ -71,6 +71,9 @@ add_compile_definitions(ELPP_DEFAULT_LOG_FILE="chainblocks.log")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-fuse-ld=lld)
+    # need those for custom new/delete
+    add_link_options(-static-libstdc++)
+    add_compile_options(-static-libstdc++)
   endif()
 elseif(WIN32)
   add_link_options(-static)
@@ -189,12 +192,14 @@ endif()
 
 ### runtime
 include_directories(
+  ${CHAINBLOCKS_DIR}/deps/rpmalloc
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
 
 add_library(
   cbruntime STATIC
+  ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp

@@ -13,6 +13,13 @@
 #include <stdint.h>
 
 // Included 3rdparty
+#include "rpmalloc/rpmalloc.h"
+inline void* rp_init_realloc(void* ptr, size_t size) {
+  rpmalloc_initialize();
+  return rprealloc(ptr, size);
+}
+#define STBDS_REALLOC(context, ptr, size) rp_init_realloc(ptr, size)
+#define STBDS_FREE(context, ptr) rpfree(ptr)
 #include "3rdparty/stb_ds.h"
 
 // All the available types
