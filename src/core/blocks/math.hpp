@@ -255,7 +255,7 @@ struct BinaryBase : public Base {
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       CBVar output{};                                                          \
-      if (_opType == Normal) {                                                 \
+      if (likely(_opType == Normal)) {                                         \
         operate(output, input, operand);                                       \
         return output;                                                         \
       } else if (_opType == Seq1) {                                            \
@@ -341,7 +341,7 @@ struct BinaryBase : public Base {
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       CBVar output{};                                                          \
-      if (_opType == Normal) {                                                 \
+      if (likely(_opType == Normal)) {                                         \
         operate(output, input, operand);                                       \
         return output;                                                         \
       } else if (_opType == Seq1) {                                            \
@@ -425,7 +425,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       CBVar output{};                                                          \
-      if (input.valueType == Seq) {                                            \
+      if (unlikely(input.valueType == Seq)) {                                  \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
         for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
           operate(output, input);                                              \
