@@ -431,7 +431,6 @@ struct SetBase : public VariableBase {
         // Not initialized yet
         _target->valueType = Table;
         _target->payload.tableValue = nullptr;
-        _target->payload.tableLen = -1;
       }
 
       auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
@@ -895,7 +894,6 @@ struct Push : public VariableBase {
         // Not initialized yet
         _target->valueType = Table;
         _target->payload.tableValue = nullptr;
-        _target->payload.tableLen = -1;
       }
 
       ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
@@ -911,7 +909,6 @@ struct Push : public VariableBase {
       if (seq.valueType != Seq) {
         seq.valueType = Seq;
         seq.payload.seqValue = nullptr;
-        seq.payload.seqLen = -1;
       }
 
       if (_firstPusher && _clear) {
@@ -934,7 +931,6 @@ struct Push : public VariableBase {
       if (_target->valueType != Seq) {
         _target->valueType = Seq;
         _target->payload.seqValue = nullptr;
-        _target->payload.seqLen = -1;
       }
 
       if (_firstPusher && _clear) {

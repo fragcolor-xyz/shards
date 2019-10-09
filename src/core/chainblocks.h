@@ -348,21 +348,9 @@ ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
     CBFloat3 float3Value;
     CBFloat4 float4Value;
 
-    struct {
-      CBSeq seqValue;
-      // If seqLen is -1, use stbds_arrlen, assume it's a stb dynamic array
-      // Operations between blocks are always using dynamic arrays
-      // Len should be used only internally
-      int32_t seqLen;
-    };
+    CBSeq seqValue;
 
-    struct {
-      CBTable tableValue;
-      // If tableLen is -1, use stbds_shlen, assume it's a stb string map
-      // Operations between blocks are always using dynamic arrays
-      // Len should be used only internally
-      int32_t tableLen;
-    };
+    CBTable tableValue;
 
     CBString stringValue;
 

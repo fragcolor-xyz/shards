@@ -582,7 +582,6 @@ CBVar varify(malCBBlock *mblk, const malValuePtr &arg) {
     CBVar tmp{};
     tmp.valueType = Seq;
     tmp.payload.seqValue = nullptr;
-    tmp.payload.seqLen = -1;
     auto count = v->count();
     for (auto i = 0; i < count; i++) {
       auto val = v->item(i);

@@ -29,7 +29,6 @@ struct UnaryBase : public Base {
   void setup() {
     _cachedSeq.valueType = Seq;
     _cachedSeq.payload.seqValue = nullptr;
-    _cachedSeq.payload.seqLen = -1;
   }
 };
 
@@ -60,7 +59,6 @@ struct BinaryBase : public Base {
   void setup() {
     _cachedSeq.valueType = Seq;
     _cachedSeq.payload.seqValue = nullptr;
-    _cachedSeq.payload.seqLen = -1;
   }
 
   static CBParametersInfo parameters() {

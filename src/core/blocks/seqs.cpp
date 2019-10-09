@@ -169,9 +169,8 @@ struct Flatten {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     outputCache.valueType = Seq;
-    outputCache.payload.seqLen = -1; // TODO seqLen figure out or leave/remove
-    stbds_arrsetlen(outputCache.payload.seqValue,
-                    0); // Quick reset no deallocs, slow first run only
+    // Quick reset no deallocs, slow first run only
+    stbds_arrsetlen(outputCache.payload.seqValue, 0);
     add(input);
     return outputCache;
   }

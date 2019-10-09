@@ -87,7 +87,6 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
         (int)stbds_arrcap(dst.payload.seqValue) < srcLen) {
       freeCount += destroyVar(dst);
       dst.valueType = Seq;
-      dst.payload.seqLen = -1;
       dst.payload.seqValue = nullptr;
     } else {
       int dstLen = stbds_arrlen(dst.payload.seqValue);
@@ -143,7 +142,6 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
     // Slowest case, it's a full copy using arena tho
     freeCount += destroyVar(dst);
     dst.valueType = Table;
-    dst.payload.tableLen = -1;
     dst.payload.tableValue = nullptr;
     stbds_sh_new_arena(dst.payload.tableValue);
     auto srcLen = stbds_shlen(src.payload.tableValue);
@@ -376,7 +374,6 @@ struct Var : public CBVar {
 
   explicit Var(CBSeq seq) : CBVar() {
     valueType = Seq;
-    payload.seqLen = -1;
     payload.seqValue = seq;
   }
 
