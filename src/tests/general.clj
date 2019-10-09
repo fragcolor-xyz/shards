@@ -450,6 +450,15 @@
   "Hello file append..."
   (WriteFile "test.bin")
 
+  "Hello Pandas"
+  (StringToBytes)
+  (BytesToInt8)
+  (Log)
+  (Math.Xor [77 78 77 11 16])
+  (Log)
+  (Math.Xor [77 78 77 11 16])
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
