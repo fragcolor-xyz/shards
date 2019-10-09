@@ -34,7 +34,7 @@ struct UnaryBase : public Base {
 };
 
 struct BinaryBase : public Base {
-  enum OpType { Normal, Seq1, SeqSeq };
+  enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
   static inline TypesInfo mathBaseTypesInfo1 = TypesInfo::FromMany(
       true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
@@ -46,7 +46,7 @@ struct BinaryBase : public Base {
   CBVar _operand{};
   CBVar *_ctxOperand{};
   ExposedInfo _consumedInfo{};
-  OpType _opType = Normal;
+  OpType _opType = Invalid;
 
   void cleanup() { _ctxOperand = nullptr; }
 
@@ -71,7 +71,8 @@ struct BinaryBase : public Base {
                         CBExposedTypesInfo consumableVariables) {
     if (_operand.valueType == ContextVar) {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
-        if (consumableVariables[i].name == _operand.payload.stringValue) {
+        if (strcmp(consumableVariables[i].name, _operand.payload.stringValue) ==
+            0) {
           if (consumableVariables[i].exposedType.basicType != Seq &&
               inputType.basicType != Seq) {
             _opType = Normal;
@@ -86,6 +87,10 @@ struct BinaryBase : public Base {
                 "Math broadcasting not supported between given types!");
           }
         }
+      }
+      if (_opType == Invalid) {
+        throw CBException("Math operand variable not found: " +
+                          std::string(_operand.payload.stringValue));
       }
     } else {
       if (_operand.valueType != Seq && inputType.basicType != Seq) {
