@@ -172,12 +172,18 @@ struct Sort : public JointOp {
 };
 
 struct Remove : public JointOp, public BlocksUser {
+  bool _fast = false;
+
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
       ParamsInfo::Param("Predicate",
                         "The blocks to use as predicate, if true the item will "
                         "be popped from the sequence.",
-                        CBTypesInfo(CoreInfo::blocksInfo)));
+                        CBTypesInfo(CoreInfo::blocksInfo)),
+      ParamsInfo::Param("Unordered",
+                        "Turn on to remove items very quickly but will not "
+                        "preserve the sequence items order.",
+                        CBTypesInfo(CoreInfo::boolInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -187,6 +193,9 @@ struct Remove : public JointOp, public BlocksUser {
       return JointOp::setParam(index, value);
     case 1:
       cloneVar(_blocks, value);
+      break;
+    case 2:
+      _fast = value.payload.boolValue;
       break;
     default:
       break;
@@ -199,6 +208,8 @@ struct Remove : public JointOp, public BlocksUser {
       return JointOp::getParam(index);
     case 1:
       return _blocks;
+    case 2:
+      return Var(_fast);
     default:
       break;
     }
@@ -227,7 +238,10 @@ struct Remove : public JointOp, public BlocksUser {
         if (var.valueType >= EndOfBlittableTypes) {
           destroyVar(var);
         }
-        stbds_arrdelswap(input.payload.seqValue, i);
+        if (_fast)
+          stbds_arrdelswap(input.payload.seqValue, i);
+        else
+          stbds_arrdel(input.payload.seqValue, i);
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
           const auto &seq = seqVar->payload.seqValue;
@@ -235,7 +249,10 @@ struct Remove : public JointOp, public BlocksUser {
           if (var.valueType >= EndOfBlittableTypes) {
             destroyVar(jvar);
           }
-          stbds_arrdelswap(seq, i);
+          if (_fast)
+            stbds_arrdelswap(seq, i);
+          else
+            stbds_arrdel(seq, i);
         }
       }
     }
