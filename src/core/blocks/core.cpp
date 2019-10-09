@@ -245,6 +245,10 @@ struct Remove : public JointOp, public BlocksUser {
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
           const auto &seq = seqVar->payload.seqValue;
+          if (seq ==
+              input.payload.seqValue) // avoid removing from same seq as input!
+            continue;
+
           auto &jvar = seq[i];
           if (var.valueType >= EndOfBlittableTypes) {
             destroyVar(jvar);
