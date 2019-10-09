@@ -287,20 +287,37 @@ struct ChainFileWatcher {
           bfs::path p(fileName);
           if (bfs::exists(p) && bfs::is_regular_file(p) &&
               bfs::last_write_time(p) > lastWrite) {
-            if (!p.is_absolute()) {
-              p = bfs::absolute(p); // from current
-            }
+            // make sure to store last write time
+            // before any possible error!
+            auto writeTime = bfs::last_write_time(p);
+            lastWrite = writeTime;
 
             std::ifstream jf(p.c_str());
             json j;
             jf >> j;
             auto chain = j.get<CBChain *>();
+
+            // run validation to infertypes and specialize
+            auto chainValidation = validateConnections(
+                chain,
+                [](const CBlock *errorBlock, const char *errorTxt,
+                   bool nonfatalWarning, void *userData) {
+                  if (!nonfatalWarning) {
+                    auto msg =
+                        "RunChain: failed inner chain validation, error: " +
+                        std::string(errorTxt);
+                    throw chainblocks::CBException(msg);
+                  } else {
+                    LOG(INFO)
+                        << "RunChain: warning during inner chain validation: "
+                        << errorTxt;
+                  }
+                },
+                nullptr); // detached don't share context!
+            stbds_arrfree(chainValidation.exposedInfo);
+
             ChainLoadResult result = {false, "", chain};
             results.push(result);
-
-            // make sure to store last write time and compare
-            auto writeTime = bfs::last_write_time(p);
-            lastWrite = writeTime;
           }
           // sleep some
           chainblocks::sleep(2.0);

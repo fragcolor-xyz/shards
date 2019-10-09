@@ -8,7 +8,7 @@ buildAndRun:win:debug:
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
-    - .\cbl.exe ../src/tests/loader.clj
+    # - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
     - .\cbl.exe ../src/tests/subchains.clj
     - .\cbl.exe ../src/tests/linalg.clj
@@ -22,7 +22,7 @@ buildAndRun:win:release:
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
-    - .\cbl.exe ../src/tests/loader.clj
+    # - .\cbl.exe ../src/tests/loader.clj
     - .\cbl.exe ../src/tests/variables.clj
     - .\cbl.exe ../src/tests/subchains.clj
     - .\cbl.exe ../src/tests/linalg.clj
