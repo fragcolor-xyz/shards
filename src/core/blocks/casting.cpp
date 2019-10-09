@@ -487,7 +487,9 @@ template <CBType OT, typename AT> struct BytesToX {
 
   void convert(CBVar &dst, uint8_t *addr) {
     // compile time magic
-    if constexpr (std::is_same<AT, int32_t>::value ||
+    if constexpr (std::is_same<AT, int8_t>::value ||
+                  std::is_same<AT, int16_t>::value ||
+                  std::is_same<AT, int32_t>::value ||
                   std::is_same<AT, int64_t>::value) {
       dst.valueType = Int;
       auto p = reinterpret_cast<AT *>(addr);
@@ -570,6 +572,24 @@ EXPECT_BLOCK(Int4, Int4);
 EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
 
+struct StringToBytes {
+  std::vector<uint8_t> _buffer;
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto len = strlen(input.payload.stringValue);
+    _buffer.resize(len + 1);
+    memcpy(&_buffer.front(), input.payload.stringValue, len + 1);
+    return Var(&_buffer.front(), len + 1);
+  }
+};
+
+RUNTIME_CORE_BLOCK(StringToBytes);
+RUNTIME_BLOCK_inputTypes(StringToBytes);
+RUNTIME_BLOCK_outputTypes(StringToBytes);
+RUNTIME_BLOCK_activate(StringToBytes);
+RUNTIME_BLOCK_END(StringToBytes);
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -604,5 +624,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectFloat4);
   REGISTER_CORE_BLOCK(ExpectBytes);
   REGISTER_CORE_BLOCK(ExpectString);
+  REGISTER_CORE_BLOCK(StringToBytes);
 }
 }; // namespace chainblocks
