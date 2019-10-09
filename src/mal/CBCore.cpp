@@ -841,16 +841,9 @@ BUILTIN("sleep") {
 }
 
 BUILTIN("#") {
-  CHECK_ARGS_BETWEEN(1, 2);
+  CHECK_ARGS_IS(1);
   ARG(malString, value);
   auto s = value->value();
-
-  if (argsBegin != argsEnd) {
-    ARG(malString, key);
-    auto k = key->value();
-    s = s + " " + k;
-  }
-
   CBVar tmp;
   tmp.valueType = ContextVar;
   tmp.payload.stringValue = s.c_str();

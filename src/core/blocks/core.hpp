@@ -387,14 +387,6 @@ struct VariableBase {
       return Var(_global);
     throw CBException("Param index out of range.");
   }
-
-  bool IsValidVariableName(std::string &variableName) {
-    auto idx = variableName.find(
-        " "); // we use spaces to concat table variables with keys and such
-    if (idx != -1)
-      return false;
-    return true;
-  }
 };
 
 struct SetBase : public VariableBase {
@@ -464,10 +456,6 @@ struct SetBase : public VariableBase {
 struct Set : public SetBase {
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    if (!IsValidVariableName(_name)) {
-      throw CBException("Set: Invalid variable name!");
-    }
-
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -806,10 +794,6 @@ struct Push : public VariableBase {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    if (!IsValidVariableName(_name)) {
-      throw CBException("Set: Invalid variable name!");
-    }
-
     if (_isTable) {
       auto tableFound = false;
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {

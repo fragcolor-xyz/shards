@@ -420,9 +420,6 @@
     (Log)
   ) 4)
 
-  2 (Set "tableX" "keyX")
-  1 (Math.Add (# "tableX" "keyX")) (Assert.Is 3 true)
-
   (Get "unsortedList") (Limit 2) (Set "limitTest") (Count "limitTest")
   (Assert.Is 2 true)
 
