@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO, remove most of C macros, use more templates
+
 #include "core.hpp"
 
 namespace chainblocks {
@@ -127,7 +129,7 @@ struct BinaryBase : public Base {
                           "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
-        if (DIV_BY_ZERO)                                                       \
+        if constexpr (DIV_BY_ZERO)                                             \
           if (operand.payload.intValue == 0)                                   \
             throw CBException("Error, division by 0!");                        \
         output.valueType = Int;                                                \
@@ -135,7 +137,7 @@ struct BinaryBase : public Base {
             input.payload.intValue OPERATOR operand.payload.intValue;          \
         break;                                                                 \
       case Int2:                                                               \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 2; i++)                                         \
             if (operand.payload.int2Value[i] == 0)                             \
               throw CBException("Error, division by 0!");                      \
@@ -145,7 +147,7 @@ struct BinaryBase : public Base {
             input.payload.int2Value OPERATOR operand.payload.int2Value;        \
         break;                                                                 \
       case Int3:                                                               \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 3; i++)                                         \
             if (operand.payload.int3Value[i] == 0)                             \
               throw CBException("Error, division by 0!");                      \
@@ -155,7 +157,7 @@ struct BinaryBase : public Base {
             input.payload.int3Value OPERATOR operand.payload.int3Value;        \
         break;                                                                 \
       case Int4:                                                               \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 4; i++)                                         \
             if (operand.payload.int4Value[i] == 0)                             \
               throw CBException("Error, division by 0!");                      \
@@ -165,7 +167,7 @@ struct BinaryBase : public Base {
             input.payload.int4Value OPERATOR operand.payload.int4Value;        \
         break;                                                                 \
       case Int8:                                                               \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 8; i++)                                         \
             if (operand.payload.int2Value[i] == 0)                             \
               throw CBException("Error, division by 0!");                      \
@@ -175,7 +177,7 @@ struct BinaryBase : public Base {
             input.payload.int8Value OPERATOR operand.payload.int8Value;        \
         break;                                                                 \
       case Int16:                                                              \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 16; i++)                                        \
             if (operand.payload.int2Value[i] == 0)                             \
               throw CBException("Error, division by 0!");                      \
@@ -185,7 +187,7 @@ struct BinaryBase : public Base {
             input.payload.int16Value OPERATOR operand.payload.int16Value;      \
         break;                                                                 \
       case Float:                                                              \
-        if (DIV_BY_ZERO)                                                       \
+        if constexpr (DIV_BY_ZERO)                                             \
           if (operand.payload.floatValue == 0)                                 \
             throw CBException("Error, division by 0!");                        \
         output.valueType = Float;                                              \
@@ -193,7 +195,7 @@ struct BinaryBase : public Base {
             input.payload.floatValue OPERATOR operand.payload.floatValue;      \
         break;                                                                 \
       case Float2:                                                             \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 2; i++)                                         \
             if (operand.payload.float2Value[i] == 0)                           \
               throw CBException("Error, division by 0!");                      \
@@ -203,7 +205,7 @@ struct BinaryBase : public Base {
             input.payload.float2Value OPERATOR operand.payload.float2Value;    \
         break;                                                                 \
       case Float3:                                                             \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 3; i++)                                         \
             if (operand.payload.float3Value[i] == 0)                           \
               throw CBException("Error, division by 0!");                      \
@@ -213,7 +215,7 @@ struct BinaryBase : public Base {
             input.payload.float3Value OPERATOR operand.payload.float3Value;    \
         break;                                                                 \
       case Float4:                                                             \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 4; i++)                                         \
             if (operand.payload.float4Value[i] == 0)                           \
               throw CBException("Error, division by 0!");                      \
@@ -223,7 +225,7 @@ struct BinaryBase : public Base {
             input.payload.float4Value OPERATOR operand.payload.float4Value;    \
         break;                                                                 \
       case Color:                                                              \
-        if (DIV_BY_ZERO) {                                                     \
+        if constexpr (DIV_BY_ZERO) {                                           \
           if (operand.payload.colorValue.r == 0)                               \
             throw CBException("Error, division by 0!");                        \
           if (operand.payload.colorValue.g == 0)                               \
@@ -266,12 +268,11 @@ struct BinaryBase : public Base {
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
+        auto olen = stbds_arrlen(operand.payload.seqValue);                    \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue),             \
-                  i < stbds_arrlen(operand.payload.seqValue);                  \
-             i++) {                                                            \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
           operate(output, input.payload.seqValue[i],                           \
-                  operand.payload.seqValue[i]);                                \
+                  operand.payload.seqValue[i % olen]);                         \
           stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
         }                                                                      \
         return _cachedSeq;                                                     \
@@ -347,16 +348,16 @@ struct BinaryBase : public Base {
       } else if (_opType == Seq1) {                                            \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
         for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          operate(output, input, operand);                                     \
+          operate(output, input.payload.seqValue[i], operand);                 \
           stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
+        auto olen = stbds_arrlen(operand.payload.seqValue);                    \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue),             \
-                  i < stbds_arrlen(operand.payload.seqValue);                  \
-             i++) {                                                            \
-          operate(output, input, operand.payload.seqValue[i]);                 \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+          operate(output, input.payload.seqValue[i],                           \
+                  operand.payload.seqValue[i % olen]);                         \
           stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
         }                                                                      \
         return _cachedSeq;                                                     \
