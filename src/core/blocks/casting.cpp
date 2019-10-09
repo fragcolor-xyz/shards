@@ -152,7 +152,7 @@ namespace chainblocks {
       switch (input.valueType) {                                               \
       case Seq: {                                                              \
         for (auto i = 0;                                                       \
-             i < _width_, i < stbds_arrlen(input.payload.seqValue); i++) {     \
+             i < _width_ && i < stbds_arrlen(input.payload.seqValue); i++) {   \
           if (convert(output, index, input.payload.seqValue[i]))               \
             return output;                                                     \
         }                                                                      \
@@ -240,7 +240,7 @@ namespace chainblocks {
       output.valueType = _varName_;                                            \
       switch (input.valueType) {                                               \
       case Seq: {                                                              \
-        for (auto i = 0; i < 1, i < stbds_arrlen(input.payload.seqValue);      \
+        for (auto i = 0; i < 1 && i < stbds_arrlen(input.payload.seqValue);    \
              i++) {                                                            \
           if (convert(output, input.payload.seqValue[i]))                      \
             return output;                                                     \
@@ -430,7 +430,7 @@ RUNTIME_BLOCK_END(BitSwap64);
       output.valueType = _varName_;                                            \
       switch (input.valueType) {                                               \
       case Seq: {                                                              \
-        for (auto i = 0; i < 1, i < stbds_arrlen(input.payload.seqValue);      \
+        for (auto i = 0; i < 1 && i < stbds_arrlen(input.payload.seqValue);    \
              i++) {                                                            \
           if (convert(output, input.payload.seqValue[i]))                      \
             return output;                                                     \
