@@ -253,7 +253,7 @@ struct RunChain : public ChainRunner {
         // Run within the root flow
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
-          return Var::Stop();
+          return StopChain;
         } else if (passthrough) {
           return input;
         } else {
@@ -413,7 +413,7 @@ struct ChainLoader : public ChainRunner {
         // Run within the root flow
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
-          return Var::Stop();
+          return StopChain;
         } else {
           return input;
         }

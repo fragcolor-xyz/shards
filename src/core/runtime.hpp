@@ -688,8 +688,11 @@ static boost::context::continuation run(CBChain *chain,
     chain->finishedOutput = runRes.output; // Write result before setting flag
     chain->finished = true;                // Set finished flag (atomic)
     context.iterationCount++;              // increatse iteration counter
-    if (runRes.state == Failed) {
+    if (unlikely(runRes.state == Failed)) {
       chain->failed = true;
+      context.aborted = true;
+      break;
+    } else if (unlikely(runRes.state == Stopped)) {
       context.aborted = true;
       break;
     }
