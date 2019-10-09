@@ -291,6 +291,12 @@ struct ToString {
   }
 };
 
+RUNTIME_CORE_BLOCK(ToString);
+RUNTIME_BLOCK_inputTypes(ToString);
+RUNTIME_BLOCK_outputTypes(ToString);
+RUNTIME_BLOCK_activate(ToString);
+RUNTIME_BLOCK_END(ToString);
+
 struct ToHex {
   VarStringStream stream;
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
@@ -300,6 +306,12 @@ struct ToHex {
     return Var(stream.str());
   }
 };
+
+RUNTIME_CORE_BLOCK(ToHex);
+RUNTIME_BLOCK_inputTypes(ToHex);
+RUNTIME_BLOCK_outputTypes(ToHex);
+RUNTIME_BLOCK_activate(ToHex);
+RUNTIME_BLOCK_END(ToHex);
 
 struct VarAddr {
   VarStringStream stream;
@@ -311,6 +323,12 @@ struct VarAddr {
   }
 };
 
+RUNTIME_CORE_BLOCK(VarAddr);
+RUNTIME_BLOCK_inputTypes(VarAddr);
+RUNTIME_BLOCK_outputTypes(VarAddr);
+RUNTIME_BLOCK_activate(VarAddr);
+RUNTIME_BLOCK_END(VarAddr);
+
 struct BitSwap32 {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
@@ -321,6 +339,12 @@ struct BitSwap32 {
   }
 };
 
+RUNTIME_CORE_BLOCK(BitSwap32);
+RUNTIME_BLOCK_inputTypes(BitSwap32);
+RUNTIME_BLOCK_outputTypes(BitSwap32);
+RUNTIME_BLOCK_activate(BitSwap32);
+RUNTIME_BLOCK_END(BitSwap32);
+
 struct BitSwap64 {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
@@ -330,6 +354,12 @@ struct BitSwap64 {
     return Var(static_cast<int64_t>(i64));
   }
 };
+
+RUNTIME_CORE_BLOCK(BitSwap64);
+RUNTIME_BLOCK_inputTypes(BitSwap64);
+RUNTIME_BLOCK_outputTypes(BitSwap64);
+RUNTIME_BLOCK_activate(BitSwap64);
+RUNTIME_BLOCK_END(BitSwap64);
 
 // As, reinterpret
 #define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
@@ -502,6 +532,10 @@ template <CBType OT, typename AT> struct BytesToX {
 
 BYTES_TO_BLOCK(Float32, Float, float);
 BYTES_TO_BLOCK(Float64, Float, double);
+BYTES_TO_BLOCK(Int8, Int, int8_t);
+BYTES_TO_BLOCK(Int16, Int, int16_t);
+BYTES_TO_BLOCK(Int32, Int, int32_t);
+BYTES_TO_BLOCK(Int64, Int, int64_t);
 
 template <CBType ET> struct ExpectX {
   static inline TypeInfo outputType = TypeInfo(ET);
@@ -536,41 +570,6 @@ EXPECT_BLOCK(Int4, Int4);
 EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
 
-// Register ToString
-RUNTIME_CORE_BLOCK(ToString);
-RUNTIME_BLOCK_inputTypes(ToString);
-RUNTIME_BLOCK_outputTypes(ToString);
-RUNTIME_BLOCK_activate(ToString);
-RUNTIME_BLOCK_END(ToString);
-
-// Register ToHex
-RUNTIME_CORE_BLOCK(ToHex);
-RUNTIME_BLOCK_inputTypes(ToHex);
-RUNTIME_BLOCK_outputTypes(ToHex);
-RUNTIME_BLOCK_activate(ToHex);
-RUNTIME_BLOCK_END(ToHex);
-
-// Register VarAddr
-RUNTIME_CORE_BLOCK(VarAddr);
-RUNTIME_BLOCK_inputTypes(VarAddr);
-RUNTIME_BLOCK_outputTypes(VarAddr);
-RUNTIME_BLOCK_activate(VarAddr);
-RUNTIME_BLOCK_END(VarAddr);
-
-// Register BitSwap32
-RUNTIME_CORE_BLOCK(BitSwap32);
-RUNTIME_BLOCK_inputTypes(BitSwap32);
-RUNTIME_BLOCK_outputTypes(BitSwap32);
-RUNTIME_BLOCK_activate(BitSwap32);
-RUNTIME_BLOCK_END(BitSwap32);
-
-// Register BitSwap64
-RUNTIME_CORE_BLOCK(BitSwap64);
-RUNTIME_BLOCK_inputTypes(BitSwap64);
-RUNTIME_BLOCK_outputTypes(BitSwap64);
-RUNTIME_BLOCK_activate(BitSwap64);
-RUNTIME_BLOCK_END(BitSwap64);
-
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -591,6 +590,10 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(AsFloat64);
   REGISTER_CORE_BLOCK(BytesToFloat32);
   REGISTER_CORE_BLOCK(BytesToFloat64);
+  REGISTER_CORE_BLOCK(BytesToInt8);
+  REGISTER_CORE_BLOCK(BytesToInt16);
+  REGISTER_CORE_BLOCK(BytesToInt32);
+  REGISTER_CORE_BLOCK(BytesToInt64);
   REGISTER_CORE_BLOCK(ExpectInt);
   REGISTER_CORE_BLOCK(ExpectInt2);
   REGISTER_CORE_BLOCK(ExpectInt3);
