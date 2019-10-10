@@ -185,5 +185,68 @@ RUNTIME_BLOCK_inferTypes(Flatten);
 RUNTIME_BLOCK_activate(Flatten);
 RUNTIME_BLOCK_END(Flatten);
 
-void registerSeqsBlocks() { REGISTER_CORE_BLOCK(Flatten); }
+struct IndexOf {
+  ContextableVar _item;
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "Item",
+      "The item to find the index of from the input, if it's a sequence it "
+      "will try to match all the items in the sequence, in sequence.",
+      CBTypesInfo(CoreInfo::anyInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, CBVar value) { _item.setParam(value); }
+
+  CBVar getParam(int index) { return _item.getParam(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto inputLen = stbds_arrlen(input.payload.seqValue);
+    auto itemLen = 0;
+    auto item = _item.get(context);
+    if (item.valueType == Seq) {
+      itemLen = stbds_arrlen(item.payload.seqValue);
+    }
+
+    for (auto i = 0; i < inputLen; i++) {
+      if (item.valueType == Seq) {
+        if ((i + itemLen) > inputLen) {
+          return Var(-1); // we are likely at the end
+        }
+
+        auto ci = i;
+        for (auto y = 0; y < itemLen; y++, ci++) {
+          if (item.payload.seqValue[y] != input.payload.seqValue[ci]) {
+            goto failed;
+          }
+        }
+        return Var(i);
+
+      failed:
+        continue;
+      } else if (input.payload.seqValue[i] == item) {
+        return Var(i);
+      }
+    }
+    return Var(-1);
+  }
+};
+
+// Register
+RUNTIME_CORE_BLOCK(IndexOf);
+RUNTIME_BLOCK_inputTypes(IndexOf);
+RUNTIME_BLOCK_outputTypes(IndexOf);
+RUNTIME_BLOCK_parameters(IndexOf);
+RUNTIME_BLOCK_setParam(IndexOf);
+RUNTIME_BLOCK_getParam(IndexOf);
+RUNTIME_BLOCK_activate(IndexOf);
+RUNTIME_BLOCK_END(IndexOf);
+
+void registerSeqsBlocks() {
+  REGISTER_CORE_BLOCK(Flatten);
+  REGISTER_CORE_BLOCK(IndexOf);
+}
 }; // namespace chainblocks

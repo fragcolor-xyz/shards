@@ -376,6 +376,36 @@
   (Assert.Is 6 true)
 
   (Get "unsortedList")
+  (IndexOf 2)
+  (Assert.Is 2 true)
+
+  (Get "unsortedList")
+  (IndexOf 5)
+  (Assert.Is 0 true)
+
+  (Get "unsortedList")
+  (IndexOf [1 1])
+  (Assert.Is 3 true)
+
+  (Get "unsortedList")
+  (IndexOf [1 1 0])
+  (Assert.Is 3 true)
+
+  (Get "unsortedList")
+  (IndexOf 10)
+  (Assert.Is -1 true)
+
+  (Get "unsortedList")
+  (IndexOf [1 1 0 1])
+  (Assert.IsNot 3 true)
+
+  (Const [1 1 0])
+  (Set "toFindVar")
+  (Get "unsortedList")
+  (IndexOf (# "toFindVar"))
+  (Assert.Is 3 true)
+
+  (Get "unsortedList")
   (Remove :Predicate (-->(IsMore 3)))
   (Sort :Desc true)
   (Assert.Is [2 1 1 0] true)
