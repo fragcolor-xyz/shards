@@ -119,9 +119,7 @@ set(
   ${MY_PROJECT_SOURCE_FILES}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
-  # ${CHAINBLOCKS_DIR}/src/core/runtime_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
-  # ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
@@ -232,6 +230,22 @@ if(NOT BUILD_CORE_ONLY)
     set(CBLP_PLATFORM_LIBS
       -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
     )
+
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      # 64 bits
+      set(CBLP_PLATFORM_LIBS
+        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win64_mingw-gcc/bin/libbimgRelease.a
+        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
+        ${CBLP_PLATFORM_LIBS}
+      )
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      # 32 bits
+      set(CBLP_PLATFORM_LIBS
+        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win32_mingw-gcc/bin/libbimgRelease.a
+        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
+        ${CBLP_PLATFORM_LIBS}
+      )
+    endif()
   elseif(APPLE)
     add_compile_definitions(BGFX_CONFIG_RENDERER_METAL)
     include_directories(

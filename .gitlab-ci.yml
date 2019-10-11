@@ -5,7 +5,7 @@ buildAndRun:win:debug:
   script:
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
     # - .\cbl.exe ../src/tests/loader.clj
@@ -19,7 +19,7 @@ buildAndRun:win:release:
   script:
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+    - cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release ..
     - ninja cbl
     - .\cbl.exe ../src/tests/general.clj
     # - .\cbl.exe ../src/tests/loader.clj
@@ -39,7 +39,7 @@ buildAndRun:linux:debug:
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # run
     # to run with gdb for diagnostics gdb -return-child-result -ex 'catch throw' -ex 'break abort' -ex run -ex bt -batch --args
-    - docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+    - docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
   tags:
     - LINUX, DOCKER
 
@@ -52,6 +52,6 @@ buildAndRun:linux:release:
     # build docker image
     - docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     # run
-    - docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+    - docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
   tags:
     - LINUX, DOCKER
