@@ -1158,6 +1158,8 @@ template <> struct hash<CBExposedTypeInfo> {
 struct ValidationContext {
   phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
       exposed;
+  phmap::flat_hash_set<std::string> variables;
+  phmap::flat_hash_set<std::string> references;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -1225,6 +1227,47 @@ void validateConnection(ValidationContext &ctx) {
     auto &exposed_param = exposedVars[i];
     std::string name(exposed_param.name);
     ctx.exposed[name].insert(exposed_param);
+
+    // Reference mutability checks
+    if (strcmp(ctx.bottom->name(ctx.bottom), "Ref") == 0) {
+      // make sure we are not Ref-ing a Set
+      // meaning target would be overwritten, yet Set will try to deallocate
+      // it/manage it
+      if (ctx.variables.contains(name)) {
+        // Error
+        std::string err(
+            "Ref variable name already used as Set. Overwriting a previously "
+            "Set variable with Ref is not allowed, name: " +
+            name);
+        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      }
+      ctx.references.insert(name);
+    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Set") == 0) {
+      // make sure we are not Set-ing a Ref
+      // meaning target memory could be any block temporary buffer, yet Set will
+      // try to deallocate it/manage it
+      if (ctx.references.contains(name)) {
+        // Error
+        std::string err(
+            "Set variable name already used as Ref. Overwriting a previously "
+            "Ref variable with Set is not allowed, name: " +
+            name);
+        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      }
+      ctx.variables.insert(name);
+    } else if (strcmp(ctx.bottom->name(ctx.bottom), "Update") == 0) {
+      // make sure we are not Set-ing a Ref
+      // meaning target memory could be any block temporary buffer, yet Set will
+      // try to deallocate it/manage it
+      if (ctx.references.contains(name)) {
+        // Error
+        std::string err("Update variable name already used as Ref. Overwriting "
+                        "a previously "
+                        "Ref variable with Update is not allowed, name: " +
+                        name);
+        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      }
+    }
   }
 
   // Finally do checks on what we consume

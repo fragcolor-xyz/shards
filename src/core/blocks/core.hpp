@@ -425,15 +425,7 @@ struct SetBase : public VariableBase {
 
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
-      if (_target->mutability == CBVarMutability::ImmutableRef) {
-        // if this variable was a reference fail here, refs are read-only
-        // TODO move this evaluation to validation time!
-        throw CBException("Tried to set a immutable Ref variable.");
-      }
-      _target->mutability =
-          CBVarMutability::Mutable; // set mutable from now on!
     }
-
     if (_isTable) {
       if (_target->valueType != Table) {
         // Not initialized yet
@@ -522,7 +514,6 @@ struct Ref : public SetBase {
 
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
-      _target->mutability = CBVarMutability::ImmutableRef; // turn on reference flag!
     }
 
     if (_isTable) {
