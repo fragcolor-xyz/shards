@@ -26,8 +26,16 @@ struct BaseConsumer : public Base {
   }
 };
 
+// DPI awareness fix
+#ifdef _WIN32
+struct DpiAwareness {
+  DpiAwareness() { SetProcessDPIAware(); }
+};
+#endif
+
 struct BaseWindow : public Base {
 #ifdef _WIN32
+  static inline DpiAwareness DpiAware{};
   HWND _sysWnd = nullptr;
 #elif defined(__APPLE__)
   NSWindow *_sysWnd = nullptr;
