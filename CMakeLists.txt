@@ -119,9 +119,7 @@ set(
   ${MY_PROJECT_SOURCE_FILES}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
-  # ${CHAINBLOCKS_DIR}/src/core/runtime_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
-  # ${CHAINBLOCKS_DIR}/src/core/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
@@ -190,6 +188,10 @@ if(CLANG_TIDY_EXE)
 endif()
 ###
 
+if(UNIX AND NOT APPLE)
+  set(LINUX TRUE)
+endif()
+
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
@@ -202,6 +204,103 @@ include_directories(
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
+
+if(NOT BUILD_CORE_ONLY)
+  add_compile_definitions(CB_WITH_EXTRAS)
+
+  include_directories(
+    ${CHAINBLOCKS_DIR}/deps/bx/include
+    ${CHAINBLOCKS_DIR}/deps/bx/3rdparty
+    ${CHAINBLOCKS_DIR}/deps/bgfx/include
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty
+    ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
+    ${CHAINBLOCKS_DIR}/deps/bimg/include
+  )
+
+  if(WIN32)
+    add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
+    include_directories(
+      ${CHAINBLOCKS_DIR}/deps/bx/include/compat/mingw
+      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/include/SDL2
+    )
+    set(PLATFORM_SOURCES 
+      ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+    )
+
+    set(CBLP_PLATFORM_LIBS
+      -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
+    )
+
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      # 64 bits
+      set(CBLP_PLATFORM_LIBS
+        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win64_mingw-gcc/bin/libbimgRelease.a
+        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
+        ${CBLP_PLATFORM_LIBS}
+      )
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      # 32 bits
+      set(CBLP_PLATFORM_LIBS
+        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win32_mingw-gcc/bin/libbimgRelease.a
+        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
+        ${CBLP_PLATFORM_LIBS}
+      )
+    endif()
+  elseif(APPLE)
+    add_compile_definitions(BGFX_CONFIG_RENDERER_METAL)
+    include_directories(
+      ${CHAINBLOCKS_DIR}/deps/bx/include/compat/osx
+      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/include
+    )
+    set(PLATFORM_SOURCES
+      ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
+    )
+
+    set(CBLP_PLATFORM_LIBS
+      ${CHAINBLOCKS_DIR}/deps/bimg/.build/osx64_clang/bin/libbimgRelease.a
+      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/build/libSDL2.a
+      -liconv
+      "-framework Foundation"
+      "-framework Cocoa"
+      "-framework CoreAudio"
+      "-framework AudioToolbox"
+      "-framework CoreVideo"
+      "-framework ForceFeedback"
+      "-framework IOKit"
+      "-framework Carbon"
+      "-framework QuartzCore"
+      "-framework Metal"
+    )
+  elseif(LINUX)
+    add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
+    include_directories(
+      /usr/include/SDL2
+      ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
+    )
+    set(PLATFORM_SOURCES
+      ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+    )
+
+    set(CBLP_PLATFORM_LIBS
+      ${CMAKE_CURRENT_LIST_DIR}/deps/bimg/.build/linux64_gcc/bin/libbimgRelease.a
+      -lSDL2
+      -lX11
+      -lGL
+    )
+  endif()
+
+  set(CB_EXTRAS
+    ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
+    ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui/imgui.cpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui.cpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
+    ${PLATFORM_SOURCES}
+  )
+endif()
 
 add_library(
   cbruntime STATIC
@@ -218,6 +317,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
+  ${CB_EXTRAS}
 )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cbruntime format)
@@ -258,7 +358,7 @@ macro(lisp_builtins LIB GENNAME)
 endmacro()
 ###
 
-lisp_builtins(cbruntime core_generator)
+lisp_builtins(cbruntime core_generator ${CBLP_PLATFORM_LIBS})
 
 ### mal
 add_executable(
@@ -277,5 +377,5 @@ add_executable(
 add_dependencies(cbl core_generator)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED -DCB_DLL_EXPORT")
-target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS})
+target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
 ###
