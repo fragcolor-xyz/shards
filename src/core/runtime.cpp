@@ -59,6 +59,10 @@ extern void registerBlocks();
 };
 }; // namespace Math
 
+#ifdef CB_WITH_EXTRAS
+extern void cbInitExtras();
+#endif
+
 void registerCoreBlocks() {
   rpmalloc_initialize();
 
@@ -78,6 +82,10 @@ void registerCoreBlocks() {
 
   // also enums
   initEnums();
+
+#ifdef CB_WITH_EXTRAS
+  cbInitExtras();
+#endif
 }
 
 CBlock *createBlock(const char *name) {

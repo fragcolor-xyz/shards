@@ -19,3 +19,12 @@
 [submodule "deps/parallel-hashmap"]
 	path = deps/parallel-hashmap
 	url = https://github.com/chainblocks/parallel-hashmap.git
+[submodule "deps/bgfx"]
+	path = deps/bgfx
+	url = https://github.com/chainblocks/bgfx.git
+[submodule "deps/bx"]
+	path = deps/bx
+	url = https://github.com/chainblocks/bx.git
+[submodule "deps/bimg"]
+	path = deps/bimg
+	url = https://github.com/chainblocks/bimg.git
