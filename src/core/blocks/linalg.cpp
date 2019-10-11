@@ -195,7 +195,7 @@ struct Normalize : public VectorUnaryBase {
   struct Operation {
     Length::Operation lenOp;
     void operator()(CBVar &output, const CBVar &input) {
-      CBVar len;
+      CBVar len{};
       lenOp(len, input);
 
       switch (input.valueType) {

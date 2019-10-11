@@ -132,7 +132,7 @@ struct Sort : public JointOp {
 
   template <class Compare> void insertSort(CBVar seq[], int n, Compare comp) {
     int i, j;
-    CBVar key;
+    CBVar key{};
     for (i = 1; i < n; i++) {
       key = seq[i];
       _multiSortKeys.clear();
@@ -395,6 +395,19 @@ RUNTIME_BLOCK_getParam(Set);
 RUNTIME_BLOCK_activate(Set);
 RUNTIME_BLOCK_END(Set);
 
+// Register Ref
+RUNTIME_CORE_BLOCK_FACTORY(Ref);
+RUNTIME_BLOCK_cleanup(Ref);
+RUNTIME_BLOCK_inputTypes(Ref);
+RUNTIME_BLOCK_outputTypes(Ref);
+RUNTIME_BLOCK_parameters(Ref);
+RUNTIME_BLOCK_inferTypes(Ref);
+RUNTIME_BLOCK_exposedVariables(Ref);
+RUNTIME_BLOCK_setParam(Ref);
+RUNTIME_BLOCK_getParam(Ref);
+RUNTIME_BLOCK_activate(Ref);
+RUNTIME_BLOCK_END(Ref);
+
 // Register Update
 RUNTIME_CORE_BLOCK_FACTORY(Update);
 RUNTIME_BLOCK_cleanup(Update);
@@ -636,6 +649,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Input);
   REGISTER_CORE_BLOCK(Set);
+  REGISTER_CORE_BLOCK(Ref);
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
   REGISTER_CORE_BLOCK(Pop);

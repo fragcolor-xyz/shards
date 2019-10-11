@@ -164,9 +164,9 @@ struct CBChain {
   bool returned;
   bool failed;
 
-  CBVar rootTickInput;
-  CBVar previousOutput;
-  CBVar finishedOutput;
+  CBVar rootTickInput{};
+  CBVar previousOutput{};
+  CBVar finishedOutput{};
   bool ownedOutput;
 
   CBContext *context;

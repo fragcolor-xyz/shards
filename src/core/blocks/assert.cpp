@@ -10,7 +10,7 @@ struct Base {
       ParamsInfo::Param("Abort", "If we should abort the process on failure.",
                         CBTypesInfo(SharedTypes::boolInfo)));
 
-  CBVar value;
+  CBVar value{};
   bool aborting;
 
   void destroy() { destroyVar(value); }

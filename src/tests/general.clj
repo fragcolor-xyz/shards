@@ -486,6 +486,12 @@
   (Math.Xor [77 78 77 11 16])
   (Log)
 
+  ; show induced mutability with Ref
+  "Hello reference" ; Const
+  (Ref "ref1") ; no copy will happen!
+  (Get "ref1")
+  (Assert.Is "Hello reference" true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

@@ -425,7 +425,15 @@ struct SetBase : public VariableBase {
 
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
+      if (_target->mutability == CBVarMutability::ImmutableRef) {
+        // if this variable was a reference fail here, refs are read-only
+        // TODO move this evaluation to validation time!
+        throw CBException("Tried to set a immutable Ref variable.");
+      }
+      _target->mutability =
+          CBVarMutability::Mutable; // set mutable from now on!
     }
+
     if (_isTable) {
       if (_target->valueType != Table) {
         // Not initialized yet
@@ -480,6 +488,63 @@ struct Set : public SetBase {
 
   CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(_exposedInfo);
+  }
+};
+
+struct Ref : public SetBase {
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // bake exposed types
+    if (_isTable) {
+      // we are a table!
+      _tableContentInfo = TypeInfo(inputType);
+      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", _tableTypeInfo));
+    } else {
+      // just a variable!
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
+    }
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  void cleanup() { _target = nullptr; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_shortCut) {
+      return *_target;
+    }
+
+    if (!_target) {
+      _target = contextVariable(context, _name.c_str(), _global);
+      _target->mutability = CBVarMutability::ImmutableRef; // turn on reference flag!
+    }
+
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue = nullptr;
+      }
+
+      auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (idx != -1) {
+        _target->payload.tableValue[idx].value = input;
+      } else {
+        stbds_shput(_target->payload.tableValue, _key.c_str(), input);
+      }
+    } else {
+      // Fastest path, flag it as shortcut
+      _shortCut = true;
+      // Clone will try to recyle memory and such
+      *_target = input;
+    }
+    return input;
   }
 };
 
@@ -1534,6 +1599,7 @@ RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);
 RUNTIME_CORE_BLOCK_TYPE(IsValidNumber);
 RUNTIME_CORE_BLOCK_TYPE(Set);
+RUNTIME_CORE_BLOCK_TYPE(Ref);
 RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);

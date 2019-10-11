@@ -309,7 +309,7 @@ public:
 
   WITH_META(malCBVar);
 
-  CBVar m_var;
+  CBVar m_var{};
 };
 
 CBType keywordToType(malKeyword *typeKeyword) {
@@ -425,7 +425,7 @@ struct InnerCall {
   malList *malActivateList;
   malValuePtr malActivate; // a fn* [input]
   malCBVar *innerVar;
-  CBVar outputVar;
+  CBVar outputVar{};
 
   void init(const malValuePtr &infer, const malValuePtr &activate) {
     malInfer = infer;
@@ -501,12 +501,12 @@ std::vector<CBlock *> blockify(const malValuePtr &arg) {
 
   if (arg == mal::nilValue()) {
     // Wrap none into const
-    CBVar var;
+    CBVar var{};
     var.valueType = None;
     var.payload.chainState = Continue;
     WRAP_TO_CONST(var);
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
-    CBVar strVar;
+    CBVar strVar{};
     strVar.valueType = String;
     auto s = v->value();
     strVar.payload.stringValue = s.c_str();
@@ -523,12 +523,12 @@ std::vector<CBlock *> blockify(const malValuePtr &arg) {
     }
     WRAP_TO_CONST(var);
   } else if (arg == mal::trueValue()) {
-    CBVar var;
+    CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = true;
     WRAP_TO_CONST(var);
   } else if (arg == mal::falseValue()) {
-    CBVar var;
+    CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = false;
     WRAP_TO_CONST(var);
@@ -843,7 +843,7 @@ BUILTIN("#") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   auto s = value->value();
-  CBVar tmp;
+  CBVar tmp{};
   tmp.valueType = ContextVar;
   tmp.payload.stringValue = s.c_str();
   auto var = CBVar();
@@ -852,7 +852,7 @@ BUILTIN("#") {
 }
 
 malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
-  CBVar var;
+  CBVar var{};
   var.valueType = Enum;
   var.payload.enumVendorId = vendor;
   var.payload.enumTypeId = type;
@@ -865,7 +865,7 @@ BUILTIN("Enum") {
   ARG(malNumber, value0);
   ARG(malNumber, value1);
   ARG(malNumber, value2);
-  CBVar var;
+  CBVar var{};
   var.valueType = Enum;
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
   var.payload.enumTypeId = static_cast<int32_t>(value1->value());
@@ -877,7 +877,7 @@ BUILTIN("String") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  CBVar tmp;
+  CBVar tmp{};
   tmp.valueType = String;
   auto s = value->value();
   tmp.payload.stringValue = s.c_str();
@@ -890,7 +890,7 @@ BUILTIN("String") {
 BUILTIN("Int") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
-  CBVar var;
+  CBVar var{};
   var.valueType = Int;
   var.payload.intValue = value->value();
   return malValuePtr(new malCBVar(var));
@@ -900,7 +900,7 @@ BUILTIN("Int2") {
   CHECK_ARGS_IS(2);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
-  CBVar var;
+  CBVar var{};
   var.valueType = Int2;
   var.payload.int2Value[0] = value0->value();
   var.payload.int2Value[1] = value1->value();
@@ -912,7 +912,7 @@ BUILTIN("Int3") {
   ARG(malNumber, value0);
   ARG(malNumber, value1);
   ARG(malNumber, value2);
-  CBVar var;
+  CBVar var{};
   var.valueType = Int3;
   var.payload.int3Value[0] = value0->value();
   var.payload.int3Value[1] = value1->value();
@@ -926,7 +926,7 @@ BUILTIN("Int4") {
   ARG(malNumber, value1);
   ARG(malNumber, value2);
   ARG(malNumber, value3);
-  CBVar var;
+  CBVar var{};
   var.valueType = Int4;
   var.payload.int4Value[0] = value0->value();
   var.payload.int4Value[1] = value1->value();
@@ -941,7 +941,7 @@ BUILTIN("Color") {
   ARG(malNumber, value1);
   ARG(malNumber, value2);
   ARG(malNumber, value3);
-  CBVar var;
+  CBVar var{};
   var.valueType = Color;
   var.payload.colorValue.r = static_cast<uint8_t>(value0->value());
   var.payload.colorValue.g = static_cast<uint8_t>(value1->value());
@@ -953,7 +953,7 @@ BUILTIN("Color") {
 BUILTIN("Float") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
-  CBVar var;
+  CBVar var{};
   var.valueType = Float;
   var.payload.floatValue = value->value();
   return malValuePtr(new malCBVar(var));
@@ -963,7 +963,7 @@ BUILTIN("Float2") {
   CHECK_ARGS_IS(2);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
-  CBVar var;
+  CBVar var{};
   var.valueType = Float2;
   var.payload.float2Value[0] = value0->value();
   var.payload.float2Value[1] = value1->value();
@@ -975,7 +975,7 @@ BUILTIN("Float3") {
   ARG(malNumber, value0);
   ARG(malNumber, value1);
   ARG(malNumber, value2);
-  CBVar var;
+  CBVar var{};
   var.valueType = Float3;
   var.payload.float3Value[0] = value0->value();
   var.payload.float3Value[1] = value1->value();
@@ -989,7 +989,7 @@ BUILTIN("Float4") {
   ARG(malNumber, value1);
   ARG(malNumber, value2);
   ARG(malNumber, value3);
-  CBVar var;
+  CBVar var{};
   var.valueType = Float4;
   var.payload.float4Value[0] = value0->value();
   var.payload.float4Value[1] = value1->value();
