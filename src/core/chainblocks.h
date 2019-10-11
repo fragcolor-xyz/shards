@@ -20,7 +20,7 @@ inline void* rp_init_realloc(void* ptr, size_t size) {
 }
 #define STBDS_REALLOC(context, ptr, size) rp_init_realloc(ptr, size)
 #define STBDS_FREE(context, ptr) rpfree(ptr)
-#include "3rdparty/stb_ds.h"
+#include "stb_ds.h"
 
 // All the available types
 enum CBType : uint8_t {

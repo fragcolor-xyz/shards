@@ -193,6 +193,12 @@ endif()
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
+  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
+  ${CHAINBLOCKS_DIR}/deps/json/include
+  ${CHAINBLOCKS_DIR}/deps/parallel-hashmap
+  ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
+  ${CHAINBLOCKS_DIR}/deps/stb
+  ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
@@ -200,6 +206,7 @@ include_directories(
 add_library(
   cbruntime STATIC
   ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
+  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
@@ -211,7 +218,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
-  ${CHAINBLOCKS_DIR}/src/core/3rdparty/easylogging++.cc
 )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cbruntime format)

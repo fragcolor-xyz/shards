@@ -4,9 +4,9 @@
 #include "ops.hpp"
 
 // Included 3rdparty
-#include "3rdparty/easylogging++.h"
-#include "3rdparty/json.hpp"
-#include "3rdparty/parallel_hashmap/phmap.h"
+#include "easylogging++.h"
+#include "nlohmann/json.hpp"
+#include "parallel_hashmap/phmap.h"
 
 #include <cassert>
 #include <type_traits>

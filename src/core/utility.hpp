@@ -1,5 +1,5 @@
-#include "3rdparty/parallel_hashmap/phmap.h"
-#include "3rdparty/easylogging++.h"
+#include "parallel_hashmap/phmap.h"
+#include "easylogging++.h"
 
 namespace chainblocks {
   template<typename T>

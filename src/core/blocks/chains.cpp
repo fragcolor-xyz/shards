@@ -1,4 +1,4 @@
-#include "3rdparty/SPSCQueue.h"
+#include "rigtorp/SPSCQueue.h"
 #include "shared.hpp"
 #include <boost/filesystem.hpp>
 #include <chrono>

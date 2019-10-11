@@ -1,7 +1,7 @@
 #pragma once
 
-#include "3rdparty/easylogging++.h"
 #include "chainblocks.h"
+#include "easylogging++.h"
 #include <cfloat>
 
 inline MAKE_LOGGABLE(CBVar, var, os) {
