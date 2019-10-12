@@ -438,9 +438,9 @@ struct ContextableVar {
     _cp = nullptr; // reset this!
   }
 
-  CBVar getParam() { return _v; }
+  CBVar &getParam() { return _v; }
 
-  CBVar get(CBContext *ctx, bool global = false) {
+  CBVar &get(CBContext *ctx, bool global = false) {
     if (_v.valueType == ContextVar) {
       if (!_cp) {
         _cp = contextVariable(ctx, _v.payload.stringValue, global);
@@ -804,8 +804,8 @@ struct ExposedInfo {
   }
 
   static CBExposedTypeInfo Variable(const char *name, const char *help,
-                                    CBTypeInfo type) {
-    CBExposedTypeInfo res = {name, help, type};
+                                    CBTypeInfo type, bool isMutable = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable};
     return res;
   }
 

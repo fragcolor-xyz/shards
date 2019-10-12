@@ -726,7 +726,8 @@ inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
 inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b);
 
 inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
-  if (strcmp(a.name, b.name) != 0 || a.exposedType != b.exposedType)
+  if (strcmp(a.name, b.name) != 0 || a.exposedType != b.exposedType ||
+      a.isMutable != b.isMutable)
     return false;
   return true;
 }

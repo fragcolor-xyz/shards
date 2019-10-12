@@ -286,6 +286,7 @@ struct CBExposedTypeInfo {
   const char *name;
   const char *help;
   struct CBTypeInfo exposedType;
+  bool isMutable;
 };
 
 struct CBValidationResult {

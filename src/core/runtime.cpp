@@ -1149,6 +1149,7 @@ template <> struct hash<CBExposedTypeInfo> {
     using std::string;
     auto res = hash<string>()(typeInfo.name);
     res = res ^ hash<int>()(typeInfo.exposedType.basicType);
+    res = res ^ hash<int>()(typeInfo.isMutable);
     if (typeInfo.exposedType.basicType == Table &&
         typeInfo.exposedType.tableTypes && typeInfo.exposedType.tableKeys) {
       for (auto i = 0; i < stbds_arrlen(typeInfo.exposedType.tableKeys); i++) {
@@ -1277,8 +1278,8 @@ void validateConnection(ValidationContext &ctx) {
       }
     } else if (strcmp(ctx.bottom->name(ctx.bottom), "Push") == 0) {
       // make sure we are not Push-ing a Ref
-      // meaning target memory could be any block temporary buffer, yet Push will
-      // try to deallocate it/manage it
+      // meaning target memory could be any block temporary buffer, yet Push
+      // will try to deallocate it/manage it
       if (ctx.references.contains(name)) {
         // Error
         std::string err(
