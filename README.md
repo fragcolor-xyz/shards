@@ -3,6 +3,14 @@
 # Chainblocks
 ## A scripting tool to build tools.
 
+## Goals:
+* Blocks modularity allows to reuse low level code with minimal efforts between projects
+* Machine learning scripting; it's all about building graphs
+* Video game engine scripting; even for non-technical artists
+* Extremely quick prototyping, creativity unchained
+  * From pseudo code to real app
+  * Replace pseudo blocks with real native blocks as you go
+
 ## Features:
 * Clear data flow
 * Performance driven
