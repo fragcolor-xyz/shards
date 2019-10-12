@@ -5,6 +5,7 @@
 
 namespace chainblocks {
 struct CoreInfo {
+  static inline TypesInfo bytesInfo = TypesInfo(CBType::Bytes);
   static inline TypeInfo intType = TypeInfo(CBType::Int);
   static inline TypeInfo floatType = TypeInfo(CBType::Float);
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);

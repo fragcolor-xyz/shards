@@ -11,7 +11,7 @@ struct SharedTypes {
   static inline TypesInfo &boolInfo = CoreInfo::boolInfo;
   static inline TypesInfo &floatInfo = CoreInfo::floatInfo;
   static inline TypesInfo chainInfo = TypesInfo(CBType::Chain);
-  static inline TypesInfo bytesInfo = TypesInfo(CBType::Bytes);
+  static inline TypesInfo &bytesInfo = CoreInfo::bytesInfo;
   static inline TypesInfo &intInfo = CoreInfo::intInfo;
   static inline TypesInfo &tableInfo = CoreInfo::tableInfo;
   static inline TypesInfo &blockInfo = CoreInfo::blockInfo;
