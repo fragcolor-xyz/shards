@@ -496,9 +496,15 @@
   (Assert.Is "Hello reference" true)
 
   (Const [1 2 3 4 5])
+  (Set "pretest")
   (ToBytes)
   (BytesToInt64)
   (Assert.Is [1 2 3 4 5] true)
+  
+  0 (PrependTo (# "pretest"))
+  (Get "pretest")
+  (Assert.Is [0 1 2 3 4 5] true)
+  (Log)
 
   (Msg "All looking good!")))
 

@@ -304,6 +304,104 @@ struct Profile : public BlocksUser {
   }
 };
 
+struct XPendBase {
+  static inline TypesInfo xpendTypes = TypesInfo::FromMany(
+      false, CBTypeInfo(CoreInfo::anySeqInfo), CBTypeInfo(CoreInfo::bytesInfo),
+      CBTypeInfo(CoreInfo::strInfo));
+};
+
+struct XpendTo : public XPendBase {
+  ContextableVar _collection{};
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  // TODO use xpendTypes...
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Collection", "The collection to add the input to.",
+                        CBTypesInfo(CoreInfo::varInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    auto conss = IterableExposedInfo(consumables);
+    for (auto &cons : conss) {
+      if (strcmp(cons.name, _collection.variableName()) == 0) {
+        if (cons.exposedType.basicType != CBType::Seq &&
+            cons.exposedType.basicType != CBType::Bytes &&
+            cons.exposedType.basicType != CBType::String) {
+          throw CBException("AppendTo/PrependTo expects either a Seq, String "
+                            "or Bytes variable as collection.");
+        }
+        if (!cons.isMutable) {
+          throw CBException(
+              "AppendTo/PrependTo expects a mutable variable (Set/Push).");
+        }
+        if (cons.exposedType.basicType == Seq &&
+            (cons.exposedType.seqType == nullptr ||
+             *cons.exposedType.seqType != inputType)) {
+          throw CBException("AppendTo/PrependTo input type is not compatible "
+                            "with the backing Seq.");
+        }
+        // Validation Ok if here..
+        return inputType;
+      }
+    }
+    throw CBException("AppendTo/PrependTo: Failed to find variable: " +
+                      std::string(_collection.variableName()));
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _collection.setParam(value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _collection.getParam();
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+};
+
+struct AppendTo : public XpendTo {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto &collection = _collection.get(context);
+    switch (collection.valueType) {
+    case Seq: {
+      stbds_arrpush(collection.payload.seqValue, input);
+      break;
+    }
+    default:
+      break;
+    }
+    return input;
+  }
+};
+
+struct PrependTo : public XpendTo {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto &collection = _collection.get(context);
+    switch (collection.valueType) {
+    case Seq: {
+      stbds_arrins(collection.payload.seqValue, 0, input);
+      break;
+    }
+    default:
+      break;
+    }
+    return input;
+  }
+};
+
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
 RUNTIME_BLOCK_destroy(Const);
@@ -575,6 +673,17 @@ RUNTIME_BLOCK_cleanup(Profile);
 RUNTIME_BLOCK_inferTypes(Profile);
 RUNTIME_BLOCK_END(Profile);
 
+// Register PrependTo
+RUNTIME_CORE_BLOCK(PrependTo);
+RUNTIME_BLOCK_inputTypes(PrependTo);
+RUNTIME_BLOCK_outputTypes(PrependTo);
+RUNTIME_BLOCK_parameters(PrependTo);
+RUNTIME_BLOCK_inferTypes(PrependTo);
+RUNTIME_BLOCK_setParam(PrependTo);
+RUNTIME_BLOCK_getParam(PrependTo);
+RUNTIME_BLOCK_activate(PrependTo);
+RUNTIME_BLOCK_END(PrependTo);
+
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
 LOGIC_OP_DESC(IsMore);
@@ -671,6 +780,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Sort);
   REGISTER_CORE_BLOCK(Remove);
   REGISTER_CORE_BLOCK(Profile);
+  REGISTER_CORE_BLOCK(PrependTo);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);

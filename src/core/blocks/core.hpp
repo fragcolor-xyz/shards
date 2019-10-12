@@ -15,6 +15,7 @@ struct CoreInfo {
       TypesInfo::FromMany(true, CBType::Int, CBType::ContextVar);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);
   static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
+  static inline TypesInfo varInfo = TypesInfo(CBType::ContextVar);
   static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
   static inline TypesInfo anySeqInfo = TypesInfo(CBType::Seq);
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
@@ -462,7 +463,7 @@ struct Set : public SetBase {
       _tableContentInfo = TypeInfo(inputType);
       _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo));
+          _name.c_str(), "The exposed table.", _tableTypeInfo, true));
     } else {
       // Set... we warn if the variable is overwritten
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
@@ -474,7 +475,7 @@ struct Set : public SetBase {
       }
       // just a variable!
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
+          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType), true));
     }
     return inputType;
   }
@@ -581,11 +582,11 @@ struct Update : public SetBase {
       _tableContentInfo = TypeInfo(inputType);
       _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo));
+          _name.c_str(), "The exposed table.", _tableTypeInfo, true));
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType)));
+          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType), true));
     }
 
     return inputType;
@@ -883,7 +884,7 @@ struct Push : public VariableBase {
       stbds_arrpush(_tableInfo.tableTypes, _seqInfo);
       stbds_arrpush(_tableInfo.tableKeys, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo)));
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
     } else {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
         auto &cv = consumableVariables[i];
@@ -897,7 +898,7 @@ struct Push : public VariableBase {
       _seqInnerInfo = inputType;
       _seqInfo.seqType = &_seqInnerInfo;
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed sequence.", _seqInfo));
+          _name.c_str(), "The exposed sequence.", _seqInfo, true));
     }
     return inputType;
   }
