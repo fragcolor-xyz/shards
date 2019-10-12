@@ -2,8 +2,12 @@
 
 # Chainblocks
 ## A scripting tool to build tools.
+Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure. 
+
+With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
 
 ## Goals:
+* A universal interface to your code
 * Blocks modularity allows to reuse low level code with minimal efforts between projects
 * Machine learning scripting; it's all about building graphs
 * Video game engine scripting; even for non-technical artists
@@ -14,6 +18,9 @@
 ## Features:
 * Clear data flow
 * Performance driven
+* Automatically inferred strong types
+* **SIMD** vectors as first class types
+* Strong validation before run-time
 * Extremely easy to debug and dissect
 * Deterministic execution and performance
 * Built on top of **co-routines**, extremely easy to unleash parallelization
