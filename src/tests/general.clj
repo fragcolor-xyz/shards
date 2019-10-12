@@ -478,12 +478,15 @@
   (WriteFile "test.bin")
 
   "Hello Pandas"
-  (StringToBytes)
+  (ToBytes)
   (BytesToInt8)
+  (Assert.Is [72 101 108 108 111 32 80 97 110 100 97 115 0] true)
   (Log)
   (Math.Xor [77 78 77 11 16])
+  (Assert.Is [5 43 33 103 127 109 30 44 101 116 44 61 77] true)
   (Log)
   (Math.Xor [77 78 77 11 16])
+  (Assert.Is [72 101 108 108 111 32 80 97 110 100 97 115 0] true)
   (Log)
 
   ; show induced mutability with Ref

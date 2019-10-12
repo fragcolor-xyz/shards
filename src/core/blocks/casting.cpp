@@ -572,23 +572,124 @@ EXPECT_BLOCK(Int4, Int4);
 EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
 
-struct StringToBytes {
+struct ToBytes {
   std::vector<uint8_t> _buffer;
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+
+  void convert(const CBVar &input) {
+    switch (input.valueType) {
+    case CBType::EndOfBlittableTypes:
+    case CBType::None:
+    case CBType::Any: {
+      break;
+    }
+    case CBType::Enum: {
+      _buffer.resize(sizeof(CBEnum));
+      memcpy(&_buffer.front(), &input.payload.enumValue, sizeof(CBEnum));
+      break;
+    }
+    case CBType::Bool: {
+      _buffer.resize(sizeof(CBBool));
+      memcpy(&_buffer.front(), &input.payload.boolValue, sizeof(CBBool));
+      break;
+    }
+    case CBType::Int: {
+      _buffer.resize(sizeof(CBInt));
+      memcpy(&_buffer.front(), &input.payload.intValue, sizeof(CBInt));
+      break;
+    }
+    case CBType::Int2: {
+      _buffer.resize(sizeof(CBInt2));
+      memcpy(&_buffer.front(), &input.payload.int2Value, sizeof(CBInt2));
+      break;
+    }
+    case CBType::Int3: {
+      _buffer.resize(sizeof(CBInt3));
+      memcpy(&_buffer.front(), &input.payload.int3Value, sizeof(CBInt3));
+      break;
+    }
+    case CBType::Int4: {
+      _buffer.resize(sizeof(CBInt4));
+      memcpy(&_buffer.front(), &input.payload.int4Value, sizeof(CBInt4));
+      break;
+    }
+    case CBType::Int8: {
+      _buffer.resize(sizeof(CBInt8));
+      memcpy(&_buffer.front(), &input.payload.int8Value, sizeof(CBInt8));
+      break;
+    }
+    case CBType::Int16: {
+      _buffer.resize(sizeof(CBInt16));
+      memcpy(&_buffer.front(), &input.payload.int16Value, sizeof(CBInt16));
+      break;
+    }
+    case CBType::Float: {
+      _buffer.resize(sizeof(CBFloat));
+      memcpy(&_buffer.front(), &input.payload.floatValue, sizeof(CBFloat));
+      break;
+    }
+    case CBType::Float2: {
+      _buffer.resize(sizeof(CBFloat2));
+      memcpy(&_buffer.front(), &input.payload.float2Value, sizeof(CBFloat2));
+      break;
+    }
+    case CBType::Float3: {
+      _buffer.resize(sizeof(CBFloat3));
+      memcpy(&_buffer.front(), &input.payload.float3Value, sizeof(CBFloat3));
+      break;
+    }
+    case CBType::Float4: {
+      _buffer.resize(sizeof(CBFloat4));
+      memcpy(&_buffer.front(), &input.payload.float4Value, sizeof(CBFloat4));
+      break;
+    }
+    case CBType::Color: {
+      _buffer.resize(sizeof(CBColor));
+      memcpy(&_buffer.front(), &input.payload.colorValue, sizeof(CBColor));
+      break;
+    }
+    case CBType::Bytes: {
+      _buffer.resize(input.payload.bytesSize);
+      memcpy(&_buffer.front(), input.payload.bytesValue,
+             input.payload.bytesSize);
+      break;
+    }
+    case CBType::String:
+    case CBType::ContextVar: {
+      auto len = strlen(input.payload.stringValue);
+      _buffer.resize(len + 1);
+      memcpy(&_buffer.front(), input.payload.stringValue, len + 1);
+      break;
+    }
+    case CBType::Image: {
+      auto size = input.payload.imageValue.width *
+                  input.payload.imageValue.height *
+                  input.payload.imageValue.channels;
+      _buffer.resize(size);
+      memcpy(&_buffer.front(), input.payload.imageValue.data, size);
+      break;
+    }
+    case CBType::Chain:
+    case CBType::Block:
+    case CBType::Seq:
+    case CBType::Table: {
+      throw CBException("ToBytes, unsupported type, likely TODO.");
+    }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto len = strlen(input.payload.stringValue);
-    _buffer.resize(len + 1);
-    memcpy(&_buffer.front(), input.payload.stringValue, len + 1);
-    return Var(&_buffer.front(), len + 1);
+    convert(input);
+    return Var(&_buffer.front(), _buffer.size());
   }
 };
 
-RUNTIME_CORE_BLOCK(StringToBytes);
-RUNTIME_BLOCK_inputTypes(StringToBytes);
-RUNTIME_BLOCK_outputTypes(StringToBytes);
-RUNTIME_BLOCK_activate(StringToBytes);
-RUNTIME_BLOCK_END(StringToBytes);
+RUNTIME_CORE_BLOCK(ToBytes);
+RUNTIME_BLOCK_inputTypes(ToBytes);
+RUNTIME_BLOCK_outputTypes(ToBytes);
+RUNTIME_BLOCK_activate(ToBytes);
+RUNTIME_BLOCK_END(ToBytes);
 
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
@@ -624,6 +725,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectFloat4);
   REGISTER_CORE_BLOCK(ExpectBytes);
   REGISTER_CORE_BLOCK(ExpectString);
-  REGISTER_CORE_BLOCK(StringToBytes);
+  REGISTER_CORE_BLOCK(ToBytes);
 }
 }; // namespace chainblocks
