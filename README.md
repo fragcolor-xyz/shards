@@ -26,7 +26,7 @@
 ### This *(textual; visual GUI version coming soon (tm))*
 
 ```clojure
-(def! Root (Node))
+(def Root (Node))
 (schedule Root (Chain "MainLoop" :Looped
   (BGFX.MainWindow :Title "My Window" :Width 400 :Height 400)
   (ImGui.Window "My ImGui Window" :Width 400 :Height 400 
