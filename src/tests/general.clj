@@ -495,6 +495,11 @@
   (Get "ref1")
   (Assert.Is "Hello reference" true)
 
+  (Const [1 2 3 4 5])
+  (ToBytes)
+  (BytesToInt64)
+  (Assert.Is [1 2 3 4 5] true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

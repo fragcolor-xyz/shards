@@ -573,9 +573,77 @@ EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
 
 struct ToBytes {
+  struct StreamBuffer : std::streambuf {
+    std::vector<uint8_t> &data;
+    StreamBuffer(std::vector<uint8_t> &buffer) : data(buffer) {}
+    int overflow(int c) override {
+      data.push_back(static_cast<char>(c));
+      return 0;
+    }
+  };
+
   std::vector<uint8_t> _buffer;
+
   CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+
+  size_t getSize(const CBVar &input) {
+    switch (input.valueType) {
+    case CBType::Enum: {
+      return sizeof(CBEnum);
+    }
+    case CBType::Bool: {
+      return sizeof(CBBool);
+    }
+    case CBType::Int: {
+      return sizeof(CBInt);
+    }
+    case CBType::Int2: {
+      return sizeof(CBInt2);
+    }
+    case CBType::Int3: {
+      return sizeof(CBInt3);
+    }
+    case CBType::Int4: {
+      return sizeof(CBInt4);
+    }
+    case CBType::Int8: {
+      return sizeof(CBInt8);
+    }
+    case CBType::Int16: {
+      return sizeof(CBInt16);
+    }
+    case CBType::Float: {
+      return sizeof(CBFloat);
+    }
+    case CBType::Float2: {
+      return sizeof(CBFloat2);
+    }
+    case CBType::Float3: {
+      return sizeof(CBFloat3);
+    }
+    case CBType::Float4: {
+      return sizeof(CBFloat4);
+    }
+    case CBType::Color: {
+      return sizeof(CBColor);
+    }
+    case CBType::EndOfBlittableTypes:
+    case CBType::None:
+    case CBType::Any:
+    case CBType::String:
+    case CBType::ContextVar:
+    case CBType::Image:
+    case CBType::Chain:
+    case CBType::Block:
+    case CBType::Table:
+    case CBType::Seq:
+    case CBType::Bytes: {
+      return -1; // unsupported for now
+    }
+    }
+    return -1;
+  }
 
   void convert(const CBVar &input) {
     switch (input.valueType) {
@@ -670,9 +738,27 @@ struct ToBytes {
       memcpy(&_buffer.front(), input.payload.imageValue.data, size);
       break;
     }
+    case CBType::Seq: {
+      // For performance reasons we enforce this to be a flat sequence,
+      // if not the case run (Flatten) before
+      auto len = stbds_arrlen(input.payload.seqValue);
+      if (len > 0) {
+        auto itemSize = getSize(input.payload.seqValue[0]);
+        if (itemSize == -1) {
+          throw CBException("ToBytes, unsupported Seq type.");
+        }
+        _buffer.resize(itemSize * len);
+        for (auto i = 0; i < len; i++) {
+          // we cheat using any pointer in the union
+          // since only blittables are allowed
+          memcpy((&_buffer.front()) + (itemSize * i),
+                 &input.payload.seqValue[i].payload.intValue, itemSize);
+        }
+      }
+      break;
+    }
     case CBType::Chain:
     case CBType::Block:
-    case CBType::Seq:
     case CBType::Table: {
       throw CBException("ToBytes, unsupported type, likely TODO.");
     }
