@@ -1,8 +1,8 @@
-### <span style="color:red">Warning: Work in progress</span>
-
-# Chainblocks
-## A scripting tool to build tools.
 <img src="assets/drawing.png"  width="250" height="250">
+
+## A scripting tool to build tools.
+
+### <span style="color:red">Warning: Work in progress</span>
 
 ## Goals
 * Automation scripting for everyone
