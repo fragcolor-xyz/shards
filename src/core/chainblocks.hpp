@@ -197,6 +197,84 @@ ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
   return freeCount;
 }
 
+template <class Serializer>
+inline void serializeVar(const CBVar &input, Serializer sfunc) {
+  sfunc((const uint8_t *)&input.valueType, sizeof(input.valueType));
+  switch (input.valueType) {
+  case CBType::None:
+  case CBType::EndOfBlittableTypes:
+  case CBType::Any:
+  case CBType::Enum:
+  case CBType::Bool:
+  case CBType::Int:
+  case CBType::Int2:
+  case CBType::Int3:
+  case CBType::Int4:
+  case CBType::Int8:
+  case CBType::Int16:
+  case CBType::Float:
+  case CBType::Float2:
+  case CBType::Float3:
+  case CBType::Float4:
+  case CBType::Color:
+    sfunc((const uint8_t *)&input.payload, sizeof(input.payload));
+    break;
+  case CBType::Bytes:
+    sfunc((const uint8_t *)&input.payload.bytesSize,
+          sizeof(input.payload.bytesSize));
+    sfunc((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
+    break;
+  case CBType::String:
+  case CBType::ContextVar: {
+    uint64_t len = strlen(input.payload.stringValue);
+    sfunc((const uint8_t *)&len, sizeof(uint64_t));
+    sfunc((const uint8_t *)input.payload.stringValue, len);
+    break;
+  }
+  case CBType::Seq: {
+    uint64_t len = stbds_arrlen(input.payload.seqValue);
+    sfunc((const uint8_t *)&len, sizeof(uint64_t));
+    for (auto i = 0; i < len; i++) {
+      serializeVar(input.payload.seqValue[i], sfunc);
+    }
+    break;
+  }
+  case CBType::Table: {
+    uint64_t len = stbds_shlen(input.payload.tableValue);
+    sfunc((const uint8_t *)&len, sizeof(uint64_t));
+    for (auto i = 0; i < len; i++) {
+      auto &v = input.payload.tableValue[i];
+      uint64_t klen = strlen(v.key);
+      sfunc((const uint8_t *)&klen, sizeof(uint64_t));
+      sfunc((const uint8_t *)v.key, len);
+      serializeVar(v.value, sfunc);
+    }
+    break;
+  }
+  case CBType::Image: {
+    sfunc((const uint8_t *)&input.payload.imageValue.channels,
+          sizeof(input.payload.imageValue.channels));
+    sfunc((const uint8_t *)&input.payload.imageValue.flags,
+          sizeof(input.payload.imageValue.flags));
+    sfunc((const uint8_t *)&input.payload.imageValue.width,
+          sizeof(input.payload.imageValue.width));
+    sfunc((const uint8_t *)&input.payload.imageValue.height,
+          sizeof(input.payload.imageValue.height));
+    auto size = input.payload.imageValue.channels *
+                input.payload.imageValue.height *
+                input.payload.imageValue.width;
+    sfunc((const uint8_t *)input.payload.imageValue.data, size);
+    break;
+  }
+  case CBType::Object:
+  case CBType::Chain:
+  case CBType::Block:
+    throw CBException("Type cannot be serialized. " +
+                      type2Name(input.valueType));
+  }
+  sfunc((const uint8_t *)input.reserved, sizeof(input.reserved));
+}
+
 template <typename T, typename V> class IterableStb {
 public:
   IterableStb(T seq) : _seq(seq) {}

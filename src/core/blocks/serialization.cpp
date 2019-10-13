@@ -56,86 +56,17 @@ struct WriteFile : public FileBase {
     }
   }
 
-  void writeVar(const CBVar &input) {
-    _fileStream.write((const char *)&input.valueType, sizeof(input.valueType));
-    switch (input.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
-    case CBType::Enum:
-    case CBType::Bool:
-    case CBType::Int:
-    case CBType::Int2:
-    case CBType::Int3:
-    case CBType::Int4:
-    case CBType::Int8:
-    case CBType::Int16:
-    case CBType::Float:
-    case CBType::Float2:
-    case CBType::Float3:
-    case CBType::Float4:
-    case CBType::Color:
-      _fileStream.write((const char *)&input.payload, sizeof(input.payload));
-      break;
-    case CBType::Bytes:
-      _fileStream.write((const char *)&input.payload.bytesSize,
-                        sizeof(input.payload.bytesSize));
-      _fileStream.write((const char *)input.payload.bytesValue,
-                        input.payload.bytesSize);
-      break;
-    case CBType::String:
-    case CBType::ContextVar: {
-      uint64_t len = strlen(input.payload.stringValue);
-      _fileStream.write((const char *)&len, sizeof(uint64_t));
-      _fileStream.write(input.payload.stringValue, len);
-      break;
+  struct Serializer {
+    std::ofstream &_fileStream;
+    Serializer(std::ofstream &stream) : _fileStream(stream) {}
+    void operator()(const uint8_t *buf, size_t size) {
+      _fileStream.write((const char *)buf, size);
     }
-    case CBType::Seq: {
-      uint64_t len = stbds_arrlen(input.payload.seqValue);
-      _fileStream.write((const char *)&len, sizeof(uint64_t));
-      for (auto i = 0; i < len; i++) {
-        writeVar(input.payload.seqValue[i]);
-      }
-      break;
-    }
-    case CBType::Table: {
-      uint64_t len = stbds_shlen(input.payload.tableValue);
-      _fileStream.write((const char *)&len, sizeof(uint64_t));
-      for (auto i = 0; i < len; i++) {
-        auto &v = input.payload.tableValue[i];
-        uint64_t klen = strlen(v.key);
-        _fileStream.write((const char *)&klen, sizeof(uint64_t));
-        _fileStream.write(v.key, len);
-        writeVar(v.value);
-      }
-      break;
-    }
-    case CBType::Image: {
-      _fileStream.write((const char *)&input.payload.imageValue.channels,
-                        sizeof(input.payload.imageValue.channels));
-      _fileStream.write((const char *)&input.payload.imageValue.flags,
-                        sizeof(input.payload.imageValue.flags));
-      _fileStream.write((const char *)&input.payload.imageValue.width,
-                        sizeof(input.payload.imageValue.width));
-      _fileStream.write((const char *)&input.payload.imageValue.height,
-                        sizeof(input.payload.imageValue.height));
-      auto size = input.payload.imageValue.channels *
-                  input.payload.imageValue.height *
-                  input.payload.imageValue.width;
-      _fileStream.write((const char *)input.payload.imageValue.data, size);
-      break;
-    }
-    case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
-      throw CBException("WriteFile: Type cannot be serialized (yet?). " +
-                        type2Name(input.valueType));
-    }
-    _fileStream.write((const char *)input.reserved, sizeof(input.reserved));
-  }
+  };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    writeVar(input);
+    Serializer s(_fileStream);
+    serializeVar(input, s);
     return input;
   }
 };

@@ -186,27 +186,56 @@ RUNTIME_BLOCK_activate(Flatten);
 RUNTIME_BLOCK_END(Flatten);
 
 struct IndexOf {
-  ContextableVar _item;
+  ContextableVar _item{};
+  CBSeq _results = nullptr;
+  bool _all = false;
+
+  void destroy() {
+    if (_results) {
+      stbds_arrfree(_results);
+    }
+  }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  CBTypesInfo outputTypes() {
+    if (_all)
+      return CBTypesInfo(CoreInfo::intSeqInfo);
+    else
+      return CBTypesInfo(CoreInfo::intInfo);
+  }
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Item",
-      "The item to find the index of from the input, if it's a sequence it "
-      "will try to match all the items in the sequence, in sequence.",
-      CBTypesInfo(CoreInfo::anyInfo)));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param(
+          "Item",
+          "The item to find the index of from the input, if it's a sequence it "
+          "will try to match all the items in the sequence, in sequence.",
+          CBTypesInfo(CoreInfo::anyInfo)),
+      ParamsInfo::Param("All",
+                        "If true will return a sequence with all the indices "
+                        "of Item, empty sequence if not found.",
+                        CBTypesInfo(CoreInfo::boolInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) { _item.setParam(value); }
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _item.setParam(value);
+    else
+      _all = value.payload.boolValue;
+  }
 
-  CBVar getParam(int index) { return _item.getParam(); }
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _item.getParam();
+    else
+      return Var(_all);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto inputLen = stbds_arrlen(input.payload.seqValue);
     auto itemLen = 0;
     auto item = _item.get(context);
+    stbds_arrsetlen(_results, 0);
     if (item.valueType == Seq) {
       itemLen = stbds_arrlen(item.payload.seqValue);
     }
@@ -214,7 +243,10 @@ struct IndexOf {
     for (auto i = 0; i < inputLen; i++) {
       if (item.valueType == Seq) {
         if ((i + itemLen) > inputLen) {
-          return Var(-1); // we are likely at the end
+          if (!_all)
+            return Var(-1); // we are likely at the end
+          else
+            return Var(_results);
         }
 
         auto ci = i;
@@ -223,15 +255,26 @@ struct IndexOf {
             goto failed;
           }
         }
-        return Var(i);
+
+        if (!_all)
+          return Var(i);
+        else
+          stbds_arrpush(_results, Var(i));
 
       failed:
         continue;
       } else if (input.payload.seqValue[i] == item) {
-        return Var(i);
+        if (!_all)
+          return Var(i);
+        else
+          stbds_arrpush(_results, Var(i));
       }
     }
-    return Var(-1);
+
+    if (!_all)
+      return Var(-1);
+    else
+      return Var(_results);
   }
 };
 
