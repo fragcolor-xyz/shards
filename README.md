@@ -2,11 +2,9 @@
 
 # Chainblocks
 ## A scripting tool to build tools.
-Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure. 
 
-With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
-
-## Goals:
+## Goals
+* Automation scripting for everyone
 * A universal interface to your code
 * Blocks modularity allows to reuse low level code with minimal efforts between projects
 * Machine learning scripting; it's all about building graphs
@@ -15,7 +13,7 @@ With a strong emphasis on automation and repeated tasks. Making each frame of ex
   * From pseudo code to real app
   * Replace pseudo blocks with real native blocks as you go
 
-## Features:
+## Features
 * Clear data flow
 * Performance driven
 * Automatically inferred strong types
@@ -53,6 +51,15 @@ With a strong emphasis on automation and repeated tasks. Making each frame of ex
 ![](assets/simple1.PNG)
 
 Complete of a BGFX context, rendering on a DX11 (windows; in this case) surface.
+
+## Motivation
+In all those years of software engineering I've been touching many fields including, audio, VR, physics, game engines in general but also machine learning, NNs etc... everything interesting and all but all the software I wrote didn't exactly connect to each other and connecting it would have been a big effort. I always wanted to mix things and recombine, experiment, after all I started as a musician using max/msp on my black powerbook pismo...
+
+Chainblocks is my answer to this call, a tool that let's me write specific native code and connect it to any other code I wrote.
+
+Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure. 
+
+With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
 
 ## Current state
 Very much work in progress, this project started as a *nim* project, checking the history will show that, but slowly for different many reasons *nim* was fully replaced with *C++*.
