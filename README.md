@@ -2,6 +2,7 @@
 
 # Chainblocks
 ## A scripting tool to build tools.
+<img src="assets/drawing.png"  width="250" height="250">
 
 ## Goals
 * Automation scripting for everyone
