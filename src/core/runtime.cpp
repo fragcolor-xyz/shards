@@ -15,21 +15,25 @@ void *operator new[](std::size_t s) {
   rpmalloc_initialize();
   return rpmalloc(s);
 }
-void *operator new(std::size_t s, const std::nothrow_t &tag) {
+void *operator new(std::size_t s, const std::nothrow_t &tag) noexcept {
   rpmalloc_initialize();
   return rpmalloc(s);
 }
-void *operator new[](std::size_t s, const std::nothrow_t &tag) {
+void *operator new[](std::size_t s, const std::nothrow_t &tag) noexcept {
   rpmalloc_initialize();
   return rpmalloc(s);
 }
 
-void operator delete(void *ptr) { rpfree(ptr); }
-void operator delete[](void *ptr) { rpfree(ptr); }
-void operator delete(void *ptr, const std::nothrow_t &tag) { rpfree(ptr); }
-void operator delete[](void *ptr, const std::nothrow_t &tag) { rpfree(ptr); }
-void operator delete(void *ptr, std::size_t sz) { rpfree(ptr); }
-void operator delete[](void *ptr, std::size_t sz) { rpfree(ptr); }
+void operator delete(void *ptr) noexcept { rpfree(ptr); }
+void operator delete[](void *ptr) noexcept { rpfree(ptr); }
+void operator delete(void *ptr, const std::nothrow_t &tag) noexcept {
+  rpfree(ptr);
+}
+void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
+  rpfree(ptr);
+}
+void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
+void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 
 INITIALIZE_EASYLOGGINGPP
 
