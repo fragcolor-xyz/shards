@@ -31,6 +31,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Deps
       run: |
+        sudo xcode-select --switch /Applications/Xcode_11.app
         brew install boost cmake ninja clang-format
     - name: Build
       run: |
