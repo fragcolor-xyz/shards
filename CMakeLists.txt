@@ -97,14 +97,14 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt)
   include_directories(/usr/local/include /usr/local/opt/readline/include)
   link_directories(/usr/local/lib /usr/local/opt/readline/lib)
 else()
-  set(BOOST_LIBS -lboost_context -lboost_filesystem)
+  set(BOOST_LIBS -lboost_context)
   set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
 
@@ -134,6 +134,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/math.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
@@ -317,6 +318,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CB_EXTRAS}
 )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")

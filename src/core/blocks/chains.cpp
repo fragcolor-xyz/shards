@@ -1,12 +1,12 @@
 #include "rigtorp/SPSCQueue.h"
 #include "shared.hpp"
-#include <boost/filesystem.hpp>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <thread>
 
-namespace bfs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace chainblocks {
 static TypesInfo chainTypes =
@@ -281,15 +281,15 @@ struct ChainFileWatcher {
   explicit ChainFileWatcher(std::string &file)
       : running(true), fileName(file), results(2) {
     worker = std::thread([this] {
-      std::time_t lastWrite = 0;
+      decltype(fs::last_write_time(fs::path())) lastWrite{};
       while (running) {
         try {
-          bfs::path p(fileName);
-          if (bfs::exists(p) && bfs::is_regular_file(p) &&
-              bfs::last_write_time(p) > lastWrite) {
+          fs::path p(fileName);
+          if (fs::exists(p) && fs::is_regular_file(p) &&
+              fs::last_write_time(p) != lastWrite) {
             // make sure to store last write time
             // before any possible error!
-            auto writeTime = bfs::last_write_time(p);
+            auto writeTime = fs::last_write_time(p);
             lastWrite = writeTime;
 
             std::ifstream jf(p.c_str());
