@@ -1,4 +1,5 @@
 #include "../runtime.hpp"
+#include "../utility.hpp"
 
 namespace chainblocks {
 struct JointOp {
@@ -311,6 +312,8 @@ struct XPendBase {
 };
 
 struct XpendTo : public XPendBase {
+  ThreadShared<std::string> _scratchStr;
+
   ContextableVar _collection{};
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
@@ -380,6 +383,17 @@ struct AppendTo : public XpendTo {
       stbds_arrpush(collection.payload.seqValue, input);
       break;
     }
+    case String: {
+      // variable is mutable, so we are sure we manage the memory
+      // specifically in Set, cloneVar is used, which uses `new` to allocate
+      // all we have to do use to clone our scratch on top of it
+      _scratchStr().clear();
+      _scratchStr() += collection.payload.stringValue;
+      _scratchStr() += input.payload.stringValue;
+      Var tmp(_scratchStr());
+      cloneVar(collection, tmp);
+      break;
+    }
     default:
       break;
     }
@@ -393,6 +407,17 @@ struct PrependTo : public XpendTo {
     switch (collection.valueType) {
     case Seq: {
       stbds_arrins(collection.payload.seqValue, 0, input);
+      break;
+    }
+    case String: {
+      // variable is mutable, so we are sure we manage the memory
+      // specifically in Set, cloneVar is used, which uses `new` to allocate
+      // all we have to do use to clone our scratch on top of it
+      _scratchStr().clear();
+      _scratchStr() += input.payload.stringValue;
+      _scratchStr() += collection.payload.stringValue;
+      Var tmp(_scratchStr());
+      cloneVar(collection, tmp);
       break;
     }
     default:
@@ -684,6 +709,17 @@ RUNTIME_BLOCK_getParam(PrependTo);
 RUNTIME_BLOCK_activate(PrependTo);
 RUNTIME_BLOCK_END(PrependTo);
 
+// Register PrependTo
+RUNTIME_CORE_BLOCK(AppendTo);
+RUNTIME_BLOCK_inputTypes(AppendTo);
+RUNTIME_BLOCK_outputTypes(AppendTo);
+RUNTIME_BLOCK_parameters(AppendTo);
+RUNTIME_BLOCK_inferTypes(AppendTo);
+RUNTIME_BLOCK_setParam(AppendTo);
+RUNTIME_BLOCK_getParam(AppendTo);
+RUNTIME_BLOCK_activate(AppendTo);
+RUNTIME_BLOCK_END(AppendTo);
+
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
 LOGIC_OP_DESC(IsMore);
@@ -781,6 +817,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Remove);
   REGISTER_CORE_BLOCK(Profile);
   REGISTER_CORE_BLOCK(PrependTo);
+  REGISTER_CORE_BLOCK(AppendTo);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);
