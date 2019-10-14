@@ -547,7 +547,7 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
 }
 
 static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
-                                 CBVar chainInput) {
+                                 const CBVar &chainInput) {
   chain->previousOutput = CBVar();
 
   // Detect and pause if we need to here
@@ -630,7 +630,7 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 }
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
-                                    CBVar input) {
+                                    const CBVar &input) {
   chain->finished = false; // Reset finished flag (atomic)
   auto runRes = chainblocks::runChain(chain, context, input);
   chain->finishedOutput = runRes.output; // Write result before setting flag
