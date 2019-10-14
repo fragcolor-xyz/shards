@@ -1,0 +1,26 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Deps
+      run: |
+        apt-get install -y libboost-filesystem-dev libboost-context-dev cmake
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
+        ninja cbl
+    - name: Run
+      run: |
+        ./cbl ../src/tests/general.clj
+        ./cbl ../src/tests/variables.clj
+        ./cbl ../src/tests/subchains.clj
+        ./cbl ../src/tests/linalg.clj
