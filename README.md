@@ -1,4 +1,6 @@
-<img align="left" src="assets/drawing.png"  width="250" height="250">
+<p align="center">
+  <img width="350" height="350" src="assets/drawing.png">
+</p>
 
 ## A scripting tool to build tools.
 
