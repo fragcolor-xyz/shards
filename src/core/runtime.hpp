@@ -540,7 +540,7 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
   }
   default: {
     // NotInline
-    previousOutput = blk->activate(blk, context, input);
+    previousOutput = blk->activate(blk, context, &input);
     return;
   }
   }

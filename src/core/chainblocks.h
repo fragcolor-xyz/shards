@@ -421,7 +421,7 @@ typedef CBTypeInfo(__cdecl *CBInferTypesProc)(
     CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
-typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, CBVar);
+typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, const CBVar*);
 
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
