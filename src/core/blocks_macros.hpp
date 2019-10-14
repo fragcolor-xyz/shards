@@ -186,21 +186,11 @@
             inputType, consumableVariables);                                   \
       });
 
-#define RUNTIME_BLOCK_preChain(_name_)                                         \
-  result->preChain =                                                           \
-      static_cast<CBPreChainProc>([](CBlock *block, CBContext *context) {      \
-        reinterpret_cast<_name_##Runtime *>(block)->core.preChain(context);    \
-      });
 #define RUNTIME_BLOCK_activate(_name_)                                         \
   result->activate = static_cast<CBActivateProc>(                              \
-      [](CBlock *block, CBContext *context, CBVar input) {                     \
+      [](CBlock *block, CBContext *context, const CBVar *input) {              \
         return reinterpret_cast<_name_##Runtime *>(block)->core.activate(      \
-            context, input);                                                   \
-      });
-#define RUNTIME_BLOCK_postChain(_name_)                                        \
-  result->postChain =                                                          \
-      static_cast<CBPostChainProc>([](CBlock *block, CBContext *context) {     \
-        reinterpret_cast<_name_##Runtime *>(block)->core.postChain(context);   \
+            context, *input);                                                  \
       });
 
 #define RUNTIME_BLOCK_cleanup(_name_)                                          \

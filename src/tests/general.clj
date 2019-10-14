@@ -506,6 +506,28 @@
   (Assert.Is [0 1 2 3 4 5] true)
   (Log)
 
+  "." (FS.Iterate :Recursive false) (Log)
+  (Take 4) (FS.Extension) (Log)
+
+  "." (FS.Iterate :Recursive false) (Log)
+  (Take 4) (FS.Filename :NoExtension true) (Log)
+
+  "The result is: "   (Set "text1")
+  "Hello world, "     (AppendTo (# "text1"))
+  "this is a string"  (AppendTo (# "text1"))
+  (Get "text1") (Log)
+  (Assert.Is "The result is: Hello world, this is a string" true)
+
+  "The result is: "   (Set "text2")
+  "Hello world, "     (AppendTo (# "text2"))
+  "this is a string again"  (AppendTo (# "text2"))
+  (Get "text2") (Log)
+  (Assert.IsNot "The result is: Hello world, this is a string" true)
+
+  "## " (PrependTo (# "text2"))
+  (Get "text2") (Log)
+  (Assert.Is "## The result is: Hello world, this is a string again" true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

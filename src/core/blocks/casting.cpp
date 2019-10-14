@@ -630,6 +630,7 @@ struct ToBytes {
     }
     case CBType::EndOfBlittableTypes:
     case CBType::None:
+    case CBType::Object:
     case CBType::Any:
     case CBType::String:
     case CBType::ContextVar:
@@ -649,6 +650,7 @@ struct ToBytes {
     switch (input.valueType) {
     case CBType::EndOfBlittableTypes:
     case CBType::None:
+    case CBType::Object:
     case CBType::Any: {
       break;
     }

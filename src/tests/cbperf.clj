@@ -1,5 +1,6 @@
+; valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes ./cblp ../../chainblocks/src/tests/cbperf.clj
 (def Root (Node))
-(schedule Root (Chain "analysis" :Looped
+(schedule Root (Chain "analysis" ; :Looped
   18000000
   (Set "nfloats")  
   (Profile (-->

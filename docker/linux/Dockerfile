@@ -1,6 +1,6 @@
 FROM archlinux/base
 
-RUN pacman -Syu --noconfirm && pacman -S --noconfirm base-devel git cmake wget clang ninja boost gdb lld
+RUN pacman -Syu --noconfirm && pacman -S --noconfirm base-devel git cmake wget clang ninja boost
 
 ARG USER_ID=1000
 

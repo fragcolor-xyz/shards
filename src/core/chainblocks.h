@@ -42,7 +42,7 @@ enum CBType : uint8_t {
   Color,  // A vector of 4 uint8
   Chain,  // sub chains, e.g. IF/ELSE
   Block,  // a block, useful for future introspection blocks!
-  Bytes,
+  Bytes, // pointer + size, we don't deep copy, but pass by ref instead
 
   EndOfBlittableTypes, // anything below this is not blittable (not exactly but for cloneVar mostly)
 
@@ -421,7 +421,7 @@ typedef CBTypeInfo(__cdecl *CBInferTypesProc)(
     CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
-typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, CBVar);
+typedef CBVar(__cdecl *CBActivateProc)(struct CBlock *, CBContext *, const CBVar*);
 
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
