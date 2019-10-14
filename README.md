@@ -1,4 +1,4 @@
-<div style="text-align:center"><img src="assets/drawing.png"  width="250" height="250"></div>
+<img align="left" src="assets/drawing.png"  width="250" height="250">
 
 ## A scripting tool to build tools.
 
