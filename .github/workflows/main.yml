@@ -34,6 +34,7 @@ jobs:
         brew install boost cmake ninja
     - name: Build
       run: |
+        git submodule update --init --recursive
         mkdir build
         cd build
         cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
