@@ -313,6 +313,13 @@ struct Var : public CBVar {
     memcpy((void *)this, (void *)&other, sizeof(CBVar));
   }
 
+  explicit operator bool() const {
+    if (valueType != Bool) {
+      throw CBException("Invalid variable casting! expected Bool");
+    }
+    return payload.boolValue;
+  }
+
   explicit operator int() const {
     if (valueType != Int) {
       throw CBException("Invalid variable casting! expected Int");
@@ -475,7 +482,7 @@ struct Var : public CBVar {
     payload.stringValue = src;
   }
 
-  explicit Var(std::string &src) : CBVar() {
+  explicit Var(const std::string &src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src.c_str();
   }
@@ -488,6 +495,15 @@ struct Var : public CBVar {
   explicit Var(CBColor color) : CBVar() {
     valueType = Color;
     payload.colorValue = color;
+  }
+
+  explicit Var(CBSeq &storage, const std::vector<std::string> &strings)
+      : CBVar() {
+    valueType = Seq;
+    for (auto &str : strings) {
+      stbds_arrpush(storage, Var(str));
+    }
+    payload.seqValue = storage;
   }
 };
 

@@ -5,7 +5,10 @@
 
 namespace chainblocks {
 struct SharedTypes {
+  static inline TypeInfo strType = TypeInfo(CBType::String);
   static inline TypesInfo &strInfo = CoreInfo::strInfo;
+  static inline TypeInfo strSeq = TypeInfo::Sequence(strType);
+  static inline TypesInfo strSeqInfo = TypesInfo(strSeq);
   static inline TypesInfo &anyInfo = CoreInfo::anyInfo;
   static inline TypesInfo &noneInfo = CoreInfo::noneInfo;
   static inline TypesInfo &boolInfo = CoreInfo::boolInfo;

@@ -506,6 +506,12 @@
   (Assert.Is [0 1 2 3 4 5] true)
   (Log)
 
+  "." (FS.Iterate :Recursive false) (Log)
+  (Take 4) (FS.Extension) (Log)
+
+  "." (FS.Iterate :Recursive false) (Log)
+  (Take 4) (FS.Filename :NoExtension true) (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
