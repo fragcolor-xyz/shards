@@ -31,7 +31,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Deps
       run: |
-        brew install boost cmake ninja
+        brew install boost cmake ninja clang-format
     - name: Build
       run: |
         git submodule update --init --recursive
