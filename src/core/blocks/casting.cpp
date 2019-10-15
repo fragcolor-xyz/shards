@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
+/* Copyright © 2019 Giovanni Petrantoni */
+
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -815,4 +818,383 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectString);
   REGISTER_CORE_BLOCK(ToBytes);
 }
+}; // namespace chainblocks
+esVar = nullptr;
+  ExposedInfo _exposedInfo{};
+
+  void destroy() {
+    if (_cachedResult) {
+      stbds_arrfree(_cachedResult);
+    }
+    destroyVar(_indices);
+  }
+
+  void cleanup() { _indicesVar = nullptr; }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // Figure if we output a sequence or not
+    if (_indices.valueType == Seq) {
+      if (inputType.basicType == Seq) {
+        return inputType; // multiple values
+      }
+    } else if (_indices.valueType == Int) {
+      if (inputType.basicType == Seq && inputType.seqType) {
+        return *inputType.seqType; // single value
+      }
+    } else { // ContextVar
+      IterableExposedInfo infos(consumableVariables);
+      for (auto &info : infos) {
+        if (strcmp(info.name, _indices.payload.stringValue) == 0) {
+          if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
+              info.exposedType.seqType->basicType == Int) {
+            if (inputType.basicType == Seq) {
+              return inputType; // multiple values
+            }
+          } else if (info.exposedType.basicType == Int) {
+            if (inputType.basicType == Seq && inputType.seqType) {
+              return *inputType.seqType; // single value
+            }
+          } else {
+            auto msg = "Take indices variable " + std::string(info.name) +
+                       " expected to be either a Seq or a Int";
+            throw CBException(msg);
+          }
+        }
+      }
+    }
+    throw CBException("Take expected a sequence as input.");
+  }
+
+  CBExposedTypesInfo consumedVariables() {
+    if (_indices.valueType == ContextVar) {
+      _exposedInfo =
+          ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue,
+                                            "The consumed variable.",
+                                            CBTypeInfo(CoreInfo::intInfo)),
+                      ExposedInfo::Variable(_indices.payload.stringValue,
+                                            "The consumed variables.",
+                                            CBTypeInfo(CoreInfo::intSeqInfo)));
+      return CBExposedTypesInfo(_exposedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_indices, value);
+      _indicesVar = nullptr;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) { return _indices; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto inputLen = stbds_arrlen(input.payload.seqValue);
+    auto indices = _indices;
+
+    if (_indices.valueType == ContextVar && !_indicesVar) {
+      _indicesVar = contextVariable(context, _indices.payload.stringValue);
+    }
+
+    if (_indicesVar) {
+      indices = *_indicesVar;
+    }
+
+    if (indices.valueType == Int) {
+      auto index = indices.payload.intValue;
+      if (index >= inputLen) {
+        LOG(ERROR) << "Take out of range! len:" << inputLen
+                   << " wanted index: " << index;
+        throw CBException("Take out of range!");
+      }
+      return input.payload.seqValue[index];
+    } else {
+      // Else it's a seq
+      auto nindices = stbds_arrlen(indices.payload.seqValue);
+      stbds_arrsetlen(_cachedResult, nindices);
+      for (auto i = 0; nindices > i; i++) {
+        auto index = indices.payload.seqValue[i].payload.intValue;
+        if (index >= inputLen) {
+          LOG(ERROR) << "Take out of range! len:" << inputLen
+                     << " wanted index: " << index;
+          throw CBException("Take out of range!");
+        }
+        _cachedResult[i] = input.payload.seqValue[index];
+      }
+      return Var(_cachedResult);
+    }
+  }
+};
+
+struct Limit {
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Max", "How many maximum elements to take from the input sequence.",
+      CBTypesInfo(CoreInfo::intInfo)));
+
+  CBSeq _cachedResult = nullptr;
+  int64_t _max = 0;
+
+  void destroy() {
+    if (_cachedResult) {
+      stbds_arrfree(_cachedResult);
+    }
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    // Figure if we output a sequence or not
+    if (_max > 1) {
+      if (inputType.basicType == Seq) {
+        return inputType; // multiple values
+      }
+    } else {
+      if (inputType.basicType == Seq && inputType.seqType) {
+        return *inputType.seqType; // single value
+      }
+    }
+    throw CBException("Limit expected a sequence as input.");
+  }
+
+  void setParam(int index, CBVar value) { _max = value.payload.intValue; }
+
+  CBVar getParam(int index) { return Var(_max); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+
+    if (_max == 1) {
+      auto index = 0;
+      if (index >= inputLen) {
+        LOG(ERROR) << "Limit out of range! len:" << inputLen
+                   << " wanted index: " << index;
+        throw CBException("Limit out of range!");
+      }
+      return input.payload.seqValue[index];
+    } else {
+      // Else it's a seq
+      auto nindices = std::min(inputLen, _max);
+      stbds_arrsetlen(_cachedResult, nindices);
+      for (auto i = 0; i < nindices; i++) {
+        _cachedResult[i] = input.payload.seqValue[i];
+      }
+      return Var(_cachedResult);
+    }
+  }
+};
+
+struct BlocksUser {
+  CBVar _blocks{};
+  CBValidationResult _chainValidation{};
+
+  void destroy() {
+    if (_blocks.valueType == Seq) {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+        blk->cleanup(blk);
+        blk->destroy(blk);
+      }
+    } else if (_blocks.valueType == Block) {
+      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
+      _blocks.payload.blockValue->destroy(_blocks.payload.blockValue);
+    }
+    destroyVar(_blocks);
+    stbds_arrfree(_chainValidation.exposedInfo);
+  }
+
+  void cleanup() {
+    if (_blocks.valueType == Seq) {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+        blk->cleanup(blk);
+      }
+    } else if (_blocks.valueType == Block) {
+      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
+    }
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // Free any previous result!
+    stbds_arrfree(_chainValidation.exposedInfo);
+    _chainValidation.exposedInfo = nullptr;
+
+    std::vector<CBlock *> blocks;
+    if (_blocks.valueType == Block) {
+      blocks.push_back(_blocks.payload.blockValue);
+    } else {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        blocks.push_back(_blocks.payload.seqValue[i].payload.blockValue);
+      }
+    }
+    _chainValidation = validateConnections(
+        blocks,
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Failed inner chain validation, error: " << errorTxt;
+            throw CBException("Failed inner chain validation.");
+          } else {
+            LOG(INFO) << "Warning during inner chain validation: " << errorTxt;
+          }
+        },
+        this, inputType, consumables);
+
+    return inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _chainValidation.exposedInfo; }
+};
+
+struct Repeat : public BlocksUser {
+  std::string _ctxVar;
+  CBVar *_ctxTimes = nullptr;
+  int64_t _times = 0;
+  bool _forever = false;
+  ExposedInfo _consumedInfo{};
+
+  void cleanup() {
+    BlocksUser::cleanup();
+    _ctxTimes = nullptr;
+  }
+
+  static inline ParamsInfo repeatParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Action", "The blocks to repeat.",
+                        CBTypesInfo(CoreInfo::blocksInfo)),
+      ParamsInfo::Param("Times", "How many times we should repeat the action.",
+                        CBTypesInfo(CoreInfo::intVarInfo)),
+      ParamsInfo::Param("Forever", "If we should repeat the action forever.",
+                        CBTypesInfo(CoreInfo::boolInfo)));
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(repeatParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_blocks, value);
+      break;
+    case 1:
+      if (value.valueType == Int) {
+        _ctxVar.clear();
+        _times = value.payload.intValue;
+      } else {
+        _ctxVar.assign(value.payload.stringValue);
+        _ctxTimes = nullptr;
+      }
+      break;
+    case 2:
+      _forever = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    case 1:
+      if (_ctxVar.size() == 0) {
+        return Var(_times);
+      } else {
+        auto ctxTimes = Var(_ctxVar);
+        ctxTimes.valueType = ContextVar;
+        return ctxTimes;
+      }
+    case 2:
+      return Var(_forever);
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  CBExposedTypesInfo consumedVariables() {
+    if (_ctxVar.size() == 0) {
+      return nullptr;
+    } else {
+      _consumedInfo = ExposedInfo(ExposedInfo::Variable(
+          _ctxVar.c_str(), "The Int number of repeats variable.",
+          CBTypeInfo(CoreInfo::intInfo)));
+      return CBExposedTypesInfo(_consumedInfo);
+    }
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto repeats = _forever ? 1 : _times;
+
+    if (_ctxVar.size()) {
+      if (!_ctxTimes)
+        _ctxTimes = contextVariable(context, _ctxVar.c_str());
+      repeats = _ctxTimes->payload.intValue;
+    }
+
+    while (repeats) {
+      CBVar repeatOutput{};
+      repeatOutput.valueType = None;
+      repeatOutput.payload.chainState = CBChainState::Continue;
+      auto state = activateBlocks(_blocks.payload.seqValue, context, input,
+                                  repeatOutput);
+      if (unlikely(state == FlowState::Stopping)) {
+        return StopChain;
+      } else if (unlikely(state == FlowState::Returning)) {
+        break;
+      }
+
+      if (!_forever)
+        repeats--;
+    }
+    return input;
+  }
+};
+
+RUNTIME_CORE_BLOCK_TYPE(Const);
+RUNTIME_CORE_BLOCK_TYPE(Input);
+RUNTIME_CORE_BLOCK_TYPE(Sleep);
+RUNTIME_CORE_BLOCK_TYPE(And);
+RUNTIME_CORE_BLOCK_TYPE(Or);
+RUNTIME_CORE_BLOCK_TYPE(Not);
+RUNTIME_CORE_BLOCK_TYPE(Stop);
+RUNTIME_CORE_BLOCK_TYPE(Restart);
+RUNTIME_CORE_BLOCK_TYPE(Return);
+RUNTIME_CORE_BLOCK_TYPE(IsValidNumber);
+RUNTIME_CORE_BLOCK_TYPE(Set);
+RUNTIME_CORE_BLOCK_TYPE(Ref);
+RUNTIME_CORE_BLOCK_TYPE(Update);
+RUNTIME_CORE_BLOCK_TYPE(Get);
+RUNTIME_CORE_BLOCK_TYPE(Swap);
+RUNTIME_CORE_BLOCK_TYPE(Take);
+RUNTIME_CORE_BLOCK_TYPE(Limit);
+RUNTIME_CORE_BLOCK_TYPE(Push);
+RUNTIME_CORE_BLOCK_TYPE(Pop);
+RUNTIME_CORE_BLOCK_TYPE(Clear);
+RUNTIME_CORE_BLOCK_TYPE(Count);
+RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks
