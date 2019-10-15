@@ -135,6 +135,11 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/math.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
