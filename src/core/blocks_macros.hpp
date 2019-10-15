@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
+/* Copyright © 2019 Giovanni Petrantoni */
+
 #define RUNTIME_BLOCK(_namespace_, _name_)                                     \
   struct _name_##Runtime {                                                     \
     CBlock header;                                                             \
