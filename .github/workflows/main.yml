@@ -27,7 +27,7 @@ jobs:
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
   
-  ciWindowsDbg:
+  ciWindowsRel:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
