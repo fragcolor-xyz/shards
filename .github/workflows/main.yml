@@ -3,15 +3,10 @@ name: CI
 on: [push]
 
 jobs:
-  build:
-
+  ciLinuxDbg:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v1
-    - name: Deps
-      run: |
-        sudo apt-get install -y libboost-filesystem-dev libboost-context-dev cmake ninja-build
     - name: Build
       run: |
         git submodule update --init --recursive
@@ -19,3 +14,37 @@ jobs:
     - name: Test
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+  
+  ciLinuxRel:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: |
+        git submodule update --init --recursive
+        docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
+    - name: Test
+      run: |
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+  
+  # ciMacDbg:
+  #   runs-on: macOS-latest
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #   - name: Deps
+  #     run: |
+  #       sudo xcode-select --switch /Applications/Xcode_11.app
+  #       brew install boost cmake ninja clang-format
+  #   - name: Build
+  #     run: |
+  #       git submodule update --init --recursive
+  #       mkdir build
+  #       cd build
+  #       cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
+  #       ninja cbl
+  #   - name: Test
+  #     run: |
+  #       .\cbl.exe ../src/tests/general.clj
+  #       .\cbl.exe ../src/tests/variables.clj
+  #       .\cbl.exe ../src/tests/subchains.clj
+  #       .\cbl.exe ../src/tests/linalg.clj
