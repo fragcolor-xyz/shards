@@ -36,8 +36,8 @@ jobs:
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW64
-    - run: |
-        msys2do ./build-win.sh
+    - run: msys2do pacman -Syu --noconfirm
+    - run: msys2do ./build-win.sh
 
   # ciMacDbg:
   #   runs-on: macOS-latest
