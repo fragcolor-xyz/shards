@@ -31,7 +31,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v1
-      run: |
+    - run: |
         git submodule update --init --recursive
     - uses: numworks/setup-msys2@v1
       with:
