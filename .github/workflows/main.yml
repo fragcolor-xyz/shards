@@ -34,7 +34,7 @@ jobs:
       with:
         msystem: MINGW64
     - run: |
-        msys2do sh build-win.sh
+        msys2do ./build-win.sh
 
   # ciMacDbg:
   #   runs-on: macOS-latest
