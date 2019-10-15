@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="455" height="257" src="assets/banner.png">
+  <img width="450" src="assets/banner.png">
 </p>
 
 ## A scripting tool to build tools.
@@ -9,6 +9,7 @@
 ## Goals
 * Automation scripting for everyone
 * A universal interface to your code
+* Visual scripting without wires (similar to Apple Shortcuts)
 * Blocks modularity allows to reuse low level code with minimal efforts between projects
 * Machine learning scripting; it's all about building graphs
 * Video game engine scripting; even for non-technical artists
