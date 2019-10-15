@@ -1,9 +1,9 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
-#include "bgfx.hpp"
-#include "blocks/shared.hpp"
 #include "SDL.h"
 #include "SDL_syswm.h"
+#include "bgfx.hpp"
+#include "blocks/shared.hpp"
 
 using namespace chainblocks;
 
@@ -15,7 +15,6 @@ struct Base {
 constexpr uint32_t windowCC = 'hwnd';
 const static TypeInfo windowType = TypeInfo::Object(FragCC, windowCC);
 const static TypesInfo windowInfo = TypesInfo(windowType);
-
 
 struct BaseConsumer : public Base {
   static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(

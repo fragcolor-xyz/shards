@@ -735,22 +735,62 @@ struct CheckBox : public Base {
   std::string _label;
   std::string _variable;
   CBVar *_downVar = nullptr;
-  ExposedInfo _consumedInfo;
+  ExposedInfo _consumedInfo{};
+  bool _exposing = false;
 
-  CBExposedTypesInfo consumedVariables() {
-    _consumedInfo = ExposedInfo(
-        consumedInfo, ExposedInfo::Variable(_variable.c_str(),
-                                            "The consumed boolean variable.",
-                                            CBTypeInfo(SharedTypes::boolInfo)));
-    return CBExposedTypesInfo(consumedInfo);
+  void cleanup() { _downVar = nullptr; }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    if (_variable.size() > 0) {
+      IterableExposedInfo vars(consumables);
+      _exposing = true; // assume we expose a new bool variable
+      // search for a possible existing variable and make sure it's bool
+      for (auto &var : vars) {
+        if (strcmp(var.name, _variable.c_str()) == 0) {
+          // we found a variable, make sure it's bool and mark exposing off
+          _exposing = false;
+          if (var.exposedType.basicType != Bool) {
+            throw CBException("CheckBox: Expected a boolean variable.");
+          }
+          break;
+        }
+      }
+    }
+    return CBTypeInfo(SharedTypes::boolInfo);
   }
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("Label", "The label for this widget.",
-                                   CBTypesInfo(SharedTypes::strInfo)),
-                 ParamsInfo::Param("Variable",
-                                   "The variable that holds the boolean value.",
-                                   CBTypesInfo(SharedTypes::ctxVarInfo)));
+  CBExposedTypesInfo consumedVariables() {
+    if (_variable.size() > 0 && !_exposing) {
+      _consumedInfo =
+          ExposedInfo(consumedInfo,
+                      ExposedInfo::Variable(_variable.c_str(),
+                                            "The consumed boolean variable.",
+                                            CBTypeInfo(SharedTypes::boolInfo)));
+      return CBExposedTypesInfo(consumedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (_variable.size() > 0 && _exposing) {
+      _consumedInfo =
+          ExposedInfo(consumedInfo,
+                      ExposedInfo::Variable(_variable.c_str(),
+                                            "The exposed boolean variable.",
+                                            CBTypeInfo(SharedTypes::boolInfo)));
+      return CBExposedTypesInfo(consumedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Label", "The label for this widget.",
+                        CBTypesInfo(SharedTypes::strOrNoneInfo)),
+      ParamsInfo::Param(
+          "Variable", "The name of the variable that holds the boolean value.",
+          CBTypesInfo(SharedTypes::strOrNoneInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -769,6 +809,7 @@ struct CheckBox : public Base {
       break;
     case 1:
       _variable = value.payload.stringValue;
+      cleanup();
       break;
     default:
       break;
@@ -780,7 +821,7 @@ struct CheckBox : public Base {
     case 0:
       return _label.size() == 0 ? Empty : Var(_label);
     case 1:
-      return Var(_variable);
+      return _variable.size() == 0 ? Empty : Var(_variable);
     default:
       return Empty;
     }
@@ -789,14 +830,19 @@ struct CheckBox : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_downVar) {
+    if (!_downVar && _variable.size() > 0) {
       _downVar = contextVariable(context, _variable.c_str());
-      if (_downVar->valueType != Bool) {
-        throw CBException("CheckBox: Expected a boolean variable.");
-      }
     }
-    ::ImGui::Checkbox(_label.c_str(), &_downVar->payload.boolValue);
-    return _downVar->payload.boolValue ? True : False;
+
+    if (_downVar) {
+      ::ImGui::Checkbox(_label.c_str(), &_downVar->payload.boolValue);
+      return _downVar->payload.boolValue ? True : False;
+    } else {
+      // HACK kinda... we recycle _exposing since we are not using it in this
+      // branch
+      ::ImGui::Checkbox(_label.c_str(), &_exposing);
+      return _exposing ? True : False;
+    }
   }
 };
 
@@ -1042,7 +1088,10 @@ RUNTIME_BLOCK_activate(Window);
 RUNTIME_BLOCK_END(Window);
 
 RUNTIME_BLOCK(ImGui, CheckBox);
+RUNTIME_BLOCK_cleanup(CheckBox);
+RUNTIME_BLOCK_inferTypes(CheckBox);
 RUNTIME_BLOCK_consumedVariables(CheckBox);
+RUNTIME_BLOCK_exposedVariables(CheckBox);
 RUNTIME_BLOCK_parameters(CheckBox);
 RUNTIME_BLOCK_setParam(CheckBox);
 RUNTIME_BLOCK_getParam(CheckBox);
