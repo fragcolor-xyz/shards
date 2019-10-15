@@ -30,11 +30,13 @@ jobs:
   ciWindowsDbg:
     runs-on: windows-latest
     steps:
+    - uses: actions/checkout@v1
+      run: |
+        git submodule update --init --recursive
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW64
     - run: |
-        git submodule update --init --recursive
         msys2do ./build-win.sh
 
   # ciMacDbg:
