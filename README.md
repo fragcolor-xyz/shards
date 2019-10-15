@@ -4,7 +4,9 @@
 
 ## A scripting tool to build tools.
 
-### <span style="color:red">Warning: Work in progress</span>
+```diff
+- Warning: Work in progress
+```
 
 ## Goals
 * Automation scripting for everyone
