@@ -528,6 +528,12 @@
   (Get "text2") (Log)
   (Assert.Is "## The result is: Hello world, this is a string again" true)
 
+  "test.txt"
+  (FS.Write (# "text2") :Overwrite true)
+  (FS.Read)
+  (Assert.Is "## The result is: Hello world, this is a string again" true)
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

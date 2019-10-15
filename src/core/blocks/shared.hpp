@@ -35,6 +35,8 @@ struct SharedTypes {
   static inline TypeInfo strTable =
       TypeInfo::TableRecord(CBTypeInfo(strInfo), "");
   static inline TypesInfo strTableInfo = TypesInfo(CBTypeInfo(strTable));
+  static inline TypesInfo strOrBytesInfo =
+      TypesInfo::FromMany(false, CBTypeInfo((strInfo)), CBTypeInfo(bytesInfo));
   static inline TypeInfo intTable =
       TypeInfo::TableRecord(CBTypeInfo(intInfo), "");
   static inline TypesInfo intTableInfo = TypesInfo(CBTypeInfo(intTable));

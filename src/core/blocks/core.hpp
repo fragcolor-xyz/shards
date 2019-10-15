@@ -511,7 +511,8 @@ struct Ref : public SetBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_shortCut) {
-      return *_target;
+      *_target = input;
+      return input;
     }
 
     if (!_target) {
