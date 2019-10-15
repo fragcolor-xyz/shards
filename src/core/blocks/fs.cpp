@@ -261,6 +261,7 @@ struct Read {
     } else {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
+      _buffer.push_back(0);
       return Var((const char *)&_buffer.front());
     }
   }
@@ -335,7 +336,8 @@ struct Write {
       }
       std::ofstream file(p.string(), flags);
       if (contents.valueType == String) {
-        file << contents.payload.stringValue;
+        auto len = strlen(contents.payload.stringValue);
+        file.write((const char *)contents.payload.stringValue, len);
       } else {
         file.write((const char *)contents.payload.bytesValue,
                    contents.payload.bytesSize);
