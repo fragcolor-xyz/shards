@@ -34,14 +34,9 @@ jobs:
       with:
         msystem: MINGW64
     - run: |
-        msys2do pacman -S --noconfirm ninja cmake mingw-w64-x86_64-boost
-        msys2do mkdir build
-        msys2do cd build
-        msys2do cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
-        msys2do ninja cbl
+        msys2do sh build-win.sh
 
-
-            # ciMacDbg:
+  # ciMacDbg:
   #   runs-on: macOS-latest
   #   steps:
   #   - uses: actions/checkout@v1
