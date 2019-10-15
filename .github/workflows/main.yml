@@ -34,8 +34,6 @@ jobs:
       with:
         msystem: MINGW64
     - run: |
-        msys2do pwd
-        msys2do ls
         msys2do cd ..;ls
 
   # ciMacDbg:
