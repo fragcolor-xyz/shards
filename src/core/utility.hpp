@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2019 Giovanni Petrantoni */
-
 #include "parallel_hashmap/phmap.h"
 #include "easylogging++.h"
 
