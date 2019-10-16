@@ -6,6 +6,11 @@
 #endif
 
 #include "shared.hpp"
+
+// workaround for a boost bug..
+#ifndef __kernel_entry
+#define __kernel_entry
+#endif
 #include <boost/process.hpp>
 #include <sstream>
 #include <string>
