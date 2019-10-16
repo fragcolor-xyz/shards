@@ -72,6 +72,6 @@ With a strong emphasis on automation and repeated tasks. Making each frame of ex
 ## Current state
 Very much work in progress, this project started as a *nim* project, checking the history will show that, but slowly for different many reasons *nim* was fully replaced with *C++*.
 
-The reason behind this switch requires a whole article on it's own, but in a nutshell *nim* is cool but it does not interact very well with *C++* and it's very unstable.
+The reason behind this switch requires a whole article on its own, but in a nutshell *nim* is cool but it does not interact very well with *C++* and it's very unstable.
 
 Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich codebase while keeping a *C* interface.
