@@ -309,9 +309,7 @@ struct Profile : public BlocksUser {
 };
 
 struct XPendBase {
-  static inline TypesInfo xpendTypes = TypesInfo::FromMany(
-      false, CBTypeInfo(CoreInfo::anySeqInfo), CBTypeInfo(CoreInfo::bytesInfo),
-      CBTypeInfo(CoreInfo::strInfo));
+  static inline TypesInfo xpendTypes = TypesInfo::FromMany(false, CBTypeInfo(CoreInfo::anySeqInfo), CBTypeInfo(CoreInfo::strInfo));
 };
 
 struct XpendTo : public XPendBase {
