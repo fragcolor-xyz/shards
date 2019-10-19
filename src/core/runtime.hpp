@@ -194,7 +194,6 @@ struct CBContext {
   CBChain *chain;
 
   phmap::node_hash_map<std::string, CBVar> variables;
-  std::string error;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -213,8 +212,6 @@ struct CBContext {
 
   // Iteration counter
   uint64_t iterationCount;
-
-  void setError(const char *errorMsg) { error = errorMsg; }
 };
 
 #include "blocks/core.hpp"
@@ -589,15 +586,7 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          // Print errors if any, we might have stopped because of some error!
-          if (unlikely(context->error.length() > 0)) {
-            LOG(ERROR) << "Block activation error, failed block: "
-                       << std::string(blk->name(blk));
-            LOG(ERROR) << "Last error: " << std::string(context->error);
-            return {chain->previousOutput, Failed};
-          } else {
-            return {chain->previousOutput, Stopped};
-          }
+          return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
           // Use input as output, return previous block result
@@ -616,15 +605,11 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
     } catch (const std::exception &e) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
-      if (context->error.length() > 0)
-        LOG(ERROR) << "Last error: " << std::string(context->error);
       LOG(ERROR) << e.what();
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
-      if (context->error.length() > 0)
-        LOG(ERROR) << "Last error: " << std::string(context->error);
       return {chain->previousOutput, Failed};
     }
   }

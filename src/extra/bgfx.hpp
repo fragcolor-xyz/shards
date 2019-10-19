@@ -2,7 +2,7 @@
 
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
-#include "chainblocks.hpp"
+#include "blocks/shared.hpp"
 
 using namespace chainblocks;
 

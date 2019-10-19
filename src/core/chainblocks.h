@@ -64,8 +64,7 @@ enum CBChainState : uint8_t {
   Stop, // Stop the chain execution (including root)
 };
 
-// These blocks exist in nim too but they are actually implemented here inline
-// into runchain
+// These blocks run fully inline in the runchain threaded execution engine
 enum CBInlineBlocks : uint8_t {
   NotInline,
 
@@ -515,10 +514,7 @@ EXPORTED CBVar *__cdecl cbContextVariable(
     CBContext *context,
     const char *name); // remember those are valid only inside preChain,
                        // activate, postChain!
-
-// To be used within blocks, to set error messages and exceptions
-EXPORTED void __cdecl cbSetError(CBContext *context,
-                                           const char *errorText);
+// Can be used to propagate block errors
 EXPORTED void __cdecl cbThrowException(const char *errorText);
 
 // To check if we aborted/canceled in this context, 0 = running, 1 = canceled,

@@ -497,10 +497,6 @@ EXPORTED CBVar *__cdecl cbContextVariable(CBContext *context,
   return chainblocks::contextVariable(context, name);
 }
 
-EXPORTED void __cdecl cbSetError(CBContext *context, const char *errorText) {
-  context->setError(errorText);
-}
-
 EXPORTED void __cdecl cbThrowException(const char *errorText) {
   throw chainblocks::CBException(errorText);
 }

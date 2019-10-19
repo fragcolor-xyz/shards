@@ -2,8 +2,6 @@
 #include "./imgui.hpp"
 #include "SDL.h"
 #include "SDL_syswm.h"
-#include "bgfx.hpp"
-#include "blocks/shared.hpp"
 
 using namespace chainblocks;
 
