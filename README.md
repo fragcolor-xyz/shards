@@ -8,6 +8,11 @@
 - Warning: Work in progress
 ```
 
+## Vision
+Building a programming tool for the future. A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment.
+
+To achieve that we build a scripting language that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
+
 ## Goals
 * Automation scripting for everyone
 * A universal interface to your code
@@ -18,10 +23,12 @@
 * Extremely quick prototyping, creativity unchained
   * From pseudo code to real app
   * Replace pseudo blocks with real native blocks as you go
+* One click release of a fully bundled executable app or library
+* Textual representation that can be used in genetic programming and neural networks
 
 ## Features
 * Clear data flow
-* Performance driven
+* Performance driven and easy to profile
 * Automatically inferred strong types
 * **SIMD** vectors as first class types
 * Strong validation before run-time
@@ -34,7 +41,7 @@
 
 ## TL;DR
 
-### This *(textual; visual GUI version coming soon (tm))*
+### This *(textual; visual version coming soon (tm))*
 
 ```clojure
 (def! Root (Node))
