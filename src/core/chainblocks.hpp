@@ -476,6 +476,11 @@ struct Var : public CBVar {
     payload.chainValue = src;
   }
 
+  explicit Var(CBImage img) : CBVar() {
+    valueType = Image;
+    payload.imageValue = img;
+  }
+
   explicit Var(uint64_t src) : CBVar() {
     valueType = Int;
     payload.intValue = src;

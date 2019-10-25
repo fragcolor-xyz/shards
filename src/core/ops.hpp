@@ -132,7 +132,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     os << "Image";
     os << " Width: " << var.payload.imageValue.width;
     os << " Height: " << var.payload.imageValue.height;
-    os << " Channels: " << var.payload.imageValue.channels;
+    os << " Channels: " << (int)var.payload.imageValue.channels;
     break;
   case Seq:
     os << "[";

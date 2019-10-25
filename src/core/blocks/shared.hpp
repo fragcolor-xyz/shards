@@ -25,6 +25,7 @@ struct SharedTypes {
   static inline TypesInfo &blocksSeqInfo = CoreInfo::blocksSeqInfo;
   static inline TypesInfo &intsInfo = CoreInfo::intsInfo;
   static inline TypesInfo colorInfo = TypesInfo(CBType::Color);
+  static inline TypesInfo imageInfo = TypesInfo(CBType::Image);
   static inline TypesInfo ctxVarInfo = TypesInfo(CBType::ContextVar);
   static inline TypesInfo int2Info = TypesInfo(CBType::Int2);
   static inline TypesInfo int3Info = TypesInfo(CBType::Int3);
