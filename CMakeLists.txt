@@ -219,6 +219,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bx/3rdparty
     ${CHAINBLOCKS_DIR}/deps/bgfx/include
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty
+    ${CHAINBLOCKS_DIR}/deps/imgui_club/imgui_memory_editor
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
   )

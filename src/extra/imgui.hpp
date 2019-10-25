@@ -3,6 +3,10 @@
 #include "chainblocks.hpp"
 #include "imgui.h"
 
+namespace ImGuiExtra {
+#include "imgui_memory_editor.h"
+};
+
 namespace chainblocks {
 namespace ImGui {
 constexpr uint32_t ImGuiContextCC = 'ImGu';

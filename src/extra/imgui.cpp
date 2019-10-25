@@ -1061,6 +1061,26 @@ struct Button : public Base, public BlocksUser {
   }
 };
 
+struct HexViewer : public Base {
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo((SharedTypes::bytesInfo));
+  }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo((SharedTypes::bytesInfo));
+  }
+
+  ImGuiExtra::MemoryEditor _editor{};
+
+  HexViewer() { _editor.ReadOnly = true; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+    _editor.DrawContents(input.payload.bytesValue, input.payload.bytesSize);
+    return input;
+  }
+};
+
 // Register
 RUNTIME_BLOCK(ImGui, Style);
 RUNTIME_BLOCK_inferTypes(Style);
@@ -1131,6 +1151,13 @@ RUNTIME_BLOCK_outputTypes(Button);
 RUNTIME_BLOCK_activate(Button);
 RUNTIME_BLOCK_END(Button);
 
+RUNTIME_BLOCK(ImGui, HexViewer);
+RUNTIME_BLOCK_consumedVariables(HexViewer);
+RUNTIME_BLOCK_inputTypes(HexViewer);
+RUNTIME_BLOCK_outputTypes(HexViewer);
+RUNTIME_BLOCK_activate(HexViewer);
+RUNTIME_BLOCK_END(HexViewer);
+
 void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, Style);
   REGISTER_BLOCK(ImGui, Window);
@@ -1138,6 +1165,7 @@ void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, Text);
   REGISTER_BLOCK(ImGui, SameLine);
   REGISTER_BLOCK(ImGui, Button);
+  REGISTER_BLOCK(ImGui, HexViewer);
   Button::InitEnums();
   Style::InitEnums();
 }

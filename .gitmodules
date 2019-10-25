@@ -28,3 +28,6 @@
 [submodule "deps/bimg"]
 	path = deps/bimg
 	url = https://github.com/chainblocks/bimg.git
+[submodule "deps/imgui_club"]
+	path = deps/imgui_club
+	url = https://github.com/chainblocks/imgui_club.git
