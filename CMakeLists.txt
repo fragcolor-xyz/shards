@@ -202,7 +202,6 @@ endif()
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
-  ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   ${CHAINBLOCKS_DIR}/deps/stb

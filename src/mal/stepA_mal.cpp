@@ -25,19 +25,19 @@ static ReadLine s_readLine("~/.mal-history");
 
 static malEnvPtr replEnv(new malEnv);
 
-void malinit() {
-    installCore(replEnv);
-    installCBCore(replEnv);
-    installFunctions(replEnv);
+void malinit(malEnvPtr env) {
+    installCore(env);
+    installCBCore(env);
+    installFunctions(env);
 }
 
-malValuePtr maleval(const char* str) {
-    return EVAL(READ(str), replEnv);
+malValuePtr maleval(const char* str, malEnvPtr env) {
+    return EVAL(READ(str), env);
 }
 
 int malmain(int argc, char* argv[])
 {
-    malinit();
+    malinit(replEnv);
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
         String filename = escape(argv[1]);

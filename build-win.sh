@@ -9,3 +9,4 @@ ninja cbl
 ./cbl ../src/tests/variables.clj
 ./cbl ../src/tests/subchains.clj
 ./cbl ../src/tests/linalg.clj
+./cbl ../src/tests/loader.clj
