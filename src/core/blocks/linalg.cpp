@@ -245,6 +245,64 @@ struct Normalize : public VectorUnaryBase {
   }
 };
 
+struct MatMul : public VectorBinaryBase {
+  // MatMul is special...
+  // Mat @ Mat = Mat
+  // Mat @ Vec = Vec
+
+  CBVar mvmul(const CBVar &a, const CBVar &b) {
+    CBVar output;
+    output.valueType = b.valueType;
+    auto dims = stbds_arrlen(a.payload.seqValue);
+    for (auto i = 0; i < dims; i++) {
+      const auto &x = a.payload.seqValue[i];
+      if (x.valueType != b.valueType) {
+        // tbh this should be supported tho...
+        throw CBException("MatMul expected same Float vector types");
+      }
+      CBVar tmp;
+      Dot::Operation dot;
+      dot(tmp, x, b);
+
+      switch (b.valueType) {
+      case Float:
+        output.payload.floatValue = tmp.payload.floatValue;
+        break;
+      case Float2:
+        output.payload.float2Value[i] = tmp.payload.floatValue;
+        break;
+      case Float3:
+        output.payload.float3Value[i] = tmp.payload.floatValue;
+        break;
+      case Float4:
+        output.payload.float4Value[i] = tmp.payload.floatValue;
+        break;
+      default:
+        break;
+      }
+    }
+    return output;
+  }
+
+  void mmmul(CBVar &output, const CBVar &a, const CBVar &b) {}
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {
+      _ctxOperand = contextVariable(context, _operand.payload.stringValue);
+    }
+    auto &operand = _ctxOperand ? *_ctxOperand : _operand;
+
+    // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
+    if (_opType == SeqSeq) {
+    } else if (_opType == Seq1) {
+      return mvmul(input, operand);
+    } else {
+      throw CBException("MatMul expects either Mat (Seq of FloatX) @ Mat or "
+                        "Mat @ Vec (FloatX)");
+    }
+  }
+};
+
 #define LINALG_BINARY_BLOCK(_name_)                                            \
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
   RUNTIME_BLOCK_destroy(_name_);                                               \
@@ -262,6 +320,7 @@ struct Normalize : public VectorUnaryBase {
 
 LINALG_BINARY_BLOCK(Cross);
 LINALG_BINARY_BLOCK(Dot);
+LINALG_BINARY_BLOCK(MatMul);
 
 #define LINALG_UNARY_BLOCK(_name_)                                             \
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
@@ -283,6 +342,7 @@ void registerBlocks() {
   chainblocks::registerBlock("Math.LinAlg.LengthSquared",
                              createBlockLengthSquared);
   chainblocks::registerBlock("Math.LinAlg.Length", createBlockLength);
+  chainblocks::registerBlock("Math.LinAlg.MatMul", createBlockMatMul);
 }
 }; // namespace LinAlg
 }; // namespace Math
