@@ -256,7 +256,7 @@ struct CBTypeInfo {
 
     // If we are a table, the possible types present in this table
     struct {
-      CBStrings tableKeys;
+      CBStrings tableKeys; // todo, clarify/fix
       CBTypesInfo tableTypes;
     };
   };
@@ -325,8 +325,7 @@ struct CBValidationResult {
 // error and it cannot provide the expected output type. None doesn't mean safe,
 // stop/restart is safe
 
-ALIGNED struct CBVarPayload // will be 32 bytes, 16 aligned due to
-                            // vectors
+ALIGNED struct CBVarPayload // 16 aligned due to vectors
 {
   union {
     enum CBChainState chainState;

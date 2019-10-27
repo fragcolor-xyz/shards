@@ -50,54 +50,47 @@ private:
   std::string errorMessage;
 };
 
-ALWAYS_INLINE inline int destroyVar(CBVar &var);
-ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src);
+ALWAYS_INLINE inline void destroyVar(CBVar &var);
+ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 
-static int _destroyVarSlow(CBVar &var) {
-  int freeCount = 0;
+static void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
     int len = stbds_arrlen(var.payload.seqValue);
     for (int i = 0; i < len; i++) {
-      freeCount += destroyVar(var.payload.seqValue[i]);
+      destroyVar(var.payload.seqValue[i]);
     }
     stbds_arrfree(var.payload.seqValue);
-    freeCount++;
   } break;
   case Table: {
     auto len = stbds_shlen(var.payload.tableValue);
     for (auto i = 0; i < len; i++) {
-      freeCount += destroyVar(var.payload.tableValue[i].value);
+      destroyVar(var.payload.tableValue[i].value);
     }
     stbds_shfree(var.payload.tableValue);
-    freeCount++;
   } break;
   default:
     break;
   };
 
   memset((void *)&var, 0x0, sizeof(CBVar));
-
-  return freeCount;
 }
 
-static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
-  int freeCount = 0;
+static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   switch (src.valueType) {
   case Seq: {
-    int srcLen = stbds_arrlen(src.payload.seqValue);
+    auto srcLen = stbds_arrlen(src.payload.seqValue);
     // reuse if seq and we got enough capacity
-    if (dst.valueType != Seq ||
-        (int)stbds_arrcap(dst.payload.seqValue) < srcLen) {
-      freeCount += destroyVar(dst);
+    if (dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen) {
+      destroyVar(dst);
       dst.valueType = Seq;
       dst.payload.seqValue = nullptr;
     } else {
-      int dstLen = stbds_arrlen(dst.payload.seqValue);
+      auto dstLen = stbds_arrlen(dst.payload.seqValue);
       if (srcLen < dstLen) {
         // need to destroy leftovers
         for (auto i = srcLen; i < dstLen; i++) {
-          freeCount += destroyVar(dst.payload.seqValue[i]);
+          destroyVar(dst.payload.seqValue[i]);
         }
       }
     }
@@ -106,7 +99,7 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
     for (auto i = 0; i < srcLen; i++) {
       auto &subsrc = src.payload.seqValue[i];
       memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
-      freeCount += cloneVar(dst.payload.seqValue[i], subsrc);
+      cloneVar(dst.payload.seqValue[i], subsrc);
     }
   } break;
   case String:
@@ -114,7 +107,7 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
     auto srcLen = strlen(src.payload.stringValue);
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         strlen(dst.payload.stringValue) < srcLen) {
-      freeCount += destroyVar(dst);
+      destroyVar(dst);
       dst.payload.stringValue = new char[srcLen + 1];
     }
 
@@ -131,7 +124,7 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
                       dst.payload.imageValue.width *
                       dst.payload.imageValue.channels;
     if (dst.valueType != Image || srcImgSize > dstImgSize) {
-      freeCount += destroyVar(dst);
+      destroyVar(dst);
       dst.valueType = Image;
       dst.payload.imageValue.height = src.payload.imageValue.height;
       dst.payload.imageValue.width = src.payload.imageValue.width;
@@ -144,168 +137,58 @@ static int _cloneVarSlow(CBVar &dst, const CBVar &src) {
   } break;
   case Table: {
     // Slowest case, it's a full copy using arena tho
-    freeCount += destroyVar(dst);
+    destroyVar(dst);
     dst.valueType = Table;
     dst.payload.tableValue = nullptr;
     stbds_sh_new_arena(dst.payload.tableValue);
     auto srcLen = stbds_shlen(src.payload.tableValue);
     for (auto i = 0; i < srcLen; i++) {
       CBVar clone{};
-      freeCount += cloneVar(clone, src.payload.tableValue[i].value);
+      cloneVar(clone, src.payload.tableValue[i].value);
       stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
     }
   } break;
   default:
     break;
   };
-  return freeCount;
 }
 
-ALWAYS_INLINE inline int destroyVar(CBVar &var) {
-  int freeCount = 0;
+ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
   case Table:
   case Seq:
-    return _destroyVarSlow(var);
+    _destroyVarSlow(var);
+    return;
   case CBType::String:
   case ContextVar: {
     delete[] var.payload.stringValue;
-    freeCount++;
     break;
   }
   case Image: {
     delete[] var.payload.imageValue.data;
-    freeCount++;
     break;
   }
   default:
     break;
   };
 
-  memset((void *)&var, 0x0, sizeof(CBVar));
-
-  return freeCount;
+  memset((void *)&var.payload, 0x0, sizeof(CBVarPayload));
+  var.valueType = None;
 }
 
-ALWAYS_INLINE inline int cloneVar(CBVar &dst, const CBVar &src) {
-  int freeCount = 0;
+ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
-    dst = src;
+    dst.payload = src.payload;
+    dst.valueType = src.valueType;
   } else if (src.valueType < EndOfBlittableTypes) {
-    freeCount += destroyVar(dst);
-    dst = src;
+    destroyVar(dst);
+    dst.payload = src.payload;
+    dst.valueType = src.valueType;
   } else {
-    return _cloneVarSlow(dst, src);
+    _cloneVarSlow(dst, src);
   }
-  return freeCount;
 }
-
-template <class Serializer>
-inline void serializeVar(const CBVar &input, Serializer sfunc) {
-  sfunc((const uint8_t *)&input.valueType, sizeof(input.valueType));
-  switch (input.valueType) {
-  case CBType::None:
-  case CBType::EndOfBlittableTypes:
-  case CBType::Any:
-  case CBType::Enum:
-  case CBType::Bool:
-  case CBType::Int:
-  case CBType::Int2:
-  case CBType::Int3:
-  case CBType::Int4:
-  case CBType::Int8:
-  case CBType::Int16:
-  case CBType::Float:
-  case CBType::Float2:
-  case CBType::Float3:
-  case CBType::Float4:
-  case CBType::Color:
-    sfunc((const uint8_t *)&input.payload, sizeof(input.payload));
-    break;
-  case CBType::Bytes:
-    sfunc((const uint8_t *)&input.payload.bytesSize,
-          sizeof(input.payload.bytesSize));
-    sfunc((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
-    break;
-  case CBType::String:
-  case CBType::ContextVar: {
-    uint64_t len = strlen(input.payload.stringValue);
-    sfunc((const uint8_t *)&len, sizeof(uint64_t));
-    sfunc((const uint8_t *)input.payload.stringValue, len);
-    break;
-  }
-  case CBType::Seq: {
-    uint64_t len = stbds_arrlen(input.payload.seqValue);
-    sfunc((const uint8_t *)&len, sizeof(uint64_t));
-    for (auto i = 0; i < len; i++) {
-      serializeVar(input.payload.seqValue[i], sfunc);
-    }
-    break;
-  }
-  case CBType::Table: {
-    uint64_t len = stbds_shlen(input.payload.tableValue);
-    sfunc((const uint8_t *)&len, sizeof(uint64_t));
-    for (auto i = 0; i < len; i++) {
-      auto &v = input.payload.tableValue[i];
-      uint64_t klen = strlen(v.key);
-      sfunc((const uint8_t *)&klen, sizeof(uint64_t));
-      sfunc((const uint8_t *)v.key, len);
-      serializeVar(v.value, sfunc);
-    }
-    break;
-  }
-  case CBType::Image: {
-    sfunc((const uint8_t *)&input.payload.imageValue.channels,
-          sizeof(input.payload.imageValue.channels));
-    sfunc((const uint8_t *)&input.payload.imageValue.flags,
-          sizeof(input.payload.imageValue.flags));
-    sfunc((const uint8_t *)&input.payload.imageValue.width,
-          sizeof(input.payload.imageValue.width));
-    sfunc((const uint8_t *)&input.payload.imageValue.height,
-          sizeof(input.payload.imageValue.height));
-    auto size = input.payload.imageValue.channels *
-                input.payload.imageValue.height *
-                input.payload.imageValue.width;
-    sfunc((const uint8_t *)input.payload.imageValue.data, size);
-    break;
-  }
-  case CBType::Object:
-  case CBType::Chain:
-  case CBType::Block:
-    throw CBException("Type cannot be serialized. " +
-                      type2Name(input.valueType));
-  }
-  sfunc((const uint8_t *)input.reserved, sizeof(input.reserved));
-}
-
-template <typename T, typename V> class IterableStb {
-public:
-  IterableStb(T seq) : _seq(seq) {}
-  class iterator {
-  public:
-    iterator(V *ptr) : ptr(ptr) {}
-    iterator operator++() {
-      ++ptr;
-      return *this;
-    }
-    bool operator!=(const iterator &other) const { return ptr != other.ptr; }
-    const V &operator*() const { return *ptr; }
-
-  private:
-    V *ptr;
-  };
-
-private:
-  T _seq;
-
-public:
-  iterator begin() const { return iterator(&_seq[0]); }
-  iterator end() const { return iterator(&_seq[0] + stbds_arrlen(_seq)); }
-};
-
-typedef IterableStb<CBSeq, CBVar> IterableSeq;
-typedef IterableStb<CBExposedTypesInfo, CBExposedTypeInfo> IterableExposedInfo;
 
 struct Var : public CBVar {
   explicit Var() : CBVar() {
@@ -313,7 +196,7 @@ struct Var : public CBVar {
     payload.chainState = CBChainState::Continue;
   }
 
-  explicit Var(const CBVar &other) : CBVar() {
+  explicit Var(const CBVar &other) {
     memcpy((void *)this, (void *)&other, sizeof(CBVar));
   }
 
@@ -529,6 +412,302 @@ static Var RestartChain = Var::Restart();
 static Var ReturnPrevious = Var::Return();
 static Var RebaseChain = Var::Rebase();
 static Var Empty = Var();
+
+struct Serialization {
+  static inline void free(CBVar &output) {
+    auto oactualSize = reinterpret_cast<uint64_t *>(output.reserved);
+
+    switch (output.valueType) {
+    case CBType::None:
+    case CBType::EndOfBlittableTypes:
+    case CBType::Any:
+    case CBType::Enum:
+    case CBType::Bool:
+    case CBType::Int:
+    case CBType::Int2:
+    case CBType::Int3:
+    case CBType::Int4:
+    case CBType::Int8:
+    case CBType::Int16:
+    case CBType::Float:
+    case CBType::Float2:
+    case CBType::Float3:
+    case CBType::Float4:
+    case CBType::Color:
+      break;
+    case CBType::Bytes:
+      delete[] output.payload.bytesValue;
+      break;
+    case CBType::String:
+    case CBType::ContextVar: {
+      delete[] output.payload.stringValue;
+      break;
+    }
+    case CBType::Seq: {
+      for (auto i = 0; i < stbds_arrlen(output.payload.seqValue); i++) {
+        free(output.payload.seqValue[i]);
+      }
+      stbds_arrfree(output.payload.seqValue);
+      output.payload.seqValue = nullptr;
+      break;
+    }
+    case CBType::Table: {
+      for (auto i = 0; i < stbds_shlen(output.payload.tableValue); i++) {
+        auto &v = output.payload.tableValue[i];
+        free(v.value);
+        delete[] v.key;
+      }
+      stbds_shfree(output.payload.tableValue);
+      output.payload.tableValue = nullptr;
+      break;
+    }
+    case CBType::Image: {
+      delete[] output.payload.imageValue.data;
+      break;
+    }
+    case CBType::Object:
+    case CBType::Chain:
+    case CBType::Block:
+      break;
+    }
+
+    output.valueType = None;
+
+    *oactualSize = 0;
+  }
+
+  template <class BinaryReader>
+  static inline void deserialize(BinaryReader read, CBVar &output) {
+    // we try to recycle memory so pass a empty None as first timer!
+    CBType nextType;
+    read((uint8_t *)&nextType, sizeof(output.valueType));
+
+    // use some of the reserved bytes... because we can
+    auto oactualSize = reinterpret_cast<uint64_t *>(output.reserved);
+
+    // stop trying to recycle, types differ
+    auto recycle = true;
+    if (output.valueType != nextType) {
+      free(output);
+      recycle = false;
+    }
+
+    output.valueType = nextType;
+
+    switch (output.valueType) {
+    case CBType::None:
+    case CBType::EndOfBlittableTypes:
+    case CBType::Any:
+    case CBType::Enum:
+    case CBType::Bool:
+    case CBType::Int:
+    case CBType::Int2:
+    case CBType::Int3:
+    case CBType::Int4:
+    case CBType::Int8:
+    case CBType::Int16:
+    case CBType::Float:
+    case CBType::Float2:
+    case CBType::Float3:
+    case CBType::Float4:
+    case CBType::Color:
+      read((uint8_t *)&output.payload, sizeof(output.payload));
+      break;
+    case CBType::Bytes: {
+      auto availBytes = recycle ? *oactualSize : 0;
+      read((uint8_t *)&output.payload.bytesSize,
+           sizeof(output.payload.bytesSize));
+
+      if (availBytes > 0 && availBytes < output.payload.bytesSize) {
+        // not enough space, ideally realloc, but for now just delete
+        delete[] output.payload.bytesValue;
+        // and re alloc
+        output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
+      } else if (availBytes == 0) {
+        // just alloc
+        output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
+      } // else got enough space to recycle!
+
+      // record actualSize for further recycling usage
+      *oactualSize = std::max(availBytes, output.payload.bytesSize);
+
+      read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
+      break;
+    }
+    case CBType::String:
+    case CBType::ContextVar: {
+      auto availChars = recycle ? *oactualSize : 0;
+      uint64_t len;
+      read((uint8_t *)&len, sizeof(uint64_t));
+
+      if (availChars > 0 && availChars < len) {
+        // we need more chars then what we have, realloc
+        delete[] output.payload.stringValue;
+        output.payload.stringValue = new char[len + 1];
+      } else if (availChars == 0) {
+        // just alloc
+        output.payload.stringValue = new char[len + 1];
+      } // else recycling
+
+      // record actualSize
+      *oactualSize = std::max(availChars, len);
+
+      read((uint8_t *)output.payload.stringValue, len);
+      const_cast<char *>(output.payload.stringValue)[len] = 0;
+      break;
+    }
+    case CBType::Seq: {
+      uint64_t len;
+      read((uint8_t *)&len, sizeof(uint64_t));
+
+      auto currentUsed = recycle ? stbds_arrlen(output.payload.seqValue) : 0;
+      if (currentUsed > len) {
+        // in this case we need to destroy the excess items
+        // before resizing
+        for (auto i = len; i < currentUsed; i++) {
+          free(output.payload.seqValue[i]);
+        }
+      }
+
+      stbds_arrsetlen(output.payload.seqValue, len);
+      for (auto i = 0; i < len; i++) {
+        deserialize(read, output.payload.seqValue[i]);
+      }
+      break;
+    }
+    case CBType::Table: {
+      if (recycle) // tables are slow for now...
+        free(output);
+
+      uint64_t len;
+      read((uint8_t *)&len, sizeof(uint64_t));
+      for (auto i = 0; i < len; i++) {
+        CBNamedVar v;
+        uint64_t klen;
+        read((uint8_t *)&klen, sizeof(uint64_t));
+        v.key = new char[klen + 1];
+        read((uint8_t *)v.key, len);
+        const_cast<char *>(v.key)[klen] = 0;
+        deserialize(read, v.value);
+        stbds_shputs(output.payload.tableValue, v);
+      }
+      break;
+    }
+    case CBType::Image: {
+      read((uint8_t *)&output.payload.imageValue.channels,
+           sizeof(output.payload.imageValue.channels));
+      read((uint8_t *)&output.payload.imageValue.flags,
+           sizeof(output.payload.imageValue.flags));
+      read((uint8_t *)&output.payload.imageValue.width,
+           sizeof(output.payload.imageValue.width));
+      read((uint8_t *)&output.payload.imageValue.height,
+           sizeof(output.payload.imageValue.height));
+
+      auto size = output.payload.imageValue.channels *
+                  output.payload.imageValue.height *
+                  output.payload.imageValue.width;
+
+      auto currentSize = recycle ? *oactualSize : 0;
+      if (currentSize > 0 && currentSize < size) {
+        // delete first & alloc
+        delete[] output.payload.imageValue.data;
+        output.payload.imageValue.data = new uint8_t[size];
+      } else if (currentSize == 0) {
+        // just alloc
+        output.payload.imageValue.data = new uint8_t[size];
+      }
+
+      // record actualSize
+      *oactualSize = std::max(currentSize, (uint64_t)size);
+
+      read((uint8_t *)output.payload.imageValue.data, size);
+      break;
+    }
+    case CBType::Object:
+    case CBType::Chain:
+    case CBType::Block:
+      throw CBException("WriteFile: Type cannot be serialized (yet?). " +
+                        type2Name(output.valueType));
+    }
+  }
+
+  template <class BinaryWriter>
+  static inline void serialize(const CBVar &input, BinaryWriter write) {
+    write((const uint8_t *)&input.valueType, sizeof(input.valueType));
+    switch (input.valueType) {
+    case CBType::None:
+    case CBType::EndOfBlittableTypes:
+    case CBType::Any:
+    case CBType::Enum:
+    case CBType::Bool:
+    case CBType::Int:
+    case CBType::Int2:
+    case CBType::Int3:
+    case CBType::Int4:
+    case CBType::Int8:
+    case CBType::Int16:
+    case CBType::Float:
+    case CBType::Float2:
+    case CBType::Float3:
+    case CBType::Float4:
+    case CBType::Color:
+      write((const uint8_t *)&input.payload, sizeof(input.payload));
+      break;
+    case CBType::Bytes:
+      write((const uint8_t *)&input.payload.bytesSize,
+            sizeof(input.payload.bytesSize));
+      write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
+      break;
+    case CBType::String:
+    case CBType::ContextVar: {
+      uint64_t len = strlen(input.payload.stringValue);
+      write((const uint8_t *)&len, sizeof(uint64_t));
+      write((const uint8_t *)input.payload.stringValue, len);
+      break;
+    }
+    case CBType::Seq: {
+      uint64_t len = stbds_arrlen(input.payload.seqValue);
+      write((const uint8_t *)&len, sizeof(uint64_t));
+      for (auto i = 0; i < len; i++) {
+        serialize(input.payload.seqValue[i], write);
+      }
+      break;
+    }
+    case CBType::Table: {
+      uint64_t len = stbds_shlen(input.payload.tableValue);
+      write((const uint8_t *)&len, sizeof(uint64_t));
+      for (auto i = 0; i < len; i++) {
+        auto &v = input.payload.tableValue[i];
+        uint64_t klen = strlen(v.key);
+        write((const uint8_t *)&klen, sizeof(uint64_t));
+        write((const uint8_t *)v.key, len);
+        serialize(v.value, write);
+      }
+      break;
+    }
+    case CBType::Image: {
+      write((const uint8_t *)&input.payload.imageValue.channels,
+            sizeof(input.payload.imageValue.channels));
+      write((const uint8_t *)&input.payload.imageValue.flags,
+            sizeof(input.payload.imageValue.flags));
+      write((const uint8_t *)&input.payload.imageValue.width,
+            sizeof(input.payload.imageValue.width));
+      write((const uint8_t *)&input.payload.imageValue.height,
+            sizeof(input.payload.imageValue.height));
+      auto size = input.payload.imageValue.channels *
+                  input.payload.imageValue.height *
+                  input.payload.imageValue.width;
+      write((const uint8_t *)input.payload.imageValue.data, size);
+      break;
+    }
+    case CBType::Object:
+    case CBType::Chain:
+    case CBType::Block:
+      throw CBException("Type cannot be serialized. " +
+                        type2Name(input.valueType));
+    }
+  }
+};
 
 struct ContextableVar {
   CBVar _v{};
