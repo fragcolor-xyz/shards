@@ -5,12 +5,13 @@
 
 #include "chainblocks.h"
 #include "ops.hpp"
+#include "stbpp.hpp"
 
 // Included 3rdparty
 #include "easylogging++.h"
-#include "nlohmann/json.hpp"
 #include "parallel_hashmap/phmap.h"
 
+#include <algorithm>
 #include <cassert>
 #include <type_traits>
 
