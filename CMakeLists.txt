@@ -73,7 +73,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options(-fuse-ld=lld)
     # need those for custom new/delete
     add_link_options(-static-libstdc++)
-    add_compile_options(-static-libstdc++)
+    add_compile_options(-Wall -static-libstdc++)
   endif()
 elseif(WIN32)
   add_link_options(-static)
@@ -121,6 +121,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
+  ${CHAINBLOCKS_DIR}/src/core/stbpp.hpp
+  ${CHAINBLOCKS_DIR}/src/core/utility.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
@@ -202,7 +204,6 @@ endif()
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
-  ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   ${CHAINBLOCKS_DIR}/deps/stb

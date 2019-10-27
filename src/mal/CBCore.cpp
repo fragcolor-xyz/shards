@@ -49,10 +49,17 @@ namespace chainblocks {
 CBlock *createBlockInnerCall();
 }
 
-void installCBCore(const malEnvPtr &env) {
-  chainblocks::installSignalHandlers();
+void linkLispUtility();
 
-  cbRegisterAllBlocks();
+static bool initDoneOnce = false;
+
+void installCBCore(const malEnvPtr &env) {
+  if (!initDoneOnce) {
+    linkLispUtility();
+    chainblocks::installSignalHandlers();
+    cbRegisterAllBlocks();
+    initDoneOnce = true;
+  }
 
   registerKeywords(env);
 
@@ -83,6 +90,7 @@ void installCBCore(const malEnvPtr &env) {
   env->set(":Image", mal::keyword(":Image"));
   env->set(":Seq", mal::keyword(":Seq"));
   env->set(":Table", mal::keyword(":Table"));
+  env->set(":Bytes", mal::keyword(":Bytes"));
 
   for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) {
     malBuiltIn *handler = *it;
@@ -1001,49 +1009,35 @@ BUILTIN("Float4") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("json") {
-  CHECK_ARGS_IS(1);
-  auto first = *argsBegin;
-  if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
-    json jchain = v->value();
-    return malValuePtr(mal::string(jchain.dump()));
-  } else if (const malCBVar *v = DYNAMIC_CAST(malCBVar, first)) {
-    json jchain = v->value();
-    return malValuePtr(mal::string(jchain.dump()));
-  }
-  return mal::nilValue();
-}
-
-BUILTIN("ChainJson") {
-  CHECK_ARGS_IS(1);
-  ARG(malString, value);
-  try {
-    auto jchain = json::parse(value->value());
-    CBChain *chain = jchain.get<CBChain *>();
-    return malValuePtr(new malCBChain(chain));
-  } catch (json::exception &e) {
-    LOG(ERROR) << "Failed to parse a json chain, " << e.what();
-    return mal::nilValue();
-  }
-}
-
 BUILTIN_ISA("Var?", malCBVar);
 BUILTIN_ISA("Node?", malCBNode);
 BUILTIN_ISA("Chain?", malCBChain);
 BUILTIN_ISA("Block?", malCBBlock);
 
 extern "C" {
-EXPORTED __cdecl void cbLispInit() { malinit(); }
+static thread_local malEnvPtr *replEnv = nullptr;
+
+EXPORTED __cdecl void cbLispInit() {
+  if (!replEnv) {
+    replEnv = new malEnvPtr(new malEnv);
+    malinit(*replEnv);
+  }
+}
 
 EXPORTED __cdecl CBVar cbLispEval(const char *str) {
   try {
-    auto res = maleval(str);
+    auto res = maleval(str, *replEnv);
     return varify(nullptr, res);
   } catch (...) {
     return chainblocks::Empty;
   }
 }
 };
+
+void linkLispUtility() {
+  chainblocks::Lisp::Init = cbLispInit;
+  chainblocks::Lisp::Eval = cbLispEval;
+}
 
 #ifdef HAS_CB_GENERATED
 #include "CBGenerated.hpp"

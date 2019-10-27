@@ -285,6 +285,13 @@ struct ChainFileWatcher {
       : running(true), fileName(file), results(2) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
+      if (!Lisp::Init) {
+        LOG(ERROR) << "Failed to load lisp interpreter";
+        return;
+      }
+
+      Lisp::Init();
+
       while (running) {
         try {
           fs::path p(fileName);
@@ -295,10 +302,15 @@ struct ChainFileWatcher {
             auto writeTime = fs::last_write_time(p);
             lastWrite = writeTime;
 
-            std::ifstream jf(p.c_str());
-            json j;
-            jf >> j;
-            auto chain = j.get<CBChain *>();
+            std::ifstream lsp(p.c_str());
+            std::string str((std::istreambuf_iterator<char>(lsp)),
+                            std::istreambuf_iterator<char>());
+            auto v = Lisp::Eval(str.c_str());
+            if (v.valueType != Chain) {
+              LOG(ERROR) << "Lisp::Eval did not return a CBChain";
+              continue;
+            }
+            auto chain = v.payload.chainValue;
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(

@@ -59,17 +59,17 @@ struct WriteFile : public FileBase {
     }
   }
 
-  struct Serializer {
+  struct Writer {
     std::ofstream &_fileStream;
-    Serializer(std::ofstream &stream) : _fileStream(stream) {}
+    Writer(std::ofstream &stream) : _fileStream(stream) {}
     void operator()(const uint8_t *buf, size_t size) {
       _fileStream.write((const char *)buf, size);
     }
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    Serializer s(_fileStream);
-    serializeVar(input, s);
+    Writer s(_fileStream);
+    Serialization::serialize(input, s);
     return input;
   }
 };
@@ -100,157 +100,22 @@ struct ReadFile : public FileBase {
     }
   }
 
-  void cleanup() { freeVar(_output); }
+  void cleanup() { Serialization::free(_output); }
 
-  void freeVar(CBVar &output) {
-    switch (output.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
-    case CBType::Enum:
-    case CBType::Bool:
-    case CBType::Int:
-    case CBType::Int2:
-    case CBType::Int3:
-    case CBType::Int4:
-    case CBType::Int8:
-    case CBType::Int16:
-    case CBType::Float:
-    case CBType::Float2:
-    case CBType::Float3:
-    case CBType::Float4:
-    case CBType::Color:
-      break;
-    case CBType::Bytes:
-      delete[] output.payload.bytesValue;
-      break;
-    case CBType::String:
-    case CBType::ContextVar: {
-      delete[] output.payload.stringValue;
-      break;
+  struct Reader {
+    std::ifstream &_fileStream;
+    Reader(std::ifstream &stream) : _fileStream(stream) {}
+    void operator()(uint8_t *buf, size_t size) {
+      _fileStream.read((char *)buf, size);
     }
-    case CBType::Seq: {
-      for (auto i = 0; i < stbds_arrlen(output.payload.seqValue); i++) {
-        freeVar(output.payload.seqValue[i]);
-      }
-      stbds_arrfree(output.payload.seqValue);
-      output.payload.seqValue = nullptr;
-      break;
-    }
-    case CBType::Table: {
-      for (auto i = 0; i < stbds_shlen(output.payload.tableValue); i++) {
-        auto &v = output.payload.tableValue[i];
-        freeVar(v.value);
-        delete[] v.key;
-      }
-      stbds_shfree(output.payload.tableValue);
-      output.payload.tableValue = nullptr;
-      break;
-    }
-    case CBType::Image: {
-      delete[] output.payload.imageValue.data;
-      break;
-    }
-    case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
-      break;
-    }
-    output.valueType = None;
-  }
-
-  void readVar(CBVar &output) {
-    _fileStream.read((char *)&output.valueType, sizeof(output.valueType));
-    switch (output.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
-    case CBType::Enum:
-    case CBType::Bool:
-    case CBType::Int:
-    case CBType::Int2:
-    case CBType::Int3:
-    case CBType::Int4:
-    case CBType::Int8:
-    case CBType::Int16:
-    case CBType::Float:
-    case CBType::Float2:
-    case CBType::Float3:
-    case CBType::Float4:
-    case CBType::Color:
-      _fileStream.read((char *)&output.payload, sizeof(output.payload));
-      break;
-    case CBType::Bytes:
-      _fileStream.read((char *)&output.payload.bytesSize,
-                       sizeof(output.payload.bytesSize));
-      output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
-      _fileStream.read((char *)output.payload.bytesValue,
-                       output.payload.bytesSize);
-      break;
-    case CBType::String:
-    case CBType::ContextVar: {
-      uint64_t len;
-      _fileStream.read((char *)&len, sizeof(uint64_t));
-      output.payload.stringValue = new char[len + 1];
-      _fileStream.read((char *)output.payload.stringValue, len);
-      const_cast<char *>(output.payload.stringValue)[len] = 0;
-      break;
-    }
-    case CBType::Seq: {
-      uint64_t len;
-      _fileStream.read((char *)&len, sizeof(uint64_t));
-      stbds_arrsetlen(output.payload.seqValue, len);
-      for (auto i = 0; i < len; i++) {
-        readVar(output.payload.seqValue[i]);
-      }
-      break;
-    }
-    case CBType::Table: {
-      uint64_t len;
-      _fileStream.read((char *)&len, sizeof(uint64_t));
-      for (auto i = 0; i < len; i++) {
-        CBNamedVar v;
-        uint64_t klen;
-        _fileStream.read((char *)&klen, sizeof(uint64_t));
-        v.key = new char[klen + 1];
-        _fileStream.read((char *)v.key, len);
-        const_cast<char *>(v.key)[klen] = 0;
-        readVar(v.value);
-        stbds_shputs(output.payload.tableValue, v);
-      }
-      break;
-    }
-    case CBType::Image: {
-      _fileStream.read((char *)&output.payload.imageValue.channels,
-                       sizeof(output.payload.imageValue.channels));
-      _fileStream.read((char *)&output.payload.imageValue.flags,
-                       sizeof(output.payload.imageValue.flags));
-      _fileStream.read((char *)&output.payload.imageValue.width,
-                       sizeof(output.payload.imageValue.width));
-      _fileStream.read((char *)&output.payload.imageValue.height,
-                       sizeof(output.payload.imageValue.height));
-      auto size = output.payload.imageValue.channels *
-                  output.payload.imageValue.height *
-                  output.payload.imageValue.width;
-      output.payload.imageValue.data = new uint8_t[size];
-      _fileStream.read((char *)output.payload.imageValue.data, size);
-      break;
-    }
-    case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
-      throw CBException("WriteFile: Type cannot be serialized (yet?). " +
-                        type2Name(output.valueType));
-    }
-    _fileStream.read((char *)output.reserved, sizeof(output.reserved));
-  }
+  };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    freeVar(_output);
     if (_fileStream.eof()) {
       return Empty;
     }
-    readVar(_output);
+    Reader r(_fileStream);
+    Serialization::deserialize(r, _output);
     return _output;
   }
 };

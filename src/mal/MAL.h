@@ -31,7 +31,7 @@ extern void installCBCore(const malEnvPtr& env);
 extern malValuePtr readStr(const String& input);
 
 // Extras
-extern void malinit();
-extern malValuePtr maleval(const char* str);
+extern void malinit(malEnvPtr env);
+extern malValuePtr maleval(const char* str, malEnvPtr env);
 
 #endif // INCLUDE_MAL_H

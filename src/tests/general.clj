@@ -476,6 +476,8 @@
 
   "Hello file append..."
   (WriteFile "test.bin")
+  "Hello file append..."
+  (WriteFile "test.bin")
 
   "Hello Pandas"
   (ToBytes)
@@ -539,11 +541,6 @@
 (schedule Root testChain)
 (if (tick Root) nil (throw "Root tick failed"))
 
-; test json support
-(schedule Root (ChainJson (json testChain)))
-(if (tick Root) nil (throw "Root tick failed"))
-; (println (json testChain))
-
 (def Root (Node))
 (def testChain nil)
 
@@ -572,10 +569,12 @@
 (if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
 
 (def fileReader (Chain "readFile"
-  (ReadFile "test.bin")
-  (ExpectString)
-  (Log)
-  (Assert.Is "Hello file append..." true)
+  (Repeat (-->
+    (ReadFile "test.bin")
+    (ExpectString)
+    (Log)
+    (Assert.Is "Hello file append..." true))
+    2)
 ))
 
 (prepare fileReader)

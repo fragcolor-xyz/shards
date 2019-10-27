@@ -217,17 +217,17 @@ struct CBContext {
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
 
-using json = nlohmann::json;
-// The following procedures implement json.hpp protocol in order to allow easy
-// integration! they must stay outside the namespace!
-void to_json(json &j, const CBVar &var);
-void from_json(const json &j, CBVar &var);
-void to_json(json &j, const CBChainPtr &chain);
-void from_json(const json &j, CBChainPtr &chain);
-
 namespace chainblocks {
 
 void installSignalHandlers();
+
+struct Lisp {
+  typedef void(__cdecl *cbLispInitFunc)();
+  typedef CBVar(__cdecl *cbLispEvalFunc)(const char *str);
+
+  static inline cbLispInitFunc Init = nullptr;
+  static inline cbLispEvalFunc Eval = nullptr;
+};
 
 ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
                                         const CBVar &input,
