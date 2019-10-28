@@ -60,6 +60,7 @@ extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
 extern void registerSerializationBlocks();
 extern void registerFSBlocks();
+extern void registerJsonBlocks();
 
 namespace Math {
 namespace LinAlg {
@@ -88,6 +89,7 @@ void registerCoreBlocks() {
   registerSerializationBlocks();
   Math::LinAlg::registerBlocks();
   registerFSBlocks();
+  registerJsonBlocks();
 
   // also enums
   initEnums();

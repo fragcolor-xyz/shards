@@ -536,6 +536,20 @@
   (Assert.Is "## The result is: Hello world, this is a string again" true)
   (Log)
 
+  (Get "text1")
+  (ToJson)
+  (Log)
+  (Assert.Is "{\"type\":20,\"value\":\"The result is: Hello world, this is a string\"}" true)
+
+  (Get "unsortedList2Copy")
+  (ToJson)
+  (Log)
+  (Assert.Is "{\"type\":23,\"values\":[{\"type\":5,\"value\":0},{\"type\":5,\"value\":1},{\"type\":5,\"value\":1},{\"type\":5,\"value\":2}]}" true)
+
+  (Get "tab1new")
+  (ToJson)
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
