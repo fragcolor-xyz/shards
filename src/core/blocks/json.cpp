@@ -29,7 +29,7 @@ void _releaseMemory(CBVar &var) {
     stbds_arrfree(var.payload.seqValue);
     break;
   case Table:
-    for (auto i = 0; i < stbds_arrlen(var.payload.tableValue); i++) {
+    for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
       _releaseMemory(var.payload.tableValue[i].value);
     }
     stbds_shfree(var.payload.tableValue);
@@ -179,7 +179,7 @@ void to_json(json &j, const CBVar &var) {
   }
   case Table: {
     std::vector<json> items;
-    for (int i = 0; i < stbds_arrlen(var.payload.tableValue); i++) {
+    for (int i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
       auto &v = var.payload.tableValue[i];
       items.push_back(json{{"key", v.key}, {"value", v.value}});
     }
@@ -199,7 +199,7 @@ void to_json(json &j, const CBVar &var) {
       params.push_back(param_obj);
     }
 
-    j = {{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
+    j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
     break;
   }
   };
@@ -359,16 +359,11 @@ void from_json(const json &j, CBVar &var) {
     var.valueType = Seq;
     auto items = j.at("values").get<std::vector<json>>();
     var.payload.tableValue = nullptr;
-    stbds_shdefault(var.payload.tableValue, CBVar());
+    stbds_sh_new_arena(var.payload.tableValue);
     for (const auto &item : items) {
       auto key = item.at("key").get<std::string>();
       auto value = item.at("value").get<CBVar>();
-      CBNamedVar named{};
-      named.key = new char[key.length() + 1];
-      memset((void *)named.key, 0x0, key.length() + 1);
-      memcpy((char *)named.key, key.c_str(), key.length());
-      named.value = value;
-      stbds_shputs(var.payload.tableValue, named);
+      stbds_shput(var.payload.tableValue, key.c_str(), value);
     }
     break;
   }

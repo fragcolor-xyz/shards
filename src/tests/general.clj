@@ -549,6 +549,7 @@
   (Get "tab1new")
   (ToJson)
   (Log)
+  (Assert.Is "{\"type\":24,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":23,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
 
   (Msg "All looking good!")))
 

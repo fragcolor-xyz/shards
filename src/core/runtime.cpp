@@ -984,7 +984,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Table: {
-    for (auto i = 0; stbds_arrlen(value.payload.tableValue) > i; i++) {
+    for (auto i = 0; stbds_shlen(value.payload.tableValue) > i; i++) {
       stbds_arrpush(varType.tableTypes,
                     deriveTypeInfo(value.payload.tableValue[i].value));
     }

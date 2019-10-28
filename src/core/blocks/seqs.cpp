@@ -161,10 +161,9 @@ struct Flatten {
       }
       break;
     case Table: {
-      for (auto i = 0; i < stbds_arrlen(input.payload.tableValue); i++) {
+      for (auto i = 0; i < stbds_shlen(input.payload.tableValue); i++) {
         add(input.payload.tableValue[i].value);
       }
-      break;
       break;
     }
     }
