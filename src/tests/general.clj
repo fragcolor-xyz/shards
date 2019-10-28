@@ -540,6 +540,9 @@
   (ToJson)
   (Log)
   (Assert.Is "{\"type\":20,\"value\":\"The result is: Hello world, this is a string\"}" true)
+  (FromJson)
+  (ExpectString)
+  (Assert.Is "The result is: Hello world, this is a string" true)
 
   (Get "unsortedList2Copy")
   (ToJson)
