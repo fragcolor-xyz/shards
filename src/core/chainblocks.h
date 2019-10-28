@@ -15,7 +15,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Included 3rdparty
+// Included 3rdpart
+#ifdef USE_RPMALLOC
 #include "rpmalloc/rpmalloc.h"
 inline void* rp_init_realloc(void* ptr, size_t size) {
   rpmalloc_initialize();
@@ -23,6 +24,7 @@ inline void* rp_init_realloc(void* ptr, size_t size) {
 }
 #define STBDS_REALLOC(context, ptr, size) rp_init_realloc(ptr, size)
 #define STBDS_FREE(context, ptr) rpfree(ptr)
+#endif
 #include "stb_ds.h"
 
 // All the available types

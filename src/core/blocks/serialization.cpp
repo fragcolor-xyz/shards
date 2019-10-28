@@ -86,6 +86,8 @@ RUNTIME_BLOCK_activate(WriteFile);
 RUNTIME_BLOCK_END(WriteFile);
 
 struct ReadFile : public FileBase {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+
   std::ifstream _fileStream;
   CBVar _output{};
 
@@ -100,7 +102,7 @@ struct ReadFile : public FileBase {
     }
   }
 
-  void cleanup() { Serialization::free(_output); }
+  void cleanup() { Serialization::varFree(_output); }
 
   struct Reader {
     std::ifstream &_fileStream;

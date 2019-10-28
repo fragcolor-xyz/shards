@@ -10,6 +10,7 @@
 #include <cstdarg>
 #include <string.h>
 
+#ifdef USE_RPMALLOC
 void *operator new(std::size_t s) {
   rpmalloc_initialize();
   return rpmalloc(s);
@@ -37,6 +38,7 @@ void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
 }
 void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
+#endif
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -73,7 +75,9 @@ extern void cbInitExtras();
 #endif
 
 void registerCoreBlocks() {
+#ifdef USE_RPMALLOC
   rpmalloc_initialize();
+#endif
 
   assert(sizeof(CBVarPayload) == 16);
   assert(sizeof(CBVar) == 32);

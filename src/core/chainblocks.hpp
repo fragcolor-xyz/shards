@@ -414,7 +414,7 @@ static Var RebaseChain = Var::Rebase();
 static Var Empty = Var();
 
 struct Serialization {
-  static inline void free(CBVar &output) {
+  static inline void varFree(CBVar &output) {
     auto oactualSize = reinterpret_cast<uint64_t *>(output.reserved);
 
     switch (output.valueType) {
@@ -445,7 +445,7 @@ struct Serialization {
     }
     case CBType::Seq: {
       for (auto i = 0; i < stbds_arrlen(output.payload.seqValue); i++) {
-        free(output.payload.seqValue[i]);
+        varFree(output.payload.seqValue[i]);
       }
       stbds_arrfree(output.payload.seqValue);
       output.payload.seqValue = nullptr;
@@ -454,7 +454,7 @@ struct Serialization {
     case CBType::Table: {
       for (auto i = 0; i < stbds_shlen(output.payload.tableValue); i++) {
         auto &v = output.payload.tableValue[i];
-        free(v.value);
+        varFree(v.value);
         delete[] v.key;
       }
       stbds_shfree(output.payload.tableValue);
@@ -488,7 +488,7 @@ struct Serialization {
     // stop trying to recycle, types differ
     auto recycle = true;
     if (output.valueType != nextType) {
-      free(output);
+      varFree(output);
       recycle = false;
     }
 
@@ -565,7 +565,7 @@ struct Serialization {
         // in this case we need to destroy the excess items
         // before resizing
         for (auto i = len; i < currentUsed; i++) {
-          free(output.payload.seqValue[i]);
+          varFree(output.payload.seqValue[i]);
         }
       }
 
@@ -577,7 +577,7 @@ struct Serialization {
     }
     case CBType::Table: {
       if (recycle) // tables are slow for now...
-        free(output);
+        varFree(output);
 
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
