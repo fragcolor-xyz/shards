@@ -60,13 +60,13 @@ public:
   typedef PtrIterator<T> iterator;
   typedef PtrIterator<const T> const_iterator;
 
-  IterableStb() : _owned(true), _seq(nullptr) {}
+  IterableStb() : _seq(nullptr), _owned(true) {}
 
-  IterableStb(size_t s) : _owned(true), _seq(nullptr) {
+  IterableStb(size_t s) : _seq(nullptr), _owned(true) {
     stbds_arrsetlen(_seq, s);
   }
 
-  IterableStb(size_t s, T v) : _owned(true), _seq(nullptr) {
+  IterableStb(size_t s, T v) : _seq(nullptr), _owned(true) {
     stbds_arrsetlen(_seq, s);
     for (auto i = 0; i < s; i++) {
       _seq[i] = v;
@@ -74,7 +74,7 @@ public:
   }
 
   IterableStb(const_iterator first, const_iterator last)
-      : _owned(true), _seq(nullptr) {
+      : _seq(nullptr), _owned(true) {
     size_t size = last - first;
     stbds_arrsetlen(_seq, size);
     for (auto i = 0; i < size; i++) {
@@ -82,7 +82,7 @@ public:
     }
   }
 
-  IterableStb(const IterableStb &other) : _owned(true), _seq(nullptr) {
+  IterableStb(const IterableStb &other) : _seq(nullptr), _owned(true) {
     size_t size = stbds_arrlen(other._seq);
     stbds_arrsetlen(_seq, size);
     for (auto i = 0; i < size; i++) {
@@ -90,7 +90,7 @@ public:
     }
   }
 
-  IterableStb(seq_type seq) : _owned(false), _seq(seq) {}
+  IterableStb(seq_type seq) : _seq(seq), _owned(true) {}
 
   IterableStb &operator=(IterableStb &other) {
     std::swap(_seq, other._seq);
