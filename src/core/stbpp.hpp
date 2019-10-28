@@ -90,7 +90,8 @@ public:
     }
   }
 
-  IterableStb(seq_type seq) : _seq(seq), _owned(true) {}
+  // Not OWNING!
+  IterableStb(seq_type seq) : _seq(seq), _owned(false) {}
 
   IterableStb &operator=(IterableStb &other) {
     std::swap(_seq, other._seq);
