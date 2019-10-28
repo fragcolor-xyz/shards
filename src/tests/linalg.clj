@@ -3,6 +3,24 @@
                (Float4 0 0 1 0)
                (Float4 0 0 0 1)])
 
+(def mat1 [(Float4 1 2 3 4)
+           (Float4 1 2 3 4)
+           (Float4 1 2 3 4)
+           (Float4 1 2 3 4)])
+
+(def mat1t [(Float4 1 1 1 1)
+            (Float4 2 2 2 2)
+            (Float4 3 3 3 3)
+            (Float4 4 4 4 4)])
+
+(def mat2 [(Float2 1 2)
+           (Float2 1 2)
+           (Float2 1 2)
+           (Float2 1 2)])
+
+(def mat2t [(Float4 1 1 1 1)
+            (Float4 2 2 2 2)])
+
 (def Root (Node))
 (schedule Root (Chain "tests"
   (Float3 1 2 3)
@@ -50,4 +68,20 @@
   (Const identity)
   (Math.LinAlg.MatMul (Float4 1 2 3 4))
   (Log)
+  (Assert.Is (Float4 1 2 3 4) true)
+
+  (Const identity)
+  (Math.LinAlg.MatMul identity)
+  (Log)
+  (Assert.Is identity true)
+
+  (Const mat1)
+  (Math.LinAlg.Transpose)
+  (Log)
+  (Assert.Is mat1t true)
+
+  (Const mat2)
+  (Math.LinAlg.Transpose)
+  (Log)
+  (Assert.Is mat2t true)
 ))

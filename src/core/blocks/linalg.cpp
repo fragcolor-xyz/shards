@@ -249,6 +249,7 @@ struct MatMul : public VectorBinaryBase {
   // MatMul is special...
   // Mat @ Mat = Mat
   // Mat @ Vec = Vec
+  // If ever becomes a bottle neck, valgrind and optimize
 
   CBVar mvmul(const CBVar &a, const CBVar &b) {
     CBVar output;
@@ -260,23 +261,32 @@ struct MatMul : public VectorBinaryBase {
         // tbh this should be supported tho...
         throw CBException("MatMul expected same Float vector types");
       }
-      CBVar tmp;
-      Dot::Operation dot;
-      dot(tmp, x, b);
 
-      switch (b.valueType) {
-      case Float:
-        output.payload.floatValue = tmp.payload.floatValue;
-        break;
-      case Float2:
-        output.payload.float2Value[i] = tmp.payload.floatValue;
-        break;
-      case Float3:
-        output.payload.float3Value[i] = tmp.payload.floatValue;
-        break;
-      case Float4:
-        output.payload.float4Value[i] = tmp.payload.floatValue;
-        break;
+      switch (x.valueType) {
+      case Float2: {
+        output.payload.float2Value[i] =
+            x.payload.float2Value[0] * b.payload.float2Value[0];
+        output.payload.float2Value[i] +=
+            x.payload.float2Value[1] * b.payload.float2Value[1];
+      } break;
+      case Float3: {
+        output.payload.float3Value[i] =
+            x.payload.float3Value[0] * b.payload.float3Value[0];
+        output.payload.float3Value[i] +=
+            x.payload.float3Value[1] * b.payload.float3Value[1];
+        output.payload.float3Value[i] +=
+            x.payload.float3Value[2] * b.payload.float3Value[2];
+      } break;
+      case Float4: {
+        output.payload.float4Value[i] =
+            x.payload.float4Value[0] * b.payload.float4Value[0];
+        output.payload.float4Value[i] +=
+            x.payload.float4Value[1] * b.payload.float4Value[1];
+        output.payload.float4Value[i] +=
+            x.payload.float4Value[2] * b.payload.float4Value[2];
+        output.payload.float4Value[i] +=
+            x.payload.float4Value[3] * b.payload.float4Value[3];
+      } break;
       default:
         break;
       }
@@ -284,7 +294,21 @@ struct MatMul : public VectorBinaryBase {
     return output;
   }
 
-  void mmmul(CBVar &output, const CBVar &a, const CBVar &b) {}
+  void mmmul(const CBVar &a, const CBVar &b) {
+    auto dima = stbds_arrlen(a.payload.seqValue);
+    auto dimb = stbds_arrlen(a.payload.seqValue);
+    if (dima != dimb) {
+      throw CBException(
+          "MatMul expected 2 arrays with the same number of columns");
+    }
+
+    stbds_arrsetlen(_cachedSeq.payload.seqValue, dima);
+    for (auto i = 0; i < dima; i++) {
+      const auto &y = b.payload.seqValue[i];
+      const auto r = mvmul(a, y);
+      _cachedSeq.payload.seqValue[i] = r;
+    }
+  }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {
@@ -294,12 +318,131 @@ struct MatMul : public VectorBinaryBase {
 
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
+      mmmul(input, operand);
+      return _cachedSeq;
     } else if (_opType == Seq1) {
       return mvmul(input, operand);
     } else {
       throw CBException("MatMul expects either Mat (Seq of FloatX) @ Mat or "
                         "Mat @ Vec (FloatX)");
     }
+  }
+};
+
+struct Transpose : public VectorUnaryBase {
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    if (inputType.basicType != Seq) {
+      throw CBException("Transpose expected a Seq matrix array as input.");
+    }
+    return inputType;
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto height = stbds_arrlen(input.payload.seqValue);
+    if (height < 2 || height > 4) {
+      // todo 2x1 should be go too
+      throw CBException("Transpose expects a 2x2 to 4x4 matrix array.");
+    }
+
+    decltype(height) width = 0;
+    switch (input.payload.seqValue[0].valueType) {
+    case Float2:
+      width = 2;
+      break;
+    case Float3:
+      width = 3;
+      break;
+    case Float4:
+      width = 4;
+      break;
+    default:
+      break;
+    }
+
+    stbds_arrsetlen(_cachedSeq.payload.seqValue, width);
+
+    double v1, v2, v3, v4;
+    for (auto w = 0; w < width; w++) {
+      switch (height) {
+      case 2:
+        _cachedSeq.payload.seqValue[w].valueType = Float2;
+        switch (width) {
+        case 2:
+          v1 = input.payload.seqValue[0].payload.float2Value[w];
+          v2 = input.payload.seqValue[1].payload.float2Value[w];
+          break;
+        case 3:
+          v1 = input.payload.seqValue[0].payload.float3Value[w];
+          v2 = input.payload.seqValue[1].payload.float3Value[w];
+          break;
+        case 4:
+          v1 = input.payload.seqValue[0].payload.float4Value[w];
+          v2 = input.payload.seqValue[1].payload.float4Value[w];
+          break;
+        default:
+          break;
+        }
+        _cachedSeq.payload.seqValue[w].payload.float2Value[0] = v1;
+        _cachedSeq.payload.seqValue[w].payload.float2Value[1] = v2;
+        break;
+      case 3:
+        _cachedSeq.payload.seqValue[w].valueType = Float3;
+        switch (width) {
+        case 2:
+          v1 = input.payload.seqValue[0].payload.float2Value[w];
+          v2 = input.payload.seqValue[1].payload.float2Value[w];
+          v3 = input.payload.seqValue[2].payload.float2Value[w];
+          break;
+        case 3:
+          v1 = input.payload.seqValue[0].payload.float3Value[w];
+          v2 = input.payload.seqValue[1].payload.float3Value[w];
+          v3 = input.payload.seqValue[2].payload.float3Value[w];
+          break;
+        case 4:
+          v1 = input.payload.seqValue[0].payload.float4Value[w];
+          v2 = input.payload.seqValue[1].payload.float4Value[w];
+          v3 = input.payload.seqValue[2].payload.float4Value[w];
+          break;
+        default:
+          break;
+        }
+        _cachedSeq.payload.seqValue[w].payload.float3Value[0] = v1;
+        _cachedSeq.payload.seqValue[w].payload.float3Value[1] = v2;
+        _cachedSeq.payload.seqValue[w].payload.float3Value[2] = v3;
+        break;
+      case 4:
+        _cachedSeq.payload.seqValue[w].valueType = Float4;
+        switch (width) {
+        case 2:
+          v1 = input.payload.seqValue[0].payload.float2Value[w];
+          v2 = input.payload.seqValue[1].payload.float2Value[w];
+          v3 = input.payload.seqValue[2].payload.float2Value[w];
+          v4 = input.payload.seqValue[3].payload.float2Value[w];
+          break;
+        case 3:
+          v1 = input.payload.seqValue[0].payload.float3Value[w];
+          v2 = input.payload.seqValue[1].payload.float3Value[w];
+          v3 = input.payload.seqValue[2].payload.float3Value[w];
+          v4 = input.payload.seqValue[3].payload.float3Value[w];
+          break;
+        case 4:
+          v1 = input.payload.seqValue[0].payload.float4Value[w];
+          v2 = input.payload.seqValue[1].payload.float4Value[w];
+          v3 = input.payload.seqValue[2].payload.float4Value[w];
+          v4 = input.payload.seqValue[3].payload.float4Value[w];
+          break;
+        default:
+          break;
+        }
+        _cachedSeq.payload.seqValue[w].payload.float4Value[0] = v1;
+        _cachedSeq.payload.seqValue[w].payload.float4Value[1] = v2;
+        _cachedSeq.payload.seqValue[w].payload.float4Value[2] = v3;
+        _cachedSeq.payload.seqValue[w].payload.float4Value[3] = v4;
+        break;
+      }
+    }
+    return _cachedSeq;
   }
 };
 
@@ -334,6 +477,7 @@ LINALG_BINARY_BLOCK(MatMul);
 LINALG_UNARY_BLOCK(Normalize);
 LINALG_UNARY_BLOCK(LengthSquared);
 LINALG_UNARY_BLOCK(Length);
+LINALG_UNARY_BLOCK(Transpose);
 
 void registerBlocks() {
   chainblocks::registerBlock("Math.LinAlg.Cross", createBlockCross);
@@ -343,6 +487,7 @@ void registerBlocks() {
                              createBlockLengthSquared);
   chainblocks::registerBlock("Math.LinAlg.Length", createBlockLength);
   chainblocks::registerBlock("Math.LinAlg.MatMul", createBlockMatMul);
+  chainblocks::registerBlock("Math.LinAlg.Transpose", createBlockTranspose);
 }
 }; // namespace LinAlg
 }; // namespace Math
