@@ -251,6 +251,16 @@ struct MatMul : public VectorBinaryBase {
   // Mat @ Vec = Vec
   // If ever becomes a bottle neck, valgrind and optimize
 
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    BinaryBase::inferTypes(inputType, consumableVariables);
+    if (_opType == SeqSeq) {
+      return inputType;
+    } else {
+      return *inputType.seqType;
+    }
+  }
+
   CBVar mvmul(const CBVar &a, const CBVar &b) {
     CBVar output;
     output.valueType = b.valueType;
@@ -314,8 +324,7 @@ struct MatMul : public VectorBinaryBase {
     if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {
       _ctxOperand = contextVariable(context, _operand.payload.stringValue);
     }
-    auto &operand = _ctxOperand ? *_ctxOperand : _operand;
-
+    const auto &operand = _ctxOperand ? *_ctxOperand : _operand;
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
       mmmul(input, operand);

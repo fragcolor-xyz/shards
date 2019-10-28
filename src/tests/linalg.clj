@@ -65,10 +65,24 @@
   (Math.LinAlg.Normalize)
   (Log)
 
+  (Float4 2 3 4 5)
+  (Set "vec4.1")
+  
   (Const identity)
   (Math.LinAlg.MatMul (Float4 1 2 3 4))
   (Log)
   (Assert.Is (Float4 1 2 3 4) true)
+
+  (Const identity)
+  (Math.LinAlg.MatMul (# "vec4.1"))
+  (Log)
+  (Assert.Is (Float4 2 3 4 5) true)
+  (Set "vec4.2")
+
+  (Const identity)
+  (Math.LinAlg.MatMul (# "vec4.2"))
+  (Log)
+  (Assert.Is (Float4 2 3 4 5) true)
 
   (Const identity)
   (Math.LinAlg.MatMul identity)
