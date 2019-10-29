@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../blocks_macros.hpp"
+// circular warning this is self inclusive on purpose
 #include "../chainblocks.hpp"
 
 namespace chainblocks {
@@ -1223,18 +1224,26 @@ struct Pop : SeqUser {
 };
 
 struct Take {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Indices", "One or multiple indices to filter from a sequence.",
-      CBTypesInfo(CoreInfo::intsVarInfo)));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Indices",
+                        "One or multiple indices to filter from a sequence.",
+                        CBTypesInfo(CoreInfo::intsVarInfo)),
+      ParamsInfo::Param("Range",
+                        "If Indices should be treated as a range. A single "
+                        "value means from that index to the end. Ranges are "
+                        "inclusive, [0 3] will pick 4 values.",
+                        CBTypesInfo(CoreInfo::boolInfo)));
 
-  CBSeq _cachedResult = nullptr;
+  CBSeq _cachedSeq = nullptr;
   CBVar _indices{};
   CBVar *_indicesVar = nullptr;
   ExposedInfo _exposedInfo{};
+  bool _range = false;
+  bool _seqOutput = false;
 
   void destroy() {
-    if (_cachedResult) {
-      stbds_arrfree(_cachedResult);
+    if (_cachedSeq) {
+      stbds_arrfree(_cachedSeq);
     }
     destroyVar(_indices);
   }
@@ -1254,10 +1263,12 @@ struct Take {
     // Figure if we output a sequence or not
     if (_indices.valueType == Seq) {
       if (inputType.basicType == Seq) {
+        _seqOutput = true;
         return inputType; // multiple values
       }
     } else if (_indices.valueType == Int) {
       if (inputType.basicType == Seq && inputType.seqType) {
+        _seqOutput = false;
         return *inputType.seqType; // single value
       }
     } else { // ContextVar
@@ -1267,10 +1278,12 @@ struct Take {
           if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
               info.exposedType.seqType->basicType == Int) {
             if (inputType.basicType == Seq) {
+              _seqOutput = true;
               return inputType; // multiple values
             }
           } else if (info.exposedType.basicType == Int) {
             if (inputType.basicType == Seq && inputType.seqType) {
+              _seqOutput = false;
               return *inputType.seqType; // single value
             }
           } else {
@@ -1286,13 +1299,14 @@ struct Take {
 
   CBExposedTypesInfo consumedVariables() {
     if (_indices.valueType == ContextVar) {
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue,
-                                            "The consumed variable.",
-                                            CBTypeInfo(CoreInfo::intInfo)),
-                      ExposedInfo::Variable(_indices.payload.stringValue,
-                                            "The consumed variables.",
-                                            CBTypeInfo(CoreInfo::intSeqInfo)));
+      if (_seqOutput)
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _indices.payload.stringValue, "The consumed variables.",
+            CBTypeInfo(CoreInfo::intSeqInfo)));
+      else
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _indices.payload.stringValue, "The consumed variable.",
+            CBTypeInfo(CoreInfo::intInfo)));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
       return nullptr;
@@ -1305,47 +1319,58 @@ struct Take {
       cloneVar(_indices, value);
       _indicesVar = nullptr;
       break;
+    case 1:
+      _range = value.payload.boolValue;
+      break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) { return _indices; }
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _indices;
+    case 1:
+      return Var(_range);
+    default:
+      break;
+    }
+    return Empty;
+  }
+
+  struct OutOfRangeEx : public CBException {
+    OutOfRangeEx(int64_t len, int64_t index)
+        : CBException("Take out of range!") {
+      LOG(ERROR) << "Oout of range! len:" << len << " wanted index: " << index;
+    }
+  };
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto inputLen = stbds_arrlen(input.payload.seqValue);
-    auto indices = _indices;
-
     if (_indices.valueType == ContextVar && !_indicesVar) {
       _indicesVar = contextVariable(context, _indices.payload.stringValue);
     }
 
-    if (_indicesVar) {
-      indices = *_indicesVar;
-    }
+    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;
 
-    if (indices.valueType == Int) {
-      auto index = indices.payload.intValue;
-      if (index >= inputLen) {
-        LOG(ERROR) << "Take out of range! len:" << inputLen
-                   << " wanted index: " << index;
-        throw CBException("Take out of range!");
+    if (!_seqOutput) {
+      const auto index = indices.payload.intValue;
+      if (index >= inputLen || index < 0) {
+        throw OutOfRangeEx(inputLen, index);
       }
       return input.payload.seqValue[index];
     } else {
-      // Else it's a seq
-      auto nindices = stbds_arrlen(indices.payload.seqValue);
-      stbds_arrsetlen(_cachedResult, nindices);
+      const auto nindices = stbds_arrlen(indices.payload.seqValue);
+      stbds_arrsetlen(_cachedSeq, nindices);
       for (auto i = 0; nindices > i; i++) {
-        auto index = indices.payload.seqValue[i].payload.intValue;
-        if (index >= inputLen) {
-          LOG(ERROR) << "Take out of range! len:" << inputLen
-                     << " wanted index: " << index;
-          throw CBException("Take out of range!");
+        const auto index = indices.payload.seqValue[i].payload.intValue;
+        if (index >= inputLen || index < 0) {
+          throw OutOfRangeEx(inputLen, index);
         }
-        _cachedResult[i] = input.payload.seqValue[index];
+        _cachedSeq[i] = input.payload.seqValue[index];
       }
-      return Var(_cachedResult);
+      return Var(_cachedSeq);
     }
   }
 };
