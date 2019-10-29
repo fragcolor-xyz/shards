@@ -554,6 +554,14 @@
   (Log)
   (Assert.Is "{\"type\":24,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":23,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
 
+  (Float4 1 2 3 4)
+  (Take 0)
+  (Assert.Is 1.0 true)
+
+  (Float4 1 2 3 4)
+  (Take [2 3])
+  (Assert.Is (Float2 3 4) true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

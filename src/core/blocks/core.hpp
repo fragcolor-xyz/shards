@@ -25,6 +25,9 @@ struct CoreInfo {
   static inline TypesInfo noneInfo = TypesInfo(CBType::None);
   static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
   static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
+  static inline TypesInfo float2Info = TypesInfo(CBType::Float2);
+  static inline TypesInfo float3Info = TypesInfo(CBType::Float3);
+  static inline TypesInfo float4Info = TypesInfo(CBType::Float4);
   static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
   static inline TypeInfo blockType = TypeInfo(CBType::Block);
@@ -36,6 +39,13 @@ struct CoreInfo {
   static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
   static inline TypesInfo floatSeqInfo =
       TypesInfo(TypeInfo::Sequence(floatType));
+  static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
+      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
+      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
+  static inline TypesInfo anyIndexableInfo = TypesInfo::FromMany(
+      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
+      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4,
+      CBType::Seq, CBType::Bytes, CBType::Color, CBType::String);
 };
 
 struct Const {
@@ -1224,22 +1234,18 @@ struct Pop : SeqUser {
 };
 
 struct Take {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Indices",
-                        "One or multiple indices to filter from a sequence.",
-                        CBTypesInfo(CoreInfo::intsVarInfo)),
-      ParamsInfo::Param("Range",
-                        "If Indices should be treated as a range. A single "
-                        "value means from that index to the end. Ranges are "
-                        "inclusive, [0 3] will pick 4 values.",
-                        CBTypesInfo(CoreInfo::boolInfo)));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices", "One or multiple indices to filter from a sequence.",
+      CBTypesInfo(CoreInfo::intsVarInfo)));
 
   CBSeq _cachedSeq = nullptr;
   CBVar _indices{};
   CBVar *_indicesVar = nullptr;
   ExposedInfo _exposedInfo{};
-  bool _range = false;
   bool _seqOutput = false;
+  CBVar _vectorOutput{};
+  uint8_t _vectorInputLen = 0;
+  uint8_t _vectorOutputLen = 0;
 
   void destroy() {
     if (_cachedSeq) {
@@ -1250,7 +1256,9 @@ struct Take {
 
   void cleanup() { _indicesVar = nullptr; }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo(CoreInfo::anyIndexableInfo);
+  }
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
@@ -1260,32 +1268,30 @@ struct Take {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
+    bool valid = false;
     // Figure if we output a sequence or not
     if (_indices.valueType == Seq) {
-      if (inputType.basicType == Seq) {
-        _seqOutput = true;
-        return inputType; // multiple values
-      }
+      _seqOutput = true;
+      valid = true;
     } else if (_indices.valueType == Int) {
-      if (inputType.basicType == Seq && inputType.seqType) {
-        _seqOutput = false;
-        return *inputType.seqType; // single value
-      }
+      _seqOutput = false;
+      valid = true;
     } else { // ContextVar
       IterableExposedInfo infos(consumableVariables);
       for (auto &info : infos) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
               info.exposedType.seqType->basicType == Int) {
-            if (inputType.basicType == Seq) {
-              _seqOutput = true;
-              return inputType; // multiple values
-            }
+            _seqOutput = true;
+            valid = true;
+            break;
+
           } else if (info.exposedType.basicType == Int) {
-            if (inputType.basicType == Seq && inputType.seqType) {
-              _seqOutput = false;
-              return *inputType.seqType; // single value
-            }
+
+            _seqOutput = false;
+            valid = true;
+            break;
+
           } else {
             auto msg = "Take indices variable " + std::string(info.name) +
                        " expected to be either a Seq or a Int";
@@ -1294,7 +1300,63 @@ struct Take {
         }
       }
     }
-    throw CBException("Take expected a sequence as input.");
+
+    if (!valid)
+      throw CBException("Take, invalid indices or malformed input.");
+
+    if (inputType.basicType == Seq) {
+      if (_seqOutput)
+        return inputType; // multiple values
+      else
+        return *inputType.seqType; // single value
+    } else if (inputType.basicType >= Int2 && inputType.basicType <= Int16) {
+      // int vector
+    } else if (inputType.basicType >= Float2 && inputType.basicType <= Float4) {
+      if (_indices.valueType == ContextVar)
+        throw CBException(
+            "A Take on a vector cannot have Indices as a variable.");
+
+      // Floats
+      switch (inputType.basicType) {
+      case Float2:
+        _vectorInputLen = 2;
+        break;
+      case Float3:
+        _vectorInputLen = 3;
+        break;
+      case Float4:
+      default:
+        _vectorInputLen = 4;
+        break;
+      }
+
+      if (!_seqOutput) {
+        _vectorOutputLen = 1;
+        return CBTypeInfo(CoreInfo::floatInfo);
+      } else {
+        _vectorOutputLen = (uint8_t)stbds_arrlen(_indices.payload.seqValue);
+        switch (_vectorOutputLen) {
+        case 2:
+          _vectorOutput.valueType = Float2;
+          return CBTypeInfo(CoreInfo::float2Info);
+        case 3:
+          _vectorOutput.valueType = Float3;
+          return CBTypeInfo(CoreInfo::float3Info);
+        case 4:
+        default:
+          _vectorOutput.valueType = Float4;
+          return CBTypeInfo(CoreInfo::float4Info);
+        }
+      }
+    } else if (inputType.basicType == Color) {
+      // todo
+    } else if (inputType.basicType == Bytes) {
+      // todo
+    } else if (inputType.basicType == String) {
+      // todo
+    }
+
+    throw CBException("Take, invalid input type or not implemented.");
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -1319,9 +1381,6 @@ struct Take {
       cloneVar(_indices, value);
       _indicesVar = nullptr;
       break;
-    case 1:
-      _range = value.payload.boolValue;
-      break;
     default:
       break;
     }
@@ -1331,8 +1390,6 @@ struct Take {
     switch (index) {
     case 0:
       return _indices;
-    case 1:
-      return Var(_range);
     default:
       break;
     }
@@ -1342,11 +1399,11 @@ struct Take {
   struct OutOfRangeEx : public CBException {
     OutOfRangeEx(int64_t len, int64_t index)
         : CBException("Take out of range!") {
-      LOG(ERROR) << "Oout of range! len:" << len << " wanted index: " << index;
+      LOG(ERROR) << "Out of range! len:" << len << " wanted index: " << index;
     }
   };
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
     if (_indices.valueType == ContextVar && !_indicesVar) {
       _indicesVar = contextVariable(context, _indices.payload.stringValue);
     }
@@ -1372,6 +1429,99 @@ struct Take {
       }
       return Var(_cachedSeq);
     }
+  }
+
+  ALWAYS_INLINE CBVar activateFloats(CBContext *context, const CBVar &input) {
+    const auto inputLen = (int64_t)_vectorInputLen;
+    const auto outputLen = (int64_t)_vectorOutputLen;
+    const auto &indices = _indices;
+
+    if (!_seqOutput) {
+      const auto index = indices.payload.intValue;
+      if (index >= inputLen || index < 0) {
+        throw OutOfRangeEx(inputLen, index);
+      }
+
+      switch (_vectorInputLen) {
+      case Float2:
+        return Var(input.payload.float2Value[index]);
+      case Float3:
+        return Var(input.payload.float3Value[index]);
+      case Float4:
+      default:
+        return Var(input.payload.float4Value[index]);
+      }
+    } else {
+      const auto nindices = stbds_arrlen(indices.payload.seqValue);
+      for (auto i = 0; nindices > i; i++) {
+        const auto index = indices.payload.seqValue[i].payload.intValue;
+        if (index >= inputLen || index < 0 || nindices != _vectorOutputLen) {
+          throw OutOfRangeEx(inputLen, index);
+        }
+
+        switch (_vectorOutputLen) {
+        case 2:
+          switch (_vectorInputLen) {
+          case 2:
+            _vectorOutput.payload.float2Value[i] =
+                input.payload.float2Value[index];
+            break;
+          case 3:
+            _vectorOutput.payload.float2Value[i] =
+                input.payload.float3Value[index];
+            break;
+          case 4:
+          default:
+            _vectorOutput.payload.float2Value[i] =
+                input.payload.float4Value[index];
+            break;
+          }
+          break;
+        case 3:
+          switch (_vectorInputLen) {
+          case 2:
+            _vectorOutput.payload.float3Value[i] =
+                input.payload.float2Value[index];
+            break;
+          case 3:
+            _vectorOutput.payload.float3Value[i] =
+                input.payload.float3Value[index];
+            break;
+          case 4:
+          default:
+            _vectorOutput.payload.float3Value[i] =
+                input.payload.float4Value[index];
+            break;
+          }
+          break;
+        case 4:
+        default:
+          switch (_vectorInputLen) {
+          case 2:
+            _vectorOutput.payload.float4Value[i] =
+                input.payload.float2Value[index];
+            break;
+          case 3:
+            _vectorOutput.payload.float4Value[i] =
+                input.payload.float3Value[index];
+            break;
+          case 4:
+          default:
+            _vectorOutput.payload.float4Value[i] =
+                input.payload.float4Value[index];
+            break;
+          }
+          break;
+        }
+      }
+      return _vectorOutput;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // Take branches during validation into different inlined blocks
+    // If we hit this, maybe that type of input is not yet implemented
+    assert(false);
   }
 };
 

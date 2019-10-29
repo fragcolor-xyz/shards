@@ -132,8 +132,6 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreUpdate;
   } else if (strcmp(name, "Swap") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
-  } else if (strcmp(name, "Take") == 0) {
-    blkp->inlineBlockId = CBInlineBlocks::CoreTake;
   } else if (strcmp(name, "Push") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CorePush;
   } else if (strcmp(name, "Is") == 0) {
@@ -805,6 +803,25 @@ void validateConnection(ValidationContext &ctx) {
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
       ctx.variables.insert(name);
+    }
+  }
+
+  // Take selector checks
+  if (strcmp(ctx.bottom->name(ctx.bottom), "Take") == 0) {
+    if (previousOutput.basicType == Seq) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;
+    } else if (previousOutput.basicType >= Int2 &&
+               previousOutput.basicType <= Int16) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeInts;
+    } else if (previousOutput.basicType >= Float2 &&
+               previousOutput.basicType <= Float4) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeFloats;
+    } else if (previousOutput.basicType == Color) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeColor;
+    } else if (previousOutput.basicType == Bytes) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeBytes;
+    } else if (previousOutput.basicType == String) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeString;
     }
   }
 

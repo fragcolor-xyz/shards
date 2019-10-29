@@ -303,9 +303,14 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core.activate(context, input);
     return;
   }
-  case CoreTake: {
+  case CoreTakeSeq: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
+    previousOutput = cblock->core.activateSeq(context, input);
+    return;
+  }
+  case CoreTakeFloats: {
+    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
+    previousOutput = cblock->core.activateFloats(context, input);
     return;
   }
   case CorePush: {
