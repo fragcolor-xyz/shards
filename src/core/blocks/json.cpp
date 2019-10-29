@@ -524,6 +524,9 @@ struct FromJson {
 };
 
 RUNTIME_CORE_BLOCK(ToJson);
+RUNTIME_BLOCK_parameters(ToJson);
+RUNTIME_BLOCK_setParam(ToJson);
+RUNTIME_BLOCK_getParam(ToJson);
 RUNTIME_BLOCK_inputTypes(ToJson);
 RUNTIME_BLOCK_outputTypes(ToJson);
 RUNTIME_BLOCK_activate(ToJson);
