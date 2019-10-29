@@ -9,9 +9,13 @@
 ```
 
 ## Vision
-Building a programming tool for the future. A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment.
+Building a programming tool for the future. 
 
-To achieve that we build a scripting language that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
+A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment. 
+
+A future that is driven by Artificial Intelligence that wants to become general intelligence, but to make it happen the first step is to focus on Automation and Machine Learning.
+
+To achieve that we build a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
 
 ## Goals
 * Automation scripting for everyone
