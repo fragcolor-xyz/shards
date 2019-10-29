@@ -31,7 +31,7 @@ To achieve that we build a scripting language that can be both visual and textua
 * Performance driven and easy to profile
 * Automatically inferred strong types
 * **SIMD** vectors as first class types
-* Strong validation before run-time
+* Strong validation and optimization ahead of run-time
 * Extremely easy to debug and dissect
 * Deterministic execution and performance
 * Built on top of **co-routines**, extremely easy to unleash parallelization
