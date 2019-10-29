@@ -486,12 +486,27 @@ void from_json(const json &j, CBChainPtr &chain) {
 
 namespace chainblocks {
 struct ToJson {
+  int64_t _indent = 0;
   std::string _output;
+
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "Indent", "How many spaces to use as json prettify indent.",
+      CBTypesInfo(SharedTypes::intInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, CBVar value) { _indent = value.payload.intValue; }
+
+  CBVar getParam(int index) { return Var(_indent); }
+
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   CBVar activate(CBContext *context, const CBVar &input) {
     json j = input;
-    _output = j.dump();
+    if (_indent == 0)
+      _output = j.dump();
+    else
+      _output = j.dump(_indent);
     return Var(_output);
   }
 };
