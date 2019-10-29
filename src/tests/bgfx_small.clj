@@ -1,5 +1,5 @@
 (def action (Chain "buttonAction"
-	(Sleep 2.0)
+  (Sleep 2.0)
 	(Msg "This happened 2 seconds later")))
 
 (def Root (Node))
@@ -14,10 +14,10 @@
     "Hello world 4" (ImGui.SameLine) (ImGui.Text)
     (ImGui.Button "Push me!" (-->
       (Msg "Action!")
-	  (Detach action)))
+	    (Detach action)))
     (ImGui.CheckBox)
     (Cond [(--> (Is true)) (-->
-        "Hello optional world" (ImGui.Text))])))
+      "Hello optional world" (ImGui.Text))])))
   (BGFX.Draw)))
 
 (run Root 0.02)
