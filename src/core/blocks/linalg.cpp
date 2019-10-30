@@ -16,6 +16,11 @@ struct VectorUnaryBase : public UnaryBase {
     return CBTypesInfo(SharedTypes::vectorsInfo);
   }
 
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    return inputType;
+  }
+
   template <class Operation>
   ALWAYS_INLINE CBVar doActivate(CBContext *context, const CBVar &input,
                                  Operation operate) {
@@ -472,12 +477,12 @@ struct Orthographic : VectorUnaryBase {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType,
                         CBExposedTypesInfo consumableVariables) {
-    return CBTypeInfo(SharedTypes::vectorsInfo);
+    return CBTypeInfo(SharedTypes::matrix4x4Info);
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
   static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
+    return CBTypesInfo(SharedTypes::matrix4x4Info);
   }
 
   // left, right, bottom, top, near, far
@@ -571,6 +576,7 @@ LINALG_BINARY_BLOCK(MatMul);
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
   RUNTIME_BLOCK_destroy(_name_);                                               \
   RUNTIME_BLOCK_setup(_name_);                                                 \
+  RUNTIME_BLOCK_inferTypes(_name_);                                            \
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
   RUNTIME_BLOCK_activate(_name_);                                              \

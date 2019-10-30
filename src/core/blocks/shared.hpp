@@ -69,6 +69,8 @@ struct SharedTypes {
       TypesInfo::FromMany(true, float2Type, float3Type, float4Type);
   static inline TypesInfo vectorsCtxInfo = TypesInfo::FromMany(
       true, float2Type, float3Type, float4Type, CBTypeInfo(ctxVarInfo));
+  static inline TypeInfo float4Seq = TypeInfo::Sequence(float4Type);
+  static inline TypesInfo matrix4x4Info = TypesInfo(float4Seq);
 };
 
 static void initEnums() {
