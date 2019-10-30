@@ -562,6 +562,16 @@
   (Take [2 3])
   (Assert.Is (Float2 3 4) true)
 
+  1 (Push "s1")
+  2 (Push "s1")
+  3 (Push "s1")
+  1 (Push "s2")
+  2 (Push "s2")
+  3 (Push "s2")
+  (Get "s1")
+  (Is (# "s2"))
+  (Assert.Is true true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

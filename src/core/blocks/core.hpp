@@ -97,9 +97,12 @@ static ParamsInfo compareParamsInfo = ParamsInfo(
                       CBTypesInfo(CoreInfo::anyInfo)));
 
 struct BaseOpsBin {
-  CBVar value{};
+  CBVar _value{};
+  CBVar *_target = nullptr;
 
-  void destroy() { destroyVar(value); }
+  void destroy() { destroyVar(_value); }
+
+  void cleanup() { _target = nullptr; }
 
   CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
@@ -107,10 +110,11 @@ struct BaseOpsBin {
 
   CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
 
-  void setParam(int index, CBVar inValue) {
+  void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(value, inValue);
+      cloneVar(_value, value);
+      _target = nullptr;
       break;
     default:
       break;
@@ -118,21 +122,24 @@ struct BaseOpsBin {
   }
 
   CBVar getParam(int index) {
-    auto res = CBVar();
     switch (index) {
     case 0:
-      res = value;
-      break;
+      return _value;
     default:
-      break;
+      return Empty;
     }
-    return res;
   }
 };
 
 #define LOGIC_OP(NAME, OP)                                                     \
   struct NAME : public BaseOpsBin {                                            \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      if (!_target) {                                                          \
+        _target = _value.valueType == ContextVar                               \
+                      ? contextVariable(context, _value.payload.stringValue)   \
+                      : &_value;                                               \
+      }                                                                        \
+      const auto &value = *_target;                                            \
       if (input OP value) {                                                    \
         return True;                                                           \
       }                                                                        \
@@ -151,6 +158,12 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ANY_SEQ_OP(NAME, OP)                                             \
   struct NAME : public BaseOpsBin {                                            \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      if (!_target) {                                                          \
+        _target = _value.valueType == ContextVar                               \
+                      ? contextVariable(context, _value.payload.stringValue)   \
+                      : &_value;                                               \
+      }                                                                        \
+      const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
         auto vlen = stbds_arrlen(value.payload.seqValue);                      \
         auto ilen = stbds_arrlen(input.payload.seqValue);                      \
@@ -190,6 +203,12 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ALL_SEQ_OP(NAME, OP)                                             \
   struct NAME : public BaseOpsBin {                                            \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      if (!_target) {                                                          \
+        _target = _value.valueType == ContextVar                               \
+                      ? contextVariable(context, _value.payload.stringValue)   \
+                      : &_value;                                               \
+      }                                                                        \
+      const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
         auto vlen = stbds_arrlen(value.payload.seqValue);                      \
         auto ilen = stbds_arrlen(input.payload.seqValue);                      \
@@ -242,6 +261,7 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
 #define LOGIC_OP_DESC(NAME)                                                    \
   RUNTIME_CORE_BLOCK_FACTORY(NAME);                                            \
   RUNTIME_BLOCK_destroy(NAME);                                                 \
+  RUNTIME_BLOCK_cleanup(NAME);                                                 \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \
@@ -256,7 +276,6 @@ struct Input {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return RebaseChain;
-    ;
   }
 };
 
