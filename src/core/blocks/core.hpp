@@ -1452,7 +1452,6 @@ struct Take {
 
   ALWAYS_INLINE CBVar activateFloats(CBContext *context, const CBVar &input) {
     const auto inputLen = (int64_t)_vectorInputLen;
-    const auto outputLen = (int64_t)_vectorOutputLen;
     const auto &indices = _indices;
 
     if (!_seqOutput) {
@@ -1541,6 +1540,7 @@ struct Take {
     // Take branches during validation into different inlined blocks
     // If we hit this, maybe that type of input is not yet implemented
     assert(false);
+    return Stop;
   }
 };
 

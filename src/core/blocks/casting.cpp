@@ -574,6 +574,7 @@ EXPECT_BLOCK(Int3, Int3);
 EXPECT_BLOCK(Int4, Int4);
 EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
+EXPECT_BLOCK(Image, Image);
 
 struct ToBytes {
   struct StreamBuffer : std::streambuf {
