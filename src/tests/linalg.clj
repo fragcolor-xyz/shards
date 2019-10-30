@@ -100,5 +100,6 @@
   (Assert.Is mat2t true)
 
   (Math.LinAlg.Orthographic 2560 1440 0 10000)
+  (Math.LinAlg.Transpose)
   (Log)
 ))

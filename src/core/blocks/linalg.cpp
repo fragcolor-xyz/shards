@@ -470,8 +470,12 @@ struct Orthographic : VectorUnaryBase {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    return CBTypeInfo(SharedTypes::vectorsInfo);
+  }
 
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
   static CBTypesInfo outputTypes() {
     return CBTypesInfo(SharedTypes::vectorsInfo);
   }
@@ -582,6 +586,7 @@ RUNTIME_BLOCK_destroy(Orthographic);
 RUNTIME_BLOCK_setup(Orthographic);
 RUNTIME_BLOCK_inputTypes(Orthographic);
 RUNTIME_BLOCK_outputTypes(Orthographic);
+RUNTIME_BLOCK_inferTypes(Orthographic);
 RUNTIME_BLOCK_activate(Orthographic);
 RUNTIME_BLOCK_parameters(Orthographic);
 RUNTIME_BLOCK_setParam(Orthographic);
