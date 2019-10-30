@@ -1539,8 +1539,7 @@ struct Take {
   CBVar activate(CBContext *context, const CBVar &input) {
     // Take branches during validation into different inlined blocks
     // If we hit this, maybe that type of input is not yet implemented
-    assert(false);
-    return Stop;
+    throw CBException("Take path not implemented for this type.");
   }
 };
 
