@@ -233,6 +233,7 @@ struct RunChain : public ChainRunner {
 
       if (mode == RunChainMode::Detached) {
         if (!chainblocks::isRunning(chain)) {
+          // validated during infer
           context->chain->node->schedule(chain, input, false);
         }
         return input;
@@ -422,6 +423,7 @@ struct ChainLoader : public ChainRunner {
 
       if (mode == RunChainMode::Detached) {
         if (!chainblocks::isRunning(chain)) {
+          // validated during infer
           context->chain->node->schedule(chain, input, false);
         }
         return input;

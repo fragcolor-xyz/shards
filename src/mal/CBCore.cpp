@@ -767,7 +767,7 @@ BUILTIN("prepare") {
                     << errorTxt;
         }
       },
-      nullptr); // detached don't share context!
+      nullptr);
   stbds_arrfree(chainValidation.exposedInfo);
   chainblocks::prepare(chain->value());
   return mal::nilValue();

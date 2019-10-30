@@ -455,6 +455,95 @@ struct Transpose : public VectorUnaryBase {
   }
 };
 
+struct Orthographic : VectorUnaryBase {
+  double _width = 1280;
+  double _height = 720;
+  double _near = 0.0;
+  double _far = 1000.0;
+
+  void setup() {
+    UnaryBase::setup();
+    stbds_arrsetlen(_cachedSeq.payload.seqValue, 4);
+    for (auto i = 0; i < 4; i++) {
+      _cachedSeq.payload.seqValue[i] = CBVar();
+      _cachedSeq.payload.seqValue[i].valueType = Float4;
+    }
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo(SharedTypes::vectorsInfo);
+  }
+
+  // left, right, bottom, top, near, far
+  static inline ParamsInfo params =
+      ParamsInfo(ParamsInfo::Param("Width", "Width size.",
+                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
+                 ParamsInfo::Param("Height", "Height size.",
+                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
+                 ParamsInfo::Param("Near", "Near plane.",
+                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
+                 ParamsInfo::Param("Far", "Far plane.",
+                                   CBTypesInfo(SharedTypes::intOrFloatInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _width = double(Var(value));
+      break;
+    case 1:
+      _height = double(Var(value));
+      break;
+    case 2:
+      _near = double(Var(value));
+      break;
+    case 3:
+      _far = double(Var(value));
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_width);
+    case 1:
+      return Var(_height);
+    case 2:
+      return Var(_near);
+    case 3:
+      return Var(_far);
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto right = 0.5 * _width;
+    auto left = -right;
+    auto top = 0.5 * _height;
+    auto bottom = -top;
+    auto zrange = 1.0 / (_far - _near);
+    _cachedSeq.payload.seqValue[0].payload.float4Value[0] =
+        2.0 / (right - left);
+    _cachedSeq.payload.seqValue[1].payload.float4Value[1] =
+        2.0 / (top - bottom);
+    _cachedSeq.payload.seqValue[2].payload.float4Value[2] = -zrange;
+    _cachedSeq.payload.seqValue[3].payload.float4Value[0] =
+        (left + right) / (left - right);
+    _cachedSeq.payload.seqValue[3].payload.float4Value[1] =
+        (top + bottom) / (bottom - top);
+    _cachedSeq.payload.seqValue[3].payload.float4Value[2] = -_near * zrange;
+    _cachedSeq.payload.seqValue[3].payload.float4Value[3] = 1.0;
+    return _cachedSeq;
+  }
+};
+
 #define LINALG_BINARY_BLOCK(_name_)                                            \
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
   RUNTIME_BLOCK_destroy(_name_);                                               \
@@ -488,6 +577,17 @@ LINALG_UNARY_BLOCK(LengthSquared);
 LINALG_UNARY_BLOCK(Length);
 LINALG_UNARY_BLOCK(Transpose);
 
+RUNTIME_BLOCK(Math.LinAlg, Orthographic);
+RUNTIME_BLOCK_destroy(Orthographic);
+RUNTIME_BLOCK_setup(Orthographic);
+RUNTIME_BLOCK_inputTypes(Orthographic);
+RUNTIME_BLOCK_outputTypes(Orthographic);
+RUNTIME_BLOCK_activate(Orthographic);
+RUNTIME_BLOCK_parameters(Orthographic);
+RUNTIME_BLOCK_setParam(Orthographic);
+RUNTIME_BLOCK_getParam(Orthographic);
+RUNTIME_BLOCK_END(Orthographic);
+
 void registerBlocks() {
   chainblocks::registerBlock("Math.LinAlg.Cross", createBlockCross);
   chainblocks::registerBlock("Math.LinAlg.Dot", createBlockDot);
@@ -497,6 +597,8 @@ void registerBlocks() {
   chainblocks::registerBlock("Math.LinAlg.Length", createBlockLength);
   chainblocks::registerBlock("Math.LinAlg.MatMul", createBlockMatMul);
   chainblocks::registerBlock("Math.LinAlg.Transpose", createBlockTranspose);
+  chainblocks::registerBlock("Math.LinAlg.Orthographic",
+                             createBlockOrthographic);
 }
 }; // namespace LinAlg
 }; // namespace Math

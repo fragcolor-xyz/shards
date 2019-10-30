@@ -243,17 +243,23 @@ struct Var : public CBVar {
   }
 
   explicit operator float() const {
-    if (valueType != Float) {
+    if (valueType == Float) {
+      return static_cast<float>(payload.floatValue);
+    } else if (valueType == Int) {
+      return static_cast<float>(payload.intValue);
+    } else {
       throw CBException("Invalid variable casting! expected Float");
     }
-    return static_cast<float>(payload.floatValue);
   }
 
   explicit operator double() const {
-    if (valueType != Float) {
+    if (valueType == Float) {
+      return payload.floatValue;
+    } else if (valueType == Int) {
+      return static_cast<double>(payload.intValue);
+    } else {
       throw CBException("Invalid variable casting! expected Float");
     }
-    return payload.floatValue;
   }
 
   static Var Stop() {
