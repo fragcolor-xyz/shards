@@ -143,6 +143,9 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
   ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/desktop.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/desktop.capture.win.hpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
@@ -235,6 +238,7 @@ if(NOT BUILD_CORE_ONLY)
     )
     set(PLATFORM_SOURCES 
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+      ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
     )
 
     set(CBLP_PLATFORM_LIBS

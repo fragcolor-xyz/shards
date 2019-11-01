@@ -12,8 +12,17 @@ namespace ImGui {
 extern void registerImGuiBlocks();
 };
 
+#ifdef _WIN32
+namespace Desktop {
+extern void registerDesktopBlocks();
+};
+#endif
+
 void cbInitExtras() {
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
+#ifdef _WIN32
+  Desktop::registerDesktopBlocks();
+#endif
 }
 }; // namespace chainblocks
