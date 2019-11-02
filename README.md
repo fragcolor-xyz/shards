@@ -38,10 +38,11 @@ To achieve that we build a scripting tool that can be both visual and textual at
 * Strong validation and optimization ahead of run-time
 * Extremely easy to debug and dissect
 * Deterministic execution and performance
-* Built on top of **co-routines**, extremely easy to unleash parallelization
+* Built on top of **co-routines**, extremely easy to unleash parallelism
 * Support **visual editing** without spaghetti and spider webs involvement
 * Versatile textual representation (backed by **clojure/lisp** inspired [Mal](https://github.com/kanaka/mal))
 * Fast execution inspired by threaded code interpreters
+* Designed for hot code reloading, without any serialization due to complete decoupled data
 
 ## TL;DR
 
@@ -92,4 +93,4 @@ Very much work in progress, this project started as a *nim* project, checking th
 
 The reason behind this switch requires a whole article on its own, but in a nutshell *nim* is cool but it does not interact very well with *C++* and it's very unstable.
 
-Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich codebase while keeping a *C* interface.
+Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich code-base while keeping a *C* interface.
