@@ -851,7 +851,7 @@ struct Tap : public MousePosBase {
   typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD  dwMode);
   typedef BOOL (*InjectTouchInputProc)(UINT32 count,const POINTER_TOUCH_INFO *contacts);
   struct GlobalInjector {
-    InjectTouchInputProc InjectTouch;
+    static InjectTouchInputProc InjectTouch;
     GlobalInjector() {
       // win7 compatibility
       auto user32 = LoadLibraryA("User32.dll");
