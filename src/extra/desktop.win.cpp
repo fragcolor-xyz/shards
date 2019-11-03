@@ -848,9 +848,21 @@ struct SetMousePos : public MousePosBase {
 };
 
 struct Tap : public MousePosBase {
+  typedef BOOL InitializeTouchInjectionProc(UINT32 maxCount, DWORD  dwMode);
+  typedef BOOL InjectTouchInputProc(UINT32 count,const POINTER_TOUCH_INFO *contacts);
   struct GlobalInjector {
+    InjectTouchInputProc InjectTouch;
     GlobalInjector() {
-      DBG_CHECK(InitializeTouchInjection(10, TOUCH_FEEDBACK_NONE));
+      // win7 compatibility
+      auto user32 = LoadLibraryA("User32.dll");
+      assert(user32);
+      auto touchInit = (InitializeTouchInjectionProc)GetProcAddress(user32, "InitializeTouchInjection");
+      if(touchInit) {
+	DBG_CHECK(touchInit(10, TOUCH_FEEDBACK_NONE));
+	InjectTouch = (InjectTouchInputProc)GetProcAddress(user32, "InjectTouchInput");
+      } else {
+	InjectTouch = nullptr;
+      }
     }
   };
 
@@ -897,6 +909,9 @@ struct Tap : public MousePosBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if(!GlobalInjector::InjectTouch)
+      return input;
+    
     POINTER_TOUCH_INFO pinfo;
     memset(&pinfo, 0x0, sizeof(POINTER_TOUCH_INFO));
     pinfo.pointerInfo.pointerType = PT_TOUCH;
@@ -929,7 +944,7 @@ struct Tap : public MousePosBase {
     // down
     pinfo.pointerInfo.pointerFlags =
         POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
-    if (!InjectTouchInput(1, &pinfo)) {
+    if (!GlobalInjector::InjectTouch(1, &pinfo)) {
       LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
                  << GetLastError() << std::dec;
       throw CBException("InjectTouchInput failed.");
@@ -944,7 +959,7 @@ struct Tap : public MousePosBase {
       for (auto i = 0; i < 10; i++) {
         pinfo.pointerInfo.pointerFlags =
             POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
-        if (!InjectTouchInput(1, &pinfo)) {
+        if (!GlobalInjector::InjectTouch(1, &pinfo)) {
           LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
                      << GetLastError() << std::dec;
           throw CBException("InjectTouchInput failed.");
@@ -955,7 +970,7 @@ struct Tap : public MousePosBase {
 
     // up
     pinfo.pointerInfo.pointerFlags = POINTER_FLAG_UP;
-    if (!InjectTouchInput(1, &pinfo)) {
+    if (!GlobalInjector::InjectTouch(1, &pinfo)) {
       LOG(ERROR) << "InjectTouchInput (up) error: 0x" << std::hex
                  << GetLastError() << std::dec;
       throw CBException("InjectTouchInput failed.");

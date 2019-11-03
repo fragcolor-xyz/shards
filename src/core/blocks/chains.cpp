@@ -47,7 +47,7 @@ static ParamsInfo runChainParamsInfo = ParamsInfo(
         CBTypesInfo(SharedTypes::runChainModeInfo)));
 
 static ParamsInfo chainloaderParamsInfo = ParamsInfo(
-    ParamsInfo::Param("File", "The json file of the chain to run and watch.",
+    ParamsInfo::Param("File", "The chainblocks lisp file of the chain to run and watch.",
                       CBTypesInfo(SharedTypes::strInfo)),
     ParamsInfo::Param("Once",
                       "Runs this sub-chain only once within the parent chain "
