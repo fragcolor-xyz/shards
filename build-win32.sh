@@ -4,7 +4,7 @@ pacman -S --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake m
 
 # bimg
 cd deps/bimg/
-export MINGW=/d/a/_temp/msys/msys32/mingw32 # chainblocks/setup-msys2, needed by bimg
+export MINGW=/d/a/_temp/msys/msys64/mingw32 # chainblocks/setup-msys2, needed by bimg
 # hack to cope with terrible bimg build system
 ln -s $MINGW/bin/i686-w64-mingw32-g++.exe $MINGW/bin/x86_64-w64-mingw32-g++.exe
 ln -s $MINGW/bin/i686-w64-mingw32-gcc.exe $MINGW/bin/x86_64-w64-mingw32-gcc.exe
