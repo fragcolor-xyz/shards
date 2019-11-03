@@ -39,6 +39,18 @@ jobs:
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win.sh
 
+  ciWindowsRel32:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: |
+        git submodule update --init --recursive
+    - uses: chainblocks/setup-msys2@v1
+      with:
+        msystem: MINGW32
+    - run: msys2do pacman -Syu --noconfirm
+    - run: msys2do ./build-win32.sh
+
   # ciMacDbg:
   #   runs-on: macOS-latest
   #   steps:
