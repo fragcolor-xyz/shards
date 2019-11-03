@@ -5,7 +5,7 @@ pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cma
 # bimg
 cd deps/bimg/
 export MINGW=/d/a/_temp/msys/msys64/mingw64 # chainblocks/setup-msys2, needed by bimg
-make mingw-gcc-release32
+make mingw-gcc-release64
 cd ../../
 
 # SDL
