@@ -65,7 +65,7 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
   set(BASE_TESTING 1)
 endif()
 
-add_compile_definitions(USE_RPMALLOC ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log")
+add_compile_definitions(USE_RPMALLOC ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_HAS_KERNEL_BOOTTIME=0)
 
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -242,7 +242,7 @@ if(NOT BUILD_CORE_ONLY)
     )
 
     set(CBLP_PLATFORM_LIBS
-      -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
+      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
     )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)

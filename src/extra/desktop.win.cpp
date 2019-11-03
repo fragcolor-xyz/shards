@@ -848,20 +848,23 @@ struct SetMousePos : public MousePosBase {
 };
 
 struct Tap : public MousePosBase {
-  typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD  dwMode);
-  typedef BOOL (*InjectTouchInputProc)(UINT32 count,const POINTER_TOUCH_INFO *contacts);
+  typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD dwMode);
+  typedef BOOL (*InjectTouchInputProc)(UINT32 count,
+                                       const POINTER_TOUCH_INFO *contacts);
   struct GlobalInjector {
     static inline InjectTouchInputProc InjectTouch;
     GlobalInjector() {
       // win7 compatibility
       auto user32 = LoadLibraryA("User32.dll");
       assert(user32);
-      auto touchInit = (InitializeTouchInjectionProc)GetProcAddress(user32, "InitializeTouchInjection");
-      if(touchInit) {
-	DBG_CHECK(touchInit(10, TOUCH_FEEDBACK_NONE));
-	InjectTouch = (InjectTouchInputProc)GetProcAddress(user32, "InjectTouchInput");
+      auto touchInit = (InitializeTouchInjectionProc)GetProcAddress(
+          user32, "InitializeTouchInjection");
+      if (touchInit) {
+        DBG_CHECK(touchInit(10, TOUCH_FEEDBACK_NONE));
+        InjectTouch =
+            (InjectTouchInputProc)GetProcAddress(user32, "InjectTouchInput");
       } else {
-	InjectTouch = nullptr;
+        InjectTouch = nullptr;
       }
     }
   };
@@ -909,9 +912,9 @@ struct Tap : public MousePosBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if(!GlobalInjector::InjectTouch)
+    if (!GlobalInjector::InjectTouch)
       return input;
-    
+
     POINTER_TOUCH_INFO pinfo;
     memset(&pinfo, 0x0, sizeof(POINTER_TOUCH_INFO));
     pinfo.pointerInfo.pointerType = PT_TOUCH;
