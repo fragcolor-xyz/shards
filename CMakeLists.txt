@@ -242,7 +242,7 @@ if(NOT BUILD_CORE_ONLY)
     )
 
     set(CBLP_PLATFORM_LIBS
-      -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
+      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
     )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
