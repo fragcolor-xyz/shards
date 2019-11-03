@@ -848,8 +848,8 @@ struct SetMousePos : public MousePosBase {
 };
 
 struct Tap : public MousePosBase {
-  typedef BOOL InitializeTouchInjectionProc(UINT32 maxCount, DWORD  dwMode);
-  typedef BOOL InjectTouchInputProc(UINT32 count,const POINTER_TOUCH_INFO *contacts);
+  typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD  dwMode);
+  typedef BOOL (*InjectTouchInputProc)(UINT32 count,const POINTER_TOUCH_INFO *contacts);
   struct GlobalInjector {
     InjectTouchInputProc InjectTouch;
     GlobalInjector() {
