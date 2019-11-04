@@ -176,7 +176,24 @@ struct Server : public NetworkBase {
   boost::lockfree::queue<ClientPkt> _queue{16};
   boost::lockfree::queue<ClientPkt> _empty_queue{16};
   udp::endpoint _sender;
-  std::vector<udp::endpoint> _endpoints;
+
+  void destroy() {
+    NetworkBase::destroy();
+
+    while (!_queue.empty()) {
+      ClientPkt pkt;
+      if (_queue.pop(pkt)) {
+        delete pkt.remote;
+      }
+    }
+
+    while (!_empty_queue.empty()) {
+      ClientPkt pkt;
+      if (_empty_queue.pop(pkt)) {
+        delete pkt.remote;
+      }
+    }
+  }
 
   void do_receive() {
     _socket->async_receive_from(
@@ -190,8 +207,7 @@ struct Server : public NetworkBase {
               _empty_queue.pop(pkt);
               *pkt.remote = _sender;
             } else {
-              _endpoints.emplace_back(_sender);
-              pkt.remote = &_endpoints.back();
+              pkt.remote = new udp::endpoint(_sender);
             }
 
             // deserialize from buffer

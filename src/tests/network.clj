@@ -22,8 +22,8 @@
            (Log)
                                         ; send something to the client
                                         ; will use automatically the context vars
-           ; "Ok"
-           ; (Network.Send)
+           "Ok"
+           (Network.Send)
            ))))
 
 (def client-init
@@ -58,5 +58,8 @@
 (schedule Root network-test-server)
 (schedule Root network-test-client)
 
-(run Root 0.02)
+; sistematically we need just 3 ticks to test all
+(tick Root)
+(tick Root)
+(tick Root)
           
