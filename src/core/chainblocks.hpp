@@ -638,8 +638,10 @@ struct Serialization {
   }
 
   template <class BinaryWriter>
-  static inline void serialize(const CBVar &input, BinaryWriter write) {
+  static inline size_t serialize(const CBVar &input, BinaryWriter write) {
+    size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
+    total += sizeof(input.valueType);
     switch (input.valueType) {
     case CBType::None:
     case CBType::EndOfBlittableTypes:
@@ -658,52 +660,66 @@ struct Serialization {
     case CBType::Float4:
     case CBType::Color:
       write((const uint8_t *)&input.payload, sizeof(input.payload));
+      total += sizeof(input.payload);
       break;
     case CBType::Bytes:
       write((const uint8_t *)&input.payload.bytesSize,
             sizeof(input.payload.bytesSize));
+      total += sizeof(input.payload.bytesSize);
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
+      total += input.payload.bytesSize;
       break;
     case CBType::String:
     case CBType::ContextVar: {
       uint64_t len = strlen(input.payload.stringValue);
       write((const uint8_t *)&len, sizeof(uint64_t));
+      total += sizeof(uint64_t);
       write((const uint8_t *)input.payload.stringValue, len);
+      total += len;
       break;
     }
     case CBType::Seq: {
       uint64_t len = stbds_arrlen(input.payload.seqValue);
       write((const uint8_t *)&len, sizeof(uint64_t));
+      total += sizeof(uint64_t);
       for (auto i = 0; i < len; i++) {
-        serialize(input.payload.seqValue[i], write);
+        total += serialize(input.payload.seqValue[i], write);
       }
       break;
     }
     case CBType::Table: {
       uint64_t len = stbds_shlen(input.payload.tableValue);
       write((const uint8_t *)&len, sizeof(uint64_t));
+      total += sizeof(uint64_t);
       for (auto i = 0; i < len; i++) {
         auto &v = input.payload.tableValue[i];
         uint64_t klen = strlen(v.key);
         write((const uint8_t *)&klen, sizeof(uint64_t));
+        total += sizeof(uint64_t);
         write((const uint8_t *)v.key, len);
-        serialize(v.value, write);
+        total += len;
+        total += serialize(v.value, write);
       }
       break;
     }
     case CBType::Image: {
       write((const uint8_t *)&input.payload.imageValue.channels,
             sizeof(input.payload.imageValue.channels));
+      total += sizeof(input.payload.imageValue.channels);
       write((const uint8_t *)&input.payload.imageValue.flags,
             sizeof(input.payload.imageValue.flags));
+      total += sizeof(input.payload.imageValue.flags);
       write((const uint8_t *)&input.payload.imageValue.width,
             sizeof(input.payload.imageValue.width));
+      total += sizeof(input.payload.imageValue.width);
       write((const uint8_t *)&input.payload.imageValue.height,
             sizeof(input.payload.imageValue.height));
+      total += sizeof(input.payload.imageValue.height);
       auto size = input.payload.imageValue.channels *
                   input.payload.imageValue.height *
                   input.payload.imageValue.width;
       write((const uint8_t *)input.payload.imageValue.data, size);
+      total += size;
       break;
     }
     case CBType::Object:
@@ -712,6 +728,7 @@ struct Serialization {
       throw CBException("Type cannot be serialized. " +
                         type2Name(input.valueType));
     }
+    return total;
   }
 };
 
@@ -721,9 +738,18 @@ struct ContextableVar {
   CBContext *_ctx = nullptr;
 
   ContextableVar() {}
+
   ContextableVar(CBVar initialValue) {
     // notice, no cloning here!, purely utility
     _v = initialValue;
+  }
+
+  ContextableVar(CBVar initialValue, bool clone) {
+    if (clone) {
+      cloneVar(_v, initialValue);
+    } else {
+      _v = initialValue;
+    }
   }
 
   ~ContextableVar() { destroyVar(_v); }
@@ -1096,7 +1122,21 @@ struct ExposedInfo {
   }
 
   template <typename... Types>
-  explicit ExposedInfo(CBExposedTypeInfo first, Types... types) {
+  explicit ExposedInfo(const CBExposedTypesInfo other, Types... types) {
+    _innerInfo = nullptr;
+
+    for (auto i = 0; i < stbds_arrlen(other); i++) {
+      stbds_arrpush(_innerInfo, other[i]);
+    }
+
+    std::vector<CBExposedTypeInfo> vec = {types...};
+    for (auto pi : vec) {
+      stbds_arrpush(_innerInfo, pi);
+    }
+  }
+
+  template <typename... Types>
+  explicit ExposedInfo(const CBExposedTypeInfo first, Types... types) {
     std::vector<CBExposedTypeInfo> vec = {first, types...};
     _innerInfo = nullptr;
     for (auto pi : vec) {

@@ -15,6 +15,8 @@ struct CoreInfo {
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo intVarInfo =
       TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
+  static inline TypesInfo strVarInfo =
+      TypesInfo::FromMany(false, CBType::String, CBType::ContextVar);
   static inline TypesInfo intsVarInfo =
       TypesInfo::FromMany(true, CBType::Int, CBType::ContextVar);
   static inline TypesInfo strInfo = TypesInfo(CBType::String);

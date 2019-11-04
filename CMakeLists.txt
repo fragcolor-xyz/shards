@@ -138,6 +138,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -333,6 +334,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CB_EXTRAS}
 )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
