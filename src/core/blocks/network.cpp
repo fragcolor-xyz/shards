@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 
 #include "../runtime.hpp"
+#include "../utility.hpp"
 #include "shared.hpp"
 #include <boost/lockfree/queue.hpp>
 #include <thread>
@@ -21,7 +22,7 @@ struct NetworkBase : public BlocksUser {
   static inline TypeInfo SocketInfo = TypeInfo::Object(FragCC, SocketCC);
 
   static inline boost::asio::io_context _io_context;
-  static inline bool _io_context_setup = false;
+  static inline int64_t _io_context_refc = 0;
 
   udp::socket *_socket = nullptr;
 
@@ -47,28 +48,40 @@ struct NetworkBase : public BlocksUser {
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   static void setup() {
-    if (_io_context_setup)
-      return;
-    auto worker = std::thread([] {
-      // Force run to run even without work
-      boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
-          g = boost::asio::make_work_guard(_io_context);
-      try {
-        LOG(DEBUG) << "Boost asio context running...";
-        _io_context.run();
-      } catch (...) {
-        LOG(ERROR) << "Boost asio context run failed.";
-      }
-      LOG(DEBUG) << "Boost asio context exiting...";
-    });
-    worker.detach();
-    _io_context_setup = true;
+    if (_io_context_refc == 0) {
+      auto worker = std::thread([] {
+        // Force run to run even without work
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
+            g = boost::asio::make_work_guard(_io_context);
+        try {
+          LOG(DEBUG) << "Boost asio context running...";
+          _io_context.run();
+        } catch (...) {
+          LOG(ERROR) << "Boost asio context run failed.";
+        }
+        LOG(DEBUG) << "Boost asio context exiting...";
+      });
+      worker.detach();
+    }
+    _io_context_refc++;
   }
 
   void destroy() {
-    if (_socket) {
-      delete _socket;
-    }
+    // defer all in the context or we will crash!
+    auto socket = _socket;
+    _io_context.post([socket]() {
+      if (socket) {
+        socket->close();
+        delete socket;
+      }
+
+      _io_context_refc--;
+      if (_io_context_refc == 0) {
+        // allow end/thread exit
+        _io_context.stop();
+      }
+    });
+
     BlocksUser::destroy();
   }
 
@@ -218,10 +231,10 @@ struct Server : public NetworkBase {
 
             // add ready packet to queue
             _queue.push(pkt);
-          }
 
-          // keep receiving
-          do_receive();
+            // keep receiving
+            do_receive();
+          }
         });
   }
 
@@ -297,10 +310,10 @@ struct Client : public NetworkBase {
 
             // process a packet
             _queue.push(v);
-          }
 
-          // keep receiving
-          do_receive();
+            // keep receiving
+            do_receive();
+          }
         });
   }
 

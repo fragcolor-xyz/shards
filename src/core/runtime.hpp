@@ -805,9 +805,12 @@ inline void sleep(double seconds = -1.0) {
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
 #else
-    struct timespec delay = {0, int64_t(seconds * 1000000000)};
+    struct timespec delay;
+    seconds += 0.5e-9; // add half epsilon
+    delay.tv_sec = (decltype(delay.tv_sec))seconds;
+    delay.tv_nsec = (seconds - delay.tv_sec) * 1000000000L;
     while (nanosleep(&delay, &delay))
-      ;
+      (void)0;
 #endif
   }
 

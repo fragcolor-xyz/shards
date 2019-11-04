@@ -1,5 +1,3 @@
-(def Root (Node))
-
 (def remote "Network.RemoteEndpoint")
 
 (def network-test-server
@@ -55,11 +53,21 @@
          (DispatchOnce client-init)
          ))
 
-(schedule Root network-test-server)
-(schedule Root network-test-client)
-
-; sistematically we need just 3 ticks to test all
-(tick Root)
-(tick Root)
-(tick Root)
+; manually tick and such to properly close all (threads... windows issues)
+(prepare network-test-server)
+(prepare network-test-client)
+(start network-test-server)
+(start network-test-client)
+(tick network-test-server)
+(tick network-test-client)
+(sleep 1)
+(tick network-test-server)
+(tick network-test-client)
+(sleep 1)
+(stop network-test-server)
+(stop network-test-client)
+; destroy chains
+(def network-test-server nil)
+(def network-test-client nil)
+(sleep 1)
           

@@ -36,4 +36,34 @@ private:
   static inline thread_local uint64_t _refs = 0;
   static inline thread_local T *_tp = nullptr;
 };
+
+template <typename T> class GlobalShared {
+public:
+  GlobalShared() { addRef(); }
+
+  ~GlobalShared() { decRef(); }
+
+  T &operator()() { return *_tp; }
+
+private:
+  void addRef() {
+    if (_refs == 0) {
+      _tp = new T();
+      DLOG(TRACE) << "Created a GlobalShared";
+    }
+    _refs++;
+  }
+
+  void decRef() {
+    _refs--;
+    if (_refs == 0) {
+      delete _tp;
+      _tp = nullptr;
+      DLOG(TRACE) << "Deleted a GlobalShared";
+    }
+  }
+
+  static inline uint64_t _refs = 0;
+  static inline T *_tp = nullptr;
+};
 }; // namespace chainblocks
