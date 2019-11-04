@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
+// ASIO must go first!!
+#include <boost/asio.hpp>
+
 #include "../runtime.hpp"
 #include "shared.hpp"
-#include <boost/asio.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <thread>
 
