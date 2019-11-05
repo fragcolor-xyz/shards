@@ -201,6 +201,7 @@ struct Server : public NetworkBase {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
         delete pkt.remote;
+        Serialization::varFree(pkt.payload);
       }
     }
 
@@ -208,6 +209,7 @@ struct Server : public NetworkBase {
       ClientPkt pkt;
       if (_empty_queue.pop(pkt)) {
         delete pkt.remote;
+        Serialization::varFree(pkt.payload);
       }
     }
   }
@@ -293,6 +295,24 @@ struct Client : public NetworkBase {
 
   boost::lockfree::queue<CBVar> _queue{16};
   boost::lockfree::queue<CBVar> _empty_queue{16};
+
+  void destroy() {
+    NetworkBase::destroy();
+
+    while (!_queue.empty()) {
+      CBVar v;
+      if (_queue.pop(v)) {
+        Serialization::varFree(v);
+      }
+    }
+
+    while (!_empty_queue.empty()) {
+      CBVar v;
+      if (_empty_queue.pop(v)) {
+        Serialization::varFree(v);
+      }
+    }
+  }
 
   void do_receive() {
     _socket->async_receive_from(

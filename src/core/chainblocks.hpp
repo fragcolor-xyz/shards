@@ -421,8 +421,6 @@ static Var Empty = Var();
 
 struct Serialization {
   static inline void varFree(CBVar &output) {
-    auto oactualSize = reinterpret_cast<uint64_t *>(output.reserved);
-
     switch (output.valueType) {
     case CBType::None:
     case CBType::EndOfBlittableTypes:
@@ -477,9 +475,7 @@ struct Serialization {
       break;
     }
 
-    output.valueType = None;
-
-    *oactualSize = 0;
+    memset(&output, 0x0, sizeof(CBVar));
   }
 
   template <class BinaryReader>
