@@ -69,5 +69,6 @@
 ; destroy chains
 (def network-test-server nil)
 (def network-test-client nil)
+(def client-init nil)
 (sleep 1)
           

@@ -5,6 +5,7 @@
 
 #include "easylogging++.h"
 #include "parallel_hashmap/phmap.h"
+#include <vector>
 
 namespace chainblocks {
 template <typename T> class ThreadShared {
@@ -13,57 +14,37 @@ public:
 
   ~ThreadShared() { decRef(); }
 
-  T &operator()() { return *_tp; }
-
-private:
-  void addRef() {
-    if (_refs == 0) {
+  T &operator()() {
+    if (!_tp) {
       _tp = new T();
+      // store thread local location
+      _ptrs.push_back(&_tp);
       DLOG(TRACE) << "Created a ThreadShared";
     }
-    _refs++;
+
+    return *_tp;
   }
-
-  void decRef() {
-    _refs--;
-    if (_refs == 0) {
-      delete _tp;
-      _tp = nullptr;
-      DLOG(TRACE) << "Deleted a ThreadShared";
-    }
-  }
-
-  static inline thread_local uint64_t _refs = 0;
-  static inline thread_local T *_tp = nullptr;
-};
-
-template <typename T> class GlobalShared {
-public:
-  GlobalShared() { addRef(); }
-
-  ~GlobalShared() { decRef(); }
-
-  T &operator()() { return *_tp; }
 
 private:
-  void addRef() {
-    if (_refs == 0) {
-      _tp = new T();
-      DLOG(TRACE) << "Created a GlobalShared";
-    }
-    _refs++;
-  }
+  void addRef() { _refs++; }
 
   void decRef() {
     _refs--;
+
     if (_refs == 0) {
-      delete _tp;
-      _tp = nullptr;
-      DLOG(TRACE) << "Deleted a GlobalShared";
+      for (auto ptr : _ptrs) {
+        // delete the internal object
+        delete *ptr;
+        // null the thread local
+        *ptr = nullptr;
+        DLOG(TRACE) << "Deleted a ThreadShared";
+      }
+      _ptrs.clear();
     }
   }
 
   static inline uint64_t _refs = 0;
-  static inline T *_tp = nullptr;
+  static inline thread_local T *_tp = nullptr;
+  static inline std::vector<T **> _ptrs;
 };
 }; // namespace chainblocks
