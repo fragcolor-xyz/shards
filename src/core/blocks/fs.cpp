@@ -288,9 +288,10 @@ struct Write {
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Contents", "The string or bytes to write to the file.",
+      ParamsInfo::Param("Contents",
+                        "The string or bytes to write as the file's contents.",
                         CBTypesInfo(SharedTypes::ctxOrNoneInfo)),
-      ParamsInfo::Param("Overwrite", "Overwrite the file if already exists.",
+      ParamsInfo::Param("Overwrite", "Overwrite the file if it already exists.",
                         CBTypesInfo(SharedTypes::boolInfo)),
       ParamsInfo::Param("Append",
                         "If we should append Contents to an existing file.",

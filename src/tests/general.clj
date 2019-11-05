@@ -167,6 +167,13 @@
   (Assert.IsNot "Value1" true)
   (Log)
 
+  (Count "tab1")
+  (Assert.Is 2 true)
+
+  (Clear "tab1")
+  (Count "tab1")
+  (Assert.Is 0 true)
+
   ; "chain:initChain[1]"
   ; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
   ; (Log)

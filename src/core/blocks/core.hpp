@@ -1077,7 +1077,9 @@ struct Count : SeqUser {
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
     }
-    if (_isTable) {
+
+    CBVar &var = *_target;
+    if (unlikely(_isTable)) {
       if (_target->valueType != Table) {
         throw CBException("Variable is not a table, failed to Count.");
       }
@@ -1087,18 +1089,15 @@ struct Count : SeqUser {
         return Var(0);
       }
 
-      auto &seq = _target->payload.tableValue[index].value;
-      if (seq.valueType != Seq) {
-        return Var(0);
-      }
+      var = _target->payload.tableValue[index].value;
+    }
 
-      return Var(int64_t(stbds_arrlen(seq.payload.seqValue)));
+    if (likely(var.valueType == Seq)) {
+      return Var(int64_t(stbds_arrlen(var.payload.seqValue)));
+    } else if (var.valueType == Table) {
+      return Var(int64_t(stbds_shlen(var.payload.tableValue)));
     } else {
-      if (_target->valueType != Seq) {
-        return Var(0);
-      }
-
-      return Var(int64_t(stbds_arrlen(_target->payload.seqValue)));
+      return Var(0);
     }
   }
 };
@@ -1110,6 +1109,8 @@ struct Clear : SeqUser {
     if (!_target) {
       _target = contextVariable(context, _name.c_str(), _global);
     }
+
+    CBVar &var = *_target;
     if (_isTable) {
       if (_target->valueType != Table) {
         throw CBException("Variable is not a table, failed to Clear.");
@@ -1120,37 +1121,33 @@ struct Clear : SeqUser {
         return input;
       }
 
-      auto &seq = _target->payload.tableValue[index].value;
-      if (seq.valueType != Seq) {
-        return input;
-      }
-
-      auto len = stbds_arrlen(seq.payload.seqValue);
-      if (len > 0) {
-        if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-          // Clean allocation garbage in case it's not blittable!
-          for (auto i = 0; i < len; i++) {
-            destroyVar(seq.payload.seqValue[i]);
-          }
-        }
-        stbds_arrsetlen(seq.payload.seqValue, 0);
-      }
-    } else {
-      if (_target->valueType != Seq) {
-        return input;
-      }
-
-      auto len = stbds_arrlen(_target->payload.seqValue);
-      if (len > 0) {
-        if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-          // Clean allocation garbage in case it's not blittable!
-          for (auto i = 0; i < len; i++) {
-            destroyVar(_target->payload.seqValue[i]);
-          }
-        }
-        stbds_arrsetlen(_target->payload.seqValue, 0);
-      }
+      var = _target->payload.tableValue[index].value;
     }
+
+    if (likely(var.valueType == Seq)) {
+      auto len = stbds_arrlen(var.payload.seqValue);
+      if (len > 0) {
+        if (var.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+          // Clean allocation garbage in case it's not blittable!
+          for (auto i = 0; i < len; i++) {
+            destroyVar(var.payload.seqValue[i]);
+          }
+        }
+        stbds_arrsetlen(var.payload.seqValue, 0);
+      }
+    } else if (var.valueType == Table) {
+      for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
+        auto &sv = var.payload.tableValue[i].value;
+        // Clean allocation garbage in case it's not blittable!
+        if (sv.valueType >= EndOfBlittableTypes) {
+          destroyVar(sv);
+        }
+      }
+      // not efficient but for now the only choice is to free it
+      stbds_shfree(var.payload.tableValue);
+      var.payload.tableValue = nullptr;
+    }
+
     return input;
   }
 };
