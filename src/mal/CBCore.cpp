@@ -232,9 +232,7 @@ public:
 
   void consume() { m_block = nullptr; }
 
-  void addChain(const malCBChain *chain) {
-    m_innerRefs.insert(chain->acquire());
-  }
+  void addChain(malCBChain *chain) { m_innerRefs.insert(chain->acquire()); }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
     return m_block == static_cast<const malCBBlock *>(rhs)->m_block;
