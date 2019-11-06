@@ -67,6 +67,8 @@ endif()
 
 add_compile_definitions(USE_RPMALLOC ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 
+add_compile_options(-Wall -march=core2)
+
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
