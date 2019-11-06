@@ -67,8 +67,8 @@
 (stop network-test-server)
 (stop network-test-client)
 ; destroy chains - issues with CI, to investigate better.. valgrind, gdb, drmingw said no problem tho...
-;(def network-test-server nil)
-;(def network-test-client nil)
+(def network-test-server nil)
+(def network-test-client nil)
 ;(def client-init nil)
 (sleep 1)
           
