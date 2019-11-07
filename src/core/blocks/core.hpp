@@ -41,6 +41,8 @@ struct CoreInfo {
   static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
   static inline TypesInfo floatSeqInfo =
       TypesInfo(TypeInfo::Sequence(floatType));
+  static inline TypesInfo intsOrNoneInfo =
+      TypesInfo::FromMany(true, CBType::Int, CBType::None);
   static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
       false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
