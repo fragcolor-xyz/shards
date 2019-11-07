@@ -92,6 +92,7 @@ struct StructBase {
 
   struct Desc {
     size_t arrlen;
+    size_t offset;
     Tags tag;
   };
 
@@ -130,6 +131,7 @@ struct StructBase {
 
     // compile members
     _members.clear();
+    _size = 0;
     Tokenizer t(_def, rexes);
     while (!t.eof()) {
       auto token = t.token();
@@ -144,6 +146,10 @@ struct StructBase {
         }
         d.arrlen = std::stoll(match.str(1));
       }
+
+      // store offset (using _size)
+      d.offset = _size;
+
       _members.push_back(d);
 
       // compute size
@@ -200,13 +206,114 @@ struct Pack : public StructBase {
     return CBTypesInfo(SharedTypes::bytesInfo);
   }
 
+  void ensureType(const CBVar &input, CBType wantedType) {
+    if (input.valueType != wantedType) {
+      throw CBException("Expected " + type2Name(wantedType) +
+                        " instead was: " + type2Name(input.valueType));
+    }
+  }
+
+  template <typename T, typename CT> void write(const CT input, size_t offset) {
+    T x = static_cast<T>(input);
+    memcpy(&_storage.front() + offset, &x, sizeof(T));
+  }
+
+  template <typename T, CBType CBT, typename CT>
+  void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset,
+                 size_t len) {
+    if (len != stbds_arrlen(input)) {
+      throw CBException("Expected " + std::to_string(len) +
+                        " size sequence as value");
+    }
+
+    for (auto i = 0; i < len; i++) {
+      auto &val = input[i];
+      ensureType(val, CBT);
+      write<T, decltype(val.payload.*value)>(val.payload.*value,
+                                             offset + (i * sizeof(T)));
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (_members.size() != stbds_arrlen(input.payload.seqValue)) {
       throw CBException("Expected " + std::to_string(_members.size()) +
                         " members as input.");
     }
 
+    auto idx = 0;
+    auto &seq = input.payload.seqValue;
     for (auto &member : _members) {
+      switch (member.tag) {
+      case Tags::i8Array:
+        ensureType(seq[idx], Seq);
+        writeMany<int8_t, Int>(seq[idx].payload.seqValue,
+                               &CBVarPayload::intValue, member.offset,
+                               member.arrlen);
+        break;
+      case Tags::i8:
+        ensureType(seq[idx], Int);
+        write<int8_t>(seq[idx].payload.intValue, member.offset);
+        break;
+      case Tags::i16Array:
+        ensureType(seq[idx], Seq);
+        writeMany<int16_t, Int>(seq[idx].payload.seqValue,
+                                &CBVarPayload::intValue, member.offset,
+                                member.arrlen);
+        break;
+      case Tags::i16:
+        ensureType(seq[idx], Int);
+        write<int16_t>(seq[idx].payload.intValue, member.offset);
+        break;
+      case Tags::i32Array:
+        ensureType(seq[idx], Seq);
+        writeMany<int32_t, Int>(seq[idx].payload.seqValue,
+                                &CBVarPayload::intValue, member.offset,
+                                member.arrlen);
+        break;
+      case Tags::i32:
+        ensureType(seq[idx], Int);
+        write<int32_t>(seq[idx].payload.intValue, member.offset);
+        break;
+      case Tags::i64Array:
+        ensureType(seq[idx], Seq);
+        writeMany<int64_t, Int>(seq[idx].payload.seqValue,
+                                &CBVarPayload::intValue, member.offset,
+                                member.arrlen);
+        break;
+      case Tags::i64:
+        ensureType(seq[idx], Int);
+        write<int64_t>(seq[idx].payload.intValue, member.offset);
+        break;
+      case Tags::f32Array:
+        ensureType(seq[idx], Seq);
+        writeMany<float, Float>(seq[idx].payload.seqValue,
+                                &CBVarPayload::floatValue, member.offset,
+                                member.arrlen);
+        break;
+      case Tags::f32:
+        ensureType(seq[idx], Float);
+        write<float>(seq[idx].payload.floatValue, member.offset);
+        break;
+      case Tags::f64Array:
+        ensureType(seq[idx], Seq);
+        writeMany<double, Float>(seq[idx].payload.seqValue,
+                                 &CBVarPayload::floatValue, member.offset,
+                                 member.arrlen);
+        break;
+      case Tags::f64:
+        ensureType(seq[idx], Float);
+        write<double>(seq[idx].payload.floatValue, member.offset);
+        break;
+      case Tags::Bool:
+        ensureType(seq[idx], CBType::Bool);
+        write<bool>(seq[idx].payload.boolValue, member.offset);
+        break;
+      case Tags::Pointer:
+        ensureType(seq[idx], Int);
+        write<uintptr_t>(seq[idx].payload.intValue, member.offset);
+        break;
+      }
+      idx++;
     }
 
     return Var(&_storage.front(), _size);
