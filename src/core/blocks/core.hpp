@@ -685,10 +685,23 @@ struct Get : public VariableBase {
             consumableVariables[i].exposedType.tableTypes) {
           auto &tableKeys = consumableVariables[i].exposedType.tableKeys;
           auto &tableTypes = consumableVariables[i].exposedType.tableTypes;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            auto &key = tableKeys[y];
-            if (_key == key) {
-              return tableTypes[y];
+          if (tableKeys) {
+            // if we have a name use it
+            for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
+              auto &key = tableKeys[y];
+              if (_key == key) {
+                return tableTypes[y];
+              }
+            }
+          } else {
+            // we got no key names
+            if (stbds_arrlen(tableTypes) == 1) {
+              // 1 type only so we assume we return that type
+              return tableTypes[0];
+            } else {
+              // multiple types...
+              // return any, can still be used with ExpectX
+              return CBTypeInfo(CoreInfo::anyInfo);
             }
           }
         }
