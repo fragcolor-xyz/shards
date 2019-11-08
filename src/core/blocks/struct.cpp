@@ -124,7 +124,6 @@ struct StructBase {
   std::string _def;
   std::vector<Desc> _members;
   size_t _size;
-  std::vector<uint8_t> _storage;
 
   void setParam(int index, CBVar value) {
     _def = value.payload.stringValue;
@@ -192,18 +191,24 @@ struct StructBase {
 
       t.next();
     }
-
-    // prepare our backing memory
-    _storage.resize(_size);
   }
 
   CBVar getParam(int index) { return Var(_def); }
 };
 
 struct Pack : public StructBase {
+  std::vector<uint8_t> _storage;
+
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
   static CBTypesInfo outputTypes() {
     return CBTypesInfo(SharedTypes::bytesInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    StructBase::setParam(index, value);
+
+    // prepare our backing memory
+    _storage.resize(_size);
   }
 
   void ensureType(const CBVar &input, CBType wantedType) {
@@ -331,16 +336,158 @@ RUNTIME_BLOCK_activate(Pack);
 RUNTIME_BLOCK_END(Pack);
 
 struct Unpack : public StructBase {
+  CBSeq _output;
+
   static CBTypesInfo inputTypes() {
     return CBTypesInfo(SharedTypes::bytesInfo);
   }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return StopChain; }
+  void destroy() {
+    if (_output) {
+      // cleanup sub seqs
+      for (auto i = 0; i < _members.size(); i++) {
+        if (_output[i].valueType == Seq) {
+          stbds_arrfree(_output[i].payload.seqValue);
+        }
+      }
+      stbds_arrfree(_output);
+    }
+  }
+
+  void setParam(int index, CBVar value) {
+    StructBase::setParam(index, value);
+    // now we know what size we need
+    auto curLen = stbds_arrlen(_output);
+    if (_members.size() < curLen) {
+      // need to destroy leftovers if arrays
+      for (auto i = _members.size(); i < curLen; i++) {
+        if (_output[i].valueType == Seq) {
+          stbds_arrfree(_output[i].payload.seqValue);
+        }
+      }
+    }
+    stbds_arrsetlen(_output, _members.size());
+    auto idx = 0;
+    for (auto &member : _members) {
+      auto &arr = _output[idx].payload.seqValue;
+      switch (member.tag) {
+      case Tags::i8Array:
+      case Tags::i16Array:
+      case Tags::i32Array:
+      case Tags::i64Array:
+        _output[idx].valueType = Seq;
+        stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
+        for (auto i = 0; i < member.arrlen; i++) {
+          arr[i].valueType = Int;
+        }
+        break;
+      case Tags::i8:
+      case Tags::i16:
+      case Tags::i32:
+      case Tags::i64:
+        _output[idx].valueType = Int;
+        break;
+      case Tags::f32Array:
+      case Tags::f64Array:
+        _output[idx].valueType = Seq;
+        stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
+        for (auto i = 0; i < member.arrlen; i++) {
+          arr[i].valueType = Float;
+        }
+        break;
+      case Tags::f32:
+      case Tags::f64:
+        _output[idx].valueType = Float;
+        break;
+      case Tags::Bool:
+        _output[idx].valueType = CBType::Bool;
+        break;
+      case Tags::Pointer:
+        _output[idx].valueType = Int;
+        break;
+      }
+      idx++;
+    }
+  }
+
+  template <typename T, typename CT>
+  void read(CT &output, const CBVar &input, size_t offset) {
+    T x;
+    memcpy(&x, input.payload.bytesValue + offset, sizeof(T));
+    output = static_cast<CT>(x);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto idx = 0;
+    for (auto &member : _members) {
+      auto &arr = _output[idx].payload.seqValue;
+      switch (member.tag) {
+      case Tags::i8Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<int8_t>(arr[i].payload.intValue, input, member.offset);
+        }
+        break;
+      case Tags::i8:
+        read<int8_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      case Tags::i16Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<int16_t>(arr[i].payload.intValue, input, member.offset);
+        }
+        break;
+      case Tags::i16:
+        read<int16_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      case Tags::i32Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<int32_t>(arr[i].payload.intValue, input, member.offset);
+        }
+        break;
+      case Tags::i32:
+        read<int32_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      case Tags::i64Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<int64_t>(arr[i].payload.intValue, input, member.offset);
+        }
+        break;
+      case Tags::i64:
+        read<int64_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      case Tags::f32Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<float>(arr[i].payload.floatValue, input, member.offset);
+        }
+        break;
+      case Tags::f32:
+        read<float>(_output[idx].payload.floatValue, input, member.offset);
+        break;
+      case Tags::f64Array:
+        for (auto i = 0; i < member.arrlen; i++) {
+          read<double>(arr[i].payload.floatValue, input, member.offset);
+        }
+        break;
+      case Tags::f64:
+        read<double>(_output[idx].payload.floatValue, input, member.offset);
+        break;
+      case Tags::Bool:
+        read<bool>(_output[idx].payload.boolValue, input, member.offset);
+        break;
+      case Tags::Pointer:
+        read<uintptr_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      }
+      idx++;
+    }
+
+    return Var(_output);
+  }
 };
 
 // Register
 RUNTIME_CORE_BLOCK(Unpack);
+RUNTIME_BLOCK_destroy(Unpack);
 RUNTIME_BLOCK_inputTypes(Unpack);
 RUNTIME_BLOCK_outputTypes(Unpack);
 RUNTIME_BLOCK_parameters(Unpack);

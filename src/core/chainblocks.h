@@ -258,8 +258,9 @@ struct CBTypeInfo {
       int32_t enumTypeId;
     };
 
-    // If we are a seq, the possible type present in this seq
-    CBTypeInfo* seqType;
+    // If we are a simpe seq a pointer to the possible single type present in this seq
+    // NULL if this is a any type seq, users must guard the outputs with ExpectX type
+    CBTypeInfo *seqType;
 
     // If we are a table, the possible types present in this table
     struct {
