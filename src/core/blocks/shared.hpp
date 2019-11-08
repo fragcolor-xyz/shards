@@ -37,14 +37,14 @@ struct SharedTypes {
   static inline TypeInfo float3Type = TypeInfo(CBType::Float3);
   static inline TypeInfo float4Type = TypeInfo(CBType::Float4);
   static inline TypeInfo strTable =
-      TypeInfo::TableRecord(CBTypeInfo(strInfo), "");
+      TypeInfo::SingleTypeTable(CBTypeInfo(strInfo));
   static inline TypesInfo strTableInfo = TypesInfo(CBTypeInfo(strTable));
   static inline TypesInfo strOrBytesInfo =
       TypesInfo::FromMany(false, CBTypeInfo((strInfo)), CBTypeInfo(bytesInfo));
   static inline TypesInfo intOrFloatInfo =
       TypesInfo::FromMany(false, CBType::Int, CBType::Float);
   static inline TypeInfo intTable =
-      TypeInfo::TableRecord(CBTypeInfo(intInfo), "");
+      TypeInfo::SingleTypeTable(CBTypeInfo(intInfo));
   static inline TypesInfo intTableInfo = TypesInfo(CBTypeInfo(intTable));
   static inline TypesInfo blocksOrNoneInfo = TypesInfo::FromMany(
       false, CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));

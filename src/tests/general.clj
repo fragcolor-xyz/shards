@@ -167,6 +167,11 @@
   (Assert.IsNot "Value1" true)
   (Log)
 
+  (Get "tab1")
+  (Set "tab1-set-copy")
+  (Get "tab1-set-copy" "v1")
+  (Assert.Is "Value1" true)
+
   (Count "tab1")
   (Assert.Is 2 true)
 

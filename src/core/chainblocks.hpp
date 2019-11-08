@@ -862,6 +862,15 @@ struct TypeInfo : public CBTypeInfo {
     return result;
   }
 
+  static TypeInfo SingleTypeTable(CBTypeInfo contentType) {
+    TypeInfo result;
+    result.basicType = Table;
+    result.tableTypes = nullptr;
+    result.tableKeys = nullptr;
+    stbds_arrpush(result.tableTypes, contentType);
+    return result;
+  }
+
   TypeInfo(const TypeInfo &other) {
     basicType = other.basicType;
     tableKeys = nullptr;
