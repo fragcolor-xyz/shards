@@ -25,3 +25,4 @@ ninja cbl
 ./cbl ../src/tests/linalg.clj
 ./cbl ../src/tests/loader.clj
 ./cbl ../src/tests/network.clj
+./cbl ../src/tests/struct.clj
