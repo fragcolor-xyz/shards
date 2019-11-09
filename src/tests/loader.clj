@@ -1,7 +1,8 @@
-; TODO, we removed json
 (def! n (Node))
-(schedule n (Chain "n" :Looped
-  (ChainLoader "../src/tests/loadme.clj")
+(schedule n
+          (Chain
+           "n" :Looped
+           (ChainLoader "../src/tests/loadme.clj")
 ))
 
 (def! dec (fn* [a] (- a 1)))
