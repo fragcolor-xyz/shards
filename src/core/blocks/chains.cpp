@@ -3,6 +3,7 @@
 
 #include "rigtorp/SPSCQueue.h"
 #include "shared.hpp"
+#include <boost/lockfree/queue.hpp>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -13,64 +14,70 @@
 namespace fs = std::filesystem;
 
 namespace chainblocks {
-static TypesInfo chainTypes =
-    TypesInfo::FromMany(false, CBType::Chain, CBType::None);
-
-static ParamsInfo waitChainParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
-    ParamsInfo::Param("Once",
-                      "Runs this sub-chain only once within the parent chain "
-                      "execution cycle.",
-                      CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param(
-        "Passthrough",
-        "The input of this block will be the output. Always on if Detached.",
-        CBTypesInfo(SharedTypes::boolInfo)));
-
-static ParamsInfo runChainParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
-    ParamsInfo::Param("Once",
-                      "Runs this sub-chain only once within the parent chain "
-                      "execution cycle.",
-                      CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param(
-        "Passthrough",
-        "The input of this block will be the output. Not used if Detached.",
-        CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param(
-        "Mode",
-        "The way to run the chain. Inline: will run the sub chain inline "
-        "within the root chain, a pause in the child chain will pause the root "
-        "too; Detached: will run the chain separately in the same node, a "
-        "pause in this chain will not pause the root; Stepped: the chain will "
-        "run as a child, the root will tick the chain every activation of this "
-        "block and so a child pause won't pause the root.",
-        CBTypesInfo(SharedTypes::runChainModeInfo)));
-
-static ParamsInfo chainloaderParamsInfo = ParamsInfo(
-    ParamsInfo::Param(
-        "File", "The chainblocks lisp file of the chain to run and watch.",
-        CBTypesInfo(SharedTypes::strInfo)),
-    ParamsInfo::Param("Once",
-                      "Runs this sub-chain only once within the parent chain "
-                      "execution cycle.",
-                      CBTypesInfo(SharedTypes::boolInfo)),
-    ParamsInfo::Param(
-        "Mode",
-        "The way to run the chain. Inline: will run the sub chain inline "
-        "within the root chain, a pause in the child chain will pause the root "
-        "too; Detached: will run the chain separately in the same node, a "
-        "pause in this chain will not pause the root; Stepped: the chain will "
-        "run as a child, the root will tick the chain every activation of this "
-        "block and so a child pause won't pause the root.",
-        CBTypesInfo(SharedTypes::runChainModeInfo)));
-
-static ParamsInfo chainOnlyParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
-
 enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
+  static inline TypesInfo chainTypes =
+      TypesInfo::FromMany(false, CBType::Chain, CBType::None);
+
+  static inline ParamsInfo waitChainParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
+      ParamsInfo::Param("Once",
+                        "Runs this sub-chain only once within the parent chain "
+                        "execution cycle.",
+                        CBTypesInfo(SharedTypes::boolInfo)),
+      ParamsInfo::Param(
+          "Passthrough",
+          "The input of this block will be the output. Always on if Detached.",
+          CBTypesInfo(SharedTypes::boolInfo)));
+
+  static inline ParamsInfo runChainParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
+      ParamsInfo::Param("Once",
+                        "Runs this sub-chain only once within the parent chain "
+                        "execution cycle.",
+                        CBTypesInfo(SharedTypes::boolInfo)),
+      ParamsInfo::Param(
+          "Passthrough",
+          "The input of this block will be the output. Not used if Detached.",
+          CBTypesInfo(SharedTypes::boolInfo)),
+      ParamsInfo::Param(
+          "Mode",
+          "The way to run the chain. Inline: will run the sub chain inline "
+          "within the root chain, a pause in the child chain will pause the "
+          "root "
+          "too; Detached: will run the chain separately in the same node, a "
+          "pause in this chain will not pause the root; Stepped: the chain "
+          "will "
+          "run as a child, the root will tick the chain every activation of "
+          "this "
+          "block and so a child pause won't pause the root.",
+          CBTypesInfo(SharedTypes::runChainModeInfo)));
+
+  static inline ParamsInfo chainloaderParamsInfo = ParamsInfo(
+      ParamsInfo::Param(
+          "File", "The chainblocks lisp file of the chain to run and watch.",
+          CBTypesInfo(SharedTypes::strInfo)),
+      ParamsInfo::Param("Once",
+                        "Runs this sub-chain only once within the parent chain "
+                        "execution cycle.",
+                        CBTypesInfo(SharedTypes::boolInfo)),
+      ParamsInfo::Param(
+          "Mode",
+          "The way to run the chain. Inline: will run the sub chain inline "
+          "within the root chain, a pause in the child chain will pause the "
+          "root "
+          "too; Detached: will run the chain separately in the same node, a "
+          "pause in this chain will not pause the root; Stepped: the chain "
+          "will "
+          "run as a child, the root will tick the chain every activation of "
+          "this "
+          "block and so a child pause won't pause the root.",
+          CBTypesInfo(SharedTypes::runChainModeInfo)));
+
+  static inline ParamsInfo chainOnlyParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
+
   CBChain *chain;
   bool once;
   bool doneOnce;
@@ -276,6 +283,7 @@ struct ChainLoadResult {
   bool hasError;
   std::string errorMsg;
   CBChain *chain;
+  void *env;
 };
 
 struct ChainFileWatcher {
@@ -283,17 +291,16 @@ struct ChainFileWatcher {
   std::thread worker;
   std::string fileName;
   rigtorp::SPSCQueue<ChainLoadResult> results;
+  boost::lockfree::queue<void *> envs_gc;
 
   explicit ChainFileWatcher(std::string &file)
-      : running(true), fileName(file), results(2) {
+      : running(true), fileName(file), results(2), envs_gc(2) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
-      if (!Lisp::Init) {
+      if (!Lisp::Create) {
         LOG(ERROR) << "Failed to load lisp interpreter";
         return;
       }
-
-      Lisp::Init();
 
       while (running) {
         try {
@@ -308,9 +315,11 @@ struct ChainFileWatcher {
             std::ifstream lsp(p.c_str());
             std::string str((std::istreambuf_iterator<char>(lsp)),
                             std::istreambuf_iterator<char>());
-            auto v = Lisp::Eval(str.c_str());
+            auto env = Lisp::Create();
+            auto v = Lisp::Eval(env, str.c_str());
             if (v.valueType != Chain) {
               LOG(ERROR) << "Lisp::Eval did not return a CBChain";
+              Lisp::Destroy(env);
               continue;
             }
 
@@ -335,16 +344,25 @@ struct ChainFileWatcher {
                 nullptr);
             stbds_arrfree(chainValidation.exposedInfo);
 
-            ChainLoadResult result = {false, "", chain};
+            ChainLoadResult result = {false, "", chain, env};
             results.push(result);
           }
+
+          // clean garbage if any
+          if (!envs_gc.empty()) {
+            void *env;
+            if (envs_gc.pop(env)) {
+              Lisp::Destroy(env);
+            }
+          }
+
           // sleep some
           chainblocks::sleep(2.0);
         } catch (std::exception &e) {
-          ChainLoadResult result = {true, e.what(), nullptr};
+          ChainLoadResult result = {true, e.what(), nullptr, nullptr};
           results.push(result);
         } catch (...) {
-          ChainLoadResult result = {true, "general error", nullptr};
+          ChainLoadResult result = {true, "general error", nullptr, nullptr};
           results.push(result);
         }
       }
@@ -360,8 +378,9 @@ struct ChainFileWatcher {
 struct ChainLoader : public ChainRunner {
   std::string fileName;
   std::unique_ptr<ChainFileWatcher> watcher;
+  void *currentEnv;
 
-  ChainLoader() : ChainRunner(), watcher(nullptr) {}
+  ChainLoader() : ChainRunner(), watcher(nullptr), currentEnv(nullptr) {}
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(chainloaderParamsInfo);
@@ -410,9 +429,13 @@ struct ChainLoader : public ChainRunner {
       } else {
         if (chain) {
           chainblocks::stop(chain);
-          delete chain;
+          // don't delete chains.. let env do it
+          while (!watcher->envs_gc.push(currentEnv)) {
+            cbpause(0.0);
+          }
         }
         chain = result->chain;
+        currentEnv = result->env;
       }
       watcher->results.pop();
     }

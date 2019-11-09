@@ -157,7 +157,9 @@ void installCBCore(const malEnvPtr &env) {
 
 class malCBChain : public malValue {
 public:
-  malCBChain(const MalString &name) : m_chain(new CBChain(name.c_str())) {}
+  malCBChain(const MalString &name) : m_chain(new CBChain(name.c_str())) {
+    LOG(TRACE) << "Created a CBChain - " << name;
+  }
 
   malCBChain(CBChain *chain) : m_chain(chain) {}
 
@@ -168,8 +170,10 @@ public:
   }
 
   ~malCBChain() {
-    if (m_chain)
+    if (m_chain) {
+      LOG(TRACE) << "Deleting a CBChain - " << m_chain->name;
       delete m_chain;
+    }
   }
 
   virtual MalString print(bool readably) const {
@@ -247,7 +251,7 @@ private:
 
 class malCBNode : public malValue {
 public:
-  malCBNode() : m_node(new CBNode()) { DLOG(TRACE) << "Created a CBNode"; }
+  malCBNode() : m_node(new CBNode()) { LOG(TRACE) << "Created a CBNode"; }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta)
       : malValue(meta), m_node(that.m_node), m_innerRefs(that.m_innerRefs) {
@@ -259,7 +263,7 @@ public:
     for (auto &ref : m_innerRefs) {
       ref->release();
     }
-    DLOG(TRACE) << "Deleted a CBNode";
+    LOG(TRACE) << "Deleted a CBNode";
   }
 
   virtual MalString print(bool readably) const {
@@ -1013,18 +1017,21 @@ BUILTIN_ISA("Chain?", malCBChain);
 BUILTIN_ISA("Block?", malCBBlock);
 
 extern "C" {
-static thread_local malEnvPtr *replEnv = nullptr;
-
-EXPORTED __cdecl void cbLispInit() {
-  if (!replEnv) {
-    replEnv = new malEnvPtr(new malEnv);
-    malinit(*replEnv);
-  }
+EXPORTED __cdecl void *cbLispCreate() {
+  auto env = new malEnvPtr(new malEnv);
+  malinit(*env);
+  return (void *)env;
 }
 
-EXPORTED __cdecl CBVar cbLispEval(const char *str) {
+EXPORTED __cdecl void cbLispDestroy(void *env) {
+  auto penv = (malEnvPtr *)env;
+  delete penv;
+}
+
+EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
+  auto penv = (malEnvPtr *)env;
   try {
-    auto res = maleval(str, *replEnv);
+    auto res = maleval(str, *penv);
     return varify(nullptr, res);
   } catch (...) {
     return chainblocks::Empty;
@@ -1033,7 +1040,8 @@ EXPORTED __cdecl CBVar cbLispEval(const char *str) {
 };
 
 void linkLispUtility() {
-  chainblocks::Lisp::Init = cbLispInit;
+  chainblocks::Lisp::Create = cbLispCreate;
+  chainblocks::Lisp::Destroy = cbLispDestroy;
   chainblocks::Lisp::Eval = cbLispEval;
 }
 

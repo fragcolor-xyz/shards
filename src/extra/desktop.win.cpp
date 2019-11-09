@@ -99,8 +99,8 @@ static HWND AsHWND(const CBVar &var) {
   return NULL;
 }
 
-typedef void(__cdecl *cbLispInitFunc)();
-typedef CBVar(__cdecl *cbLispEvalFunc)(const char *str);
+typedef void *(__cdecl *cbLispCreateFunc)();
+typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
 
 struct HookInstance {
   HINSTANCE dll = nullptr;
@@ -116,7 +116,7 @@ struct HookInstance {
     }
     hookProc = (HOOKPROC)GetProcAddress(dll, "DesktopHookCallback");
     assert(hookProc);
-    linit = (cbLispInitFunc)GetProcAddress(dll, "cbLispInit");
+    linit = (cbLispCreateFunc)GetProcAddress(dll, "cbLispCreate");
     assert(linit);
     leval = (cbLispEvalFunc)GetProcAddress(dll, "cbLispEval");
     assert(leval);
@@ -135,11 +135,11 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
   // script we need
   if (!gDesktopHookLoaded) {
     gDesktopHook.init();
-    gDesktopHook.linit();
+    auto env = gDesktopHook.linit();
     auto codeId = "code" + std::to_string(GetCurrentThreadId());
     auto code = InjectHookBase::getRemoteCode(codeId);
     if (code.size() > 0) {
-      CBVar res = gDesktopHook.leval(code.c_str());
+      CBVar res = gDesktopHook.leval(env, code.c_str());
       if (res.valueType == Chain) {
         gHookChain = res.payload.chainValue;
         auto chainValidation = validateConnections(

@@ -222,10 +222,12 @@ namespace chainblocks {
 void installSignalHandlers();
 
 struct Lisp {
-  typedef void(__cdecl *cbLispInitFunc)();
-  typedef CBVar(__cdecl *cbLispEvalFunc)(const char *str);
+  typedef void *(__cdecl *cbLispCreateFunc)();
+  typedef void(__cdecl *cbLispDestroyFunc)(void *env);
+  typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
 
-  static inline cbLispInitFunc Init = nullptr;
+  static inline cbLispCreateFunc Create = nullptr;
+  static inline cbLispDestroyFunc Destroy = nullptr;
   static inline cbLispEvalFunc Eval = nullptr;
 };
 
