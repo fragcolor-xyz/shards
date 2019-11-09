@@ -105,7 +105,7 @@ typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
 struct HookInstance {
   HINSTANCE dll = nullptr;
   HOOKPROC hookProc = nullptr;
-  cbLispInitFunc linit = nullptr;
+  cbLispCreateFunc linit = nullptr;
   cbLispEvalFunc leval = nullptr;
   int refcount = 0;
 
