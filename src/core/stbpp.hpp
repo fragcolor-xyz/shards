@@ -114,8 +114,9 @@ public:
     }
   }
 
-private:
   seq_type _seq;
+
+private:
   bool _owned;
 
 public:

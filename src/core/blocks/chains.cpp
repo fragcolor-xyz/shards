@@ -282,6 +282,7 @@ struct ChainFileWatcher {
   std::thread worker;
   std::string fileName;
   rigtorp::SPSCQueue<ChainLoadResult> results;
+  IterableExposedInfo exposedInfo;
 
   explicit ChainFileWatcher(std::string &file)
       : running(true), fileName(file), results(2) {
@@ -330,7 +331,7 @@ struct ChainFileWatcher {
                         << errorTxt;
                   }
                 },
-                nullptr); // detached don't share context!
+                exposedInfo._seq);
             stbds_arrfree(chainValidation.exposedInfo);
 
             ChainLoadResult result = {false, "", chain};
@@ -397,6 +398,16 @@ struct ChainLoader : public ChainRunner {
       break;
     }
     return Var();
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // store consumables to use in loader thread to make the chain aware of
+    // context
+    IterableExposedInfo source(consumables);
+    // ideally should be locked, but we pretty surely are not gonna need it due
+    // to flow being controlled already in the way cb works
+    watcher->exposedInfo = source; // deep copy
+    return inputType;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
