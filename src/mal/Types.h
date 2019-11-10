@@ -111,6 +111,8 @@ public:
 
     String value() const { return m_value; }
 
+    const String &ref() const { return m_value; }
+
 private:
     const String m_value;
 };

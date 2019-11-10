@@ -321,6 +321,7 @@ public:
   // if the var is block, chain or seq we need to hold them
   malCBlockPtr m_block;
   malCBChainPtr m_chain;
+  malValuePtr m_string;
   std::vector<malCBVarPtr> m_vars;
 };
 
@@ -520,7 +521,7 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
     CBVar strVar{};
     strVar.valueType = String;
-    auto s = v->value();
+    auto &s = v->ref();
     strVar.payload.stringValue = s.c_str();
     WRAP_TO_CONST(strVar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
@@ -568,14 +569,14 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.valueType = None;
     var.payload.chainState = Continue;
     return malCBVarPtr(new malCBVar(var));
-  } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
-    CBVar tmp{};
-    tmp.valueType = String;
-    auto s = v->value();
-    tmp.payload.stringValue = s.c_str();
+  } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
+    auto &s = v->ref();
     CBVar var{};
-    chainblocks::cloneVar(var, tmp);
-    return malCBVarPtr(new malCBVar(var));
+    var.valueType = String;
+    var.payload.stringValue = s.c_str();
+    auto svar = new malCBVar(var);
+    svar->m_string = malValuePtr(v);
+    return malCBVarPtr(svar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
     CBVar var{};
