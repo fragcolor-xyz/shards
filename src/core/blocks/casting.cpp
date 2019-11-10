@@ -819,6 +819,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectBytes);
   REGISTER_CORE_BLOCK(ExpectString);
   REGISTER_CORE_BLOCK(ExpectImage);
+  REGISTER_CORE_BLOCK(ExpectBool);
   REGISTER_CORE_BLOCK(ToBytes);
 }
 }; // namespace chainblocks
