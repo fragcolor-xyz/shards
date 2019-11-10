@@ -1340,8 +1340,10 @@ struct Take {
     if (inputType.basicType == Seq) {
       if (_seqOutput)
         return inputType; // multiple values
-      else
+      else if (inputType.seqType)
         return *inputType.seqType; // single value
+      else                         // value from seq but no type info
+        return CBTypeInfo(CoreInfo::anyInfo);
     } else if (inputType.basicType >= Int2 && inputType.basicType <= Int16) {
       // int vector
     } else if (inputType.basicType >= Float2 && inputType.basicType <= Float4) {
