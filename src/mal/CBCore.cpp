@@ -195,10 +195,15 @@ public:
     return m_chain == static_cast<const malCBChain *>(rhs)->m_chain;
   }
 
+  void addRefs(const std::set<const RefCounted *> &otherRefs) {
+    m_innerRefs.insert(otherRefs.begin(), otherRefs.end());
+  }
+
   WITH_META(malCBChain);
 
 private:
   CBChain *m_chain;
+  std::set<const RefCounted *> m_innerRefs;
 };
 
 class malCBlock : public malValue {
@@ -240,6 +245,12 @@ public:
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
     return m_block == static_cast<const malCBlock *>(rhs)->m_block;
+  }
+
+  const std::set<const RefCounted *> getRefs() const { return m_innerRefs; }
+
+  void addRefs(const std::set<const RefCounted *> &otherRefs) {
+    m_innerRefs.insert(otherRefs.begin(), otherRefs.end());
   }
 
   WITH_META(malCBlock);
@@ -506,12 +517,16 @@ BUILTIN("Node") { return malValuePtr(new malCBNode()); }
   auto constBlock = chainblocks::createBlock("Const");                         \
   constBlock->setup(constBlock);                                               \
   constBlock->setParam(constBlock, 0, _var_);                                  \
-  result.push_back(constBlock)
+  result.push_back({constBlock})
+
+struct BlockData {
+  CBlock *blockPtr;
+  std::set<const RefCounted *> blockRefs;
+};
 
 // Helper to generate const blocks automatically inferring types
-std::vector<CBlock *> blockify(const malValuePtr &arg) {
-  std::vector<CBlock *> result;
-
+std::vector<BlockData> blockify(const malValuePtr &arg) {
+  std::vector<BlockData> result;
   if (arg == mal::nilValue()) {
     // Wrap none into const
     CBVar var{};
@@ -551,7 +566,7 @@ std::vector<CBlock *> blockify(const malValuePtr &arg) {
     auto block = v->value();
     // Blocks are unique, consume before use, assume goes inside another block
     const_cast<malCBlock *>(v)->consume();
-    result.push_back(block);
+    result.push_back({block, v->getRefs()});
   } else if (const malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     auto count = v->count();
     for (auto i = 0; i < count; i++) {
@@ -727,8 +742,10 @@ BUILTIN("Chain") {
       }
     } else {
       auto blks = blockify(arg);
-      for (auto blk : blks)
-        chain->addBlock(blk);
+      for (auto blk : blks) {
+        chain->addBlock(blk.blockPtr);
+        mchain->addRefs(blk.blockRefs);
+      }
     }
   }
   return malValuePtr(mchain);
@@ -739,8 +756,11 @@ BUILTIN("-->") {
   while (argsBegin != argsEnd) {
     auto arg = *argsBegin++;
     auto blks = blockify(arg);
-    for (auto blk : blks)
-      vec->push_back(malValuePtr(new malCBlock(blk)));
+    for (auto blk : blks) {
+      auto mblock = new malCBlock(blk.blockPtr);
+      mblock->addRefs(blk.blockRefs);
+      vec->push_back(malValuePtr(mblock));
+    }
   }
   return malValuePtr(new malList(vec));
 }
