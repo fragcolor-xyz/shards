@@ -568,6 +568,7 @@ EXPECT_BLOCK(Float, Float);
 EXPECT_BLOCK(Float2, Float2);
 EXPECT_BLOCK(Float3, Float3);
 EXPECT_BLOCK(Float4, Float4);
+EXPECT_BLOCK(Bool, Bool);
 EXPECT_BLOCK(Int, Int);
 EXPECT_BLOCK(Int2, Int2);
 EXPECT_BLOCK(Int3, Int3);
