@@ -87,7 +87,8 @@ struct StructBase {
     f32,
     f64,
     Bool,
-    Pointer
+    Pointer,
+    String
   };
 
   struct Desc {
@@ -111,6 +112,7 @@ struct StructBase {
       std::regex("f64"),           // f64
       std::regex("b"),             // bool
       std::regex("p"),             // pointer
+      std::regex("s"),             // string
   };
 
   static inline std::regex arrlenx{"^.*\\[(\\d+)\\]$"};
@@ -185,6 +187,9 @@ struct StructBase {
         _size += 1;
         break;
       case Tags::Pointer:
+        _size += sizeof(uintptr_t);
+        break;
+      case Tags::String:
         _size += sizeof(uintptr_t);
         break;
       }
@@ -317,6 +322,9 @@ struct Pack : public StructBase {
         ensureType(seq[idx], Int);
         write<uintptr_t>(seq[idx].payload.intValue, member.offset);
         break;
+      case Tags::String:
+        ensureType(seq[idx], CBType::String);
+        write<const char *>(seq[idx].payload.stringValue, member.offset);
       }
       idx++;
     }
@@ -406,6 +414,9 @@ struct Unpack : public StructBase {
       case Tags::Pointer:
         _output[idx].valueType = Int;
         break;
+      case Tags::String:
+        _output[idx].valueType = CBType::String;
+        break;
       }
       idx++;
     }
@@ -476,6 +487,10 @@ struct Unpack : public StructBase {
         break;
       case Tags::Pointer:
         read<uintptr_t>(_output[idx].payload.intValue, input, member.offset);
+        break;
+      case Tags::String:
+        read<const char *>(_output[idx].payload.stringValue, input,
+                           member.offset);
         break;
       }
       idx++;

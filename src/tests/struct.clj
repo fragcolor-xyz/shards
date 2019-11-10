@@ -19,4 +19,13 @@
   (Get "bytes")
   (Unpack "i32 i32 f32")
   (Log)
+
+  (Const ["Hello structured data" 2])
+  (Pack "s i32")
+  (Log)
+  (Unpack "s i32")
+  (Log)
+  (Take 0)
+  (Log)
+  ;; (Assert.Is "Hello structured data" true)
   ))
