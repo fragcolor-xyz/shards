@@ -100,7 +100,7 @@ void registerCoreBlocks() {
   registerStructBlocks();
 
   // also enums
-  initEnums();
+  SharedTypes::initEnums();
 
 #ifdef CB_WITH_EXTRAS
   cbInitExtras();

@@ -71,20 +71,20 @@ struct SharedTypes {
       true, float2Type, float3Type, float4Type, CBTypeInfo(ctxVarInfo));
   static inline TypeInfo float4Seq = TypeInfo::Sequence(float4Type);
   static inline TypesInfo matrix4x4Info = TypesInfo(float4Seq);
+
+  static void initEnums() {
+    // These leak for now
+    stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "Equal");
+    stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "More");
+    stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "Less");
+    stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "MoreEqual");
+    stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "LessEqual");
+    registerEnumType('frag', 'bool', (SharedTypes::boolOpEnumInfo));
+
+    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Inline");
+    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Detached");
+    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Stepped");
+    registerEnumType('frag', 'runC', (SharedTypes::runChainModeEnumInfo));
+  }
 };
-
-static void initEnums() {
-  // These leak for now
-  stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "Equal");
-  stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "More");
-  stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "Less");
-  stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "MoreEqual");
-  stbds_arrpush((SharedTypes::boolOpEnumInfo).labels, "LessEqual");
-  registerEnumType('frag', 'bool', (SharedTypes::boolOpEnumInfo));
-
-  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Inline");
-  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Detached");
-  stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Stepped");
-  registerEnumType('frag', 'runC', (SharedTypes::runChainModeEnumInfo));
-}
 }; // namespace chainblocks
