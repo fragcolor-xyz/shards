@@ -1,0 +1,6 @@
+(def chain (Chain "test" true))
+(def block1 (Do chain))
+(def block2 (Do (Chain "inline-chain" true)))
+(def block2 nil)
+(Chain "lost-chain" true)
+(do (Chain "do-chain" true))

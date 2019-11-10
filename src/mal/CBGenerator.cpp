@@ -37,7 +37,7 @@ int main(int argc, const char *argv[]) {
       keywords.insert(param.name);
     }
 
-    os << "  auto malblock = new malCBBlock(block);\n";
+    os << "  auto malblock = new malCBlock(block);\n";
     os << "  setBlockParameters(malblock, argsBegin, argsEnd);\n";
     os << "  return malValuePtr(malblock);\n";
     os << "}\n\n";

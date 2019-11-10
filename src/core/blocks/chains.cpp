@@ -315,7 +315,18 @@ struct ChainFileWatcher {
             std::ifstream lsp(p.c_str());
             std::string str((std::istreambuf_iterator<char>(lsp)),
                             std::istreambuf_iterator<char>());
-            auto env = Lisp::Create();
+
+            // since envs are not being cleaned properly for now
+            // symbols have high ref count, need to fix
+            void *env = nullptr;
+            if (!envs_gc.empty()) {
+              // we just rotate them instead of cleaning them
+              envs_gc.pop(env);
+            }
+            if (!env) {
+              // worst case create a new one
+              env = Lisp::Create();
+            }
             auto v = Lisp::Eval(env, str.c_str());
             if (v.valueType != Chain) {
               LOG(ERROR) << "Lisp::Eval did not return a CBChain";
@@ -347,15 +358,6 @@ struct ChainFileWatcher {
             ChainLoadResult result = {false, "", chain, env};
             results.push(result);
           }
-
-          // clean garbage if any
-          if (!envs_gc.empty()) {
-            void *env;
-            if (envs_gc.pop(env)) {
-              Lisp::Destroy(env);
-            }
-          }
-
           // sleep some
           chainblocks::sleep(2.0);
         } catch (std::exception &e) {

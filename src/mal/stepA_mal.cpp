@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <memory>
+#include <cassert>
 
 malValuePtr READ(const String& input);
 String PRINT(malValuePtr ast);
@@ -23,20 +24,25 @@ static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 static ReadLine s_readLine("~/.mal-history");
 #endif
 
-static malEnvPtr replEnv(new malEnv);
+static thread_local malEnvPtr currentEnv = nullptr;
 
 void malinit(malEnvPtr env) {
+    assert(env);
+    currentEnv = env;
     installCore(env);
     installCBCore(env);
     installFunctions(env);
 }
 
 malValuePtr maleval(const char* str, malEnvPtr env) {
+    assert(env);
+    currentEnv = env;
     return EVAL(READ(str), env);
 }
 
 int malmain(int argc, char* argv[])
 {
+    malEnvPtr replEnv(new malEnv());
     malinit(replEnv);
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
@@ -44,6 +50,11 @@ int malmain(int argc, char* argv[])
         String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
         if (out.length() > 0 && out != "nil")
             std::cout << out << "\n";
+	malEnvPtr nullEnv;
+	auto penv = replEnv.ptr();
+	replEnv = nullEnv;
+	currentEnv = nullEnv;
+	delete penv;
         return 0;
     }
 #ifndef NO_MAL_MAIN
@@ -106,8 +117,11 @@ malValuePtr READ(const String& input)
 malValuePtr EVAL(malValuePtr ast, malEnvPtr env)
 {
     if (!env) {
-        env = replEnv;
+        env = currentEnv;
+	assert(env);
     }
+    // not quite sure, but for now lets not update currentenv here
+    // limit it only to root entry points
     while (1) {
         const malList* list = DYNAMIC_CAST(malList, ast);
         if (!list || (list->count() == 0)) {
