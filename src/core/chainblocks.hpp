@@ -758,14 +758,14 @@ struct ContextableVar {
   CBVar &getParam() { return _v; }
 
   CBVar &get(CBContext *ctx, bool global = false) {
-    if (ctx != _ctx) {
+    if (unlikely(ctx != _ctx)) {
       // reset the ptr if context changed (stop/restart etc)
       _cp = nullptr;
       _ctx = ctx;
     }
 
     if (_v.valueType == ContextVar) {
-      if (!_cp) {
+      if (unlikely(!_cp)) {
         _cp = contextVariable(ctx, _v.payload.stringValue, global);
         return *_cp;
       } else {
