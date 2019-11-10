@@ -227,7 +227,14 @@ public:
     return stream.str();
   }
 
-  CBlock *value() const { return m_block; }
+  CBlock *value() const {
+    if (!m_block) {
+      throw chainblocks::CBException(
+          "Attempted to use a null block, blocks are unique, "
+          "probably was already used.");
+    }
+    return m_block;
+  }
 
   void addVar(malCBVarPtr &var) { m_vars.push_back(var); }
 
@@ -1038,6 +1045,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
     auto res = maleval(str, *penv);
     auto mvar = varify(nullptr, res);
     // hack, increase count to not loose contents...
+    // TODO THIS LEAKS!
     mvar->acquire();
     return mvar->m_var;
   } catch (...) {
