@@ -68,6 +68,7 @@ jobs:
         ninja cbl
     - name: Test
       run: |
+        cd build
         ./cbl ../src/tests/general.clj
         ./cbl ../src/tests/variables.clj
         ./cbl ../src/tests/subchains.clj
