@@ -770,7 +770,7 @@ struct Get : public VariableBase {
           if (_defaultType.basicType != None) {
             return _defaultValue;
           } else {
-            return CBException("Get - Key not found in table.");
+            throw CBException("Get - Key not found in table.");
           }
         }
         auto &value = _target->payload.tableValue[index].value;
@@ -784,7 +784,7 @@ struct Get : public VariableBase {
         if (_defaultType.basicType != None) {
           return _defaultValue;
         } else {
-	  return CBException("Get - Table is empty or does not exist yet.");
+          throw CBException("Get - Table is empty or does not exist yet.");
         }
       }
     } else {
