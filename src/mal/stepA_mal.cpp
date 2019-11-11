@@ -50,23 +50,20 @@ int malmain(int argc, char* argv[])
         String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
         if (out.length() > 0 && out != "nil")
             std::cout << out << "\n";
-	malEnvPtr nullEnv;
-	auto penv = replEnv.ptr();
-	replEnv = nullEnv;
-	currentEnv = nullEnv;
-	delete penv;
-        return 0;
-    }
+    } else {
 #ifndef NO_MAL_MAIN
-    String prompt = "user> ";
-    String input;
-    rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
-    while (s_readLine.get(prompt, input)) {
-        String out = safeRep(input, replEnv);
-        if (out.length() > 0)
-            std::cout << out << "\n";
-    }
+        String prompt = "user> ";
+        String input;
+        rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
+        while (s_readLine.get(prompt, input)) {
+            String out = safeRep(input, replEnv);
+            if (out.length() > 0)
+	      std::cout << out << "\n";
+        }
 #endif
+    }
+    if(currentEnv == replEnv)
+      currentEnv = nullptr;
     return 0;
 }
 
