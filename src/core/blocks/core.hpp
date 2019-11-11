@@ -450,6 +450,7 @@ struct SetBase : public VariableBase {
       }
     }
     _target = nullptr;
+    _shortCut = false;
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
@@ -544,7 +545,10 @@ struct Ref : public SetBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  void cleanup() { _target = nullptr; }
+  void cleanup() {
+    _target = nullptr;
+    _shortCut = false;
+  }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_shortCut) {
@@ -667,7 +671,10 @@ struct Get : public VariableBase {
     throw CBException("Param index out of range.");
   }
 
-  void cleanup() { _target = nullptr; }
+  void cleanup() {
+    _target = nullptr;
+    _shortCut = false;
+  }
 
   void destroy() { freeDerivedInfo(_defaultType); }
 
@@ -763,7 +770,7 @@ struct Get : public VariableBase {
           if (_defaultType.basicType != None) {
             return _defaultValue;
           } else {
-            return Var::Restart();
+            return CBException("Get - Key not found in table.");
           }
         }
         auto &value = _target->payload.tableValue[index].value;
@@ -777,7 +784,7 @@ struct Get : public VariableBase {
         if (_defaultType.basicType != None) {
           return _defaultValue;
         } else {
-          return Var::Restart();
+	  return CBException("Get - Table is empty or does not exist yet.");
         }
       }
     } else {
