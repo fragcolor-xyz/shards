@@ -52,7 +52,7 @@ jobs:
     - run: msys2do ./build-win32.sh
 
   ciMacDbg:
-    runs-on: macOS-latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v1
     - name: Deps
@@ -72,6 +72,6 @@ jobs:
         ./cbl ../src/tests/variables.clj
         ./cbl ../src/tests/subchains.clj
         ./cbl ../src/tests/linalg.clj
-	./cbl ../src/tests/loader.clj
-	./cbl ../src/tests/network.clj
-	./cbl ../src/tests/struct.clj
+        ./cbl ../src/tests/loader.clj
+        ./cbl ../src/tests/network.clj
+        ./cbl ../src/tests/struct.clj
