@@ -164,7 +164,15 @@ typedef RefCountedPtr<malCBlock> malCBlockPtr;
 typedef RefCountedPtr<malCBNode> malCBNodePtr;
 typedef RefCountedPtr<malCBVar> malCBVarPtr;
 
-class malCBChain : public malValue {
+class malRoot {
+public:
+  void reference(malValue *val) { m_refs.emplace_back(val); }
+
+private:
+  std::vector<malValuePtr> m_refs;
+};
+
+class malCBChain : public malValue, public malRoot {
 public:
   malCBChain(const MalString &name) : m_chain(new CBChain(name.c_str())) {
     LOG(TRACE) << "Created a CBChain - " << name;
@@ -194,18 +202,15 @@ public:
     return m_chain == static_cast<const malCBChain *>(rhs)->m_chain;
   }
 
-  void addBlock(malCBlockPtr &block) { m_blocks.push_back(block); }
-
   virtual malValuePtr doWithMeta(malValuePtr meta) const {
     throw chainblocks::CBException("Meta not supported on chainblocks chains.");
   }
 
 private:
   CBChain *m_chain;
-  std::vector<malCBlockPtr> m_blocks;
 };
 
-class malCBlock : public malValue {
+class malCBlock : public malValue, public malRoot {
 public:
   malCBlock(const MalString &name)
       : m_block(chainblocks::createBlock(name.c_str())) {}
@@ -236,8 +241,6 @@ public:
     return m_block;
   }
 
-  void addVar(malCBVarPtr &var) { m_vars.push_back(var); }
-
   void consume() { m_block = nullptr; }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
@@ -250,10 +253,9 @@ public:
 
 private:
   CBlock *m_block;
-  std::vector<malCBVarPtr> m_vars;
 };
 
-class malCBNode : public malValue {
+class malCBNode : public malValue, public malRoot {
 public:
   malCBNode() : m_node(new CBNode()) { LOG(TRACE) << "Created a CBNode"; }
 
@@ -273,9 +275,9 @@ public:
 
   CBNode *value() const { return m_node; }
 
-  void schedule(malCBChainPtr chain) {
+  void schedule(malCBChain *chain) {
     m_node->schedule(chain->value());
-    m_chain.push_back(chain);
+    reference(chain);
   }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
@@ -288,19 +290,22 @@ public:
 
 private:
   CBNode *m_node;
-  std::vector<malCBChainPtr> m_chain;
 };
 
-class malCBVar : public malValue {
+class malCBVar : public malValue, public malRoot {
 public:
-  malCBVar(CBVar &var) : m_var(var) {}
+  malCBVar(CBVar &var, bool cloned = false) : m_var(var), m_cloned(cloned) {}
 
-  malCBVar(const malCBVar &that, const malValuePtr &meta) : malValue(meta) {
+  malCBVar(const malCBVar &that, const malValuePtr &meta)
+      : m_cloned(true), malValue(meta) {
     m_var = CBVar();
     chainblocks::cloneVar(m_var, that.m_var);
   }
 
-  ~malCBVar() { chainblocks::destroyVar(m_var); }
+  ~malCBVar() {
+    if (m_cloned)
+      chainblocks::destroyVar(m_var);
+  }
 
   virtual MalString print(bool readably) const {
     std::ostringstream stream;
@@ -312,17 +317,13 @@ public:
     return m_var == static_cast<const malCBVar *>(rhs)->m_var;
   }
 
-  CBVar value() const { return m_var; }
+  CBVar &value() { return m_var; }
 
   WITH_META(malCBVar);
 
-  CBVar m_var{};
-
-  // if the var is block, chain or seq we need to hold them
-  malCBlockPtr m_block;
-  malCBChainPtr m_chain;
-  malValuePtr m_string;
-  std::vector<malCBVarPtr> m_vars;
+private:
+  CBVar m_var;
+  bool m_cloned;
 };
 
 CBType keywordToType(malKeyword *typeKeyword) {
@@ -474,11 +475,11 @@ struct InnerCall {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    cloneVar(innerVar->m_var, input);
+    cloneVar(innerVar->value(), input);
     auto res = EVAL(malActivate, nullptr);
     auto resStaticVar = STATIC_CAST(
         malCBVar, res); // for perf here we use static, it's dangerous tho!
-    cloneVar(outputVar, resStaticVar->m_var);
+    cloneVar(outputVar, resStaticVar->value());
     return outputVar;
   }
 };
@@ -507,10 +508,12 @@ BUILTIN("Node") { return malValuePtr(new malCBNode()); }
   auto constBlock = chainblocks::createBlock("Const");                         \
   constBlock->setup(constBlock);                                               \
   constBlock->setParam(constBlock, 0, _var_);                                  \
-  result.emplace_back(new malCBlock(constBlock))
+  auto mblock = new malCBlock(constBlock);                                     \
+  result.emplace_back(mblock);
 
 // Helper to generate const blocks automatically inferring types
 std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
+  // blocks clone vars internally so there is no need to keep ref!
   std::vector<malCBlockPtr> result;
   if (arg == mal::nilValue()) {
     // Wrap none into const
@@ -545,7 +548,7 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     var.valueType = Bool;
     var.payload.boolValue = false;
     WRAP_TO_CONST(var);
-  } else if (const malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
+  } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
     WRAP_TO_CONST(v->value());
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     result.emplace_back(v);
@@ -575,7 +578,7 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.valueType = String;
     var.payload.stringValue = s.c_str();
     auto svar = new malCBVar(var);
-    svar->m_string = malValuePtr(v);
+    svar->reference(v);
     return malCBVarPtr(svar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
@@ -588,7 +591,7 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
       var.payload.floatValue = value;
     }
     return malCBVarPtr(new malCBVar(var));
-  } else if (const malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
+  } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     CBVar tmp{};
     tmp.valueType = Seq;
     tmp.payload.seqValue = nullptr;
@@ -598,13 +601,15 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
       auto val = v->item(i);
       auto subVar = varify(mblk, val);
       vars.push_back(subVar);
-      stbds_arrpush(tmp.payload.seqValue, subVar->m_var);
+      stbds_arrpush(tmp.payload.seqValue, subVar->value());
     }
     CBVar var{};
     chainblocks::cloneVar(var, tmp);
     stbds_arrfree(tmp.payload.seqValue);
-    auto mvar = new malCBVar(var);
-    mvar->m_vars.insert(mvar->m_vars.end(), vars.begin(), vars.end());
+    auto mvar = new malCBVar(var, true);
+    for (auto &rvar : vars) {
+      mvar->reference(rvar.ptr());
+    }
     return malCBVarPtr(mvar);
   } else if (arg == mal::trueValue()) {
     CBVar var{};
@@ -616,17 +621,17 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.valueType = Bool;
     var.payload.boolValue = false;
     return malCBVarPtr(new malCBVar(var));
-  } else if (const malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
+  } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
     CBVar var{};
     chainblocks::cloneVar(var, v->value());
-    return malCBVarPtr(new malCBVar(var));
+    return malCBVarPtr(new malCBVar(var, true));
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     auto block = v->value();
     CBVar var{};
     var.valueType = Block;
     var.payload.blockValue = block;
     auto bvar = new malCBVar(var);
-    bvar->m_block = malCBlockPtr(v);
+    bvar->reference(v);
     v->consume();
     return malCBVarPtr(bvar);
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
@@ -635,7 +640,7 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.valueType = Chain;
     var.payload.chainValue = chain;
     auto cvar = new malCBVar(var);
-    cvar->m_chain = malCBChainPtr(v);
+    cvar->reference(v);
     return malCBVarPtr(cvar);
   } else {
     throw chainblocks::CBException("Invalid variable");
@@ -686,15 +691,15 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
         throw chainblocks::CBException("Parameter not found");
       } else {
         auto var = varify(malblock, value);
-        if (!validateSetParam(block, idx, var->m_var, validationCallback,
+        if (!validateSetParam(block, idx, var->value(), validationCallback,
                               nullptr)) {
           LOG(ERROR) << "Failed parameter: " << paramName;
           throw chainblocks::CBException("Parameter validation failed");
         }
-        block->setParam(block, idx, var->m_var);
+        block->setParam(block, idx, var->value());
 
         // keep ref
-        malblock->addVar(var);
+        malblock->reference(var.ptr());
       }
     } else if (pindex == -1) {
       // We expected a keyword! fail
@@ -702,15 +707,15 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       throw chainblocks::CBException("Keyword expected");
     } else {
       auto var = varify(malblock, arg);
-      if (!validateSetParam(block, pindex, var->m_var, validationCallback,
+      if (!validateSetParam(block, pindex, var->value(), validationCallback,
                             nullptr)) {
         LOG(ERROR) << "Failed parameter index: " << pindex;
         throw chainblocks::CBException("Parameter validation failed");
       }
-      block->setParam(block, pindex, var->m_var);
+      block->setParam(block, pindex, var->value());
 
       // keep ref
-      malblock->addVar(var);
+      malblock->reference(var.ptr());
 
       pindex++;
     }
@@ -737,7 +742,7 @@ BUILTIN("Chain") {
         chain->addBlock(blk->value());
         // chain will manage this block from now on!
         blk->consume();
-        mchain->addBlock(blk);
+        mchain->reference(blk.ptr());
       }
     }
   }
@@ -867,13 +872,13 @@ BUILTIN("sleep") {
 BUILTIN("#") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
-  auto s = value->value();
-  CBVar tmp{};
-  tmp.valueType = ContextVar;
-  tmp.payload.stringValue = s.c_str();
-  auto var = CBVar();
-  chainblocks::cloneVar(var, tmp);
-  return malValuePtr(new malCBVar(var));
+  auto &s = value->ref();
+  CBVar var{};
+  var.valueType = ContextVar;
+  var.payload.stringValue = s.c_str();
+  auto mvar = new malCBVar(var);
+  mvar->reference(value);
+  return malValuePtr(mvar);
 }
 
 malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
@@ -901,15 +906,13 @@ BUILTIN("Enum") {
 BUILTIN("String") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
-
-  CBVar tmp{};
-  tmp.valueType = String;
-  auto s = value->value();
-  tmp.payload.stringValue = s.c_str();
-  auto var = CBVar();
-  chainblocks::cloneVar(var, tmp);
-
-  return malValuePtr(new malCBVar(var));
+  CBVar var{};
+  var.valueType = String;
+  auto &s = value->ref();
+  var.payload.stringValue = s.c_str();
+  auto mvar = new malCBVar(var);
+  mvar->reference(value);
+  return malValuePtr(mvar);
 }
 
 BUILTIN("Int") {
@@ -1048,7 +1051,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
     // hack, increase count to not loose contents...
     // TODO THIS LEAKS!
     mvar->acquire();
-    return mvar->m_var;
+    return mvar->value();
   } catch (...) {
     return chainblocks::Empty;
   }
