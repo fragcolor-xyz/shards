@@ -9,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <cassert>
+#include <filesystem>
 
 malValuePtr READ(const String& input);
 String PRINT(malValuePtr ast);
@@ -25,6 +26,14 @@ static ReadLine s_readLine("~/.mal-history");
 #endif
 
 static thread_local malEnvPtr currentEnv = nullptr;
+
+String malpath() {
+  String result;
+  if(currentEnv) {
+    result = currentEnv->currentPath();
+  }
+  return result;
+}
 
 void malinit(malEnvPtr env) {
     assert(env);
@@ -46,7 +55,10 @@ int malmain(int argc, char* argv[])
     malinit(replEnv);
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
-        String filename = escape(argv[1]);
+	auto scriptPath = std::filesystem::path(argv[1]);
+        replEnv->currentPath(scriptPath.parent_path());
+	auto fileonly = scriptPath.filename();
+	String filename = escape(fileonly);
         String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
         if (out.length() > 0 && out != "nil")
             std::cout << out << "\n";

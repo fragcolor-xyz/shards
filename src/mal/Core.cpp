@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 #define CHECK_ARGS_IS(expected) \
     checkArgsIs(name.c_str(), expected, \
@@ -477,15 +478,20 @@ BUILTIN("seq")
     MAL_FAIL("%s is not a string or sequence", arg->print(true).c_str());
 }
 
-
 BUILTIN("slurp")
 {
     CHECK_ARGS_IS(1);
     ARG(malString, filename);
 
+    auto filepath = std::filesystem::path(filename->value());
+    auto currentPath = malpath();
+    if(currentPath.size() > 0 && filepath.is_relative()) {
+      filepath = std::filesystem::path(currentPath) / filepath;
+    }
+
     std::ios_base::openmode openmode =
         std::ios::ate | std::ios::in | std::ios::binary;
-    std::ifstream file(filename->value().c_str(), openmode);
+    std::ifstream file(filepath.c_str(), openmode);
     MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());
 
     String data;

@@ -20,7 +20,13 @@ public:
     malValuePtr set(const String& symbol, malValuePtr value);
     malEnvPtr   getRoot();
 
+    const String &currentPath() const { return m_currentPath; }
+    void currentPath(String path) {
+      m_currentPath = path;
+    }
+
 private:
+    String m_currentPath;
     typedef std::map<String, malValuePtr> Map;
     Map m_map;
     malEnvPtr m_outer;
