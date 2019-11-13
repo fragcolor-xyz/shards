@@ -299,12 +299,12 @@ struct ChainFileWatcher {
         envs_gc(2) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
+      auto localRoot = std::filesystem::path(path);
+
       if (!Lisp::Create) {
         LOG(ERROR) << "Failed to load lisp interpreter";
         return;
       }
-
-      auto localRoot = std::filesystem::path(path);
 
       while (running) {
         try {
@@ -313,8 +313,12 @@ struct ChainFileWatcher {
             // complete path with current path if any
             p = localRoot / p;
           }
-          if (fs::exists(p) && fs::is_regular_file(p) &&
-              fs::last_write_time(p) != lastWrite) {
+
+          if (!fs::exists(p)) {
+            LOG(INFO) << "A ChainLoader loaded script path does not exist: "
+                      << p;
+          } else if (fs::is_regular_file(p) &&
+                     fs::last_write_time(p) != lastWrite) {
             // make sure to store last write time
             // before any possible error!
             auto writeTime = fs::last_write_time(p);
