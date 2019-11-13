@@ -290,11 +290,13 @@ struct ChainFileWatcher {
   std::atomic_bool running;
   std::thread worker;
   std::string fileName;
+  std::string path;
   rigtorp::SPSCQueue<ChainLoadResult> results;
   boost::lockfree::queue<void *> envs_gc;
 
-  explicit ChainFileWatcher(std::string &file)
-      : running(true), fileName(file), results(2), envs_gc(2) {
+  explicit ChainFileWatcher(std::string &file, std::string currentPath)
+      : running(true), fileName(file), path(currentPath), results(2),
+        envs_gc(2) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       if (!Lisp::Create) {
@@ -302,9 +304,15 @@ struct ChainFileWatcher {
         return;
       }
 
+      auto localRoot = std::filesystem::path(path);
+
       while (running) {
         try {
           fs::path p(fileName);
+          if (path.size() > 0 && p.is_relative()) {
+            // complete path with current path if any
+            p = localRoot / p;
+          }
           if (fs::exists(p) && fs::is_regular_file(p) &&
               fs::last_write_time(p) != lastWrite) {
             // make sure to store last write time
@@ -388,11 +396,13 @@ struct ChainLoader : public ChainRunner {
     return CBParametersInfo(chainloaderParamsInfo);
   }
 
+  void cleanup() { watcher.reset(nullptr); }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
       fileName = value.payload.stringValue;
-      watcher.reset(new ChainFileWatcher(fileName));
+      cleanup(); // stop current watcher
       break;
     case 1:
       once = value.payload.boolValue;
@@ -423,6 +433,11 @@ struct ChainLoader : public ChainRunner {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!watcher) {
+      watcher.reset(
+          new ChainFileWatcher(fileName, context->chain->node->currentPath));
+    }
+
     if (!watcher->results.empty()) {
       auto result = watcher->results.front();
       if (unlikely(result->hasError)) {

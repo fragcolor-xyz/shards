@@ -502,7 +502,11 @@ BUILTIN(".") {
   return malValuePtr(new malCBlock(blk));
 }
 
-BUILTIN("Node") { return malValuePtr(new malCBNode()); }
+BUILTIN("Node") {
+  auto node = new malCBNode();
+  node->value()->currentPath = malpath();
+  return malValuePtr(node);
+}
 
 #define WRAP_TO_CONST(_var_)                                                   \
   auto constBlock = chainblocks::createBlock("Const");                         \

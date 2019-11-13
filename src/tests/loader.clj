@@ -2,7 +2,7 @@
 (schedule n
           (Chain
            "n" :Looped
-           (ChainLoader "../src/tests/loadme.clj")
+           (ChainLoader "loadme.clj")
 ))
 
 (def! dec (fn* [a] (- a 1)))
