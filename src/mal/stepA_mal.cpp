@@ -56,7 +56,7 @@ int malmain(int argc, char* argv[])
     makeArgv(replEnv, argc - 2, argv + 2);
     if (argc > 1) {
 	auto scriptPath = std::filesystem::path(argv[1]);
-        replEnv->currentPath(scriptPath.parent_path());
+        replEnv->currentPath(scriptPath.parent_path().string());
 	auto fileonly = scriptPath.filename();
 	String filename = escape(fileonly);
         String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
