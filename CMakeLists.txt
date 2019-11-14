@@ -122,6 +122,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/stbpp.hpp
   ${CHAINBLOCKS_DIR}/src/core/utility.hpp
@@ -167,6 +168,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/stb
   -I${CHAINBLOCKS_DIR}/deps/xxHash
   -I${CHAINBLOCKS_DIR}/deps/json/include
+  -I${CHAINBLOCKS_DIR}/deps/nameof/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
@@ -231,6 +233,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/stb
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
+  ${CHAINBLOCKS_DIR}/deps/nameof/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
