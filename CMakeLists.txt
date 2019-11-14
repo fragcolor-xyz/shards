@@ -160,6 +160,15 @@ set(
   MY_PROJECT_HEADER_PATHS
   ${MY_PROJECT_HEADER_PATHS}
   -I${CHAINBLOCKS_DIR}/src/core
+  -I${CHAINBLOCKS_DIR}/deps/rpmalloc
+  -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
+  -I${CHAINBLOCKS_DIR}/deps/parallel-hashmap
+  -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
+  -I${CHAINBLOCKS_DIR}/deps/stb
+  -I${CHAINBLOCKS_DIR}/deps/xxHash
+  -I${CHAINBLOCKS_DIR}/deps/json/include
+  -I${CHAINBLOCKS_DIR}/src/core
+  -I${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
 
 ### setup clang format
@@ -195,13 +204,18 @@ else()
   message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
 endif()
 
-#### check target
-if(CLANG_TIDY_EXE)
-  add_custom_target(
-    tidycheck
-    COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${MY_PROJECT_SOURCE_FILES} -- -std=c++11 -Wno-c++17-extensions -DDEBUG ${MY_PROJECT_HEADER_PATHS}
-  )
-endif()
+#### tidy target
+set(tidyfied)
+foreach(_file ${MY_PROJECT_SOURCE_FILES})
+  if(CLANG_TIDY_EXE)
+    add_custom_command(
+      OUTPUT ${_file}.noop
+      COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${_file} -- -std=c++17 -DDEBUG ${MY_PROJECT_HEADER_PATHS}
+      )
+    list(APPEND tidyfied ${_file}.noop)
+  endif()
+endforeach()
+add_custom_target(tidy DEPENDS ${tidyfied})
 ###
 
 if(UNIX AND NOT APPLE)

@@ -297,7 +297,7 @@ public:
   malCBVar(CBVar &var, bool cloned = false) : m_var(var), m_cloned(cloned) {}
 
   malCBVar(const malCBVar &that, const malValuePtr &meta)
-      : m_cloned(true), malValue(meta) {
+      : malValue(meta), m_cloned(true) {
     m_var = CBVar();
     chainblocks::cloneVar(m_var, that.m_var);
   }
