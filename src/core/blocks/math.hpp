@@ -276,7 +276,8 @@ struct BinaryBase : public Base {
       } else {                                                                 \
         auto olen = stbds_arrlen(operand.payload.seqValue);                    \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) && olen > 0; \
+             i++) {                                                            \
           operate(output, input.payload.seqValue[i],                           \
                   operand.payload.seqValue[i % olen]);                         \
           stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
@@ -361,7 +362,8 @@ struct BinaryBase : public Base {
       } else {                                                                 \
         auto olen = stbds_arrlen(operand.payload.seqValue);                    \
         stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) && olen > 0; \
+             i++) {                                                            \
           operate(output, input.payload.seqValue[i],                           \
                   operand.payload.seqValue[i % olen]);                         \
           stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \

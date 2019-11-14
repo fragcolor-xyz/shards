@@ -876,7 +876,7 @@ void validateConnection(ValidationContext &ctx) {
           "Required consumed types do not match currently exposed ones: " +
           consumed.first);
       err += " exposed types:";
-      for (auto info : ctx.exposed) {
+      for (const auto &info : ctx.exposed) {
         err += " (" + info.first + " [";
 
         for (auto type : info.second) {
