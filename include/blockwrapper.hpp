@@ -4,6 +4,7 @@
 #pragma once
 
 #include "chainblocks.h"
+#include "nameof.hpp"
 
 namespace chainblocks {
 // SFINAE tests

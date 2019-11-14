@@ -119,10 +119,10 @@ endif()
 set(
   MY_PROJECT_SOURCE_FILES
   ${MY_PROJECT_SOURCE_FILES}
+  ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
-  ${CHAINBLOCKS_DIR}/src/core/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/stbpp.hpp
   ${CHAINBLOCKS_DIR}/src/core/utility.hpp
@@ -160,6 +160,7 @@ set(
 set(
   MY_PROJECT_HEADER_PATHS
   ${MY_PROJECT_HEADER_PATHS}
+  -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/deps/rpmalloc
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
@@ -234,6 +235,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/nameof/include
+  ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
 )

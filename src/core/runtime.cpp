@@ -463,122 +463,82 @@ void releaseMemory(CBVar &self) {
   }
 }
 
+thread_local std::vector<char> gLogCache;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-EXPORTED void __cdecl cbRegisterBlock(const char *fullName,
-                                      CBBlockConstructor constructor) {
-  chainblocks::registerBlock(fullName, constructor);
-}
+EXPORTED struct CBCore __cdecl chainblocksInterface() {
+  CBCore result;
 
-EXPORTED void __cdecl cbRegisterObjectType(int32_t vendorId, int32_t typeId,
-                                           CBObjectInfo info) {
-  chainblocks::registerObjectType(vendorId, typeId, info);
-}
+  result.registerBlock = [](const char *fullName,
+                            CBBlockConstructor constructor) {
+    chainblocks::registerBlock(fullName, constructor);
+  };
 
-EXPORTED void __cdecl cbRegisterEnumType(int32_t vendorId, int32_t typeId,
-                                         CBEnumInfo info) {
-  chainblocks::registerEnumType(vendorId, typeId, info);
-}
+  result.registerObjectType = [](int32_t vendorId, int32_t typeId,
+                                 CBObjectInfo info) {
+    chainblocks::registerObjectType(vendorId, typeId, info);
+  };
 
-EXPORTED void __cdecl cbRegisterRunLoopCallback(const char *eventName,
-                                                CBCallback callback) {
-  chainblocks::registerRunLoopCallback(eventName, callback);
-}
+  result.registerEnumType = [](int32_t vendorId, int32_t typeId,
+                               CBEnumInfo info) {
+    chainblocks::registerEnumType(vendorId, typeId, info);
+  };
 
-EXPORTED void __cdecl cbUnregisterRunLoopCallback(const char *eventName) {
-  chainblocks::unregisterRunLoopCallback(eventName);
-}
+  result.registerRunLoopCallback = [](const char *eventName,
+                                      CBCallback callback) {
+    chainblocks::registerRunLoopCallback(eventName, callback);
+  };
 
-EXPORTED void __cdecl cbRegisterExitCallback(const char *eventName,
-                                             CBCallback callback) {
-  chainblocks::registerExitCallback(eventName, callback);
-}
+  result.registerExitCallback = [](const char *eventName, CBCallback callback) {
+    chainblocks::registerExitCallback(eventName, callback);
+  };
 
-EXPORTED void __cdecl cbUnregisterExitCallback(const char *eventName) {
-  chainblocks::unregisterExitCallback(eventName);
-}
+  result.unregisterRunLoopCallback = [](const char *eventName) {
+    chainblocks::unregisterRunLoopCallback(eventName);
+  };
 
-EXPORTED CBVar *__cdecl cbContextVariable(CBContext *context,
-                                          const char *name) {
-  return chainblocks::contextVariable(context, name);
-}
+  result.unregisterExitCallback = [](const char *eventName) {
+    chainblocks::unregisterExitCallback(eventName);
+  };
 
-EXPORTED void __cdecl cbThrowException(const char *errorText) {
-  throw chainblocks::CBException(errorText);
-}
+  result.contextVariable = [](CBContext *context, const char *name) {
+    return chainblocks::contextVariable(context, name);
+  };
 
-EXPORTED int __cdecl cbContextState(CBContext *context) {
-  if (context->aborted)
-    return 1;
-  return 0;
-}
+  result.throwException = [](const char *errorText) {
+    throw chainblocks::CBException(errorText);
+  };
 
-EXPORTED CBVar __cdecl cbSuspend(CBContext *context, double seconds) {
-  return chainblocks::suspend(context, seconds);
-}
+  result.suspend = [](CBContext *context, double seconds) {
+    return chainblocks::suspend(context, seconds);
+  };
 
-EXPORTED void __cdecl cbCloneVar(CBVar *dst, const CBVar *src) {
-  chainblocks::cloneVar(*dst, *src);
-}
+  result.cloneVar = [](CBVar *dst, const CBVar *src) {
+    chainblocks::cloneVar(*dst, *src);
+  };
 
-EXPORTED void __cdecl cbDestroyVar(CBVar *var) {
-  chainblocks::destroyVar(*var);
-}
+  result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
-EXPORTED __cdecl CBRunChainOutput
-cbRunSubChain(CBChain *chain, CBContext *context, CBVar input) {
-  return chainblocks::runSubChain(chain, context, input);
-}
+  result.runSubChain = [](CBChain *chain, CBContext *context, CBVar input) {
+    return chainblocks::runSubChain(chain, context, input);
+  };
 
-EXPORTED CBValidationResult __cdecl cbValidateChain(
-    CBChain *chain, CBValidationCallback callback, void *userData,
-    CBTypeInfo inputType) {
-  return validateConnections(chain, callback, userData, inputType);
-}
+  result.validateChain = [](CBChain *chain, CBValidationCallback callback,
+                            void *userData, CBTypeInfo inputType) {
+    return validateConnections(chain, callback, userData, inputType);
+  };
 
-EXPORTED void __cdecl cbActivateBlock(CBlock *block, CBContext *context,
-                                      CBVar *input, CBVar *output) {
-  chainblocks::activateBlock(block, context, *input, *output);
-}
+  result.activateBlock = [](CBlock *block, CBContext *context, CBVar *input,
+                            CBVar *output) {
+    chainblocks::activateBlock(block, context, *input, *output);
+  };
 
-EXPORTED CBValidationResult __cdecl cbValidateConnections(
-    const CBlocks chain, CBValidationCallback callback, void *userData,
-    CBTypeInfo inputType) {
-  return validateConnections(chain, callback, userData, inputType);
-}
+  result.log = [](const char *msg) { LOG(INFO) << msg; };
 
-EXPORTED void __cdecl cbFreeValidationResult(CBValidationResult result) {
-  stbds_arrfree(result.exposedInfo);
-}
-
-EXPORTED void __cdecl cbLog(int level, const char *format, ...) {
-  auto temp = std::vector<char>{};
-  auto length = std::size_t{63};
-  std::va_list args;
-  while (temp.size() <= length) {
-    temp.resize(length + 1);
-    va_start(args, format);
-    const auto status = std::vsnprintf(temp.data(), temp.size(), format, args);
-    va_end(args);
-    if (status < 0)
-      throw std::runtime_error{"string formatting error"};
-    length = static_cast<std::size_t>(status);
-  }
-  std::string str(temp.data(), length);
-
-  switch (level) {
-  case CB_INFO:
-    LOG(INFO) << "Info: " << str;
-    break;
-  case CB_DEBUG:
-    LOG(INFO) << "Debug: " << str;
-    break;
-  case CB_TRACE:
-    LOG(INFO) << "Trace: " << str;
-    break;
-  }
+  return result;
 }
 
 #ifdef __cplusplus

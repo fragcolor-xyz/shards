@@ -429,9 +429,9 @@ typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
 typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, struct CBVar);
 typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
-typedef struct CBTypeInfo(__cdecl *CBInferTypesProc)(
-    struct CBlock *, struct CBTypeInfo inputType,
-    CBExposedTypesInfo consumableVariables);
+typedef struct CBTypeInfo(__cdecl *CBInferTypesProc)(struct CBlock *,
+						     struct CBTypeInfo inputType,
+						     CBExposedTypesInfo consumableVariables);
 
 // All those happen inside a coroutine
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
@@ -459,9 +459,9 @@ struct CBlock {
   CBExposedVariablesProc exposedVariables;
   CBConsumedVariablesProc consumedVariables;
 
-  CBInferTypesProc
-      inferTypes; // Optional call used during validation to fixup "Any" input
-                  // type and provide valid output and exposed variable types
+  // Optional call used during validation to fixup "Any" input
+  // type and provide valid output and exposed variable types
+  CBInferTypesProc inferTypes; 
 
   CBParametersProc parameters;
   CBSetParamProc setParam; // Set a parameter, the block will copy the value, so
@@ -479,6 +479,91 @@ typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock,
                                             bool nonfatalWarning,
                                             void *userData);
 
+typedef void (__cdecl *CBRegisterBlock)(const char *fullName,
+					CBBlockConstructor constructor);
+
+typedef void (__cdecl *CBRegisterObjectType)(int32_t vendorId,
+					     int32_t typeId,
+					     struct CBObjectInfo info);
+
+typedef void (__cdecl *CBRegisterEnumType)(int32_t vendorId,
+					   int32_t typeId,
+					   struct CBEnumInfo info);
+
+typedef void (__cdecl *CBRegisterRunLoopCallback)(const char *eventName,
+						  CBCallback callback);
+
+typedef void (__cdecl *CBRegisterExitCallback)(const char *eventName,
+					       CBCallback callback);
+
+typedef void (__cdecl *CBUnregisterRunLoopCallback)(const char *eventName);
+
+typedef void (__cdecl *CBUnregisterExitCallback)(const char *eventName);
+
+typedef struct CBVar *(__cdecl *CBContextVariable)(struct CBContext *context,
+						   const char *name);
+
+typedef void (__cdecl *CBThrowException)(const char *errorText);
+
+typedef struct CBVar (__cdecl *CBSuspend)(struct CBContext *context,
+					  double seconds);
+
+typedef void (__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
+
+typedef void (__cdecl *CBDestroyVar)(struct CBVar *var);
+
+typedef struct CBRunChainOutput (__cdecl *CBRunSubChain)(struct CBChain *chain,
+							 struct CBContext *context,
+							 struct CBVar input);
+
+typedef struct CBValidationResult (__cdecl *CBValidateChain)(struct CBChain *chain,
+							     CBValidationCallback callback,
+							     void *userData,
+							     struct CBTypeInfo inputType);
+
+typedef void (__cdecl *CBActivateBlock)(struct CBlock *block,
+					struct CBContext *context,
+					struct CBVar *input,
+					struct CBVar *output);
+
+typedef void (__cdecl *CBLog)(const char *msg);
+
+struct CBCore {
+  // Adds a block to the runtime database
+  CBRegisterBlock registerBlock;
+  // Adds a custom object type to the runtime database
+  CBRegisterObjectType registerObjectType;
+  // Adds a custom enumeration type to the runtime database
+  CBRegisterEnumType registerEnumType;
+  // Adds a custom call to call every chainblocks sleep/yield internally
+  CBRegisterRunLoopCallback registerRunLoopCallback;
+  // Adds a custom call to be called on final application exit
+  CBRegisterExitCallback registerExitCallback;
+  // Removes a previously added run loop callback
+  CBUnregisterRunLoopCallback unregisterRunLoopCallback;
+  // Removes a previously added exit callback
+  CBUnregisterExitCallback unregisterExitCallback;
+  
+  // To be used within blocks, to fetch context variables
+  CBContextVariable contextVariable;
+  // Can be used to propagate block errors
+  CBThrowException throwException;
+  // To be used within blocks, to suspend the coroutine
+  CBSuspend suspend;
+
+  // Utility to deal with CBVars
+  CBCloneVar cloneVar;
+  CBDestroyVar destroyVar;
+
+  // Utility to use blocks within blocks
+  CBRunSubChain runSubChain;
+  CBValidateChain validateChain;
+  CBActivateBlock activateBlock;
+
+  // Logging
+  CBLog log;
+};
+
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -494,88 +579,12 @@ typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock,
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// The runtime (even if it is an exe), will export the following, they need to
-// be available in order to load and work with blocks collections within dlls
-
-// Adds a block to the runtime database
-EXPORTED void __cdecl cbRegisterBlock(const char *fullName,
-                                      CBBlockConstructor constructor);
-// Adds a custom object type to the runtime database
-EXPORTED void __cdecl cbRegisterObjectType(int32_t vendorId, int32_t typeId,
-                                           struct CBObjectInfo info);
-// Adds a custom enumeration type to the runtime database
-EXPORTED void __cdecl cbRegisterEnumType(int32_t vendorId, int32_t typeId,
-                                         struct CBEnumInfo info);
-// Adds a custom call to call every chainblocks sleep internally (basically
-// every frame)
-EXPORTED void __cdecl cbRegisterRunLoopCallback(const char *eventName,
-                                                CBCallback callback);
-// Adds a custom call to be called on final application exit
-EXPORTED void __cdecl cbRegisterExitCallback(const char *eventName,
-                                             CBCallback callback);
-// Removes a previously added run loop callback
-EXPORTED void __cdecl cbUnregisterRunLoopCallback(const char *eventName);
-// Removes a previously added exit callback
-EXPORTED void __cdecl cbUnregisterExitCallback(const char *eventName);
-
-// To be used within blocks, to fetch context variables
-EXPORTED struct CBVar *__cdecl cbContextVariable(
-    struct CBContext *context,
-    const char *name); // remember those are valid only inside preChain,
-                       // activate, postChain!
-// Can be used to propagate block errors
-EXPORTED void __cdecl cbThrowException(const char *errorText);
-
-// To check if we aborted/canceled in this context, 0 = running, 1 = canceled,
-// might add more flags in the future
-EXPORTED int __cdecl cbContextState(struct CBContext *context);
-
-// To be used within blocks, to suspend the coroutine
-EXPORTED struct CBVar __cdecl cbSuspend(struct CBContext *context,
-                                        double seconds);
-
-// Utility to deal with CBVars
-EXPORTED void __cdecl cbCloneVar(struct CBVar *dst, const struct CBVar *src);
-EXPORTED void __cdecl cbDestroyVar(struct CBVar *var);
-
-// Utility to use blocks within blocks
-EXPORTED __cdecl struct CBRunChainOutput
-cbRunSubChain(struct CBChain *chain, struct CBContext *context,
-              struct CBVar input);
-EXPORTED struct CBValidationResult __cdecl cbValidateChain(
-    struct CBChain *chain, CBValidationCallback callback, void *userData,
-    struct CBTypeInfo inputType);
-EXPORTED void __cdecl cbActivateBlock(struct CBlock *block,
-                                      struct CBContext *context,
-                                      struct CBVar *input,
-                                      struct CBVar *output);
-EXPORTED struct CBValidationResult __cdecl cbValidateConnections(
-    CBlocks chain, CBValidationCallback callback, void *userData,
-    struct CBTypeInfo inputType);
-EXPORTED void __cdecl cbFreeValidationResult(struct CBValidationResult result);
-
-// Logging
-EXPORTED void __cdecl cbLog(int level, const char *msg, ...);
-
-#define CB_DEBUG 1
-#define CB_INFO 2
-#define CB_TRACE 3
-
-#ifdef NDEBUG
-#define CB_LOG_DEBUG(...) (void)0
-#else
-#define CB_LOG_DEBUG(...) cbLog(CB_DEBUG, __VA_ARGS__)
-#endif
-
-#ifdef CB_TRACING
-#define CB_LOG_TRACE(...) cbLog(CB_TRACE, __VA_ARGS__)
-#else
-#define CB_LOG_TRACE(...) (void)0
-#endif
-
-#define CB_LOG(...) cbLog(CB_INFO, __VA_ARGS__)
-
+  EXPORTED struct CBCore __cdecl chainblocksInterface();
 #ifdef __cplusplus
 };
+#endif
+
+// Finally include C++ helpers
+#ifdef __cplusplus
+#include "blockwrapper.hpp"
 #endif

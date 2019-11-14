@@ -1186,7 +1186,7 @@ struct VarStringStream {
   CachedStreamBuf cache;
   CBVar previousValue{};
 
-  ~VarStringStream() { cbDestroyVar(&previousValue); }
+  ~VarStringStream() { destroyVar(previousValue); }
 
   void write(const CBVar &var) {
     if (var != previousValue) {
@@ -1194,7 +1194,7 @@ struct VarStringStream {
       std::ostream stream(&cache);
       stream << var;
       cache.done();
-      cbCloneVar(&previousValue, &var);
+      cloneVar(previousValue, var);
     }
   }
 
@@ -1208,7 +1208,7 @@ struct VarStringStream {
         stream << var;
       }
       cache.done();
-      cbCloneVar(&previousValue, &var);
+      cloneVar(previousValue, var);
     }
   }
 
