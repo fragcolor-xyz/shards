@@ -1045,11 +1045,12 @@ BUILTIN("import") {
     filepath = std::filesystem::path(currentPath) / filepath;
   }
 
-  auto lib_name = filepath.c_str();
+  auto lib_name_str = filepath.string();
+  auto lib_name = lib_name_str.c_str();
 
 #if _WIN32
   LOG(INFO) << "Importing DLL: " << lib_name;
-  auto handle = LoadLibrary(lib_name);
+  auto handle = LoadLibraryA(lib_name);
 #elif defined(__linux__) || defined(__APPLE__)
   LOG(INFO) << "Importing Shared Library: " << lib_name;
   auto handle = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
