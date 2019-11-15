@@ -27,7 +27,7 @@ struct CoreLoader {
     ifaceproc =
         (CBChainblocksInterface)GetProcAddress(handle, "chainblocksInterface");
 #else
-    auto handle = dlopen(NULL, RTLD_LAZY);
+    auto handle = dlopen(NULL, RTLD_NOW);
     ifaceproc = (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
 #endif
     assert(ifaceproc);

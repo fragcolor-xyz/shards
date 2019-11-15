@@ -10,7 +10,12 @@
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
 #include <algorithm>
+#include <filesystem>
 #include <set>
+
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 
 #define CHECK_ARGS_IS(expected)                                                \
   checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd))
@@ -1028,6 +1033,34 @@ BUILTIN("Float4") {
   var.payload.float4Value[2] = value2->value();
   var.payload.float4Value[3] = value3->value();
   return malValuePtr(new malCBVar(var));
+}
+
+BUILTIN("import") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+
+  auto filepath = std::filesystem::path(value->value());
+  auto currentPath = malpath();
+  if (currentPath.size() > 0 && filepath.is_relative()) {
+    filepath = std::filesystem::path(currentPath) / filepath;
+  }
+
+  auto lib_name = filepath.c_str();
+
+#if _WIN32
+  LOG(INFO) << "Importing DLL: " << lib_name;
+  auto handle = LoadLibraryA(lib_name);
+#elif defined(__linux__) || defined(__APPLE__)
+  LOG(INFO) << "Importing Shared Library: " << lib_name;
+  auto handle = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
+  if (!handle) {
+    LOG(ERROR) << "dlerror: " << dlerror();
+  }
+#endif
+  if (!handle) {
+    return mal::falseValue();
+  }
+  return mal::trueValue();
 }
 
 BUILTIN_ISA("Var?", malCBVar);

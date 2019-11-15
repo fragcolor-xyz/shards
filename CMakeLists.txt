@@ -83,6 +83,7 @@ elseif(WIN32)
 endif()
 
 add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
+add_link_options(-export-dynamic)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

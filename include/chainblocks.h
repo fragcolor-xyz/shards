@@ -568,7 +568,7 @@ typedef struct CBCore (__cdecl *CBChainblocksInterface)();
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
 #define EXPORTED __declspec(dllexport)
-#elif DLL_IMPORT
+#elif defined(CB_DLL_IMPORT)
 #define EXPORTED __declspec(dllimport)
 #else
 #define EXPORTED
