@@ -59,20 +59,19 @@ struct Observer;
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env);
 
 static bool initDoneOnce = false;
-static std::shared_ptr<Observer> obs;
+static std::map<MalString, malValuePtr> builtIns;
+static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installCBCore(const malEnvPtr &env) {
-  if (!initDoneOnce) {
-    setupObserver(obs, env);
+  std::shared_ptr<Observer> obs;
+  setupObserver(obs, env);
 
+  if (!initDoneOnce) {
     linkLispUtility();
     chainblocks::installSignalHandlers();
     cbRegisterAllBlocks();
-
     initDoneOnce = true;
   }
-
-  // registerKeywords(env);
 
   // Chain params
   env->set(":Looped", mal::keyword(":Looped"));
@@ -103,9 +102,18 @@ void installCBCore(const malEnvPtr &env) {
   env->set(":Table", mal::keyword(":Table"));
   env->set(":Bytes", mal::keyword(":Bytes"));
 
+  // inject static handlers
   for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) {
     malBuiltIn *handler = *it;
     env->set(handler->name(), handler);
+  }
+
+  // inject discovered loaded values
+  // TODO
+  // this is not efficient as it likely will repeat inserting the first time!
+  // See Observer down
+  for (auto &v : builtIns) {
+    env->set(v.first, v.second.ptr());
   }
 
   rep("(def! inc (fn* [a] (+ a 1)))", env);
@@ -772,7 +780,8 @@ struct Observer : public chainblocks::RuntimeObserver {
       return malValuePtr(malblock);
     };
     auto bi = new malBuiltIn(mname, func);
-    _env->set(fullName, malValuePtr(bi));
+    builtIns.emplace(mname, bi);
+    _env->set(fullName, bi);
     // destroy our sample block
     block->destroy(block);
   }
@@ -780,8 +789,10 @@ struct Observer : public chainblocks::RuntimeObserver {
   void registerEnumType(int32_t vendorId, int32_t typeId,
                         CBEnumInfo info) override {
     for (auto i = 0; i < stbds_arrlen(info.labels); i++) {
-      _env->set(MalString(info.name) + "." + MalString(info.labels[i]),
-                newEnum(vendorId, typeId, i));
+      auto enumName = MalString(info.name) + "." + MalString(info.labels[i]);
+      auto enumValue = newEnum(vendorId, typeId, i);
+      builtIns[enumName] = enumValue;
+      _env->set(enumName, enumValue);
     }
   }
 };
@@ -1124,6 +1135,7 @@ EXPORTED __cdecl void *cbLispCreate() {
 
 EXPORTED __cdecl void cbLispDestroy(void *env) {
   auto penv = (malEnvPtr *)env;
+  observers.erase((malEnv *)penv->ptr());
   delete penv;
 }
 
@@ -1152,4 +1164,5 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
   obs->_env = env;
   chainblocks::Observers.emplace_back(obs);
+  observers[env.ptr()] = obs;
 }
