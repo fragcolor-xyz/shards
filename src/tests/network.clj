@@ -22,7 +22,7 @@
                                         ; will use automatically the context vars
            "Ok"
            (Network.Send)
-           ))))
+           ) false)))
 
 (def client-init
   (Chain "init"
@@ -44,7 +44,7 @@
           "127.0.0.1" 9191
           (--> ; acting as callback when there is a new pkt
            (Log)
-           ))
+           ) false)
                                         ; test some sending
                                         ; will send to the client in context
                                         ; which is the above

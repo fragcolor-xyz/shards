@@ -170,6 +170,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   -I${CHAINBLOCKS_DIR}/deps/stb
+  -I${CHAINBLOCKS_DIR}/deps/kcp
   -I${CHAINBLOCKS_DIR}/deps/xxHash
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/nameof/include
@@ -238,6 +239,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/nameof/include
+  ${CHAINBLOCKS_DIR}/deps/kcp
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
@@ -346,6 +348,7 @@ add_library(
   cbruntime STATIC
   ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
+  ${CHAINBLOCKS_DIR}/deps/kcp/ikcp.c
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp

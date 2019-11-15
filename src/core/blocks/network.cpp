@@ -8,6 +8,7 @@
 #include "../utility.hpp"
 #include "shared.hpp"
 #include <boost/lockfree/queue.hpp>
+#include <ikcp.h>
 #include <thread>
 
 using boost::asio::ip::udp;
@@ -28,6 +29,7 @@ struct NetworkBase : public BlocksUser {
 
   ContextableVar _addr{Var("localhost"), true};
   ContextableVar _port{Var(9191)};
+  bool _reliable = true;
 
   // Every server/client will share same context, so sharing the same recv
   // buffer is possible and nice!
@@ -45,7 +47,11 @@ struct NetworkBase : public BlocksUser {
           CBTypesInfo(CoreInfo::intVarInfo)),
       ParamsInfo::Param("Receive",
                         "The flow to execute when a packet is received.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)));
+                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)),
+      ParamsInfo::Param(
+          "Reliable",
+          "If the packets should be reliable (using KCP on top of UDP).",
+          CBTypesInfo(SharedTypes::boolInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -70,27 +76,37 @@ struct NetworkBase : public BlocksUser {
 
   void destroy() {
     // defer all in the context or we will crash!
-    auto socket = _socket;
-    _io_context.post([socket]() {
-      if (socket) {
-        socket->close();
-        delete socket;
-      }
-
-      _io_context_refc--;
-      if (_io_context_refc == 0) {
-        // allow end/thread exit
-        _io_context.stop();
-      }
-    });
+    if (_io_context_refc > 0) {
+      _io_context.post([]() {
+        _io_context_refc--;
+        if (_io_context_refc == 0) {
+          // allow end/thread exit
+          _io_context.stop();
+        }
+      });
+    }
 
     BlocksUser::destroy();
   }
 
   void cleanup() {
+    // defer all in the context or we will crash!
+    if (_socket) {
+      auto socket = _socket;
+      _io_context.post([socket]() {
+        if (socket) {
+          socket->close();
+          delete socket;
+        }
+      });
+      _socket = nullptr;
+    }
+
     // clean context vars
     _remoteVar = nullptr;
     _socketVar = nullptr;
+
+    BlocksUser::cleanup();
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
@@ -117,6 +133,9 @@ struct NetworkBase : public BlocksUser {
     case 2:
       cloneVar(_blocks, value);
       break;
+    case 3:
+      _reliable = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -130,6 +149,8 @@ struct NetworkBase : public BlocksUser {
       return _port.getParam();
     case 2:
       return _blocks;
+    case 3:
+      return Var(_reliable);
     default:
       return Empty;
     }
@@ -219,22 +240,25 @@ struct Server : public NetworkBase {
         boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
         _sender, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
-            ClientPkt pkt{};
+            if (!_reliable) {
+              ClientPkt pkt{};
 
-            // try reuse vars internal memory smartly
-            if (!_empty_queue.empty()) {
-              _empty_queue.pop(pkt);
-              *pkt.remote = _sender;
+              // try reuse vars internal memory smartly
+              if (!_empty_queue.empty()) {
+                _empty_queue.pop(pkt);
+                *pkt.remote = _sender;
+              } else {
+                pkt.remote = new udp::endpoint(_sender);
+              }
+
+              // deserialize from buffer
+              Reader r(&_recv_buffer().front(), bytes_recvd);
+              Serialization::deserialize(r, pkt.payload);
+
+              // add ready packet to queue
+              _queue.push(pkt);
             } else {
-              pkt.remote = new udp::endpoint(_sender);
             }
-
-            // deserialize from buffer
-            Reader r(&_recv_buffer().front(), bytes_recvd);
-            Serialization::deserialize(r, pkt.payload);
-
-            // add ready packet to queue
-            _queue.push(pkt);
 
             // keep receiving
             do_receive();
