@@ -15,28 +15,29 @@ using boost::asio::ip::udp;
 
 namespace chainblocks {
 namespace Network {
-constexpr uint32_t EndpointCC = 'netE';
 constexpr uint32_t SocketCC = 'netS';
 
+struct SocketData {
+  udp::socket *socket;
+  udp::endpoint *endpoint;
+  ikcpcb *kcp;
+};
+
 struct NetworkBase : public BlocksUser {
-  static inline TypeInfo EndpointInfo = TypeInfo::Object(FragCC, EndpointCC);
   static inline TypeInfo SocketInfo = TypeInfo::Object(FragCC, SocketCC);
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
 
-  udp::socket *_socket = nullptr;
-
   ContextableVar _addr{Var("localhost"), true};
   ContextableVar _port{Var(9191)};
-  bool _reliable = true;
 
   // Every server/client will share same context, so sharing the same recv
   // buffer is possible and nice!
   ThreadShared<std::array<char, 0xFFFF>> _recv_buffer;
 
-  CBVar *_remoteVar = nullptr;
   CBVar *_socketVar = nullptr;
+  SocketData _socket{};
 
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Address",
@@ -62,12 +63,12 @@ struct NetworkBase : public BlocksUser {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
             g = boost::asio::make_work_guard(_io_context);
         try {
-          LOG(DEBUG) << "Boost asio context running...";
+          // LOG(DEBUG) << "Boost asio context running...";
           _io_context.run();
         } catch (...) {
           LOG(ERROR) << "Boost asio context run failed.";
         }
-        LOG(DEBUG) << "Boost asio context exiting...";
+        // LOG(DEBUG) << "Boost asio context exiting...";
       });
       worker.detach();
     }
@@ -91,20 +92,24 @@ struct NetworkBase : public BlocksUser {
 
   void cleanup() {
     // defer all in the context or we will crash!
-    if (_socket) {
-      auto socket = _socket;
+    if (_socket.socket) {
+      auto socket = _socket.socket;
       _io_context.post([socket]() {
         if (socket) {
           socket->close();
           delete socket;
         }
       });
-      _socket = nullptr;
+
+      _socket.socket = nullptr;
+      _socket.endpoint = nullptr;
     }
 
     // clean context vars
-    _remoteVar = nullptr;
-    _socketVar = nullptr;
+    if (_socketVar) {
+      *_socketVar = chainblocks::Empty;
+      _socketVar = nullptr;
+    }
 
     BlocksUser::cleanup();
   }
@@ -115,9 +120,8 @@ struct NetworkBase : public BlocksUser {
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // inject our special context vars
-    auto endpointInfo = ExposedInfo::Variable("Network.RemoteEndpoint",
-                                              "The consumed boolean variable.",
-                                              CBTypeInfo(EndpointInfo));
+    auto endpointInfo = ExposedInfo::Variable(
+        "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
     stbds_arrpush(consumables, endpointInfo);
     return BlocksUser::inferTypes(inputType, consumables);
   }
@@ -133,8 +137,6 @@ struct NetworkBase : public BlocksUser {
     case 2:
       cloneVar(_blocks, value);
       break;
-    case 3:
-      _reliable = value.payload.boolValue;
       break;
     default:
       break;
@@ -149,8 +151,6 @@ struct NetworkBase : public BlocksUser {
       return _port.getParam();
     case 2:
       return _blocks;
-    case 3:
-      return Var(_reliable);
     default:
       return Empty;
     }
@@ -190,18 +190,11 @@ struct NetworkBase : public BlocksUser {
     }
   };
 
-  void setRemote(CBContext *context, udp::endpoint &endpoint) {
-    if (!_remoteVar) {
-      _remoteVar = contextVariable(context, "Network.RemoteEndpoint");
-    }
-    *_remoteVar = Var::Object(&endpoint, FragCC, EndpointCC);
-  }
-
   void setSocket(CBContext *context) {
     if (!_socketVar) {
       _socketVar = contextVariable(context, "Network.Socket");
     }
-    *_socketVar = Var::Object(_socket, FragCC, SocketCC);
+    *_socketVar = Var::Object(&_socket, FragCC, SocketCC);
   }
 };
 
@@ -236,29 +229,26 @@ struct Server : public NetworkBase {
   }
 
   void do_receive() {
-    _socket->async_receive_from(
+    _socket.socket->async_receive_from(
         boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
         _sender, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
-            if (!_reliable) {
-              ClientPkt pkt{};
+            ClientPkt pkt{};
 
-              // try reuse vars internal memory smartly
-              if (!_empty_queue.empty()) {
-                _empty_queue.pop(pkt);
-                *pkt.remote = _sender;
-              } else {
-                pkt.remote = new udp::endpoint(_sender);
-              }
-
-              // deserialize from buffer
-              Reader r(&_recv_buffer().front(), bytes_recvd);
-              Serialization::deserialize(r, pkt.payload);
-
-              // add ready packet to queue
-              _queue.push(pkt);
+            // try reuse vars internal memory smartly
+            if (!_empty_queue.empty()) {
+              _empty_queue.pop(pkt);
+              *pkt.remote = _sender;
             } else {
+              pkt.remote = new udp::endpoint(_sender);
             }
+
+            // deserialize from buffer
+            Reader r(&_recv_buffer().front(), bytes_recvd);
+            Serialization::deserialize(r, pkt.payload);
+
+            // add ready packet to queue
+            _queue.push(pkt);
 
             // keep receiving
             do_receive();
@@ -267,9 +257,9 @@ struct Server : public NetworkBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_socket) {
+    if (!_socket.socket) {
       // first activation, let's init
-      _socket = new udp::socket(
+      _socket.socket = new udp::socket(
           _io_context,
           udp::endpoint(udp::v4(), _port.get(context).payload.intValue));
 
@@ -284,7 +274,8 @@ struct Server : public NetworkBase {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
         CBVar output = Empty;
-        setRemote(context, *pkt.remote);
+        // update remote as pops in context variable
+        _socket.endpoint = pkt.remote;
         if (unlikely(!activateBlocks(_blocks.payload.seqValue, context,
                                      pkt.payload, output))) {
           LOG(ERROR) << "A Receiver chain had errors!.";
@@ -339,7 +330,7 @@ struct Client : public NetworkBase {
   }
 
   void do_receive() {
-    _socket->async_receive_from(
+    _socket.socket->async_receive_from(
         boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
         _server, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
@@ -364,9 +355,10 @@ struct Client : public NetworkBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_socket) {
+    if (!_socket.socket) {
       // first activation, let's init
-      _socket = new udp::socket(_io_context, udp::endpoint(udp::v4(), 0));
+      _socket.socket =
+          new udp::socket(_io_context, udp::endpoint(udp::v4(), 0));
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
@@ -381,7 +373,7 @@ struct Client : public NetworkBase {
 
     setSocket(context);
     // in the case of client we actually set the remote here
-    setRemote(context, _server);
+    _socket.endpoint = &_server;
 
     // receive from ringbuffer and run chains
     while (!_queue.empty()) {
@@ -404,9 +396,8 @@ struct Client : public NetworkBase {
   CBExposedTypesInfo exposedVariables() {
     _exposedInfo = ExposedInfo(
         ExposedInfo(BlocksUser::exposedVariables()),
-        ExposedInfo::Variable("Network.RemoteEndpoint",
-                              "The current remote endpoint to send packets to.",
-                              CBTypeInfo(EndpointInfo)));
+        ExposedInfo::Variable("Network.Socket", "The current client socket.",
+                              CBTypeInfo(SocketInfo)));
 
     return CBExposedTypesInfo(_exposedInfo);
   }
@@ -432,44 +423,32 @@ RUNTIME_BLOCK_END(Client);
 struct Send {
   ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
 
-  CBVar *_remoteVar = nullptr;
   CBVar *_socketVar = nullptr;
 
   void cleanup() {
     // clean context vars
-    _remoteVar = nullptr;
     _socketVar = nullptr;
   }
 
-  udp::endpoint *getRemote(CBContext *context) {
-    if (!_remoteVar) {
-      _remoteVar = contextVariable(context, "Network.RemoteEndpoint");
-    }
-    assert(_remoteVar->payload.objectVendorId == FragCC);
-    assert(_remoteVar->payload.objectTypeId == EndpointCC);
-    return reinterpret_cast<udp::endpoint *>(_remoteVar->payload.objectValue);
-  }
-
-  udp::socket *getSocket(CBContext *context) {
+  SocketData *getSocket(CBContext *context) {
     if (!_socketVar) {
       _socketVar = contextVariable(context, "Network.Socket");
     }
     assert(_socketVar->payload.objectVendorId == FragCC);
     assert(_socketVar->payload.objectTypeId == SocketCC);
-    return reinterpret_cast<udp::socket *>(_socketVar->payload.objectValue);
+    return reinterpret_cast<SocketData *>(_socketVar->payload.objectValue);
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto endpoint = getRemote(context);
     auto socket = getSocket(context);
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     auto size = Serialization::serialize(input, w);
     // use async, avoid syscalls!
-    socket->send_to(boost::asio::buffer(&_send_buffer().front(), size),
-                    *endpoint);
+    socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size),
+                            *socket->endpoint);
     return input;
   }
 };

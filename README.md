@@ -93,4 +93,4 @@ Very much work in progress, this project started as a *nim* project, checking th
 
 The reason behind this switch requires a whole article on its own, but in a nutshell *nim* is cool but it does not interact very well with *C++* and it's very unstable.
 
-Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich code-base while keeping a *C* interface.
+Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich code-base while keeping a *C* interface. (With some exceptions, like avoiding vtables if possible, etc)
