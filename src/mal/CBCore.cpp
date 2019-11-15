@@ -59,10 +59,10 @@ struct Observer;
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env);
 
 static bool initDoneOnce = false;
+static std::shared_ptr<Observer> obs;
 
 void installCBCore(const malEnvPtr &env) {
   if (!initDoneOnce) {
-    std::shared_ptr<Observer> obs;
     setupObserver(obs, env);
 
     linkLispUtility();
@@ -1153,4 +1153,3 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs->_env = env;
   chainblocks::Observers.emplace_back(obs);
 }
-
