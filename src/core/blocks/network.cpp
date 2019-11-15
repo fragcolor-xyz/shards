@@ -137,7 +137,6 @@ struct NetworkBase : public BlocksUser {
     case 2:
       cloneVar(_blocks, value);
       break;
-      break;
     default:
       break;
     }
