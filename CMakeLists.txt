@@ -120,6 +120,7 @@ set(
   MY_PROJECT_SOURCE_FILES
   ${MY_PROJECT_SOURCE_FILES}
   ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
+  ${CHAINBLOCKS_DIR}/include/dllblock.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp

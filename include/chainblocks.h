@@ -392,8 +392,7 @@ ALIGNED struct CBVarPayload // 16 aligned due to vectors
 ALIGNED struct CBVar {
   struct CBVarPayload payload;
   enum CBType valueType;
-  // reserved to the owner of the var, cloner, block etc to do whatever they
-  // need to do :)
+  // reserved, might remove, it's used internally (serialization)
   uint8_t reserved[15];
 };
 
@@ -433,7 +432,7 @@ typedef struct CBTypeInfo(__cdecl *CBInferTypesProc)(struct CBlock *,
 						     struct CBTypeInfo inputType,
 						     CBExposedTypesInfo consumableVariables);
 
-// All those happen inside a coroutine
+// The core of the block processing, avoid syscalls here
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
                                               struct CBContext *,
                                               const struct CBVar *);
@@ -564,6 +563,8 @@ struct CBCore {
   CBLog log;
 };
 
+typedef struct CBCore (__cdecl *CBChainblocksInterface)();
+
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -573,7 +574,11 @@ struct CBCore {
 #define EXPORTED
 #endif
 #else
+#ifdef CB_DLL_EXPORT
+#define EXPORTED __attribute__((visibility("default")))
+#else
 #define EXPORTED
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -584,7 +589,3 @@ extern "C" {
 };
 #endif
 
-// Finally include C++ helpers
-#ifdef __cplusplus
-#include "blockwrapper.hpp"
-#endif
