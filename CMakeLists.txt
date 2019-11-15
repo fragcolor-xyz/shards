@@ -124,11 +124,11 @@ set(
   ${MY_PROJECT_SOURCE_FILES}
   ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/include/dllblock.hpp
+  ${CHAINBLOCKS_DIR}/include/stbpp.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
-  ${CHAINBLOCKS_DIR}/src/core/stbpp.hpp
   ${CHAINBLOCKS_DIR}/src/core/utility.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
@@ -156,7 +156,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.capture.win.hpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
-  ${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
 )
 
@@ -378,33 +377,6 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   add_compile_definitions(I386_BUILD)
 endif()
 
-### mal blocks code generator
-macro(lisp_builtins LIB GENNAME)
-  add_executable(
-    malgen_${GENNAME}
-    "${CHAINBLOCKS_DIR}/src/mal/CBGenerator.cpp"
-  )
-  target_link_libraries(malgen_${GENNAME} ${CB_RUNTIME_LIBS} ${LIB} ${BOOST_LIBS} ${EXTRA_LIBS} ${ARGN})
-
-  # https://stackoverflow.com/questions/31274577/custom-target-as-a-target-library-in-cmake
-  add_custom_command(
-    OUTPUT CBGenerated_${GENNAME}.hpp
-    COMMAND
-    malgen_${GENNAME}
-    DEPENDS
-    malgen_${GENNAME}
-  )
-  add_custom_target(${GENNAME}_target DEPENDS CBGenerated_${GENNAME}.hpp)
-  add_library(${GENNAME} STATIC IMPORTED GLOBAL)
-  add_dependencies(${GENNAME} ${GENNAME}_target)
-  set_target_properties(${GENNAME} PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/CBGenerated_${GENNAME}.hpp
-  )
-endmacro()
-###
-
-lisp_builtins(cbruntime core_generator ${CBLP_PLATFORM_LIBS})
-
 ### mal
 add_executable(
   cbl
@@ -419,8 +391,8 @@ add_executable(
   "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
 )
-add_dependencies(cbl core_generator)
+add_dependencies(cbl cbruntime)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DHAS_CB_GENERATED -DCB_DLL_EXPORT")
+set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
 ###

@@ -51,6 +51,7 @@ phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
 phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 phmap::node_hash_map<std::string, CBChain *> GlobalChains;
 std::map<std::string, CBCallback> RunLoopHooks;
+std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
 extern void registerAssertBlocks();
 extern void registerChainsBlocks();
@@ -251,6 +252,13 @@ void registerBlock(const char *fullName, CBBlockConstructor constructor) {
     BlocksRegister[cname] = constructor;
     LOG(INFO) << "overridden block: " << cname;
   }
+
+  for (auto &pobs : Observers) {
+    if (pobs.expired())
+      continue;
+    auto obs = pobs.lock();
+    obs->registerBlock(fullName, constructor);
+  }
 }
 
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
@@ -264,6 +272,13 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
     ObjectTypesRegister[tup] = info;
     LOG(INFO) << "overridden object type: " << typeName;
   }
+
+  for (auto &pobs : Observers) {
+    if (pobs.expired())
+      continue;
+    auto obs = pobs.lock();
+    obs->registerObjectType(vendorId, typeId, info);
+  }
 }
 
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
@@ -276,6 +291,13 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   } else {
     EnumTypesRegister[tup] = info;
     LOG(INFO) << "overridden enum type: " << typeName;
+  }
+
+  for (auto &pobs : Observers) {
+    if (pobs.expired())
+      continue;
+    auto obs = pobs.lock();
+    obs->registerEnumType(vendorId, typeId, info);
   }
 }
 

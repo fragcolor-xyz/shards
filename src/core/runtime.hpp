@@ -77,6 +77,7 @@ template <typename... TT> struct hash<std::tuple<TT...>> {
 } // namespace std
 
 namespace chainblocks {
+struct RuntimeObserver;
 extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
 extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
@@ -85,6 +86,7 @@ extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
 extern std::map<std::string, CBCallback> RunLoopHooks;
 extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
 extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
+extern std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
 CBlock *createBlock(const char *name);
 void registerCoreBlocks();
@@ -98,6 +100,15 @@ void unregisterExitCallback(const char *eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
+
+struct RuntimeObserver {
+  virtual void registerBlock(const char *fullName,
+                             CBBlockConstructor constructor) {}
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
+                                  CBObjectInfo info) {}
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
+                                CBEnumInfo info) {}
+};
 }; // namespace chainblocks
 
 void freeDerivedInfo(CBTypeInfo info);
@@ -823,6 +834,16 @@ inline void sleep(double seconds = -1.0) {
     }
   }
 }
+
+struct RuntimeCallbacks {
+  // TODO, turn them into filters maybe?
+  virtual void registerBlock(const char *fullName,
+                             CBBlockConstructor constructor) = 0;
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
+                                  CBObjectInfo info) = 0;
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
+                                CBEnumInfo info) = 0;
+};
 }; // namespace chainblocks
 
 struct CBNode {

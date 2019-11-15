@@ -55,18 +55,24 @@ CBlock *createBlockInnerCall();
 }
 
 void linkLispUtility();
+struct Observer;
+void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env);
 
 static bool initDoneOnce = false;
 
 void installCBCore(const malEnvPtr &env) {
   if (!initDoneOnce) {
+    std::shared_ptr<Observer> obs;
+    setupObserver(obs, env);
+
     linkLispUtility();
     chainblocks::installSignalHandlers();
     cbRegisterAllBlocks();
+
     initDoneOnce = true;
   }
 
-  registerKeywords(env);
+  // registerKeywords(env);
 
   // Chain params
   env->set(":Looped", mal::keyword(":Looped"));
@@ -731,6 +737,55 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
   }
 }
 
+malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
+  CBVar var{};
+  var.valueType = Enum;
+  var.payload.enumVendorId = vendor;
+  var.payload.enumTypeId = type;
+  var.payload.enumValue = value;
+  return malValuePtr(new malCBVar(var));
+}
+
+struct Observer : public chainblocks::RuntimeObserver {
+  malEnvPtr _env;
+
+  void registerBlock(const char *fullName,
+                     CBBlockConstructor constructor) override {
+    // do some reflection
+    auto block = constructor();
+    // add params keywords if any
+    auto params = block->parameters(block);
+    for (auto i = 0; i < stbds_arrlen(params); i++) {
+      auto param = params[i];
+      _env->set(":" + MalString(param.name),
+                mal::keyword(":" + MalString(param.name)));
+    }
+    // define the new built-in
+    MalString mname(fullName);
+    const malBuiltIn::ApplyFunc *func = [](const MalString &name,
+                                           malValueIter argsBegin,
+                                           malValueIter argsEnd) {
+      auto block = chainblocks::createBlock(name.c_str());
+      block->setup(block);
+      auto malblock = new malCBlock(block);
+      setBlockParameters(malblock, argsBegin, argsEnd);
+      return malValuePtr(malblock);
+    };
+    auto bi = new malBuiltIn(mname, func);
+    _env->set(fullName, malValuePtr(bi));
+    // destroy our sample block
+    block->destroy(block);
+  }
+
+  void registerEnumType(int32_t vendorId, int32_t typeId,
+                        CBEnumInfo info) override {
+    for (auto i = 0; i < stbds_arrlen(info.labels); i++) {
+      _env->set(MalString(info.name) + "." + MalString(info.labels[i]),
+                newEnum(vendorId, typeId, i));
+    }
+  }
+};
+
 BUILTIN("Chain") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malString, chainName);
@@ -888,15 +943,6 @@ BUILTIN("#") {
   auto mvar = new malCBVar(var);
   mvar->reference(value);
   return malValuePtr(mvar);
-}
-
-malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
-  CBVar var{};
-  var.valueType = Enum;
-  var.payload.enumVendorId = vendor;
-  var.payload.enumTypeId = type;
-  var.payload.enumValue = value;
-  return malValuePtr(new malCBVar(var));
 }
 
 BUILTIN("Enum") {
@@ -1102,6 +1148,9 @@ void linkLispUtility() {
   chainblocks::Lisp::Eval = cbLispEval;
 }
 
-#ifdef HAS_CB_GENERATED
-#include "CBGenerated.hpp"
-#endif
+void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
+  obs = std::make_shared<Observer>();
+  obs->_env = env;
+  chainblocks::Observers.emplace_back(obs);
+}
+
