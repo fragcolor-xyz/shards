@@ -34,5 +34,6 @@ extern malValuePtr readStr(const String& input);
 extern void malinit(malEnvPtr env);
 extern malValuePtr maleval(const char* str, malEnvPtr env);
 extern String malpath();
+extern void malsetpath(const String &path);
 
 #endif // INCLUDE_MAL_H

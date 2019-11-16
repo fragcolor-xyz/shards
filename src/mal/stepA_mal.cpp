@@ -35,6 +35,12 @@ String malpath() {
   return result;
 }
 
+void malsetpath(const String &path) {
+  if(currentEnv) {
+    currentEnv->currentPath(path);
+  }
+}
+
 void malinit(malEnvPtr env) {
     assert(env);
     currentEnv = env;

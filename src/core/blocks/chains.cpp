@@ -300,6 +300,7 @@ struct ChainFileWatcher {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
+      auto localRootStr = localRoot.string();
 
       if (!Lisp::Create) {
         LOG(ERROR) << "Failed to load lisp interpreter";
@@ -337,7 +338,7 @@ struct ChainFileWatcher {
             }
             if (!env) {
               // worst case create a new one
-              env = Lisp::Create();
+              env = Lisp::Create(localRootStr.c_str());
             }
             auto v = Lisp::Eval(env, str.c_str());
             if (v.valueType != Chain) {

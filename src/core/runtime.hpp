@@ -233,7 +233,7 @@ namespace chainblocks {
 void installSignalHandlers();
 
 struct Lisp {
-  typedef void *(__cdecl *cbLispCreateFunc)();
+  typedef void *(__cdecl *cbLispCreateFunc)(const char *path);
   typedef void(__cdecl *cbLispDestroyFunc)(void *env);
   typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
 

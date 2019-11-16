@@ -99,7 +99,7 @@ static HWND AsHWND(const CBVar &var) {
   return NULL;
 }
 
-typedef void *(__cdecl *cbLispCreateFunc)();
+typedef void *(__cdecl *cbLispCreateFunc)(const char *path);
 typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
 
 struct HookInstance {
@@ -135,7 +135,7 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
   // script we need
   if (!gDesktopHookLoaded) {
     gDesktopHook.init();
-    auto env = gDesktopHook.linit();
+    auto env = gDesktopHook.linit(nullptr); // TODO path
     auto codeId = "code" + std::to_string(GetCurrentThreadId());
     auto code = InjectHookBase::getRemoteCode(codeId);
     if (code.size() > 0) {

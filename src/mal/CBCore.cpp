@@ -1131,9 +1131,13 @@ BUILTIN_ISA("Chain?", malCBChain);
 BUILTIN_ISA("Block?", malCBlock);
 
 extern "C" {
-EXPORTED __cdecl void *cbLispCreate() {
+EXPORTED __cdecl void *cbLispCreate(const char *path) {
   auto env = new malEnvPtr(new malEnv);
   malinit(*env);
+  if (path) {
+    MalString mpath(path);
+    malsetpath(mpath);
+  }
   return (void *)env;
 }
 
