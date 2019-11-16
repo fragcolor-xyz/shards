@@ -1,40 +1,28 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_BLOCKWRAPPER_HPP
+#define CB_BLOCKWRAPPER_HPP
 
 #include "chainblocks.h"
 #include "nameof.hpp"
+#include "utility.hpp"
 
 namespace chainblocks {
-// SFINAE tests
-#define CBLOCK_SFINAE_TEST(_name_)                                             \
-  template <typename T> class has_##_name_ {                                   \
-    typedef char one;                                                          \
-    struct two {                                                               \
-      char x[2];                                                               \
-    };                                                                         \
-    template <typename C> static one test(typeof(&C::_name_));                 \
-    template <typename C> static two test(...);                                \
-                                                                               \
-  public:                                                                      \
-    enum { value = sizeof(test<T>(0)) == sizeof(char) };                       \
-  }
-
-CBLOCK_SFINAE_TEST(name);
-CBLOCK_SFINAE_TEST(help);
-CBLOCK_SFINAE_TEST(setup);
-CBLOCK_SFINAE_TEST(destroy);
-CBLOCK_SFINAE_TEST(inputTypes);
-CBLOCK_SFINAE_TEST(outputTypes);
-CBLOCK_SFINAE_TEST(exposedVariables);
-CBLOCK_SFINAE_TEST(consumedVariables);
-CBLOCK_SFINAE_TEST(inferTypes);
-CBLOCK_SFINAE_TEST(parameters);
-CBLOCK_SFINAE_TEST(setParam);
-CBLOCK_SFINAE_TEST(getParam);
-CBLOCK_SFINAE_TEST(activate);
-CBLOCK_SFINAE_TEST(cleanup);
+CB_HAS_MEMBER_TEST(name);
+CB_HAS_MEMBER_TEST(help);
+CB_HAS_MEMBER_TEST(setup);
+CB_HAS_MEMBER_TEST(destroy);
+CB_HAS_MEMBER_TEST(inputTypes);
+CB_HAS_MEMBER_TEST(outputTypes);
+CB_HAS_MEMBER_TEST(exposedVariables);
+CB_HAS_MEMBER_TEST(consumedVariables);
+CB_HAS_MEMBER_TEST(inferTypes);
+CB_HAS_MEMBER_TEST(parameters);
+CB_HAS_MEMBER_TEST(setParam);
+CB_HAS_MEMBER_TEST(getParam);
+CB_HAS_MEMBER_TEST(activate);
+CB_HAS_MEMBER_TEST(cleanup);
 
 // Composition is preferred
 template <class T> struct BlockWrapper {
@@ -77,10 +65,15 @@ template <class T> struct BlockWrapper {
     // destroy
     if constexpr (has_destroy<T>::value) {
       result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
-        reinterpret_cast<BlockWrapper<T> *>(b)->block.destroy();
+        auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
+        bw->block.destroy();
+        delete bw;
       });
     } else {
-      result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {});
+      result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
+        auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
+        delete bw;
+      });
     }
 
     // inputTypes
@@ -194,3 +187,5 @@ template <class T> struct BlockWrapper {
   }
 };
 }; // namespace chainblocks
+
+#endif
