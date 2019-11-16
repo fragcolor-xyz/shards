@@ -110,9 +110,9 @@ struct HookInstance {
   int refcount = 0;
 
   void init() {
-    dll = LoadLibrary(TEXT("libcbinject.dll"));
+    dll = LoadLibrary(TEXT("libcb.dll"));
     if (!dll) {
-      throw CBException("Failed to find and open libcbinject.dll!");
+      throw CBException("Failed to find and open libcb.dll!");
     }
     hookProc = (HOOKPROC)GetProcAddress(dll, "DesktopHookCallback");
     assert(hookProc);
