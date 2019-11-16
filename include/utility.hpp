@@ -16,7 +16,7 @@ namespace chainblocks {
     struct two {                                                               \
       char x[2];                                                               \
     };                                                                         \
-    template <typename C> static one test(typeof(&C::_name_));                 \
+    template <typename C> static one test(decltype(&C::_name_));               \
     template <typename C> static two test(...);                                \
                                                                                \
   public:                                                                      \
