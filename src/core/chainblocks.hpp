@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_CHAINBLOCKS_HPP
+#define CB_CHAINBLOCKS_HPP
 
 #include "chainblocks.h"
 #include "ops.hpp"
@@ -1216,3 +1217,5 @@ struct VarStringStream {
   const char *str() { return cache.str(); }
 };
 }; // namespace chainblocks
+
+#endif

@@ -179,6 +179,59 @@ struct WaitChain : public ChainBase {
   }
 };
 
+struct ContinueWith {
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Chain", "The name of the chain to switch to.",
+                        CBTypesInfo(SharedTypes::strInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+
+  CBChain *_chain;
+  std::string _name;
+
+  void cleanup() {
+    // notice if we stop it we risk stack overflows
+    // we assume chain is stopped by other means
+    _chain = nullptr;
+  }
+
+  void setParam(int index, CBVar value) {
+    _name = value.payload.stringValue;
+    _chain = nullptr;
+  }
+
+  CBVar getParam(int index) { return Var(_name); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_chain) {
+      _chain = chainblocks::GlobalChains[_name];
+    }
+
+    // assign current flow to the chain we are going to
+    _chain->flow = context->chain->flow;
+    // assign the new chain as current chain on the flow
+    _chain->flow->chain = _chain;
+
+    // Prepare if no callc was called
+    if (!_chain->coro) {
+      chainblocks::prepare(_chain);
+    }
+    // Start it if not started, this will tick it once!
+    if (!chainblocks::isRunning(_chain)) {
+      chainblocks::start(_chain, input);
+    }
+    // And normally we just delegate the CBNode + CBFlow
+    chainblocks::suspend(context, 0);
+
+    return input;
+  }
+};
+
+typedef BlockWrapper<ContinueWith> ContinueWithBlock;
+
 struct ChainRunner : public ChainBase {
   // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() {
@@ -540,5 +593,6 @@ void registerChainsBlocks() {
   REGISTER_CORE_BLOCK(RunChain);
   REGISTER_CORE_BLOCK(ChainLoader);
   REGISTER_CORE_BLOCK(WaitChain);
+  registerBlock("ContinueWith", &ContinueWithBlock::create);
 }
 }; // namespace chainblocks

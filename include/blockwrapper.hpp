@@ -170,7 +170,7 @@ template <class T> struct BlockWrapper {
       result->activate = static_cast<CBActivateProc>(
           [](CBlock *b, CBContext *ctx, const CBVar *v) {
             return reinterpret_cast<BlockWrapper<T> *>(b)->block.activate(ctx,
-                                                                          v);
+                                                                          *v);
           });
     }
 

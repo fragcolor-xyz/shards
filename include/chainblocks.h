@@ -150,6 +150,7 @@ struct CBChain;
 typedef struct CBChain *CBChainPtr;
 
 struct CBNode;
+struct CBFlow;
 
 struct CBlock;
 typedef struct CBlock **CBlocks; // a stb array
@@ -302,6 +303,10 @@ struct CBExposedTypeInfo {
 struct CBValidationResult {
   struct CBTypeInfo outputType;
   CBExposedTypesInfo exposedInfo;
+};
+
+struct CBFlow {
+  struct CBChain *chain;
 };
 
 // # Of CBVars and memory

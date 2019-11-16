@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_RUNTIME_HPP
+#define CB_RUNTIME_HPP
 
 // ONLY CLANG AND GCC SUPPORTED FOR NOW
 
@@ -185,6 +186,7 @@ struct CBChain {
 
   CBContext *context;
   CBNode *node;
+  CBFlow *flow;
   std::vector<CBlock *> blocks;
 };
 
@@ -875,48 +877,58 @@ struct CBNode {
       stbds_arrfree(validation.exposedInfo);
     }
 
-    chains.push_back(chain);
+    auto flow = std::make_shared<CBFlow>();
+    flow->chain = chain;
+    flows.push_back(flow);
     chain->node = this;
+    chain->flow = flow.get();
     chainblocks::prepare(chain);
     chainblocks::start(chain, input);
   }
 
   bool tick(CBVar input = chainblocks::Empty) {
     auto noErrors = true;
-    chainsTicking = chains;
-    for (auto chain : chainsTicking) {
-      chainblocks::tick(chain, input);
-      if (!chainblocks::isRunning(chain)) {
-        if (!chainblocks::stop(chain)) {
+    _runningFlows = flows;
+    for (auto &flow : _runningFlows) {
+      chainblocks::tick(flow->chain, input);
+      if (!chainblocks::isRunning(flow->chain)) {
+        if (!chainblocks::stop(flow->chain)) {
           noErrors = false;
         }
-        chains.remove(chain);
-        chain->node = nullptr;
+        flows.remove(flow);
+        flow->chain->node = nullptr;
+        flow->chain->flow = nullptr;
       }
     }
     return noErrors;
   }
 
   void terminate() {
-    for (auto chain : chains) {
-      chainblocks::stop(chain);
-      chain->node = nullptr;
+    for (auto &flow : flows) {
+      chainblocks::stop(flow->chain);
+      flow->chain->node = nullptr;
+      flow->chain->flow = nullptr;
     }
-    chains.clear();
+    flows.clear();
   }
 
   void remove(CBChain *chain) {
     chainblocks::stop(chain);
-    chains.remove(chain);
+    flows.remove_if([chain](const std::shared_ptr<CBFlow> &flow) {
+      return flow->chain == chain;
+    });
     chain->node = nullptr;
+    chain->flow = nullptr;
   }
 
-  bool empty() { return chains.empty(); }
+  bool empty() { return flows.empty(); }
 
   phmap::node_hash_map<std::string, CBVar> variables;
-  std::list<CBChain *> chains;
-  std::list<CBChain *> chainsTicking;
+  std::list<std::shared_ptr<CBFlow>> flows;
+  std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;
   // filesystem current directory (if any/implemented) linked with this node
   std::string currentPath;
 };
+
+#endif
