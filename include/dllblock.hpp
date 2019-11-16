@@ -31,6 +31,22 @@ struct CoreLoader {
     auto handle = dlopen(NULL, RTLD_NOW);
     ifaceproc = (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
 #endif
+
+    if (!ifaceproc) {
+      // try again.. see if we are libcb
+#ifdef _WIN32
+      handle = GetModuleHandleA("libcb.dll");
+      if (handle)
+        ifaceproc = (CBChainblocksInterface)GetProcAddress(
+            handle, "chainblocksInterface");
+#else
+      handle = dlopen("libcb.so", RTLD_NOW);
+      if (handle)
+        ifaceproc =
+            (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
+#endif
+    }
+
     assert(ifaceproc);
     _core = ifaceproc();
     registerBlocks();

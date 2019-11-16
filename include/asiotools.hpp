@@ -6,8 +6,8 @@
 
 // remember this has to go before Windows.h on windows
 #include <boost/asio.hpp>
-#include <thread>
 #include <iostream>
+#include <thread>
 
 namespace chainblocks {
 namespace Asio {
