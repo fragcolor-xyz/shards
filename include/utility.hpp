@@ -5,7 +5,6 @@
 #define CB_UTILITY_HPP
 
 #include "chainblocks.h"
-#include <boost/lockfree/queue.hpp>
 #include <vector>
 
 namespace chainblocks {
