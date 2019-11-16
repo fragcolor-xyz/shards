@@ -1460,9 +1460,9 @@ struct Take {
       }
       return input.payload.seqValue[index];
     } else {
-      const auto nindices = stbds_arrlen(indices.payload.seqValue);
+      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
       stbds_arrsetlen(_cachedSeq, nindices);
-      for (auto i = 0; nindices > i; i++) {
+      for (uint64_t i = 0; nindices > i; i++) {
         const auto index = indices.payload.seqValue[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
@@ -1493,8 +1493,8 @@ struct Take {
         return Var(input.payload.float4Value[index]);
       }
     } else {
-      const auto nindices = stbds_arrlen(indices.payload.seqValue);
-      for (auto i = 0; nindices > i; i++) {
+      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
+      for (uint64_t i = 0; nindices > i; i++) {
         const auto index = indices.payload.seqValue[i].payload.intValue;
         if (index >= inputLen || index < 0 || nindices != _vectorOutputLen) {
           throw OutOfRangeEx(inputLen, index);
@@ -1620,9 +1620,9 @@ struct Limit {
       return input.payload.seqValue[index];
     } else {
       // Else it's a seq
-      auto nindices = std::min(inputLen, _max);
+      auto nindices = (uint64_t)std::max((int64_t)0, std::min(inputLen, _max));
       stbds_arrsetlen(_cachedResult, nindices);
-      for (auto i = 0; i < nindices; i++) {
+      for (uint64_t i = 0; i < nindices; i++) {
         _cachedResult[i] = input.payload.seqValue[i];
       }
       return Var(_cachedResult);

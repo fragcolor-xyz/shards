@@ -82,24 +82,24 @@ static void _destroyVarSlow(CBVar &var) {
 static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   switch (src.valueType) {
   case Seq: {
-    auto srcLen = stbds_arrlen(src.payload.seqValue);
+    uint64_t srcLen = stbds_arrlen(src.payload.seqValue);
     // reuse if seq and we got enough capacity
     if (dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen) {
       destroyVar(dst);
       dst.valueType = Seq;
       dst.payload.seqValue = nullptr;
     } else {
-      auto dstLen = stbds_arrlen(dst.payload.seqValue);
+      uint64_t dstLen = stbds_arrlen(dst.payload.seqValue);
       if (srcLen < dstLen) {
         // need to destroy leftovers
-        for (auto i = srcLen; i < dstLen; i++) {
+        for (uint64_t i = srcLen; i < dstLen; i++) {
           destroyVar(dst.payload.seqValue[i]);
         }
       }
     }
 
-    stbds_arrsetlen(dst.payload.seqValue, (unsigned)srcLen);
-    for (auto i = 0; i < srcLen; i++) {
+    stbds_arrsetlen(dst.payload.seqValue, (uint64_t)srcLen);
+    for (uint64_t i = 0; i < srcLen; i++) {
       auto &subsrc = src.payload.seqValue[i];
       memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
       cloneVar(dst.payload.seqValue[i], subsrc);
@@ -565,17 +565,18 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
-      auto currentUsed = recycle ? stbds_arrlen(output.payload.seqValue) : 0;
+      uint64_t currentUsed =
+          recycle ? stbds_arrlen(output.payload.seqValue) : 0;
       if (currentUsed > len) {
         // in this case we need to destroy the excess items
         // before resizing
-        for (auto i = len; i < currentUsed; i++) {
+        for (uint64_t i = len; i < currentUsed; i++) {
           varFree(output.payload.seqValue[i]);
         }
       }
 
       stbds_arrsetlen(output.payload.seqValue, len);
-      for (auto i = 0; i < len; i++) {
+      for (uint64_t i = 0; i < len; i++) {
         deserialize(read, output.payload.seqValue[i]);
       }
       break;
@@ -586,7 +587,7 @@ struct Serialization {
 
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
-      for (auto i = 0; i < len; i++) {
+      for (uint64_t i = 0; i < len; i++) {
         CBNamedVar v;
         uint64_t klen;
         read((uint8_t *)&klen, sizeof(uint64_t));
@@ -608,11 +609,11 @@ struct Serialization {
       read((uint8_t *)&output.payload.imageValue.height,
            sizeof(output.payload.imageValue.height));
 
-      auto size = output.payload.imageValue.channels *
-                  output.payload.imageValue.height *
-                  output.payload.imageValue.width;
+      size_t size = output.payload.imageValue.channels *
+                    output.payload.imageValue.height *
+                    output.payload.imageValue.width;
 
-      auto currentSize = recycle ? *oactualSize : 0;
+      size_t currentSize = recycle ? *oactualSize : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -681,7 +682,7 @@ struct Serialization {
       uint64_t len = stbds_arrlen(input.payload.seqValue);
       write((const uint8_t *)&len, sizeof(uint64_t));
       total += sizeof(uint64_t);
-      for (auto i = 0; i < len; i++) {
+      for (uint64_t i = 0; i < len; i++) {
         total += serialize(input.payload.seqValue[i], write);
       }
       break;
@@ -690,7 +691,7 @@ struct Serialization {
       uint64_t len = stbds_shlen(input.payload.tableValue);
       write((const uint8_t *)&len, sizeof(uint64_t));
       total += sizeof(uint64_t);
-      for (auto i = 0; i < len; i++) {
+      for (uint64_t i = 0; i < len; i++) {
         auto &v = input.payload.tableValue[i];
         uint64_t klen = strlen(v.key);
         write((const uint8_t *)&klen, sizeof(uint64_t));

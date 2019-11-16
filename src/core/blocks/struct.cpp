@@ -231,12 +231,12 @@ struct Pack : public StructBase {
   template <typename T, CBType CBT, typename CT>
   void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset,
                  size_t len) {
-    if (len != stbds_arrlen(input)) {
+    if (len != (size_t)stbds_arrlen(input)) {
       throw CBException("Expected " + std::to_string(len) +
                         " size sequence as value");
     }
 
-    for (auto i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
       auto &val = input[i];
       ensureType(val, CBT);
       write<T, decltype(val.payload.*value)>(val.payload.*value,
@@ -245,7 +245,7 @@ struct Pack : public StructBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_members.size() != stbds_arrlen(input.payload.seqValue)) {
+    if (_members.size() != (size_t)stbds_arrlen(input.payload.seqValue)) {
       throw CBException("Expected " + std::to_string(_members.size()) +
                         " members as input.");
     }
@@ -354,7 +354,7 @@ struct Unpack : public StructBase {
   void destroy() {
     if (_output) {
       // cleanup sub seqs
-      for (auto i = 0; i < _members.size(); i++) {
+      for (size_t i = 0; i < _members.size(); i++) {
         if (_output[i].valueType == Seq) {
           stbds_arrfree(_output[i].payload.seqValue);
         }
@@ -366,10 +366,10 @@ struct Unpack : public StructBase {
   void setParam(int index, CBVar value) {
     StructBase::setParam(index, value);
     // now we know what size we need
-    auto curLen = stbds_arrlen(_output);
+    size_t curLen = stbds_arrlen(_output);
     if (_members.size() < curLen) {
       // need to destroy leftovers if arrays
-      for (auto i = _members.size(); i < curLen; i++) {
+      for (size_t i = _members.size(); i < curLen; i++) {
         if (_output[i].valueType == Seq) {
           stbds_arrfree(_output[i].payload.seqValue);
         }
@@ -386,7 +386,7 @@ struct Unpack : public StructBase {
       case Tags::i64Array:
         _output[idx].valueType = Seq;
         stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           arr[i].valueType = Int;
         }
         break;
@@ -400,7 +400,7 @@ struct Unpack : public StructBase {
       case Tags::f64Array:
         _output[idx].valueType = Seq;
         stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           arr[i].valueType = Float;
         }
         break;
@@ -435,7 +435,7 @@ struct Unpack : public StructBase {
       auto &arr = _output[idx].payload.seqValue;
       switch (member.tag) {
       case Tags::i8Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<int8_t>(arr[i].payload.intValue, input, member.offset);
         }
         break;
@@ -443,7 +443,7 @@ struct Unpack : public StructBase {
         read<int8_t>(_output[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i16Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<int16_t>(arr[i].payload.intValue, input, member.offset);
         }
         break;
@@ -451,7 +451,7 @@ struct Unpack : public StructBase {
         read<int16_t>(_output[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i32Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<int32_t>(arr[i].payload.intValue, input, member.offset);
         }
         break;
@@ -459,7 +459,7 @@ struct Unpack : public StructBase {
         read<int32_t>(_output[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i64Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<int64_t>(arr[i].payload.intValue, input, member.offset);
         }
         break;
@@ -467,7 +467,7 @@ struct Unpack : public StructBase {
         read<int64_t>(_output[idx].payload.intValue, input, member.offset);
         break;
       case Tags::f32Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<float>(arr[i].payload.floatValue, input, member.offset);
         }
         break;
@@ -475,7 +475,7 @@ struct Unpack : public StructBase {
         read<float>(_output[idx].payload.floatValue, input, member.offset);
         break;
       case Tags::f64Array:
-        for (auto i = 0; i < member.arrlen; i++) {
+        for (size_t i = 0; i < member.arrlen; i++) {
           read<double>(arr[i].payload.floatValue, input, member.offset);
         }
         break;

@@ -518,7 +518,7 @@ template <CBType OT, typename AT> struct BytesToX {
       // many values
       auto len = input.payload.bytesSize / tsize; // int division, fine
       stbds_arrsetlen(_outputCache, len);
-      for (auto i = 0; i < len; i++) {
+      for (size_t i = 0; i < len; i++) {
         convert(_outputCache[i], input.payload.bytesValue + (sizeof(AT) * i));
       }
     }
@@ -645,10 +645,10 @@ struct ToBytes {
     case CBType::Table:
     case CBType::Seq:
     case CBType::Bytes: {
-      return -1; // unsupported for now
+      return 0; // unsupported for now
     }
     }
-    return -1;
+    return 0;
   }
 
   void convert(const CBVar &input) {
@@ -751,7 +751,7 @@ struct ToBytes {
       auto len = stbds_arrlen(input.payload.seqValue);
       if (len > 0) {
         auto itemSize = getSize(input.payload.seqValue[0]);
-        if (itemSize == -1) {
+        if (itemSize == 0) {
           throw CBException("ToBytes, unsupported Seq type.");
         }
         _buffer.resize(itemSize * len);

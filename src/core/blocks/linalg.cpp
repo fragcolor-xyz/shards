@@ -310,15 +310,15 @@ struct MatMul : public VectorBinaryBase {
   }
 
   void mmmul(const CBVar &a, const CBVar &b) {
-    auto dima = stbds_arrlen(a.payload.seqValue);
-    auto dimb = stbds_arrlen(a.payload.seqValue);
+    size_t dima = stbds_arrlen(a.payload.seqValue);
+    size_t dimb = stbds_arrlen(a.payload.seqValue);
     if (dima != dimb) {
       throw CBException(
           "MatMul expected 2 arrays with the same number of columns");
     }
 
     stbds_arrsetlen(_cachedSeq.payload.seqValue, dima);
-    for (auto i = 0; i < dima; i++) {
+    for (size_t i = 0; i < dima; i++) {
       const auto &y = b.payload.seqValue[i];
       const auto r = mvmul(a, y);
       _cachedSeq.payload.seqValue[i] = r;
@@ -353,13 +353,13 @@ struct Transpose : public VectorUnaryBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto height = stbds_arrlen(input.payload.seqValue);
+    size_t height = stbds_arrlen(input.payload.seqValue);
     if (height < 2 || height > 4) {
       // todo 2x1 should be go too
       throw CBException("Transpose expects a 2x2 to 4x4 matrix array.");
     }
 
-    decltype(height) width = 0;
+    size_t width = 0;
     switch (input.payload.seqValue[0].valueType) {
     case Float2:
       width = 2;
@@ -377,7 +377,7 @@ struct Transpose : public VectorUnaryBase {
     stbds_arrsetlen(_cachedSeq.payload.seqValue, width);
 
     double v1, v2, v3, v4;
-    for (auto w = 0; w < width; w++) {
+    for (size_t w = 0; w < width; w++) {
       switch (height) {
       case 2:
         _cachedSeq.payload.seqValue[w].valueType = Float2;
