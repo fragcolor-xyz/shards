@@ -5,7 +5,7 @@
 #define CB_DLLBLOCK_HPP
 
 #ifdef _WIN32
-#include <Windows.h">
+#include <Windows.h>
 #else
 #include <dlfcn.h>
 #endif
