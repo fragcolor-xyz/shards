@@ -624,7 +624,7 @@ struct Serialization {
       }
 
       // record actualSize
-      *oactualSize = std::max(currentSize, (uint64_t)size);
+      *oactualSize = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
