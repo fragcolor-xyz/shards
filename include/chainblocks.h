@@ -1,12 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
-
-/*
-  TODO:
-  Make this header *should be/TODO* C compatible.
-*/
+#ifndef CB_CHAINBLOCKS_H
+#define CB_CHAINBLOCKS_H
 
 // Use only basic types and libs, we want full ABI compatibility between blocks
 // Cannot afford to use any C++ std as any block maker should be free to use
@@ -589,3 +585,4 @@ extern "C" {
 };
 #endif
 
+#endif

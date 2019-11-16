@@ -2,7 +2,7 @@
 /* Copyright © 2019 Giovanni Petrantoni */
 
 #include "../runtime.hpp"
-#include "../utility.hpp"
+#include "utility.hpp"
 
 namespace chainblocks {
 struct JointOp {

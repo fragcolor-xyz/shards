@@ -125,11 +125,11 @@ set(
   ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/include/dllblock.hpp
   ${CHAINBLOCKS_DIR}/include/stbpp.hpp
+  ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops.hpp
-  ${CHAINBLOCKS_DIR}/src/core/utility.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp

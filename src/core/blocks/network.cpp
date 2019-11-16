@@ -5,8 +5,8 @@
 #include <boost/asio.hpp>
 
 #include "../runtime.hpp"
-#include "../utility.hpp"
 #include "shared.hpp"
+#include "utility.hpp"
 #include <boost/lockfree/queue.hpp>
 #include <thread>
 
@@ -202,8 +202,7 @@ struct Server : public NetworkBase {
   udp::endpoint _sender;
 
   void destroy() {
-    NetworkBase::destroy();
-
+    // drain queues first
     while (!_queue.empty()) {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
@@ -219,6 +218,8 @@ struct Server : public NetworkBase {
         Serialization::varFree(pkt.payload);
       }
     }
+
+    NetworkBase::destroy();
   }
 
   void do_receive() {
@@ -305,8 +306,7 @@ struct Client : public NetworkBase {
   boost::lockfree::queue<CBVar> _empty_queue{16};
 
   void destroy() {
-    NetworkBase::destroy();
-
+    // drain queues first
     while (!_queue.empty()) {
       CBVar v;
       if (_queue.pop(v)) {
@@ -320,6 +320,8 @@ struct Client : public NetworkBase {
         Serialization::varFree(v);
       }
     }
+
+    NetworkBase::destroy();
   }
 
   void do_receive() {

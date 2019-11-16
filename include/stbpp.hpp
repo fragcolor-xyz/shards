@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_STBPP_HPP
+#define CB_STBPP_HPP
 
 #include "chainblocks.h"
 
@@ -169,3 +170,5 @@ public:
   using iterator_category = std::random_access_iterator_tag;
 };
 }; // namespace std
+
+#endif

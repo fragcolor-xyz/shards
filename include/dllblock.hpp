@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_DLLBLOCK_HPP
+#define CB_DLLBLOCK_HPP
 
 #ifdef _WIN32
 #include <Windows.h">
@@ -172,3 +173,5 @@ public:
   }
 };
 }; // namespace chainblocks
+
+#endif
