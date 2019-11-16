@@ -8,7 +8,6 @@
 #include "../utility.hpp"
 #include "shared.hpp"
 #include <boost/lockfree/queue.hpp>
-#include <ikcp.h>
 #include <thread>
 
 using boost::asio::ip::udp;
@@ -20,7 +19,6 @@ constexpr uint32_t SocketCC = 'netS';
 struct SocketData {
   udp::socket *socket;
   udp::endpoint *endpoint;
-  ikcpcb *kcp;
 };
 
 struct NetworkBase : public BlocksUser {
@@ -48,11 +46,7 @@ struct NetworkBase : public BlocksUser {
           CBTypesInfo(CoreInfo::intVarInfo)),
       ParamsInfo::Param("Receive",
                         "The flow to execute when a packet is received.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)),
-      ParamsInfo::Param(
-          "Reliable",
-          "If the packets should be reliable (using KCP on top of UDP).",
-          CBTypesInfo(SharedTypes::boolInfo)));
+                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -420,6 +414,9 @@ RUNTIME_BLOCK_exposedVariables(Client);
 RUNTIME_BLOCK_END(Client);
 
 struct Send {
+  // Must take an optional seq of SocketData, to be used properly by server
+  // This way we get also a easy and nice broadcast
+
   ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
 
   CBVar *_socketVar = nullptr;
