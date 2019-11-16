@@ -112,9 +112,6 @@ endif()
 
 if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
-  # add_link_options(-e_chainblocksInterface)
-else()
-  add_link_options(-export-dynamic)
 endif()
 ###
 
@@ -228,6 +225,10 @@ add_custom_target(tidy DEPENDS ${tidyfied})
 
 if(UNIX AND NOT APPLE)
   set(LINUX TRUE)
+endif()
+
+if(LINUX)
+  add_link_options(-export-dynamic)
 endif()
 
 ### runtime
