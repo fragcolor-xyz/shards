@@ -274,6 +274,8 @@ struct RunChain : public ChainRunner {
     default:
       break;
     }
+    // make sure to reset!
+    cleanup();
   }
 
   CBVar getParam(int index) {
@@ -292,7 +294,10 @@ struct RunChain : public ChainRunner {
     return Var();
   }
 
-  void cleanup() { _steppedFlow.chain = nullptr; }
+  void cleanup() {
+    _steppedFlow.chain = nullptr;
+    ChainRunner::cleanup();
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
@@ -313,6 +318,7 @@ struct RunChain : public ChainRunner {
         if (!_steppedFlow.chain) {
           _steppedFlow.chain = chain;
           chain->flow = &_steppedFlow;
+          chain->node = context->chain->node;
         }
 
         // Allow to re run chains
@@ -340,6 +346,7 @@ struct RunChain : public ChainRunner {
       } else {
         // Run within the root flow
         chain->flow = context->chain->flow;
+        chain->node = context->chain->node;
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;

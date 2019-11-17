@@ -576,7 +576,7 @@ struct Ref : public SetBase {
     } else {
       // Fastest path, flag it as shortcut
       _shortCut = true;
-      // Clone will try to recyle memory and such
+      // NO CLONING! it's a ref!
       *_target = input;
     }
     return input;
