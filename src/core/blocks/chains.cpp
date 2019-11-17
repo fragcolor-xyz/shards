@@ -190,7 +190,7 @@ struct ContinueChain {
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBChain *_chain;
-  std::string _name;
+  ParamVar _chainref;
 
   void cleanup() {
     // notice if we stop it we risk stack overflows
@@ -199,15 +199,22 @@ struct ContinueChain {
   }
 
   void setParam(int index, CBVar value) {
-    _name = value.payload.stringValue;
-    _chain = nullptr;
+    _chainref = value;
+    cleanup();
   }
 
-  CBVar getParam(int index) { return Var(_name); }
+  CBVar getParam(int index) { return _chainref; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_chain) {
-      _chain = chainblocks::GlobalChains[_name];
+      auto &vchain = _chainref(context);
+      if (vchain.valueType == Chain) {
+        _chain = vchain.payload.chainValue;
+      } else if (vchain.valueType == String) {
+        _chain = chainblocks::GlobalChains[vchain.payload.stringValue];
+      } else {
+        return input;
+      }
     }
 
     // assign current flow to the chain we are going to
