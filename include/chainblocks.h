@@ -371,7 +371,7 @@ ALIGNED struct CBVarPayload // 16 aligned due to vectors
       CBString stringValue;
       // If ContextVar
       // NULL = any/unknown
-      CBTypesInfo *variableInfo;
+      CBTypesInfo variableInfo;
     };
 
     struct CBColor colorValue;
@@ -594,5 +594,16 @@ extern "C" {
 #ifdef __cplusplus
 };
 #endif
+
+// For future proper use
+// Basically we want during development of chains to have those on
+// When baking exe/lib/release we turn them off
+#define cbassert assert
+#ifndef NDEBUG
+#define CB_DEBUG_MODE 1
+#else
+#define CB_DEBUG_MODE 0
+#endif
+#define cb_debug_only(__CODE__) if(CB_DEBUG_MODE) __CODE__;
 
 #endif
