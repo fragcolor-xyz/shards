@@ -251,6 +251,8 @@ struct ChainRunner : public ChainBase {
 };
 
 struct RunChain : public ChainRunner {
+  CBFlow _steppedFlow;
+
   static CBParametersInfo parameters() {
     return CBParametersInfo(runChainParamsInfo);
   }
@@ -290,6 +292,8 @@ struct RunChain : public ChainRunner {
     return Var();
   }
 
+  void cleanup() { _steppedFlow.chain = nullptr; }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
@@ -305,23 +309,37 @@ struct RunChain : public ChainRunner {
         }
         return input;
       } else if (mode == RunChainMode::Stepped) {
+        // We want to allow a sub flow within the stepped chain
+        if (!_steppedFlow.chain) {
+          _steppedFlow.chain = chain;
+          chain->flow = &_steppedFlow;
+        }
+
         // Allow to re run chains
         if (chainblocks::hasEnded(chain)) {
           chainblocks::stop(chain);
+          // chain is still the root!
+          _steppedFlow.chain = chain;
+          chain->flow = &_steppedFlow;
         }
+
         // Prepare if no callc was called
         if (!chain->coro) {
           chainblocks::prepare(chain);
         }
+
         // Ticking or starting
         if (!chainblocks::isRunning(chain)) {
           chainblocks::start(chain, input);
         } else {
-          chainblocks::tick(chain, input);
+          // tick the flow one rather then directly chain!
+          chainblocks::tick(_steppedFlow.chain, input);
         }
+
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
+        chain->flow = context->chain->flow;
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;

@@ -20,7 +20,13 @@
   (Is 20)
   (Or)
   (Log)
-))
+  ))
+
+(def jumpChain
+  (Chain
+   "jumphere!"
+   (Msg "jumped...")
+   (ContinueChain "ticked")))
 
 (def tickedChain (Chain "ticked"
   (Msg "message 1")
@@ -28,6 +34,7 @@
   (Sleep (Float 0))
   
   (Msg "message 2")
+  (ContinueChain "jumphere!")
   2
   (Sleep (Float 0))
   
@@ -62,6 +69,8 @@
   (Step tickedChain)
   (Assert.Is 1 true)
   (Msg "next step")
+  (Step tickedChain)
+  (Assert.Is 1 true) ; jumped
   (Step tickedChain)
   (Assert.Is 2 true)
   (Msg "next step")
