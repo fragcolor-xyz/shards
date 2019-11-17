@@ -332,7 +332,7 @@ struct SendKeyEventBase {
 };
 
 struct MousePosBase {
-  ContextableVar _window{};
+  ParamVar _window{};
   ExposedInfo _consuming{};
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
@@ -356,8 +356,8 @@ struct MousePosBase {
     }
   }
 
-  void setParam(int index, CBVar value) { _window.setParam(value); }
+  void setParam(int index, CBVar value) { _window = value; }
 
-  CBVar getParam(int index) { return _window.getParam(); }
+  CBVar getParam(int index) { return _window; }
 };
 }; // namespace Desktop
