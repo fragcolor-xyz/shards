@@ -67,12 +67,12 @@ public:
   }
 
   static void registerObjectType(int32_t vendorId, int32_t typeId,
-                                 struct CBObjectInfo info) {
+                                 CBObjectInfo info) {
     sCore._core.registerObjectType(vendorId, typeId, info);
   }
 
   static void registerEnumType(int32_t vendorId, int32_t typeId,
-                               struct CBEnumInfo info) {
+                               CBEnumInfo info) {
     sCore._core.registerEnumType(vendorId, typeId, info);
   }
 
@@ -93,7 +93,7 @@ public:
     sCore._core.unregisterExitCallback(eventName);
   }
 
-  static CBVar *contextVariable(struct CBContext *context, const char *name) {
+  static CBVar *contextVariable(CBContext *context, const char *name) {
     return sCore._core.contextVariable(context, name);
   }
 
@@ -101,31 +101,30 @@ public:
     sCore._core.throwException(errorText);
   }
 
-  static CBVar suspend(struct CBContext *context, double seconds) {
+  static CBVar suspend(CBContext *context, double seconds) {
     return sCore._core.suspend(context, seconds);
   }
 
-  static void cloneVar(struct CBVar *dst, const struct CBVar *src) {
-    sCore._core.cloneVar(dst, src);
+  static void cloneVar(CBVar &dst, const CBVar &src) {
+    sCore._core.cloneVar(&dst, &src);
   }
 
-  static void destroyVar(struct CBVar *var) { sCore._core.destroyVar(var); }
+  static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
-  static CBRunChainOutput runSubChain(struct CBChain *chain,
-                                      struct CBContext *context,
-                                      struct CBVar input) {
+  static CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
+                                      CBVar input) {
     return sCore._core.runSubChain(chain, context, input);
   }
 
-  static CBValidationResult validateChain(struct CBChain *chain,
+  static CBValidationResult validateChain(CBChain *chain,
                                           CBValidationCallback callback,
                                           void *userData,
-                                          struct CBTypeInfo inputType) {
+                                          CBTypeInfo inputType) {
     return sCore._core.validateChain(chain, callback, userData, inputType);
   }
 
-  static void activateBlock(struct CBlock *block, struct CBContext *context,
-                            struct CBVar *input, struct CBVar *output) {
+  static void activateBlock(CBlock *block, CBContext *context, CBVar *input,
+                            CBVar *output) {
     sCore._core.activateBlock(block, context, input, output);
   }
 
@@ -135,65 +134,7 @@ private:
   static inline CoreLoader sCore{};
 };
 
-class Variable {
-private:
-  CBVar _v{};
-  CBVar *_cp = nullptr;
-  CBContext *_ctx = nullptr;
-
-public:
-  Variable() {}
-
-  Variable(CBVar initialValue) {
-    // notice, no cloning here!, purely utility
-    _v = initialValue;
-  }
-
-  Variable(CBVar initialValue, bool clone) {
-    if (clone) {
-      Core::cloneVar(&_v, &initialValue);
-    } else {
-      _v = initialValue;
-    }
-  }
-
-  ~Variable() { Core::destroyVar(&_v); }
-
-  void setParam(const CBVar &value) {
-    Core::cloneVar(&_v, &value);
-    _cp = nullptr; // reset this!
-  }
-
-  CBVar &getParam() { return _v; }
-
-  CBVar &get(CBContext *ctx, bool global = false) {
-    if (unlikely(ctx != _ctx)) {
-      // reset the ptr if context changed (stop/restart etc)
-      _cp = nullptr;
-      _ctx = ctx;
-    }
-
-    if (_v.valueType == ContextVar) {
-      if (unlikely(!_cp)) {
-        _cp = Core::contextVariable(ctx, _v.payload.stringValue);
-        return *_cp;
-      } else {
-        return *_cp;
-      }
-    } else {
-      return _v;
-    }
-  }
-
-  bool isVariable() { return _v.valueType == ContextVar; }
-
-  const char *variableName() {
-    if (isVariable())
-      return _v.payload.stringValue;
-    else
-      return nullptr;
-  }
-};
+typedef TParamVar<Core> ParamVar;
 }; // namespace chainblocks
 
 #endif

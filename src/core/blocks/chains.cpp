@@ -17,8 +17,8 @@ namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
-  static inline TypesInfo chainTypes =
-      TypesInfo::FromMany(false, CBType::Chain, CBType::None);
+  static inline TypesInfo chainTypes = TypesInfo::FromMany(
+      false, CBType::Chain, CBType::String, CBType::ContextVar, CBType::None);
 
   static inline ParamsInfo waitChainParamsInfo = ParamsInfo(
       ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
@@ -182,7 +182,7 @@ struct WaitChain : public ChainBase {
 struct ContinueChain {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Chain", "The name of the chain to switch to.",
-                        CBTypesInfo(SharedTypes::strInfo)));
+                        CBTypesInfo(ChainBase::chainTypes)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -380,7 +380,7 @@ struct ChainFileWatcher {
             std::string str((std::istreambuf_iterator<char>(lsp)),
                             std::istreambuf_iterator<char>());
 
-            // since envs are not being cleaned properly for now
+            // envs are not being cleaned properly for now
             // symbols have high ref count, need to fix
             auto env = Lisp::Create(localRootStr.c_str());
             auto v = Lisp::Eval(env, str.c_str());

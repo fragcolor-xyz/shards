@@ -59,6 +59,85 @@ private:
   static inline thread_local T *_tp = nullptr;
   static inline std::vector<T **> _ptrs;
 };
+
+template <class CB_CORE> class TParamVar {
+private:
+  CBVar _v{};
+  CBVar *_cp = nullptr;
+  CBContext *_ctx = nullptr;
+
+public:
+  TParamVar() {}
+
+  explicit TParamVar(CBVar initialValue) {
+    // notice, no cloning here!, purely utility
+    _v = initialValue;
+  }
+
+  explicit TParamVar(CBVar initialValue, bool clone) {
+    if (clone) {
+      CB_CORE::cloneVar(_v, initialValue);
+    } else {
+      _v = initialValue;
+    }
+  }
+
+  ~TParamVar() { CB_CORE::destroyVar(_v); }
+
+  CBVar &operator=(const CBVar &value) {
+    CB_CORE::cloneVar(_v, value);
+    _cp = nullptr; // reset this!
+    return _v;
+  }
+
+  operator CBVar() const { return _v; }
+
+  CBVar & operator()(CBContext *ctx) {
+    if (unlikely(ctx != _ctx)) {
+      // reset the ptr if context changed (stop/restart etc)
+      _cp = nullptr;
+      _ctx = ctx;
+    }
+
+    if (_v.valueType == ContextVar) {
+      if (unlikely(!_cp)) {
+        _cp = CB_CORE::contextVariable(ctx, _v.payload.stringValue);
+        // Do some type checking once - here!
+        cb_debug_only({
+          if (_v.payload.variableInfo) {
+            bool valid = false;
+            for (auto i = 0; i < stbds_arrlen(_v.payload.variableInfo); i++) {
+              if (_cp->valueType == _v.payload.variableInfo[i].basicType) {
+                // todo check other stuff like enum/object
+                valid = true;
+                break;
+              }
+            }
+            assert(valid);
+          } else {
+            auto msg = "WARNING: Context variable without type info! " +
+                       std::string(_v.payload.stringValue);
+            CB_CORE::log(msg.c_str());
+          }
+        });
+        return *_cp;
+      } else {
+        return *_cp;
+      }
+    } else {
+      return _v;
+    }
+  }
+
+  bool isVariable() { return _v.valueType == ContextVar; }
+
+  const char *variableName() {
+    if (isVariable())
+      return _v.payload.stringValue;
+    else
+      return nullptr;
+  }
+};
 }; // namespace chainblocks
 
 #endif
