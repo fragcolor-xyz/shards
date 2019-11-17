@@ -376,7 +376,7 @@ struct Transpose : public VectorUnaryBase {
 
     stbds_arrsetlen(_cachedSeq.payload.seqValue, width);
 
-    double v1, v2, v3, v4;
+    double v1{}, v2{}, v3{}, v4{};
     for (size_t w = 0; w < width; w++) {
       switch (height) {
       case 2:

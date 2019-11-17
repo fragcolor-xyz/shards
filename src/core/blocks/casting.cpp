@@ -364,112 +364,6 @@ RUNTIME_BLOCK_outputTypes(BitSwap64);
 RUNTIME_BLOCK_activate(BitSwap64);
 RUNTIME_BLOCK_END(BitSwap64);
 
-// As, reinterpret
-#define AS_SOMETHING_SIMPLE(_varName_, _varName_2, _type_, _payload_, _strOp_, \
-                            _info_)                                            \
-  struct As##_varName_2 {                                                      \
-    static inline TypesInfo &singleOutput = SharedTypes::_info_;               \
-    CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
-    CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
-                                                                               \
-    CBTypeInfo inferTypes(CBTypeInfo inputType,                                \
-                          CBExposedTypesInfo consumableVariables) {            \
-      return CBTypeInfo(singleOutput);                                         \
-    }                                                                          \
-                                                                               \
-    bool convert(CBVar &dst, CBVar &src) {                                     \
-      switch (src.valueType) {                                                 \
-      case String: {                                                           \
-        auto val = std::_strOp_(src.payload.stringValue);                      \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Float:                                                              \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.floatValue);                \
-        break;                                                                 \
-      case Float2: {                                                           \
-        auto val = src.payload.float2Value[0];                                 \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Float3: {                                                           \
-        auto val = src.payload.float3Value[0];                                 \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Float4: {                                                           \
-        auto val = src.payload.float4Value[0];                                 \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Int:                                                                \
-        dst.payload._payload_ =                                                \
-            reinterpret_cast<_type_ &>(src.payload.intValue);                  \
-        break;                                                                 \
-      case Int2: {                                                             \
-        auto val = src.payload.int2Value[0];                                   \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Int3: {                                                             \
-        auto val = src.payload.int3Value[0];                                   \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      case Int4: {                                                             \
-        auto val = src.payload.int4Value[0];                                   \
-        dst.payload._payload_ = reinterpret_cast<_type_ &>(val);               \
-        break;                                                                 \
-      }                                                                        \
-      default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
-      }                                                                        \
-      return false;                                                            \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      CBVar output{};                                                          \
-      output.valueType = _varName_;                                            \
-      switch (input.valueType) {                                               \
-      case Seq: {                                                              \
-        for (auto i = 0; i < 1 && i < stbds_arrlen(input.payload.seqValue);    \
-             i++) {                                                            \
-          if (convert(output, input.payload.seqValue[i]))                      \
-            return output;                                                     \
-        }                                                                      \
-        break;                                                                 \
-      }                                                                        \
-      case Int:                                                                \
-      case Int2:                                                               \
-      case Int3:                                                               \
-      case Int4:                                                               \
-      case Float:                                                              \
-      case Float2:                                                             \
-      case Float3:                                                             \
-      case Float4:                                                             \
-      case String:                                                             \
-        if (convert(output, const_cast<CBVar &>(input)))                       \
-          return output;                                                       \
-        break;                                                                 \
-      default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
-      }                                                                        \
-      return output;                                                           \
-    }                                                                          \
-  };                                                                           \
-  RUNTIME_CORE_BLOCK(As##_varName_2);                                          \
-  RUNTIME_BLOCK_inputTypes(As##_varName_2);                                    \
-  RUNTIME_BLOCK_outputTypes(As##_varName_2);                                   \
-  RUNTIME_BLOCK_inferTypes(As##_varName_2);                                    \
-  RUNTIME_BLOCK_activate(As##_varName_2);                                      \
-  RUNTIME_BLOCK_END(As##_varName_2);
-
-AS_SOMETHING_SIMPLE(Int, Int32, int32_t, intValue, stoi, intInfo);
-AS_SOMETHING_SIMPLE(Int, Int64, int64_t, intValue, stoi, intInfo);
-AS_SOMETHING_SIMPLE(Float, Float32, float, floatValue, stof, floatInfo);
-AS_SOMETHING_SIMPLE(Float, Float64, double, floatValue, stod, floatInfo);
-
 // actual type = AT = the c type
 template <CBType OT, typename AT> struct BytesToX {
   static inline TypeInfo outputType = TypeInfo(OT);
@@ -798,10 +692,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(VarAddr);
   REGISTER_CORE_BLOCK(BitSwap32);
   REGISTER_CORE_BLOCK(BitSwap64);
-  REGISTER_CORE_BLOCK(AsInt32);
-  REGISTER_CORE_BLOCK(AsInt64);
-  REGISTER_CORE_BLOCK(AsFloat32);
-  REGISTER_CORE_BLOCK(AsFloat64);
   REGISTER_CORE_BLOCK(BytesToFloat32);
   REGISTER_CORE_BLOCK(BytesToFloat64);
   REGISTER_CORE_BLOCK(BytesToInt8);

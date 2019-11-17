@@ -28,6 +28,7 @@ CB_HAS_MEMBER_TEST(cleanup);
 template <class T> struct BlockWrapper {
   CBlock header;
   T block;
+  constexpr static auto type_name = NAMEOF_TYPE(T);
 
   static __cdecl CBlock *create() {
     CBlock *result = reinterpret_cast<CBlock *>(new BlockWrapper<T>());
@@ -38,10 +39,8 @@ template <class T> struct BlockWrapper {
         return reinterpret_cast<BlockWrapper<T> *>(b)->block.name();
       });
     } else {
-      result->name = static_cast<CBNameProc>([](CBlock *b) {
-        constexpr auto type_name = NAMEOF_TYPE(T);
-        return type_name.c_str();
-      });
+      result->name =
+          static_cast<CBNameProc>([](CBlock *b) { return type_name.c_str(); });
     }
 
     // help
