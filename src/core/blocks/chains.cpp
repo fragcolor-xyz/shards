@@ -382,15 +382,7 @@ struct ChainFileWatcher {
 
             // since envs are not being cleaned properly for now
             // symbols have high ref count, need to fix
-            void *env = nullptr;
-            if (!envs_gc.empty()) {
-              // we just rotate them instead of cleaning them
-              envs_gc.pop(env);
-            }
-            if (!env) {
-              // worst case create a new one
-              env = Lisp::Create(localRootStr.c_str());
-            }
+            auto env = Lisp::Create(localRootStr.c_str());
             auto v = Lisp::Eval(env, str.c_str());
             if (v.valueType != Chain) {
               LOG(ERROR) << "Lisp::Eval did not return a CBChain";
@@ -422,6 +414,15 @@ struct ChainFileWatcher {
             ChainLoadResult result = {false, "", chain, env};
             results.push(result);
           }
+
+          // Collect garbage
+          if (!envs_gc.empty()) {
+            void *genv;
+            if (envs_gc.pop(genv)) {
+              Lisp::Destroy(genv);
+            }
+          }
+
           // sleep some
           chainblocks::sleep(2.0);
         } catch (std::exception &e) {
