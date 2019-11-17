@@ -27,8 +27,8 @@ struct NetworkBase : public BlocksUser {
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
 
-  ContextableVar _addr{Var("localhost"), true};
-  ContextableVar _port{Var(9191)};
+  ParamVar _addr{Var("localhost"), true};
+  ParamVar _port{Var(9191)};
 
   // Every server/client will share same context, so sharing the same recv
   // buffer is possible and nice!
@@ -123,10 +123,10 @@ struct NetworkBase : public BlocksUser {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _addr.setParam(value);
+      _addr = value;
       break;
     case 1:
-      _port.setParam(value);
+      _port = value;
       break;
     case 2:
       cloneVar(_blocks, value);
@@ -139,9 +139,9 @@ struct NetworkBase : public BlocksUser {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _addr.getParam();
+      return _addr;
     case 1:
-      return _port.getParam();
+      return _port;
     case 2:
       return _blocks;
     default:
@@ -255,7 +255,7 @@ struct Server : public NetworkBase {
       // first activation, let's init
       _socket.socket = new udp::socket(
           _io_context,
-          udp::endpoint(udp::v4(), _port.get(context).payload.intValue));
+          udp::endpoint(udp::v4(), _port(context).payload.intValue));
 
       // start receiving
       _io_context.post([this]() { do_receive(); });
@@ -357,9 +357,9 @@ struct Client : public NetworkBase {
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
-      auto sport = std::to_string(_port.get(context).payload.intValue);
-      udp::resolver::query query(udp::v4(),
-                                 _addr.get(context).payload.stringValue, sport);
+      auto sport = std::to_string(_port(context).payload.intValue);
+      udp::resolver::query query(udp::v4(), _addr(context).payload.stringValue,
+                                 sport);
       _server = *resolver.resolve(query);
 
       // start receiving

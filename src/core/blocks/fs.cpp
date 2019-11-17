@@ -280,7 +280,7 @@ RUNTIME_BLOCK_activate(Read);
 RUNTIME_BLOCK_END(Read);
 
 struct Write {
-  ContextableVar _contents{};
+  ParamVar _contents{};
   bool _overwrite = false;
   bool _append = false;
 
@@ -301,7 +301,7 @@ struct Write {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _contents.setParam(value);
+      _contents = value;
       break;
     case 1:
       _overwrite = value.payload.boolValue;
@@ -315,7 +315,7 @@ struct Write {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _contents.getParam();
+      return _contents;
     case 1:
       return Var(_overwrite);
     case 2:
@@ -326,7 +326,7 @@ struct Write {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto contents = _contents.get(context);
+    auto contents = _contents(context);
     if (contents.valueType != None) {
       fs::path p(input.payload.stringValue);
       if (!_overwrite && !_append && fs::exists(p)) {

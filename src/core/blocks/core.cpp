@@ -316,7 +316,7 @@ struct XPendBase {
 struct XpendTo : public XPendBase {
   ThreadShared<std::string> _scratchStr;
 
-  ContextableVar _collection{};
+  ParamVar _collection{};
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
@@ -359,7 +359,7 @@ struct XpendTo : public XPendBase {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _collection.setParam(value);
+      _collection = value;
       break;
     default:
       break;
@@ -369,7 +369,7 @@ struct XpendTo : public XPendBase {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _collection.getParam();
+      return _collection;
     default:
       break;
     }
@@ -379,7 +379,7 @@ struct XpendTo : public XPendBase {
 
 struct AppendTo : public XpendTo {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto &collection = _collection.get(context);
+    auto &collection = _collection(context);
     switch (collection.valueType) {
     case Seq: {
       stbds_arrpush(collection.payload.seqValue, input);
@@ -405,7 +405,7 @@ struct AppendTo : public XpendTo {
 
 struct PrependTo : public XpendTo {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto &collection = _collection.get(context);
+    auto &collection = _collection(context);
     switch (collection.valueType) {
     case Seq: {
       stbds_arrins(collection.payload.seqValue, 0, input);

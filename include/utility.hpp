@@ -92,7 +92,7 @@ public:
 
   operator CBVar() const { return _v; }
 
-  CBVar & operator()(CBContext *ctx) {
+  CBVar &operator()(CBContext *ctx) {
     if (unlikely(ctx != _ctx)) {
       // reset the ptr if context changed (stop/restart etc)
       _cp = nullptr;

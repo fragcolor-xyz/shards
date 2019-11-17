@@ -733,63 +733,22 @@ struct Serialization {
   }
 };
 
-struct ContextableVar {
-  CBVar _v{};
-  CBVar *_cp = nullptr;
-  CBContext *_ctx = nullptr;
-
-  ContextableVar() {}
-
-  ContextableVar(CBVar initialValue) {
-    // notice, no cloning here!, purely utility
-    _v = initialValue;
+struct InternalCore {
+  // need to emulate dllblock Core a bit
+  static CBVar *contextVariable(CBContext *context, const char *name) {
+    return chainblocks::contextVariable(context, name);
   }
 
-  ContextableVar(CBVar initialValue, bool clone) {
-    if (clone) {
-      cloneVar(_v, initialValue);
-    } else {
-      _v = initialValue;
-    }
+  static void cloneVar(CBVar &dst, const CBVar &src) {
+    chainblocks::cloneVar(dst, src);
   }
 
-  ~ContextableVar() { destroyVar(_v); }
+  static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
-  void setParam(const CBVar &value) {
-    cloneVar(_v, value);
-    _cp = nullptr; // reset this!
-  }
-
-  CBVar &getParam() { return _v; }
-
-  CBVar &get(CBContext *ctx, bool global = false) {
-    if (unlikely(ctx != _ctx)) {
-      // reset the ptr if context changed (stop/restart etc)
-      _cp = nullptr;
-      _ctx = ctx;
-    }
-
-    if (_v.valueType == ContextVar) {
-      if (unlikely(!_cp)) {
-        _cp = contextVariable(ctx, _v.payload.stringValue, global);
-        return *_cp;
-      } else {
-        return *_cp;
-      }
-    } else {
-      return _v;
-    }
-  }
-
-  bool isVariable() { return _v.valueType == ContextVar; }
-
-  const char *variableName() {
-    if (isVariable())
-      return _v.payload.stringValue;
-    else
-      return nullptr;
-  }
+  static void log(const char *msg) { LOG(INFO) << msg; }
 };
+
+typedef TParamVar<InternalCore> ParamVar;
 
 struct TypeInfo : public CBTypeInfo {
   TypeInfo() { basicType = None; }

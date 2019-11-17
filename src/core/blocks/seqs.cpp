@@ -188,7 +188,7 @@ RUNTIME_BLOCK_activate(Flatten);
 RUNTIME_BLOCK_END(Flatten);
 
 struct IndexOf {
-  ContextableVar _item{};
+  ParamVar _item{};
   CBSeq _results = nullptr;
   bool _all = false;
 
@@ -221,14 +221,14 @@ struct IndexOf {
 
   void setParam(int index, CBVar value) {
     if (index == 0)
-      _item.setParam(value);
+      _item = value;
     else
       _all = value.payload.boolValue;
   }
 
   CBVar getParam(int index) {
     if (index == 0)
-      return _item.getParam();
+      return _item;
     else
       return Var(_all);
   }
@@ -236,7 +236,7 @@ struct IndexOf {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto inputLen = stbds_arrlen(input.payload.seqValue);
     auto itemLen = 0;
-    auto item = _item.get(context);
+    auto item = _item(context);
     stbds_arrsetlen(_results, 0);
     if (item.valueType == Seq) {
       itemLen = stbds_arrlen(item.payload.seqValue);
