@@ -343,12 +343,24 @@ void callExitCallbacks() {
 }
 
 CBVar *contextVariable(CBContext *ctx, const char *name, bool global) {
-  if (!global) {
-    CBVar &v = ctx->variables[name];
-    return &v;
-  } else {
+  if (global) {
+    if (!ctx->chain->node)
+      throw CBException("Attempted to set/get a global variable within a "
+                        "context without Node.");
+
+    // explicitly wanting a global!
     CBVar &v = ctx->chain->node->variables[name];
     return &v;
+  } else {
+    // if there is a global, return that,
+    // worst case return a chain context one
+    if (ctx->chain->node && ctx->chain->node->variables.contains(name)) {
+      CBVar &v = ctx->chain->node->variables[name];
+      return &v;
+    } else {
+      CBVar &v = ctx->variables[name];
+      return &v;
+    }
   }
 }
 

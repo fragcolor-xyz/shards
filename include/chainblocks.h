@@ -367,7 +367,12 @@ ALIGNED struct CBVarPayload // 16 aligned due to vectors
 
     CBTable tableValue;
 
-    CBString stringValue;
+    struct {
+      CBString stringValue;
+      // If ContextVar
+      // NULL = any/unknown
+      CBTypesInfo *variableInfo;
+    };
 
     struct CBColor colorValue;
 

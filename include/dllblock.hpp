@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
+/*
+Utility to auto load auto discover blocks from DLLs
+All that is needed is to declare a chainblocks::registerBlocks
+At runtime just dlopen the dll, that's it!
+*/
+
 #ifndef CB_DLLBLOCK_HPP
 #define CB_DLLBLOCK_HPP
 
