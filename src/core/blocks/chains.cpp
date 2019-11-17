@@ -179,7 +179,7 @@ struct WaitChain : public ChainBase {
   }
 };
 
-struct ContinueWith {
+struct ContinueChain {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Chain", "The name of the chain to switch to.",
                         CBTypesInfo(SharedTypes::strInfo)));
@@ -229,8 +229,6 @@ struct ContinueWith {
     return input;
   }
 };
-
-typedef BlockWrapper<ContinueWith> ContinueWithBlock;
 
 struct ChainRunner : public ChainBase {
   // Only chain runners should expose varaibles to the context
@@ -559,40 +557,15 @@ struct ChainLoader : public ChainRunner {
   }
 };
 
-#define CHAIN_BLOCK_DEF(NAME)                                                  \
-  RUNTIME_CORE_BLOCK(NAME);                                                    \
-  RUNTIME_BLOCK_inputTypes(NAME);                                              \
-  RUNTIME_BLOCK_outputTypes(NAME);                                             \
-  RUNTIME_BLOCK_parameters(NAME);                                              \
-  RUNTIME_BLOCK_inferTypes(NAME);                                              \
-  RUNTIME_BLOCK_exposedVariables(NAME);                                        \
-  RUNTIME_BLOCK_setParam(NAME);                                                \
-  RUNTIME_BLOCK_getParam(NAME);                                                \
-  RUNTIME_BLOCK_activate(NAME);                                                \
-  RUNTIME_BLOCK_cleanup(NAME);                                                 \
-  RUNTIME_BLOCK_destroy(NAME);                                                 \
-  RUNTIME_BLOCK_END(NAME);
-
-// Register
-CHAIN_BLOCK_DEF(RunChain);
-CHAIN_BLOCK_DEF(ChainLoader);
-
-RUNTIME_CORE_BLOCK(WaitChain);
-RUNTIME_BLOCK_inputTypes(WaitChain);
-RUNTIME_BLOCK_outputTypes(WaitChain);
-RUNTIME_BLOCK_parameters(WaitChain);
-RUNTIME_BLOCK_inferTypes(WaitChain);
-RUNTIME_BLOCK_setParam(WaitChain);
-RUNTIME_BLOCK_getParam(WaitChain);
-RUNTIME_BLOCK_activate(WaitChain);
-RUNTIME_BLOCK_cleanup(WaitChain);
-RUNTIME_BLOCK_destroy(WaitChain);
-RUNTIME_BLOCK_END(WaitChain);
+typedef BlockWrapper<ContinueChain> ContinueChainBlock;
+typedef BlockWrapper<WaitChain> WaitChainBlock;
+typedef BlockWrapper<RunChain> RunChainBlock;
+typedef BlockWrapper<ChainLoader> ChainLoaderBlock;
 
 void registerChainsBlocks() {
-  REGISTER_CORE_BLOCK(RunChain);
-  REGISTER_CORE_BLOCK(ChainLoader);
-  REGISTER_CORE_BLOCK(WaitChain);
-  registerBlock("ContinueWith", &ContinueWithBlock::create);
+  registerBlock("ContinueChain", &ContinueChainBlock::create);
+  registerBlock("WaitChain", &WaitChainBlock::create);
+  registerBlock("RunChain", &RunChainBlock::create);
+  registerBlock("ChainLoader", &ChainLoaderBlock::create);
 }
 }; // namespace chainblocks
