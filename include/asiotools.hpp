@@ -6,7 +6,6 @@
 
 // remember this has to go before Windows.h on windows
 #include <boost/asio.hpp>
-#include <chrono>
 #include <iostream>
 #include <thread>
 
@@ -16,19 +15,15 @@ class IOContext {
 private:
   boost::asio::io_context _io_context;
   std::thread _io_thread;
-  bool _running = true;
 
 public:
   IOContext() {
     _io_thread = std::thread([this] {
       // Force run to run even without work
-      std::chrono::seconds timeout(2);
       boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
           g = boost::asio::make_work_guard(_io_context);
       try {
-        while (_running) {
-          _io_context.run_for(timeout);
-        }
+        _io_context.run();
       } catch (...) {
         std::cerr << "Boost asio context run failed.\n";
       }
@@ -36,7 +31,6 @@ public:
   }
 
   ~IOContext() {
-    _running = false;
     // defer all in the context or we will crash!
     _io_context.post([this]() {
       // allow end/thread exit
