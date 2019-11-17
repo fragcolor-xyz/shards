@@ -85,31 +85,12 @@ struct IsNot : public Base {
   }
 };
 
-// Register Is
-RUNTIME_BLOCK(Assert, Is);
-RUNTIME_BLOCK_destroy(Is);
-RUNTIME_BLOCK_inputTypes(Is);
-RUNTIME_BLOCK_outputTypes(Is);
-RUNTIME_BLOCK_parameters(Is);
-RUNTIME_BLOCK_setParam(Is);
-RUNTIME_BLOCK_getParam(Is);
-RUNTIME_BLOCK_activate(Is);
-RUNTIME_BLOCK_END(Is);
-
-// Register IsNot
-RUNTIME_BLOCK(Assert, IsNot);
-RUNTIME_BLOCK_destroy(IsNot);
-RUNTIME_BLOCK_inputTypes(IsNot);
-RUNTIME_BLOCK_outputTypes(IsNot);
-RUNTIME_BLOCK_parameters(IsNot);
-RUNTIME_BLOCK_setParam(IsNot);
-RUNTIME_BLOCK_getParam(IsNot);
-RUNTIME_BLOCK_activate(IsNot);
-RUNTIME_BLOCK_END(IsNot);
+typedef BlockWrapper<Is> IsBlock;
+typedef BlockWrapper<IsNot> IsNotBlock;
 }; // namespace Assert
 
 void registerAssertBlocks() {
-  REGISTER_BLOCK(Assert, Is);
-  REGISTER_BLOCK(Assert, IsNot);
+  registerBlock("Assert.Is", &Assert::IsBlock::create);
+  registerBlock("Assert.IsNot", &Assert::IsNotBlock::create);
 }
 }; // namespace chainblocks

@@ -157,10 +157,8 @@ template <class T> struct BlockWrapper {
                                                                             ci);
           });
     } else {
-      result->inferTypes = static_cast<CBInferTypesProc>(
-          [](CBlock *b, CBTypeInfo it, CBExposedTypesInfo ci) {
-            return CBTypeInfo();
-          });
+      // infer is optional!
+      result->inferTypes = nullptr;
     }
 
     // activate
