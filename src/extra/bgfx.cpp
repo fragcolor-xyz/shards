@@ -191,6 +191,9 @@ struct MainWindow : public BaseWindow {
         throw CBException("Failed to initialize BGFX");
       }
 
+      _imgui_context.Reset();
+      _imgui_context.Set();
+
       imguiCreate();
 
       bgfx::setViewRect(0, 0, 0, _width, _height);
