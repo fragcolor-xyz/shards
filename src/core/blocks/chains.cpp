@@ -281,13 +281,8 @@ struct ChainRunner : public ChainBase {
   }
 
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
-    // If there is a flow, we re-schedule only if the flow chain has terminated
-    // as well
-    if ((chain->flow && chain->flow->chain &&
-         !chainblocks::isRunning(chain->flow->chain) &&
-         !chainblocks::isRunning(chain)) ||
-        !chainblocks::isRunning(chain)) {
-      // validated during infer
+    if (!chainblocks::isRunning(chain)) {
+      // validated during infer not here! (false)
       context->chain->node->schedule(chain, input, false);
     }
   }
@@ -301,13 +296,14 @@ struct ChainRunner : public ChainBase {
     }
 
     // Allow to re run chains
-    // Do checks on flow chain
-    if (chainblocks::hasEnded(_steppedFlow.chain)) {
+    if (chainblocks::hasEnded(chain)) {
       // stop the root
       chainblocks::stop(chain);
+
       // swap flow to the root chain
       _steppedFlow.chain = chain;
       chain->flow = &_steppedFlow;
+      chain->node = context->chain->node;
     }
 
     // Prepare if no callc was called
@@ -316,9 +312,7 @@ struct ChainRunner : public ChainBase {
     }
 
     // Ticking or starting
-    // Do checks on flow chain
-    if (!chainblocks::isRunning(_steppedFlow.chain)) {
-      // Restart from head tho!
+    if (!chainblocks::isRunning(chain)) {
       chainblocks::start(chain, input);
     } else {
       // tick the flow one rather then directly chain!
