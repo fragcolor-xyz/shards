@@ -94,6 +94,18 @@ struct ChainBase {
 
   static inline thread_local std::set<CBChain *> visiting;
 
+  void tryStopChain() {
+    if (chain) {
+      // avoid stackoverflow
+      if (visiting.count(chain))
+        return;
+
+      visiting.insert(chain);
+      chainblocks::stop(chain);
+      visiting.erase(chain);
+    }
+  }
+
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // Free any previous result!
     stbds_arrfree(chainValidation.exposedInfo);
@@ -219,20 +231,32 @@ struct ContinueChain : public ChainBase {
 
   CBVar getParam(int index) { return chainref; }
 
+  // NO cleanup, other chains reference this chain but should not stop it
+  // An arbitrary chain should be able to resume it!
+  // Cleanup mechanics still to figure, for now ref count of the actual chain
+  // symbol
+
   CBVar activate(CBContext *context, const CBVar &input) {
     // assign current flow to the chain we are going to
     chain->flow = context->chain->flow;
     // assign the new chain as current chain on the flow
     chain->flow->chain = chain;
 
+    // Allow to re run chains
+    if (chainblocks::hasEnded(chain)) {
+      chainblocks::stop(chain);
+    }
+
     // Prepare if no callc was called
     if (!chain->coro) {
       chainblocks::prepare(chain);
     }
+
     // Start it if not started, this will tick it once!
     if (!chainblocks::isRunning(chain)) {
       chainblocks::start(chain, input);
     }
+
     // And normally we just delegate the CBNode + CBFlow
     chainblocks::suspend(context, 0);
 
@@ -249,9 +273,55 @@ struct ChainRunner : public ChainBase {
   }
 
   void cleanup() {
-    if (chain)
-      chainblocks::stop(chain);
+    tryStopChain();
+    _steppedFlow.chain = nullptr;
     doneOnce = false;
+  }
+
+  ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
+    // If there is a flow, we re-schedule only if the flow chain has terminated
+    // as well
+    if ((chain->flow && chain->flow->chain &&
+         !chainblocks::isRunning(chain->flow->chain) &&
+         !chainblocks::isRunning(chain)) ||
+        !chainblocks::isRunning(chain)) {
+      // validated during infer
+      context->chain->node->schedule(chain, input, false);
+    }
+  }
+
+  ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
+    // We want to allow a sub flow within the stepped chain
+    if (!_steppedFlow.chain) {
+      _steppedFlow.chain = chain;
+      chain->flow = &_steppedFlow;
+      chain->node = context->chain->node;
+    }
+
+    // Allow to re run chains
+    // Do checks on flow chain
+    if (chainblocks::hasEnded(_steppedFlow.chain)) {
+      // stop the root
+      chainblocks::stop(chain);
+      // swap flow to the root chain
+      _steppedFlow.chain = chain;
+      chain->flow = &_steppedFlow;
+    }
+
+    // Prepare if no callc was called
+    if (!chain->coro) {
+      chainblocks::prepare(chain);
+    }
+
+    // Ticking or starting
+    // Do checks on flow chain
+    if (!chainblocks::isRunning(_steppedFlow.chain)) {
+      // Restart from head tho!
+      chainblocks::start(chain, input);
+    } else {
+      // tick the flow one rather then directly chain!
+      chainblocks::tick(_steppedFlow.chain, input);
+    }
   }
 };
 
@@ -297,11 +367,6 @@ struct RunChain : public ChainRunner {
     return Var();
   }
 
-  void cleanup() {
-    _steppedFlow.chain = nullptr;
-    ChainRunner::cleanup();
-  }
-
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
@@ -311,40 +376,10 @@ struct RunChain : public ChainRunner {
         doneOnce = true;
 
       if (mode == RunChainMode::Detached) {
-        if (!chainblocks::isRunning(chain)) {
-          // validated during infer
-          context->chain->node->schedule(chain, input, false);
-        }
+        activateDetached(context, input);
         return input;
       } else if (mode == RunChainMode::Stepped) {
-        // We want to allow a sub flow within the stepped chain
-        if (!_steppedFlow.chain) {
-          _steppedFlow.chain = chain;
-          chain->flow = &_steppedFlow;
-          chain->node = context->chain->node;
-        }
-
-        // Allow to re run chains
-        if (chainblocks::hasEnded(chain)) {
-          chainblocks::stop(chain);
-          // chain is still the root!
-          _steppedFlow.chain = chain;
-          chain->flow = &_steppedFlow;
-        }
-
-        // Prepare if no callc was called
-        if (!chain->coro) {
-          chainblocks::prepare(chain);
-        }
-
-        // Ticking or starting
-        if (!chainblocks::isRunning(chain)) {
-          chainblocks::start(chain, input);
-        } else {
-          // tick the flow one rather then directly chain!
-          chainblocks::tick(_steppedFlow.chain, input);
-        }
-
+        activateStepMode(context, input);
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
@@ -535,11 +570,11 @@ struct ChainLoader : public ChainRunner {
   }
 
   void cleanup() {
-    if (chain) {
-      chainblocks::stop(chain);
-      // don't delete chains.. let env do it
+    ChainRunner::cleanup();
+
+    if (currentEnv) {
       watcher->envs_gc.push(currentEnv);
-      chain = nullptr;
+      currentEnv = nullptr;
     }
 
     watcher.reset(nullptr);
@@ -578,40 +613,10 @@ struct ChainLoader : public ChainRunner {
         doneOnce = true;
 
       if (mode == RunChainMode::Detached) {
-        if (!chainblocks::isRunning(chain)) {
-          // validated during infer
-          context->chain->node->schedule(chain, input, false);
-        }
+        activateDetached(context, input);
         return input;
       } else if (mode == RunChainMode::Stepped) {
-        // We want to allow a sub flow within the stepped chain
-        if (!_steppedFlow.chain) {
-          _steppedFlow.chain = chain;
-          chain->flow = &_steppedFlow;
-          chain->node = context->chain->node;
-        }
-
-        // Allow to re run chains
-        if (chainblocks::hasEnded(chain)) {
-          chainblocks::stop(chain);
-          // chain is still the root!
-          _steppedFlow.chain = chain;
-          chain->flow = &_steppedFlow;
-        }
-
-        // Prepare if no callc was called
-        if (!chain->coro) {
-          chainblocks::prepare(chain);
-        }
-
-        // Ticking or starting
-        if (!chainblocks::isRunning(chain)) {
-          chainblocks::start(chain, input);
-        } else {
-          // tick the flow one rather then directly chain!
-          chainblocks::tick(_steppedFlow.chain, input);
-        }
-
+        activateStepMode(context, input);
         return input;
       } else {
         // Run within the root flow
