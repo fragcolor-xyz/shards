@@ -239,6 +239,8 @@ struct ContinueChain : public ChainBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     // assign current flow to the chain we are going to
     chain->flow = context->chain->flow;
+    // if we have a node also make sure chain knows about it
+    chain->node = context->chain->node;
     // assign the new chain as current chain on the flow
     chain->flow->chain = chain;
 
