@@ -268,6 +268,8 @@ struct ChainRunner : public ChainBase {
 
   // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() {
+    // Only inline mode ensures that variables will be really avail
+    // step and detach will run at different timing
     return mode == RunChainMode::Inline ? chainValidation.exposedInfo : nullptr;
   }
 
