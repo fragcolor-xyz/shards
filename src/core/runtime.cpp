@@ -95,6 +95,18 @@ void registerCoreBlocks() {
   // also enums
   SharedTypes::initEnums();
 
+  // Enums are auto registered we need to propagate them to observers
+  for (auto &einfo : Globals::EnumTypesRegister) {
+    int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);
+    int32_t enumId = (int32_t)(einfo.first & 0x00000000FFFFFFFF);
+    for (auto &pobs : Globals::Observers) {
+      if (pobs.expired())
+        continue;
+      auto obs = pobs.lock();
+      obs->registerEnumType(vendorId, enumId, einfo.second);
+    }
+  }
+
 #ifdef CB_WITH_EXTRAS
   cbInitExtras();
 #endif
