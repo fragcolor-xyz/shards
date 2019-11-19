@@ -870,7 +870,8 @@ struct CBNode {
 
   bool empty() { return flows.empty(); }
 
-  std::unordered_map<std::string, CBVar> variables;
+  // must use node_hash_map, cos flat might move memory around!
+  phmap::node_hash_map<std::string, CBVar> variables;
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;

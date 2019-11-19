@@ -665,10 +665,10 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
+  phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
       exposed;
-  std::unordered_set<std::string> variables;
-  std::unordered_set<std::string> references;
+  phmap::flat_hash_set<std::string> variables;
+  phmap::flat_hash_set<std::string> references;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -809,7 +809,8 @@ void validateConnection(ValidationContext &ctx) {
   // Finally do checks on what we consume
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
 
-  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> consumedVars;
+  phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>>
+      consumedVars;
   for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
     auto &consumed_param = consumedVar[i];
     std::string name(consumed_param.name);
