@@ -155,6 +155,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/desktop.capture.win.hpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
+  ${CHAINBLOCKS_DIR}/src/core/lisp/read.hpp
+  ${CHAINBLOCKS_DIR}/src/core/lisp/print.hpp
 )
 
 #### Header paths for tidy
