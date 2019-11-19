@@ -79,14 +79,14 @@ template <typename... TT> struct hash<std::tuple<TT...>> {
 
 namespace chainblocks {
 struct RuntimeObserver;
-extern phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
-extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
+extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
+extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
-extern phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
+extern std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
     EnumTypesRegister;
 extern std::map<std::string, CBCallback> RunLoopHooks;
-extern phmap::node_hash_map<std::string, CBCallback> ExitHooks;
-extern phmap::node_hash_map<std::string, CBChain *> GlobalChains;
+extern std::unordered_map<std::string, CBCallback> ExitHooks;
+extern std::unordered_map<std::string, CBChain *> GlobalChains;
 extern std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
 CBlock *createBlock(const char *name);
@@ -921,7 +921,7 @@ struct CBNode {
 
   bool empty() { return flows.empty(); }
 
-  phmap::node_hash_map<std::string, CBVar> variables;
+  std::unordered_map<std::string, CBVar> variables;
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;

@@ -6,6 +6,8 @@
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
 #include "../chainblocks.hpp"
+#include <cassert>
+#include <cmath>
 
 namespace chainblocks {
 struct CoreInfo {
@@ -502,9 +504,14 @@ struct Set : public SetBase {
                     << _name;
         }
       }
-      // just a variable!
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(inputType), true));
+      if (inputType.basicType == Table && inputType.tableKeys) {
+        assert(false);
+      } else {
+        // just a variable!
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
+                                  CBTypeInfo(inputType), true));
+      }
     }
     return inputType;
   }

@@ -11,7 +11,6 @@
 // Included 3rdparty
 #include "easylogging++.h"
 #include "nameof.hpp"
-#include "parallel_hashmap/phmap.h"
 
 #include <algorithm>
 #include <cassert>

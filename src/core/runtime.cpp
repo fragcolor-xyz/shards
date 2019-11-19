@@ -9,6 +9,8 @@
 #include <csignal>
 #include <cstdarg>
 #include <string.h>
+#include <unordered_map>
+#include <unordered_set>
 
 #ifdef USE_RPMALLOC
 void *operator new(std::size_t s) {
@@ -43,13 +45,12 @@ void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
-phmap::node_hash_map<std::string, CBBlockConstructor> BlocksRegister;
-phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
+std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
+std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
     ObjectTypesRegister;
-phmap::node_hash_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
-    EnumTypesRegister;
-phmap::node_hash_map<std::string, CBCallback> ExitHooks;
-phmap::node_hash_map<std::string, CBChain *> GlobalChains;
+std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
+std::unordered_map<std::string, CBCallback> ExitHooks;
+std::unordered_map<std::string, CBChain *> GlobalChains;
 std::map<std::string, CBCallback> RunLoopHooks;
 std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
@@ -661,10 +662,10 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
+  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
       exposed;
-  phmap::flat_hash_set<std::string> variables;
-  phmap::flat_hash_set<std::string> references;
+  std::unordered_set<std::string> variables;
+  std::unordered_set<std::string> references;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -733,7 +734,7 @@ void validateConnection(ValidationContext &ctx) {
       // make sure we are not Ref-ing a Set
       // meaning target would be overwritten, yet Set will try to deallocate
       // it/manage it
-      if (ctx.variables.contains(name)) {
+      if (ctx.variables.count(name)) {
         // Error
         std::string err(
             "Ref variable name already used as Set. Overwriting a previously "
@@ -746,7 +747,7 @@ void validateConnection(ValidationContext &ctx) {
       // make sure we are not Set-ing a Ref
       // meaning target memory could be any block temporary buffer, yet Set will
       // try to deallocate it/manage it
-      if (ctx.references.contains(name)) {
+      if (ctx.references.count(name)) {
         // Error
         std::string err(
             "Set variable name already used as Ref. Overwriting a previously "
@@ -759,7 +760,7 @@ void validateConnection(ValidationContext &ctx) {
       // make sure we are not Set-ing a Ref
       // meaning target memory could be any block temporary buffer, yet Set will
       // try to deallocate it/manage it
-      if (ctx.references.contains(name)) {
+      if (ctx.references.count(name)) {
         // Error
         std::string err("Update variable name already used as Ref. Overwriting "
                         "a previously "
@@ -771,7 +772,7 @@ void validateConnection(ValidationContext &ctx) {
       // make sure we are not Push-ing a Ref
       // meaning target memory could be any block temporary buffer, yet Push
       // will try to deallocate it/manage it
-      if (ctx.references.contains(name)) {
+      if (ctx.references.count(name)) {
         // Error
         std::string err(
             "Push variable name already used as Ref. Overwriting a previously "
@@ -805,8 +806,7 @@ void validateConnection(ValidationContext &ctx) {
   // Finally do checks on what we consume
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
 
-  phmap::node_hash_map<std::string, std::vector<CBExposedTypeInfo>>
-      consumedVars;
+  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> consumedVars;
   for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
     auto &consumed_param = consumedVar[i];
     std::string name(consumed_param.name);
