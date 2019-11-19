@@ -321,7 +321,7 @@ struct VarAddr {
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto v = contextVariable(context, input.payload.stringValue);
+    auto v = findVariable(context, input.payload.stringValue);
     return Var(reinterpret_cast<int64_t>(v));
   }
 };

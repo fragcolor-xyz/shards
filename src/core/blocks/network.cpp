@@ -106,6 +106,9 @@ struct NetworkBase : public BlocksUser {
     }
 
     BlocksUser::cleanup();
+
+    _addr.reset();
+    _port.reset();
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
@@ -185,7 +188,7 @@ struct NetworkBase : public BlocksUser {
 
   void setSocket(CBContext *context) {
     if (!_socketVar) {
-      _socketVar = contextVariable(context, "Network.Socket");
+      _socketVar = findVariable(context, "Network.Socket");
     }
     *_socketVar = Var::Object(&_socket, FragCC, SocketCC);
   }
@@ -430,7 +433,7 @@ struct Send {
 
   SocketData *getSocket(CBContext *context) {
     if (!_socketVar) {
-      _socketVar = contextVariable(context, "Network.Socket");
+      _socketVar = findVariable(context, "Network.Socket");
     }
     assert(_socketVar->payload.objectVendorId == FragCC);
     assert(_socketVar->payload.objectTypeId == SocketCC);

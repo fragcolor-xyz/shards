@@ -30,7 +30,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
 FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
-CBVar *contextVariable(CBContext *ctx, const char *name, bool global = false);
+CBVar *findVariable(CBContext *ctx, const char *name);
 CBVar suspend(CBContext *context, double seconds);
 
 #define cbpause(_time_)                                                        \
@@ -735,8 +735,8 @@ struct Serialization {
 
 struct InternalCore {
   // need to emulate dllblock Core a bit
-  static CBVar *contextVariable(CBContext *context, const char *name) {
-    return chainblocks::contextVariable(context, name);
+  static CBVar *findVariable(CBContext *context, const char *name) {
+    return chainblocks::findVariable(context, name);
   }
 
   static void cloneVar(CBVar &dst, const CBVar &src) {

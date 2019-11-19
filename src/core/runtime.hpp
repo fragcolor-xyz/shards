@@ -191,7 +191,7 @@ struct CBChain {
 };
 
 struct CBContext {
-  CBContext(CBCoro &&sink, CBChain *running_chain)
+  CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)),
         iterationCount(0) {
@@ -204,9 +204,7 @@ struct CBContext {
 
   ~CBContext() { el::Loggers::unregisterLogger(loggerName.c_str()); }
 
-  CBChain *chain;
-
-  phmap::node_hash_map<std::string, CBVar> variables;
+  const CBChain *chain;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;

@@ -834,7 +834,7 @@ struct CheckBox : public Base {
     IDContext idCtx(this);
 
     if (!_downVar && _variable.size() > 0) {
-      _downVar = contextVariable(context, _variable.c_str());
+      _downVar = findVariable(context, _variable.c_str());
     }
 
     if (_downVar) {

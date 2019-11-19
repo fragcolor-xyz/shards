@@ -200,9 +200,9 @@ struct MainWindow : public BaseWindow {
       bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
                          1.0f, 0);
 
-      _sdlWinVar = contextVariable(context, "BGFX.CurrentWindow");
-      _bgfxCtx = contextVariable(context, "BGFX.Context");
-      _imguiCtx = contextVariable(context, "ImGui.Context");
+      _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
+      _bgfxCtx = findVariable(context, "BGFX.Context");
+      _imguiCtx = findVariable(context, "ImGui.Context");
 
       _initDone = true;
     }
@@ -295,8 +295,8 @@ struct Window : public BaseWindow {
       bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                          0x303030FF, 1.0f, 0);
 
-      _sdlWinVar = contextVariable(context, "BGFX.CurrentWindow");
-      _imguiCtx = contextVariable(context, "ImGui.Context");
+      _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
+      _imguiCtx = findVariable(context, "ImGui.Context");
 
       _initDone = true;
     }

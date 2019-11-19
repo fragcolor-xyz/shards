@@ -359,5 +359,7 @@ struct MousePosBase {
   void setParam(int index, CBVar value) { _window = value; }
 
   CBVar getParam(int index) { return _window; }
+
+  void cleanup() { _window.reset(); }
 };
 }; // namespace Desktop

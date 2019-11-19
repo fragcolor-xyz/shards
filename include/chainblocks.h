@@ -550,7 +550,7 @@ struct CBCore {
   CBUnregisterExitCallback unregisterExitCallback;
   
   // To be used within blocks, to fetch context variables
-  CBContextVariable contextVariable;
+  CBContextVariable findVariable;
   // Can be used to propagate block errors
   CBThrowException throwException;
   // To be used within blocks, to suspend the coroutine

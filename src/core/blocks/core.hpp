@@ -140,7 +140,7 @@ struct BaseOpsBin {
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? contextVariable(context, _value.payload.stringValue)   \
+                      ? findVariable(context, _value.payload.stringValue)      \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -164,7 +164,7 @@ LOGIC_OP(IsLessEqual, <=);
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? contextVariable(context, _value.payload.stringValue)   \
+                      ? findVariable(context, _value.payload.stringValue)      \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -209,7 +209,7 @@ LOGIC_OP(IsLessEqual, <=);
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? contextVariable(context, _value.payload.stringValue)   \
+                      ? findVariable(context, _value.payload.stringValue)      \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -381,7 +381,6 @@ struct VariableBase {
   std::string _name;
   std::string _key;
   ExposedInfo _exposedInfo{};
-  bool _global = false; // if we should use a node global
   bool _isTable = false;
   bool _shortCut = false; // performance trick to have a small LR per call
 
@@ -391,11 +390,7 @@ struct VariableBase {
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
-                        CBTypesInfo(CoreInfo::strInfo)),
-      ParamsInfo::Param(
-          "Global",
-          "If the variable should be shared between chains in the same node.",
-          CBTypesInfo(CoreInfo::boolInfo)));
+                        CBTypesInfo(CoreInfo::strInfo)));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(variableParamsInfo);
@@ -412,8 +407,6 @@ struct VariableBase {
         _isTable = true;
       else
         _isTable = false;
-    } else if (index == 2) {
-      _global = value.payload.boolValue;
     }
   }
 
@@ -422,8 +415,6 @@ struct VariableBase {
       return Var(_name.c_str());
     else if (index == 1)
       return Var(_key.c_str());
-    else if (index == 2)
-      return Var(_global);
     throw CBException("Param index out of range.");
   }
 };
@@ -464,7 +455,7 @@ struct SetBase : public VariableBase {
     }
 
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -557,7 +548,7 @@ struct Ref : public SetBase {
     }
 
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -656,17 +647,17 @@ struct Get : public VariableBase {
   }
 
   void setParam(int index, CBVar value) {
-    if (index <= 2)
+    if (index <= 1)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == 2) {
       cloneVar(_defaultValue, value);
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index <= 1)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == 2)
       return _defaultValue;
     throw CBException("Param index out of range.");
   }
@@ -760,7 +751,7 @@ struct Get : public VariableBase {
       return *_target;
 
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
     if (_isTable) {
       if (_target->valueType == Table) {
@@ -854,8 +845,8 @@ struct Swap {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_targetA) {
-      _targetA = contextVariable(context, _nameA.c_str());
-      _targetB = contextVariable(context, _nameB.c_str());
+      _targetA = findVariable(context, _nameA.c_str());
+      _targetB = findVariable(context, _nameB.c_str());
     }
     auto tmp = *_targetA;
     *_targetA = *_targetB;
@@ -883,17 +874,17 @@ struct Push : public VariableBase {
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, CBVar value) {
-    if (index <= 2)
+    if (index <= 1)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == 2) {
       _clear = value.payload.boolValue;
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index <= 1)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == 2)
       return Var(_clear);
     throw CBException("Param index out of range.");
   }
@@ -1003,7 +994,7 @@ struct Push : public VariableBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -1097,7 +1088,7 @@ struct Count : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
 
     CBVar &var = *_target;
@@ -1129,7 +1120,7 @@ struct Clear : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
 
     CBVar &var = *_target;
@@ -1222,7 +1213,7 @@ struct Pop : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = contextVariable(context, _name.c_str(), _global);
+      _target = findVariable(context, _name.c_str());
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -1447,7 +1438,7 @@ struct Take {
 
   ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
     if (_indices.valueType == ContextVar && !_indicesVar) {
-      _indicesVar = contextVariable(context, _indices.payload.stringValue);
+      _indicesVar = findVariable(context, _indices.payload.stringValue);
     }
 
     const auto inputLen = stbds_arrlen(input.payload.seqValue);
@@ -1778,7 +1769,7 @@ struct Repeat : public BlocksUser {
 
     if (_ctxVar.size()) {
       if (!_ctxTimes)
-        _ctxTimes = contextVariable(context, _ctxVar.c_str());
+        _ctxTimes = findVariable(context, _ctxVar.c_str());
       repeats = _ctxTimes->payload.intValue;
     }
 

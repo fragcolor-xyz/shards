@@ -64,7 +64,6 @@ template <class CB_CORE> class TParamVar {
 private:
   CBVar _v{};
   CBVar *_cp = nullptr;
-  CBContext *_ctx = nullptr;
 
 public:
   TParamVar() {}
@@ -84,6 +83,12 @@ public:
 
   ~TParamVar() { CB_CORE::destroyVar(_v); }
 
+  void reset() {
+    // reset is useful specially
+    // if we swap nodes
+    _cp = nullptr;
+  }
+
   CBVar &operator=(const CBVar &value) {
     CB_CORE::cloneVar(_v, value);
     _cp = nullptr; // reset this!
@@ -93,15 +98,9 @@ public:
   operator CBVar() const { return _v; }
 
   CBVar &operator()(CBContext *ctx) {
-    if (unlikely(ctx != _ctx)) {
-      // reset the ptr if context changed (stop/restart etc)
-      _cp = nullptr;
-      _ctx = ctx;
-    }
-
     if (_v.valueType == ContextVar) {
       if (unlikely(!_cp)) {
-        _cp = CB_CORE::contextVariable(ctx, _v.payload.stringValue);
+        _cp = CB_CORE::findVariable(ctx, _v.payload.stringValue);
         // Do some type checking once - here!
         cb_debug_only({
           if (_v.payload.variableInfo) {

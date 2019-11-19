@@ -325,6 +325,8 @@ struct Write {
     }
   }
 
+  void cleanup() { _contents.reset(); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto contents = _contents(context);
     if (contents.valueType != None) {

@@ -49,7 +49,7 @@ struct JointOp {
         if (_columns.valueType == Seq) {
           auto seq = IterableSeq(_columns.payload.seqValue);
           for (const auto &col : seq) {
-            auto target = contextVariable(context, col.payload.stringValue);
+            auto target = findVariable(context, col.payload.stringValue);
             if (target && target->valueType == Seq) {
               auto mseqLen = stbds_arrlen(target->payload.seqValue);
               if (len != mseqLen) {
@@ -62,7 +62,7 @@ struct JointOp {
           }
         } else if (_columns.valueType ==
                    ContextVar) { // normal single context var
-          auto target = contextVariable(context, _columns.payload.stringValue);
+          auto target = findVariable(context, _columns.payload.stringValue);
           if (target && target->valueType == Seq) {
             auto mseqLen = stbds_arrlen(target->payload.seqValue);
             if (len != mseqLen) {
@@ -375,6 +375,8 @@ struct XpendTo : public XPendBase {
     }
     throw CBException("Parameter out of range.");
   }
+
+  void cleanup() { _collection.reset(); }
 };
 
 struct AppendTo : public XpendTo {
@@ -702,6 +704,7 @@ RUNTIME_BLOCK_END(Profile);
 
 // Register PrependTo
 RUNTIME_CORE_BLOCK(PrependTo);
+RUNTIME_BLOCK_cleanup(PrependTo);
 RUNTIME_BLOCK_inputTypes(PrependTo);
 RUNTIME_BLOCK_outputTypes(PrependTo);
 RUNTIME_BLOCK_parameters(PrependTo);
@@ -711,8 +714,9 @@ RUNTIME_BLOCK_getParam(PrependTo);
 RUNTIME_BLOCK_activate(PrependTo);
 RUNTIME_BLOCK_END(PrependTo);
 
-// Register PrependTo
+// Register AppendTo
 RUNTIME_CORE_BLOCK(AppendTo);
+RUNTIME_BLOCK_cleanup(AppendTo);
 RUNTIME_BLOCK_inputTypes(AppendTo);
 RUNTIME_BLOCK_outputTypes(AppendTo);
 RUNTIME_BLOCK_parameters(AppendTo);

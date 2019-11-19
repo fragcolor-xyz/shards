@@ -845,6 +845,9 @@ BUILTIN("schedule") {
   return mal::nilValue();
 }
 
+// used in chains without a node (manually prepared etc)
+thread_local CBNode TLSRootNode;
+
 BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
   ARG(malCBChain, chain);
@@ -863,6 +866,7 @@ BUILTIN("prepare") {
       },
       nullptr);
   stbds_arrfree(chainValidation.exposedInfo);
+  chain->value()->node = &TLSRootNode;
   chainblocks::prepare(chain->value());
   return mal::nilValue();
 }

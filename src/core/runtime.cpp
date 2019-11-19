@@ -342,26 +342,10 @@ void callExitCallbacks() {
   }
 }
 
-CBVar *contextVariable(CBContext *ctx, const char *name, bool global) {
-  if (global) {
-    if (!ctx->chain->node)
-      throw CBException("Attempted to set/get a global variable within a "
-                        "context without Node.");
-
-    // explicitly wanting a global!
-    CBVar &v = ctx->chain->node->variables[name];
-    return &v;
-  } else {
-    // if there is a global, return that,
-    // worst case return a chain context one
-    if (ctx->chain->node && ctx->chain->node->variables.contains(name)) {
-      CBVar &v = ctx->chain->node->variables[name];
-      return &v;
-    } else {
-      CBVar &v = ctx->variables[name];
-      return &v;
-    }
-  }
+CBVar *findVariable(CBContext *ctx, const char *name) {
+  cbassert(ctx->chain->node);
+  CBVar &v = ctx->chain->node->variables[name];
+  return &v;
 }
 
 CBVar suspend(CBContext *context, double seconds) {
@@ -538,8 +522,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
     chainblocks::unregisterExitCallback(eventName);
   };
 
-  result.contextVariable = [](CBContext *context, const char *name) {
-    return chainblocks::contextVariable(context, name);
+  result.findVariable = [](CBContext *context, const char *name) {
+    return chainblocks::findVariable(context, name);
   };
 
   result.throwException = [](const char *errorText) {

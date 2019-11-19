@@ -259,7 +259,7 @@ struct BinaryBase : public Base {
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
+        _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       CBVar output{};                                                          \
@@ -345,7 +345,7 @@ struct BinaryBase : public Base {
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = contextVariable(context, _operand.payload.stringValue);  \
+        _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       CBVar output{};                                                          \
