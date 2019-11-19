@@ -172,6 +172,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/xxHash
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/nameof/include
+  -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/src/core/3rdparty
 )
@@ -241,6 +242,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/nameof/include
+  ${CHAINBLOCKS_DIR}/deps/magic_enum/include
   ${CHAINBLOCKS_DIR}/deps/kcp
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core

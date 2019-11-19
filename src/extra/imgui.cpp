@@ -34,10 +34,10 @@ struct IDContext {
 };
 
 struct Style : public Base {
-  static inline CBEnumInfo StyleKeysEnum = {"ImGuiStyle"};
   static inline TypeInfo styleEnumInfo = TypeInfo::Enum('frag', 'ImGS');
   static inline TypesInfo styleEnumInfos = TypesInfo(styleEnumInfo);
-  enum StyleKeys {
+
+  enum ImGuiStyle {
     Alpha,
     WindowPadding,
     WindowRounding,
@@ -122,94 +122,10 @@ struct Style : public Base {
     ModalWindowDimBgColor,
   };
 
-  static void InitEnums() {
-    // These leak for now
-    stbds_arrpush(StyleKeysEnum.labels, "Alpha");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowPadding");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowBorderSize");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowMinSize");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowTitleAlign");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowMenuButtonPosition");
-    stbds_arrpush(StyleKeysEnum.labels, "ChildRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "ChildBorderSize");
-    stbds_arrpush(StyleKeysEnum.labels, "PopupRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "PopupBorderSize");
-    stbds_arrpush(StyleKeysEnum.labels, "FramePadding");
-    stbds_arrpush(StyleKeysEnum.labels, "FrameRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "FrameBorderSize");
-    stbds_arrpush(StyleKeysEnum.labels, "ItemSpacing");
-    stbds_arrpush(StyleKeysEnum.labels, "ItemInnerSpacing");
-    stbds_arrpush(StyleKeysEnum.labels, "TouchExtraPadding");
-    stbds_arrpush(StyleKeysEnum.labels, "IndentSpacing");
-    stbds_arrpush(StyleKeysEnum.labels, "ColumnsMinSpacing");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarSize");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "GrabMinSize");
-    stbds_arrpush(StyleKeysEnum.labels, "GrabRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "TabRounding");
-    stbds_arrpush(StyleKeysEnum.labels, "TabBorderSize");
-    stbds_arrpush(StyleKeysEnum.labels, "ColorButtonPosition");
-    stbds_arrpush(StyleKeysEnum.labels, "ButtonTextAlign");
-    stbds_arrpush(StyleKeysEnum.labels, "SelectableTextAlign");
-    stbds_arrpush(StyleKeysEnum.labels, "DisplayWindowPadding");
-    stbds_arrpush(StyleKeysEnum.labels, "DisplaySafeAreaPadding");
-    stbds_arrpush(StyleKeysEnum.labels, "MouseCursorScale");
-    stbds_arrpush(StyleKeysEnum.labels, "AntiAliasedLines");
-    stbds_arrpush(StyleKeysEnum.labels, "AntiAliasedFill");
-    stbds_arrpush(StyleKeysEnum.labels, "CurveTessellationTol");
-    stbds_arrpush(StyleKeysEnum.labels, "TextColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TextDisabledColor");
-    stbds_arrpush(StyleKeysEnum.labels, "WindowBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ChildBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "PopupBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "BorderColor");
-    stbds_arrpush(StyleKeysEnum.labels, "BorderShadowColor");
-    stbds_arrpush(StyleKeysEnum.labels, "FrameBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "FrameBgHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "FrameBgActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TitleBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TitleBgActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TitleBgCollapsedColor");
-    stbds_arrpush(StyleKeysEnum.labels, "MenuBarBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarGrabColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarGrabHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ScrollbarGrabActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "CheckMarkColor");
-    stbds_arrpush(StyleKeysEnum.labels, "SliderGrabColor");
-    stbds_arrpush(StyleKeysEnum.labels, "SliderGrabActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ButtonColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ButtonHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ButtonActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "HeaderColor");
-    stbds_arrpush(StyleKeysEnum.labels, "HeaderHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "HeaderActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "SeparatorColor");
-    stbds_arrpush(StyleKeysEnum.labels, "SeparatorHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "SeparatorActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ResizeGripColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ResizeGripHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ResizeGripActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TabColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TabHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TabActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TabUnfocusedColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TabUnfocusedActiveColor");
-    stbds_arrpush(StyleKeysEnum.labels, "PlotLinesColor");
-    stbds_arrpush(StyleKeysEnum.labels, "PlotLinesHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "PlotHistogramColor");
-    stbds_arrpush(StyleKeysEnum.labels, "PlotHistogramHoveredColor");
-    stbds_arrpush(StyleKeysEnum.labels, "TextSelectedBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "DragDropTargetColor");
-    stbds_arrpush(StyleKeysEnum.labels, "NavHighlightColor");
-    stbds_arrpush(StyleKeysEnum.labels, "NavWindowingHighlightColor");
-    stbds_arrpush(StyleKeysEnum.labels, "NavWindowingDimBgColor");
-    stbds_arrpush(StyleKeysEnum.labels, "ModalWindowDimBgColor");
-    registerEnumType('frag', 'ImGS', StyleKeysEnum);
-  }
+  typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
+  static inline ImGuiStyleInfo imguiEnumInfo{'frag', 'ImGS'};
 
-  StyleKeys _key{};
+  ImGuiStyle _key{};
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
       "Style", "A style key to set.", CBTypesInfo(styleEnumInfos)));
@@ -219,7 +135,7 @@ struct Style : public Base {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _key = StyleKeys(value.payload.enumValue);
+      _key = ImGuiStyle(value.payload.enumValue);
       break;
     default:
       break;
@@ -1170,7 +1086,6 @@ void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, Button);
   REGISTER_BLOCK(ImGui, HexViewer);
   Button::InitEnums();
-  Style::InitEnums();
 }
 }; // namespace ImGui
 }; // namespace chainblocks

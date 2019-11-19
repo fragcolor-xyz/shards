@@ -37,3 +37,6 @@
 [submodule "kcp"]
 	path = deps/kcp
 	url = https://github.com/chainblocks/kcp.git
+[submodule "magic_enum"]
+	path = deps/magic_enum
+	url = https://github.com/chainblocks/magic_enum.git

@@ -5,6 +5,8 @@
 #define CB_UTILITY_HPP
 
 #include "chainblocks.h"
+#include <magic_enum.hpp>
+#include <nameof.hpp>
 #include <vector>
 
 namespace chainblocks {
@@ -136,6 +138,28 @@ public:
     else
       return nullptr;
   }
+};
+
+template <class CB_CORE, typename E> class TEnumInfo {
+private:
+  static constexpr auto eseq = magic_enum::enum_names<E>();
+  static constexpr auto ename = NAMEOF_TYPE(E);
+  CBEnumInfo info;
+  std::vector<std::string> labels;
+
+public:
+  TEnumInfo(int32_t vendorId, int32_t enumId) {
+    info.name = ename.c_str();
+    for (auto &view : eseq) {
+      labels.emplace_back(view);
+    }
+    for (auto &label : labels) {
+      stbds_arrpush(info.labels, label.c_str());
+    }
+    CB_CORE::registerEnumType(vendorId, enumId, info);
+  }
+
+  ~TEnumInfo() { stbds_arrfree(info.labels); }
 };
 }; // namespace chainblocks
 

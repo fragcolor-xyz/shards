@@ -32,6 +32,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
 CBVar *findVariable(CBContext *ctx, const char *name);
 CBVar suspend(CBContext *context, double seconds);
+void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 #define cbpause(_time_)                                                        \
   {                                                                            \
@@ -746,9 +747,19 @@ struct InternalCore {
   static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
   static void log(const char *msg) { LOG(INFO) << msg; }
+
+  static void registerEnumType(int32_t vendorId, int32_t enumId,
+                               CBEnumInfo info) {
+    chainblocks::registerEnumType(vendorId, enumId, info);
+  }
 };
 
 typedef TParamVar<InternalCore> ParamVar;
+template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E> {
+public:
+  EnumInfo(int32_t vendorId, int32_t enumId)
+      : TEnumInfo<InternalCore, E>(vendorId, enumId) {}
+};
 
 struct TypeInfo : public CBTypeInfo {
   TypeInfo() { basicType = None; }
