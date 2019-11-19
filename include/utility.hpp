@@ -143,13 +143,12 @@ public:
 template <class CB_CORE, typename E> class TEnumInfo {
 private:
   static constexpr auto eseq = magic_enum::enum_names<E>();
-  static constexpr auto ename = NAMEOF_TYPE(E);
   CBEnumInfo info;
   std::vector<std::string> labels;
 
 public:
-  TEnumInfo(int32_t vendorId, int32_t enumId) {
-    info.name = ename.c_str();
+  TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
+    info.name = name;
     for (auto &view : eseq) {
       labels.emplace_back(view);
     }

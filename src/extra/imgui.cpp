@@ -123,7 +123,7 @@ struct Style : public Base {
   };
 
   typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
-  static inline ImGuiStyleInfo imguiEnumInfo{'frag', 'ImGS'};
+  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", 'frag', 'ImGS'};
 
   ImGuiStyle _key{};
 
@@ -833,20 +833,8 @@ struct SameLine : public Base {
 };
 
 struct Button : public Base, public BlocksUser {
-  static inline CBEnumInfo ImguiButtonsEnumInfo = {"ImGuiButton"};
   static inline TypeInfo buttonTypeInfo = TypeInfo::Enum('frag', 'ImGB');
   static inline TypesInfo buttonTypesInfo = TypesInfo(buttonTypeInfo);
-  static void InitEnums() {
-    // These leak for now
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "Normal");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "Small");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "Invisible");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "ArrowLeft");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "ArrowRight");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "ArrowUp");
-    stbds_arrpush(Button::ImguiButtonsEnumInfo.labels, "ArrowDown");
-    registerEnumType('frag', 'ImGB', Button::ImguiButtonsEnumInfo);
-  }
 
   enum ButtonTypes {
     Normal,
@@ -857,6 +845,9 @@ struct Button : public Base, public BlocksUser {
     ArrowUp,
     ArrowDown
   };
+
+  typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
+  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", 'frag', 'ImGB'};
 
   ButtonTypes _type{};
   std::string _label;
@@ -1085,7 +1076,6 @@ void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, SameLine);
   REGISTER_BLOCK(ImGui, Button);
   REGISTER_BLOCK(ImGui, HexViewer);
-  Button::InitEnums();
 }
 }; // namespace ImGui
 }; // namespace chainblocks
