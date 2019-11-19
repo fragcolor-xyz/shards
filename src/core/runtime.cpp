@@ -46,9 +46,8 @@ INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
 std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
-    ObjectTypesRegister;
-std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo> EnumTypesRegister;
+std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 std::unordered_map<std::string, CBCallback> ExitHooks;
 std::unordered_map<std::string, CBChain *> GlobalChains;
 std::map<std::string, CBCallback> RunLoopHooks;
@@ -263,14 +262,14 @@ void registerBlock(const char *fullName, CBBlockConstructor constructor) {
 }
 
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
-  auto tup = std::make_tuple(vendorId, typeId);
+  int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(tup);
+  auto findIt = ObjectTypesRegister.find(id);
   if (findIt == ObjectTypesRegister.end()) {
-    ObjectTypesRegister.insert(std::make_pair(tup, info));
+    ObjectTypesRegister.insert(std::make_pair(id, info));
     // DLOG(INFO) << "added object type: " << typeName;
   } else {
-    ObjectTypesRegister[tup] = info;
+    ObjectTypesRegister[id] = info;
     LOG(INFO) << "overridden object type: " << typeName;
   }
 
@@ -283,14 +282,14 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
 }
 
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
-  auto tup = std::make_tuple(vendorId, typeId);
+  int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(tup);
+  auto findIt = ObjectTypesRegister.find(id);
   if (findIt == ObjectTypesRegister.end()) {
-    EnumTypesRegister.insert(std::make_pair(tup, info));
+    EnumTypesRegister.insert(std::make_pair(id, info));
     // DLOG(INFO) << "added enum type: " << typeName;
   } else {
-    EnumTypesRegister[tup] = info;
+    EnumTypesRegister[id] = info;
     LOG(INFO) << "overridden enum type: " << typeName;
   }
 

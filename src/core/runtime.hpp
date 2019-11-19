@@ -37,53 +37,11 @@ typedef boost::context::continuation CBCoro;
 #include <time.h>
 #endif
 
-#include <tuple>
-// Tuple hashing
-namespace std {
-namespace {
-
-// Code from boost
-// Reciprocal of the golden ratio helps spread entropy
-//     and handles duplicates.
-// See Mike Seymour in magic-numbers-in-boosthash-combine:
-//     http://stackoverflow.com/questions/4948780
-
-template <class T> inline void hash_combine(std::size_t &seed, T const &v) {
-  seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-// Recursive template code derived from Matthieu M.
-template <class Tuple, size_t Index = std::tuple_size<Tuple>::value - 1>
-struct HashValueImpl {
-  static void apply(size_t &seed, Tuple const &tuple) {
-    HashValueImpl<Tuple, Index - 1>::apply(seed, tuple);
-    hash_combine(seed, std::get<Index>(tuple));
-  }
-};
-
-template <class Tuple> struct HashValueImpl<Tuple, 0> {
-  static void apply(size_t &seed, Tuple const &tuple) {
-    hash_combine(seed, std::get<0>(tuple));
-  }
-};
-} // namespace
-
-template <typename... TT> struct hash<std::tuple<TT...>> {
-  size_t operator()(std::tuple<TT...> const &tt) const {
-    size_t seed = 0;
-    HashValueImpl<std::tuple<TT...>>::apply(seed, tt);
-    return seed;
-  }
-};
-} // namespace std
-
 namespace chainblocks {
 struct RuntimeObserver;
 extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-extern std::unordered_map<std::tuple<int32_t, int32_t>, CBObjectInfo>
-    ObjectTypesRegister;
-extern std::unordered_map<std::tuple<int32_t, int32_t>, CBEnumInfo>
-    EnumTypesRegister;
+extern std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+extern std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 extern std::map<std::string, CBCallback> RunLoopHooks;
 extern std::unordered_map<std::string, CBCallback> ExitHooks;
 extern std::unordered_map<std::string, CBChain *> GlobalChains;
