@@ -45,14 +45,6 @@ void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
-std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
-std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
-std::unordered_map<std::string, CBCallback> ExitHooks;
-std::unordered_map<std::string, CBChain *> GlobalChains;
-std::map<std::string, CBCallback> RunLoopHooks;
-std::list<std::weak_ptr<RuntimeObserver>> Observers;
-
 extern void registerAssertBlocks();
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
@@ -109,8 +101,8 @@ void registerCoreBlocks() {
 }
 
 CBlock *createBlock(const char *name) {
-  auto it = BlocksRegister.find(name);
-  if (it == BlocksRegister.end()) {
+  auto it = Globals::BlocksRegister.find(name);
+  if (it == Globals::BlocksRegister.end()) {
     return nullptr;
   }
 
@@ -244,16 +236,16 @@ CBlock *createBlock(const char *name) {
 
 void registerBlock(const char *fullName, CBBlockConstructor constructor) {
   auto cname = std::string(fullName);
-  auto findIt = BlocksRegister.find(cname);
-  if (findIt == BlocksRegister.end()) {
-    BlocksRegister.insert(std::make_pair(cname, constructor));
+  auto findIt = Globals::BlocksRegister.find(cname);
+  if (findIt == Globals::BlocksRegister.end()) {
+    Globals::BlocksRegister.insert(std::make_pair(cname, constructor));
     // DLOG(INFO) << "added block: " << cname;
   } else {
-    BlocksRegister[cname] = constructor;
+    Globals::BlocksRegister[cname] = constructor;
     LOG(INFO) << "overridden block: " << cname;
   }
 
-  for (auto &pobs : Observers) {
+  for (auto &pobs : Globals::Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -264,16 +256,16 @@ void registerBlock(const char *fullName, CBBlockConstructor constructor) {
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(id);
-  if (findIt == ObjectTypesRegister.end()) {
-    ObjectTypesRegister.insert(std::make_pair(id, info));
+  auto findIt = Globals::ObjectTypesRegister.find(id);
+  if (findIt == Globals::ObjectTypesRegister.end()) {
+    Globals::ObjectTypesRegister.insert(std::make_pair(id, info));
     // DLOG(INFO) << "added object type: " << typeName;
   } else {
-    ObjectTypesRegister[id] = info;
+    Globals::ObjectTypesRegister[id] = info;
     LOG(INFO) << "overridden object type: " << typeName;
   }
 
-  for (auto &pobs : Observers) {
+  for (auto &pobs : Globals::Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -284,16 +276,16 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = ObjectTypesRegister.find(id);
-  if (findIt == ObjectTypesRegister.end()) {
-    EnumTypesRegister.insert(std::make_pair(id, info));
+  auto findIt = Globals::ObjectTypesRegister.find(id);
+  if (findIt == Globals::ObjectTypesRegister.end()) {
+    Globals::EnumTypesRegister.insert(std::make_pair(id, info));
     // DLOG(INFO) << "added enum type: " << typeName;
   } else {
-    EnumTypesRegister[id] = info;
+    Globals::EnumTypesRegister[id] = info;
     LOG(INFO) << "overridden enum type: " << typeName;
   }
 
-  for (auto &pobs : Observers) {
+  for (auto &pobs : Globals::Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -302,42 +294,42 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
 }
 
 void registerRunLoopCallback(const char *eventName, CBCallback callback) {
-  chainblocks::RunLoopHooks[eventName] = callback;
+  chainblocks::Globals::RunLoopHooks[eventName] = callback;
 }
 
 void unregisterRunLoopCallback(const char *eventName) {
-  auto findIt = chainblocks::RunLoopHooks.find(eventName);
-  if (findIt != chainblocks::RunLoopHooks.end()) {
-    chainblocks::RunLoopHooks.erase(findIt);
+  auto findIt = chainblocks::Globals::RunLoopHooks.find(eventName);
+  if (findIt != chainblocks::Globals::RunLoopHooks.end()) {
+    chainblocks::Globals::RunLoopHooks.erase(findIt);
   }
 }
 
 void registerExitCallback(const char *eventName, CBCallback callback) {
-  chainblocks::ExitHooks[eventName] = callback;
+  chainblocks::Globals::ExitHooks[eventName] = callback;
 }
 
 void unregisterExitCallback(const char *eventName) {
-  auto findIt = chainblocks::ExitHooks.find(eventName);
-  if (findIt != chainblocks::ExitHooks.end()) {
-    chainblocks::ExitHooks.erase(findIt);
+  auto findIt = chainblocks::Globals::ExitHooks.find(eventName);
+  if (findIt != chainblocks::Globals::ExitHooks.end()) {
+    chainblocks::Globals::ExitHooks.erase(findIt);
   }
 }
 
 void registerChain(CBChain *chain) {
-  chainblocks::GlobalChains[chain->name] = chain;
+  chainblocks::Globals::GlobalChains[chain->name] = chain;
 }
 
 void unregisterChain(CBChain *chain) {
-  auto findIt = chainblocks::GlobalChains.find(chain->name);
-  if (findIt != chainblocks::GlobalChains.end()) {
-    chainblocks::GlobalChains.erase(findIt);
+  auto findIt = chainblocks::Globals::GlobalChains.find(chain->name);
+  if (findIt != chainblocks::Globals::GlobalChains.end()) {
+    chainblocks::Globals::GlobalChains.erase(findIt);
   }
 }
 
 void callExitCallbacks() {
   // Iterate backwards
-  for (auto it = chainblocks::ExitHooks.begin();
-       it != chainblocks::ExitHooks.end(); ++it) {
+  for (auto it = chainblocks::Globals::ExitHooks.begin();
+       it != chainblocks::Globals::ExitHooks.end(); ++it) {
     it->second();
   }
 }

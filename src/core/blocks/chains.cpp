@@ -115,7 +115,7 @@ struct ChainBase {
     if (chainref.valueType == Chain) {
       chain = chainref.payload.chainValue;
     } else if (chainref.valueType == String) {
-      chain = chainblocks::GlobalChains[chainref.payload.stringValue];
+      chain = chainblocks::Globals::GlobalChains[chainref.payload.stringValue];
     } else {
       chain = nullptr;
     }

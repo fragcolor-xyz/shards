@@ -38,15 +38,6 @@ typedef boost::context::continuation CBCoro;
 #endif
 
 namespace chainblocks {
-struct RuntimeObserver;
-extern std::unordered_map<std::string, CBBlockConstructor> BlocksRegister;
-extern std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
-extern std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
-extern std::map<std::string, CBCallback> RunLoopHooks;
-extern std::unordered_map<std::string, CBCallback> ExitHooks;
-extern std::unordered_map<std::string, CBChain *> GlobalChains;
-extern std::list<std::weak_ptr<RuntimeObserver>> Observers;
-
 CBlock *createBlock(const char *name);
 void registerCoreBlocks();
 void registerBlock(const char *fullName, CBBlockConstructor constructor);
@@ -786,7 +777,7 @@ inline void sleep(double seconds = -1.0) {
   }
 
   // Run loop callbacks after sleeping
-  for (auto &cbinfo : RunLoopHooks) {
+  for (auto &cbinfo : Globals::RunLoopHooks) {
     if (cbinfo.second) {
       cbinfo.second();
     }

@@ -433,14 +433,14 @@ void to_json(json &j, const CBChainPtr &chain) {
 
 void from_json(const json &j, CBChainPtr &chain) {
   auto chainName = j.at("name").get<std::string>();
-  auto findIt = chainblocks::GlobalChains.find(chainName);
-  if (findIt != chainblocks::GlobalChains.end()) {
+  auto findIt = chainblocks::Globals::GlobalChains.find(chainName);
+  if (findIt != chainblocks::Globals::GlobalChains.end()) {
     chain = findIt->second;
     // Need to clean it up for rewrite!
     chain->cleanup();
   } else {
     chain = new CBChain(chainName.c_str());
-    chainblocks::GlobalChains[chainName] = chain;
+    chainblocks::Globals::GlobalChains[chainName] = chain;
   }
 
   chain->looped = j.at("looped").get<bool>();

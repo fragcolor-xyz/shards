@@ -1176,6 +1176,6 @@ void linkLispUtility() {
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
   obs->_env = env;
-  chainblocks::Observers.emplace_back(obs);
+  chainblocks::Globals::Observers.emplace_back(obs);
   observers[env.ptr()] = obs;
 }

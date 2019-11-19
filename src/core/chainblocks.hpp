@@ -14,7 +14,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <list>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "blockwrapper.hpp"
 
@@ -52,6 +55,19 @@ public:
 
 private:
   std::string errorMessage;
+};
+
+struct RuntimeObserver;
+
+struct Globals {
+  static inline std::unordered_map<std::string, CBBlockConstructor>
+      BlocksRegister;
+  static inline std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+  static inline std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
+  static inline std::map<std::string, CBCallback> RunLoopHooks;
+  static inline std::unordered_map<std::string, CBCallback> ExitHooks;
+  static inline std::unordered_map<std::string, CBChain *> GlobalChains;
+  static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 };
 
 ALWAYS_INLINE inline void destroyVar(CBVar &var);
