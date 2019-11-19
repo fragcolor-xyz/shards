@@ -578,17 +578,17 @@
 (def testChain nil)
 
 (def loopedChain (Chain "LoopedChain" :Looped
-  10 (Push "loopVar")
-  11 (Push "loopVar")
-  12 (Push "loopVar")
-  (Count "loopVar")
+  10 (Push "loopVar1")
+  11 (Push "loopVar1")
+  12 (Push "loopVar1")
+  (Count "loopVar1")
   (Assert.Is 3 true)))
 
  (def loopedChain2 (Chain "LoopedChain" :Looped
-  10 (Push "loopVar" :Clear false)
-  11 (Push "loopVar")
-  12 (Push "loopVar")
-  (Count "loopVar")))
+  10 (Push "loopVar2" :Clear false)
+  11 (Push "loopVar2")
+  12 (Push "loopVar2")
+  (Count "loopVar2")))
 
 (prepare loopedChain)
 (start loopedChain)
