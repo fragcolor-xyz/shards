@@ -144,10 +144,7 @@ struct ChainBase {
                       << errorTxt;
           }
         },
-        this, inputType,
-        mode == RunChainMode::Inline
-            ? consumables
-            : nullptr); // detached don't share context!
+        this, inputType, consumables);
 
     visiting.erase(chain);
 
