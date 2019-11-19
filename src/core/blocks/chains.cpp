@@ -410,10 +410,14 @@ struct ChainFileWatcher {
   std::string path;
   rigtorp::SPSCQueue<ChainLoadResult> results;
   boost::lockfree::queue<void *> envs_gc;
+  CBTypeInfo inputTypeInfo;
+  const IterableExposedInfo &consumables;
 
-  explicit ChainFileWatcher(std::string &file, std::string currentPath)
+  explicit ChainFileWatcher(std::string &file, std::string currentPath,
+                            CBTypeInfo inputType,
+                            const IterableExposedInfo &consumablesRef)
       : running(true), fileName(file), path(currentPath), results(2),
-        envs_gc(2) {
+        envs_gc(2), inputTypeInfo(inputType), consumables(consumablesRef) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
@@ -474,7 +478,7 @@ struct ChainFileWatcher {
                         << errorTxt;
                   }
                 },
-                nullptr);
+                nullptr, inputTypeInfo, consumables._seq);
             stbds_arrfree(chainValidation.exposedInfo);
 
             ChainLoadResult result = {false, "", chain, env};
@@ -520,10 +524,16 @@ struct ChainLoader : public ChainRunner {
   std::string fileName;
   std::unique_ptr<ChainFileWatcher> watcher;
   void *currentEnv;
+  CBTypeInfo inputTypeCopy{};
+  IterableExposedInfo consumablesCopy;
 
   ChainLoader() : ChainRunner(), watcher(nullptr), currentEnv(nullptr) {}
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    inputTypeCopy = inputType;
+    const IterableExposedInfo consumablesStb(consumables);
+    // copy consumables
+    consumablesCopy = consumablesStb;
     return inputType;
   }
 
@@ -578,8 +588,9 @@ struct ChainLoader : public ChainRunner {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!watcher) {
-      watcher.reset(
-          new ChainFileWatcher(fileName, context->chain->node->currentPath));
+      watcher.reset(new ChainFileWatcher(fileName,
+                                         context->chain->node->currentPath,
+                                         inputTypeCopy, consumablesCopy));
     }
 
     if (!watcher->results.empty()) {

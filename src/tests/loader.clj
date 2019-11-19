@@ -2,6 +2,7 @@
 (schedule n
           (Chain
            "n" :Looped
+           10 (Set "var")
            (ChainLoader "loadme.clj")
 ))
 

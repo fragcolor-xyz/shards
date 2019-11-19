@@ -675,11 +675,6 @@ struct ValidationContext {
   void *userData{};
 };
 
-struct ConsumedParam {
-  const char *key;
-  CBParameterInfo value;
-};
-
 void validateConnection(ValidationContext &ctx) {
   auto previousOutput = ctx.previousOutputType;
 

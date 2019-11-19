@@ -78,7 +78,7 @@ public:
       : _seq(nullptr), _owned(true) {
     size_t size = last - first;
     stbds_arrsetlen(_seq, size);
-    for (auto i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       _seq[i] = *first++;
     }
   }
@@ -86,7 +86,7 @@ public:
   IterableStb(const IterableStb &other) : _seq(nullptr), _owned(true) {
     size_t size = stbds_arrlen(other._seq);
     stbds_arrsetlen(_seq, size);
-    for (auto i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       _seq[i] = other._seq[i];
     }
   }
@@ -103,7 +103,7 @@ public:
   IterableStb &operator=(const IterableStb &other) {
     size_t size = stbds_arrlen(other._seq);
     stbds_arrsetlen(_seq, size);
-    for (auto i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       _seq[i] = other._seq[i];
     }
     return *this;
