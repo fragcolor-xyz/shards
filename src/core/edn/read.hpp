@@ -4,19 +4,17 @@
 #define CB_LSP_READ_HPP
 
 #include <list>
+#include <parallel_hashmap/phmap.h>
 #include <regex>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <variant>
 #include <vector>
 
-namespace zachlisp {
+namespace chainblocks {
+namespace edn {
 
-// zachlisp::token
 namespace token {
 
-// zachlisp::token::type
 namespace type {
 
 enum Type {
@@ -31,7 +29,6 @@ enum Type {
 
 }
 
-// zachlisp::token::value
 namespace value {
 
 using Value = std::variant<bool, char, long, double, std::string>;
@@ -65,7 +62,6 @@ struct Token {
 
 } // namespace token
 
-// zachlisp::form
 namespace form {
 
 struct Special {
@@ -85,10 +81,11 @@ struct FormWrapper;
 class FormWrapperHash;
 class FormWrapperEquality;
 
-using FormWrapperMap = std::unordered_map<FormWrapper, FormWrapper,
-                                          FormWrapperHash, FormWrapperEquality>;
+using FormWrapperMap =
+    phmap::flat_hash_map<FormWrapper, FormWrapper, FormWrapperHash,
+                         FormWrapperEquality>;
 using FormWrapperSet =
-    std::unordered_set<FormWrapper, FormWrapperHash, FormWrapperEquality>;
+    phmap::flat_hash_set<FormWrapper, FormWrapperHash, FormWrapperEquality>;
 
 using Form = std::variant<
     Special, token::Token, std::list<FormWrapper>, std::vector<FormWrapper>,
@@ -116,33 +113,34 @@ inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   hash_combine(seed, rest...);
 }
 
-} // namespace zachlisp
+} // namespace edn
+} // namespace chainblocks
 
 namespace std {
 
-template <> struct hash<zachlisp::token::Token> {
-  size_t operator()(const zachlisp::token::Token &x) const {
-    return std::hash<zachlisp::token::value::Value>()(x.value);
+template <> struct hash<chainblocks::edn::token::Token> {
+  size_t operator()(const chainblocks::edn::token::Token &x) const {
+    return std::hash<chainblocks::edn::token::value::Value>()(x.value);
   }
 };
 
-template <> struct hash<zachlisp::form::Special> {
-  size_t operator()(const zachlisp::form::Special &x) const {
+template <> struct hash<chainblocks::edn::form::Special> {
+  size_t operator()(const chainblocks::edn::form::Special &x) const {
     return std::hash<std::string>()(x.message);
   }
 };
 
-template <> struct hash<zachlisp::form::FormWrapper> {
-  size_t operator()(const zachlisp::form::FormWrapper &x) const {
-    return zachlisp::form::hash(x);
+template <> struct hash<chainblocks::edn::form::FormWrapper> {
+  size_t operator()(const chainblocks::edn::form::FormWrapper &x) const {
+    return chainblocks::edn::form::hash(x);
   }
 };
 
 } // namespace std
 
-namespace zachlisp {
+namespace chainblocks {
+namespace edn {
 
-// zachlisp::token
 namespace token {
 
 value::Value parse(std::string value, type::Type type) {
@@ -161,8 +159,9 @@ value::Value parse(std::string value, type::Type type) {
     } else if (value == "false") {
       return false;
     }
+  default:
+    return value;
   }
-  return value;
 }
 
 std::list<Token> tokenize(std::string input) {
@@ -175,7 +174,7 @@ std::list<Token> tokenize(std::string input) {
 
   for (auto it = begin; it != end; ++it) {
     std::smatch match = *it;
-    for (auto i = 1; i < match.size(); ++i) {
+    for (size_t i = 1; i < match.size(); ++i) {
       if (!match[i].str().empty()) {
         std::string value_str = match.str();
         type::Type type = static_cast<type::Type>(i - 1);
@@ -193,7 +192,6 @@ std::list<Token> tokenize(std::string input) {
 
 } // namespace token
 
-// zachlisp::form
 namespace form {
 
 struct FormWrapper {
@@ -283,12 +281,12 @@ bool equals(const FormWrapper &fw1, const FormWrapper &fw2) {
 
 } // namespace form
 
-const std::unordered_map<std::variant<char, std::string>, std::string>
+const phmap::flat_hash_map<std::variant<char, std::string>, std::string>
     SYMBOL_TO_NAME = {{'\'', "quote"},    {'`', "quasiquote"},
                       {'~', "unquote"},   {'@', "deref"},
                       {'^', "with-meta"}, {"~@", "splice-unquote"}};
 
-const std::unordered_map<std::variant<char, std::string>, form::Type>
+const phmap::flat_hash_map<std::variant<char, std::string>, form::Type>
     DELIMITER_TO_TYPE = {
         {'(', form::LIST},
         {'[', form::VECTOR},
@@ -296,7 +294,7 @@ const std::unordered_map<std::variant<char, std::string>, form::Type>
         {"#{", form::SET},
 };
 
-const std::unordered_map<form::Type, char> TYPE_TO_DELIMITER = {
+const phmap::flat_hash_map<form::Type, char> TYPE_TO_DELIMITER = {
     {form::LIST, ')'}, {form::VECTOR, ']'}, {form::MAP, '}'}, {form::SET, '}'}};
 
 std::pair<form::Form, std::list<token::Token>::const_iterator>
@@ -485,6 +483,8 @@ read_form(const std::list<token::Token> *tokens,
     }
     break;
   }
+  default:
+    break;
   }
   return std::make_pair(token, ++it);
 }
@@ -534,6 +534,7 @@ std::list<form::Form> read(const std::string input) {
   return forms;
 }
 
-} // namespace zachlisp
+} // namespace edn
+} // namespace chainblocks
 
 #endif

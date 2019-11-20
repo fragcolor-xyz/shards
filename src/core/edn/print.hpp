@@ -1,8 +1,15 @@
-#pragma once
+/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
+/* Copyright © 2019 Giovanni Petrantoni */
+
+// Derived from https://github.com/oakes/ZachLisp
+
+#ifndef CB_LSP_PRINT_HPP
+#define CB_LSP_PRINT_HPP
 
 #include "read.hpp"
 
-namespace zachlisp {
+namespace chainblocks {
+namespace edn {
 
 std::string escape_str(std::string s) {
   return std::regex_replace(s, std::regex("\""), "\\\"");
@@ -98,4 +105,7 @@ std::string print(const std::list<form::Form> forms) {
   return s;
 }
 
-} // namespace zachlisp
+} // namespace edn
+} // namespace chainblocks
+
+#endif

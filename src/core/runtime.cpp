@@ -9,8 +9,6 @@
 #include <csignal>
 #include <cstdarg>
 #include <string.h>
-#include <unordered_map>
-#include <unordered_set>
 
 #ifdef USE_RPMALLOC
 void *operator new(std::size_t s) {
