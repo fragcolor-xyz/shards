@@ -1063,6 +1063,8 @@ void error_handler(int err_sig) {
   switch (err_sig) {
   case SIGINT:
   case SIGTERM:
+    LOG(INFO) << "Exiting due to INT/TERM signal";
+    std::exit(0);
     break;
   case SIGFPE:
     LOG(ERROR) << "Fatal SIGFPE";

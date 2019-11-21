@@ -540,12 +540,16 @@ struct CBCore {
   CBRegisterObjectType registerObjectType;
   // Adds a custom enumeration type to the runtime database
   CBRegisterEnumType registerEnumType;
+  
   // Adds a custom call to call every chainblocks sleep/yield internally
+  // These call will run on a single thread, usually the main, but they are safe
+  // due to the fact it runs after all Nodes ticked once
   CBRegisterRunLoopCallback registerRunLoopCallback;
-  // Adds a custom call to be called on final application exit
-  CBRegisterExitCallback registerExitCallback;
   // Removes a previously added run loop callback
   CBUnregisterRunLoopCallback unregisterRunLoopCallback;
+  
+  // Adds a custom call to be called on final application exit
+  CBRegisterExitCallback registerExitCallback;
   // Removes a previously added exit callback
   CBUnregisterExitCallback unregisterExitCallback;
   
@@ -604,6 +608,6 @@ extern "C" {
 #else
 #define CB_DEBUG_MODE 0
 #endif
-#define cb_debug_only(__CODE__) if(CB_DEBUG_MODE) __CODE__;
+#define cb_debug_only(__CODE__) if(CB_DEBUG_MODE) { __CODE__; }
 
 #endif

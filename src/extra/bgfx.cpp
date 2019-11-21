@@ -5,6 +5,7 @@
 #include "./imgui.hpp"
 #include "SDL.h"
 #include "SDL_syswm.h"
+#include <cstdlib>
 
 using namespace chainblocks;
 
@@ -205,6 +206,14 @@ struct MainWindow : public BaseWindow {
       _imguiCtx = findVariable(context, "ImGui.Context");
 
       _initDone = true;
+    }
+
+    // check events, figure if we want to quit!
+    for (auto &evnt : sdlEvents) {
+      if (evnt.type == SDL_QUIT) {
+        LOG(INFO) << "SDL quit event!";
+        std::exit(0);
+      }
     }
 
     // Set them always as they might override each other during the chain
