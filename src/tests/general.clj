@@ -569,6 +569,11 @@
   (Is (# "s2"))
   (Assert.Is true true)
 
+  (Time.Now)
+  (Log)
+  (Time.NowMs)
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
