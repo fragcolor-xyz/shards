@@ -1,6 +1,6 @@
 name: CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   ciLinuxDbg:
@@ -40,7 +40,7 @@ jobs:
     - run: msys2do ./build-win.sh
     - uses: actions/upload-artifact@master
       with:
-        name: cbl
+        name: cbl-win64
         path: build/cbl.exe
 
   ciWindowsRel32:
@@ -56,7 +56,7 @@ jobs:
     - run: msys2do ./build-win32.sh
     - uses: actions/upload-artifact@master
       with:
-        name: cbl
+        name: cbl-win32
         path: build/cbl.exe
 
   ciMacDbg:
