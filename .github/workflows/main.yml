@@ -38,6 +38,10 @@ jobs:
         msystem: MINGW64
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: cbl
+        path: build/cbl.exe
 
   ciWindowsRel32:
     runs-on: windows-latest
@@ -50,6 +54,10 @@ jobs:
         msystem: MINGW32
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win32.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: cbl
+        path: build/cbl.exe
 
   ciMacDbg:
     runs-on: macos-latest
