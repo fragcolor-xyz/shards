@@ -6,11 +6,40 @@
 
 // remember this has to go before Windows.h on windows
 #include <boost/asio.hpp>
+#include <boost/lockfree/queue.hpp>
 #include <iostream>
 #include <thread>
 
 namespace chainblocks {
 namespace Asio {
+template <typename T> class IOPool {
+private:
+  boost::lockfree::queue<T *> _empty_queue{16};
+
+public:
+  ~IOPool() {
+    // drain and cleanup queues
+    while (!_empty_queue.empty()) {
+      T *msg;
+      if (_empty_queue.pop(msg)) {
+        delete msg;
+      }
+    }
+  }
+
+  T *borrow() {
+    T *o;
+    if (!_empty_queue.empty()) {
+      _empty_queue.pop(o);
+    } else {
+      o = new T();
+    }
+    return o;
+  }
+
+  void forfeit(T *o) { _empty_queue.push(o); }
+};
+
 class IOContext {
 private:
   boost::asio::io_context _io_context;
@@ -32,10 +61,11 @@ public:
 
   ~IOContext() {
     // defer all in the context or we will crash!
-    _io_context.post([this]() {
+    boost::asio::post(_io_context, [this]() {
       // allow end/thread exit
       _io_context.stop();
     });
+
     // wait thread exit
     _io_thread.join();
   }
