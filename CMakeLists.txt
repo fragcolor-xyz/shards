@@ -156,6 +156,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
 )
 
 #### Header paths for tidy
@@ -370,6 +371,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CB_EXTRAS}
 )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")

@@ -57,6 +57,7 @@ extern void registerJsonBlocks();
 extern void registerNetworkBlocks();
 extern void registerStructBlocks();
 extern void registerTimeBlocks();
+extern void registerOSBlocks();
 
 namespace Math {
 namespace LinAlg {
@@ -91,6 +92,7 @@ void registerCoreBlocks() {
   registerNetworkBlocks();
   registerStructBlocks();
   registerTimeBlocks();
+  registerOSBlocks();
 
   // also enums
   SharedTypes::initEnums();
