@@ -10,6 +10,7 @@
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
 #include <algorithm>
+#include <boost/process/environment.hpp>
 #include <filesystem>
 #include <set>
 
@@ -1127,6 +1128,14 @@ BUILTIN("import") {
     return mal::falseValue();
   }
   return mal::trueValue();
+}
+
+BUILTIN("getenv") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  auto envs = boost::this_process::environment();
+  auto env_value = envs[value->value()].to_string();
+  return mal::string(env_value);
 }
 
 BUILTIN_ISA("Var?", malCBVar);
