@@ -436,7 +436,7 @@ typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
 typedef struct CBTypeInfo(__cdecl *CBInferTypesProc)(struct CBlock *,
 						     struct CBTypeInfo inputType,
-						     CBExposedTypesInfo consumableVariables);
+						     const CBExposedTypesInfo consumableVariables);
 
 // The core of the block processing, avoid syscalls here
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
@@ -517,6 +517,8 @@ typedef void (__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void (__cdecl *CBDestroyVar)(struct CBVar *var);
 
+typedef void (__cdecl *CBFreeArray)(void* stbarray);
+
 typedef struct CBValidationResult (__cdecl *CBValidateChain)(struct CBChain *chain,
 							     CBValidationCallback callback,
 							     void *userData,
@@ -569,6 +571,7 @@ struct CBCore {
   // Utility to deal with CBVars
   CBCloneVar cloneVar;
   CBDestroyVar destroyVar;
+  CBFreeArray freeArray;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

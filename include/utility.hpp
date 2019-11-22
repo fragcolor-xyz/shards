@@ -188,7 +188,7 @@ public:
   ~TBlocksVar() {
     destroy();
     CB_CORE::destroyVar(_blocks);
-    stbds_arrfree(_chainValidation.exposedInfo);
+    CB_CORE::arrayFree(_chainValidation.exposedInfo);
   }
 
   void reset() { cleanup(); }
@@ -240,6 +240,8 @@ public:
   CBVar activate(CBContext *context, const CBVar &input) {
     return CB_CORE::runBlocks(_blocksArray, context, input);
   }
+
+  operator bool() const { return stbds_arrlen(_blocksArray) > 0; }
 };
 }; // namespace chainblocks
 

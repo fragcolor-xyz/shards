@@ -151,7 +151,7 @@ template <class T> struct BlockWrapper {
     // inferTypes
     if constexpr (has_inferTypes<T>::value) {
       result->inferTypes = static_cast<CBInferTypesProc>(
-          [](CBlock *b, CBTypeInfo it, CBExposedTypesInfo ci) {
+          [](CBlock *b, CBTypeInfo it, const CBExposedTypesInfo ci) {
             return reinterpret_cast<BlockWrapper<T> *>(b)->block.inferTypes(it,
                                                                             ci);
           });

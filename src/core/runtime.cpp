@@ -544,6 +544,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 
   result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
+  result.freeArray = [](void *arr) { stbds_arrfree(arr); };
+
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBTypeInfo inputType,
                             CBExposedTypesInfo consumableVariables) {
@@ -909,7 +911,6 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   for (auto blk : chain) {
-
     if (strcmp(blk->name(blk), "Input") == 0 ||
         strcmp(blk->name(blk), "And") == 0 ||
         strcmp(blk->name(blk), "Or") == 0) {

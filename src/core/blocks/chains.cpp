@@ -477,7 +477,7 @@ struct ChainFileWatcher {
                         << errorTxt;
                   }
                 },
-                nullptr, inputTypeInfo, consumables._seq);
+                nullptr, inputTypeInfo, consumables());
             stbds_arrfree(chainValidation.exposedInfo);
 
             ChainLoadResult result = {false, "", chain, env};

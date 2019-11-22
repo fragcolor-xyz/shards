@@ -184,7 +184,7 @@
 #define RUNTIME_BLOCK_inferTypes(_name_)                                       \
   result->inferTypes = static_cast<CBInferTypesProc>(                          \
       [](CBlock *block, CBTypeInfo inputType,                                  \
-         CBExposedTypesInfo consumableVariables) {                             \
+         const CBExposedTypesInfo consumableVariables) {                       \
         return reinterpret_cast<_name_##Runtime *>(block)->core.inferTypes(    \
             inputType, consumableVariables);                                   \
       });

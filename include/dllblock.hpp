@@ -111,6 +111,8 @@ public:
 
   static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
+  static void arrayFree(void* arr) { sCore._core.freeArray(arr); }
+
   static CBValidationResult
   validateChain(CBChain *chain, CBValidationCallback callback, void *userData,
                 CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
