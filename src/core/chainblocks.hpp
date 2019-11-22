@@ -774,11 +774,14 @@ struct InternalCore {
 };
 
 typedef TParamVar<InternalCore> ParamVar;
+
 template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E> {
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
       : TEnumInfo<InternalCore, E>(name, vendorId, enumId) {}
 };
+
+typedef TBlocksVar<InternalCore> BlocksVar;
 
 struct TypeInfo : public CBTypeInfo {
   TypeInfo() { basicType = None; }

@@ -111,21 +111,27 @@ public:
 
   static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
-  static CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
-                                      CBVar input) {
-    return sCore._core.runSubChain(chain, context, input);
+  static CBValidationResult
+  validateChain(CBChain *chain, CBValidationCallback callback, void *userData,
+                CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
+    return sCore._core.validateChain(chain, callback, userData, inputType,
+                                     consumableVariables);
   }
 
-  static CBValidationResult validateChain(CBChain *chain,
-                                          CBValidationCallback callback,
-                                          void *userData,
-                                          CBTypeInfo inputType) {
-    return sCore._core.validateChain(chain, callback, userData, inputType);
+  static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+                                   CBVar input) {
+    return sCore._core.runChain(chain, context, input);
   }
 
-  static void activateBlock(CBlock *block, CBContext *context, CBVar *input,
-                            CBVar *output) {
-    sCore._core.activateBlock(block, context, input, output);
+  static CBValidationResult
+  validateBlocks(CBlocks blocks, CBValidationCallback callback, void *userData,
+                 CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
+    return sCore._core.validateBlocks(blocks, callback, userData, inputType,
+                                      consumableVariables);
+  }
+
+  static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
+    return sCore._core.runBlocks(blocks, context, input);
   }
 
   static void log(const char *msg) { sCore._core.log(msg); }
@@ -135,6 +141,7 @@ private:
 };
 
 typedef TParamVar<Core> ParamVar;
+typedef TBlocksVar<Core> BlocksVar;
 }; // namespace chainblocks
 
 #endif

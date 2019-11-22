@@ -72,7 +72,7 @@ struct NetworkBase : public BlocksUser {
   void destroy() {
     // defer all in the context or we will crash!
     if (_io_context_refc > 0) {
-      _io_context.post([]() {
+      boost::asio::post(_io_context, []() {
         _io_context_refc--;
         if (_io_context_refc == 0) {
           // allow end/thread exit
@@ -88,7 +88,7 @@ struct NetworkBase : public BlocksUser {
     // defer all in the context or we will crash!
     if (_socket.socket) {
       auto socket = _socket.socket;
-      _io_context.post([socket]() {
+      boost::asio::post(_io_context, [socket]() {
         if (socket) {
           socket->close();
           delete socket;
@@ -261,7 +261,7 @@ struct Server : public NetworkBase {
           udp::endpoint(udp::v4(), _port(context).payload.intValue));
 
       // start receiving
-      _io_context.post([this]() { do_receive(); });
+      boost::asio::post(_io_context, [this]() { do_receive(); });
     }
 
     setSocket(context);
@@ -366,7 +366,7 @@ struct Client : public NetworkBase {
       _server = *resolver.resolve(query);
 
       // start receiving
-      _io_context.post([this]() { do_receive(); });
+      boost::asio::post(_io_context, [this]() { do_receive(); });
     }
 
     setSocket(context);

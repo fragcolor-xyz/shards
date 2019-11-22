@@ -160,6 +160,87 @@ public:
 
   ~TEnumInfo() { stbds_arrfree(info.labels); }
 };
+
+template <class CB_CORE> class TBlocksVar {
+private:
+  CBVar _blocks{};
+  CBlocks _blocksArray = nullptr;
+  CBValidationResult _chainValidation{};
+
+  void destroy() {
+    for (auto i = 0; i < stbds_arrlen(_blocksArray); i++) {
+      auto &blk = _blocksArray[i];
+      blk->cleanup(blk);
+      blk->destroy(blk);
+    }
+    stbds_arrfree(_blocksArray);
+    _blocksArray = nullptr;
+  }
+
+  void cleanup() {
+    for (auto i = 0; i < stbds_arrlen(_blocksArray); i++) {
+      auto &blk = _blocksArray[i];
+      blk->cleanup(blk);
+    }
+  }
+
+public:
+  ~TBlocksVar() {
+    destroy();
+    CB_CORE::destroyVar(_blocks);
+    stbds_arrfree(_chainValidation.exposedInfo);
+  }
+
+  void reset() { cleanup(); }
+
+  CBVar &operator=(const CBVar &value) {
+    cbassert(value.valueType == None || value.valueType == Block ||
+             value.valueType == Seq);
+
+    CB_CORE::cloneVar(_blocks, value);
+
+    destroy();
+    if (_blocks.valueType == Block) {
+      stbds_arrpush(_blocksArray, _blocks.payload.blockValue);
+    } else {
+      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+        stbds_arrpush(_blocksArray,
+                      _blocks.payload.seqValue[i].payload.blockValue);
+      }
+    }
+
+    return _blocks;
+  }
+
+  operator CBVar() const { return _blocks; }
+
+  void validate(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    // Free any previous result!
+    stbds_arrfree(_chainValidation.exposedInfo);
+    _chainValidation.exposedInfo = nullptr;
+
+    _chainValidation = CB_CORE::validateBlocks(
+        _blocksArray,
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            auto msg =
+                "Error during inner chain validation: " + std::string(errorTxt);
+            CB_CORE::log(msg.c_str());
+            CB_CORE::throwException("Failed inner chain validation.");
+          } else {
+            auto msg = "Warning during inner chain validation: " +
+                       std::string(errorTxt);
+            CB_CORE::log(msg.c_str());
+          }
+        },
+        this, inputType, consumables);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return CB_CORE::runBlocks(_blocksArray, context, input);
+  }
+};
 }; // namespace chainblocks
 
 #endif

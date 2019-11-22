@@ -517,19 +517,25 @@ typedef void (__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void (__cdecl *CBDestroyVar)(struct CBVar *var);
 
-typedef struct CBRunChainOutput (__cdecl *CBRunSubChain)(struct CBChain *chain,
-							 struct CBContext *context,
-							 struct CBVar input);
-
 typedef struct CBValidationResult (__cdecl *CBValidateChain)(struct CBChain *chain,
 							     CBValidationCallback callback,
 							     void *userData,
-							     struct CBTypeInfo inputType);
+							     struct CBTypeInfo inputType,
+							     CBExposedTypesInfo consumableVariables);
 
-typedef void (__cdecl *CBActivateBlock)(struct CBlock *block,
-					struct CBContext *context,
-					struct CBVar *input,
-					struct CBVar *output);
+typedef struct CBRunChainOutput (__cdecl *CBRunChain)(struct CBChain *chain,
+							 struct CBContext *context,
+							 struct CBVar input);
+
+typedef struct CBValidationResult (__cdecl *CBValidateBlocks)(CBlocks blocks,
+							      CBValidationCallback callback,
+							      void *userData,
+							      struct CBTypeInfo inputType,
+							      CBExposedTypesInfo consumableVariables);
+
+typedef struct CBVar (__cdecl *CBRunBlocks)(CBlocks blocks,
+						       struct CBContext *context,
+						       struct CBVar input);
 
 typedef void (__cdecl *CBLog)(const char *msg);
 
@@ -565,10 +571,11 @@ struct CBCore {
   CBDestroyVar destroyVar;
 
   // Utility to use blocks within blocks
-  CBRunSubChain runSubChain;
   CBValidateChain validateChain;
-  CBActivateBlock activateBlock;
-
+  CBRunChain runChain;
+  CBValidateBlocks validateBlocks;
+  CBRunBlocks runBlocks;
+  
   // Logging
   CBLog log;
 };

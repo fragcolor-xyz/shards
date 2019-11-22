@@ -544,18 +544,29 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 
   result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
-  result.runSubChain = [](CBChain *chain, CBContext *context, CBVar input) {
+  result.validateChain = [](CBChain *chain, CBValidationCallback callback,
+                            void *userData, CBTypeInfo inputType,
+                            CBExposedTypesInfo consumableVariables) {
+    return validateConnections(chain, callback, userData, inputType,
+                               consumableVariables);
+  };
+
+  result.runChain = [](CBChain *chain, CBContext *context, CBVar input) {
     return chainblocks::runSubChain(chain, context, input);
   };
 
-  result.validateChain = [](CBChain *chain, CBValidationCallback callback,
-                            void *userData, CBTypeInfo inputType) {
-    return validateConnections(chain, callback, userData, inputType);
+  result.validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
+                             void *userData, CBTypeInfo inputType,
+                             CBExposedTypesInfo consumableVariables) {
+    return validateConnections(blocks, callback, userData, inputType,
+                               consumableVariables);
   };
 
-  result.activateBlock = [](CBlock *block, CBContext *context, CBVar *input,
-                            CBVar *output) {
-    chainblocks::activateBlock(block, context, *input, *output);
+  result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input) {
+    CBVar output{};
+    chainblocks::activateBlocks(blocks, stbds_arrlen(blocks), context, input,
+                                output);
+    return output;
   };
 
   result.log = [](const char *msg) { LOG(INFO) << msg; };
