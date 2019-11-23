@@ -163,6 +163,7 @@ struct Cond {
     CBTypeInfo previousType{};
     auto idx = 0;
     auto first = true;
+    auto exposing = true;
     for (const auto &action : _actions) {
       auto validation = validateConnections(
           action,
@@ -184,28 +185,39 @@ struct Cond {
         _chainValidation = validation;
         first = false;
       } else {
-        auto curlen = stbds_arrlen(_chainValidation.exposedInfo);
-        auto newlen = stbds_arrlen(validation.exposedInfo);
-        if (curlen != newlen) {
-          LOG(INFO)
-              << "Cond: number of exposed variables between actions mismatch, "
-                 "variables won't be exposed, flow is unpredictable!";
+        if (exposing) {
+          auto curlen = stbds_arrlen(_chainValidation.exposedInfo);
+          auto newlen = stbds_arrlen(validation.exposedInfo);
+          if (curlen != newlen) {
+            LOG(INFO) << "Cond: number of exposed variables between actions "
+                         "mismatch, "
+                         "variables won't be exposed, flow is unpredictable!";
+            exposing = true;
+          }
+
+          if (exposing) {
+            for (auto i = 0; i < curlen; i++) {
+              if (_chainValidation.exposedInfo[i] !=
+                  validation.exposedInfo[i]) {
+                LOG(INFO)
+                    << "Cond: types of exposed variables between actions "
+                       "mismatch, "
+                       "variables won't be exposed, flow is unpredictable!";
+                exposing = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // free the exposed info part
+        stbds_arrfree(validation.exposedInfo);
+
+        if (!exposing) {
           // make sure we expose nothing in this case!
           stbds_arrfree(_chainValidation.exposedInfo);
           _chainValidation.exposedInfo = nullptr;
         }
-        for (auto i = 0; i < curlen; i++) {
-          if (_chainValidation.exposedInfo[i] != validation.exposedInfo[i]) {
-            LOG(INFO)
-                << "Cond: types of exposed variables between actions mismatch, "
-                   "variables won't be exposed, flow is unpredictable!";
-            // make sure we expose nothing in this case!
-            stbds_arrfree(_chainValidation.exposedInfo);
-            _chainValidation.exposedInfo = nullptr;
-          }
-        }
-        // free the exposed info part
-        stbds_arrfree(validation.exposedInfo);
       }
 
       if (idx > 0 && !_passthrough && validation.outputType != previousType)
