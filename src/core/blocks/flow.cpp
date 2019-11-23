@@ -162,6 +162,7 @@ struct Cond {
     // Evaluate all actions, all must return the same type in order to be safe
     CBTypeInfo previousType{};
     auto idx = 0;
+    auto first = true;
     for (const auto &action : _actions) {
       auto validation = validateConnections(
           action,
@@ -178,16 +179,17 @@ struct Cond {
           },
           this, inputType, consumables);
 
-      if (!_chainValidation.exposedInfo) {
+      if (first) {
         // A first valid exposedInfo array is our gold
         _chainValidation = validation;
+        first = false;
       } else {
         auto curlen = stbds_arrlen(_chainValidation.exposedInfo);
         auto newlen = stbds_arrlen(validation.exposedInfo);
         if (curlen != newlen) {
           LOG(INFO)
               << "Cond: number of exposed variables between actions mismatch, "
-                 "variables won't be exposed as flow unpredictable!";
+                 "variables won't be exposed, flow is unpredictable!";
           // make sure we expose nothing in this case!
           stbds_arrfree(_chainValidation.exposedInfo);
           _chainValidation.exposedInfo = nullptr;
@@ -196,7 +198,7 @@ struct Cond {
           if (_chainValidation.exposedInfo[i] != validation.exposedInfo[i]) {
             LOG(INFO)
                 << "Cond: types of exposed variables between actions mismatch, "
-                   "variables won't be exposed as flow unpredictable!";
+                   "variables won't be exposed, flow is unpredictable!";
             // make sure we expose nothing in this case!
             stbds_arrfree(_chainValidation.exposedInfo);
             _chainValidation.exposedInfo = nullptr;
