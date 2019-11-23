@@ -23,6 +23,10 @@
 
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
+CBValidationResult validateConnections(const CBlocks chain,
+                                       CBValidationCallback callback,
+                                       void *userData, CBTypeInfo inputType,
+                                       CBExposedTypesInfo consumables);
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
@@ -765,11 +769,31 @@ struct InternalCore {
 
   static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
+  static void freeArray(void *arr) { stbds_arrfree(arr); }
+
+  static void throwException(const char *msg) {
+    throw chainblocks::CBException(msg);
+  }
+
   static void log(const char *msg) { LOG(INFO) << msg; }
 
   static void registerEnumType(int32_t vendorId, int32_t enumId,
                                CBEnumInfo info) {
     chainblocks::registerEnumType(vendorId, enumId, info);
+  }
+
+  static CBValidationResult
+  validateBlocks(CBlocks blocks, CBValidationCallback callback, void *userData,
+                 CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
+    return validateConnections(blocks, callback, userData, inputType,
+                               consumableVariables);
+  }
+
+  static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
+    CBVar output{};
+    chainblocks::activateBlocks(blocks, stbds_arrlen(blocks), context, input,
+                                output);
+    return output;
   }
 };
 

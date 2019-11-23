@@ -188,7 +188,7 @@ public:
   ~TBlocksVar() {
     destroy();
     CB_CORE::destroyVar(_blocks);
-    CB_CORE::arrayFree(_chainValidation.exposedInfo);
+    CB_CORE::freeArray(_chainValidation.exposedInfo);
   }
 
   void reset() { cleanup(); }
@@ -214,7 +214,8 @@ public:
 
   operator CBVar() const { return _blocks; }
 
-  void validate(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBValidationResult validate(CBTypeInfo inputType,
+                              CBExposedTypesInfo consumables) {
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -235,6 +236,7 @@ public:
           }
         },
         this, inputType, consumables);
+    return _chainValidation;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {

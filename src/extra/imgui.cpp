@@ -1022,6 +1022,82 @@ struct Unindent : public Base {
 
 typedef BlockWrapper<Unindent> UnindentBlock;
 
+struct TreeNode : public Base {
+  std::string _label;
+  bool _defaultOpen = true;
+  BlocksVar _blocks;
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Label", "The label of this node.",
+                        CBTypesInfo(SharedTypes::strInfo)),
+      ParamsInfo::Param("Contents", "The contents of this node.",
+                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)),
+      ParamsInfo::Param("StartOpen",
+                        "If this node should start in the open state.",
+                        CBTypesInfo(SharedTypes::boolInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        const CBExposedTypesInfo consumables) {
+    _blocks.validate(inputType, consumables);
+    return inputType;
+  }
+
+  void cleanup() { _blocks.reset(); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _label = value.payload.stringValue;
+      break;
+    case 1:
+      _blocks = value;
+      break;
+    case 2:
+      _defaultOpen = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    case 1:
+      return _blocks;
+    case 2:
+      return Var(_defaultOpen);
+    default:
+      return CBVar();
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (_defaultOpen) {
+      ::ImGui::SetNextItemOpen(true);
+      _defaultOpen = false;
+    }
+
+    auto visible = ::ImGui::TreeNode(_label.c_str());
+    if (visible) {
+      // run inner blocks
+      _blocks.activate(context, input);
+
+      // pop the node if was visible
+      ::ImGui::TreePop();
+    }
+
+    return Var(visible);
+  }
+};
+
+typedef BlockWrapper<TreeNode> TreeNodeBlock;
+
 // Register
 RUNTIME_BLOCK(ImGui, Style);
 RUNTIME_BLOCK_inferTypes(Style);
@@ -1103,6 +1179,7 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Separator", &SeparatorBlock::create);
   registerBlock("ImGui.Indent", &IndentBlock::create);
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
+  registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

@@ -24,6 +24,12 @@
     (Float4 1 2 3 4)
     (Math.Add (# "x"))
     (ImGui.Text)
+
+    (ImGui.TreeNode
+     "Node1"
+     (-->
+      "Node text..."
+      (ImGui.Text)))
     (ImGui.Button "Push me!" (-->
       (Msg "Action!")
     ))
