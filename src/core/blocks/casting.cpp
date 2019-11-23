@@ -436,6 +436,17 @@ BYTES_TO_BLOCK(Int16, Int, int16_t);
 BYTES_TO_BLOCK(Int32, Int, int32_t);
 BYTES_TO_BLOCK(Int64, Int, int64_t);
 
+struct BytesToStringUnsafe {
+  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const char *str = (const char *)input.payload.bytesValue;
+    return Var(str);
+  }
+};
+
+typedef BlockWrapper<BytesToStringUnsafe> BytesToStringBlock;
+
 template <CBType ET> struct ExpectX {
   static inline TypeInfo outputType = TypeInfo(ET);
   static inline TypesInfo outputInfo = TypesInfo(outputType);
@@ -711,5 +722,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectImage);
   REGISTER_CORE_BLOCK(ExpectBool);
   REGISTER_CORE_BLOCK(ToBytes);
+  registerBlock("BytesToString!!", &BytesToStringBlock::create);
 }
 }; // namespace chainblocks
