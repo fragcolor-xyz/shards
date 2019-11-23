@@ -824,14 +824,6 @@ struct Text : public Base {
   }
 };
 
-struct SameLine : public Base {
-  // TODO add offsets and spacing
-  CBVar activate(CBContext *context, const CBVar &input) {
-    ::ImGui::SameLine();
-    return input;
-  }
-};
-
 struct Button : public Base, public BlocksUser {
   static inline TypeInfo buttonTypeInfo = TypeInfo::Enum('frag', 'ImGB');
   static inline TypesInfo buttonTypesInfo = TypesInfo(buttonTypeInfo);
@@ -972,6 +964,8 @@ struct Button : public Base, public BlocksUser {
 };
 
 struct HexViewer : public Base {
+  // TODO use a variable so edits are possible and easy
+
   static CBTypesInfo inputTypes() {
     return CBTypesInfo((SharedTypes::bytesInfo));
   }
@@ -990,6 +984,43 @@ struct HexViewer : public Base {
     return input;
   }
 };
+
+struct SameLine : public Base {
+  // TODO add offsets and spacing
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::SameLine();
+    return input;
+  }
+};
+
+typedef BlockWrapper<SameLine> SameLineBlock;
+
+struct Separator : public Base {
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::Separator();
+    return input;
+  }
+};
+
+typedef BlockWrapper<Separator> SeparatorBlock;
+
+struct Indent : public Base {
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::Indent();
+    return input;
+  }
+};
+
+typedef BlockWrapper<Indent> IndentBlock;
+
+struct Unindent : public Base {
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::Unindent();
+    return input;
+  }
+};
+
+typedef BlockWrapper<Unindent> UnindentBlock;
 
 // Register
 RUNTIME_BLOCK(ImGui, Style);
@@ -1040,13 +1071,6 @@ RUNTIME_BLOCK_outputTypes(Text);
 RUNTIME_BLOCK_activate(Text);
 RUNTIME_BLOCK_END(Text);
 
-RUNTIME_BLOCK(ImGui, SameLine);
-RUNTIME_BLOCK_consumedVariables(SameLine);
-RUNTIME_BLOCK_inputTypes(SameLine);
-RUNTIME_BLOCK_outputTypes(SameLine);
-RUNTIME_BLOCK_activate(SameLine);
-RUNTIME_BLOCK_END(SameLine);
-
 RUNTIME_BLOCK(ImGui, Button);
 RUNTIME_BLOCK_destroy(Button);
 RUNTIME_BLOCK_cleanup(Button);
@@ -1073,9 +1097,12 @@ void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, Window);
   REGISTER_BLOCK(ImGui, CheckBox);
   REGISTER_BLOCK(ImGui, Text);
-  REGISTER_BLOCK(ImGui, SameLine);
   REGISTER_BLOCK(ImGui, Button);
   REGISTER_BLOCK(ImGui, HexViewer);
+  registerBlock("ImGui.SameLine", &SameLineBlock::create);
+  registerBlock("ImGui.Separator", &SeparatorBlock::create);
+  registerBlock("ImGui.Indent", &IndentBlock::create);
+  registerBlock("ImGui.Unindent", &UnindentBlock::create);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
