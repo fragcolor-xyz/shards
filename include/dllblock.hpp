@@ -25,7 +25,7 @@ At runtime just dlopen the dll, that's it!
 #endif
 
 namespace chainblocks {
-  namespace DLLBLOCK_NAMESPACE {
+namespace DLLBLOCK_NAMESPACE {
 // this must be defined in the external
 extern void registerBlocks();
 
@@ -149,7 +149,7 @@ private:
 
 typedef TParamVar<Core> ParamVar;
 typedef TBlocksVar<Core> BlocksVar;
-  }
+} // namespace DLLBLOCK_NAMESPACE
 }; // namespace chainblocks
 
 #endif

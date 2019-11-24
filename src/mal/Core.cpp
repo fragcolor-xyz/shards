@@ -489,16 +489,11 @@ BUILTIN("slurp")
       filepath = std::filesystem::path(currentPath) / filepath;
     }
 
-    std::ios_base::openmode openmode =
-        std::ios::ate | std::ios::in | std::ios::binary;
-    std::ifstream file(filepath.c_str(), openmode);
+    std::ifstream file(filepath.c_str(), std::ios::binary);
     MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());
 
     String data;
-    data.reserve(file.tellg());
-    file.seekg(0, std::ios::beg);
-    data.append(std::istreambuf_iterator<char>(file.rdbuf()),
-                std::istreambuf_iterator<char>());
+    data.assign(std::istreambuf_iterator<char>(file), {});
 
     return mal::string(data);
 }
