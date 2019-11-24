@@ -62,8 +62,12 @@ extern void registerOSBlocks();
 namespace Math {
 namespace LinAlg {
 extern void registerBlocks();
-};
-}; // namespace Math
+}
+} // namespace Math
+
+namespace Regex {
+extern void registerBlocks();
+}
 
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
@@ -93,6 +97,7 @@ void registerCoreBlocks() {
   registerStructBlocks();
   registerTimeBlocks();
   registerOSBlocks();
+  Regex::registerBlocks();
 
   // also enums
   SharedTypes::initEnums();

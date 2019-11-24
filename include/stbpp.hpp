@@ -141,6 +141,7 @@ public:
   bool empty() const { return _seq == nullptr || stbds_arrlen(_seq) == 0; }
   void resize(size_t nsize) { stbds_arrsetlen(_seq, nsize); }
   void push_back(const T &value) { stbds_arrpush(_seq, value); }
+  void clear() { stbds_arrsetlen(_seq, 0); }
   seq_type &operator()() { return _seq; }
   const seq_type &operator()() const { return _seq; }
   IterableStb clone() { return *this; }
