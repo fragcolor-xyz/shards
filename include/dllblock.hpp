@@ -20,7 +20,12 @@ At runtime just dlopen the dll, that's it!
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
 
+#ifndef DLLBLOCK_NAMESPACE
+#error "You must define a unique DLLBLOCK_NAMESPACE"
+#endif
+
 namespace chainblocks {
+  namespace DLLBLOCK_NAMESPACE {
 // this must be defined in the external
 extern void registerBlocks();
 
@@ -52,9 +57,9 @@ struct CoreLoader {
             (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
 #endif
     }
-
     assert(ifaceproc);
     _core = ifaceproc();
+    _core.log("loading external blocks...");
     registerBlocks();
   }
 };
@@ -144,6 +149,7 @@ private:
 
 typedef TParamVar<Core> ParamVar;
 typedef TBlocksVar<Core> BlocksVar;
+  }
 }; // namespace chainblocks
 
 #endif

@@ -1118,7 +1118,7 @@ BUILTIN("import") {
   }
 #elif defined(__linux__) || defined(__APPLE__)
   LOG(INFO) << "Importing Shared Library: " << lib_name;
-  auto handle = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
+  auto handle = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
   if (!handle) {
     LOG(ERROR) << "dlerror: " << dlerror();
   }
