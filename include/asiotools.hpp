@@ -44,22 +44,29 @@ class IOContext {
 private:
   boost::asio::io_context _io_context;
   std::thread _io_thread;
+  bool _running = true;
 
 public:
   IOContext() {
     _io_thread = std::thread([this] {
-      // Force run to run even without work
-      boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
-          g = boost::asio::make_work_guard(_io_context);
-      try {
-        _io_context.run();
-      } catch (...) {
-        std::cerr << "Boost asio context run failed.\n";
+      while (_running) {
+        // Force run to run even without work
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
+            g = boost::asio::make_work_guard(_io_context);
+        try {
+          _io_context.run();
+        } catch (std::exception &e) {
+          std::cerr << "Boost asio context run failed with exception: "
+                    << e.what() << "\n";
+          ;
+        }
       }
     });
   }
 
   ~IOContext() {
+    _running = false;
+
     // defer all in the context or we will crash!
     boost::asio::post(_io_context, [this]() {
       // allow end/thread exit
