@@ -7,8 +7,8 @@
 #include "chainblocks.h"
 #include <magic_enum.hpp>
 #include <nameof.hpp>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace chainblocks {
 // SFINAE tests
@@ -117,8 +117,8 @@ public:
             }
             assert(valid);
           } else {
-	    std::string msg = "WARNING: Context variable without type info! " +
-                       std::string(_v.payload.stringValue);
+            std::string msg = "WARNING: Context variable without type info! " +
+                              std::string(_v.payload.stringValue);
             CB_CORE::log(msg.c_str());
           }
         });

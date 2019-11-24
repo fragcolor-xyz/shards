@@ -65,6 +65,35 @@ struct Match : public Common {
 
 typedef BlockWrapper<Match> MatchBlock;
 
+struct Search : public Common {
+  IterableSeq _output;
+  std::vector<std::string> _pool;
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo(SharedTypes::strSeqInfo);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    std::smatch match;
+    std::string subject(input.payload.stringValue);
+    _pool.clear();
+    _output.clear();
+    while (std::regex_search(subject, match, _re)) {
+      auto size = match.size();
+      for (size_t i = 0; i < size; i++) {
+        _pool.emplace_back(match[i].str());
+      }
+      subject = match.suffix();
+    }
+    for (auto &s : _pool) {
+      _output.push_back(Var(s));
+    }
+    return Var(_output());
+  }
+};
+
+typedef BlockWrapper<Search> SearchBlock;
+
 struct Replace : public Common {
   std::string _replacement;
   std::string _output;
@@ -109,6 +138,7 @@ typedef BlockWrapper<Replace> ReplaceBlock;
 
 void registerBlocks() {
   registerBlock("Regex.Match", &MatchBlock::create);
+  registerBlock("Regex.Search", &SearchBlock::create);
   registerBlock("Regex.Replace", &ReplaceBlock::create);
 }
 } // namespace Regex
