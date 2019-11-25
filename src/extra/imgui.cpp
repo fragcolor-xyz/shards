@@ -1103,7 +1103,9 @@ struct TreeNode : public Base {
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
 struct InputText : public Variable<CBType::String> {
-  char _buffer[1024];
+  std::string _buffer;
+
+  InputText() { _buffer.resize(64); }
 
   static CBTypesInfo inputTypes() {
     return CBTypesInfo((SharedTypes::noneInfo));
@@ -1113,6 +1115,16 @@ struct InputText : public Variable<CBType::String> {
     return CBTypesInfo((SharedTypes::strInfo));
   }
 
+  static int InputTextCallback(ImGuiInputTextCallbackData *data) {
+    InputText *it = (InputText *)data->UserData;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+      // Resize string callback
+      it->_buffer.resize(data->BufTextLen * 2);
+      data->Buf = (char *)it->_buffer.c_str();
+    }
+    return 0;
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
@@ -1120,7 +1132,8 @@ struct InputText : public Variable<CBType::String> {
       _variable = findVariable(context, _variable_name.c_str());
     }
 
-    ::ImGui::InputText(_label.c_str(), _buffer, 1024);
+    ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
+                       _buffer.capacity() + 1, 0, &InputTextCallback, this);
 
     return Var(_buffer);
   }
