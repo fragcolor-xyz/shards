@@ -11,12 +11,17 @@
 namespace chainblocks {
 namespace edn {
 
-std::string escape_str(std::string s) {
-  //return std::regex_replace(s, std::regex("\""), "\\\"");
+struct document {
+  constexpr auto indents = 2;
+  int indent = 0;
+};
+
+std::string escape_str(std::string &s) {
+  // return std::regex_replace(s, std::regex("\""), "\\\"");
   return s;
 }
 
-std::string pr_str(token::Token token) {
+std::string pr_str(document &doc, token::Token &token) {
   switch (token.value.index()) {
   case token::value::BOOL:
     return std::get<bool>(token.value) ? "true" : "false";
@@ -38,70 +43,72 @@ std::string pr_str(token::Token token) {
   return "";
 }
 
-std::string pr_str(form::Form form);
+std::string pr_str(document &doc, form::Form form);
 
-std::string pr_str(form::FormWrapper formWrapper) {
-  return pr_str(formWrapper.form);
+std::string pr_str(document &doc, form::FormWrapper formWrapper) {
+  return pr_str(doc, formWrapper.form);
 }
 
-std::string pr_str(std::string s) { return s; }
+std::string pr_str(document &doc, std::string &s) { return s; }
 
-template <class T> std::string pr_str(T list) {
+template <class T> std::string pr_str(document &doc, T &list) {
   std::string s;
-  for (auto item : list) {
+  for (auto &item : list) {
     if (s.size() > 0) {
       s += " ";
     }
-    s += pr_str(item);
+    s += pr_str(doc, item);
   }
   return s;
 }
 
-std::string pr_str(form::FormWrapperMap map) {
+std::string pr_str(document &doc, form::FormWrapperMap &map) {
   std::string s;
-  for (auto item : map) {
+  for (auto &item : map) {
     if (s.size() > 0) {
       s += " ";
     }
-    s += pr_str(item.first.form) + " " + pr_str(item.second.form);
+    s += pr_str(doc, item.first.form) + " " + pr_str(doc, item.second.form);
   }
   return s;
 }
 
-std::string pr_str(form::Form form) {
+std::string pr_str(document &doc, form::Form form) {
   switch (form.index()) {
   case form::SPECIAL: {
     auto error = std::get<form::Special>(form);
     return "#" + error.name + " \"" + escape_str(error.message) + "\"";
   }
   case form::TOKEN:
-    return pr_str(std::get<token::Token>(form));
+    return pr_str(doc, std::get<token::Token>(form));
   case form::LIST:
-    return "(" +
+    return "\n(" +
            pr_str<std::list<form::FormWrapper>>(
-               std::get<std::list<form::FormWrapper>>(form)) +
+               doc, std::get<std::list<form::FormWrapper>>(form)) +
            ")";
   case form::VECTOR:
-    return "[" +
+    return "\n[" +
            pr_str<std::vector<form::FormWrapper>>(
-               std::get<std::vector<form::FormWrapper>>(form)) +
+               doc, std::get<std::vector<form::FormWrapper>>(form)) +
            "]";
   case form::MAP:
-    return "{" +
-           pr_str(*std::get<std::shared_ptr<form::FormWrapperMap>>(form)) + "}";
+    return "\n{" +
+           pr_str(doc, *std::get<std::shared_ptr<form::FormWrapperMap>>(form)) +
+           "}";
   case form::SET:
-    return "#{" +
+    return "\n#{" +
            pr_str<form::FormWrapperSet>(
-               *std::get<std::shared_ptr<form::FormWrapperSet>>(form)) +
+               doc, *std::get<std::shared_ptr<form::FormWrapperSet>>(form)) +
            "}";
   }
   return "";
 }
 
-std::string print(const std::list<form::Form> forms) {
+std::string print(const std::list<form::Form> &forms) {
   std::string s;
-  for (auto form : forms) {
-    s += pr_str(form) + "\n";
+  document doc;
+  for (auto &form : forms) {
+    s += pr_str(doc, form) + "\n";
   }
   return s;
 }

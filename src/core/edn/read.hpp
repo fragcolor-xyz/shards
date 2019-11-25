@@ -43,7 +43,7 @@ const std::regex REGEX("([\\s,]+)|"                   // type::WHITESPACE
                        "([\\[\\]{}()\'`~^@])|"        // type::SPECIAL_CHAR
                        "(\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::STRING
                        "(;.*)|"                       // type::COMMENT
-		       "(0[xX][0-9a-fA-F]+)|"         // type::HEX
+                       "(0[xX][0-9a-fA-F]+)|"         // type::HEX
                        "(\\d+\\.?\\d*)|"              // type::NUMBER
                        "([^\\s\\[\\]{}(\'\"`,;)]+)"   // type::SYMBOL
 );

@@ -38,7 +38,7 @@ To achieve that we build a scripting tool that can be both visual and textual at
 * Strong validation and optimization ahead of run-time
 * Extremely easy to debug and dissect
 * Deterministic execution and performance
-* Built on top of **co-routines**, extremely easy to unleash parallelism
+* Built on top of **co-routines**, extremely easy to unleash parallelism and low syscall count
 * Support **visual editing** without spaghetti and spider webs involvement
 * Versatile textual representation (backed by **clojure/lisp** inspired [Mal](https://github.com/kanaka/mal))
 * Fast execution inspired by threaded code interpreters

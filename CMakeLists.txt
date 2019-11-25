@@ -158,6 +158,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/print.hpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
 )
 
 #### Header paths for tidy
