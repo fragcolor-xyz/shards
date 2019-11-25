@@ -12,7 +12,8 @@ namespace chainblocks {
 namespace edn {
 
 std::string escape_str(std::string s) {
-  return std::regex_replace(s, std::regex("\""), "\\\"");
+  //return std::regex_replace(s, std::regex("\""), "\\\"");
+  return s;
 }
 
 std::string pr_str(token::Token token) {
@@ -22,7 +23,7 @@ std::string pr_str(token::Token token) {
   case token::value::CHAR:
     return std::string(1, std::get<char>(token.value));
   case token::value::LONG:
-    return std::to_string(std::get<long>(token.value));
+    return std::to_string(std::get<long long>(token.value));
   case token::value::DOUBLE:
     return std::to_string(std::get<double>(token.value));
   case token::value::STRING: {

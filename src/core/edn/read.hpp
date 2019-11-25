@@ -23,6 +23,7 @@ enum Type {
   SPECIAL_CHAR,
   STRING,
   COMMENT,
+  HEX,
   NUMBER,
   SYMBOL
 };
@@ -31,7 +32,7 @@ enum Type {
 
 namespace value {
 
-using Value = std::variant<bool, char, long, double, std::string>;
+using Value = std::variant<bool, char, long long, double, std::string>;
 
 enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
@@ -42,6 +43,7 @@ const std::regex REGEX("([\\s,]+)|"                   // type::WHITESPACE
                        "([\\[\\]{}()\'`~^@])|"        // type::SPECIAL_CHAR
                        "(\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::STRING
                        "(;.*)|"                       // type::COMMENT
+		       "(0[xX][0-9a-fA-F]+)|"         // type::HEX
                        "(\\d+\\.?\\d*)|"              // type::NUMBER
                        "([^\\s\\[\\]{}(\'\"`,;)]+)"   // type::SYMBOL
 );
@@ -147,9 +149,11 @@ value::Value parse(std::string value, type::Type type) {
   switch (type) {
   case type::SPECIAL_CHAR:
     return value[0];
+  case type::HEX:
+    return std::stoll(value, nullptr, 16);
   case type::NUMBER:
     if (value.find('.') == std::string::npos) {
-      return std::stol(value);
+      return std::stoll(value);
     } else {
       return std::stod(value);
     }
