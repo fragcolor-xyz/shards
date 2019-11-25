@@ -650,26 +650,30 @@ struct Window : public Base, public chainblocks::BlocksUser {
   }
 };
 
-struct CheckBox : public Base {
+template <CBType CT> struct Variable : public Base {
+  static inline TypeInfo varType = TypeInfo(CT);
+
   std::string _label;
-  std::string _variable;
-  CBVar *_downVar = nullptr;
-  ExposedInfo _consumedInfo{};
+  std::string _variable_name;
+  CBVar *_variable = nullptr;
+  ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  void cleanup() { _downVar = nullptr; }
+  void cleanup() { _variable = nullptr; }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    if (_variable.size() > 0) {
+    if (_variable_name.size() > 0) {
       IterableExposedInfo vars(consumables);
-      _exposing = true; // assume we expose a new bool variable
-      // search for a possible existing variable and make sure it's bool
+      _exposing = true; // assume we expose a new variable
+      // search for a possible existing variable and ensure it's the right type
       for (auto &var : vars) {
-        if (strcmp(var.name, _variable.c_str()) == 0) {
-          // we found a variable, make sure it's bool and mark exposing off
+        if (strcmp(var.name, _variable_name.c_str()) == 0) {
+          // we found a variable, make sure it's the right type and mark
+          // exposing off
           _exposing = false;
-          if (var.exposedType.basicType != Bool) {
-            throw CBException("CheckBox: Expected a boolean variable.");
+          if (var.exposedType.basicType != CT) {
+            throw CBException("ImGui - Variable: Existing variable type not "
+                              "matching the input.");
           }
           break;
         }
@@ -679,12 +683,11 @@ struct CheckBox : public Base {
   }
 
   CBExposedTypesInfo consumedVariables() {
-    if (_variable.size() > 0 && !_exposing) {
-      _consumedInfo =
-          ExposedInfo(consumedInfo,
-                      ExposedInfo::Variable(_variable.c_str(),
-                                            "The consumed boolean variable.",
-                                            CBTypeInfo(SharedTypes::boolInfo)));
+    if (_variable_name.size() > 0 && !_exposing) {
+      _expInfo = ExposedInfo(
+          consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
+                                              "The consumed input variable.",
+                                              CBTypeInfo(varType)));
       return CBExposedTypesInfo(consumedInfo);
     } else {
       return nullptr;
@@ -692,12 +695,11 @@ struct CheckBox : public Base {
   }
 
   CBExposedTypesInfo exposedVariables() {
-    if (_variable.size() > 0 && _exposing) {
-      _consumedInfo =
-          ExposedInfo(consumedInfo,
-                      ExposedInfo::Variable(_variable.c_str(),
-                                            "The exposed boolean variable.",
-                                            CBTypeInfo(SharedTypes::boolInfo)));
+    if (_variable_name.size() > 0 && _exposing) {
+      _expInfo = ExposedInfo(
+          consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
+                                              "The exposed input variable.",
+                                              CBTypeInfo(varType)));
       return CBExposedTypesInfo(consumedInfo);
     } else {
       return nullptr;
@@ -707,19 +709,11 @@ struct CheckBox : public Base {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Label", "The label for this widget.",
                         CBTypesInfo(SharedTypes::strOrNoneInfo)),
-      ParamsInfo::Param(
-          "Variable", "The name of the variable that holds the boolean value.",
-          CBTypesInfo(SharedTypes::strOrNoneInfo)));
+      ParamsInfo::Param("Variable",
+                        "The name of the variable that holds the input value.",
+                        CBTypesInfo(SharedTypes::strOrNoneInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
-
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::noneInfo));
-  }
-
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::boolInfo));
-  }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -727,7 +721,7 @@ struct CheckBox : public Base {
       _label = value.payload.stringValue;
       break;
     case 1:
-      _variable = value.payload.stringValue;
+      _variable_name = value.payload.stringValue;
       cleanup();
       break;
     default:
@@ -740,22 +734,32 @@ struct CheckBox : public Base {
     case 0:
       return _label.size() == 0 ? Empty : Var(_label);
     case 1:
-      return _variable.size() == 0 ? Empty : Var(_variable);
+      return _variable_name.size() == 0 ? Empty : Var(_variable_name);
     default:
       return Empty;
     }
+  }
+};
+
+struct CheckBox : public Variable<CBType::Bool> {
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo((SharedTypes::noneInfo));
+  }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo((SharedTypes::boolInfo));
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_downVar && _variable.size() > 0) {
-      _downVar = findVariable(context, _variable.c_str());
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = findVariable(context, _variable_name.c_str());
     }
 
-    if (_downVar) {
-      ::ImGui::Checkbox(_label.c_str(), &_downVar->payload.boolValue);
-      return _downVar->payload.boolValue ? True : False;
+    if (_variable) {
+      ::ImGui::Checkbox(_label.c_str(), &_variable->payload.boolValue);
+      return _variable->payload.boolValue ? True : False;
     } else {
       // HACK kinda... we recycle _exposing since we are not using it in this
       // branch
@@ -1098,6 +1102,45 @@ struct TreeNode : public Base {
 
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
+struct InputText : public Variable<CBType::String> {
+  std::string _buffer;
+
+  InputText() { _buffer.resize(64); }
+
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo((SharedTypes::noneInfo));
+  }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo((SharedTypes::strInfo));
+  }
+
+  static int InputTextCallback(ImGuiInputTextCallbackData *data) {
+    InputText *it = (InputText *)data->UserData;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+      // Resize string callback
+      it->_buffer.resize(data->BufTextLen * 2);
+      data->Buf = (char *)it->_buffer.c_str();
+    }
+    return 0;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = findVariable(context, _variable_name.c_str());
+    }
+
+    ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
+                       _buffer.capacity() + 1, 0, &InputTextCallback, this);
+
+    return Var(_buffer);
+  }
+};
+
+typedef BlockWrapper<InputText> InputTextBlock;
+
 // Register
 RUNTIME_BLOCK(ImGui, Style);
 RUNTIME_BLOCK_inferTypes(Style);
@@ -1180,6 +1223,7 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Indent", &IndentBlock::create);
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
   registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
+  registerBlock("ImGui.InputText", &InputTextBlock::create);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
