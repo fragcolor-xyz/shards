@@ -25,6 +25,9 @@
     (Math.Add (# "x"))
     (ImGui.Text)
 
+    (ImGui.InputText "Say something" "text1")
+    (ImGui.Text "<-- you said!")
+
     (ImGui.TreeNode
      "Node1"
      (-->
