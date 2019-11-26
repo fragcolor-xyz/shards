@@ -659,7 +659,7 @@ template <CBType CT> struct Variable : public Base {
   ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  void cleanup() { _variable = nullptr; }
+  virtual void cleanup() { _variable = nullptr; }
 
   CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     if (_variable_name.size() > 0) {
@@ -674,6 +674,11 @@ template <CBType CT> struct Variable : public Base {
           if (var.exposedType.basicType != CT) {
             throw CBException("ImGui - Variable: Existing variable type not "
                               "matching the input.");
+          }
+          // also make sure it's mutable!
+          if (!var.isMutable) {
+            throw CBException(
+                "ImGui - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -1103,9 +1108,15 @@ struct TreeNode : public Base {
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
 struct InputText : public Variable<CBType::String> {
+  // fallback, used only when no variable name is set
   std::string _buffer;
 
-  InputText() { _buffer.resize(64); }
+  void cleanup() override {
+    if (_variable && _exposing) {
+      destroyVar(*_variable);
+    }
+    Variable<CBType::String>::cleanup();
+  }
 
   static CBTypesInfo inputTypes() {
     return CBTypesInfo((SharedTypes::noneInfo));
@@ -1119,8 +1130,16 @@ struct InputText : public Variable<CBType::String> {
     InputText *it = (InputText *)data->UserData;
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
       // Resize string callback
-      it->_buffer.resize(data->BufTextLen * 2);
-      data->Buf = (char *)it->_buffer.c_str();
+      if (it->_variable) {
+        delete[] it->_variable->payload.stringValue;
+        auto capacity = reinterpret_cast<size_t *>(it->_variable->reserved);
+        *capacity = data->BufTextLen * 2;
+        it->_variable->payload.stringValue = new char[*capacity];
+        data->Buf = (char *)it->_variable->payload.stringValue;
+      } else {
+        it->_buffer.resize(data->BufTextLen * 2);
+        data->Buf = (char *)it->_buffer.c_str();
+      }
     }
     return 0;
   }
@@ -1130,12 +1149,27 @@ struct InputText : public Variable<CBType::String> {
 
     if (!_variable && _variable_name.size() > 0) {
       _variable = findVariable(context, _variable_name.c_str());
+      if (_exposing) {
+        // we own the variable so let's run some init
+        _variable->valueType = String;
+        _variable->payload.stringValue = new char[32];
+        auto capacity = reinterpret_cast<size_t *>(_variable->reserved);
+        *capacity = 32;
+        memset((void *)_variable->payload.stringValue, 0x0, 32);
+      }
     }
 
-    ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
-                       _buffer.capacity() + 1, 0, &InputTextCallback, this);
-
-    return Var(_buffer);
+    if (_variable) {
+      ::ImGui::InputText(_label.c_str(), (char *)_variable->payload.stringValue,
+                         *reinterpret_cast<size_t *>(_variable->reserved),
+                         ImGuiInputTextFlags_CallbackResize, &InputTextCallback,
+                         this);
+      return *_variable;
+    } else {
+      ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
+                         _buffer.capacity() + 1, 0, &InputTextCallback, this);
+      return Var(_buffer);
+    }
   }
 };
 

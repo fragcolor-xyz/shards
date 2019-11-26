@@ -492,13 +492,13 @@ struct ChainFileWatcher {
             }
           }
 
-          // sleep some
-          chainblocks::sleep(2.0);
+          // sleep some, don't run callbacks here tho!
+          chainblocks::sleep(2.0, false);
         } catch (std::exception &e) {
           ChainLoadResult result = {true, e.what(), nullptr, nullptr};
           results.push(result);
         } catch (...) {
-          ChainLoadResult result = {true, "general error", nullptr, nullptr};
+          ChainLoadResult result = {true, "unknown error", nullptr, nullptr};
           results.push(result);
         }
       }

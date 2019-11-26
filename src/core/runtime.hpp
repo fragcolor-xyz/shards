@@ -755,7 +755,7 @@ inline bool hasEnded(CBChain *chain) {
 
 inline bool isCanceled(CBContext *context) { return context->aborted; }
 
-inline void sleep(double seconds = -1.0) {
+inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // negative = no sleep, just run callbacks
   if (seconds >= 0) {
 #ifdef _WIN32
@@ -776,10 +776,12 @@ inline void sleep(double seconds = -1.0) {
 #endif
   }
 
-  // Run loop callbacks after sleeping
-  for (auto &cbinfo : Globals::RunLoopHooks) {
-    if (cbinfo.second) {
-      cbinfo.second();
+  if (runCallbacks) {
+    // Run loop callbacks after sleeping
+    for (auto &cbinfo : Globals::RunLoopHooks) {
+      if (cbinfo.second) {
+        cbinfo.second();
+      }
     }
   }
 }
