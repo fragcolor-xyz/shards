@@ -27,8 +27,10 @@ private:
 
 class Environment;
 
-class Value : std::enable_shared_from_this<Value> {
-  std::shared_ptr<Value> eval() { return shared_from_this(); }
+class Value {
+public:
+  Value(token::Token token, const std::shared_ptr<Environment> &env)
+      : _token(token), _owner(env) {}
 
 private:
   token::Token _token;
@@ -109,8 +111,7 @@ public:
       } else {
         switch (idx) {
         case form::TOKEN: {
-	  
-          break;
+          return std::make_shared<Value>(std::get<token::Token>(ast), env);
         }
         }
       }
@@ -130,7 +131,7 @@ public:
 private:
   std::string _directory;
   std::shared_ptr<Environment> _rootEnv;
-}; // namespace eval
+};
 } // namespace eval
 } // namespace edn
 } // namespace chainblocks
