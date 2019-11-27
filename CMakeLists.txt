@@ -160,6 +160,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/print.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
 )
 
 #### Header paths for tidy
