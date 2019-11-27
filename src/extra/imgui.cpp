@@ -985,7 +985,7 @@ struct HexViewer : public Base {
 
   ImGuiExtra::MemoryEditor _editor{};
 
-  HexViewer() { _editor.ReadOnly = true; }
+  // HexViewer() { _editor.ReadOnly = true; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
