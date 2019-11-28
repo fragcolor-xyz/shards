@@ -28,7 +28,7 @@ std::string pr_str(document &doc, token::Token &token) {
   case token::value::CHAR:
     return std::string(1, std::get<char>(token.value));
   case token::value::LONG:
-    return std::to_string(std::get<long long>(token.value));
+    return std::to_string(std::get<int64_t>(token.value));
   case token::value::DOUBLE:
     return std::to_string(std::get<double>(token.value));
   case token::value::STRING: {

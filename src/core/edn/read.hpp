@@ -3,6 +3,7 @@
 #ifndef CB_LSP_READ_HPP
 #define CB_LSP_READ_HPP
 
+#include <cstdint>
 #include <list>
 #include <parallel_hashmap/phmap.h>
 #include <regex>
@@ -32,7 +33,7 @@ enum Type {
 
 namespace value {
 
-using Value = std::variant<bool, char, long long, double, std::string>;
+using Value = std::variant<bool, char, int64_t, double, std::string>;
 
 enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
