@@ -110,13 +110,25 @@ private:
   form::FormWrapper _body;
 };
 
-using Value =
-    std::variant<std::shared_ptr<CBVarValue>, std::shared_ptr<Lambda>>;
+class Node : public ValueBase {
+public:
+  Node(const token::Token &token, const std::shared_ptr<Environment> &env)
+      : ValueBase(token, env) {
+    _node = std::make_shared<CBNode>();
+  }
+
+private:
+  std::shared_ptr<CBNode> _node;
+};
+
+using Value = std::variant<CBVarValue, Lambda, Node>;
 
 class Environment {
 public:
-  void set(std::string name, Value value) { _contents[name] = value; }
-
+  void set(std::string name, Value value) {
+    _contents.insert(std::pair<std::string, Value>(name, value));
+  }
+  
 private:
   phmap::flat_hash_map<std::string, Value> _contents;
   std::weak_ptr<Environment> _parent;
@@ -205,7 +217,35 @@ public:
                 args.push_back(name);
               }
 
-              return std::make_shared<Lambda>(args, fbody, token, env);
+              return Lambda(args, fbody, token, env);
+            } else if (value == "if") {
+              if (list.size() < 2 || list.size() > 3) {
+                throw EvalException("if expects between 1 or 2 arguments",
+                                    token);
+              }
+
+              auto &pred = list.front().form;
+              auto res = eval(pred, env);
+              list.pop_front();
+              if (res.index() == 0) {
+                // is cbvarvalue
+                auto &var = std::get<CBVarValue>(res);
+                if (var.value().valueType == Bool &&
+                    var.value().payload.boolValue) {
+                  // is true
+                  ast = list.front().form;
+                  continue; // tailcall
+                }
+              }
+
+              if (list.size() == 2) {
+                ast = list.back().form;
+                continue; // tailcall
+              }
+
+              return NilValue(token, env);
+            } else if (value == "Node") {
+              return Node(token, env);
             }
           }
           break;
@@ -218,26 +258,21 @@ public:
           if (token.type == token::type::SYMBOL) {
             if (token.value.index() == token::value::STRING) {
               if (std::get<std::string>(token.value) == "nil") {
-                return std::make_shared<NilValue>(token, env);
+                return NilValue(token, env);
               }
             } else if (token.value.index() == token::value::BOOL) {
-              return std::make_shared<BoolValue>(std::get<bool>(token.value),
-                                                 token, env);
+              return BoolValue(std::get<bool>(token.value), token, env);
             }
           } else if (token.type == token::type::NUMBER) {
             if (token.value.index() == token::value::LONG) {
-              return std::make_shared<IntValue>(std::get<int64_t>(token.value),
-                                                token, env);
+              return IntValue(std::get<int64_t>(token.value), token, env);
             } else {
-              return std::make_shared<FloatValue>(std::get<double>(token.value),
-                                                  token, env);
+              return FloatValue(std::get<double>(token.value), token, env);
             }
           } else if (token.type == token::type::HEX) {
-            return std::make_shared<IntValue>(std::get<int64_t>(token.value),
-                                              token, env);
+            return IntValue(std::get<int64_t>(token.value), token, env);
           } else if (token.type == token::type::STRING) {
-            return std::make_shared<StringValue>(
-                std::get<std::string>(token.value), token, env);
+            return StringValue(std::get<std::string>(token.value), token, env);
           }
         }
         }
