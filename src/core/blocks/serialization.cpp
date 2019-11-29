@@ -9,18 +9,21 @@ struct FileBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("File", "The file to read/write from.",
-                                   CBTypesInfo(SharedTypes::strInfo)));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("File", "The file to read/write from.",
+                        CBTypesInfo(SharedTypes::ctxOrStrOrNoneInfo)));
 
-  std::string _fileName;
+  ParamVar _filename{};
+
+  virtual void cleanup() { _filename.reset(); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar inValue) {
+  void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _fileName = inValue.payload.stringValue;
+      _filename = value;
+      cleanup();
       break;
     default:
       break;
@@ -31,7 +34,7 @@ struct FileBase {
     auto res = CBVar();
     switch (index) {
     case 0:
-      return Var(_fileName);
+      return _filename;
     default:
       break;
     }
@@ -42,21 +45,12 @@ struct FileBase {
 struct WriteFile : public FileBase {
   std::ofstream _fileStream;
 
-  void cleanup() {
+  void cleanup() override {
     if (_fileStream.good()) {
       _fileStream.flush();
+      _fileStream = {};
     }
-  }
-
-  void setParam(int index, CBVar inValue) {
-    switch (index) {
-    case 0:
-      FileBase::setParam(index, inValue);
-      _fileStream = std::ofstream(_fileName, std::ios::app | std::ios::binary);
-      break;
-    default:
-      break;
-    }
+    FileBase::cleanup();
   }
 
   struct Writer {
@@ -68,6 +62,16 @@ struct WriteFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_fileStream.is_open()) {
+      auto &fvar = _filename(context);
+      if (fvar.valueType == String) {
+        auto filename = fvar.payload.stringValue;
+        _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
+      } else {
+        return input;
+      }
+    }
+
     Writer s(_fileStream);
     Serialization::serialize(input, s);
     return input;
@@ -91,18 +95,10 @@ struct ReadFile : public FileBase {
   std::ifstream _fileStream;
   CBVar _output{};
 
-  void setParam(int index, CBVar inValue) {
-    switch (index) {
-    case 0:
-      FileBase::setParam(index, inValue);
-      _fileStream = std::ifstream(_fileName, std::ios::binary);
-      break;
-    default:
-      break;
-    }
+  void cleanup() override {
+    Serialization::varFree(_output);
+    FileBase::cleanup();
   }
-
-  void cleanup() { Serialization::varFree(_output); }
 
   struct Reader {
     std::ifstream &_fileStream;
@@ -113,9 +109,20 @@ struct ReadFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_fileStream.is_open()) {
+      auto &fvar = _filename(context);
+      if (fvar.valueType == String) {
+        auto filename = fvar.payload.stringValue;
+        _fileStream = std::ifstream(filename, std::ios::binary);
+      } else {
+        return Empty;
+      }
+    }
+
     if (_fileStream.eof()) {
       return Empty;
     }
+
     Reader r(_fileStream);
     Serialization::deserialize(r, _output);
     return _output;

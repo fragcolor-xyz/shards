@@ -50,6 +50,9 @@ struct SharedTypes {
       false, CBTypeInfo((blocksInfo)), CBTypeInfo(noneInfo));
   static inline TypesInfo ctxOrNoneInfo = TypesInfo::FromMany(
       false, CBTypeInfo((ctxVarInfo)), CBTypeInfo(noneInfo));
+  static inline TypesInfo ctxOrStrOrNoneInfo =
+      TypesInfo::FromMany(false, CBTypeInfo((ctxVarInfo)), CBTypeInfo(strInfo),
+                          CBTypeInfo(noneInfo));
   static inline TypesInfo blockSeqsOrNoneInfo =
       TypesInfo::FromMany(false, CBTypeInfo((SharedTypes::blocksSeqInfo)),
                           CBTypeInfo(SharedTypes::noneInfo));

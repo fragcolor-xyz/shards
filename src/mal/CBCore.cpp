@@ -756,6 +756,8 @@ malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
 }
 
 struct Observer : public chainblocks::RuntimeObserver {
+  virtual ~Observer() {}
+
   malEnvPtr _env;
 
   void registerBlock(const char *fullName,

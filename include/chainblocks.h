@@ -268,6 +268,8 @@ struct CBTypeInfo {
       CBStrings tableKeys; // todo, clarify/fix
       CBTypesInfo tableTypes;
     };
+
+    CBTypesInfo contextVarTypes;
   };
 };
 
