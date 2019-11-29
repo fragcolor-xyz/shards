@@ -1175,6 +1175,8 @@ struct InputText : public Variable<CBType::String> {
 
 typedef BlockWrapper<InputText> InputTextBlock;
 
+struct Image : public Base {};
+
 // Register
 RUNTIME_BLOCK(ImGui, Style);
 RUNTIME_BLOCK_inferTypes(Style);

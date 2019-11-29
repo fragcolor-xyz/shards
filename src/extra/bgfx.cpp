@@ -405,6 +405,74 @@ struct Draw : public BaseConsumer {
   }
 };
 
+struct Texture2D : public BaseConsumer {
+  bgfx::TextureHandle _texture = BGFX_INVALID_HANDLE;
+  uint16_t _width = 0;
+  uint16_t _height = 0;
+  uint8_t _channels = 0;
+
+  void cleanup() {
+    if (_texture.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_texture);
+      _texture = BGFX_INVALID_HANDLE;
+    }
+    _width = 0;
+    _height = 0;
+    _channels = 0;
+  }
+
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo((SharedTypes::imageInfo));
+  }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo((SharedTypes::anyInfo));
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // Upload a completely new image if sizes changed, also first activation!
+    if (input.payload.imageValue.width != _width ||
+        input.payload.imageValue.height != _height ||
+        input.payload.imageValue.channels != _channels) {
+      if (_texture.idx != bgfx::kInvalidHandle) {
+        bgfx::destroy(_texture);
+      }
+
+      _width = input.payload.imageValue.width;
+      _height = input.payload.imageValue.height;
+      _channels = input.payload.imageValue.channels;
+
+      switch (_channels) {
+      case 1:
+        _texture = bgfx::createTexture2D(_width, _height, false, 1,
+                                         bgfx::TextureFormat::R8);
+        break;
+      case 2:
+        _texture = bgfx::createTexture2D(_width, _height, false, 1,
+                                         bgfx::TextureFormat::RG8);
+        break;
+      case 3:
+        _texture = bgfx::createTexture2D(_width, _height, false, 1,
+                                         bgfx::TextureFormat::RGB8);
+        break;
+      case 4:
+        _texture = bgfx::createTexture2D(_width, _height, false, 1,
+                                         bgfx::TextureFormat::RGBA8);
+        break;
+      default:
+        cbassert(false);
+        break;
+      }
+    }
+
+    auto mem =
+        bgfx::copy(input.payload.imageValue.data,
+                   uint32_t(_width) * uint32_t(_height) * uint32_t(_channels));
+    bgfx::updateTexture2D(_texture, 0, 0, 0, 0, _width, _height, mem);
+    return input;
+  }
+};
+
 // Register
 RUNTIME_BLOCK(BGFX, MainWindow);
 RUNTIME_BLOCK_cleanup(MainWindow);
