@@ -335,13 +335,7 @@ struct CBFlow {
 // ### What about exposed/consumedVariables, parameters and input/outputTypes:
 // * Same for them, they are just read only basically
 
-// ### Type safety of outputs
-// * A block should return a StopChain variable and set error if there is any
-// error and it cannot provide the expected output type. None doesn't mean safe,
-// stop/restart is safe
-
-ALIGNED struct CBVarPayload // 16 aligned due to vectors
-{
+ALIGNED struct CBVarPayload {
   union {
     enum CBChainState chainState;
 
@@ -400,13 +394,15 @@ ALIGNED struct CBVarPayload // 16 aligned due to vectors
 ALIGNED struct CBVar {
   struct CBVarPayload payload;
 
-  // Used sometimes by serialization routines, to keep track of actual storage capacity
-  uint64_t capacity;
-  
+  union {
+    int64_t _reserved;
+  };
+
   enum CBType valueType;
   
-  // padding
-  uint8_t _padding[7];
+  // Used by serialization/clone routines to keep track of actual storage capacity
+  // 48 bits should be plenty for such sizes
+  uint64_t capacity:48;
 };
 
 ALIGNED struct CBNamedVar {
