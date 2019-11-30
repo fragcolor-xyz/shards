@@ -196,12 +196,18 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 
 #define ALIGNED
 
+#ifdef _WIN32
+#define GCCSTRUCT __attribute__((gcc_struct))
+#else
+#define GCCSTRUCT
+#endif
+
 #ifdef NDEBUG
 #define ALWAYS_INLINE __attribute__((always_inline))
 #else
 #define ALWAYS_INLINE
 #endif
-#else
+#else // TODO
 typedef int64_t CBInt2[2];
 typedef int32_t CBInt3[3];
 typedef int32_t CBInt4[4];
@@ -213,6 +219,8 @@ typedef float CBFloat3[3];
 typedef float CBFloat4[4];
 
 #define ALIGNED __declspec(align(16))
+
+#define GCCSTRUCT
 
 #define ALWAYS_INLINE
 #endif
@@ -391,7 +399,7 @@ ALIGNED struct CBVarPayload {
   };
 };
 
-struct CBVar {
+struct GCCSTRUCT CBVar {
   struct CBVarPayload payload;
 
   union {
