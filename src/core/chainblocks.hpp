@@ -100,8 +100,6 @@ static void _destroyVarSlow(CBVar &var) {
   default:
     break;
   };
-
-  memset((void *)&var, 0x0, sizeof(CBVar));
 }
 
 static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
@@ -186,7 +184,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case Table:
   case Seq:
     _destroyVarSlow(var);
-    return;
+    break;
   case CBType::String:
   case ContextVar: {
     delete[] var.payload.stringValue;
