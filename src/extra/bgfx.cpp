@@ -44,7 +44,7 @@ struct BaseWindow : public Base {
   void *_sysWnd = nullptr;
 #endif
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
+  const static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
                         CBTypesInfo(SharedTypes::strInfo)),
       ParamsInfo::Param("Width", "The width of the window to create",
@@ -101,7 +101,7 @@ struct BaseWindow : public Base {
 };
 
 struct MainWindow : public BaseWindow {
-  static inline ExposedInfo exposedInfo = ExposedInfo(
+  const static inline ExposedInfo exposedInfo = ExposedInfo(
       ExposedInfo::Variable("BGFX.CurrentWindow", "The exposed SDL window.",
                             CBTypeInfo(windowInfo)),
       ExposedInfo::Variable("BGFX.Context", "The BGFX Context.",
@@ -390,13 +390,9 @@ struct Window : public BaseWindow {
 };
 
 struct Draw : public BaseConsumer {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     imguiEndFrame();
@@ -406,6 +402,12 @@ struct Draw : public BaseConsumer {
 };
 
 struct Texture2D : public BaseConsumer {
+  const static inline TypeInfo TextureHandleType =
+      TypeInfo::Object(FragCC, BgfxTextureHandleCC);
+
+  const static inline TypesInfo TextureHandleInfo =
+      TypesInfo(TextureHandleType);
+
   bgfx::TextureHandle _texture = BGFX_INVALID_HANDLE;
   uint16_t _width = 0;
   uint16_t _height = 0;
@@ -422,12 +424,10 @@ struct Texture2D : public BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::imageInfo));
+    return CBTypesInfo(SharedTypes::imageInfo);
   }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(TextureHandleInfo); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // Upload a completely new image if sizes changed, also first activation!
@@ -465,13 +465,20 @@ struct Texture2D : public BaseConsumer {
       }
     }
 
+    // we copy because bgfx is multithreaded
+    // this just queues this texture basically
+    // this copy is internally managed
     auto mem =
         bgfx::copy(input.payload.imageValue.data,
                    uint32_t(_width) * uint32_t(_height) * uint32_t(_channels));
+
     bgfx::updateTexture2D(_texture, 0, 0, 0, 0, _width, _height, mem);
-    return input;
+
+    return Var::Object(&_texture, FragCC, BgfxTextureHandleCC);
   }
 };
+
+typedef BlockWrapper<Texture2D> Texture2DBlock;
 
 // Register
 RUNTIME_BLOCK(BGFX, MainWindow);
@@ -495,5 +502,6 @@ RUNTIME_BLOCK_END(Draw);
 void registerBGFXBlocks() {
   REGISTER_BLOCK(BGFX, MainWindow);
   REGISTER_BLOCK(BGFX, Draw);
+  registerBlock("BGFX.Texture2D", &Texture2DBlock::create);
 }
 }; // namespace BGFX
