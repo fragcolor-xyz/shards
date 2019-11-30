@@ -512,9 +512,6 @@ struct Serialization {
     CBType nextType;
     read((uint8_t *)&nextType, sizeof(output.valueType));
 
-    // use some of the reserved bytes... because we can
-    auto oactualSize = reinterpret_cast<uint64_t *>(output.reserved);
-
     // stop trying to recycle, types differ
     auto recycle = true;
     if (output.valueType != nextType) {
@@ -544,7 +541,7 @@ struct Serialization {
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
-      auto availBytes = recycle ? *oactualSize : 0;
+      auto availBytes = recycle ? output.capacity : 0;
       read((uint8_t *)&output.payload.bytesSize,
            sizeof(output.payload.bytesSize));
 
@@ -559,14 +556,14 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      *oactualSize = std::max(availBytes, output.payload.bytesSize);
+      output.capacity = std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
     case CBType::String:
     case CBType::ContextVar: {
-      auto availChars = recycle ? *oactualSize : 0;
+      auto availChars = recycle ? output.capacity : 0;
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
@@ -580,7 +577,7 @@ struct Serialization {
       } // else recycling
 
       // record actualSize
-      *oactualSize = std::max(availChars, len);
+      output.capacity = std::max(availChars, len);
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
@@ -638,7 +635,7 @@ struct Serialization {
                     output.payload.imageValue.height *
                     output.payload.imageValue.width;
 
-      size_t currentSize = recycle ? *oactualSize : 0;
+      size_t currentSize = recycle ? output.capacity : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -649,7 +646,7 @@ struct Serialization {
       }
 
       // record actualSize
-      *oactualSize = std::max(currentSize, (size_t)size);
+      output.capacity = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;

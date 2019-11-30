@@ -399,9 +399,17 @@ ALIGNED struct CBVarPayload // 16 aligned due to vectors
 
 ALIGNED struct CBVar {
   struct CBVarPayload payload;
+
+  // Used sometimes by serialization routines, to keep track of actual storage capacity
+  uint64_t capacity;
+  
+  // Used only for Object and Bytes types by cloneVar/destroyVar
+  uint32_t referenceCount;
+
   enum CBType valueType;
-  // reserved, might remove, it's used internally (serialization)
-  uint8_t reserved[15];
+  
+  // padding
+  uint8_t _padding[3];
 };
 
 ALIGNED struct CBNamedVar {

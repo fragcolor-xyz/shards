@@ -1132,9 +1132,8 @@ struct InputText : public Variable<CBType::String> {
       // Resize string callback
       if (it->_variable) {
         delete[] it->_variable->payload.stringValue;
-        auto capacity = reinterpret_cast<size_t *>(it->_variable->reserved);
-        *capacity = data->BufTextLen * 2;
-        it->_variable->payload.stringValue = new char[*capacity];
+        it->_variable->capacity = data->BufTextLen * 2;
+        it->_variable->payload.stringValue = new char[it->_variable->capacity];
         data->Buf = (char *)it->_variable->payload.stringValue;
       } else {
         it->_buffer.resize(data->BufTextLen * 2);
@@ -1153,15 +1152,14 @@ struct InputText : public Variable<CBType::String> {
         // we own the variable so let's run some init
         _variable->valueType = String;
         _variable->payload.stringValue = new char[32];
-        auto capacity = reinterpret_cast<size_t *>(_variable->reserved);
-        *capacity = 32;
+        _variable->capacity = 32;
         memset((void *)_variable->payload.stringValue, 0x0, 32);
       }
     }
 
     if (_variable) {
       ::ImGui::InputText(_label.c_str(), (char *)_variable->payload.stringValue,
-                         *reinterpret_cast<size_t *>(_variable->reserved),
+                         _variable->capacity,
                          ImGuiInputTextFlags_CallbackResize, &InputTextCallback,
                          this);
       return *_variable;

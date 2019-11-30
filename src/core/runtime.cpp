@@ -78,8 +78,8 @@ void registerCoreBlocks() {
   rpmalloc_initialize();
 #endif
 
-  assert(sizeof(CBVarPayload) == 16);
-  assert(sizeof(CBVar) == 32);
+  static_assert(sizeof(CBVarPayload) == 16);
+  static_assert(sizeof(CBVar) == 32);
 
   registerBlocksCoreBlocks();
   registerAssertBlocks();
