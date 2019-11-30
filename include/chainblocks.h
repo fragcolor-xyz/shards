@@ -391,7 +391,7 @@ ALIGNED struct CBVarPayload {
   };
 };
 
-ALIGNED struct CBVar {
+struct CBVar {
   struct CBVarPayload payload;
 
   union {
@@ -402,10 +402,12 @@ ALIGNED struct CBVar {
   
   // Used by serialization/clone routines to keep track of actual storage capacity
   // 48 bits should be plenty for such sizes
-  uint64_t capacity:48;
+  struct {
+    uint64_t capacity:48;
+  } __attribute__((packed));
 };
 
-ALIGNED struct CBNamedVar {
+struct CBNamedVar {
   const char *key;
   struct CBVar value;
 };

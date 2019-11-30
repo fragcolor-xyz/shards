@@ -144,9 +144,9 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
   } break;
   case Image: {
-    auto srcImgSize = src.payload.imageValue.height *
-                      src.payload.imageValue.width *
-                      src.payload.imageValue.channels;
+    size_t srcImgSize = src.payload.imageValue.height *
+                        src.payload.imageValue.width *
+                        src.payload.imageValue.channels;
     if (dst.valueType != Image || srcImgSize > dst.capacity) {
       destroyVar(dst);
       dst.valueType = Image;
