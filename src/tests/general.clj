@@ -584,6 +584,13 @@
   (Log)
   (Assert.Is "Q[u][i]ck br[o]wn f[o]x" true)
 
+  (ToBytes)
+  (Set "bytesTest")
+  (Get "bytesTest")
+  (Log)
+  (Update "bytesTest")
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

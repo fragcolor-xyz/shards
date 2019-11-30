@@ -43,11 +43,11 @@ enum CBType : uint8_t {
   Color,  // A vector of 4 uint8
   Chain,  // sub chains, e.g. IF/ELSE
   Block,  // a block, useful for future introspection blocks!
-  Bytes,  // pointer + size, we don't deep copy, but pass by ref instead
 
   EndOfBlittableTypes, // anything below this is not blittable (not exactly but
                        // for cloneVar mostly)
 
+  Bytes,  // pointer + size
   String,
   ContextVar, // A string label to find from CBContext variables
   Image,
@@ -403,13 +403,10 @@ ALIGNED struct CBVar {
   // Used sometimes by serialization routines, to keep track of actual storage capacity
   uint64_t capacity;
   
-  // Used only for Object and Bytes types by cloneVar/destroyVar
-  uint32_t referenceCount;
-
   enum CBType valueType;
   
   // padding
-  uint8_t _padding[3];
+  uint8_t _padding[7];
 };
 
 ALIGNED struct CBNamedVar {

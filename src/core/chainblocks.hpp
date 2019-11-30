@@ -130,34 +130,34 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   } break;
   case String:
   case ContextVar: {
-    auto srcLen = strlen(src.payload.stringValue);
+    auto srcSize = strlen(src.payload.stringValue) + 1;
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
-        strlen(dst.payload.stringValue) < srcLen) {
+        dst.capacity < srcSize) {
       destroyVar(dst);
-      dst.payload.stringValue = new char[srcLen + 1];
+      dst.payload.stringValue = new char[srcSize];
+      dst.capacity = srcSize;
     }
 
     dst.valueType = src.valueType;
     memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
-           srcLen);
-    ((char *)dst.payload.stringValue)[srcLen] = '\0';
+           srcSize - 1);
+    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
   } break;
   case Image: {
     auto srcImgSize = src.payload.imageValue.height *
                       src.payload.imageValue.width *
                       src.payload.imageValue.channels;
-    auto dstImgSize = dst.payload.imageValue.height *
-                      dst.payload.imageValue.width *
-                      dst.payload.imageValue.channels;
-    if (dst.valueType != Image || srcImgSize > dstImgSize) {
+    if (dst.valueType != Image || srcImgSize > dst.capacity) {
       destroyVar(dst);
       dst.valueType = Image;
-      dst.payload.imageValue.height = src.payload.imageValue.height;
-      dst.payload.imageValue.width = src.payload.imageValue.width;
-      dst.payload.imageValue.channels = src.payload.imageValue.channels;
-      dst.payload.imageValue.data = new uint8_t[dstImgSize];
+      dst.payload.imageValue.data = new uint8_t[srcImgSize];
+      dst.capacity = srcImgSize;
     }
 
+    dst.payload.imageValue.flags = dst.payload.imageValue.flags;
+    dst.payload.imageValue.height = src.payload.imageValue.height;
+    dst.payload.imageValue.width = src.payload.imageValue.width;
+    dst.payload.imageValue.channels = src.payload.imageValue.channels;
     memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
            srcImgSize);
   } break;
@@ -174,6 +174,18 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
     }
   } break;
+  case Bytes: {
+    if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {
+      destroyVar(dst);
+      dst.valueType = Bytes;
+      dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
+      dst.capacity = src.payload.bytesSize;
+    }
+
+    dst.payload.bytesSize = src.payload.bytesSize;
+    memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
+           src.payload.bytesSize);
+  } break;
   default:
     break;
   };
@@ -186,14 +198,15 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     _destroyVarSlow(var);
     break;
   case CBType::String:
-  case ContextVar: {
+  case ContextVar:
     delete[] var.payload.stringValue;
     break;
-  }
-  case Image: {
+  case Image:
     delete[] var.payload.imageValue.data;
     break;
-  }
+  case Bytes:
+    delete[] var.payload.bytesValue;
+    break;
   default:
     break;
   };
