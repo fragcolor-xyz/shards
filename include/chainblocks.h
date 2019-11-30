@@ -397,14 +397,14 @@ struct CBVar {
   union {
     int64_t _reserved;
   };
-
-  enum CBType valueType;
   
   // Used by serialization/clone routines to keep track of actual storage capacity
   // 48 bits should be plenty for such sizes
   struct {
     uint64_t capacity:48;
   } __attribute__((packed));
+
+  enum CBType valueType;
 };
 
 struct CBNamedVar {
