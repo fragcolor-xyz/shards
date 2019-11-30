@@ -128,7 +128,7 @@ public:
   void set(std::string name, Value value) {
     _contents.insert(std::pair<std::string, Value>(name, value));
   }
-  
+
 private:
   phmap::flat_hash_map<std::string, Value> _contents;
   std::weak_ptr<Environment> _parent;

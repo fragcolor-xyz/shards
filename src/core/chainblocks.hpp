@@ -200,8 +200,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   };
 
-  memset((void *)&var.payload, 0x0, sizeof(CBVarPayload));
-  var.valueType = None;
+  var = {};
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
