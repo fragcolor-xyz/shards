@@ -1201,6 +1201,9 @@ struct Image : public Base {
       _size.x = value.payload.float2Value[0];
       _size.y = value.payload.float2Value[1];
       break;
+    case 1:
+      _trueSize = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -1210,6 +1213,8 @@ struct Image : public Base {
     switch (index) {
     case 0:
       return Var(_size.x, _size.y);
+    case 1:
+      return Var(_trueSize);
     default:
       return Empty;
     }
