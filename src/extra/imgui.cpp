@@ -2,6 +2,7 @@
 /* Copyright © 2019 Giovanni Petrantoni */
 
 #include "imgui.hpp"
+#include "bgfx.hpp"
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
@@ -1173,7 +1174,64 @@ struct InputText : public Variable<CBType::String> {
 
 typedef BlockWrapper<InputText> InputTextBlock;
 
-struct Image : public Base {};
+struct Image : public Base {
+  ImVec2 _size{1.0, 1.0};
+  bool _trueSize = false;
+
+  static CBTypesInfo inputTypes() {
+    return CBTypesInfo(BGFX::Texture::TextureHandleInfo);
+  }
+
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo(BGFX::Texture::TextureHandleInfo);
+  }
+
+  static inline ParamsInfo paramsInfo =
+      ParamsInfo(ParamsInfo::Param("Size", "The drawing size of the image.",
+                                   CBTypesInfo(SharedTypes::float2Info)),
+                 ParamsInfo::Param("TrueSize",
+                                   "If the given size is in true image pixels.",
+                                   CBTypesInfo(SharedTypes::boolInfo)));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _size.x = value.payload.float2Value[0];
+      _size.y = value.payload.float2Value[1];
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_size.x, _size.y);
+    default:
+      return Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+    auto texture =
+        *reinterpret_cast<BGFX::Texture *>(input.payload.objectValue);
+    if (!_trueSize) {
+      ImVec2 size = _size;
+      size.x *= texture.width;
+      size.y *= texture.height;
+      ::ImGui::Image(texture.handle, size);
+    } else {
+      ::ImGui::Image(texture.handle, _size);
+    }
+    return input;
+  }
+};
+
+typedef BlockWrapper<Image> ImageBlock;
 
 // Register
 RUNTIME_BLOCK(ImGui, Style);
@@ -1258,6 +1316,7 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
   registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
   registerBlock("ImGui.InputText", &InputTextBlock::create);
+  registerBlock("ImGui.Image", &ImageBlock::create);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

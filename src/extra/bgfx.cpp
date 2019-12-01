@@ -402,62 +402,58 @@ struct Draw : public BaseConsumer {
 };
 
 struct Texture2D : public BaseConsumer {
-  const static inline TypeInfo TextureHandleType =
-      TypeInfo::Object(FragCC, BgfxTextureHandleCC);
-
-  const static inline TypesInfo TextureHandleInfo =
-      TypesInfo(TextureHandleType);
-
-  bgfx::TextureHandle _texture = BGFX_INVALID_HANDLE;
-  uint16_t _width = 0;
-  uint16_t _height = 0;
-  uint8_t _channels = 0;
+  Texture _texture;
 
   void cleanup() {
-    if (_texture.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_texture);
-      _texture = BGFX_INVALID_HANDLE;
+    if (_texture.handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_texture.handle);
+      _texture.handle = BGFX_INVALID_HANDLE;
     }
-    _width = 0;
-    _height = 0;
-    _channels = 0;
+    _texture.width = 0;
+    _texture.height = 0;
+    _texture.channels = 0;
   }
 
   static CBTypesInfo inputTypes() {
     return CBTypesInfo(SharedTypes::imageInfo);
   }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(TextureHandleInfo); }
+  static CBTypesInfo outputTypes() {
+    return CBTypesInfo(Texture::TextureHandleInfo);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // Upload a completely new image if sizes changed, also first activation!
-    if (input.payload.imageValue.width != _width ||
-        input.payload.imageValue.height != _height ||
-        input.payload.imageValue.channels != _channels) {
-      if (_texture.idx != bgfx::kInvalidHandle) {
-        bgfx::destroy(_texture);
+    if (input.payload.imageValue.width != _texture.width ||
+        input.payload.imageValue.height != _texture.height ||
+        input.payload.imageValue.channels != _texture.channels) {
+      if (_texture.handle.idx != bgfx::kInvalidHandle) {
+        bgfx::destroy(_texture.handle);
       }
 
-      _width = input.payload.imageValue.width;
-      _height = input.payload.imageValue.height;
-      _channels = input.payload.imageValue.channels;
+      _texture.width = input.payload.imageValue.width;
+      _texture.height = input.payload.imageValue.height;
+      _texture.channels = input.payload.imageValue.channels;
 
-      switch (_channels) {
+      switch (_texture.channels) {
       case 1:
-        _texture = bgfx::createTexture2D(_width, _height, false, 1,
-                                         bgfx::TextureFormat::R8);
+        _texture.handle = bgfx::createTexture2D(
+            _texture.width, _texture.height, false, 1, bgfx::TextureFormat::R8);
         break;
       case 2:
-        _texture = bgfx::createTexture2D(_width, _height, false, 1,
-                                         bgfx::TextureFormat::RG8);
+        _texture.handle =
+            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                  bgfx::TextureFormat::RG8);
         break;
       case 3:
-        _texture = bgfx::createTexture2D(_width, _height, false, 1,
-                                         bgfx::TextureFormat::RGB8);
+        _texture.handle =
+            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                  bgfx::TextureFormat::RGB8);
         break;
       case 4:
-        _texture = bgfx::createTexture2D(_width, _height, false, 1,
-                                         bgfx::TextureFormat::RGBA8);
+        _texture.handle =
+            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                  bgfx::TextureFormat::RGBA8);
         break;
       default:
         cbassert(false);
@@ -468,11 +464,12 @@ struct Texture2D : public BaseConsumer {
     // we copy because bgfx is multithreaded
     // this just queues this texture basically
     // this copy is internally managed
-    auto mem =
-        bgfx::copy(input.payload.imageValue.data,
-                   uint32_t(_width) * uint32_t(_height) * uint32_t(_channels));
+    auto mem = bgfx::copy(input.payload.imageValue.data,
+                          uint32_t(_texture.width) * uint32_t(_texture.height) *
+                              uint32_t(_texture.channels));
 
-    bgfx::updateTexture2D(_texture, 0, 0, 0, 0, _width, _height, mem);
+    bgfx::updateTexture2D(_texture.handle, 0, 0, 0, 0, _texture.width,
+                          _texture.height, mem);
 
     return Var::Object(&_texture, FragCC, BgfxTextureHandleCC);
   }

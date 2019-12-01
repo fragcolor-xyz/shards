@@ -7,6 +7,7 @@
     "init"
     (LoadImage "../../assets/drawing.png")
     (BGFX.Texture2D)
+    (Set "image1")
     false (Set "checkBoxie")))
   (ImGui.Window :Title "My ImGui" :Width 400 :Height 720 :PosX 0 :PosY 0 :Contents (--> 
     "Hello world"   (ImGui.Text)
@@ -31,6 +32,9 @@
 
     (ImGui.InputText "Say something" "text1")
     (ImGui.Text "<-- you said!")
+
+    (Get "image1")
+    (ImGui.Image (Float2 0.1 0.1))
 
     (ImGui.TreeNode
      "Node1"
