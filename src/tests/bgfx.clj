@@ -2,7 +2,11 @@
 
 (schedule Root (Chain "neural" :Looped
   (BGFX.MainWindow :Title "SDL Window" :Width 400 :Height 720)
-  (DispatchOnce (Chain "init"
+  (DispatchOnce
+   (Chain
+    "init"
+    (LoadImage "../../assets/drawing.png")
+    (BGFX.Texture2D)
     false (Set "checkBoxie")))
   (ImGui.Window :Title "My ImGui" :Width 400 :Height 720 :PosX 0 :PosY 0 :Contents (--> 
     "Hello world"   (ImGui.Text)

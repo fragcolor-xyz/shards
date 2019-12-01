@@ -665,8 +665,8 @@ static boost::context::continuation run(CBChain *chain,
 endOfChain:
   // Copy the output variable since the next call might wipe it
   auto tmp = chain->finishedOutput;
-  chain->finishedOutput =
-      CBVar(); // Reset it we are not sure on the internal state
+  // Reset it, we are not sure on the internal state
+  chain->finishedOutput = {};
   chain->ownedOutput = true;
   cloneVar(chain->finishedOutput, tmp);
 

@@ -4,6 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include "shared.hpp"
+#include <filesystem>
 #include <future>
 #include <stb_image.h>
 #include <string>
@@ -48,6 +49,22 @@ struct FileBase {
     }
     return res;
   }
+
+  bool getFilename(CBContext *context, std::string &filename) {
+    auto &ctxFile = _filename(context);
+    if (ctxFile.valueType != String)
+      return false;
+
+    filename = ctxFile.payload.stringValue;
+
+    std::filesystem::path cp(context->chain->node->currentPath);
+    if (std::filesystem::exists(cp)) {
+      auto fullpath = cp / filename;
+      filename = fullpath.string();
+    }
+
+    return true;
+  }
 };
 
 struct WriteFile : public FileBase {
@@ -71,13 +88,12 @@ struct WriteFile : public FileBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_fileStream.is_open()) {
-      auto &fvar = _filename(context);
-      if (fvar.valueType == String) {
-        auto filename = fvar.payload.stringValue;
-        _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
-      } else {
+      std::string filename;
+      if (!getFilename(context, filename)) {
         return input;
       }
+
+      _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
     }
 
     Writer s(_fileStream);
@@ -118,13 +134,12 @@ struct ReadFile : public FileBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_fileStream.is_open()) {
-      auto &fvar = _filename(context);
-      if (fvar.valueType == String) {
-        auto filename = fvar.payload.stringValue;
-        _fileStream = std::ifstream(filename, std::ios::binary);
-      } else {
+      std::string filename;
+      if (!getFilename(context, filename)) {
         return Empty;
       }
+
+      _fileStream = std::ifstream(filename, std::ios::binary);
     }
 
     if (_fileStream.eof()) {
@@ -161,49 +176,49 @@ struct LoadImage : public FileBase {
       stbi_image_free(_output.payload.imageValue.data);
       _output = {};
     }
+
     FileBase::cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto &fvar = _filename(context);
-    if (fvar.valueType == String) {
-      auto filename = fvar.payload.stringValue;
-      auto asyncRes = std::async(
-          std::launch::async,
-          [](std::string filename) {
-            CBVar res{};
-            res.valueType = Image;
-            int x, y, n;
-            res.payload.imageValue.data =
-                stbi_load(filename.c_str(), &x, &y, &n, 0);
-            if (!res.payload.imageValue.data) {
-              throw CBException("Failed to load image file");
-            }
-            res.payload.imageValue.width = uint16_t(x);
-            res.payload.imageValue.height = uint16_t(y);
-            res.payload.imageValue.channels = uint16_t(n);
-            return res;
-          },
-          filename);
-
-      // Wait suspending!
-      while (true) {
-        auto state = asyncRes.wait_for(std::chrono::seconds(0));
-        if (state == std::future_status::ready)
-          break;
-        auto chainState = chainblocks::suspend(context, 0);
-        if (chainState.payload.chainState != Continue) {
-          // Here communicate to the thread.. but hmm should be fine without
-          // anything in this case, cannot send cancelation anyway
-          return chainState;
-        }
-      }
-
-      // This should also throw if we had exceptions
-      return asyncRes.get();
-    } else {
+    std::string filename;
+    if (!getFilename(context, filename)) {
       throw CBException("No file name to load was given");
     }
+
+    auto asyncRes = std::async(
+        std::launch::async,
+        [](std::string filename) {
+          CBVar res{};
+          res.valueType = Image;
+          int x, y, n;
+          res.payload.imageValue.data =
+              stbi_load(filename.c_str(), &x, &y, &n, 0);
+          if (!res.payload.imageValue.data) {
+            throw CBException("Failed to load image file");
+          }
+          res.payload.imageValue.width = uint16_t(x);
+          res.payload.imageValue.height = uint16_t(y);
+          res.payload.imageValue.channels = uint16_t(n);
+          return res;
+        },
+        filename);
+
+    // Wait suspending!
+    while (true) {
+      auto state = asyncRes.wait_for(std::chrono::seconds(0));
+      if (state == std::future_status::ready)
+        break;
+      auto chainState = chainblocks::suspend(context, 0);
+      if (chainState.payload.chainState != Continue) {
+        // Here communicate to the thread.. but hmm should be fine without
+        // anything in this case, cannot send cancelation anyway
+        return chainState;
+      }
+    }
+
+    // This should also throw if we had exceptions
+    return asyncRes.get();
   }
 };
 
