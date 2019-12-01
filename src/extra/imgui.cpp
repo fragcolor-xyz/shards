@@ -1108,7 +1108,49 @@ struct TreeNode : public Base {
 
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
-struct InputText : public Variable<CBType::String> {
+#define IMGUI_INPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                   \
+  struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
+    _T_ _tmp;                                                                  \
+                                                                               \
+    static CBTypesInfo inputTypes() {                                          \
+      return CBTypesInfo(SharedTypes::noneInfo);                               \
+    }                                                                          \
+                                                                               \
+    static CBTypesInfo outputTypes() {                                         \
+      return CBTypesInfo(SharedTypes::_INFO_);                                 \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = findVariable(context, _variable_name.c_str());             \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_;                                        \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      _T_ step = 1;                                                            \
+      _T_ step_fast = step * 100;                                              \
+      if (_variable) {                                                         \
+        ::ImGui::InputScalar(_label.c_str(), _IMT_,                            \
+                             (void *)&_variable->payload._VAL_, &step,         \
+                             &step_fast, _FMT_, 0);                            \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp, &step,      \
+                             &step_fast, _FMT_, 0);                            \
+        return Var(_tmp);                                                      \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+                                                                               \
+  typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
+
+IMGUI_INPUT(Int, int64_t, intInfo, ImGuiDataType_S64, intValue, "%lld");
+IMGUI_INPUT(Float, double, floatInfo, ImGuiDataType_Double, floatValue, "%f");
+
+struct TextInput : public Variable<CBType::String> {
   // fallback, used only when no variable name is set
   std::string _buffer;
 
@@ -1128,7 +1170,7 @@ struct InputText : public Variable<CBType::String> {
   }
 
   static int InputTextCallback(ImGuiInputTextCallbackData *data) {
-    InputText *it = (InputText *)data->UserData;
+    TextInput *it = (TextInput *)data->UserData;
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
       // Resize string callback
       if (it->_variable) {
@@ -1172,7 +1214,7 @@ struct InputText : public Variable<CBType::String> {
   }
 };
 
-typedef BlockWrapper<InputText> InputTextBlock;
+typedef BlockWrapper<TextInput> TextInputBlock;
 
 struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
@@ -1320,7 +1362,9 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Indent", &IndentBlock::create);
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
   registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
-  registerBlock("ImGui.InputText", &InputTextBlock::create);
+  registerBlock("ImGui.IntInput", &IntInputBlock::create);
+  registerBlock("ImGui.FloatInput", &FloatInputBlock::create);
+  registerBlock("ImGui.TextInput", &TextInputBlock::create);
   registerBlock("ImGui.Image", &ImageBlock::create);
 }
 }; // namespace ImGui

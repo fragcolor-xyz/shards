@@ -15,8 +15,7 @@
     "Hello world 3" (ImGui.SameLine) (ImGui.Text)
     "Hello world 4" (ImGui.SameLine) (ImGui.Text)
     (ImGui.Separator)
-    ; (ToBytes)
-                                        ; (ImGui.HexViewer)
+
     (ImGui.Indent)
     99 (ImGui.Text "Player1" (Color 255 0 0 255))
     (ImGui.Unindent)
@@ -30,9 +29,6 @@
     (Math.Add (# "x"))
     (ImGui.Text)
 
-    (ImGui.InputText "Say something" "text1")
-    (ImGui.Text "<-- you said!")
-
     (Get "image1")
     (ImGui.Image (Float2 0.1 0.1))
 
@@ -40,7 +36,16 @@
      "Node1"
      (-->
       "Node text..."
-      (ImGui.Text)))
+      (ImGui.Text)
+      (ImGui.TextInput "Say something" "text1")
+      (ImGui.Text "<-- you said!")
+
+      (ImGui.IntInput)
+      (ImGui.Text)
+
+      (ImGui.FloatInput)
+      (ImGui.Text)
+      ))
     (ImGui.Button "Push me!" (-->
       (Msg "Action!")
     ))
@@ -52,7 +57,10 @@
     (ImGui.Button "Push me!" (-->
       (Msg "Action!")
     ) ImGuiButton.ArrowUp)
-    (Cond [(--> (Is true)) (--> (Msg "yeah..."))])))
+    (Cond [(--> (Is true)) (--> (Msg "yeah..."))])
+    (ToBytes)
+    (ImGui.HexViewer)
+    ))
   (BGFX.Draw)
 ))
 
