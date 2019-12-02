@@ -685,7 +685,7 @@ template <CBType CT> struct Variable : public Base {
         }
       }
     }
-    return CBTypeInfo(SharedTypes::boolInfo);
+    return CBTypeInfo(varType);
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -694,7 +694,7 @@ template <CBType CT> struct Variable : public Base {
           consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
                                               "The consumed input variable.",
                                               CBTypeInfo(varType)));
-      return CBExposedTypesInfo(consumedInfo);
+      return CBExposedTypesInfo(_expInfo);
     } else {
       return nullptr;
     }
@@ -706,7 +706,7 @@ template <CBType CT> struct Variable : public Base {
           consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
                                               "The exposed input variable.",
                                               CBTypeInfo(varType)));
-      return CBExposedTypesInfo(consumedInfo);
+      return CBExposedTypesInfo(_expInfo);
     } else {
       return nullptr;
     }
@@ -1108,7 +1108,7 @@ struct TreeNode : public Base {
 
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
-#define IMGUI_INPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                   \
+#define IMGUIINPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                    \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
     _T_ _tmp;                                                                  \
                                                                                \
@@ -1147,8 +1147,60 @@ typedef BlockWrapper<TreeNode> TreeNodeBlock;
                                                                                \
   typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
 
-IMGUI_INPUT(Int, int64_t, intInfo, ImGuiDataType_S64, intValue, "%lld");
-IMGUI_INPUT(Float, double, floatInfo, ImGuiDataType_Double, floatValue, "%f");
+IMGUIINPUT(Int, int64_t, intInfo, ImGuiDataType_S64, intValue, "%lld");
+IMGUIINPUT(Float, double, floatInfo, ImGuiDataType_Double, floatValue, "%f");
+
+#define IMGUIINPUT2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_, _CMP_)            \
+  struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
+    CBVar _tmp;                                                                \
+                                                                               \
+    static CBTypesInfo inputTypes() {                                          \
+      return CBTypesInfo(SharedTypes::noneInfo);                               \
+    }                                                                          \
+                                                                               \
+    static CBTypesInfo outputTypes() {                                         \
+      return CBTypesInfo(SharedTypes::_INFO_);                                 \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = findVariable(context, _variable_name.c_str());             \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_;                                        \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      _T_ step = 1;                                                            \
+      _T_ step_fast = step * 100;                                              \
+      if (_variable) {                                                         \
+        ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
+                              (void *)&_variable->payload._VAL_, _CMP_, &step, \
+                              &step_fast, _FMT_, 0);                           \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        _tmp.valueType = _CBT_;                                                \
+        ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
+                              (void *)&_tmp.payload._VAL_, _CMP_, &step,       \
+                              &step_fast, _FMT_, 0);                           \
+        return _tmp;                                                           \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+                                                                               \
+  typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
+
+IMGUIINPUT2(Int2, int64_t, int2Info, ImGuiDataType_S64, int2Value, "%lld", 2);
+IMGUIINPUT2(Int3, int32_t, int3Info, ImGuiDataType_S32, int3Value, "%d", 3);
+IMGUIINPUT2(Int4, int32_t, int4Info, ImGuiDataType_S32, int4Value, "%d", 4);
+
+IMGUIINPUT2(Float2, double, float2Info, ImGuiDataType_Double, float2Value,
+            "%.3f", 2);
+IMGUIINPUT2(Float3, float, float3Info, ImGuiDataType_Float, float3Value, "%.3f",
+            3);
+IMGUIINPUT2(Float4, float, float4Info, ImGuiDataType_Float, float4Value, "%.3f",
+            4);
 
 struct TextInput : public Variable<CBType::String> {
   // fallback, used only when no variable name is set
@@ -1363,6 +1415,13 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
   registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
   registerBlock("ImGui.IntInput", &IntInputBlock::create);
+  registerBlock("ImGui.Int2Input", &Int2InputBlock::create);
+  registerBlock("ImGui.Int3Input", &Int3InputBlock::create);
+  registerBlock("ImGui.Int4Input", &Int4InputBlock::create);
+  registerBlock("ImGui.Int4Input", &Int4InputBlock::create);
+  registerBlock("ImGui.Float2Input", &Float2InputBlock::create);
+  registerBlock("ImGui.Float3Input", &Float3InputBlock::create);
+  registerBlock("ImGui.Float4Input", &Float4InputBlock::create);
   registerBlock("ImGui.FloatInput", &FloatInputBlock::create);
   registerBlock("ImGui.TextInput", &TextInputBlock::create);
   registerBlock("ImGui.Image", &ImageBlock::create);

@@ -1,7 +1,7 @@
 (def! Root (Node))
 
 (schedule Root (Chain "neural" :Looped
-  (BGFX.MainWindow :Title "SDL Window" :Width 400 :Height 720)
+  (BGFX.MainWindow :Title "SDL Window" :Width 450 :Height 720)
   (DispatchOnce
    (Chain
     "init"
@@ -9,7 +9,7 @@
     (BGFX.Texture2D)
     (Set "image1")
     false (Set "checkBoxie")))
-  (ImGui.Window :Title "My ImGui" :Width 400 :Height 720 :PosX 0 :PosY 0 :Contents (--> 
+  (ImGui.Window :Title "My ImGui" :Width 450 :Height 720 :PosX 0 :PosY 0 :Contents (--> 
     "Hello world"   (ImGui.Text)
     "Hello world 2" (ImGui.Text)
     "Hello world 3" (ImGui.SameLine) (ImGui.Text)
@@ -44,6 +44,13 @@
       (ImGui.Text)
 
       (ImGui.FloatInput)
+      (ImGui.Text)
+
+      (ImGui.Int3Input)
+      (ImGui.Text)
+
+      (ImGui.Float3Input "f3" "f3var")
+      (Get "f3var")
       (ImGui.Text)
       ))
     (ImGui.Button "Push me!" (-->
