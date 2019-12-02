@@ -1108,6 +1108,90 @@ struct TreeNode : public Base {
 
 typedef BlockWrapper<TreeNode> TreeNodeBlock;
 
+#define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                            \
+  struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
+    _T_ _tmp;                                                                  \
+                                                                               \
+    static CBTypesInfo inputTypes() {                                          \
+      return CBTypesInfo(SharedTypes::noneInfo);                               \
+    }                                                                          \
+                                                                               \
+    static CBTypesInfo outputTypes() {                                         \
+      return CBTypesInfo(SharedTypes::_INFO_);                                 \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = findVariable(context, _variable_name.c_str());             \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_;                                        \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      float speed = 1.0;                                                       \
+      if (_variable) {                                                         \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_,                             \
+                            (void *)&_variable->payload._VAL_, speed);         \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, speed);      \
+        return Var(_tmp);                                                      \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+                                                                               \
+  typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
+
+IMGUIDRAG(Int, int64_t, intInfo, ImGuiDataType_S64, intValue);
+IMGUIDRAG(Float, double, floatInfo, ImGuiDataType_Double, floatValue);
+
+#define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                    \
+  struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
+    CBVar _tmp;                                                                \
+                                                                               \
+    static CBTypesInfo inputTypes() {                                          \
+      return CBTypesInfo(SharedTypes::noneInfo);                               \
+    }                                                                          \
+                                                                               \
+    static CBTypesInfo outputTypes() {                                         \
+      return CBTypesInfo(SharedTypes::_INFO_);                                 \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = findVariable(context, _variable_name.c_str());             \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_;                                        \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      float speed = 1.0;                                                       \
+      if (_variable) {                                                         \
+        ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
+                             (void *)&_variable->payload._VAL_, _CMP_, speed); \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        _tmp.valueType = _CBT_;                                                \
+        ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
+                             (void *)&_tmp.payload._VAL_, _CMP_, speed);       \
+        return _tmp;                                                           \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+                                                                               \
+  typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
+
+IMGUIDRAG2(Int2, int64_t, int2Info, ImGuiDataType_S64, int2Value, 2);
+IMGUIDRAG2(Int3, int32_t, int3Info, ImGuiDataType_S32, int3Value, 3);
+IMGUIDRAG2(Int4, int32_t, int4Info, ImGuiDataType_S32, int4Value, 4);
+IMGUIDRAG2(Float2, double, float2Info, ImGuiDataType_Double, float2Value, 2);
+IMGUIDRAG2(Float3, float, float3Info, ImGuiDataType_Float, float3Value, 3);
+IMGUIDRAG2(Float4, float, float4Info, ImGuiDataType_Float, float4Value, 4);
+
 #define IMGUIINPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                    \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
     _T_ _tmp;                                                                  \
@@ -1415,14 +1499,21 @@ void registerImGuiBlocks() {
   registerBlock("ImGui.Unindent", &UnindentBlock::create);
   registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
   registerBlock("ImGui.IntInput", &IntInputBlock::create);
+  registerBlock("ImGui.FloatInput", &FloatInputBlock::create);
   registerBlock("ImGui.Int2Input", &Int2InputBlock::create);
   registerBlock("ImGui.Int3Input", &Int3InputBlock::create);
-  registerBlock("ImGui.Int4Input", &Int4InputBlock::create);
   registerBlock("ImGui.Int4Input", &Int4InputBlock::create);
   registerBlock("ImGui.Float2Input", &Float2InputBlock::create);
   registerBlock("ImGui.Float3Input", &Float3InputBlock::create);
   registerBlock("ImGui.Float4Input", &Float4InputBlock::create);
-  registerBlock("ImGui.FloatInput", &FloatInputBlock::create);
+  registerBlock("ImGui.IntDrag", &IntDragBlock::create);
+  registerBlock("ImGui.FloatDrag", &FloatDragBlock::create);
+  registerBlock("ImGui.Int2Drag", &Int2DragBlock::create);
+  registerBlock("ImGui.Int3Drag", &Int3DragBlock::create);
+  registerBlock("ImGui.Int4Drag", &Int4DragBlock::create);
+  registerBlock("ImGui.Float2Drag", &Float2DragBlock::create);
+  registerBlock("ImGui.Float3Drag", &Float3DragBlock::create);
+  registerBlock("ImGui.Float4Drag", &Float4DragBlock::create);
   registerBlock("ImGui.TextInput", &TextInputBlock::create);
   registerBlock("ImGui.Image", &ImageBlock::create);
 }

@@ -52,6 +52,12 @@
       (ImGui.Float3Input "f3" "f3var")
       (Get "f3var")
       (ImGui.Text)
+
+      (ImGui.FloatDrag)
+      (ImGui.Text)
+
+      (ImGui.Float3Drag)
+      (ImGui.Text)
       ))
     (ImGui.Button "Push me!" (-->
       (Msg "Action!")
