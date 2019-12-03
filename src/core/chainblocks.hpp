@@ -798,8 +798,8 @@ struct InternalCore {
 
   static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
     CBVar output{};
-    chainblocks::activateBlocks(blocks, stbds_arrlen(blocks), context, input,
-                                output);
+    chainblocks::activateBlocks(blocks, (int)stbds_arrlen(blocks), context,
+                                input, output);
     return output;
   }
 };
