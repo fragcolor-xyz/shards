@@ -84,8 +84,8 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 static void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    int len = stbds_arrlen(var.payload.seqValue);
-    for (int i = 0; i < len; i++) {
+    size_t len = stbds_arrlen(var.payload.seqValue);
+    for (size_t i = 0; i < len; i++) {
       destroyVar(var.payload.seqValue[i]);
     }
     stbds_arrfree(var.payload.seqValue);
@@ -105,24 +105,24 @@ static void _destroyVarSlow(CBVar &var) {
 static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   switch (src.valueType) {
   case Seq: {
-    uint64_t srcLen = stbds_arrlen(src.payload.seqValue);
+    size_t srcLen = stbds_arrlen(src.payload.seqValue);
     // reuse if seq and we got enough capacity
     if (dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen) {
       destroyVar(dst);
       dst.valueType = Seq;
       dst.payload.seqValue = nullptr;
     } else {
-      uint64_t dstLen = stbds_arrlen(dst.payload.seqValue);
+      size_t dstLen = stbds_arrlen(dst.payload.seqValue);
       if (srcLen < dstLen) {
         // need to destroy leftovers
-        for (uint64_t i = srcLen; i < dstLen; i++) {
+        for (size_t i = srcLen; i < dstLen; i++) {
           destroyVar(dst.payload.seqValue[i]);
         }
       }
     }
 
-    stbds_arrsetlen(dst.payload.seqValue, (uint64_t)srcLen);
-    for (uint64_t i = 0; i < srcLen; i++) {
+    stbds_arrsetlen(dst.payload.seqValue, srcLen);
+    for (size_t i = 0; i < srcLen; i++) {
       auto &subsrc = src.payload.seqValue[i];
       memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
       cloneVar(dst.payload.seqValue[i], subsrc);
