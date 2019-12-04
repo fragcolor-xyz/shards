@@ -140,7 +140,7 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
     auto code = InjectHookBase::getRemoteCode(codeId);
     if (code.size() > 0) {
       CBVar res = gDesktopHook.leval(env, code.c_str());
-      if (res.valueType == Chain) {
+      if (res.valueType == CBType::Chain) {
         gHookChain = res.payload.chainValue;
         auto chainValidation = validateConnections(
             res.payload.chainValue,
