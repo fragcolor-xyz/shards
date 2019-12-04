@@ -364,7 +364,7 @@ if(NOT BUILD_CORE_ONLY)
     )
 endif()
 
-if(X86)
+if(NOT IOS)
   set(CB_EXTRAS
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
