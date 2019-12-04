@@ -7,26 +7,39 @@
 #include "runtime.hpp"
 
 namespace chainblocks {
-class Blockvar {
+class Chain {
 public:
-  Blockvar() {
-    // None
-  }
-};
+  template <typename String>
+  Chain(String name) : _name(name), _looped(false), _unsafe(false) {}
+  Chain() : _looped(false), _unsafe(false) {}
 
-class Blockschain {
-public:
-  Blockschain(std::string name) : _name(name), _looped(false) {}
+  template <typename String, typename... Vars>
+  Chain &block(String name, Vars... params) {
+    std::string blockName(name);
+    auto blk = createBlock(blockName.c_str());
+    blk->setup(blk);
 
-  template <typename... Vars>
-  Blockschain &block(std::string name, Vars... params) {
-    auto blk = createBlock(name.c_str());
+    std::vector<Var> vars = {Var(params)...};
+    for (size_t i = 0; i < vars.size(); i++) {
+      blk->setParam(blk, i, vars[i]);
+    }
+
     _blocks.push_back(blk);
     return *this;
   }
 
-  Blockschain &looped(bool isLooped) {
-    _looped = isLooped;
+  Chain &looped(bool looped) {
+    _looped = looped;
+    return *this;
+  }
+
+  Chain &unsafe(bool unsafe) {
+    _unsafe = unsafe;
+    return *this;
+  }
+
+  template <typename String> Chain &name(String name) {
+    _name = name;
     return *this;
   }
 
@@ -58,11 +71,12 @@ public:
 private:
   std::string _name;
   bool _looped;
+  bool _unsafe;
   std::vector<CBlock *> _blocks;
 };
 
 void blockschain_test() {
-  auto chain1 = std::unique_ptr<CBChain>(Blockschain("test-chain")
+  auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
                                              .looped(true)
                                              .block("Const", 1)
                                              .block("Log")
