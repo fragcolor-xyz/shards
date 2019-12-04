@@ -5,6 +5,9 @@
 
 #include "runtime.hpp"
 #include "blocks/shared.hpp"
+#ifndef NDEBUG
+#include "blockschain.hpp" // test those
+#endif
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
@@ -116,6 +119,10 @@ void registerCoreBlocks() {
 
 #ifdef CB_WITH_EXTRAS
   cbInitExtras();
+#endif
+
+#ifndef NDEBUG
+  blockschain_test();
 #endif
 }
 

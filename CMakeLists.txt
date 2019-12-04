@@ -134,6 +134,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/stbpp.hpp
   ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
+  ${CHAINBLOCKS_DIR}/include/blockschain.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/chainblocks.hpp
