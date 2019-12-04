@@ -11,7 +11,7 @@
 #include <regex>
 
 #include "blocks_macros.hpp"
-#include "chainblocks.hpp"
+#include "core.hpp"
 // C++ Mandatory from now!
 
 // Since we build the runtime we are free to use any std and lib

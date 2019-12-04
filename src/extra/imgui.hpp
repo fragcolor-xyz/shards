@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "chainblocks.hpp"
+#include "core.hpp"
 #include "imgui.h"
 
 namespace ImGuiExtra {

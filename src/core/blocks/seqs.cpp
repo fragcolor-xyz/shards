@@ -31,7 +31,7 @@ struct Flatten {
     case EndOfBlittableTypes:
       // Nothing
       break;
-    case Chain:
+    case CBType::Chain:
     case Block:
     case Object:
     case Enum:
@@ -91,7 +91,7 @@ struct Flatten {
     case EndOfBlittableTypes:
       // Nothing
       break;
-    case Chain:
+    case CBType::Chain:
     case Block:
     case Object:
     case Enum:

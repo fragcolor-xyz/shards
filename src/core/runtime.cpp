@@ -5,9 +5,6 @@
 
 #include "runtime.hpp"
 #include "blocks/shared.hpp"
-#ifndef NDEBUG
-#include "blockschain.hpp" // test those
-#endif
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
@@ -122,7 +119,14 @@ void registerCoreBlocks() {
 #endif
 
 #ifndef NDEBUG
-  blockschain_test();
+  // TODO remove when we have better tests/samples
+  auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
+                                             .looped(true)
+                                             .let(1)
+                                             .block("Log")
+                                             .block("Math.Add", 2)
+                                             .block("Assert.Is", 3, true));
+  assert(chain1->blocks.size() == 4);
 #endif
 }
 
@@ -1126,6 +1130,17 @@ void installSignalHandlers() {
   std::signal(SIGILL, &error_handler);
   std::signal(SIGABRT, &error_handler);
   std::signal(SIGSEGV, &error_handler);
+}
+
+Chain::operator CBChain *() {
+  auto chain = new CBChain(_name.c_str());
+  chain->looped = _looped;
+  for (auto blk : _blocks) {
+    chain->addBlock(blk);
+  }
+  // blocks are unique so drain them here
+  _blocks.clear();
+  return chain;
 }
 }; // namespace chainblocks
 

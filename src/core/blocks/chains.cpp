@@ -112,7 +112,7 @@ struct ChainBase {
     chainValidation.exposedInfo = nullptr;
 
     // Actualize the chain here...
-    if (chainref.valueType == Chain) {
+    if (chainref.valueType == CBType::Chain) {
       chain = chainref.payload.chainValue;
     } else if (chainref.valueType == String) {
       chain = chainblocks::Globals::GlobalChains[chainref.payload.stringValue];
@@ -453,7 +453,7 @@ struct ChainFileWatcher {
             // symbols have high ref count, need to fix
             auto env = Lisp::Create(localRootStr.c_str());
             auto v = Lisp::Eval(env, str.c_str());
-            if (v.valueType != Chain) {
+            if (v.valueType != CBType::Chain) {
               LOG(ERROR) << "Lisp::Eval did not return a CBChain";
               Lisp::Destroy(env);
               continue;
