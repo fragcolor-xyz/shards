@@ -245,6 +245,53 @@ struct Var : public CBVar {
   }
 };
 
+class ChainProvider {
+  // used specially for live editing chains, from host languages
+public:
+  class Info {
+  public:
+    Info() {
+      _info.objectVendorId = 'frag';
+      _info.objectTypeId = 'chnp';
+
+      CBTypeInfo none{};
+      stbds_arrpush(_providerOrNone, none);
+      stbds_arrpush(_providerOrNone, _info);
+    }
+
+    ~Info() { stbds_arrfree(_providerOrNone); }
+
+    operator CBTypeInfo() const { return _info; }
+
+    operator CBTypesInfo() const { return _providerOrNone; }
+
+  private:
+    CBTypeInfo _info{CBType::Object};
+    CBTypesInfo _providerOrNone = nullptr;
+  };
+
+  struct Update {
+    const char *error;
+    CBChain *chain;
+  };
+
+  static inline Info Info{};
+
+  ChainProvider() {}
+  ~ChainProvider() {}
+
+  virtual void reset() = 0;
+
+  virtual bool ready() = 0;
+  virtual void setup(const char *path, const CBTypeInfo &inputType,
+                     const CBExposedTypesInfo &consumables) = 0;
+
+  virtual bool updated() = 0;
+  virtual Update acquire() = 0;
+  virtual void release(CBChain *chain) = 0;
+  virtual void release(const char *error) = 0;
+};
+
 class Chain {
 public:
   template <typename String>

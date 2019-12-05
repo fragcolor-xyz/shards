@@ -523,6 +523,7 @@ struct ChainLoader : public ChainRunner {
   std::string fileName;
   std::unique_ptr<ChainFileWatcher> watcher;
   void *currentEnv;
+
   CBTypeInfo inputTypeCopy{};
   IterableExposedInfo consumablesCopy;
 
@@ -641,15 +642,159 @@ struct ChainLoader : public ChainRunner {
   }
 };
 
+struct ChainLoader2 : public ChainRunner {
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Provider", "The chainblocks chain provider.",
+                        CBTypesInfo(SharedTypes::strInfo)),
+      ParamsInfo::Param("Once",
+                        "Runs this sub-chain only once within the parent chain "
+                        "execution cycle.",
+                        CBTypesInfo(SharedTypes::boolInfo)),
+      ParamsInfo::Param(
+          "Mode",
+          "The way to run the chain. Inline: will run the sub chain inline "
+          "within the root chain, a pause in the child chain will pause the "
+          "root "
+          "too; Detached: will run the chain separately in the same node, a "
+          "pause in this chain will not pause the root; Stepped: the chain "
+          "will "
+          "run as a child, the root will tick the chain every activation of "
+          "this "
+          "block and so a child pause won't pause the root.",
+          CBTypesInfo(SharedTypes::runChainModeInfo)));
+
+  ChainProvider *_provider;
+
+  CBTypeInfo _inputTypeCopy{};
+  IterableExposedInfo _consumablesCopy;
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    _inputTypeCopy = inputType;
+    const IterableExposedInfo consumablesStb(consumables);
+    // copy consumables
+    _consumablesCopy = consumablesStb;
+    return inputType;
+  }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cleanup(); // stop current
+      if (value.valueType == Object) {
+        _provider = (ChainProvider *)value.payload.objectValue;
+      } else {
+        _provider = nullptr;
+      }
+      break;
+    case 1:
+      once = value.payload.boolValue;
+      break;
+    case 2:
+      mode = RunChainMode(value.payload.enumValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      if (_provider) {
+        return Var::Object(_provider, 'frag', 'chnp');
+      } else {
+        return Var();
+      }
+      break;
+    case 1:
+      return Var(once);
+      break;
+    case 2:
+      return Var::Enum(mode, 'frag', 'runC');
+      break;
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  void cleanup() {
+    ChainRunner::cleanup();
+
+    if (_provider && chain) {
+      _provider->release(chain);
+      chain = nullptr;
+    }
+
+    if (_provider)
+      _provider->reset();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_provider->ready()) {
+      _provider->setup(context->chain->node->currentPath.c_str(),
+                       _inputTypeCopy, _consumablesCopy());
+    }
+
+    if (_provider->updated()) {
+      auto update = _provider->acquire();
+      if (unlikely(update.error != nullptr)) {
+        LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "
+                   << update.error;
+        _provider->release(update.error);
+      } else {
+        if (chain) {
+          // stop and release previous version
+          chainblocks::stop(chain);
+          _provider->release(chain);
+        }
+        chain = update.chain;
+      }
+    }
+
+    if (unlikely(!chain))
+      return input;
+
+    if (!doneOnce) {
+      if (once)
+        doneOnce = true;
+
+      if (mode == RunChainMode::Detached) {
+        activateDetached(context, input);
+        return input;
+      } else if (mode == RunChainMode::Stepped) {
+        activateStepMode(context, input);
+        return input;
+      } else {
+        // Run within the root flow
+        chain->flow = context->chain->flow;
+        chain->node = context->chain->node;
+        auto runRes = runSubChain(chain, context, input);
+        if (unlikely(runRes.state == Failed || context->aborted)) {
+          return StopChain;
+        } else {
+          return input;
+        }
+      }
+    } else {
+      return input;
+    }
+  }
+};
+
 typedef BlockWrapper<ContinueChain> ContinueChainBlock;
 typedef BlockWrapper<WaitChain> WaitChainBlock;
 typedef BlockWrapper<RunChain> RunChainBlock;
 typedef BlockWrapper<ChainLoader> ChainLoaderBlock;
+typedef BlockWrapper<ChainLoader2> ChainLoader2Block;
 
 void registerChainsBlocks() {
   registerBlock("ContinueChain", &ContinueChainBlock::create);
   registerBlock("WaitChain", &WaitChainBlock::create);
   registerBlock("RunChain", &RunChainBlock::create);
   registerBlock("ChainLoader", &ChainLoaderBlock::create);
+  registerBlock("ChainLoader2", &ChainLoader2Block::create);
 }
 }; // namespace chainblocks
