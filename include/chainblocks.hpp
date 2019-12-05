@@ -301,11 +301,7 @@ public:
       auto p = reinterpret_cast<ChainProvider *>(provider->userData);
       return p->acquire();
     };
-    _provider.releaseError = [](CBChainProvider *provider, const char *error) {
-      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
-      return p->release(error);
-    };
-    _provider.releaseChain = [](CBChainProvider *provider, CBChain *chain) {
+    _provider.release = [](CBChainProvider *provider, CBChain *chain) {
       auto p = reinterpret_cast<ChainProvider *>(provider->userData);
       return p->release(chain);
     };
@@ -322,7 +318,15 @@ public:
   virtual CBChainProviderUpdate acquire() = 0;
 
   virtual void release(CBChain *chain) = 0;
-  virtual void release(const char *error) = 0;
+
+  operator CBVar() {
+    CBVar res{};
+    res.valueType = Object;
+    res.payload.objectVendorId = 'frag';
+    res.payload.objectTypeId = 'chnp';
+    res.payload.objectValue = &_provider;
+    return res;
+  }
 
 private:
   CBChainProvider _provider;

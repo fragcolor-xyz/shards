@@ -9,10 +9,14 @@
 #undef String
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
+#include "rigtorp/SPSCQueue.h"
+#include "stbpp.hpp"
 #include <algorithm>
+#include <boost/lockfree/queue.hpp>
 #include <boost/process/environment.hpp>
 #include <filesystem>
 #include <set>
+#include <thread>
 
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -49,11 +53,23 @@ static StaticList<malBuiltIn *> handlers;
 
 extern void cbRegisterAllBlocks();
 
+class malCBChain;
+class malCBlock;
+class malCBNode;
+class malCBVar;
+typedef RefCountedPtr<malCBChain> malCBChainPtr;
+typedef RefCountedPtr<malCBlock> malCBlockPtr;
+typedef RefCountedPtr<malCBNode> malCBNodePtr;
+typedef RefCountedPtr<malCBVar> malCBVarPtr;
+
 void registerKeywords(malEnvPtr env);
+malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg);
+
+namespace fs = std::filesystem;
 
 namespace chainblocks {
 CBlock *createBlockInnerCall();
-}
+} // namespace chainblocks
 
 void linkLispUtility();
 struct Observer;
@@ -174,15 +190,6 @@ void installCBCore(const malEnvPtr &env) {
   rep("(def platform \"apple\")", env);
 #endif
 }
-
-class malCBChain;
-class malCBlock;
-class malCBNode;
-class malCBVar;
-typedef RefCountedPtr<malCBChain> malCBChainPtr;
-typedef RefCountedPtr<malCBlock> malCBlockPtr;
-typedef RefCountedPtr<malCBNode> malCBNodePtr;
-typedef RefCountedPtr<malCBVar> malCBVarPtr;
 
 class malRoot {
 public:
@@ -344,6 +351,177 @@ public:
 private:
   CBVar m_var;
   bool m_cloned;
+};
+
+struct ChainLoadResult {
+  bool hasError;
+  std::string errorMsg;
+  CBChain *chain;
+};
+
+struct ChainFileWatcher {
+  std::atomic_bool running;
+  std::thread worker;
+  std::string fileName;
+  std::string path;
+  rigtorp::SPSCQueue<ChainLoadResult> results;
+  phmap::node_hash_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>>
+      liveChains;
+  boost::lockfree::queue<CBChain *> garbage;
+
+  CBTypeInfo inputTypeInfo;
+  const chainblocks::IterableExposedInfo &consumables;
+
+  explicit ChainFileWatcher(
+      std::string &file, std::string currentPath, CBTypeInfo inputType,
+      const chainblocks::IterableExposedInfo &consumablesRef)
+      : running(true), fileName(file), path(currentPath), results(2),
+        garbage(2), inputTypeInfo(inputType), consumables(consumablesRef) {
+    worker = std::thread([this] {
+      decltype(fs::last_write_time(fs::path())) lastWrite{};
+      auto localRoot = std::filesystem::path(path);
+      auto localRootStr = localRoot.string();
+      malEnvPtr rootEnv(new malEnv);
+      malinit(rootEnv);
+      MalString mpath(path);
+      malsetpath(mpath);
+
+      while (running) {
+        try {
+          fs::path p(fileName);
+          if (path.size() > 0 && p.is_relative()) {
+            // complete path with current path if any
+            p = localRoot / p;
+          }
+
+          if (!fs::exists(p)) {
+            LOG(INFO) << "A ChainLoader loaded script path does not exist: "
+                      << p;
+          } else if (fs::is_regular_file(p) &&
+                     fs::last_write_time(p) != lastWrite) {
+            // make sure to store last write time
+            // before any possible error!
+            auto writeTime = fs::last_write_time(p);
+            lastWrite = writeTime;
+
+            std::ifstream lsp(p.c_str());
+            std::string str((std::istreambuf_iterator<char>(lsp)),
+                            std::istreambuf_iterator<char>());
+
+            // envs are not being cleaned properly for now
+            // symbols have high ref count, need to fix
+            malEnvPtr env(new malEnv(rootEnv));
+            auto res = maleval(str.c_str(), env);
+            auto var = varify(nullptr, res);
+            if (var->value().valueType != CBType::Chain) {
+              LOG(ERROR) << "Script did not return a CBChain";
+              continue;
+            }
+
+            auto chain = var->value().payload.chainValue;
+            liveChains[chain] = std::make_tuple(env, res);
+
+            // run validation to infertypes and specialize
+            auto chainValidation = validateConnections(
+                chain,
+                [](const CBlock *errorBlock, const char *errorTxt,
+                   bool nonfatalWarning, void *userData) {
+                  if (!nonfatalWarning) {
+                    auto msg =
+                        "RunChain: failed inner chain validation, error: " +
+                        std::string(errorTxt);
+                    throw chainblocks::CBException(msg);
+                  } else {
+                    LOG(INFO)
+                        << "RunChain: warning during inner chain validation: "
+                        << errorTxt;
+                  }
+                },
+                nullptr, inputTypeInfo, consumables());
+            stbds_arrfree(chainValidation.exposedInfo);
+
+            ChainLoadResult result = {false, "", chain};
+            results.push(result);
+          }
+
+          // Collect garbage
+          if (!garbage.empty()) {
+            CBChain *gchain;
+            if (garbage.pop(gchain)) {
+              liveChains.erase(gchain);
+            }
+          }
+
+          // sleep some, don't run callbacks here tho!
+          chainblocks::sleep(2.0, false);
+        } catch (std::exception &e) {
+          ChainLoadResult result = {true, e.what(), nullptr};
+          results.push(result);
+        } catch (...) {
+          ChainLoadResult result = {true, "unknown error", nullptr};
+          results.push(result);
+        }
+      }
+
+      // Collect garbage
+      if (!garbage.empty()) {
+        CBChain *gchain;
+        if (garbage.pop(gchain)) {
+          liveChains.erase(gchain);
+        }
+      }
+    });
+  }
+
+  ~ChainFileWatcher() {
+    running = false;
+    worker.join();
+  }
+};
+
+class malChainProvider : public malValue, public chainblocks::ChainProvider {
+public:
+  malChainProvider(const MalString &name)
+      : _filename(name), _watcher(nullptr) {}
+
+  malChainProvider(const malCBVar &that, const malValuePtr &meta) = delete;
+
+  virtual ~malChainProvider() {}
+
+  MalString print(bool readably) const override { return "ChainProvider"; }
+
+  bool doIsEqualTo(const malValue *rhs) const override { return false; }
+
+  void reset() override { _watcher.reset(nullptr); }
+
+  bool ready() override { return _watcher.get() != nullptr; }
+
+  void setup(const char *path, const CBTypeInfo &inputType,
+             const CBExposedTypesInfo &consumables) override {
+    _watcher.reset(
+        new ChainFileWatcher(_filename, path, inputType, consumables));
+  }
+
+  bool updated() override { return !_watcher->results.empty(); }
+
+  CBChainProviderUpdate acquire() override {
+    CBChainProviderUpdate update{};
+    auto result = _watcher->results.front();
+    if (result->hasError) {
+      _errors = result->errorMsg;
+      update.error = _errors.c_str();
+    } else {
+      update.chain = result->chain;
+    }
+    return update;
+  }
+
+  void release(CBChain *chain) override { _watcher->garbage.push(chain); }
+
+private:
+  MalString _filename;
+  MalString _errors;
+  std::unique_ptr<ChainFileWatcher> _watcher;
 };
 
 CBType keywordToType(malKeyword *typeKeyword) {

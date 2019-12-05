@@ -508,8 +508,6 @@ typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider* provider,
 typedef bool(__cdecl *CBProviderUpdated)(struct CBChainProvider* provider);
 typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(struct CBChainProvider* provider);
 
-typedef void(__cdecl *CBProviderReleaseError)(struct CBChainProvider* provider,
-					      const char* error);
 typedef void(__cdecl *CBProviderReleaseChain)(struct CBChainProvider* provider,
 					      struct CBChain* chain);
 
@@ -522,8 +520,7 @@ struct CBChainProvider {
   CBProviderUpdated updated;
   CBProviderAcquire acquire;
 
-  CBProviderReleaseError releaseError;
-  CBProviderReleaseChain releaseChain;
+  CBProviderReleaseChain release;
 
   void* userData;
 };

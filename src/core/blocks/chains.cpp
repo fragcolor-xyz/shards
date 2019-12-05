@@ -663,7 +663,7 @@ struct ChainLoader2 : public ChainRunner {
           "block and so a child pause won't pause the root.",
           CBTypesInfo(SharedTypes::runChainModeInfo)));
 
-  ChainProvider *_provider;
+  CBChainProvider *_provider;
 
   CBTypeInfo _inputTypeCopy{};
   IterableExposedInfo _consumablesCopy;
@@ -683,7 +683,7 @@ struct ChainLoader2 : public ChainRunner {
     case 0:
       cleanup(); // stop current
       if (value.valueType == Object) {
-        _provider = (ChainProvider *)value.payload.objectValue;
+        _provider = (CBChainProvider *)value.payload.objectValue;
       } else {
         _provider = nullptr;
       }
@@ -724,31 +724,30 @@ struct ChainLoader2 : public ChainRunner {
     ChainRunner::cleanup();
 
     if (_provider && chain) {
-      _provider->release(chain);
+      _provider->release(_provider, chain);
       chain = nullptr;
     }
 
     if (_provider)
-      _provider->reset();
+      _provider->reset(_provider);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_provider->ready()) {
-      _provider->setup(context->chain->node->currentPath.c_str(),
+    if (!_provider->ready(_provider)) {
+      _provider->setup(_provider, context->chain->node->currentPath.c_str(),
                        _inputTypeCopy, _consumablesCopy());
     }
 
-    if (_provider->updated()) {
-      auto update = _provider->acquire();
+    if (_provider->updated(_provider)) {
+      auto update = _provider->acquire(_provider);
       if (unlikely(update.error != nullptr)) {
         LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "
                    << update.error;
-        _provider->release(update.error);
       } else {
         if (chain) {
           // stop and release previous version
           chainblocks::stop(chain);
-          _provider->release(chain);
+          _provider->release(_provider, chain);
         }
         chain = update.chain;
       }
