@@ -645,7 +645,7 @@ struct ChainLoader : public ChainRunner {
 struct ChainLoader2 : public ChainRunner {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Provider", "The chainblocks chain provider.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        ChainProvider::Info),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",

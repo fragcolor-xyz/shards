@@ -3,7 +3,7 @@
           (Chain
            "n" :Looped
            10 (Set "var")
-           (ChainLoader "loadme.clj")
+           (ChainLoader2 (Chain@ "loadme.clj"))
 ))
 
 (def! dec (fn* [a] (- a 1)))

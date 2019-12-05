@@ -492,6 +492,11 @@ public:
 
   bool doIsEqualTo(const malValue *rhs) const override { return false; }
 
+  malValuePtr doWithMeta(malValuePtr meta) const override {
+    throw chainblocks::CBException(
+        "Meta not supported on chainblocks chain providers.");
+  }
+
   void reset() override { _watcher.reset(nullptr); }
 
   bool ready() override { return _watcher.get() != nullptr; }
@@ -827,6 +832,9 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     CBVar var{};
     chainblocks::cloneVar(var, v->value());
     return malCBVarPtr(new malCBVar(var, true));
+  } else if (malChainProvider *v = DYNAMIC_CAST(malChainProvider, arg)) {
+    CBVar var = *v;
+    return malCBVarPtr(new malCBVar(var, false));
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     auto block = v->value();
     CBVar var{};
@@ -1003,6 +1011,12 @@ BUILTIN("Chain") {
     }
   }
   return malValuePtr(mchain);
+}
+
+BUILTIN("Chain@") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  return malValuePtr(new malChainProvider(value->ref()));
 }
 
 BUILTIN("-->") {
