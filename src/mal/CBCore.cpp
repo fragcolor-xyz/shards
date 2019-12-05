@@ -518,6 +518,7 @@ public:
     } else {
       update.chain = result->chain;
     }
+    _watcher->results.pop();
     return update;
   }
 
