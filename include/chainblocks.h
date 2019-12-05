@@ -155,6 +155,8 @@ struct CBFlow;
 struct CBlock;
 typedef struct CBlock **CBlocks; // a stb array
 
+struct CBChainProvider;
+
 struct CBTypeInfo;
 typedef struct CBTypeInfo *CBTypesInfo; // a stb array
 
@@ -488,6 +490,42 @@ struct CBlock {
   CBActivateProc activate;
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes
                          // internally to clean up the block state
+};
+
+struct CBChainProviderUpdate {
+  const char *error; //if any or nullptr
+  CBChain *chain; // or nullptr if error
+};
+
+typedef void(__cdecl *CBProviderReset)(struct CBChainProvider* provider);
+
+typedef bool(__cdecl *CBProviderReady)(struct CBChainProvider* provider);
+typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider* provider,
+				       const char *path,
+				       struct CBTypeInfo inputType,
+				       const CBExposedTypesInfo consumables);
+
+typedef bool(__cdecl *CBProviderUpdated)(struct CBChainProvider* provider);
+typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(struct CBChainProvider* provider);
+
+typedef void(__cdecl *CBProviderReleaseError)(struct CBChainProvider* provider,
+					      const char* error);
+typedef void(__cdecl *CBProviderReleaseChain)(struct CBChainProvider* provider,
+					      struct CBChain* chain);
+
+struct CBChainProvider {
+  CBProviderReset reset;
+  
+  CBProviderReady ready;
+  CBProviderSetup setup;
+
+  CBProviderUpdated updated;
+  CBProviderAcquire acquire;
+
+  CBProviderReleaseError releaseError;
+  CBProviderReleaseChain releaseChain;
+
+  void* userData;
 };
 
 typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock,

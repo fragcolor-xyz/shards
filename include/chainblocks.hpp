@@ -277,7 +277,39 @@ public:
 
   static inline Info Info{};
 
-  ChainProvider() {}
+  ChainProvider() {
+    _provider.userData = this;
+    _provider.reset = [](CBChainProvider *provider) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      p->reset();
+    };
+    _provider.ready = [](CBChainProvider *provider) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      return p->ready();
+    };
+    _provider.setup = [](CBChainProvider *provider, const char *path,
+                         CBTypeInfo inputType,
+                         const CBExposedTypesInfo consumables) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      p->setup(path, inputType, consumables);
+    };
+    _provider.updated = [](CBChainProvider *provider) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      return p->updated();
+    };
+    _provider.acquire = [](CBChainProvider *provider) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      return p->acquire();
+    };
+    _provider.releaseError = [](CBChainProvider *provider, const char *error) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      return p->release(error);
+    };
+    _provider.releaseChain = [](CBChainProvider *provider, CBChain *chain) {
+      auto p = reinterpret_cast<ChainProvider *>(provider->userData);
+      return p->release(chain);
+    };
+  }
   ~ChainProvider() {}
 
   virtual void reset() = 0;
@@ -287,9 +319,13 @@ public:
                      const CBExposedTypesInfo &consumables) = 0;
 
   virtual bool updated() = 0;
-  virtual Update acquire() = 0;
+  virtual CBChainProviderUpdate acquire() = 0;
+
   virtual void release(CBChain *chain) = 0;
   virtual void release(const char *error) = 0;
+
+private:
+  CBChainProvider _provider;
 };
 
 class Chain {
