@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#ifndef CB_BLOCKSCHAIN_HPP
-#define CB_BLOCKSCHAIN_HPP
+#ifndef CB_CHAINBLOCKS_HPP
+#define CB_CHAINBLOCKS_HPP
 
 #include "chainblocks.h"
 #include <string>
@@ -312,7 +312,7 @@ public:
 
   virtual bool ready() = 0;
   virtual void setup(const char *path, const CBTypeInfo &inputType,
-                     const CBExposedTypesInfo &consumables) = 0;
+                     const CBExposedTypesInfo consumables) = 0;
 
   virtual bool updated() = 0;
   virtual CBChainProviderUpdate acquire() = 0;

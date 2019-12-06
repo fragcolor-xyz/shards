@@ -733,12 +733,15 @@ struct ChainLoader2 : public ChainRunner {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_provider->ready(_provider)) {
+    if (unlikely(!_provider))
+      return input;
+
+    if (unlikely(!_provider->ready(_provider))) {
       _provider->setup(_provider, context->chain->node->currentPath.c_str(),
                        _inputTypeCopy, _consumablesCopy());
     }
 
-    if (_provider->updated(_provider)) {
+    if (unlikely(_provider->updated(_provider))) {
       auto update = _provider->acquire(_provider);
       if (unlikely(update.error != nullptr)) {
         LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "

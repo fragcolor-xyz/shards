@@ -370,13 +370,13 @@ struct ChainFileWatcher {
   boost::lockfree::queue<CBChain *> garbage;
 
   CBTypeInfo inputTypeInfo;
-  const chainblocks::IterableExposedInfo &consumables;
+  chainblocks::IterableExposedInfo consumables;
 
-  explicit ChainFileWatcher(
-      std::string &file, std::string currentPath, CBTypeInfo inputType,
-      const chainblocks::IterableExposedInfo &consumablesRef)
+  explicit ChainFileWatcher(std::string &file, std::string currentPath,
+                            CBTypeInfo inputType,
+                            const chainblocks::IterableExposedInfo consums)
       : running(true), fileName(file), path(currentPath), results(2),
-        garbage(2), inputTypeInfo(inputType), consumables(consumablesRef) {
+        garbage(2), inputTypeInfo(inputType), consumables(consums) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
@@ -408,8 +408,6 @@ struct ChainFileWatcher {
             std::string str((std::istreambuf_iterator<char>(lsp)),
                             std::istreambuf_iterator<char>());
 
-            // envs are not being cleaned properly for now
-            // symbols have high ref count, need to fix
             malEnvPtr env(new malEnv(rootEnv));
             auto res = maleval(str.c_str(), env);
             auto var = varify(nullptr, res);
@@ -419,7 +417,6 @@ struct ChainFileWatcher {
             }
 
             auto chain = var->value().payload.chainValue;
-            liveChains[chain] = std::make_tuple(env, res);
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(
@@ -439,6 +436,8 @@ struct ChainFileWatcher {
                 },
                 nullptr, inputTypeInfo, consumables());
             stbds_arrfree(chainValidation.exposedInfo);
+
+            liveChains[chain] = std::make_tuple(env, res);
 
             ChainLoadResult result = {false, "", chain};
             results.push(result);
@@ -502,7 +501,7 @@ public:
   bool ready() override { return _watcher.get() != nullptr; }
 
   void setup(const char *path, const CBTypeInfo &inputType,
-             const CBExposedTypesInfo &consumables) override {
+             const CBExposedTypesInfo consumables) override {
     _watcher.reset(
         new ChainFileWatcher(_filename, path, inputType, consumables));
   }
@@ -835,7 +834,9 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     return malCBVarPtr(new malCBVar(var, true));
   } else if (malChainProvider *v = DYNAMIC_CAST(malChainProvider, arg)) {
     CBVar var = *v;
-    return malCBVarPtr(new malCBVar(var, false));
+    auto providerVar = new malCBVar(var, false);
+    providerVar->reference(v);
+    return malCBVarPtr(providerVar);
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     auto block = v->value();
     CBVar var{};
