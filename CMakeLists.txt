@@ -109,14 +109,14 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt)
   include_directories(/usr/local/include /usr/local/opt/readline/include)
   link_directories(/usr/local/lib /usr/local/opt/readline/lib)
 else()
-  set(BOOST_LIBS -lboost_context -lboost_filesystem)
+  set(BOOST_LIBS -lboost_context)
   set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
 
@@ -373,7 +373,7 @@ if(NOT IOS)
 endif()
 
 add_library(
-  cbruntime STATIC
+  cbruntime OBJECT
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${CHAINBLOCKS_DIR}/deps/kcp/ikcp.c
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
@@ -409,6 +409,15 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   # 32 bits
   add_compile_definitions(I386_BUILD)
 endif()
+
+# shared libraries need PIC
+set_property(TARGET cbruntime PROPERTY POSITION_INDEPENDENT_CODE 1)
+
+# shared and static libraries built from the same object files
+add_library(cb_shared SHARED $<TARGET_OBJECTS:cbruntime>)
+target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+
+add_library(cb_static STATIC $<TARGET_OBJECTS:cbruntime>)
 
 ### mal
 add_executable(
