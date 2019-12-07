@@ -494,7 +494,7 @@ struct CBlock {
 
 struct CBChainProviderUpdate {
   const char *error; //if any or nullptr
-  CBChain *chain; // or nullptr if error
+  struct CBChain *chain; // or nullptr if error
 };
 
 typedef void(__cdecl *CBProviderReset)(struct CBChainProvider* provider);

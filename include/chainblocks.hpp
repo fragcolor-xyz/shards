@@ -6,13 +6,14 @@
 
 #include "chainblocks.h"
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace chainblocks {
 class CBException : public std::exception {
 public:
   explicit CBException(const char *errmsg) : errorMessage(errmsg) {}
-  explicit CBException(std::string errmsg) : errorMessage(errmsg) {}
+  explicit CBException(std::string errmsg) : errorMessage(std::move(errmsg)) {}
 
   [[nodiscard]] const char *what() const noexcept override {
     return errorMessage.c_str();
