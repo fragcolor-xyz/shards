@@ -582,10 +582,25 @@ typedef struct CBValidationResult (__cdecl *CBValidateBlocks)(CBlocks blocks,
 							      CBExposedTypesInfo consumableVariables);
 
 typedef struct CBVar (__cdecl *CBRunBlocks)(CBlocks blocks,
-						       struct CBContext *context,
-						       struct CBVar input);
+					    struct CBContext *context,
+					    struct CBVar input);
 
 typedef void (__cdecl *CBLog)(const char *msg);
+
+typedef struct CBlock* (__cdecl *CBCreateBlock)(const char *name);
+
+typedef struct CBChain* (__cdecl *CBCreateChain)(const char *name,
+						 CBlocks blocks,
+						 bool looped,
+						 bool unsafe);
+typedef void (__cdecl *CBDestroyChain)(struct CBChain* chain);
+
+typedef struct CBNode* (__cdecl *CBCreateNode)();
+typedef void (__cdecl *CBDestroyNode)(struct CBNode* chain);
+typedef void (__cdecl *CBSchedule)(struct CBNode *node,
+				   struct CBChain *chain);
+typedef void (__cdecl *CBTick)(struct CBNode *node);
+typedef void (__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
 struct CBCore {
   // Adds a block to the runtime database
@@ -627,6 +642,19 @@ struct CBCore {
   
   // Logging
   CBLog log;
+
+  // Chain creation
+  CBCreateBlock createBlock;
+  
+  CBCreateChain createChain;
+  CBDestroyChain destroyChain;
+
+  // Chain scheduling
+  CBCreateNode createNode;
+  CBDestroyNode destroyNode;
+  CBSchedule schedule;
+  CBTick tick;
+  CBSleep sleep;
 };
 
 typedef struct CBCore (__cdecl *CBChainblocksInterface)();

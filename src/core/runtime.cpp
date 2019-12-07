@@ -591,6 +591,35 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 
   result.log = [](const char *msg) { LOG(INFO) << msg; };
 
+  result.createBlock = [](const char *name) {
+    return chainblocks::createBlock(name);
+  };
+
+  result.createChain = [](const char *name, CBlocks blocks, bool looped,
+                          bool unsafe) {
+    auto chain = new CBChain(name);
+    chain->looped = looped;
+    chain->unsafe = unsafe;
+    for (size_t i = 0; i < stbds_arrlen(blocks); i++) {
+      chain->addBlock(blocks[i]);
+    }
+    return chain;
+  };
+
+  result.destroyChain = [](CBChain *chain) { delete chain; };
+
+  result.createNode = []() { return new CBNode(); };
+
+  result.destroyNode = [](CBNode *node) { delete node; };
+
+  result.schedule = [](CBNode *node, CBChain *chain) { node->schedule(chain); };
+
+  result.tick = [](CBNode *node) { node->tick(); };
+
+  result.sleep = [](double seconds, bool runCallbacks) {
+    chainblocks::sleep(seconds, runCallbacks);
+  };
+
   return result;
 }
 
