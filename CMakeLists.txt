@@ -105,6 +105,14 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     # using Visual Studio C++
   endif()
 endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # 64 bits
+  add_compile_definitions(AMD64_BUILD)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # 32 bits
+  add_compile_definitions(I386_BUILD)
+endif()
 ###
 
 ### libs
@@ -112,7 +120,9 @@ if(WIN32)
   set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
-  set(BOOST_LIBS -lboost_context-mt)
+  if(NOT IOS)
+    set(BOOST_LIBS -lboost_context-mt)
+  endif()
   include_directories(/usr/local/include /usr/local/opt/readline/include)
   link_directories(/usr/local/lib /usr/local/opt/readline/lib)
 else()
@@ -370,12 +380,19 @@ if(NOT IOS)
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
     )
+else()
+  set(CB_EXTRAS
+    ${CB_EXTRAS}
+    ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
+    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
+    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
+    )
 endif()
 
 add_library(
-  cbruntime OBJECT
+  cbruntime STATIC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
-  ${CHAINBLOCKS_DIR}/deps/kcp/ikcp.c
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
@@ -400,24 +417,37 @@ set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cbruntime format)
 
 set(CB_RUNTIME_LIBS cbruntime)
-###
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  # 64 bits
-  add_compile_definitions(AMD64_BUILD)
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  # 32 bits
-  add_compile_definitions(I386_BUILD)
-endif()
-
-# shared libraries need PIC
-set_property(TARGET cbruntime PROPERTY POSITION_INDEPENDENT_CODE 1)
-
-# shared and static libraries built from the same object files
-add_library(cb_shared SHARED $<TARGET_OBJECTS:cbruntime>)
+# also shared lib target
+# can't use OBJECT sadly due to xcode generator not liking it
+add_library(
+  cb_shared SHARED
+  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
+  ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CB_EXTRAS}
+  )
+set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
+add_dependencies(cb_shared format)
 target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
-
-add_library(cb_static STATIC $<TARGET_OBJECTS:cbruntime>)
+###
+###
 
 ### mal
 add_executable(

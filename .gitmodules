@@ -40,3 +40,6 @@
 [submodule "magic_enum"]
 	path = deps/magic_enum
 	url = https://github.com/chainblocks/magic_enum.git
+[submodule "boost-context"]
+	path = deps/boost-context
+	url = https://github.com/chainblocks/context.git
