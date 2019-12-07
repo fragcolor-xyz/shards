@@ -109,7 +109,7 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
   set(BOOST_LIBS -lboost_context-mt)
