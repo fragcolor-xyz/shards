@@ -794,6 +794,9 @@ RUNTIME_BLOCK_inputTypes(Mean);
 RUNTIME_BLOCK_outputTypes(Mean);
 RUNTIME_BLOCK_activate(Mean);
 RUNTIME_BLOCK_END(Mean);
+
+MATH_BINARY_BLOCK(Inc);
+MATH_BINARY_BLOCK(Dec);
 }; // namespace Math
 
 void registerBlocksCoreBlocks() {
@@ -886,5 +889,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_BLOCK(Math, Round);
 
   REGISTER_BLOCK(Math, Mean);
+
+  REGISTER_BLOCK(Math, Inc);
+  REGISTER_BLOCK(Math, Dec);
 }
 }; // namespace chainblocks

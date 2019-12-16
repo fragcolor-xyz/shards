@@ -665,7 +665,7 @@ struct TypeInfo : public CBTypeInfo {
     return result;
   }
 
-  TypeInfo(const TypeInfo &other)  : CBTypeInfo(other) {
+  TypeInfo(const TypeInfo &other) : CBTypeInfo(other) {
     basicType = other.basicType;
     tableKeys = nullptr;
     tableTypes = nullptr;
@@ -782,7 +782,7 @@ struct TypesInfo {
     return *this;
   }
 
-  explicit TypesInfo(const TypeInfo& singleType, bool canBeSeq = false) {
+  explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false) {
     _innerInfo = nullptr;
     _innerTypes.reserve(canBeSeq ? 2 : 1);
     _innerTypes.push_back(singleType);

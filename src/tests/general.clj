@@ -591,6 +591,14 @@
   (Update "bytesTest")
   (Log)
 
+  1.0
+  (Math.Inc)
+  (Assert.Is 2.0 true)
+
+  5
+  (Math.Dec)
+  (Assert.Is 4 true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

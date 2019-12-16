@@ -163,6 +163,21 @@ struct Var : public CBVar {
     payload.int2Value[1] = b;
   }
 
+  explicit Var(int a, int b, int c) : CBVar() {
+    valueType = Int3;
+    payload.int2Value[0] = a;
+    payload.int2Value[1] = b;
+    payload.int2Value[2] = c;
+  }
+
+  explicit Var(int a, int b, int c, int d) : CBVar() {
+    valueType = Int4;
+    payload.int2Value[0] = a;
+    payload.int2Value[1] = b;
+    payload.int2Value[2] = c;
+    payload.int2Value[3] = d;
+  }
+
   explicit Var(int64_t a, int64_t b) : CBVar() {
     valueType = Int2;
     payload.int2Value[0] = a;
@@ -173,6 +188,21 @@ struct Var : public CBVar {
     valueType = Float2;
     payload.float2Value[0] = a;
     payload.float2Value[1] = b;
+  }
+
+  explicit Var(double a, double b, double c) : CBVar() {
+    valueType = Float3;
+    payload.float2Value[0] = a;
+    payload.float2Value[1] = b;
+    payload.float2Value[2] = c;
+  }
+
+  explicit Var(double a, double b, double c, double d) : CBVar() {
+    valueType = Float4;
+    payload.float2Value[0] = a;
+    payload.float2Value[1] = b;
+    payload.float2Value[2] = c;
+    payload.float2Value[3] = d;
   }
 
   explicit Var(float a, float b) : CBVar() {

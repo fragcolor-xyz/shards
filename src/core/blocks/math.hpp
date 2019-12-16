@@ -506,5 +506,56 @@ struct Mean {
     return Var(mean);
   }
 };
+
+template <class T> struct UnaryBin : public T {
+  void setOperand(CBType type) {
+    switch (type) {
+    case CBType::Int:
+      T::_operand = Var(1);
+      break;
+    case CBType::Int2:
+      T::_operand = Var(1, 1);
+      break;
+    case CBType::Int3:
+      T::_operand = Var(1, 1, 1);
+      break;
+    case CBType::Int4:
+      T::_operand = Var(1, 1, 1, 1);
+      break;
+    case CBType::Float:
+      T::_operand = Var(1.0);
+      break;
+    case CBType::Float2:
+      T::_operand = Var(1.0, 1.0);
+      break;
+    case CBType::Float3:
+      T::_operand = Var(1.0, 1.0, 1.0);
+      break;
+    case CBType::Float4:
+      T::_operand = Var(1.0, 1.0, 1.0, 1.0);
+      break;
+    default:
+      throw CBException("Type not supported for unary math operation");
+    }
+  }
+
+  CBTypeInfo inferTypes(CBTypeInfo inputType,
+                        CBExposedTypesInfo consumableVariables) {
+    switch (inputType.basicType) {
+    case Seq:
+      assert(inputType.seqType);
+      setOperand(inputType.seqType->basicType);
+      break;
+    default:
+      setOperand(inputType.basicType);
+    }
+    return T::inferTypes(inputType, consumableVariables);
+  }
+};
+
+struct Inc : public UnaryBin<Add> {};
+RUNTIME_BLOCK_TYPE(Math, Inc);
+struct Dec : public UnaryBin<Subtract> {};
+RUNTIME_BLOCK_TYPE(Math, Dec);
 }; // namespace Math
 }; // namespace chainblocks
