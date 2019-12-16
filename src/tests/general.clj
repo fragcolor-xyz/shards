@@ -640,6 +640,4 @@
     2)
 ))
 
-(prepare fileReader)
-(start fileReader)
-(stop fileReader)
+(schedule Root fileReader)
