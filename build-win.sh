@@ -8,6 +8,14 @@ export MINGW=/d/a/_temp/msys/msys64/mingw64 # chainblocks/setup-msys2, needed by
 make mingw-gcc-release64
 cd ../../
 
+# snappy
+cd deps/snappy
+mkdir build
+cd build
+cmake -G Ninja ..
+ninja
+cd ../../../
+
 # SDL
 mkdir external
 cd external

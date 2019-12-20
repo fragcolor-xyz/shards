@@ -191,6 +191,7 @@ set(
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/deps/rpmalloc
+  -I${CHAINBLOCKS_DIR}/deps/snappy
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   -I${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
@@ -262,6 +263,7 @@ endif()
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
+  ${CHAINBLOCKS_DIR}/deps/snappy
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   ${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
@@ -309,6 +311,7 @@ if(NOT BUILD_CORE_ONLY)
       set(CBLP_PLATFORM_LIBS
         ${CHAINBLOCKS_DIR}/deps/bimg/.build/win64_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
+	${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	)
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -316,6 +319,7 @@ if(NOT BUILD_CORE_ONLY)
       set(CBLP_PLATFORM_LIBS
         ${CHAINBLOCKS_DIR}/deps/bimg/.build/win32_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
+	${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	)
     endif()
@@ -332,6 +336,7 @@ if(NOT BUILD_CORE_ONLY)
     set(CBLP_PLATFORM_LIBS
       ${CHAINBLOCKS_DIR}/deps/bimg/.build/osx64_clang/bin/libbimgRelease.a
       ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/build/libSDL2.a
+      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -liconv
       "-framework Foundation"
       "-framework Cocoa"
@@ -356,6 +361,7 @@ if(NOT BUILD_CORE_ONLY)
 
     set(CBLP_PLATFORM_LIBS
       ${CMAKE_CURRENT_LIST_DIR}/deps/bimg/.build/linux64_gcc/bin/libbimgRelease.a
+      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -lSDL2
       -lX11
       -lGL

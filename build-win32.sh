@@ -11,6 +11,14 @@ ln -s $MINGW/bin/i686-w64-mingw32-gcc.exe $MINGW/bin/x86_64-w64-mingw32-gcc.exe
 make mingw-gcc-release32
 cd ../../
 
+# snappy
+cd deps/snappy
+mkdir build32
+cd build32
+cmake -G Ninja ..
+ninja
+cd ../../../
+
 # SDL
 mkdir external
 cd external
