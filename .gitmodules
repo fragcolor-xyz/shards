@@ -43,3 +43,6 @@
 [submodule "boost-context"]
 	path = deps/boost-context
 	url = https://github.com/chainblocks/context.git
+[submodule "snappy"]
+	path = deps/snappy
+	url = https://github.com/chainblocks/snappy.git
