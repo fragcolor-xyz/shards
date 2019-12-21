@@ -174,6 +174,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/desktop.hpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.capture.win.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
@@ -289,6 +290,8 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/imgui_club/imgui_memory_editor
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
+    ${CHAINBLOCKS_DIR}/deps/snappy/build
+    ${CHAINBLOCKS_DIR}/deps/snappy/build32
     )
 
   if(WIN32)
@@ -372,6 +375,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui/imgui.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui.cpp

@@ -10,13 +10,17 @@ extern void registerBGFXBlocks();
 #ifdef _WIN32
 namespace Desktop {
 extern void registerDesktopBlocks();
-};
+}
 #endif
 
 namespace chainblocks {
 namespace ImGui {
 extern void registerImGuiBlocks();
-};
+}
+
+namespace Snappy {
+extern void registerBlocks();
+}
 
 void cbInitExtras() {
   BGFX::registerBGFXBlocks();
@@ -24,5 +28,6 @@ void cbInitExtras() {
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
+  chainblocks::Snappy::registerBlocks();
 }
 }; // namespace chainblocks
