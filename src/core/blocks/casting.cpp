@@ -657,7 +657,7 @@ struct ToBytes {
       if (len > 0) {
         auto itemSize = getSize(input.payload.seqValue[0]);
         if (itemSize == 0) {
-          throw CBException("ToBytes, unsupported Seq type.");
+          throw CBException("ToBytes, unsupported Seq type, use Flatten to make a flat sequence.");
         }
         _buffer.resize(itemSize * len);
         for (auto i = 0; i < len; i++) {

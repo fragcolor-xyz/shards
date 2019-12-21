@@ -1116,6 +1116,8 @@ struct Count : SeqUser {
       return Var(int64_t(stbds_arrlen(var.payload.seqValue)));
     } else if (var.valueType == Table) {
       return Var(int64_t(stbds_shlen(var.payload.tableValue)));
+    } else if (var.valueType == Bytes) {
+      return Var(var.payload.bytesSize);
     } else {
       return Var(0);
     }
