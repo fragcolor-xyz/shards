@@ -58,7 +58,6 @@ public:
         } catch (std::exception &e) {
           std::cerr << "Boost asio context run failed with exception: "
                     << e.what() << "\n";
-          ;
         }
       }
     });
