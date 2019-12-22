@@ -396,6 +396,9 @@ template <CBType OT, typename AT> struct BytesToX {
       dst.valueType = Float;
       auto p = reinterpret_cast<AT *>(addr);
       dst.payload.floatValue = static_cast<double>(*p);
+    } else if constexpr (std::is_same<AT, char *>::value) {
+      dst.valueType = String;
+      dst.payload.stringValue = (char *)addr;
     }
   }
 
@@ -404,6 +407,10 @@ template <CBType OT, typename AT> struct BytesToX {
     if (unlikely(input.payload.bytesSize < tsize)) {
       throw CBException("BytesToX, Not enough bytes to convert to " +
                         type2Name(OT));
+    } else if constexpr (std::is_same<AT, char *>::value) {
+      CBVar output{};
+      convert(output, input.payload.bytesValue);
+      return output;
     } else if (input.payload.bytesSize == tsize) {
       // exact size, 1 value
       stbds_arrsetlen(_outputCache, 1);
@@ -435,6 +442,7 @@ BYTES_TO_BLOCK(Int8, Int, int8_t);
 BYTES_TO_BLOCK(Int16, Int, int16_t);
 BYTES_TO_BLOCK(Int32, Int, int32_t);
 BYTES_TO_BLOCK(Int64, Int, int64_t);
+BYTES_TO_BLOCK(String, String, char *);
 
 struct BytesToStringUnsafe {
   CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
@@ -710,6 +718,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(BytesToInt16);
   REGISTER_CORE_BLOCK(BytesToInt32);
   REGISTER_CORE_BLOCK(BytesToInt64);
+  REGISTER_CORE_BLOCK(BytesToString);
   REGISTER_CORE_BLOCK(ExpectInt);
   REGISTER_CORE_BLOCK(ExpectInt2);
   REGISTER_CORE_BLOCK(ExpectInt3);

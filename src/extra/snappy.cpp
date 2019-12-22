@@ -35,9 +35,11 @@ struct Decompress {
       throw CBException(
           "Snappy failed to find uncompressed length, probably invalid data!");
     }
-    _buffer.resize(len);
+    _buffer.resize(len + 1);
     snappy::RawUncompress((char *)input.payload.bytesValue,
                           input.payload.bytesSize, &_buffer[0]);
+    // easy fix for null term strings
+    _buffer[len] = 0;
     return Var((uint8_t *)&_buffer[0], int64_t(len));
   }
 };

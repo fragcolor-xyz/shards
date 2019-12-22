@@ -35,3 +35,4 @@ ninja cbl
 ./cbl ../src/tests/network.clj
 ./cbl ../src/tests/struct.clj
 ./cbl ../src/tests/flows.clj
+./cbl ../src/tests/snappy.clj
