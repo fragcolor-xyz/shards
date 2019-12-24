@@ -397,18 +397,23 @@ CBVar suspend(CBContext *context, double seconds) {
 FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
+  // validation prevents extra pops so this should be safe
+  auto sidx = context->stack.size();
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
+        context->stack.resize(sidx);
         return Continuing;
       }
       case CBChainState::Stop: {
+        context->stack.resize(sidx);
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
+        context->stack.resize(sidx);
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -421,24 +426,30 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
     }
     input = output;
   }
+  context->stack.resize(sidx);
   return Continuing;
 }
 
 FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
+  // validation prevents extra pops so this should be safe
+  auto sidx = context->stack.size();
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
+        context->stack.resize(sidx);
         return Continuing;
       }
       case CBChainState::Stop: {
+        context->stack.resize(sidx);
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
+        context->stack.resize(sidx);
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -451,6 +462,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
+  context->stack.resize(sidx);
   return Continuing;
 }
 }; // namespace chainblocks
@@ -732,6 +744,7 @@ struct ValidationContext {
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
+  std::vector<CBTypeInfo> stackTypes;
 
   CBlock *bottom{};
 
@@ -964,6 +977,32 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
       // Hard code behavior for Input block and And and Or, in order to validate
       // with actual chain input the followup
       ctx.previousOutputType = ctx.originalInputType;
+    } else if (strcmp(blk->name(blk), "Push") == 0) {
+      auto seqName = blk->getParam(blk, 0);
+      if (seqName.payload.stringValue == nullptr ||
+          seqName.payload.stringValue[0] == 0) {
+        blk->inlineBlockId = StackPush;
+        // keep previous output type
+        // push stack type
+        ctx.stackTypes.push_back(ctx.previousOutputType);
+      } else {
+        ctx.bottom = blk;
+        validateConnection(ctx);
+      }
+    } else if (strcmp(blk->name(blk), "Pop") == 0) {
+      auto seqName = blk->getParam(blk, 0);
+      if (seqName.payload.stringValue == nullptr ||
+          seqName.payload.stringValue[0] == 0) {
+        blk->inlineBlockId = StackPop;
+        if (ctx.stackTypes.empty()) {
+          throw chainblocks::CBException("Stack Pop, but stack was empty!");
+        }
+        ctx.previousOutputType = ctx.stackTypes.back();
+        ctx.stackTypes.pop_back();
+      } else {
+        ctx.bottom = blk;
+        validateConnection(ctx);
+      }
     } else {
       ctx.bottom = blk;
       validateConnection(ctx);

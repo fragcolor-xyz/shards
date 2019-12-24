@@ -599,6 +599,12 @@
   (Math.Dec)
   (Assert.Is 4 true)
 
+                                        ; test stack ops
+  (Push)
+  (Pop)
+  (Assert.Is 4 true)
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

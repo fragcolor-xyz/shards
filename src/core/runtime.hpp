@@ -172,6 +172,9 @@ struct CBContext {
 
   // Iteration counter
   uint64_t iterationCount;
+
+  // Stack for local vars
+  std::vector<CBVar> stack;
 };
 
 #include "blocks/core.hpp"
@@ -185,6 +188,19 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
                                         const CBVar &input,
                                         CBVar &previousOutput) {
   switch (blk->inlineBlockId) {
+  case StackPush: {
+    context->stack.push_back(input);
+    previousOutput = input;
+    return;
+  }
+  case StackPop: {
+    if (context->stack.empty()) {
+      throw CBException("Context stack was empty!");
+    }
+    previousOutput = context->stack.back();
+    context->stack.pop_back();
+    return;
+  }
   case CoreConst: {
     auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
     previousOutput = cblock->core._value;
@@ -531,6 +547,9 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->context = context;
   context->paused = false;
 
+  // store stack index
+  auto sidx = context->stack.size();
+
   auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
@@ -540,12 +559,15 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
+          context->stack.resize(sidx);
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
+          context->stack.resize(sidx);
           return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
+          context->stack.resize(sidx);
           // Use input as output, return previous block result
           return {input, Restarted};
         }
@@ -563,14 +585,17 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
+      context->stack.resize(sidx);
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
+      context->stack.resize(sidx);
       return {chain->previousOutput, Failed};
     }
   }
 
+  context->stack.resize(sidx);
   return {chain->previousOutput, Running};
 }
 
@@ -633,6 +658,7 @@ static boost::context::continuation run(CBChain *chain,
     chain->finishedOutput = runRes.output; // Write result before setting flag
     chain->finished = true;                // Set finished flag (atomic)
     context.iterationCount++;              // increatse iteration counter
+    context.stack.clear();                 // clear the stack
     if (unlikely(runRes.state == Failed)) {
       chain->failed = true;
       context.aborted = true;

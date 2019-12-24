@@ -69,6 +69,9 @@ enum CBChainState : uint8_t {
 enum CBInlineBlocks : uint8_t {
   NotInline,
 
+  StackPush,
+  StackPop,
+
   CoreConst,
   CoreSleep,
   CoreInput,
