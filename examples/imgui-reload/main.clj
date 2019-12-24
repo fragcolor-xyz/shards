@@ -16,7 +16,7 @@
    :Width 400 :Height 720 :PosX 0 :PosY 0
    :Contents
    (-->
-    (ChainLoader2 (Chain@ "imgui-sandbox.clj"))))
+    (ChainLoader (Chain@ "imgui-sandbox.clj"))))
   (BGFX.Draw)))
 
 (run Root 0.015)

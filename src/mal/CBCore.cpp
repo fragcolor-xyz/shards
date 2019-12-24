@@ -71,7 +71,6 @@ namespace chainblocks {
 CBlock *createBlockInnerCall();
 } // namespace chainblocks
 
-void linkLispUtility();
 struct Observer;
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env);
 
@@ -84,7 +83,6 @@ void installCBCore(const malEnvPtr &env) {
   setupObserver(obs, env);
 
   if (!initDoneOnce) {
-    linkLispUtility();
     chainblocks::installSignalHandlers();
     cbRegisterAllBlocks();
     initDoneOnce = true;
@@ -1371,12 +1369,6 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
   }
 }
 };
-
-void linkLispUtility() {
-  chainblocks::Lisp::Create = cbLispCreate;
-  chainblocks::Lisp::Destroy = cbLispDestroy;
-  chainblocks::Lisp::Eval = cbLispEval;
-}
 
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();

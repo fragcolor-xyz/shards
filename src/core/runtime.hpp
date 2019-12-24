@@ -181,16 +181,6 @@ namespace chainblocks {
 
 void installSignalHandlers();
 
-struct Lisp {
-  typedef void *(__cdecl *cbLispCreateFunc)(const char *path);
-  typedef void(__cdecl *cbLispDestroyFunc)(void *env);
-  typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
-
-  static inline cbLispCreateFunc Create = nullptr;
-  static inline cbLispDestroyFunc Destroy = nullptr;
-  static inline cbLispEvalFunc Eval = nullptr;
-};
-
 ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
                                         const CBVar &input,
                                         CBVar &previousOutput) {
