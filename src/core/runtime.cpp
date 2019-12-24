@@ -398,22 +398,22 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = context->stack.size();
+  auto sidx = stbds_arrlen(context->stack);
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Continuing;
       }
       case CBChainState::Stop: {
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -426,7 +426,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
     }
     input = output;
   }
-  context->stack.resize(sidx);
+  stbds_arrsetlen(context->stack, sidx);
   return Continuing;
 }
 
@@ -434,22 +434,22 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = context->stack.size();
+  auto sidx = stbds_arrlen(context->stack);
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Continuing;
       }
       case CBChainState::Stop: {
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        context->stack.resize(sidx);
+        stbds_arrsetlen(context->stack, sidx);
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -462,7 +462,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-  context->stack.resize(sidx);
+  stbds_arrsetlen(context->stack, sidx);
   return Continuing;
 }
 }; // namespace chainblocks
