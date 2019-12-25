@@ -19,4 +19,14 @@
            (Pop)
            (Log)
            (Assert.Is 11 true)
+
+           5
+           (Push)
+           6
+           (Push)
+           (Swap)
+           (Pop)
+           (Assert.Is 5 true)
+           (Pop)
+           (Assert.Is 6 true)
            ))

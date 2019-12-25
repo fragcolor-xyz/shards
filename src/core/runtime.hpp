@@ -194,10 +194,15 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     return;
   }
   case StackPop: {
-    if (stbds_arrlen(context->stack) == 0) {
-      throw CBException("Context stack was empty!");
-    }
     previousOutput = stbds_arrpop(context->stack);
+    return;
+  }
+  case StackSwap: {
+    auto s = stbds_arrlen(context->stack);
+    auto a = context->stack[s - 1];
+    context->stack[s - 1] = context->stack[s - 2];
+    context->stack[s - 2] = a;
+    previousOutput = input;
     return;
   }
   case CoreConst: {

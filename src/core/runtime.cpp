@@ -978,6 +978,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
       // with actual chain input the followup
       ctx.previousOutputType = ctx.originalInputType;
     } else if (strcmp(blk->name(blk), "Push") == 0) {
+      // Check first param see if empty/null
       auto seqName = blk->getParam(blk, 0);
       if (seqName.payload.stringValue == nullptr ||
           seqName.payload.stringValue[0] == 0) {
@@ -990,6 +991,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
         validateConnection(ctx);
       }
     } else if (strcmp(blk->name(blk), "Pop") == 0) {
+      // Check first param see if empty/null
       auto seqName = blk->getParam(blk, 0);
       if (seqName.payload.stringValue == nullptr ||
           seqName.payload.stringValue[0] == 0) {
@@ -999,6 +1001,25 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
         }
         ctx.previousOutputType = ctx.stackTypes.back();
         ctx.stackTypes.pop_back();
+      } else {
+        ctx.bottom = blk;
+        validateConnection(ctx);
+      }
+    } else if (strcmp(blk->name(blk), "Swap") == 0) {
+      // Check first param see if empty/null
+      auto aname = blk->getParam(blk, 0);
+      auto bname = blk->getParam(blk, 1);
+      if ((aname.payload.stringValue == nullptr ||
+           aname.payload.stringValue[0] == 0) &&
+          (bname.payload.stringValue == nullptr ||
+           bname.payload.stringValue[0] == 0)) {
+        blk->inlineBlockId = StackSwap;
+        if (ctx.stackTypes.size() < 2) {
+          throw chainblocks::CBException("Stack Swap, but stack size < 2!");
+        }
+        std::swap(ctx.stackTypes[ctx.stackTypes.size() - 1],
+                  ctx.stackTypes[ctx.stackTypes.size() - 2]);
+        ctx.previousOutputType = ctx.stackTypes.back();
       } else {
         ctx.bottom = blk;
         validateConnection(ctx);

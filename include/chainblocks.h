@@ -71,6 +71,8 @@ enum CBInlineBlocks : uint8_t {
 
   StackPush,
   StackPop,
+  StackSwap,
+  StackDrop,
 
   CoreConst,
   CoreSleep,
