@@ -398,7 +398,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlen(context->stack);
+  auto sidx = stbds_arrlenu(context->stack);
   for (auto i = 0; i < nblocks; i++) {
     activateBlock(blocks[i], context, input, output);
     if (output.valueType == None) {
@@ -434,7 +434,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlen(context->stack);
+  auto sidx = stbds_arrlenu(context->stack);
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
     activateBlock(blocks[i].payload.blockValue, context, input, output);
     if (output.valueType == None) {
@@ -612,7 +612,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
     auto chain = new CBChain(name);
     chain->looped = looped;
     chain->unsafe = unsafe;
-    for (size_t i = 0; i < stbds_arrlen(blocks); i++) {
+    for (size_t i = 0; i < stbds_arrlenu(blocks); i++) {
       chain->addBlock(blocks[i]);
     }
     return chain;

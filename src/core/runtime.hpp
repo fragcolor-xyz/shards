@@ -552,7 +552,7 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   context->paused = false;
 
   // store stack index
-  auto sidx = stbds_arrlen(context->stack);
+  auto sidx = stbds_arrlenu(context->stack);
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {
