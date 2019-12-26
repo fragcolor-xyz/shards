@@ -143,7 +143,7 @@ struct CBContext {
   CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)),
-        iterationCount(0) {
+        iterationCount(0), stack(nullptr) {
     static std::regex re(
         R"([^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\-\._]+)");
     loggerName = std::regex_replace(chain->name, re, "_");
