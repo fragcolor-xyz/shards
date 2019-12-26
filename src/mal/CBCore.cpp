@@ -378,11 +378,9 @@ struct ChainFileWatcher {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
-      auto localRootStr = localRoot.string();
       malEnvPtr rootEnv(new malEnv);
       malinit(rootEnv);
-      MalString mpath(path);
-      malsetpath(mpath);
+      rootEnv->currentPath(path);
 
       while (running) {
         try {
@@ -407,6 +405,7 @@ struct ChainFileWatcher {
                             std::istreambuf_iterator<char>());
 
             malEnvPtr env(new malEnv(rootEnv));
+            env->currentPath(path);
             auto res = maleval(str.c_str(), env);
             auto var = varify(nullptr, res);
             if (var->value().valueType != CBType::Chain) {
