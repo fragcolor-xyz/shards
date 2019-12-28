@@ -509,6 +509,13 @@ RUNTIME_BLOCK_outputTypes(IsValidNumber);
 RUNTIME_BLOCK_activate(IsValidNumber);
 RUNTIME_BLOCK_END(IsValidNumber);
 
+// Register GetStack
+RUNTIME_CORE_BLOCK_FACTORY(GetStack);
+RUNTIME_BLOCK_inputTypes(GetStack);
+RUNTIME_BLOCK_outputTypes(GetStack);
+RUNTIME_BLOCK_activate(GetStack);
+RUNTIME_BLOCK_END(GetStackGetStack);
+
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
 RUNTIME_BLOCK_cleanup(Set);

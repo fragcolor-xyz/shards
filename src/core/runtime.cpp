@@ -143,6 +143,8 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (strcmp(name, "Stop") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreStop;
+  } else if (strcmp(name, "GetStack") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::StackGet;
   } else if (strcmp(name, "Input") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
   } else if (strcmp(name, "Restart") == 0) {
