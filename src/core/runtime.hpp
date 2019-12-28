@@ -144,14 +144,17 @@ struct CBContext {
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)),
         iterationCount(0), stack(nullptr) {
-    static std::regex re(
+    static const std::regex re(
         R"([^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\-\._]+)");
     loggerName = std::regex_replace(chain->name, re, "_");
     loggerName = "chain." + loggerName;
     el::Loggers::getLogger(loggerName.c_str());
   }
 
-  ~CBContext() { el::Loggers::unregisterLogger(loggerName.c_str()); }
+  ~CBContext() {
+    el::Loggers::unregisterLogger(loggerName.c_str());
+    stbds_arrfree(stack);
+  }
 
   const CBChain *chain;
 
