@@ -899,5 +899,7 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_BLOCK(Math, Inc);
   REGISTER_BLOCK(Math, Dec);
+
+  REGISTER_CORE_BLOCK(GetStack);
 }
 }; // namespace chainblocks
