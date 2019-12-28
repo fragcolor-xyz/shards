@@ -45,8 +45,8 @@ void malinit(malEnvPtr env) {
     assert(env);
     currentEnv = env;
     installCore(env);
-    installCBCore(env);
     installFunctions(env);
+    installCBCore(env);
 }
 
 malValuePtr maleval(const char* str, malEnvPtr env) {

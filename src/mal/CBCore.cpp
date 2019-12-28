@@ -378,7 +378,7 @@ struct ChainFileWatcher {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
-      malEnvPtr rootEnv(new malEnv);
+      malEnvPtr rootEnv(new malEnv());
       malinit(rootEnv);
       rootEnv->currentPath(path);
 
