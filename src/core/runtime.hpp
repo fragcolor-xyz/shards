@@ -866,6 +866,11 @@ struct CBNode {
     auto noErrors = true;
     _runningFlows = flows;
     for (auto &flow : _runningFlows) {
+      // make sure flow is actually the current one
+      // since this chain might be moved into another flow!
+      if (flow.get() != flow->chain->flow)
+        continue;
+
       chainblocks::tick(flow->chain, input);
       if (!chainblocks::isRunning(flow->chain)) {
         if (!chainblocks::stop(flow->chain)) {
