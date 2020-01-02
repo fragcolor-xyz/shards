@@ -378,15 +378,6 @@ struct IsValidNumber {
   }
 };
 
-struct GetStack {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    // this block is only inlined replaced by ID
-    throw CBException("Should not happen...");
-  }
-};
-
 struct VariableBase {
   CBVar *_target = nullptr;
   std::string _name;
@@ -1822,7 +1813,6 @@ RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);
 RUNTIME_CORE_BLOCK_TYPE(IsValidNumber);
-RUNTIME_CORE_BLOCK_TYPE(GetStack);
 RUNTIME_CORE_BLOCK_TYPE(Set);
 RUNTIME_CORE_BLOCK_TYPE(Ref);
 RUNTIME_CORE_BLOCK_TYPE(Update);
