@@ -8,8 +8,6 @@
 
 #include <string.h> // memset
 
-#include <regex>
-
 #include "blocks_macros.hpp"
 #include "core.hpp"
 // C++ Mandatory from now!
@@ -143,18 +141,9 @@ struct CBContext {
   CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
         shouldPause(false), paused(false), continuation(std::move(sink)),
-        iterationCount(0), stack(nullptr) {
-    static const std::regex re(
-        R"([^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\-\._]+)");
-    loggerName = std::regex_replace(chain->name, re, "_");
-    loggerName = "chain." + loggerName;
-    el::Loggers::getLogger(loggerName.c_str());
-  }
+        iterationCount(0), stack(nullptr) {}
 
-  ~CBContext() {
-    el::Loggers::unregisterLogger(loggerName.c_str());
-    stbds_arrfree(stack);
-  }
+  ~CBContext() { stbds_arrfree(stack); }
 
   const CBChain *chain;
 
@@ -169,9 +158,6 @@ struct CBContext {
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
   Duration next;
-
-  // Have a logger per context
-  std::string loggerName;
 
   // Iteration counter
   uint64_t iterationCount;
