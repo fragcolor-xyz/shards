@@ -1076,16 +1076,20 @@ struct SeqUser : VariableBase {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   CBExposedTypesInfo consumedVariables() {
-    if (_isTable) {
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                CBTypeInfo(CoreInfo::tableInfo)));
+    if (_name.size() > 0) {
+      if (_isTable) {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
+                                  CBTypeInfo(CoreInfo::tableInfo)));
+      } else {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
+                                  CBTypeInfo(CoreInfo::anyInfo)));
+      }
+      return CBExposedTypesInfo(_exposedInfo);
     } else {
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
-                                CBTypeInfo(CoreInfo::anyInfo)));
+      return nullptr;
     }
-    return CBExposedTypesInfo(_exposedInfo);
   }
 };
 
@@ -1170,6 +1174,45 @@ struct Clear : SeqUser {
       // not efficient but for now the only choice is to free it
       stbds_shfree(var.payload.tableValue);
       var.payload.tableValue = nullptr;
+    }
+
+    return input;
+  }
+};
+
+struct Drop : SeqUser {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = findVariable(context, _name.c_str());
+    }
+
+    CBVar &var = *_target;
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        throw CBException("Variable is not a table, failed to Clear.");
+      }
+
+      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+      if (index == -1) {
+        return input;
+      }
+
+      var = _target->payload.tableValue[index].value;
+    }
+
+    if (likely(var.valueType == Seq)) {
+      auto len = stbds_arrlenu(var.payload.seqValue);
+      if (len > 0) {
+        if (var.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
+          // Clean allocation garbage in case it's not blittable!
+          destroyVar(var.payload.seqValue[len - 1]);
+        }
+        stbds_arrsetlen(var.payload.seqValue, len - 1);
+      }
+    } else {
+      throw CBException("Variable is not a sequence, failed to Pop.");
     }
 
     return input;
@@ -1823,6 +1866,7 @@ RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
+RUNTIME_CORE_BLOCK_TYPE(Drop);
 RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks

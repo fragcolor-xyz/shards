@@ -569,6 +569,12 @@
   (Is (# "s2"))
   (Assert.Is true true)
 
+  "passing by..."
+  (Drop "s2")
+  (Assert.Is "passing by..." true)
+  (Get "s2")
+  (Assert.Is [1 2] true)
+
   (Time.Now)
   (Log)
   (Time.NowMs)
@@ -604,6 +610,14 @@
   (Pop)
   (Assert.Is 4 true)
   (Log)
+
+  8
+  (Push)
+  7
+  (Push)
+  (Drop)
+  (Pop)
+  (Assert.Is 8 true)
 
   (Msg "All looking good!")))
 

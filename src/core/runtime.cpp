@@ -1005,6 +1005,20 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
         ctx.bottom = blk;
         validateConnection(ctx);
       }
+    } else if (strcmp(blk->name(blk), "Drop") == 0) {
+      // Check first param see if empty/null
+      auto seqName = blk->getParam(blk, 0);
+      if (seqName.payload.stringValue == nullptr ||
+          seqName.payload.stringValue[0] == 0) {
+        blk->inlineBlockId = StackDrop;
+        if (ctx.stackTypes.empty()) {
+          throw chainblocks::CBException("Stack Drop, but stack was empty!");
+        }
+        ctx.stackTypes.pop_back();
+      } else {
+        ctx.bottom = blk;
+        validateConnection(ctx);
+      }
     } else if (strcmp(blk->name(blk), "Swap") == 0) {
       // Check first param see if empty/null
       auto aname = blk->getParam(blk, 0);

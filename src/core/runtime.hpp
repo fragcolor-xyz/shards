@@ -194,6 +194,11 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = input;
     return;
   }
+  case StackDrop: {
+    stbds_arrpop(context->stack);
+    previousOutput = input;
+    return;
+  }
   case CoreConst: {
     auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
     previousOutput = cblock->core._value;
