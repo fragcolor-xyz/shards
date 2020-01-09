@@ -432,6 +432,20 @@ struct CBRunChainOutput {
   enum CBRunChainOutputState state;
 };
 
+struct CBInstanceData {
+  // Used to optimize activations, replacing function pointers during bake/validation
+  struct CBlock *block;
+
+  // Info related to our activation
+  struct CBTypeInfo inputType;
+  const CBTypesInfo stack;
+  const CBExposedTypesInfo consumables;
+
+  // in the case of a sub chain we might have parents!
+  // generally used intenrally but we need to pass it around.
+  const struct CBInstanceData *parent;
+};
+
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
 typedef void(__cdecl *CBCallback)();
 

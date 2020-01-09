@@ -958,9 +958,9 @@ struct Observer : public chainblocks::RuntimeObserver {
     }
     // define the new built-in
     MalString mname(fullName);
-    const malBuiltIn::ApplyFunc *func = [](const MalString &name,
-                                           malValueIter argsBegin,
-                                           malValueIter argsEnd) {
+    malBuiltIn::ApplyFunc *func = [](const MalString &name,
+                                     malValueIter argsBegin,
+                                     malValueIter argsEnd) {
       auto block = chainblocks::createBlock(name.c_str());
       block->setup(block);
       auto malblock = new malCBlock(block);
