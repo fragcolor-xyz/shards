@@ -136,8 +136,8 @@ struct MainWindow : public BaseWindow {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // Make sure MainWindow is UNIQUE
     for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
       if (strcmp(consumableVariables[i].name, "BGFX.Context") == 0) {
@@ -480,7 +480,7 @@ typedef BlockWrapper<Texture2D> Texture2DBlock;
 // Register
 RUNTIME_BLOCK(BGFX, MainWindow);
 RUNTIME_BLOCK_cleanup(MainWindow);
-RUNTIME_BLOCK_inferTypes(MainWindow);
+RUNTIME_BLOCK_compose(MainWindow);
 RUNTIME_BLOCK_exposedVariables(MainWindow);
 RUNTIME_BLOCK_parameters(MainWindow);
 RUNTIME_BLOCK_setParam(MainWindow);

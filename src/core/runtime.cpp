@@ -774,7 +774,7 @@ void validateConnection(ValidationContext &ctx) {
 
   // infer and specialize types if we need to
   // If we don't we assume our output will be of the same type of the previous!
-  if (ctx.bottom->inferTypes) {
+  if (ctx.bottom->compose) {
     CBExposedTypesInfo consumables = nullptr;
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
@@ -785,7 +785,7 @@ void validateConnection(ValidationContext &ctx) {
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType =
-        ctx.bottom->inferTypes(ctx.bottom, previousOutput, consumables);
+        ctx.bottom->compose(ctx.bottom, previousOutput, consumables);
 
     stbds_arrfree(consumables);
   } else {
@@ -904,7 +904,7 @@ void validateConnection(ValidationContext &ctx) {
       auto findIt = ctx.exposed.find(name);
       if (findIt == ctx.exposed.end()) {
         std::string err("Required consumed variable not found: " + name);
-        // Warning only, delegate inferTypes to decide
+        // Warning only, delegate compose to decide
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       } else {
 

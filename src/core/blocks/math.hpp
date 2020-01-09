@@ -68,8 +68,8 @@ struct BinaryBase : public Base {
     return CBParametersInfo(mathParamsInfo);
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (_operand.valueType == ContextVar) {
       for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
         if (strcmp(consumableVariables[i].name, _operand.payload.stringValue) ==
@@ -393,7 +393,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \
-  RUNTIME_BLOCK_inferTypes(NAME);                                              \
+  RUNTIME_BLOCK_compose(NAME);                                                 \
   RUNTIME_BLOCK_consumedVariables(NAME);                                       \
   RUNTIME_BLOCK_setParam(NAME);                                                \
   RUNTIME_BLOCK_getParam(NAME);                                                \
@@ -539,8 +539,8 @@ template <class T> struct UnaryBin : public T {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     switch (inputType.basicType) {
     case Seq:
       assert(inputType.seqType);
@@ -549,7 +549,7 @@ template <class T> struct UnaryBin : public T {
     default:
       setOperand(inputType.basicType);
     }
-    return T::inferTypes(inputType, consumableVariables);
+    return T::compose(inputType, consumableVariables);
   }
 };
 

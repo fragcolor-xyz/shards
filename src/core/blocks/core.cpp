@@ -220,10 +220,10 @@ struct Remove : public JointOp, public BlocksUser {
     throw CBException("Parameter out of range.");
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // need to replace input type of inner chain with inner of seq
     assert(inputType.seqType);
-    BlocksUser::inferTypes(*inputType.seqType, consumables);
+    BlocksUser::compose(*inputType.seqType, consumables);
     return inputType;
   }
 
@@ -328,7 +328,7 @@ struct XpendTo : public XPendBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     auto conss = IterableExposedInfo(consumables);
     for (auto &cons : conss) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
@@ -437,7 +437,7 @@ RUNTIME_BLOCK_destroy(Const);
 RUNTIME_BLOCK_inputTypes(Const);
 RUNTIME_BLOCK_outputTypes(Const);
 RUNTIME_BLOCK_parameters(Const);
-RUNTIME_BLOCK_inferTypes(Const);
+RUNTIME_BLOCK_compose(Const);
 RUNTIME_BLOCK_setParam(Const);
 RUNTIME_BLOCK_getParam(Const);
 RUNTIME_BLOCK_activate(Const);
@@ -515,7 +515,7 @@ RUNTIME_BLOCK_cleanup(Set);
 RUNTIME_BLOCK_inputTypes(Set);
 RUNTIME_BLOCK_outputTypes(Set);
 RUNTIME_BLOCK_parameters(Set);
-RUNTIME_BLOCK_inferTypes(Set);
+RUNTIME_BLOCK_compose(Set);
 RUNTIME_BLOCK_exposedVariables(Set);
 RUNTIME_BLOCK_setParam(Set);
 RUNTIME_BLOCK_getParam(Set);
@@ -528,7 +528,7 @@ RUNTIME_BLOCK_cleanup(Ref);
 RUNTIME_BLOCK_inputTypes(Ref);
 RUNTIME_BLOCK_outputTypes(Ref);
 RUNTIME_BLOCK_parameters(Ref);
-RUNTIME_BLOCK_inferTypes(Ref);
+RUNTIME_BLOCK_compose(Ref);
 RUNTIME_BLOCK_exposedVariables(Ref);
 RUNTIME_BLOCK_setParam(Ref);
 RUNTIME_BLOCK_getParam(Ref);
@@ -541,7 +541,7 @@ RUNTIME_BLOCK_cleanup(Update);
 RUNTIME_BLOCK_inputTypes(Update);
 RUNTIME_BLOCK_outputTypes(Update);
 RUNTIME_BLOCK_parameters(Update);
-RUNTIME_BLOCK_inferTypes(Update);
+RUNTIME_BLOCK_compose(Update);
 RUNTIME_BLOCK_consumedVariables(Update);
 RUNTIME_BLOCK_setParam(Update);
 RUNTIME_BLOCK_getParam(Update);
@@ -555,7 +555,7 @@ RUNTIME_BLOCK_cleanup(Push);
 RUNTIME_BLOCK_inputTypes(Push);
 RUNTIME_BLOCK_outputTypes(Push);
 RUNTIME_BLOCK_parameters(Push);
-RUNTIME_BLOCK_inferTypes(Push);
+RUNTIME_BLOCK_compose(Push);
 RUNTIME_BLOCK_exposedVariables(Push);
 RUNTIME_BLOCK_setParam(Push);
 RUNTIME_BLOCK_getParam(Push);
@@ -569,7 +569,7 @@ RUNTIME_BLOCK_destroy(Pop);
 RUNTIME_BLOCK_inputTypes(Pop);
 RUNTIME_BLOCK_outputTypes(Pop);
 RUNTIME_BLOCK_parameters(Pop);
-RUNTIME_BLOCK_inferTypes(Pop);
+RUNTIME_BLOCK_compose(Pop);
 RUNTIME_BLOCK_consumedVariables(Pop);
 RUNTIME_BLOCK_setParam(Pop);
 RUNTIME_BLOCK_getParam(Pop);
@@ -616,7 +616,7 @@ RUNTIME_BLOCK_destroy(Get);
 RUNTIME_BLOCK_inputTypes(Get);
 RUNTIME_BLOCK_outputTypes(Get);
 RUNTIME_BLOCK_parameters(Get);
-RUNTIME_BLOCK_inferTypes(Get);
+RUNTIME_BLOCK_compose(Get);
 RUNTIME_BLOCK_consumedVariables(Get);
 RUNTIME_BLOCK_setParam(Get);
 RUNTIME_BLOCK_getParam(Get);
@@ -643,7 +643,7 @@ RUNTIME_BLOCK_consumedVariables(Take);
 RUNTIME_BLOCK_inputTypes(Take);
 RUNTIME_BLOCK_outputTypes(Take);
 RUNTIME_BLOCK_parameters(Take);
-RUNTIME_BLOCK_inferTypes(Take);
+RUNTIME_BLOCK_compose(Take);
 RUNTIME_BLOCK_setParam(Take);
 RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
@@ -655,7 +655,7 @@ RUNTIME_BLOCK_destroy(Limit);
 RUNTIME_BLOCK_inputTypes(Limit);
 RUNTIME_BLOCK_outputTypes(Limit);
 RUNTIME_BLOCK_parameters(Limit);
-RUNTIME_BLOCK_inferTypes(Limit);
+RUNTIME_BLOCK_compose(Limit);
 RUNTIME_BLOCK_setParam(Limit);
 RUNTIME_BLOCK_getParam(Limit);
 RUNTIME_BLOCK_activate(Limit);
@@ -673,7 +673,7 @@ RUNTIME_BLOCK_destroy(Repeat);
 RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
 RUNTIME_BLOCK_consumedVariables(Repeat);
-RUNTIME_BLOCK_inferTypes(Repeat);
+RUNTIME_BLOCK_compose(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 
 // Register Sort
@@ -697,7 +697,7 @@ RUNTIME_BLOCK_getParam(Remove);
 RUNTIME_BLOCK_activate(Remove);
 RUNTIME_BLOCK_destroy(Remove);
 RUNTIME_BLOCK_cleanup(Repeat);
-RUNTIME_BLOCK_inferTypes(Remove);
+RUNTIME_BLOCK_compose(Remove);
 RUNTIME_BLOCK_END(Remove);
 
 // Register
@@ -710,7 +710,7 @@ RUNTIME_BLOCK_getParam(Profile);
 RUNTIME_BLOCK_activate(Profile);
 RUNTIME_BLOCK_destroy(Profile);
 RUNTIME_BLOCK_cleanup(Profile);
-RUNTIME_BLOCK_inferTypes(Profile);
+RUNTIME_BLOCK_compose(Profile);
 RUNTIME_BLOCK_END(Profile);
 
 // Register PrependTo
@@ -719,7 +719,7 @@ RUNTIME_BLOCK_cleanup(PrependTo);
 RUNTIME_BLOCK_inputTypes(PrependTo);
 RUNTIME_BLOCK_outputTypes(PrependTo);
 RUNTIME_BLOCK_parameters(PrependTo);
-RUNTIME_BLOCK_inferTypes(PrependTo);
+RUNTIME_BLOCK_compose(PrependTo);
 RUNTIME_BLOCK_setParam(PrependTo);
 RUNTIME_BLOCK_getParam(PrependTo);
 RUNTIME_BLOCK_activate(PrependTo);
@@ -731,7 +731,7 @@ RUNTIME_BLOCK_cleanup(AppendTo);
 RUNTIME_BLOCK_inputTypes(AppendTo);
 RUNTIME_BLOCK_outputTypes(AppendTo);
 RUNTIME_BLOCK_parameters(AppendTo);
-RUNTIME_BLOCK_inferTypes(AppendTo);
+RUNTIME_BLOCK_compose(AppendTo);
 RUNTIME_BLOCK_setParam(AppendTo);
 RUNTIME_BLOCK_getParam(AppendTo);
 RUNTIME_BLOCK_activate(AppendTo);

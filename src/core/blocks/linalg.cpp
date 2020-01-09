@@ -16,8 +16,8 @@ struct VectorUnaryBase : public UnaryBase {
     return CBTypesInfo(SharedTypes::vectorsInfo);
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     return inputType;
   }
 
@@ -256,9 +256,9 @@ struct MatMul : public VectorBinaryBase {
   // Mat @ Vec = Vec
   // If ever becomes a bottle neck, valgrind and optimize
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
-    BinaryBase::inferTypes(inputType, consumableVariables);
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
+    BinaryBase::compose(inputType, consumableVariables);
     if (_opType == SeqSeq) {
       return inputType;
     } else {
@@ -344,8 +344,8 @@ struct MatMul : public VectorBinaryBase {
 };
 
 struct Transpose : public VectorUnaryBase {
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (inputType.basicType != Seq) {
       throw CBException("Transpose expected a Seq matrix array as input.");
     }
@@ -475,8 +475,8 @@ struct Orthographic : VectorUnaryBase {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     return CBTypeInfo(SharedTypes::matrix4x4Info);
   }
 
@@ -561,7 +561,7 @@ struct Orthographic : VectorUnaryBase {
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
   RUNTIME_BLOCK_parameters(_name_);                                            \
-  RUNTIME_BLOCK_inferTypes(_name_);                                            \
+  RUNTIME_BLOCK_compose(_name_);                                               \
   RUNTIME_BLOCK_consumedVariables(_name_);                                     \
   RUNTIME_BLOCK_setParam(_name_);                                              \
   RUNTIME_BLOCK_getParam(_name_);                                              \
@@ -576,7 +576,7 @@ LINALG_BINARY_BLOCK(MatMul);
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
   RUNTIME_BLOCK_destroy(_name_);                                               \
   RUNTIME_BLOCK_setup(_name_);                                                 \
-  RUNTIME_BLOCK_inferTypes(_name_);                                            \
+  RUNTIME_BLOCK_compose(_name_);                                               \
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
   RUNTIME_BLOCK_activate(_name_);                                              \
@@ -592,7 +592,7 @@ RUNTIME_BLOCK_destroy(Orthographic);
 RUNTIME_BLOCK_setup(Orthographic);
 RUNTIME_BLOCK_inputTypes(Orthographic);
 RUNTIME_BLOCK_outputTypes(Orthographic);
-RUNTIME_BLOCK_inferTypes(Orthographic);
+RUNTIME_BLOCK_compose(Orthographic);
 RUNTIME_BLOCK_activate(Orthographic);
 RUNTIME_BLOCK_parameters(Orthographic);
 RUNTIME_BLOCK_setParam(Orthographic);

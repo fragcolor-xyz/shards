@@ -11,8 +11,8 @@ namespace chainblocks {
     CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
     CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
                                                                                \
-    CBTypeInfo inferTypes(CBTypeInfo inputType,                                \
-                          CBExposedTypesInfo consumableVariables) {            \
+    CBTypeInfo compose(CBTypeInfo inputType,                                   \
+                       CBExposedTypesInfo consumableVariables) {               \
       return CBTypeInfo(singleOutput);                                         \
     }                                                                          \
                                                                                \
@@ -182,7 +182,7 @@ namespace chainblocks {
   RUNTIME_CORE_BLOCK(To##_varName_##_width_);                                  \
   RUNTIME_BLOCK_inputTypes(To##_varName_##_width_);                            \
   RUNTIME_BLOCK_outputTypes(To##_varName_##_width_);                           \
-  RUNTIME_BLOCK_inferTypes(To##_varName_##_width_);                            \
+  RUNTIME_BLOCK_compose(To##_varName_##_width_);                               \
   RUNTIME_BLOCK_activate(To##_varName_##_width_);                              \
   RUNTIME_BLOCK_END(To##_varName_##_width_);
 
@@ -193,8 +193,8 @@ namespace chainblocks {
     CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
     CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
                                                                                \
-    CBTypeInfo inferTypes(CBTypeInfo inputType,                                \
-                          CBExposedTypesInfo consumableVariables) {            \
+    CBTypeInfo compose(CBTypeInfo inputType,                                   \
+                       CBExposedTypesInfo consumableVariables) {               \
       return CBTypeInfo(singleOutput);                                         \
     }                                                                          \
                                                                                \
@@ -271,7 +271,7 @@ namespace chainblocks {
   RUNTIME_CORE_BLOCK(To##_varName_);                                           \
   RUNTIME_BLOCK_inputTypes(To##_varName_);                                     \
   RUNTIME_BLOCK_outputTypes(To##_varName_);                                    \
-  RUNTIME_BLOCK_inferTypes(To##_varName_);                                     \
+  RUNTIME_BLOCK_compose(To##_varName_);                                        \
   RUNTIME_BLOCK_activate(To##_varName_);                                       \
   RUNTIME_BLOCK_END(To##_varName_);
 

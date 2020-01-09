@@ -115,12 +115,12 @@ struct NetworkBase : public BlocksUser {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
     stbds_arrpush(consumables, endpointInfo);
-    return BlocksUser::inferTypes(inputType, consumables);
+    return BlocksUser::compose(inputType, consumables);
   }
 
   void setParam(int index, CBVar value) {
@@ -298,7 +298,7 @@ RUNTIME_BLOCK_parameters(Server);
 RUNTIME_BLOCK_setParam(Server);
 RUNTIME_BLOCK_getParam(Server);
 RUNTIME_BLOCK_activate(Server);
-RUNTIME_BLOCK_inferTypes(Server);
+RUNTIME_BLOCK_compose(Server);
 RUNTIME_BLOCK_exposedVariables(Server);
 RUNTIME_BLOCK_END(Server);
 
@@ -414,7 +414,7 @@ RUNTIME_BLOCK_parameters(Client);
 RUNTIME_BLOCK_setParam(Client);
 RUNTIME_BLOCK_getParam(Client);
 RUNTIME_BLOCK_activate(Client);
-RUNTIME_BLOCK_inferTypes(Client);
+RUNTIME_BLOCK_compose(Client);
 RUNTIME_BLOCK_exposedVariables(Client);
 RUNTIME_BLOCK_END(Client);
 

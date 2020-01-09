@@ -152,7 +152,7 @@ struct Style : public Base {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     switch (_key) {
     case WindowRounding:
     case WindowBorderSize:
@@ -662,7 +662,7 @@ template <CBType CT> struct Variable : public Base {
 
   virtual void cleanup() { _variable = nullptr; }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     if (_variable_name.size() > 0) {
       IterableExposedInfo vars(consumables);
       _exposing = true; // assume we expose a new variable
@@ -1048,8 +1048,8 @@ struct TreeNode : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        const CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     const CBExposedTypesInfo consumables) {
     _blocks.validate(inputType, consumables);
     return inputType;
   }
@@ -1418,7 +1418,7 @@ typedef BlockWrapper<Image> ImageBlock;
 
 // Register
 RUNTIME_BLOCK(ImGui, Style);
-RUNTIME_BLOCK_inferTypes(Style);
+RUNTIME_BLOCK_compose(Style);
 RUNTIME_BLOCK_consumedVariables(Style);
 RUNTIME_BLOCK_parameters(Style);
 RUNTIME_BLOCK_setParam(Style);
@@ -1431,7 +1431,7 @@ RUNTIME_BLOCK_END(Style);
 RUNTIME_BLOCK(ImGui, Window);
 RUNTIME_BLOCK_destroy(Window);
 RUNTIME_BLOCK_cleanup(Window);
-RUNTIME_BLOCK_inferTypes(Window);
+RUNTIME_BLOCK_compose(Window);
 RUNTIME_BLOCK_consumedVariables(Window);
 RUNTIME_BLOCK_exposedVariables(Window);
 RUNTIME_BLOCK_parameters(Window);
@@ -1444,7 +1444,7 @@ RUNTIME_BLOCK_END(Window);
 
 RUNTIME_BLOCK(ImGui, CheckBox);
 RUNTIME_BLOCK_cleanup(CheckBox);
-RUNTIME_BLOCK_inferTypes(CheckBox);
+RUNTIME_BLOCK_compose(CheckBox);
 RUNTIME_BLOCK_consumedVariables(CheckBox);
 RUNTIME_BLOCK_exposedVariables(CheckBox);
 RUNTIME_BLOCK_parameters(CheckBox);
@@ -1468,7 +1468,7 @@ RUNTIME_BLOCK_END(Text);
 RUNTIME_BLOCK(ImGui, Button);
 RUNTIME_BLOCK_destroy(Button);
 RUNTIME_BLOCK_cleanup(Button);
-RUNTIME_BLOCK_inferTypes(Button);
+RUNTIME_BLOCK_compose(Button);
 RUNTIME_BLOCK_consumedVariables(Button);
 RUNTIME_BLOCK_exposedVariables(Button);
 RUNTIME_BLOCK_parameters(Button);

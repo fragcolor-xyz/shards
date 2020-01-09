@@ -28,7 +28,7 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->inferTypes = nullptr;                                              \
+    result->compose = nullptr;                                                 \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK(_name_)                                             \
@@ -58,7 +58,7 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->inferTypes = nullptr;                                              \
+    result->compose = nullptr;                                                 \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_BLOCK_TYPE(_namespace_, _name_)                                \
@@ -89,7 +89,7 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->inferTypes = nullptr;                                              \
+    result->compose = nullptr;                                                 \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK_TYPE(_name_)                                        \
@@ -120,7 +120,7 @@
         [](CBlock *block, int index, CBVar value) {});                         \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
-    result->inferTypes = nullptr;                                              \
+    result->compose = nullptr;                                                 \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
@@ -181,11 +181,11 @@
     return reinterpret_cast<_name_##Runtime *>(block)->core.getParam(index);   \
   });
 
-#define RUNTIME_BLOCK_inferTypes(_name_)                                       \
-  result->inferTypes = static_cast<CBInferTypesProc>(                          \
+#define RUNTIME_BLOCK_compose(_name_)                                          \
+  result->compose = static_cast<CBComposeProc>(                                \
       [](CBlock *block, CBTypeInfo inputType,                                  \
          const CBExposedTypesInfo consumableVariables) {                       \
-        return reinterpret_cast<_name_##Runtime *>(block)->core.inferTypes(    \
+        return reinterpret_cast<_name_##Runtime *>(block)->core.compose(       \
             inputType, consumableVariables);                                   \
       });
 

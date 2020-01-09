@@ -106,7 +106,7 @@ struct ChainBase {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // Free any previous result!
     stbds_arrfree(chainValidation.exposedInfo);
     chainValidation.exposedInfo = nullptr;
@@ -219,8 +219,8 @@ struct ContinueChain : public ChainBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    ChainBase::inferTypes(inputType, consumables);
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    ChainBase::compose(inputType, consumables);
     return inputType;
   }
 
@@ -421,7 +421,7 @@ struct ChainLoader : public ChainRunner {
   CBTypeInfo _inputTypeCopy{};
   IterableExposedInfo _consumablesCopy;
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     _inputTypeCopy = inputType;
     const IterableExposedInfo consumablesStb(consumables);
     // copy consumables

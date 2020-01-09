@@ -82,8 +82,8 @@ struct Const {
 
   CBVar getParam(int index) { return _value; }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (_value.valueType == Seq && _value.payload.seqValue) {
       _innerInfo = TypeInfo(_value.payload.seqValue[0].valueType);
       _valueInfo = TypeInfo::Sequence(_innerInfo);
@@ -486,8 +486,8 @@ struct SetBase : public VariableBase {
 };
 
 struct Set : public SetBase {
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -522,8 +522,8 @@ struct Set : public SetBase {
 };
 
 struct Ref : public SetBase {
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -582,8 +582,8 @@ struct Ref : public SetBase {
 };
 
 struct Update : public SetBase {
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // make sure we update to the same type
     if (_isTable) {
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
@@ -680,8 +680,8 @@ struct Get : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
         auto &name = consumableVariables[i].name;
@@ -905,8 +905,8 @@ struct Push : public VariableBase {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
       auto tableFound = false;
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
@@ -1226,8 +1226,8 @@ struct Pop : SeqUser {
 
   void destroy() { destroyVar(_output); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     if (_isTable) {
       for (auto i = 0; stbds_arrlen(consumableVariables) > i; i++) {
         if (consumableVariables[i].name == _name &&
@@ -1351,8 +1351,8 @@ struct Take {
     return CBParametersInfo(indicesParamsInfo);
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     bool valid = false;
     // Figure if we output a sequence or not
     if (_indices.valueType == Seq) {
@@ -1633,8 +1633,8 @@ struct Limit {
     return CBParametersInfo(indicesParamsInfo);
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // Figure if we output a sequence or not
     if (_max > 1) {
       if (inputType.basicType == Seq) {
@@ -1705,7 +1705,7 @@ struct BlocksUser {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;

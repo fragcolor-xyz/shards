@@ -74,8 +74,8 @@ struct Flatten {
     }
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     CBTypeInfo current{};
     verifyInnerType(inputType, current);
     outputType = TypeInfo(current);
@@ -183,7 +183,7 @@ RUNTIME_CORE_BLOCK(Flatten);
 RUNTIME_BLOCK_destroy(Flatten);
 RUNTIME_BLOCK_inputTypes(Flatten);
 RUNTIME_BLOCK_outputTypes(Flatten);
-RUNTIME_BLOCK_inferTypes(Flatten);
+RUNTIME_BLOCK_compose(Flatten);
 RUNTIME_BLOCK_activate(Flatten);
 RUNTIME_BLOCK_END(Flatten);
 

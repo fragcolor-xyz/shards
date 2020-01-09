@@ -466,7 +466,7 @@ typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
 typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, struct CBVar);
 typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
-typedef struct CBTypeInfo(__cdecl *CBInferTypesProc)(struct CBlock *,
+typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
 						     struct CBTypeInfo inputType,
 						     const CBExposedTypesInfo consumableVariables);
 
@@ -498,7 +498,7 @@ struct CBlock {
 
   // Optional call used during validation to fixup "Any" input
   // type and provide valid output and exposed variable types
-  CBInferTypesProc inferTypes; 
+  CBComposeProc compose; 
 
   CBParametersProc parameters;
   CBSetParamProc setParam; // Set a parameter, the block will copy the value, so

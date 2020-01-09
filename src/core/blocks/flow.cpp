@@ -134,7 +134,7 @@ struct Cond {
     return Var();
   }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -279,7 +279,7 @@ RUNTIME_CORE_BLOCK(Cond);
 RUNTIME_BLOCK_inputTypes(Cond);
 RUNTIME_BLOCK_outputTypes(Cond);
 RUNTIME_BLOCK_parameters(Cond);
-RUNTIME_BLOCK_inferTypes(Cond);
+RUNTIME_BLOCK_compose(Cond);
 RUNTIME_BLOCK_exposedVariables(Cond);
 RUNTIME_BLOCK_setParam(Cond);
 RUNTIME_BLOCK_getParam(Cond);

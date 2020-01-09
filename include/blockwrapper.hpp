@@ -17,7 +17,7 @@ CB_HAS_MEMBER_TEST(inputTypes);
 CB_HAS_MEMBER_TEST(outputTypes);
 CB_HAS_MEMBER_TEST(exposedVariables);
 CB_HAS_MEMBER_TEST(consumedVariables);
-CB_HAS_MEMBER_TEST(inferTypes);
+CB_HAS_MEMBER_TEST(compose);
 CB_HAS_MEMBER_TEST(parameters);
 CB_HAS_MEMBER_TEST(setParam);
 CB_HAS_MEMBER_TEST(getParam);
@@ -148,16 +148,16 @@ template <class T> struct BlockWrapper {
           static_cast<CBGetParamProc>([](CBlock *b, int i) { return CBVar(); });
     }
 
-    // inferTypes
-    if constexpr (has_inferTypes<T>::value) {
-      result->inferTypes = static_cast<CBInferTypesProc>(
+    // compose
+    if constexpr (has_compose<T>::value) {
+      result->compose = static_cast<CBComposeProc>(
           [](CBlock *b, CBTypeInfo it, const CBExposedTypesInfo ci) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)->block.inferTypes(it,
-                                                                            ci);
+            return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(it,
+                                                                         ci);
           });
     } else {
       // infer is optional!
-      result->inferTypes = nullptr;
+      result->compose = nullptr;
     }
 
     // activate

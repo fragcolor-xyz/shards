@@ -659,8 +659,8 @@ struct InnerCall {
 
   CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypeInfo inferTypes(CBTypeInfo inputType,
-                        CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBTypeInfo inputType,
+                     CBExposedTypesInfo consumableVariables) {
     // call a fn* [inputTypeKeyword] in place
     auto ivec = new malValueVec();
     ivec->push_back(malInfer);
@@ -687,7 +687,7 @@ struct InnerCall {
 RUNTIME_CORE_BLOCK(InnerCall);
 RUNTIME_BLOCK_inputTypes(InnerCall);
 RUNTIME_BLOCK_outputTypes(InnerCall);
-RUNTIME_BLOCK_inferTypes(InnerCall);
+RUNTIME_BLOCK_compose(InnerCall);
 RUNTIME_BLOCK_activate(InnerCall);
 RUNTIME_BLOCK_END(InnerCall);
 }; // namespace chainblocks
