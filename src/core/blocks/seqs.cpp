@@ -19,7 +19,7 @@ struct Flatten {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  void verifyInnerType(CBTypeInfo &info, CBTypeInfo &currentType) {
+  void verifyInnerType(CBTypeInfo info, CBTypeInfo &currentType) {
     if (currentType.basicType != None) {
       if (currentType != info) {
         throw CBException("Flatten failed, inner types are not matching.");
@@ -74,10 +74,9 @@ struct Flatten {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo current{};
-    verifyInnerType(inputType, current);
+    verifyInnerType(data.inputType, current);
     outputType = TypeInfo(current);
     seqType = TypeInfo::Sequence(outputType);
     outputFinalType = TypesInfo(seqType);

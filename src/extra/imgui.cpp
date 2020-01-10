@@ -152,7 +152,7 @@ struct Style : public Base {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     switch (_key) {
     case WindowRounding:
     case WindowBorderSize:
@@ -177,7 +177,7 @@ struct Style : public Base {
     case AntiAliasedFill:
     case CurveTessellationTol:
     case Alpha:
-      if (inputType.basicType != Float) {
+      if (data.inputType.basicType != Float) {
         throw CBException(
             "this ImGui Style block expected a Float variable as input!");
       }
@@ -193,7 +193,7 @@ struct Style : public Base {
     case SelectableTextAlign:
     case DisplayWindowPadding:
     case DisplaySafeAreaPadding:
-      if (inputType.basicType != Float2) {
+      if (data.inputType.basicType != Float2) {
         throw CBException(
             "this ImGui Style block expected a Float2 variable as input!");
       }
@@ -246,13 +246,13 @@ struct Style : public Base {
     case NavWindowingHighlightColor:
     case NavWindowingDimBgColor:
     case ModalWindowDimBgColor:
-      if (inputType.basicType != Color) {
+      if (data.inputType.basicType != Color) {
         throw CBException(
             "this ImGui Style block expected a Color variable as input!");
       }
       break;
     }
-    return inputType;
+    return data.inputType;
   }
 
   static ImVec2 var2Vec2(const CBVar &input) {
@@ -662,9 +662,9 @@ template <CBType CT> struct Variable : public Base {
 
   virtual void cleanup() { _variable = nullptr; }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     if (_variable_name.size() > 0) {
-      IterableExposedInfo vars(consumables);
+      IterableExposedInfo vars(data.consumables);
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : vars) {
@@ -1048,10 +1048,9 @@ struct TreeNode : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     const CBExposedTypesInfo consumables) {
-    _blocks.validate(inputType, consumables);
-    return inputType;
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.validate(data);
+    return data.inputType;
   }
 
   void cleanup() { _blocks.reset(); }

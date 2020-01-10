@@ -182,11 +182,9 @@
   });
 
 #define RUNTIME_BLOCK_compose(_name_)                                          \
-  result->compose = static_cast<CBComposeProc>(                                \
-      [](CBlock *block, CBTypeInfo inputType,                                  \
-         const CBExposedTypesInfo consumableVariables) {                       \
-        return reinterpret_cast<_name_##Runtime *>(block)->core.compose(       \
-            inputType, consumableVariables);                                   \
+  result->compose =                                                            \
+      static_cast<CBComposeProc>([](CBlock *block, CBInstanceData data) {      \
+        return reinterpret_cast<_name_##Runtime *>(block)->core.compose(data); \
       });
 
 #define RUNTIME_BLOCK_activate(_name_)                                         \

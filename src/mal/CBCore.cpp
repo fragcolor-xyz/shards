@@ -371,7 +371,7 @@ struct ChainFileWatcher {
   chainblocks::IterableExposedInfo consumables;
 
   explicit ChainFileWatcher(std::string &file, std::string currentPath,
-                            CBInstanceData data)
+                            const CBInstanceData &data)
       : running(true), fileName(file), path(currentPath), results(2),
         garbage(2), inputTypeInfo(data.inputType),
         consumables(data.consumables) {
@@ -661,12 +661,11 @@ struct InnerCall {
 
   CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(CBInstanceData data) {
     // call a fn* [inputTypeKeyword] in place
     auto ivec = new malValueVec();
     ivec->push_back(malInfer);
-    ivec->push_back(typeToKeyword(inputType.basicType));
+    ivec->push_back(typeToKeyword(data.inputType.basicType));
     auto res = EVAL(malValuePtr(new malList(ivec)), nullptr);
 
     auto typeKeyword = VALUE_CAST(malKeyword, res);

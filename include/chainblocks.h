@@ -467,8 +467,7 @@ typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, struct CBVar);
 typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
 typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
-						     struct CBTypeInfo inputType,
-						     const CBExposedTypesInfo consumableVariables);
+						  struct CBInstanceData data);
 
 // The core of the block processing, avoid syscalls here
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,

@@ -771,19 +771,19 @@ void validateConnection(ValidationContext &ctx) {
   // infer and specialize types if we need to
   // If we don't we assume our output will be of the same type of the previous!
   if (ctx.bottom->compose) {
-    CBExposedTypesInfo consumables = nullptr;
+    CBInstanceData data{};
+    data.inputType = previousOutput;
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
-        stbds_arrpush(consumables, type);
+        stbds_arrpush(data.consumables, type);
       }
     }
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
-    ctx.previousOutputType =
-        ctx.bottom->compose(ctx.bottom, previousOutput, consumables);
+    ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
-    stbds_arrfree(consumables);
+    stbds_arrfree(data.consumables);
   } else {
     // Short-cut if it's just one type and not any type
     // Any type tho means keep previous output type!

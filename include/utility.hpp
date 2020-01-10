@@ -215,12 +215,7 @@ public:
 
   operator CBVar() const { return _blocks; }
 
-  CBValidationResult validate(CBTypeInfo inputType,
-                              CBExposedTypesInfo consumables) {
-    CBInstanceData data{};
-    data.inputType = inputType;
-    data.consumables = consumables;
-
+  CBValidationResult validate(const CBInstanceData &data) {
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;

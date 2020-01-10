@@ -115,12 +115,12 @@ struct NetworkBase : public BlocksUser {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBInstanceData &data) {
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
-    stbds_arrpush(consumables, endpointInfo);
-    return BlocksUser::compose(inputType, consumables);
+    stbds_arrpush(data.consumables, endpointInfo);
+    return BlocksUser::compose(data);
   }
 
   void setParam(int index, CBVar value) {

@@ -134,11 +134,7 @@ struct Cond {
     return Var();
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    CBInstanceData data{};
-    data.inputType = inputType;
-    data.consumables = consumables;
-
+  CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -231,7 +227,7 @@ struct Cond {
       previousType = validation.outputType;
     }
 
-    return _passthrough ? inputType : previousType;
+    return _passthrough ? data.inputType : previousType;
   }
 
   CBExposedTypesInfo exposedVariables() { return _chainValidation.exposedInfo; }

@@ -68,20 +68,19 @@ struct BinaryBase : public Base {
     return CBParametersInfo(mathParamsInfo);
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     if (_operand.valueType == ContextVar) {
-      for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
-        if (strcmp(consumableVariables[i].name, _operand.payload.stringValue) ==
+      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
+        if (strcmp(data.consumables[i].name, _operand.payload.stringValue) ==
             0) {
-          if (consumableVariables[i].exposedType.basicType != Seq &&
-              inputType.basicType != Seq) {
+          if (data.consumables[i].exposedType.basicType != Seq &&
+              data.inputType.basicType != Seq) {
             _opType = Normal;
-          } else if (consumableVariables[i].exposedType.basicType != Seq &&
-                     inputType.basicType == Seq) {
+          } else if (data.consumables[i].exposedType.basicType != Seq &&
+                     data.inputType.basicType == Seq) {
             _opType = Seq1;
-          } else if (consumableVariables[i].exposedType.basicType == Seq &&
-                     inputType.basicType == Seq) {
+          } else if (data.consumables[i].exposedType.basicType == Seq &&
+                     data.inputType.basicType == Seq) {
             _opType = SeqSeq;
           } else {
             throw CBException(
@@ -94,18 +93,18 @@ struct BinaryBase : public Base {
                           std::string(_operand.payload.stringValue));
       }
     } else {
-      if (_operand.valueType != Seq && inputType.basicType != Seq) {
+      if (_operand.valueType != Seq && data.inputType.basicType != Seq) {
         _opType = Normal;
-      } else if (_operand.valueType != Seq && inputType.basicType == Seq) {
+      } else if (_operand.valueType != Seq && data.inputType.basicType == Seq) {
         _opType = Seq1;
-      } else if (_operand.valueType == Seq && inputType.basicType == Seq) {
+      } else if (_operand.valueType == Seq && data.inputType.basicType == Seq) {
         _opType = SeqSeq;
       } else {
         throw CBException(
             "Math broadcasting not supported between given types!");
       }
     }
-    return inputType;
+    return data.inputType;
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -539,17 +538,16 @@ template <class T> struct UnaryBin : public T {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
-    switch (inputType.basicType) {
+  CBTypeInfo compose(const CBInstanceData &data) {
+    switch (data.inputType.basicType) {
     case Seq:
-      assert(inputType.seqType);
-      setOperand(inputType.seqType->basicType);
+      assert(data.inputType.seqType);
+      setOperand(data.inputType.seqType->basicType);
       break;
     default:
-      setOperand(inputType.basicType);
+      setOperand(data.inputType.basicType);
     }
-    return T::compose(inputType, consumableVariables);
+    return T::compose(data);
   }
 };
 

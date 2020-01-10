@@ -150,10 +150,9 @@ template <class T> struct BlockWrapper {
 
     // compose
     if constexpr (has_compose<T>::value) {
-      result->compose = static_cast<CBComposeProc>(
-          [](CBlock *b, CBTypeInfo it, const CBExposedTypesInfo ci) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(it,
-                                                                         ci);
+      result->compose =
+          static_cast<CBComposeProc>([](CBlock *b, CBInstanceData data) {
+            return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(data);
           });
     } else {
       // infer is optional!

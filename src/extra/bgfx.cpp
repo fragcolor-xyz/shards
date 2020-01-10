@@ -136,15 +136,14 @@ struct MainWindow : public BaseWindow {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
-    for (auto i = 0; i < stbds_arrlen(consumableVariables); i++) {
-      if (strcmp(consumableVariables[i].name, "BGFX.Context") == 0) {
+    for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
+      if (strcmp(data.consumables[i].name, "BGFX.Context") == 0) {
         throw CBException("BGFX.MainWindow must be unique, found another use!");
       }
     }
-    return inputType;
+    return data.inputType;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {

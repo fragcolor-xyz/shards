@@ -220,10 +220,12 @@ struct Remove : public JointOp, public BlocksUser {
     throw CBException("Parameter out of range.");
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+  CBTypeInfo compose(CBInstanceData &data) {
     // need to replace input type of inner chain with inner of seq
-    assert(inputType.seqType);
-    BlocksUser::compose(*inputType.seqType, consumables);
+    assert(data.inputType.seqType);
+    auto inputType = data.inputType;
+    data.inputType = *inputType.seqType;
+    BlocksUser::compose(data);
     return inputType;
   }
 
@@ -328,8 +330,8 @@ struct XpendTo : public XPendBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    auto conss = IterableExposedInfo(consumables);
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto conss = IterableExposedInfo(data.consumables);
     for (auto &cons : conss) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != CBType::Seq &&
@@ -344,12 +346,12 @@ struct XpendTo : public XPendBase {
         }
         if (cons.exposedType.basicType == Seq &&
             (cons.exposedType.seqType == nullptr ||
-             *cons.exposedType.seqType != inputType)) {
+             *cons.exposedType.seqType != data.inputType)) {
           throw CBException("AppendTo/PrependTo input type is not compatible "
                             "with the backing Seq.");
         }
         // Validation Ok if here..
-        return inputType;
+        return data.inputType;
       }
     }
     throw CBException("AppendTo/PrependTo: Failed to find variable: " +

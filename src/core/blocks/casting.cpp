@@ -11,8 +11,7 @@ namespace chainblocks {
     CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
     CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
                                                                                \
-    CBTypeInfo compose(CBTypeInfo inputType,                                   \
-                       CBExposedTypesInfo consumableVariables) {               \
+    CBTypeInfo compose(const CBInstanceData &data) {                           \
       return CBTypeInfo(singleOutput);                                         \
     }                                                                          \
                                                                                \
@@ -193,8 +192,7 @@ namespace chainblocks {
     CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
     CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
                                                                                \
-    CBTypeInfo compose(CBTypeInfo inputType,                                   \
-                       CBExposedTypesInfo consumableVariables) {               \
+    CBTypeInfo compose(const CBInstanceData &data) {                           \
       return CBTypeInfo(singleOutput);                                         \
     }                                                                          \
                                                                                \

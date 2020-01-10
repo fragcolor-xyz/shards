@@ -106,11 +106,7 @@ struct ChainBase {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    CBInstanceData data{};
-    data.inputType = inputType;
-    data.consumables = consumables;
-
+  CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     stbds_arrfree(chainValidation.exposedInfo);
     chainValidation.exposedInfo = nullptr;
@@ -126,11 +122,11 @@ struct ChainBase {
 
     // Easy case, no chain...
     if (!chain)
-      return inputType;
+      return data.inputType;
 
     // avoid stackoverflow
     if (visiting.count(chain))
-      return inputType; // we don't know yet...
+      return data.inputType; // we don't know yet...
 
     visiting.insert(chain);
 
@@ -153,7 +149,7 @@ struct ChainBase {
     visiting.erase(chain);
 
     return passthrough || mode == RunChainMode::Detached
-               ? inputType
+               ? data.inputType
                : chainValidation.outputType;
   }
 };
@@ -223,9 +219,9 @@ struct ContinueChain : public ChainBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    ChainBase::compose(inputType, consumables);
-    return inputType;
+  CBTypeInfo compose(const CBInstanceData &data) {
+    ChainBase::compose(data);
+    return data.inputType;
   }
 
   void setParam(int index, CBVar value) { cloneVar(chainref, value); }
@@ -425,12 +421,12 @@ struct ChainLoader : public ChainRunner {
   CBTypeInfo _inputTypeCopy{};
   IterableExposedInfo _consumablesCopy;
 
-  CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
-    _inputTypeCopy = inputType;
-    const IterableExposedInfo consumablesStb(consumables);
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _inputTypeCopy = data.inputType;
+    const IterableExposedInfo consumablesStb(data.consumables);
     // copy consumables
     _consumablesCopy = consumablesStb;
-    return inputType;
+    return data.inputType;
   }
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }

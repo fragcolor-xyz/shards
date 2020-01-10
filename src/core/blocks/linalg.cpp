@@ -16,10 +16,7 @@ struct VectorUnaryBase : public UnaryBase {
     return CBTypesInfo(SharedTypes::vectorsInfo);
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
-    return inputType;
-  }
+  CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
   template <class Operation>
   ALWAYS_INLINE CBVar doActivate(CBContext *context, const CBVar &input,
@@ -256,13 +253,12 @@ struct MatMul : public VectorBinaryBase {
   // Mat @ Vec = Vec
   // If ever becomes a bottle neck, valgrind and optimize
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
-    BinaryBase::compose(inputType, consumableVariables);
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BinaryBase::compose(data);
     if (_opType == SeqSeq) {
-      return inputType;
+      return data.inputType;
     } else {
-      return *inputType.seqType;
+      return *data.inputType.seqType;
     }
   }
 
@@ -344,12 +340,11 @@ struct MatMul : public VectorBinaryBase {
 };
 
 struct Transpose : public VectorUnaryBase {
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
-    if (inputType.basicType != Seq) {
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.basicType != Seq) {
       throw CBException("Transpose expected a Seq matrix array as input.");
     }
-    return inputType;
+    return data.inputType;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -475,8 +470,7 @@ struct Orthographic : VectorUnaryBase {
     }
   }
 
-  CBTypeInfo compose(CBTypeInfo inputType,
-                     CBExposedTypesInfo consumableVariables) {
+  CBTypeInfo compose(const CBInstanceData &data) {
     return CBTypeInfo(SharedTypes::matrix4x4Info);
   }
 
