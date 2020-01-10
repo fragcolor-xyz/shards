@@ -1706,6 +1706,10 @@ struct BlocksUser {
   }
 
   CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    CBInstanceData data{};
+    data.inputType = inputType;
+    data.consumables = consumables;
+
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -1729,7 +1733,7 @@ struct BlocksUser {
             LOG(INFO) << "Warning during inner chain validation: " << errorTxt;
           }
         },
-        this, inputType, consumables);
+        this, data);
 
     return inputType;
   }

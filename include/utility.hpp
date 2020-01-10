@@ -217,6 +217,10 @@ public:
 
   CBValidationResult validate(CBTypeInfo inputType,
                               CBExposedTypesInfo consumables) {
+    CBInstanceData data{};
+    data.inputType = inputType;
+    data.consumables = consumables;
+
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -236,7 +240,7 @@ public:
             CB_CORE::log(msg.c_str());
           }
         },
-        this, inputType, consumables);
+        this, data);
     return _chainValidation;
   }
 

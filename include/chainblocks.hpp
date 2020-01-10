@@ -319,10 +319,9 @@ public:
       return p->ready();
     };
     _provider.setup = [](CBChainProvider *provider, const char *path,
-                         CBTypeInfo inputType,
-                         const CBExposedTypesInfo consumables) {
+                         CBInstanceData data) {
       auto p = reinterpret_cast<ChainProvider *>(provider->userData);
-      p->setup(path, inputType, consumables);
+      p->setup(path, data);
     };
     _provider.updated = [](CBChainProvider *provider) {
       auto p = reinterpret_cast<ChainProvider *>(provider->userData);
@@ -342,8 +341,7 @@ public:
   virtual void reset() = 0;
 
   virtual bool ready() = 0;
-  virtual void setup(const char *path, const CBTypeInfo &inputType,
-                     const CBExposedTypesInfo consumables) = 0;
+  virtual void setup(const char *path, const CBInstanceData &data) = 0;
 
   virtual bool updated() = 0;
   virtual CBChainProviderUpdate acquire() = 0;

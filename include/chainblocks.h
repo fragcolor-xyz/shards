@@ -438,12 +438,12 @@ struct CBInstanceData {
 
   // Info related to our activation
   struct CBTypeInfo inputType;
-  const CBTypesInfo stack;
-  const CBExposedTypesInfo consumables;
+  CBTypesInfo stack;
+  CBExposedTypesInfo consumables;
 
   // in the case of a sub chain we might have parents!
   // generally used intenrally but we need to pass it around.
-  const struct CBInstanceData *parent;
+  struct CBInstanceData *parent;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
@@ -521,8 +521,7 @@ typedef void(__cdecl *CBProviderReset)(struct CBChainProvider* provider);
 typedef bool(__cdecl *CBProviderReady)(struct CBChainProvider* provider);
 typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider* provider,
 				       const char *path,
-				       struct CBTypeInfo inputType,
-				       const CBExposedTypesInfo consumables);
+				       struct CBInstanceData data);
 
 typedef bool(__cdecl *CBProviderUpdated)(struct CBChainProvider* provider);
 typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(struct CBChainProvider* provider);
@@ -587,18 +586,16 @@ typedef void (__cdecl *CBFreeArray)(void* stbarray);
 typedef struct CBValidationResult (__cdecl *CBValidateChain)(struct CBChain *chain,
 							     CBValidationCallback callback,
 							     void *userData,
-							     struct CBTypeInfo inputType,
-							     CBExposedTypesInfo consumableVariables);
+							     struct CBInstanceData data);
 
 typedef struct CBRunChainOutput (__cdecl *CBRunChain)(struct CBChain *chain,
-							 struct CBContext *context,
-							 struct CBVar input);
+						      struct CBContext *context,
+						      struct CBVar input);
 
 typedef struct CBValidationResult (__cdecl *CBValidateBlocks)(CBlocks blocks,
 							      CBValidationCallback callback,
 							      void *userData,
-							      struct CBTypeInfo inputType,
-							      CBExposedTypesInfo consumableVariables);
+							      struct CBInstanceData data);
 
 typedef struct CBVar (__cdecl *CBRunBlocks)(CBlocks blocks,
 					    struct CBContext *context,

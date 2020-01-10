@@ -371,10 +371,10 @@ struct ChainFileWatcher {
   chainblocks::IterableExposedInfo consumables;
 
   explicit ChainFileWatcher(std::string &file, std::string currentPath,
-                            CBTypeInfo inputType,
-                            const chainblocks::IterableExposedInfo consums)
+                            CBInstanceData data)
       : running(true), fileName(file), path(currentPath), results(2),
-        garbage(2), inputTypeInfo(inputType), consumables(consums) {
+        garbage(2), inputTypeInfo(data.inputType),
+        consumables(data.consumables) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
@@ -415,6 +415,10 @@ struct ChainFileWatcher {
 
             auto chain = var->value().payload.chainValue;
 
+            CBInstanceData data{};
+            data.inputType = inputTypeInfo;
+            data.consumables = consumables();
+
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(
                 chain,
@@ -431,7 +435,7 @@ struct ChainFileWatcher {
                         << errorTxt;
                   }
                 },
-                nullptr, inputTypeInfo, consumables());
+                nullptr, data);
             stbds_arrfree(chainValidation.exposedInfo);
 
             liveChains[chain] = std::make_tuple(env, res);
@@ -497,10 +501,8 @@ public:
 
   bool ready() override { return _watcher.get() != nullptr; }
 
-  void setup(const char *path, const CBTypeInfo &inputType,
-             const CBExposedTypesInfo consumables) override {
-    _watcher.reset(
-        new ChainFileWatcher(_filename, path, inputType, consumables));
+  void setup(const char *path, const CBInstanceData &data) override {
+    _watcher.reset(new ChainFileWatcher(_filename, path, data));
   }
 
   bool updated() override { return !_watcher->results.empty(); }

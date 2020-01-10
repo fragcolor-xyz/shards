@@ -25,8 +25,7 @@
 
 CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType,
-                                       CBExposedTypesInfo consumables);
+                                       void *userData, CBInstanceData data);
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
@@ -555,11 +554,11 @@ struct InternalCore {
     chainblocks::registerEnumType(vendorId, enumId, info);
   }
 
-  static CBValidationResult
-  validateBlocks(CBlocks blocks, CBValidationCallback callback, void *userData,
-                 CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
-    return validateConnections(blocks, callback, userData, inputType,
-                               consumableVariables);
+  static CBValidationResult validateBlocks(CBlocks blocks,
+                                           CBValidationCallback callback,
+                                           void *userData,
+                                           CBInstanceData data) {
+    return validateConnections(blocks, callback, userData, data);
   }
 
   static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {

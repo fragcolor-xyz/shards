@@ -65,16 +65,13 @@ CBTypeInfo deriveTypeInfo(CBVar &value);
 [[nodiscard]] CBValidationResult
 validateConnections(const std::vector<CBlock *> &chain,
                     CBValidationCallback callback, void *userData,
-                    CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
+                    CBInstanceData data = CBInstanceData());
 [[nodiscard]] CBValidationResult
 validateConnections(const CBlocks chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
+                    void *userData, CBInstanceData data = CBInstanceData());
 [[nodiscard]] CBValidationResult
 validateConnections(const CBChain *chain, CBValidationCallback callback,
-                    void *userData, CBTypeInfo inputType = CBTypeInfo(),
-                    CBExposedTypesInfo consumables = nullptr);
+                    void *userData, CBInstanceData data = CBInstanceData());
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);

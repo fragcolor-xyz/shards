@@ -107,6 +107,10 @@ struct ChainBase {
   }
 
   CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    CBInstanceData data{};
+    data.inputType = inputType;
+    data.consumables = consumables;
+
     // Free any previous result!
     stbds_arrfree(chainValidation.exposedInfo);
     chainValidation.exposedInfo = nullptr;
@@ -144,7 +148,7 @@ struct ChainBase {
                       << errorTxt;
           }
         },
-        this, inputType, consumables);
+        this, data);
 
     visiting.erase(chain);
 
@@ -490,8 +494,11 @@ struct ChainLoader : public ChainRunner {
       return input;
 
     if (unlikely(!_provider->ready(_provider))) {
+      CBInstanceData data{};
+      data.inputType = _inputTypeCopy;
+      data.consumables = _consumablesCopy();
       _provider->setup(_provider, context->chain->node->currentPath.c_str(),
-                       _inputTypeCopy, _consumablesCopy());
+                       data);
     }
 
     if (unlikely(_provider->updated(_provider))) {

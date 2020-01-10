@@ -577,10 +577,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
   result.freeArray = [](void *arr) { stbds_arrfree(arr); };
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
-                            void *userData, CBTypeInfo inputType,
-                            CBExposedTypesInfo consumableVariables) {
-    return validateConnections(chain, callback, userData, inputType,
-                               consumableVariables);
+                            void *userData, CBInstanceData data) {
+    return validateConnections(chain, callback, userData, data);
   };
 
   result.runChain = [](CBChain *chain, CBContext *context, CBVar input) {
@@ -588,10 +586,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
   };
 
   result.validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
-                             void *userData, CBTypeInfo inputType,
-                             CBExposedTypesInfo consumableVariables) {
-    return validateConnections(blocks, callback, userData, inputType,
-                               consumableVariables);
+                             void *userData, CBInstanceData data) {
+    return validateConnections(blocks, callback, userData, data);
   };
 
   result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input) {
@@ -955,17 +951,16 @@ void validateConnection(ValidationContext &ctx) {
 
 CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType,
-                                       CBExposedTypesInfo consumables) {
+                                       void *userData, CBInstanceData data) {
   auto ctx = ValidationContext();
-  ctx.originalInputType = inputType;
-  ctx.previousOutputType = inputType;
+  ctx.originalInputType = data.inputType;
+  ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
   ctx.userData = userData;
 
-  if (consumables) {
-    for (auto i = 0; i < stbds_arrlen(consumables); i++) {
-      auto &info = consumables[i];
+  if (data.consumables) {
+    for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
+      auto &info = data.consumables[i];
       ctx.exposed[info.name].insert(info);
     }
   }
@@ -1055,22 +1050,18 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
 
 CBValidationResult validateConnections(const CBChain *chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType,
-                                       CBExposedTypesInfo consumables) {
-  return validateConnections(chain->blocks, callback, userData, inputType,
-                             consumables);
+                                       void *userData, CBInstanceData data) {
+  return validateConnections(chain->blocks, callback, userData, data);
 }
 
 CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBTypeInfo inputType,
-                                       CBExposedTypesInfo consumables) {
+                                       void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (auto i = 0; stbds_arrlen(chain) > i; i++) {
     blocks.push_back(chain[i]);
   }
-  return validateConnections(blocks, callback, userData, inputType,
-                             consumables);
+  return validateConnections(blocks, callback, userData, data);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {

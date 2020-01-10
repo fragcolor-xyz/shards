@@ -135,6 +135,10 @@ struct Cond {
   }
 
   CBTypeInfo compose(CBTypeInfo inputType, CBExposedTypesInfo consumables) {
+    CBInstanceData data{};
+    data.inputType = inputType;
+    data.consumables = consumables;
+
     // Free any previous result!
     stbds_arrfree(_chainValidation.exposedInfo);
     _chainValidation.exposedInfo = nullptr;
@@ -155,7 +159,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, inputType, consumables);
+          this, data);
       stbds_arrfree(validation.exposedInfo);
     }
 
@@ -178,7 +182,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, inputType, consumables);
+          this, data);
 
       if (first) {
         // A first valid exposedInfo array is our gold
