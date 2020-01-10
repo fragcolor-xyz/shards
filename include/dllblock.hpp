@@ -120,9 +120,8 @@ public:
 
   static CBValidationResult
   validateChain(CBChain *chain, CBValidationCallback callback, void *userData,
-                CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
-    return sCore._core.validateChain(chain, callback, userData, inputType,
-                                     consumableVariables);
+                CBInstanceData data) {
+    return sCore._core.validateChain(chain, callback, userData, data);
   }
 
   static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
@@ -132,9 +131,8 @@ public:
 
   static CBValidationResult
   validateBlocks(CBlocks blocks, CBValidationCallback callback, void *userData,
-                 CBTypeInfo inputType, CBExposedTypesInfo consumableVariables) {
-    return sCore._core.validateBlocks(blocks, callback, userData, inputType,
-                                      consumableVariables);
+                 CBInstanceData data) {
+    return sCore._core.validateBlocks(blocks, callback, userData, data);
   }
 
   static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
