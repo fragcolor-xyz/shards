@@ -1,3 +1,7 @@
+# remember to use CMAKE_EXPORT_COMPILE_COMMAND=1 with Ninja, so clang tools work out of the box
+# you need to copy the .json file in the root directory
+# also CMAKE_BUILD_TYPE=Debug or so
+
 project("chainblocks")
 cmake_minimum_required(VERSION 3.14)
 
