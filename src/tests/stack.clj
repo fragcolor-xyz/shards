@@ -4,9 +4,6 @@
    "f1"
    10
    (Push)
-   (GetStack)
-   (Assert.Is [11 10] true)
-   (Take 1)
    (Log)
                                         ; don't pop, we test integrity
    ))
@@ -27,9 +24,6 @@
            (Push)
            6
            (Push)
-           (GetStack)
-           (Log)
-           (Assert.Is [5 6] true)
            (Swap)
            (Pop)
            (Assert.Is 5 true)
