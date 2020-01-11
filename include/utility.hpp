@@ -104,24 +104,6 @@ public:
     if (_v.valueType == ContextVar) {
       if (unlikely(!_cp)) {
         _cp = CB_CORE::findVariable(ctx, _v.payload.stringValue);
-        // Do some type checking once - here!
-        cb_debug_only({
-          if (_v.payload.variableInfo) {
-            bool valid = false;
-            for (auto i = 0; i < stbds_arrlen(_v.payload.variableInfo); i++) {
-              if (_cp->valueType == _v.payload.variableInfo[i].basicType) {
-                // todo check other stuff like enum/object
-                valid = true;
-                break;
-              }
-            }
-            assert(valid);
-          } else {
-            std::string msg = "WARNING: Context variable without type info! " +
-                              std::string(_v.payload.stringValue);
-            CB_CORE::log(msg.c_str());
-          }
-        });
         return *_cp;
       } else {
         return *_cp;

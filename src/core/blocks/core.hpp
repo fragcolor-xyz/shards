@@ -749,6 +749,23 @@ struct Get : public VariableBase {
     }
   }
 
+  bool defaultTypeCheck(const CBVar &value) {
+    if (value.valueType != _defaultValue.valueType)
+      return false;
+
+    if (value.valueType == CBType::Object &&
+        (value.payload.objectVendorId != _defaultValue.payload.objectVendorId ||
+         value.payload.objectTypeId != _defaultValue.payload.objectTypeId))
+      return false;
+
+    if (value.valueType == CBType::Enum &&
+        (value.payload.enumVendorId != _defaultValue.payload.enumVendorId ||
+         value.payload.enumTypeId != _defaultValue.payload.enumTypeId))
+      return false;
+
+    return true;
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_shortCut)
       return *_target;
@@ -769,7 +786,7 @@ struct Get : public VariableBase {
         }
         auto &value = _target->payload.tableValue[index].value;
         if (unlikely(_defaultValue.valueType != None &&
-                     value.valueType != _defaultValue.valueType)) {
+                     !defaultTypeCheck(value))) {
           return _defaultValue;
         } else {
           return value;
@@ -784,7 +801,7 @@ struct Get : public VariableBase {
     } else {
       auto &value = *_target;
       if (unlikely(_defaultValue.valueType != None &&
-                   value.valueType != _defaultValue.valueType)) {
+                   !defaultTypeCheck(value))) {
         return _defaultValue;
       } else {
         // Fastest path, flag it as shortcut

@@ -380,9 +380,10 @@ ALIGNED struct CBVarPayload {
 
     struct {
       CBString stringValue;
-      // If ContextVar
-      // NULL = any/unknown
-      CBTypesInfo variableInfo;
+      // If ContextVar and stringValue == nullptr
+      // assume we use the context stack if pos < 0
+      // where -1 == stack top
+      int64_t stackPosition;
     };
 
     struct CBColor colorValue;
