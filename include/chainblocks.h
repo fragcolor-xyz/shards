@@ -440,10 +440,6 @@ struct CBInstanceData {
   struct CBTypeInfo inputType;
   CBTypesInfo stack;
   CBExposedTypesInfo consumables;
-
-  // in the case of a sub chain we might have parents!
-  // generally used intenrally but we need to pass it around.
-  struct CBInstanceData *parent;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();

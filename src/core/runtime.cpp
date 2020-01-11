@@ -772,6 +772,7 @@ void validateConnection(ValidationContext &ctx) {
   // If we don't we assume our output will be of the same type of the previous!
   if (ctx.bottom->compose) {
     CBInstanceData data{};
+    data.block = ctx.bottom;
     data.inputType = previousOutput;
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
@@ -779,10 +780,15 @@ void validateConnection(ValidationContext &ctx) {
         stbds_arrpush(data.consumables, type);
       }
     }
+    for (auto &info : ctx.stackTypes) {
+      stbds_arrpush(data.stack, info);
+    }
+
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
+    stbds_arrfree(data.stack);
     stbds_arrfree(data.consumables);
   } else {
     // Short-cut if it's just one type and not any type

@@ -118,9 +118,9 @@ public:
 
   static void freeArray(void *arr) { sCore._core.freeArray(arr); }
 
-  static CBValidationResult
-  validateChain(CBChain *chain, CBValidationCallback callback, void *userData,
-                CBInstanceData data) {
+  static CBValidationResult validateChain(CBChain *chain,
+                                          CBValidationCallback callback,
+                                          void *userData, CBInstanceData data) {
     return sCore._core.validateChain(chain, callback, userData, data);
   }
 
@@ -129,9 +129,10 @@ public:
     return sCore._core.runChain(chain, context, input);
   }
 
-  static CBValidationResult
-  validateBlocks(CBlocks blocks, CBValidationCallback callback, void *userData,
-                 CBInstanceData data) {
+  static CBValidationResult validateBlocks(CBlocks blocks,
+                                           CBValidationCallback callback,
+                                           void *userData,
+                                           CBInstanceData data) {
     return sCore._core.validateBlocks(blocks, callback, userData, data);
   }
 
