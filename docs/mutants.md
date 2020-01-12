@@ -9,7 +9,7 @@ This allows genetic programming and various optimizations too.
 "Hello universe"
 (Push) ;; mutate reads values from the stack
 ;; Const has no input but here we could have a input!
-(Mutate (Const "Hello world"))
+(Mutate (Const "Hello world") [0]) ;; [0], first param
 (Assert.Is "Hello universe")
 ```
 
@@ -21,7 +21,7 @@ The mutation block tries to amortize this by setting the parameter only if the i
 
 ```clojure
 10
-(Probe (Math.Add 10)) ;; by default param 0/first
+(Probe (Math.Add 10) [0]) ;; [0], first param
 (Assert.Is 20)
 (Pop) ;; Probe pushes into the stack the parameter value
 (Assert.Is 10)
@@ -35,7 +35,7 @@ It is especially useful when combined with `Mutate` like:
 20
 (Push) ;; mutate reads values from the stack
 10
-(Mutate (Probe (Math.Add 10))) ;; by default param 0/first
+(Mutate (Probe (Math.Add 10) [0]) [0])
 (Assert.Is 30)
 (Pop)
 (Assert.Is 20)
@@ -43,4 +43,16 @@ It is especially useful when combined with `Mutate` like:
 
 In the above case `Mutate` will proposely ignore and bypass the `Probe` block.
 
-Finally some blocks implement mutation internally as first class procedure, those blocks don't need any variable pushed on the stack by default, and by default `Mutate` without parameters will call the internal mutation.
+Neural network training idea using a GA
+
+```clojure
+(def fitness
+  (Chain
+    "Fitness"
+    [1.0 0.0]
+    (Mutate (ANN.Narx 2 [4] 1 5 5))
+    (Log)))
+(ML.Genetic fitness) ;; TBD, etc
+```
+
+In the above case the `ML.Genetic` takes care of wrapping and automatically mutate values
