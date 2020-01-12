@@ -55,4 +55,4 @@ Neural network training idea using a GA
 (ML.Genetic fitness) ;; TBD, etc
 ```
 
-In the above case the `ML.Genetic` takes care of wrapping and automatically mutate values
+In the above case the `ML.Genetic` takes care of wrapping and automatically mutate block's parameters.
