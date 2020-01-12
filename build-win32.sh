@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# fail on errors
+set -e
+
 pacman -S --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang wget
 
 # bimg
