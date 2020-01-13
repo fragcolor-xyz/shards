@@ -7,6 +7,96 @@
 #include "easylogging++.h"
 #include <cfloat>
 
+inline std::string type2Name(CBType type) {
+  std::string name = "";
+  switch (type) {
+  case EndOfBlittableTypes:
+    break;
+  case None:
+    name = "None";
+    break;
+  case CBType::Any:
+    name = "Any";
+    break;
+  case Object:
+    name = "Object";
+    break;
+  case Enum:
+    name = "Enum";
+    break;
+  case Bool:
+    name = "Bool";
+    break;
+  case Bytes:
+    name = "Bytes";
+    break;
+  case Int:
+    name = "Int";
+    break;
+  case Int2:
+    name = "Int2";
+    break;
+  case Int3:
+    name = "Int3";
+    break;
+  case Int4:
+    name = "Int4";
+    break;
+  case Int8:
+    name = "Int8";
+    break;
+  case Int16:
+    name = "Int16";
+    break;
+  case Float:
+    name = "Float";
+    break;
+  case Float2:
+    name = "Float2";
+    break;
+  case Float3:
+    name = "Float3";
+    break;
+  case Float4:
+    name = "Float4";
+    break;
+  case Color:
+    name = "Color";
+    break;
+  case Chain:
+    name = "Chain";
+    break;
+  case Block:
+    name = "Block";
+    break;
+  case CBType::String:
+    name = "String";
+    break;
+  case ContextVar:
+    name = "ContextVar";
+    break;
+  case Image:
+    name = "Image";
+    break;
+  case Seq:
+    name = "Seq";
+    break;
+  case Table:
+    name = "Table";
+    break;
+  case Vector:
+    name = "Vector";
+    break;
+  case Node:
+    name = "Node";
+    break;
+  case CBType::Type:
+    name = "Type";
+    break;
+  }
+  return name;
+}
+
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
   case EndOfBlittableTypes:
@@ -23,12 +113,26 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     else if (var.payload.chainState == CBChainState::Rebase)
       os << "*ChainRebase*";
     break;
+  case CBType::Type:
+    if (var.payload.typeInfoValue)
+      os << type2Name(var.payload.typeInfoValue->basicType);
+    else
+      os << "None";
+    break;
   case CBType::Any:
     os << "*Any*";
     break;
   case Object:
     os << "Object: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.objectValue) << std::dec;
+    break;
+  case Node:
+    os << "Node: 0x" << std::hex
+       << reinterpret_cast<uintptr_t>(var.payload.nodeValue) << std::dec;
+    break;
+  case Chain:
+    os << "Chain: 0x" << std::hex
+       << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
     break;
   case Bytes:
     os << "Bytes: 0x" << std::hex
@@ -116,9 +220,6 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
        << ", " << int(var.payload.colorValue.b) << ", "
        << int(var.payload.colorValue.a);
     break;
-  case Chain:
-    os << "Chain: " << reinterpret_cast<uintptr_t>(var.payload.chainValue);
-    break;
   case Block:
     os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
     break;
@@ -156,94 +257,30 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     }
     os << "}";
     break;
+  case Vector:
+    os << "[";
+    CBVar vv{};
+    vv.valueType = var.payload.vectorType;
+    for (auto i = 0; i < var.payload.vectorSize; i++) {
+      vv.payload = var.payload.vectorValue[i];
+      if (i == 0)
+        os << vv;
+      else
+        os << ", " << vv;
+    }
+    os << "]";
+    break;
   }
   return os;
-}
-
-inline std::string type2Name(CBType type) {
-  std::string name = "";
-  switch (type) {
-  case EndOfBlittableTypes:
-    break;
-  case None:
-    name = "None";
-    break;
-  case CBType::Any:
-    name = "Any";
-    break;
-  case Object:
-    name = "Object";
-    break;
-  case Enum:
-    name = "Enum";
-    break;
-  case Bool:
-    name = "Bool";
-    break;
-  case Bytes:
-    name = "Bytes";
-    break;
-  case Int:
-    name = "Int";
-    break;
-  case Int2:
-    name = "Int2";
-    break;
-  case Int3:
-    name = "Int3";
-    break;
-  case Int4:
-    name = "Int4";
-    break;
-  case Int8:
-    name = "Int8";
-    break;
-  case Int16:
-    name = "Int16";
-    break;
-  case Float:
-    name = "Float";
-    break;
-  case Float2:
-    name = "Float2";
-    break;
-  case Float3:
-    name = "Float3";
-    break;
-  case Float4:
-    name = "Float4";
-    break;
-  case Color:
-    name = "Color";
-    break;
-  case Chain:
-    break;
-  case Block:
-    name = "Block";
-    break;
-  case CBType::String:
-    name = "String";
-    break;
-  case ContextVar:
-    name = "ContextVar";
-    break;
-  case Image:
-    name = "Image";
-    break;
-  case Seq:
-    name = "Seq";
-    break;
-  case Table:
-    name = "Table";
-    break;
-  }
-  return name;
 }
 
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
+
+inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
+inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
   if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
@@ -266,6 +303,25 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
       return false;
 
     if (!(a.payload.tableValue[i].value == b.payload.tableValue[i].value))
+      return false;
+  }
+
+  return true;
+}
+
+inline bool _vectorEq(const CBVar &a, const CBVar &b) {
+  if (a.payload.vectorType != b.payload.vectorType)
+    return false;
+
+  if (a.payload.vectorSize != b.payload.vectorSize)
+    return false;
+
+  CBVar va{}, vb{};
+  va.valueType = vb.valueType = a.payload.vectorType;
+  for (auto i = 0; i < a.payload.vectorSize; i++) {
+    va.payload = a.payload.vectorValue[i];
+    vb.payload = b.payload.vectorValue[i];
+    if (!(va == vb))
       return false;
   }
 
@@ -393,6 +449,23 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return a.payload.bytesSize == b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) == 0;
+  case Vector:
+    return _vectorEq(a, b);
+  case Node:
+    return a.payload.nodeValue == b.payload.nodeValue;
+  case Type: {
+    if (a.payload.typeInfoValue == nullptr) {
+      if (b.payload.typeInfoValue == nullptr)
+        return true;
+      else
+        return false;
+    }
+
+    if (b.payload.typeInfoValue == nullptr)
+      return false;
+
+    return *a.payload.typeInfoValue == *b.payload.typeInfoValue;
+  }
   }
 
   return false;
@@ -683,8 +756,6 @@ ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) {
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
   return b <= a;
 }
-
-inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)

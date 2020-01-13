@@ -52,7 +52,11 @@ enum CBType : uint8_t {
   ContextVar, // A string label to find from CBContext variables
   Image,
   Seq,
-  Table
+  Table,
+
+  Vector,
+  Node,
+  Type
 };
 
 enum CBChainState : uint8_t {
@@ -155,14 +159,18 @@ struct CBChain;
 typedef struct CBChain *CBChainPtr;
 
 struct CBNode;
+typedef struct CBNode *CBNodePtr;
+
 struct CBFlow;
 
 struct CBlock;
+typedef struct CBlock *CBlockPtr;
 typedef struct CBlock **CBlocks; // a stb array
 
 struct CBChainProvider;
 
 struct CBTypeInfo;
+typedef CBTypeInfo *CBTypeInfoPtr;
 typedef struct CBTypeInfo *CBTypesInfo; // a stb array
 
 struct CBParameterInfo;
@@ -285,6 +293,13 @@ struct CBTypeInfo {
     };
 
     CBTypesInfo contextVarTypes;
+
+    struct {
+      CBTypeInfoPtr vectorType;
+      // 0 for unknown, specify to enforce a fixed size vector!
+      // e.g. a Matrix4x4 could be a vector of Float4 x 4
+      uint64_t vectorSize;
+    };
   };
 };
 
@@ -392,7 +407,7 @@ ALIGNED struct CBVarPayload {
 
     CBChainPtr chainValue;
 
-    struct CBlock *blockValue;
+    CBlockPtr blockValue;
 
     struct {
       CBEnum enumValue;
@@ -404,6 +419,17 @@ ALIGNED struct CBVarPayload {
       uint8_t *bytesValue;
       uint64_t bytesSize;
     };
+
+    struct {
+      CBVarPayload *vectorValue;
+      enum CBType vectorType;
+      // 48 bits should be plenty for such sizes
+      uint64_t vectorSize:48;
+    };
+
+    CBNodePtr nodeValue;
+
+    CBTypeInfoPtr typeInfoValue;
   };
 };
 
