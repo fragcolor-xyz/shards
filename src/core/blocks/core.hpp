@@ -36,6 +36,8 @@ struct CoreInfo {
   static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
   static inline TypeInfo blockType = TypeInfo(CBType::Block);
   static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
+  static inline TypesInfo blocksOrNoneInfo =
+      TypesInfo(CBType::Block, true, true);
   static inline TypeInfo blockSeq = TypeInfo::Sequence(blockType);
   static inline TypesInfo blocksSeqInfo =
       TypesInfo(TypeInfo::Sequence(blockSeq));

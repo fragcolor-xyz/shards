@@ -781,14 +781,18 @@ struct TypesInfo {
     return *this;
   }
 
-  explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false) {
+  explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false,
+                     bool canBeNone = false) {
     _innerInfo = nullptr;
-    _innerTypes.reserve(canBeSeq ? 2 : 1);
     _innerTypes.push_back(singleType);
     stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
       _innerTypes.push_back(TypeInfo::Sequence(_innerTypes.back()));
       stbds_arrpush(_innerInfo, _innerTypes.back());
+    }
+    if (canBeNone) {
+      CBTypeInfo none{}; // default init = None
+      stbds_arrpush(_innerInfo, none);
     }
   }
 

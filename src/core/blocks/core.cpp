@@ -88,7 +88,7 @@ struct JointOp {
   }
 };
 
-struct Sort : public JointOp {
+struct Sort : public JointOp, public BlocksUser {
   std::vector<CBVar> _multiSortKeys;
 
   bool _desc = false;
@@ -98,7 +98,11 @@ struct Sort : public JointOp {
       ParamsInfo::Param(
           "Desc",
           "If sorting should be in descending order, defaults ascending.",
-          CBTypesInfo(CoreInfo::boolInfo)));
+          CBTypesInfo(CoreInfo::boolInfo)),
+      ParamsInfo::Param("Key",
+                        "The blocks to use to transform the collection's items "
+                        "before they are compared. Can be None.",
+                        CBTypesInfo(CoreInfo::blocksOrNoneInfo)));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -108,6 +112,9 @@ struct Sort : public JointOp {
       return JointOp::setParam(index, value);
     case 1:
       _desc = value.payload.boolValue;
+      break;
+    case 2:
+      cloneVar(_blocks, value);
       break;
     default:
       break;
@@ -120,10 +127,21 @@ struct Sort : public JointOp {
       return JointOp::getParam(index);
     case 1:
       return Var(_desc);
+    case 2:
+      return _blocks;
     default:
       break;
     }
     throw CBException("Parameter out of range.");
+  }
+
+  CBTypeInfo compose(CBInstanceData &data) {
+    // need to replace input type of inner chain with inner of seq
+    assert(data.inputType.seqType);
+    auto inputType = data.inputType;
+    data.inputType = *inputType.seqType;
+    BlocksUser::compose(data);
+    return inputType;
   }
 
   struct {
@@ -134,7 +152,26 @@ struct Sort : public JointOp {
     bool operator()(CBVar &a, CBVar &b) const { return a < b; }
   } sortDesc;
 
-  template <class Compare> void insertSort(CBVar seq[], int n, Compare comp) {
+  struct {
+    CBVar &operator()(CBVar &a) { return a; }
+  } noopKeyFn;
+
+  struct {
+    Sort *_bu;
+    CBContext *_ctx;
+    CBVar _o{};
+
+    CBVar &operator()(CBVar &a) {
+      if (unlikely(
+              !activateBlocks(_bu->_blocks.payload.seqValue, _ctx, a, _o))) {
+        throw CBException("Sort - Key function failed");
+      }
+      return _o;
+    }
+  } blocksKeyFn;
+
+  template <class Compare, class KeyFn>
+  void insertSort(CBVar seq[], int n, Compare comp, KeyFn keyfn) {
     int i, j;
     CBVar key{};
     for (i = 1; i < n; i++) {
@@ -145,7 +182,9 @@ struct Sort : public JointOp {
         _multiSortKeys.push_back(col[i]);
       }
       j = i - 1;
-      while (j >= 0 && comp(seq[j], key)) {
+      // notice no &, we WANT to copy
+      auto b = keyfn(key);
+      while (j >= 0 && comp(keyfn(seq[j]), b)) {
         seq[j + 1] = seq[j];
         for (const auto &seqVar : _multiSortColumns) {
           const auto &col = seqVar->payload.seqValue;
@@ -162,14 +201,30 @@ struct Sort : public JointOp {
     }
   }
 
+  void cleanup() {
+    BlocksUser::cleanup();
+    JointOp::cleanup();
+  }
+
+  void setup() { blocksKeyFn._bu = this; }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context, input);
     // Sort in place
     auto len = stbds_arrlen(input.payload.seqValue);
-    if (!_desc) {
-      insertSort(input.payload.seqValue, len, sortAsc);
+    if (_blocks.valueType != None) {
+      blocksKeyFn._ctx = context;
+      if (!_desc) {
+        insertSort(input.payload.seqValue, len, sortAsc, blocksKeyFn);
+      } else {
+        insertSort(input.payload.seqValue, len, sortDesc, blocksKeyFn);
+      }
     } else {
-      insertSort(input.payload.seqValue, len, sortDesc);
+      if (!_desc) {
+        insertSort(input.payload.seqValue, len, sortAsc, noopKeyFn);
+      } else {
+        insertSort(input.payload.seqValue, len, sortDesc, noopKeyFn);
+      }
     }
     return input;
   }
@@ -680,8 +735,10 @@ RUNTIME_BLOCK_END(Repeat);
 
 // Register Sort
 RUNTIME_CORE_BLOCK(Sort);
+RUNTIME_BLOCK_setup(Sort);
 RUNTIME_BLOCK_inputTypes(Sort);
 RUNTIME_BLOCK_outputTypes(Sort);
+RUNTIME_BLOCK_compose(Sort);
 RUNTIME_BLOCK_activate(Sort);
 RUNTIME_BLOCK_parameters(Sort);
 RUNTIME_BLOCK_setParam(Sort);
