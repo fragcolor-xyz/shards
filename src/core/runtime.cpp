@@ -963,6 +963,9 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
   ctx.userData = userData;
+  for (auto i = 0; i < stbds_arrlenu(data.stack); i++) {
+    ctx.stackTypes.push_back(data.stack[i]);
+  }
 
   if (data.consumables) {
     for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
