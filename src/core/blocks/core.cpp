@@ -706,6 +706,20 @@ RUNTIME_BLOCK_getParam(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
+// Register Slice
+RUNTIME_CORE_BLOCK_FACTORY(Slice);
+RUNTIME_BLOCK_destroy(Slice);
+RUNTIME_BLOCK_cleanup(Slice);
+RUNTIME_BLOCK_consumedVariables(Slice);
+RUNTIME_BLOCK_inputTypes(Slice);
+RUNTIME_BLOCK_outputTypes(Slice);
+RUNTIME_BLOCK_parameters(Slice);
+RUNTIME_BLOCK_compose(Slice);
+RUNTIME_BLOCK_setParam(Slice);
+RUNTIME_BLOCK_getParam(Slice);
+RUNTIME_BLOCK_activate(Slice);
+RUNTIME_BLOCK_END(Slice);
+
 // Register Limit
 RUNTIME_CORE_BLOCK_FACTORY(Limit);
 RUNTIME_BLOCK_destroy(Limit);
@@ -891,6 +905,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Not);
   REGISTER_CORE_BLOCK(IsValidNumber);
   REGISTER_CORE_BLOCK(Take);
+  REGISTER_CORE_BLOCK(Slice);
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);

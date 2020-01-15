@@ -574,6 +574,21 @@
   (Is (# "s2"))
   (Assert.Is true true)
 
+  4 (Push "s1")
+  5 (Push "s1")
+  
+  (Get "s1")
+  (Slice 1 3)
+  (Assert.Is [2 3 4] true)
+
+  (Get "s1")
+  (Slice :From 1 :To 4 :Step 2)
+  (Assert.Is [2 4] true)
+
+  (Get "s1")
+  (Slice 3 -2)
+  (Assert.Is [4] true)
+
   "passing by..."
   (Drop "s2")
   (Assert.Is "passing by..." true)

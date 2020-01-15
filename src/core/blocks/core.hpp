@@ -1382,13 +1382,10 @@ struct Take {
             _seqOutput = true;
             valid = true;
             break;
-
           } else if (info.exposedType.basicType == Int) {
-
             _seqOutput = false;
             valid = true;
             break;
-
           } else {
             auto msg = "Take indices variable " + std::string(info.name) +
                        " expected to be either a Seq or a Int";
@@ -1622,6 +1619,173 @@ struct Take {
     // Take branches during validation into different inlined blocks
     // If we hit this, maybe that type of input is not yet implemented
     throw CBException("Take path not implemented for this type.");
+  }
+};
+
+struct Slice {
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("From", "From index.",
+                        CBTypesInfo(CoreInfo::intVarInfo)),
+      ParamsInfo::Param("To", "To index.", CBTypesInfo(CoreInfo::intVarInfo)),
+      ParamsInfo::Param("Step", "The increment between each index.",
+                        CBTypesInfo(CoreInfo::intInfo)));
+
+  CBSeq _cachedSeq = nullptr;
+  CBVar _from{};
+  CBVar *_fromVar = nullptr;
+  CBVar _to{};
+  CBVar *_toVar = nullptr;
+  ExposedInfo _exposedInfo{};
+  int64_t _step = 1;
+
+  void destroy() {
+    if (_cachedSeq) {
+      stbds_arrfree(_cachedSeq);
+    }
+    destroyVar(_from);
+    destroyVar(_to);
+  }
+
+  void cleanup() {
+    _fromVar = nullptr;
+    _toVar = nullptr;
+  }
+
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    bool valid = false;
+
+    if (_from.valueType == Int) {
+      valid = true;
+    } else { // ContextVar
+      IterableExposedInfo infos(data.consumables);
+      for (auto &info : infos) {
+        if (strcmp(info.name, _from.payload.stringValue) == 0) {
+          valid = true;
+          break;
+        }
+      }
+    }
+
+    if (!valid)
+      throw CBException("Slice, invalid From variable.");
+
+    if (_to.valueType == Int) {
+      valid = true;
+    } else { // ContextVar
+      IterableExposedInfo infos(data.consumables);
+      for (auto &info : infos) {
+        if (strcmp(info.name, _to.payload.stringValue) == 0) {
+          valid = true;
+          break;
+        }
+      }
+    }
+
+    if (!valid)
+      throw CBException("Slice, invalid To variable.");
+
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo consumedVariables() {
+    if (_from.valueType == ContextVar && _to.valueType == ContextVar) {
+      _exposedInfo =
+          ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue,
+                                            "The consumed variable.",
+                                            CBTypeInfo(CoreInfo::intInfo)),
+                      ExposedInfo::Variable(_to.payload.stringValue,
+                                            "The consumed variable.",
+                                            CBTypeInfo(CoreInfo::intInfo)));
+      return CBExposedTypesInfo(_exposedInfo);
+    } else if (_from.valueType == ContextVar) {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _from.payload.stringValue, "The consumed variable.",
+          CBTypeInfo(CoreInfo::intInfo)));
+      return CBExposedTypesInfo(_exposedInfo);
+    } else if (_to.valueType == ContextVar) {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _to.payload.stringValue, "The consumed variable.",
+          CBTypeInfo(CoreInfo::intInfo)));
+      return CBExposedTypesInfo(_exposedInfo);
+    } else {
+      return nullptr;
+    }
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      cloneVar(_from, value);
+      _fromVar = nullptr;
+      break;
+    case 1:
+      cloneVar(_to, value);
+      _toVar = nullptr;
+      break;
+    case 2:
+      _step = value.payload.intValue;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _from;
+    case 1:
+      return _to;
+    case 2:
+      return Var(_step);
+    default:
+      break;
+    }
+    return Empty;
+  }
+
+  struct OutOfRangeEx : public CBException {
+    OutOfRangeEx(int64_t len, int64_t from, int64_t to)
+        : CBException("Slice out of range!") {
+      LOG(ERROR) << "Out of range! from: " << from << " to: " << to
+                 << " len: " << len;
+    }
+  };
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_from.valueType == ContextVar && !_fromVar) {
+      _fromVar = findVariable(context, _from.payload.stringValue);
+    }
+    if (_to.valueType == ContextVar && !_toVar) {
+      _toVar = findVariable(context, _to.payload.stringValue);
+    }
+
+    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto &vfrom = _fromVar ? *_fromVar : _from;
+    const auto &vto = _toVar ? *_toVar : _to;
+    auto from = vfrom.payload.intValue;
+    auto to = vto.payload.intValue;
+    if (to < 0) {
+      to = inputLen + to;
+    }
+
+    if (from > to || to < 0 || to >= inputLen) {
+      throw OutOfRangeEx(inputLen, from, to);
+    }
+
+    stbds_arrsetlen(_cachedSeq, 0);
+    for (auto i = from; i <= to; i += _step) {
+      stbds_arrpush(_cachedSeq, input.payload.seqValue[i]);
+    }
+
+    return Var(_cachedSeq);
   }
 };
 
@@ -1875,6 +2039,7 @@ RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
+RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
