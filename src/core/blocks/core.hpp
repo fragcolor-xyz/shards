@@ -17,6 +17,8 @@ struct CoreInfo {
   static inline TypesInfo intInfo = TypesInfo(CBType::Int);
   static inline TypesInfo intVarInfo =
       TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
+  static inline TypesInfo intVarOrNoneInfo =
+      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar, CBType::None);
   static inline TypesInfo strVarInfo =
       TypesInfo::FromMany(false, CBType::String, CBType::ContextVar);
   static inline TypesInfo intsVarInfo =
@@ -47,6 +49,8 @@ struct CoreInfo {
       TypesInfo(TypeInfo::Sequence(floatType));
   static inline TypesInfo intsOrNoneInfo =
       TypesInfo::FromMany(true, CBType::Int, CBType::None);
+  static inline TypesInfo intOrNoneInfo =
+      TypesInfo::FromMany(false, CBType::Int, CBType::None);
   static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
       false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
@@ -1623,15 +1627,16 @@ struct Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("From", "From index.",
-                        CBTypesInfo(CoreInfo::intVarInfo)),
-      ParamsInfo::Param("To", "To index.", CBTypesInfo(CoreInfo::intVarInfo)),
-      ParamsInfo::Param("Step", "The increment between each index.",
-                        CBTypesInfo(CoreInfo::intInfo)));
+  static inline ParamsInfo indicesParamsInfo =
+      ParamsInfo(ParamsInfo::Param("From", "From index.",
+                                   CBTypesInfo(CoreInfo::intVarInfo)),
+                 ParamsInfo::Param("To", "To index.",
+                                   CBTypesInfo(CoreInfo::intVarOrNoneInfo)),
+                 ParamsInfo::Param("Step", "The increment between each index.",
+                                   CBTypesInfo(CoreInfo::intInfo)));
 
   CBSeq _cachedSeq = nullptr;
-  CBVar _from{};
+  CBVar _from{Var(0)};
   CBVar *_fromVar = nullptr;
   CBVar _to{};
   CBVar *_toVar = nullptr;
@@ -1771,17 +1776,17 @@ struct Slice {
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
-    auto to = vto.payload.intValue;
+    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
     }
 
-    if (from > to || to < 0 || to >= inputLen) {
+    if (from > to || to < 0 || to > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
     stbds_arrsetlen(_cachedSeq, 0);
-    for (auto i = from; i <= to; i += _step) {
+    for (auto i = from; i < to; i += _step) {
       stbds_arrpush(_cachedSeq, input.payload.seqValue[i]);
     }
 

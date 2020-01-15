@@ -578,15 +578,15 @@
   5 (Push "s1")
   
   (Get "s1")
-  (Slice 1 3)
+  (Slice 1 4)
   (Assert.Is [2 3 4] true)
 
   (Get "s1")
-  (Slice :From 1 :To 4 :Step 2)
+  (Slice :From 1 :To 5 :Step 2)
   (Assert.Is [2 4] true)
 
   (Get "s1")
-  (Slice 3 -2)
+  (Slice 3 -1)
   (Assert.Is [4] true)
 
   "passing by..."
