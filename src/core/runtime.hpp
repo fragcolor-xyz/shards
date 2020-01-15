@@ -137,8 +137,7 @@ struct CBChain {
 struct CBContext {
   CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
-        shouldPause(false), paused(false), continuation(std::move(sink)),
-        iterationCount(0), stack(nullptr) {}
+        continuation(std::move(sink)), iterationCount(0), stack(nullptr) {}
 
   ~CBContext() { stbds_arrfree(stack); }
 
@@ -148,9 +147,6 @@ struct CBContext {
   bool restarted;
   // Also used to cancel a chain
   bool aborted;
-  // Used internally to pause a chain execution
-  std::atomic_bool shouldPause;
-  std::atomic_bool paused;
 
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
@@ -517,30 +513,8 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
 static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                                  const CBVar &chainInput) {
   chain->previousOutput = CBVar();
-
-  // Detect and pause if we need to here
-  // avoid pausing in the middle or so, that is for a proper debug mode runner,
-  // here we care about performance
-  while (context->shouldPause) {
-    context->paused = true;
-
-    auto suspendRes = suspend(context, 0.0);
-    // Since we suspended we need to make sure we should continue when resuming
-    switch (suspendRes.payload.chainState) {
-    case CBChainState::Restart: {
-      return {chain->previousOutput, Restarted};
-    }
-    case CBChainState::Stop: {
-      return {chain->previousOutput, Stopped};
-    }
-    default:
-      continue;
-    }
-  }
-
   chain->started = true;
   chain->context = context;
-  context->paused = false;
 
   // store stack index
   auto sidx = stbds_arrlenu(context->stack);

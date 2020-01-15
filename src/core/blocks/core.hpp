@@ -1682,7 +1682,7 @@ struct Slice {
     if (!valid)
       throw CBException("Slice, invalid From variable.");
 
-    if (_to.valueType == Int) {
+    if (_to.valueType == Int || _to.valueType == None) {
       valid = true;
     } else { // ContextVar
       IterableExposedInfo infos(data.consumables);
