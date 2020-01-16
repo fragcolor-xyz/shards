@@ -570,10 +570,13 @@ static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
-  chain->finished = false; // Reset finished flag (atomic)
+  // Reset finished flag (atomic), TODO take care of recursions!
+  chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
-  chain->finishedOutput = runRes.output; // Write result before setting flag
-  chain->finished = true;                // Set finished flag (atomic)
+  // Write result before setting flag, TODO mutex inter-locked?
+  chain->finishedOutput = runRes.output;
+  // Set finished flag (atomic), recursion??
+  chain->finished = true;
   return runRes;
 }
 

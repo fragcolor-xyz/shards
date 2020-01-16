@@ -27,3 +27,53 @@
 (prepare chain2)
 (schedule Root chain1)
 (run Root 0.1)
+
+(def recursive
+  (Chain
+   "recur"
+   (Log "depth")
+   (Math.Inc)
+   (Cond
+    [(--> (IsLess 5))
+     (Do "recur")])
+   (Log "res")
+   ))
+
+(def recursiveAnd
+  (Chain
+   "recurAnd"
+   (Log "depth")
+   (Math.Inc)
+   (Push)
+   (IsLess 5)
+   (And)
+   (Pop)
+   (Do "recurAnd")
+   (Log "res")
+   ))
+
+(schedule
+ Root
+ (Chain
+  "doit"
+  0
+  (Do recursive)
+  (Do recursiveAnd)))
+
+;; test stack overflow, notice in this case (below) we could have tail call optimized,
+;; TODO implement TCO
+
+;; (def recursiveCrash
+;;   (Chain
+;;    "recurCrash"
+;;    (Log "depth")
+;;    (Math.Inc)
+;;    (Do "recurCrash")
+;;    ))
+
+;; (schedule
+;;  Root
+;;  (Chain
+;;   "doit"
+;;   0
+;;   (Do recursiveCrash)))
