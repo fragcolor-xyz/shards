@@ -24,9 +24,10 @@
       (Get "point-count")
       (Math.Divide 2)
       (Set "median")
+      (Push "median-mem" :Clear false)
                                         ; store also median+1 for later use
       (Math.Add 1)
-      (Set "median+1")
+      (Push "median+1-mem" :Clear false)
                                         ; find dimension
       (Get "depth")
       (Math.Mod k)
@@ -36,7 +37,8 @@
       (Sort :Key (--> (Take (# "dimension"))))
                                         ; split left and right, push points
       (Push "points-mem" :Clear false)
-      (Slice :From 0 :To (# "median"))
+      (Push "points-mem" :Clear false)
+      (Slice :To (# "median"))
                                         ; left points arg
       (Push)
                                         ; depth arg
@@ -44,28 +46,46 @@
       (Math.Add 1)
       (Push)
       (Push "depth-mem" :Clear false)
+      
+      ;; -->
                                         ; recurse to build deeper tree
       (Do "build-tree")
+      ;; <--
+      
       (Push "left-mem" :Clear false)
+      (Log "left")
                                         ; pop args
       (Pop)
       (Pop)
                                         ; pop points
+      (Pop "median+1-mem")
+      (Set "median")
       (Pop "points-mem")
-      (Slice :From (# "median+1"))
+      (Slice :From (# "median"))
                                         ; left points arg
       (Push)
                                         ; depth arg
       (Pop "depth-mem")
       (Push)
+      
+      ;; -->
                                         ; recurse to build deeper tree
       (Do "build-tree")
+      ;; <--
+      
       (Push "right-mem" :Clear false)
+      (Log "right")
                                         ; pop args
       (Pop)
       (Pop)
                                         ; compose our result "tuple" seq
       (Clear "result")
+                                        ; top
+      (Pop "median-mem")
+      (Set "median")
+      (Pop "points-mem")
+      (Take (# "median"))
+      (Push "result")
                                         ;start with left
       (Pop "left-mem")
       (Push "result")
@@ -74,7 +94,11 @@
       (Push "result")
                                         ; set result as final chain output
       (Get "result")
-      (Log "result"))])
+      (Log "result"))
+     (--> true)
+     (Clear "result")
+     ])
+   (Get "result" :Default [])
    ))
 
 (def Root (Node))
