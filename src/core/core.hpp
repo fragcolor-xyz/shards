@@ -784,6 +784,9 @@ struct TypesInfo {
   explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false,
                      bool canBeNone = false) {
     _innerInfo = nullptr;
+    // NOTICE , we NEED to reserve in other to preserve those memory addresses!
+    // See that we use .back and push "ref" to them
+    _innerTypes.reserve(3);
     _innerTypes.push_back(singleType);
     stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
@@ -791,8 +794,8 @@ struct TypesInfo {
       stbds_arrpush(_innerInfo, _innerTypes.back());
     }
     if (canBeNone) {
-      CBTypeInfo none{}; // default init = None
-      stbds_arrpush(_innerInfo, none);
+      _innerTypes.push_back(TypeInfo(CBType::None));
+      stbds_arrpush(_innerInfo, _innerTypes.back());
     }
   }
 
@@ -806,6 +809,8 @@ struct TypesInfo {
     auto size = vec.size();
     if (canBeSeq)
       size *= 2;
+    // NOTICE , we NEED to reserve in other to preserve those memory addresses!
+    // See that we use .back and push "ref" to them
     result._innerTypes.reserve(size);
 
     for (auto &type : vec) {
