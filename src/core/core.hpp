@@ -89,6 +89,9 @@ static void _destroyVarSlow(CBVar &var) {
 }
 
 static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+  if (src == dst)
+    return;
+
   switch (src.valueType) {
   case Seq: {
     size_t srcLen = stbds_arrlen(src.payload.seqValue);
