@@ -38,7 +38,7 @@
    (Log "depth")
    (Math.Inc)
    (Cond
-    [(--> (IsLess 20))
+    [(--> (IsLess 5))
      (Do "recur")])
    (Log "res")
    ))
