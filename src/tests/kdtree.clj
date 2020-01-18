@@ -2,6 +2,20 @@
 ;; a (Algo.KDTree) can be implemented in the future for that
 ;; this is just a proof of concept and a test for the language efficiency
 
+(defn store [vars]
+  (map
+   (fn* [x]
+        [(Get x)
+         (Push (str x "-mem##") :Clear false)])
+   vars))
+
+(defn restore [vars]
+  (map
+   (fn* [x]
+        [(Pop (str x "-mem##"))
+         (Update x)])
+   vars))
+
 (def k 2) ;; 2 dims
 (def build-tree
   (Chain
@@ -9,10 +23,8 @@
                                         ; organize args from stack
    (Pop)
    (Set "depth")
-   (Log "depth")
    (Pop)
    (Set "points")
-   (Log "points")
                                         ; count points
    (Count "points")
    (Cond
@@ -24,10 +36,9 @@
       (Get "point-count")
       (Math.Divide 2)
       (Set "median")
-      (Push "median-mem" :Clear false)
                                         ; store also median+1 for later use
       (Math.Add 1)
-      (Push "median+1-mem" :Clear false)
+      (Set "median+1")
                                         ; find dimension
       (Get "depth")
       (Math.Mod k)
@@ -36,8 +47,6 @@
       (Get "points")
       (Sort :Key (--> (Take (# "dimension"))))
                                         ; split left and right, push points
-      (Push "points-mem" :Clear false)
-      (Push "points-mem" :Clear false)
       (Slice :To (# "median"))
                                         ; left points arg
       (Push)
@@ -45,45 +54,39 @@
       (Get "depth")
       (Math.Add 1)
       (Push)
-      (Push "depth-mem" :Clear false)
-      
-      ;; -->
                                         ; recurse to build deeper tree
+      ;; -->
+      (store ["median" "median+1" "points" "depth"])
       (Do "build-tree")
-      ;; <--
-      
       (Push "left-mem" :Clear false)
-      (Log "left")
+      (restore ["median" "median+1" "points" "depth"])
+      ;; <--   
                                         ; pop args
       (Pop)
       (Pop)
                                         ; pop points
-      (Pop "median+1-mem")
-      (Set "median")
-      (Pop "points-mem")
-      (Slice :From (# "median"))
+      (Get "points")
+      (Slice :From (# "median+1"))
                                         ; left points arg
       (Push)
                                         ; depth arg
-      (Pop "depth-mem")
+      (Get "depth")
+      (Math.Add 1)
       (Push)
-      
-      ;; -->
                                         ; recurse to build deeper tree
+      ;; -->
+      (store ["median" "median+1" "points" "depth"])
       (Do "build-tree")
-      ;; <--
-      
       (Push "right-mem" :Clear false)
-      (Log "right")
+      (restore ["median" "median+1" "points" "depth"])
+      ;; <--
                                         ; pop args
       (Pop)
       (Pop)
                                         ; compose our result "tuple" seq
       (Clear "result")
                                         ; top
-      (Pop "median-mem")
-      (Set "median")
-      (Pop "points-mem")
+      (Get "points")
       (Take (# "median"))
       (Push "result")
                                         ;start with left
@@ -91,10 +94,7 @@
       (Push "result")
                                         ; right
       (Pop "right-mem")
-      (Push "result")
-                                        ; set result as final chain output
-      (Get "result")
-      (Log "result"))
+      (Push "result"))
      (--> true)
      (Clear "result")
      ])
@@ -113,5 +113,6 @@
   0
   (Push)
   (Do build-tree)
+  (Log)
   ))
 (run Root 0.1)

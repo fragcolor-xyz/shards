@@ -71,10 +71,12 @@ struct Const {
                         CBTypesInfo(constTypesInfo)));
 
   CBVar _value{};
-  TypeInfo _valueInfo{};
-  TypeInfo _innerInfo{};
+  CBTypeInfo _innerInfo{};
 
-  void destroy() { destroyVar(_value); }
+  void destroy() {
+    destroyVar(_value);
+    freeDerivedInfo(_innerInfo);
+  }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
 
@@ -89,13 +91,9 @@ struct Const {
   CBVar getParam(int index) { return _value; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (_value.valueType == Seq && _value.payload.seqValue) {
-      _innerInfo = TypeInfo(_value.payload.seqValue[0].valueType);
-      _valueInfo = TypeInfo::Sequence(_innerInfo);
-    } else {
-      _valueInfo = TypeInfo(_value.valueType);
-    }
-    return _valueInfo;
+    freeDerivedInfo(_innerInfo);
+    _innerInfo = deriveTypeInfo(_value);
+    return _innerInfo;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -456,7 +454,7 @@ struct SetBase : public VariableBase {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (_shortCut) {
+    if (likely(_shortCut)) {
       cloneVar(*_target, input);
       return input;
     }
@@ -773,7 +771,7 @@ struct Get : public VariableBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (_shortCut)
+    if (likely(_shortCut))
       return *_target;
 
     if (!_target) {
@@ -993,9 +991,12 @@ struct Push : public VariableBase {
         if (index != -1) {
           auto &seq = _target->payload.tableValue[index].value;
           if (seq.valueType == Seq) {
-            for (auto i = 0; i < stbds_arrlen(seq.payload.seqValue); i++) {
-              destroyVar(seq.payload.seqValue[i]);
+            for (uint64_t i = seq.capacity; i > 0; i--) {
+              destroyVar(seq.payload.seqValue[i - 1]);
             }
+            stbds_arrfree(seq.payload.seqValue);
+            seq.payload.seqValue = nullptr;
+            seq.capacity = 0;
           }
           stbds_shdel(_target->payload.tableValue, _key.c_str());
         }
@@ -1004,10 +1005,12 @@ struct Push : public VariableBase {
           memset(_target, 0x0, sizeof(CBVar));
         }
       } else if (_target->valueType == Seq) {
-        for (auto i = 0; i < stbds_arrlen(_target->payload.seqValue); i++) {
-          destroyVar(_target->payload.seqValue[i]);
+        for (uint64_t i = _target->capacity; i > 0; i--) {
+          destroyVar(_target->payload.seqValue[i - 1]);
         }
         stbds_arrfree(_target->payload.seqValue);
+        _target->payload.seqValue = nullptr;
+        _target->capacity = 0;
       }
     }
     _target = nullptr;
@@ -1017,48 +1020,45 @@ struct Push : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
+  void activateTable(CBContext *context, const CBVar &input) {
+    if (_target->valueType != Table) {
+      // Not initialized yet
+      _target->valueType = Table;
+      _target->payload.tableValue = nullptr;
+    }
+
+    ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+    if (index == -1) {
+      // First empty insertion
+      CBVar tmp{};
+      stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
+      index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+    }
+
+    auto &seq = _target->payload.tableValue[index].value;
+
+    if (seq.valueType != Seq) {
+      seq.valueType = Seq;
+      seq.payload.seqValue = nullptr;
+    }
+
+    if (_firstPusher && _clear) {
+      stbds_arrsetlen(seq.payload.seqValue, 0);
+    }
+
+    CBVar tmp{};
+    cloneVar(tmp, input);
+    stbds_arrpush(seq.payload.seqValue, tmp);
+    seq.capacity =
+        std::max(seq.capacity, (uint64_t)(stbds_arrlenu(seq.payload.seqValue)));
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
+    if (unlikely(!_target)) {
       _target = findVariable(context, _name.c_str());
     }
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        // Not initialized yet
-        _target->valueType = Table;
-        _target->payload.tableValue = nullptr;
-      }
-
-      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (index == -1) {
-        // First empty insertion
-        CBVar tmp{};
-        stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
-        index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      }
-
-      auto &seq = _target->payload.tableValue[index].value;
-
-      if (seq.valueType != Seq) {
-        seq.valueType = Seq;
-        seq.payload.seqValue = nullptr;
-      }
-
-      if (_firstPusher && _clear) {
-        auto len = stbds_arrlen(seq.payload.seqValue);
-        if (len > 0) {
-          if (seq.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-            // Clean allocation garbage in case it's not blittable!
-            for (auto i = 0; i < len; i++) {
-              destroyVar(seq.payload.seqValue[i]);
-            }
-          }
-          stbds_arrsetlen(seq.payload.seqValue, 0);
-        }
-      }
-
-      CBVar tmp{};
-      cloneVar(tmp, input);
-      stbds_arrpush(seq.payload.seqValue, tmp);
+    if (unlikely(_isTable)) {
+      activateTable(context, input);
     } else {
       if (_target->valueType != Seq) {
         _target->valueType = Seq;
@@ -1066,21 +1066,15 @@ struct Push : public VariableBase {
       }
 
       if (_firstPusher && _clear) {
-        auto len = stbds_arrlen(_target->payload.seqValue);
-        if (len > 0) {
-          if (_target->payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-            // Clean allocation garbage in case it's not blittable!
-            for (auto i = 0; i < len; i++) {
-              destroyVar(_target->payload.seqValue[i]);
-            }
-          }
-          stbds_arrsetlen(_target->payload.seqValue, 0);
-        }
+        stbds_arrsetlen(_target->payload.seqValue, 0);
       }
 
       CBVar tmp{};
       cloneVar(tmp, input);
       stbds_arrpush(_target->payload.seqValue, tmp);
+      _target->capacity =
+          std::max(_target->capacity,
+                   (uint64_t)(stbds_arrlenu(_target->payload.seqValue)));
     }
     return input;
   }
@@ -1171,18 +1165,9 @@ struct Clear : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      auto len = stbds_arrlen(var.payload.seqValue);
-      if (len > 0) {
-        if (var.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-          // Clean allocation garbage in case it's not blittable!
-          for (auto i = 0; i < len; i++) {
-            destroyVar(var.payload.seqValue[i]);
-          }
-        }
-        stbds_arrsetlen(var.payload.seqValue, 0);
-      }
+      stbds_arrsetlen(var.payload.seqValue, 0);
     } else if (var.valueType == Table) {
-      for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
+      for (auto i = stbds_shlen(var.payload.tableValue) - 1; i >= 0; i--) {
         auto &sv = var.payload.tableValue[i].value;
         // Clean allocation garbage in case it's not blittable!
         if (sv.valueType >= EndOfBlittableTypes) {
@@ -1222,13 +1207,8 @@ struct Drop : SeqUser {
 
     if (likely(var.valueType == Seq)) {
       auto len = stbds_arrlenu(var.payload.seqValue);
-      if (len > 0) {
-        if (var.payload.seqValue[0].valueType >= EndOfBlittableTypes) {
-          // Clean allocation garbage in case it's not blittable!
-          destroyVar(var.payload.seqValue[len - 1]);
-        }
+      if (len > 0)
         stbds_arrsetlen(var.payload.seqValue, len - 1);
-      }
     } else {
       throw CBException("Variable is not a sequence, failed to Pop.");
     }
@@ -1306,13 +1286,9 @@ struct Pop : SeqUser {
         throw CBException("Pop: sequence was empty.");
       }
 
-      // Clone and make the var ours, also if not blittable clear actual
-      // sequence garbage
+      // Clone and make the var ours
       auto pops = stbds_arrpop(seq.payload.seqValue);
       cloneVar(_output, pops);
-      if (!_blittable) {
-        destroyVar(pops);
-      }
       return _output;
     } else {
       if (_target->valueType != Seq) {
@@ -1323,13 +1299,9 @@ struct Pop : SeqUser {
         throw CBException("Pop: sequence was empty.");
       }
 
-      // Clone and make the var ours, also if not blittable clear actual
-      // sequence garbage
+      // Clone and make the var ours
       auto pops = stbds_arrpop(_target->payload.seqValue);
       cloneVar(_output, pops);
-      if (!_blittable) {
-        destroyVar(pops);
-      }
       return _output;
     }
   }
@@ -1341,6 +1313,7 @@ struct Take {
       CBTypesInfo(CoreInfo::intsVarInfo)));
 
   CBSeq _cachedSeq = nullptr;
+  CBVar _output{};
   CBVar _indices{};
   CBVar *_indicesVar = nullptr;
   ExposedInfo _exposedInfo{};
@@ -1350,13 +1323,20 @@ struct Take {
   uint8_t _vectorOutputLen = 0;
 
   void destroy() {
-    if (_cachedSeq) {
-      stbds_arrfree(_cachedSeq);
-    }
     destroyVar(_indices);
+    destroyVar(_output);
   }
 
-  void cleanup() { _indicesVar = nullptr; }
+  void cleanup() {
+    _indicesVar = nullptr;
+    if (_cachedSeq) {
+      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
+        destroyVar(_cachedSeq[i - 1]);
+      }
+      stbds_arrfree(_cachedSeq);
+      _cachedSeq = nullptr;
+    }
+  }
 
   static CBTypesInfo inputTypes() {
     return CBTypesInfo(CoreInfo::anyIndexableInfo);
@@ -1481,7 +1461,7 @@ struct Take {
     switch (index) {
     case 0:
       cloneVar(_indices, value);
-      _indicesVar = nullptr;
+      cleanup();
       break;
     default:
       break;
@@ -1518,7 +1498,8 @@ struct Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      return input.payload.seqValue[index];
+      cloneVar(_output, input.payload.seqValue[index]);
+      return _output;
     } else {
       const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
       stbds_arrsetlen(_cachedSeq, nindices);
@@ -1527,7 +1508,8 @@ struct Take {
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        _cachedSeq[i] = input.payload.seqValue[index];
+        cloneVar(_output, input.payload.seqValue[index]);
+        _cachedSeq[i] = _output;
       }
       return Var(_cachedSeq);
     }
@@ -1644,9 +1626,6 @@ struct Slice {
   int64_t _step = 1;
 
   void destroy() {
-    if (_cachedSeq) {
-      stbds_arrfree(_cachedSeq);
-    }
     destroyVar(_from);
     destroyVar(_to);
   }
@@ -1654,6 +1633,12 @@ struct Slice {
   void cleanup() {
     _fromVar = nullptr;
     _toVar = nullptr;
+    if (_cachedSeq) {
+      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
+        destroyVar(_cachedSeq[i - 1]);
+      }
+      stbds_arrfree(_cachedSeq);
+    }
   }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
@@ -1729,11 +1714,11 @@ struct Slice {
     switch (index) {
     case 0:
       cloneVar(_from, value);
-      _fromVar = nullptr;
+      cleanup();
       break;
     case 1:
       cloneVar(_to, value);
-      _toVar = nullptr;
+      cleanup();
       break;
     case 2:
       _step = value.payload.intValue;
@@ -1787,7 +1772,9 @@ struct Slice {
 
     stbds_arrsetlen(_cachedSeq, 0);
     for (auto i = from; i < to; i += _step) {
-      stbds_arrpush(_cachedSeq, input.payload.seqValue[i]);
+      CBVar tmp{};
+      cloneVar(tmp, input.payload.seqValue[i]);
+      stbds_arrpush(_cachedSeq, tmp);
     }
 
     return Var(_cachedSeq);

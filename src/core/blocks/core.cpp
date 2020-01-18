@@ -441,7 +441,12 @@ struct AppendTo : public XpendTo {
     auto &collection = _collection(context);
     switch (collection.valueType) {
     case Seq: {
-      stbds_arrpush(collection.payload.seqValue, input);
+      CBVar tmp{};
+      cloneVar(tmp, input);
+      stbds_arrpush(collection.payload.seqValue, tmp);
+      collection.capacity = std::max(
+          collection.capacity, decltype(collection.capacity)(
+                                   stbds_arrlenu(collection.payload.seqValue)));
       break;
     }
     case String: {
@@ -467,7 +472,12 @@ struct PrependTo : public XpendTo {
     auto &collection = _collection(context);
     switch (collection.valueType) {
     case Seq: {
-      stbds_arrins(collection.payload.seqValue, 0, input);
+      CBVar tmp{};
+      cloneVar(tmp, input);
+      stbds_arrins(collection.payload.seqValue, 0, tmp);
+      collection.capacity = std::max(
+          collection.capacity, decltype(collection.capacity)(
+                                   stbds_arrlenu(collection.payload.seqValue)));
       break;
     }
     case String: {

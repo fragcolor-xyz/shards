@@ -357,6 +357,7 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core.activate(context, input);
     return;
   }
+#if 1
   case MathExp: {
     auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
@@ -482,6 +483,7 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
     previousOutput = cblock->core.activate(context, input);
     return;
   }
+#endif
   case MathCeil: {
     auto cblock = reinterpret_cast<chainblocks::Math::CeilRuntime *>(blk);
     previousOutput = cblock->core.activate(context, input);
@@ -510,63 +512,8 @@ ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
   }
 }
 
-static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
-                                 const CBVar &chainInput) {
-  chain->previousOutput = CBVar();
-  chain->started = true;
-  chain->context = context;
-
-  // store stack index
-  auto sidx = stbds_arrlenu(context->stack);
-
-  auto input = chainInput;
-  for (auto blk : chain->blocks) {
-    try {
-      activateBlock(blk, context, input, chain->previousOutput);
-      input = chain->previousOutput;
-
-      if (chain->previousOutput.valueType == None) {
-        switch (chain->previousOutput.payload.chainState) {
-        case CBChainState::Restart: {
-          stbds_arrsetlen(context->stack, sidx);
-          return {chain->previousOutput, Restarted};
-        }
-        case CBChainState::Stop: {
-          stbds_arrsetlen(context->stack, sidx);
-          return {chain->previousOutput, Stopped};
-        }
-        case CBChainState::Return: {
-          stbds_arrsetlen(context->stack, sidx);
-          // Use input as output, return previous block result
-          return {input, Restarted};
-        }
-        case CBChainState::Rebase:
-          // Rebase means we need to put back main input
-          input = chainInput;
-          break;
-        case CBChainState::Continue:
-          break;
-        }
-      }
-    } catch (boost::context::detail::forced_unwind const &e) {
-      throw; // required for Boost Coroutine!
-    } catch (const std::exception &e) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      stbds_arrsetlen(context->stack, sidx);
-      return {chain->previousOutput, Failed};
-    } catch (...) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      stbds_arrsetlen(context->stack, sidx);
-      return {chain->previousOutput, Failed};
-    }
-  }
-
-  stbds_arrsetlen(context->stack, sidx);
-  return {chain->previousOutput, Running};
-}
+CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+                          const CBVar &chainInput);
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
@@ -600,72 +547,8 @@ inline void cleanup(CBChain *chain) {
   }
 }
 
-static boost::context::continuation run(CBChain *chain,
-                                        boost::context::continuation &&sink) {
-  auto running = true;
-  // Reset return state
-  chain->returned = false;
-  // Clean previous output if we had one
-  if (chain->ownedOutput) {
-    destroyVar(chain->finishedOutput);
-    chain->ownedOutput = false;
-  }
-  // Reset error
-  chain->failed = false;
-  // Create a new context and copy the sink in
-  CBContext context(std::move(sink), chain);
-
-  // We prerolled our coro, suspend here before actually starting.
-  // This allows us to allocate the stack ahead of time.
-  context.continuation = context.continuation.resume();
-  if (context.aborted) // We might have stopped before even starting!
-    goto endOfChain;
-
-  while (running) {
-    running = chain->looped;
-    context.restarted = false; // Remove restarted flag
-
-    chain->finished = false; // Reset finished flag (atomic)
-    auto runRes = runChain(chain, &context, chain->rootTickInput);
-    chain->finishedOutput = runRes.output; // Write result before setting flag
-    chain->finished = true;                // Set finished flag (atomic)
-    context.iterationCount++;              // increatse iteration counter
-    stbds_arrsetlen(context.stack, 0);     // clear the stack
-    if (unlikely(runRes.state == Failed)) {
-      chain->failed = true;
-      context.aborted = true;
-      break;
-    } else if (unlikely(runRes.state == Stopped)) {
-      context.aborted = true;
-      break;
-    }
-
-    if (!chain->unsafe && chain->looped) {
-      // Ensure no while(true), yield anyway every run
-      context.next = Duration(0);
-      context.continuation = context.continuation.resume();
-      // This is delayed upon continuation!!
-      if (context.aborted)
-        break;
-    }
-  }
-
-endOfChain:
-  // Copy the output variable since the next call might wipe it
-  auto tmp = chain->finishedOutput;
-  // Reset it, we are not sure on the internal state
-  chain->finishedOutput = {};
-  chain->ownedOutput = true;
-  cloneVar(chain->finishedOutput, tmp);
-
-  // run cleanup on all the blocks
-  cleanup(chain);
-
-  // Need to take care that we might have stopped the chain very early due to
-  // errors and the next eventual stop() should avoid resuming
-  chain->returned = true;
-  return std::move(context.continuation);
-}
+boost::context::continuation run(CBChain *chain,
+                                 boost::context::continuation &&sink);
 
 inline void prepare(CBChain *chain) {
   if (chain->coro)
