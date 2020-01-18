@@ -400,7 +400,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
   // validation prevents extra pops so this should be safe
   auto sidx = stbds_arrlenu(context->stack);
   for (auto i = 0; i < nblocks; i++) {
-    activateBlock(blocks[i], context, input, output);
+    output = activateBlock(blocks[i], context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
@@ -436,7 +436,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
   // validation prevents extra pops so this should be safe
   auto sidx = stbds_arrlenu(context->stack);
   for (auto i = 0; i < stbds_arrlen(blocks); i++) {
-    activateBlock(blocks[i].payload.blockValue, context, input, output);
+    output = activateBlock(blocks[i].payload.blockValue, context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
@@ -1258,9 +1258,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
-      activateBlock(blk, context, input, chain->previousOutput);
-      input = chain->previousOutput;
-
+      input = chain->previousOutput = activateBlock(blk, context, input);
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
