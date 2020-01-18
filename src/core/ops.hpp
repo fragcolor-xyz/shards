@@ -316,6 +316,9 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _vectorEq(const CBVar &a, const CBVar &b) {
+  if(a.payload.vectorValue == b.payload.vectorValue)
+    return true;
+  
   if (a.payload.vectorType != b.payload.vectorType)
     return false;
 
