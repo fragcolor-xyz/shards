@@ -1,29 +1,107 @@
 (def Root (Node))
 
+;; Notice, if running with valgrind:
+;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+;; To run this properly or valgrind will complain
+
 (def chain1
-       (Chain
-        "one"
-        (Msg "one - 1")
-        (ContinueChain "two")
-        (Msg "one - 2")
-        (Msg "one - 3")
-        (ContinueChain "two")
-        (Msg "one - Done")
-        (ContinueChain "two")
-        ))
+  (Chain
+   "one"
+   (Msg "one - 1")
+   (ContinueChain "two")
+   (Msg "one - 2")
+   (Msg "one - 3")
+   (ContinueChain "two")
+   (Msg "one - Done")
+   (ContinueChain "two")
+   ))
 
 (def chain2
-       (Chain
-        "two"
-        (Msg "two - 1")
-        (ContinueChain "one")
-        (Msg "two - 2")
-        (Msg "two - 3")
-        (ContinueChain "one")
-        (Msg "two - 4")
-        (Msg "two - Done")
-        ))
+  (Chain
+   "two"
+   (Msg "two - 1")
+   (ContinueChain "one")
+   (Msg "two - 2")
+   (Msg "two - 3")
+   (ContinueChain "one")
+   (Msg "two - 4")
+   (Msg "two - Done")
+   ))
 
 (prepare chain2)
 (schedule Root chain1)
+(run Root 0.1)
+
+(def recursive
+  (Chain
+   "recur"
+   (Log "depth")
+   (Math.Inc)
+   (Cond
+    [(--> (IsLess 5))
+     (Do "recur")])
+   (Log "res")
+   ))
+
+;; ;; Broken for now indeed, until we implement jumps
+
+;; ;; (def recursiveAnd
+;; ;;   (Chain
+;; ;;    "recurAnd"
+;; ;;    (Log "depth")
+;; ;;    (Math.Inc)
+;; ;;    (Push)
+;; ;;    (IsLess 5)
+;; ;;    (And)
+;; ;;    (Pop)
+;; ;;    (Do "recurAnd")
+;; ;;    (Log "res")
+;; ;;    ))
+
+(schedule
+ Root
+ (Chain
+  "doit"
+  0
+  (Do recursive)
+  ;; (Do recursiveAnd)
+  ))
+
+;; test stack overflow, notice in this case (below) we could have tail call optimized,
+;; TODO implement TCO
+
+;; (def recursiveCrash
+;;   (Chain
+;;    "recurCrash"
+;;    (Log "depth")
+;;    (Math.Inc)
+;;    (Do "recurCrash")
+;;    ))
+
+;; (schedule
+;;  Root
+;;  (Chain
+;;   "doit"
+;;   0
+;;   (Do recursiveCrash)))
+
+(def Loop
+  (Chain
+   "Loop" :Looped
+   (Math.Inc)
+   (Log)
+   (Cond
+    [(--> (Is 5))
+     (Stop)])
+   (SetInput)))
+
+(schedule
+ Root
+ (Chain
+  "loop-test"
+  0
+  (Detach Loop)
+  (WaitChain Loop)
+  (Log "Done")))
+
 (run Root 0.1)

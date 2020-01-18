@@ -283,6 +283,9 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
+  if (a.payload.seqValue == b.payload.seqValue)
+    return true;
+
   if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
     return false;
 
@@ -295,6 +298,9 @@ inline bool _seqEq(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _tableEq(const CBVar &a, const CBVar &b) {
+  if (a.payload.tableValue == b.payload.tableValue)
+    return true;
+
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
@@ -433,22 +439,25 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return a.payload.blockValue == b.payload.blockValue;
   case ContextVar:
   case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
+    return a.payload.stringValue == b.payload.stringValue ||
+           strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
   case Image:
     return a.payload.imageValue.channels == b.payload.imageValue.channels &&
            a.payload.imageValue.width == b.payload.imageValue.width &&
            a.payload.imageValue.height == b.payload.imageValue.height &&
-           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                  a.payload.imageValue.channels * a.payload.imageValue.width *
-                      a.payload.imageValue.height) == 0;
+           (a.payload.imageValue.data == b.payload.imageValue.data ||
+            memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
+                   a.payload.imageValue.channels * a.payload.imageValue.width *
+                       a.payload.imageValue.height) == 0);
   case Seq:
     return _seqEq(a, b);
   case Table:
     return _tableEq(a, b);
   case CBType::Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
-           memcmp(a.payload.bytesValue, b.payload.bytesValue,
-                  a.payload.bytesSize) == 0;
+           (a.payload.bytesValue == b.payload.bytesValue ||
+            memcmp(a.payload.bytesValue, b.payload.bytesValue,
+                   a.payload.bytesSize) == 0);
   case Vector:
     return _vectorEq(a, b);
   case Node:

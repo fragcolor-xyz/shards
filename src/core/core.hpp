@@ -70,16 +70,17 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 static void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    size_t len = stbds_arrlen(var.payload.seqValue);
-    for (size_t i = 0; i < len; i++) {
-      destroyVar(var.payload.seqValue[i]);
+    assert(stbds_arrcap(var.payload.seqValue) >= var.capacity);
+    assert(stbds_arrlenu(var.payload.seqValue) <= var.capacity);
+    for (size_t i = var.capacity; i > 0; i--) {
+      destroyVar(var.payload.seqValue[i - 1]);
     }
     stbds_arrfree(var.payload.seqValue);
   } break;
   case Table: {
     auto len = stbds_shlen(var.payload.tableValue);
-    for (auto i = 0; i < len; i++) {
-      destroyVar(var.payload.tableValue[i].value);
+    for (auto i = len; i > 0; i--) {
+      destroyVar(var.payload.tableValue[i - 1].value);
     }
     stbds_shfree(var.payload.tableValue);
   } break;
@@ -89,30 +90,63 @@ static void _destroyVarSlow(CBVar &var) {
 }
 
 static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+  if (src == dst)
+    return;
+
   switch (src.valueType) {
   case Seq: {
     size_t srcLen = stbds_arrlen(src.payload.seqValue);
-    // reuse if seq and we got enough capacity
-    if (dst.valueType != Seq || stbds_arrcap(dst.payload.seqValue) < srcLen) {
+#if 0
+    destroyVar(dst);
+    dst.valueType = Seq;
+    dst.payload.seqValue = nullptr;
+    for (size_t i = 0; i < srcLen; i++) {
+      auto &subsrc = src.payload.seqValue[i];
+      CBVar tmp{};
+      cloneVar(tmp, subsrc);
+      stbds_arrpush(dst.payload.seqValue, tmp);
+    }
+#else
+    // try our best to re-use memory
+    if (dst.valueType != Seq) {
       destroyVar(dst);
       dst.valueType = Seq;
-      dst.payload.seqValue = nullptr;
+      for (size_t i = 0; i < srcLen; i++) {
+        auto &subsrc = src.payload.seqValue[i];
+        CBVar tmp{};
+        cloneVar(tmp, subsrc);
+        stbds_arrpush(dst.payload.seqValue, tmp);
+      }
     } else {
       size_t dstLen = stbds_arrlen(dst.payload.seqValue);
-      if (srcLen < dstLen) {
-        // need to destroy leftovers
-        for (size_t i = srcLen; i < dstLen; i++) {
-          destroyVar(dst.payload.seqValue[i]);
+      assert(dst.capacity >= dstLen);
+      if (srcLen <= dst.capacity) {
+        // clone on top of current values
+        stbds_arrsetlen(dst.payload.seqValue, srcLen);
+        for (size_t i = 0; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue[i];
+          cloneVar(dst.payload.seqValue[i], subsrc);
+        }
+      } else {
+        // re-use avail ones
+        for (size_t i = 0; i < dstLen; i++) {
+          auto &subsrc = src.payload.seqValue[i];
+          cloneVar(dst.payload.seqValue[i], subsrc);
+        }
+        // append new values
+        for (size_t i = dstLen; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue[i];
+          CBVar tmp{};
+          cloneVar(tmp, subsrc);
+          stbds_arrpush(dst.payload.seqValue, subsrc);
         }
       }
     }
-
-    stbds_arrsetlen(dst.payload.seqValue, srcLen);
-    for (size_t i = 0; i < srcLen; i++) {
-      auto &subsrc = src.payload.seqValue[i];
-      memset(&dst.payload.seqValue[i], 0x0, sizeof(CBVar));
-      cloneVar(dst.payload.seqValue[i], subsrc);
-    }
+#endif
+    // take note of 'Var' capacity
+    dst.capacity =
+        std::max(dst.capacity,
+                 decltype(dst.capacity)(stbds_arrlenu(dst.payload.seqValue)));
   } break;
   case String:
   case ContextVar: {
@@ -278,7 +312,7 @@ struct Serialization {
       break;
     }
 
-    memset(&output, 0x0, sizeof(CBVar));
+    output = {};
   }
 
   template <class BinaryReader>
@@ -781,13 +815,20 @@ struct TypesInfo {
     return *this;
   }
 
-  explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false) {
+  explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false,
+                     bool canBeNone = false) {
     _innerInfo = nullptr;
-    _innerTypes.reserve(canBeSeq ? 2 : 1);
+    // NOTICE , we NEED to reserve in other to preserve those memory addresses!
+    // See that we use .back and push "ref" to them
+    _innerTypes.reserve(3);
     _innerTypes.push_back(singleType);
     stbds_arrpush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
       _innerTypes.push_back(TypeInfo::Sequence(_innerTypes.back()));
+      stbds_arrpush(_innerInfo, _innerTypes.back());
+    }
+    if (canBeNone) {
+      _innerTypes.push_back(TypeInfo(CBType::None));
       stbds_arrpush(_innerInfo, _innerTypes.back());
     }
   }
@@ -802,6 +843,8 @@ struct TypesInfo {
     auto size = vec.size();
     if (canBeSeq)
       size *= 2;
+    // NOTICE , we NEED to reserve in other to preserve those memory addresses!
+    // See that we use .back and push "ref" to them
     result._innerTypes.reserve(size);
 
     for (auto &type : vec) {

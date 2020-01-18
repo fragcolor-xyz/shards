@@ -425,6 +425,11 @@
   (Count "unsortedList2")
   (Assert.Is 6 true)
 
+  (Const [[2 "x"] [3 "y"] [1 "z"]])
+  (Sort :Key (-->
+              (Take 0)))
+  (Assert.Is [[1 "z"] [2 "x"] [3 "y"]] true)
+
   1.0 (Push "meanTest")
   2.0 (Push "meanTest")
   0.0 (Push "meanTest")
@@ -568,6 +573,21 @@
   (Get "s1")
   (Is (# "s2"))
   (Assert.Is true true)
+
+  4 (Push "s1")
+  5 (Push "s1")
+  
+  (Get "s1")
+  (Slice 1 4)
+  (Assert.Is [2 3 4] true)
+
+  (Get "s1")
+  (Slice :From 1 :To 5 :Step 2)
+  (Assert.Is [2 4] true)
+
+  (Get "s1")
+  (Slice 3 -1)
+  (Assert.Is [4] true)
 
   "passing by..."
   (Drop "s2")

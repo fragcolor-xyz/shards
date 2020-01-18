@@ -5,9 +5,6 @@
 #include <string>
 
 namespace chainblocks {
-static ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
-    "Message", "The message to log.", CBTypesInfo(SharedTypes::strInfo)));
-
 struct LoggingBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
 
@@ -15,13 +12,53 @@ struct LoggingBase {
 };
 
 struct Log : public LoggingBase {
-  static CBVar activate(CBContext *context, const CBVar &input) {
-    LOG(INFO) << "{" << context->chain->name << "} " << input;
+  static inline ParamsInfo msgParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Prefix", "The prefix message to the value to log.",
+                        CBTypesInfo(SharedTypes::strInfo)));
+
+  std::string msg;
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(msgParamsInfo);
+  }
+
+  void setParam(int index, CBVar inValue) {
+    switch (index) {
+    case 0:
+      msg = inValue.payload.stringValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    auto res = CBVar();
+    switch (index) {
+    case 0:
+      res.valueType = String;
+      res.payload.stringValue = msg.c_str();
+      break;
+    default:
+      break;
+    }
+    return res;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (msg.size() > 0) {
+      LOG(INFO) << "{" << context->chain->name << "} " << msg << ": " << input;
+    } else {
+      LOG(INFO) << "{" << context->chain->name << "} " << input;
+    }
     return input;
   }
 };
 
 struct Msg : public LoggingBase {
+  static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Message", "The message to log.", CBTypesInfo(SharedTypes::strInfo)));
+
   std::string msg;
 
   static CBParametersInfo parameters() {
@@ -61,6 +98,9 @@ struct Msg : public LoggingBase {
 RUNTIME_CORE_BLOCK(Log);
 RUNTIME_BLOCK_inputTypes(Log);
 RUNTIME_BLOCK_outputTypes(Log);
+RUNTIME_BLOCK_parameters(Log);
+RUNTIME_BLOCK_setParam(Log);
+RUNTIME_BLOCK_getParam(Log);
 RUNTIME_BLOCK_activate(Log);
 RUNTIME_BLOCK_END(Log);
 

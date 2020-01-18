@@ -263,6 +263,11 @@ endif()
 
 if(LINUX)
   add_link_options(-export-dynamic)
+  if(USE_VALGRIND)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      add_compile_definitions(BOOST_USE_VALGRIND)
+    endif()
+  endif()
 endif()
 
 ### runtime

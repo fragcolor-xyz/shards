@@ -137,8 +137,7 @@ struct CBChain {
 struct CBContext {
   CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
-        shouldPause(false), paused(false), continuation(std::move(sink)),
-        iterationCount(0), stack(nullptr) {}
+        continuation(std::move(sink)), iterationCount(0), stack(nullptr) {}
 
   ~CBContext() { stbds_arrfree(stack); }
 
@@ -148,9 +147,6 @@ struct CBContext {
   bool restarted;
   // Also used to cancel a chain
   bool aborted;
-  // Used internally to pause a chain execution
-  std::atomic_bool shouldPause;
-  std::atomic_bool paused;
 
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
@@ -170,436 +166,296 @@ namespace chainblocks {
 
 void installSignalHandlers();
 
-ALWAYS_INLINE inline void activateBlock(CBlock *blk, CBContext *context,
-                                        const CBVar &input,
-                                        CBVar &previousOutput) {
+ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
+                                         const CBVar &input) {
   switch (blk->inlineBlockId) {
   case StackPush: {
     stbds_arrpush(context->stack, input);
-    previousOutput = input;
-    return;
+    return input;
   }
   case StackPop: {
-    previousOutput = stbds_arrpop(context->stack);
-    return;
+    return stbds_arrpop(context->stack);
   }
   case StackSwap: {
     auto s = stbds_arrlen(context->stack);
     auto a = context->stack[s - 1];
     context->stack[s - 1] = context->stack[s - 2];
     context->stack[s - 2] = a;
-    previousOutput = input;
-    return;
+    return input;
   }
   case StackDrop: {
     stbds_arrpop(context->stack);
-    previousOutput = input;
-    return;
+    return input;
   }
   case CoreConst: {
     auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
-    previousOutput = cblock->core._value;
-    return;
+    return cblock->core._value;
   }
   case CoreIs: {
     auto cblock = reinterpret_cast<chainblocks::IsRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreIsNot: {
     auto cblock = reinterpret_cast<chainblocks::IsNotRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreAnd: {
     auto cblock = reinterpret_cast<chainblocks::AndRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreOr: {
     auto cblock = reinterpret_cast<chainblocks::OrRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreNot: {
     auto cblock = reinterpret_cast<chainblocks::NotRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreIsMore: {
     auto cblock = reinterpret_cast<chainblocks::IsMoreRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreIsLess: {
     auto cblock = reinterpret_cast<chainblocks::IsLessRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreIsMoreEqual: {
     auto cblock = reinterpret_cast<chainblocks::IsMoreEqualRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreIsLessEqual: {
     auto cblock = reinterpret_cast<chainblocks::IsLessEqualRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreSleep: {
     auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreInput: {
     auto cblock = reinterpret_cast<chainblocks::InputRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreStop: {
     auto cblock = reinterpret_cast<chainblocks::StopRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreRestart: {
     auto cblock = reinterpret_cast<chainblocks::RestartRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreTakeSeq: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    previousOutput = cblock->core.activateSeq(context, input);
-    return;
+    return cblock->core.activateSeq(context, input);
   }
   case CoreTakeFloats: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    previousOutput = cblock->core.activateFloats(context, input);
-    return;
+    return cblock->core.activateFloats(context, input);
   }
   case CorePush: {
     auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreRepeat: {
     auto cblock = reinterpret_cast<chainblocks::RepeatRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreGet: {
     auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreSet: {
     auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreUpdate: {
     auto cblock = reinterpret_cast<chainblocks::UpdateRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case CoreSwap: {
     auto cblock = reinterpret_cast<chainblocks::SwapRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAdd: {
     auto cblock = reinterpret_cast<chainblocks::Math::AddRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathSubtract: {
     auto cblock = reinterpret_cast<chainblocks::Math::SubtractRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathMultiply: {
     auto cblock = reinterpret_cast<chainblocks::Math::MultiplyRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathDivide: {
     auto cblock = reinterpret_cast<chainblocks::Math::DivideRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathXor: {
     auto cblock = reinterpret_cast<chainblocks::Math::XorRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAnd: {
     auto cblock = reinterpret_cast<chainblocks::Math::AndRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathOr: {
     auto cblock = reinterpret_cast<chainblocks::Math::OrRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathMod: {
     auto cblock = reinterpret_cast<chainblocks::Math::ModRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLShift: {
     auto cblock = reinterpret_cast<chainblocks::Math::LShiftRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathRShift: {
     auto cblock = reinterpret_cast<chainblocks::Math::RShiftRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAbs: {
     auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
+#if 1
   case MathExp: {
     auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathExp2: {
     auto cblock = reinterpret_cast<chainblocks::Math::Exp2Runtime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathExpm1: {
     auto cblock = reinterpret_cast<chainblocks::Math::Expm1Runtime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLog: {
     auto cblock = reinterpret_cast<chainblocks::Math::LogRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLog10: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log10Runtime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLog2: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log2Runtime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLog1p: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log1pRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathSqrt: {
     auto cblock = reinterpret_cast<chainblocks::Math::SqrtRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathCbrt: {
     auto cblock = reinterpret_cast<chainblocks::Math::CbrtRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathSin: {
     auto cblock = reinterpret_cast<chainblocks::Math::SinRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathCos: {
     auto cblock = reinterpret_cast<chainblocks::Math::CosRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathTan: {
     auto cblock = reinterpret_cast<chainblocks::Math::TanRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAsin: {
     auto cblock = reinterpret_cast<chainblocks::Math::AsinRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAcos: {
     auto cblock = reinterpret_cast<chainblocks::Math::AcosRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAtan: {
     auto cblock = reinterpret_cast<chainblocks::Math::AtanRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathSinh: {
     auto cblock = reinterpret_cast<chainblocks::Math::SinhRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathCosh: {
     auto cblock = reinterpret_cast<chainblocks::Math::CoshRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathTanh: {
     auto cblock = reinterpret_cast<chainblocks::Math::TanhRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAsinh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AsinhRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAcosh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AcoshRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathAtanh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AtanhRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathErf: {
     auto cblock = reinterpret_cast<chainblocks::Math::ErfRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathErfc: {
     auto cblock = reinterpret_cast<chainblocks::Math::ErfcRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathTGamma: {
     auto cblock = reinterpret_cast<chainblocks::Math::TGammaRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathLGamma: {
     auto cblock = reinterpret_cast<chainblocks::Math::LGammaRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
+#endif
   case MathCeil: {
     auto cblock = reinterpret_cast<chainblocks::Math::CeilRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathFloor: {
     auto cblock = reinterpret_cast<chainblocks::Math::FloorRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathTrunc: {
     auto cblock = reinterpret_cast<chainblocks::Math::TruncRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   case MathRound: {
     auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
-    previousOutput = cblock->core.activate(context, input);
-    return;
+    return cblock->core.activate(context, input);
   }
   default: {
     // NotInline
-    previousOutput = blk->activate(blk, context, &input);
-    return;
+    return blk->activate(blk, context, &input);
   }
   }
 }
 
-static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
-                                 const CBVar &chainInput) {
-  chain->previousOutput = CBVar();
-
-  // Detect and pause if we need to here
-  // avoid pausing in the middle or so, that is for a proper debug mode runner,
-  // here we care about performance
-  while (context->shouldPause) {
-    context->paused = true;
-
-    auto suspendRes = suspend(context, 0.0);
-    // Since we suspended we need to make sure we should continue when resuming
-    switch (suspendRes.payload.chainState) {
-    case CBChainState::Restart: {
-      return {chain->previousOutput, Restarted};
-    }
-    case CBChainState::Stop: {
-      return {chain->previousOutput, Stopped};
-    }
-    default:
-      continue;
-    }
-  }
-
-  chain->started = true;
-  chain->context = context;
-  context->paused = false;
-
-  // store stack index
-  auto sidx = stbds_arrlenu(context->stack);
-
-  auto input = chainInput;
-  for (auto blk : chain->blocks) {
-    try {
-      activateBlock(blk, context, input, chain->previousOutput);
-      input = chain->previousOutput;
-
-      if (chain->previousOutput.valueType == None) {
-        switch (chain->previousOutput.payload.chainState) {
-        case CBChainState::Restart: {
-          stbds_arrsetlen(context->stack, sidx);
-          return {chain->previousOutput, Restarted};
-        }
-        case CBChainState::Stop: {
-          stbds_arrsetlen(context->stack, sidx);
-          return {chain->previousOutput, Stopped};
-        }
-        case CBChainState::Return: {
-          stbds_arrsetlen(context->stack, sidx);
-          // Use input as output, return previous block result
-          return {input, Restarted};
-        }
-        case CBChainState::Rebase:
-          // Rebase means we need to put back main input
-          input = chainInput;
-          break;
-        case CBChainState::Continue:
-          break;
-        }
-      }
-    } catch (boost::context::detail::forced_unwind const &e) {
-      throw; // required for Boost Coroutine!
-    } catch (const std::exception &e) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      stbds_arrsetlen(context->stack, sidx);
-      return {chain->previousOutput, Failed};
-    } catch (...) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      stbds_arrsetlen(context->stack, sidx);
-      return {chain->previousOutput, Failed};
-    }
-  }
-
-  stbds_arrsetlen(context->stack, sidx);
-  return {chain->previousOutput, Running};
-}
+CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+                          const CBVar &chainInput);
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
-  chain->finished = false; // Reset finished flag (atomic)
+  // Reset finished flag (atomic), TODO take care of recursions!
+  chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
-  chain->finishedOutput = runRes.output; // Write result before setting flag
-  chain->finished = true;                // Set finished flag (atomic)
+  // Write result before setting flag, TODO mutex inter-locked?
+  chain->finishedOutput = runRes.output;
+  // Set finished flag (atomic), recursion??
+  chain->finished = true;
   return runRes;
 }
 
@@ -623,72 +479,8 @@ inline void cleanup(CBChain *chain) {
   }
 }
 
-static boost::context::continuation run(CBChain *chain,
-                                        boost::context::continuation &&sink) {
-  auto running = true;
-  // Reset return state
-  chain->returned = false;
-  // Clean previous output if we had one
-  if (chain->ownedOutput) {
-    destroyVar(chain->finishedOutput);
-    chain->ownedOutput = false;
-  }
-  // Reset error
-  chain->failed = false;
-  // Create a new context and copy the sink in
-  CBContext context(std::move(sink), chain);
-
-  // We prerolled our coro, suspend here before actually starting.
-  // This allows us to allocate the stack ahead of time.
-  context.continuation = context.continuation.resume();
-  if (context.aborted) // We might have stopped before even starting!
-    goto endOfChain;
-
-  while (running) {
-    running = chain->looped;
-    context.restarted = false; // Remove restarted flag
-
-    chain->finished = false; // Reset finished flag (atomic)
-    auto runRes = runChain(chain, &context, chain->rootTickInput);
-    chain->finishedOutput = runRes.output; // Write result before setting flag
-    chain->finished = true;                // Set finished flag (atomic)
-    context.iterationCount++;              // increatse iteration counter
-    stbds_arrsetlen(context.stack, 0);     // clear the stack
-    if (unlikely(runRes.state == Failed)) {
-      chain->failed = true;
-      context.aborted = true;
-      break;
-    } else if (unlikely(runRes.state == Stopped)) {
-      context.aborted = true;
-      break;
-    }
-
-    if (!chain->unsafe && chain->looped) {
-      // Ensure no while(true), yield anyway every run
-      context.next = Duration(0);
-      context.continuation = context.continuation.resume();
-      // This is delayed upon continuation!!
-      if (context.aborted)
-        break;
-    }
-  }
-
-endOfChain:
-  // Copy the output variable since the next call might wipe it
-  auto tmp = chain->finishedOutput;
-  // Reset it, we are not sure on the internal state
-  chain->finishedOutput = {};
-  chain->ownedOutput = true;
-  cloneVar(chain->finishedOutput, tmp);
-
-  // run cleanup on all the blocks
-  cleanup(chain);
-
-  // Need to take care that we might have stopped the chain very early due to
-  // errors and the next eventual stop() should avoid resuming
-  chain->returned = true;
-  return std::move(context.continuation);
-}
+boost::context::continuation run(CBChain *chain,
+                                 boost::context::continuation &&sink);
 
 inline void prepare(CBChain *chain) {
   if (chain->coro)
@@ -741,7 +533,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
   return true;
 }
 
-inline bool tick(CBChain *chain, CBVar rootInput = chainblocks::Empty) {
+inline bool tick(CBChain *chain, CBVar rootInput = {}) {
   if (!chain->context || !chain->coro || !(*chain->coro) || chain->returned ||
       !chain->started)
     return false; // check if not null and bool operator also to see if alive!
@@ -749,7 +541,7 @@ inline bool tick(CBChain *chain, CBVar rootInput = chainblocks::Empty) {
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
     if (rootInput != chainblocks::Empty) {
-      chain->rootTickInput = rootInput;
+      cloneVar(chain->rootTickInput, rootInput);
     }
     *chain->coro = chain->coro->resume();
   }
