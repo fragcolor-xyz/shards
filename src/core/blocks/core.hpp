@@ -288,6 +288,17 @@ struct Input {
   }
 };
 
+struct SetInput {
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    chainblocks::cloneVar(const_cast<CBChain *>(context->chain)->rootTickInput,
+                          input);
+    return input;
+  }
+};
+
 struct Sleep {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Time", "The amount of time in seconds (float) to pause this chain.",
@@ -2017,6 +2028,7 @@ struct Repeat : public BlocksUser {
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Input);
+RUNTIME_CORE_BLOCK_TYPE(SetInput);
 RUNTIME_CORE_BLOCK_TYPE(Sleep);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);

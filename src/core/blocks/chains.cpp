@@ -155,7 +155,12 @@ struct ChainBase {
 };
 
 struct WaitChain : public ChainBase {
-  void cleanup() { doneOnce = false; }
+  CBVar _output{};
+
+  void cleanup() {
+    doneOnce = false;
+    destroyVar(_output);
+  }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(waitChainParamsInfo);
@@ -198,11 +203,16 @@ struct WaitChain : public ChainBase {
       if (once)
         doneOnce = true;
 
-      while (!hasEnded(chain)) {
+      while (!(chain->finished && chain->returned)) {
         cbpause(0.0);
       }
 
-      return passthrough ? input : chain->finishedOutput;
+      if (passthrough) {
+        return input;
+      } else {
+        cloneVar(_output, chain->finishedOutput);
+        return _output;
+      }
     } else {
       return input;
     }

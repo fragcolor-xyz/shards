@@ -84,3 +84,24 @@
 ;;   "doit"
 ;;   0
 ;;   (Do recursiveCrash)))
+
+(def Loop
+  (Chain
+   "Loop" :Looped
+   (Math.Inc)
+   (Log)
+   (Cond
+    [(--> (Is 5))
+     (Stop)])
+   (SetInput)))
+
+(schedule
+ Root
+ (Chain
+  "loop-test"
+  0
+  (Detach Loop)
+  (WaitChain Loop)
+  (Log "Done")))
+
+(run Root 0.1)

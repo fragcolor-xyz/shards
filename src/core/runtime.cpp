@@ -981,6 +981,11 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
       // Hard code behavior for Input block and And and Or, in order to validate
       // with actual chain input the followup
       ctx.previousOutputType = ctx.originalInputType;
+    } else if (strcmp(blk->name(blk), "SetInput") == 0) {
+      if (ctx.previousOutputType != ctx.originalInputType) {
+        throw chainblocks::CBException(
+            "SetInput input type must be the same original chain input type.");
+      }
     } else if (strcmp(blk->name(blk), "Push") == 0) {
       // Check first param see if empty/null
       auto seqName = blk->getParam(blk, 0);

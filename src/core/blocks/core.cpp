@@ -517,6 +517,13 @@ RUNTIME_BLOCK_outputTypes(Input);
 RUNTIME_BLOCK_activate(Input);
 RUNTIME_BLOCK_END(Input);
 
+// Register SetInput
+RUNTIME_CORE_BLOCK_FACTORY(SetInput);
+RUNTIME_BLOCK_inputTypes(SetInput);
+RUNTIME_BLOCK_outputTypes(SetInput);
+RUNTIME_BLOCK_activate(SetInput);
+RUNTIME_BLOCK_END(SetInput);
+
 // Register Sleep
 RUNTIME_CORE_BLOCK_FACTORY(Sleep);
 RUNTIME_BLOCK_inputTypes(Sleep);
@@ -896,6 +903,7 @@ MATH_BINARY_BLOCK(Dec);
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Input);
+  REGISTER_CORE_BLOCK(SetInput);
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Ref);
   REGISTER_CORE_BLOCK(Update);
