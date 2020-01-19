@@ -59,7 +59,7 @@ struct Match : public Common {
         _output[i] = Var(_pool[i]);
       }
     }
-    return Var(_output());
+    return Var(_output);
   }
 };
 
@@ -88,7 +88,7 @@ struct Search : public Common {
     for (auto &s : _pool) {
       _output.push_back(Var(s));
     }
-    return Var(_output());
+    return Var(_output);
   }
 };
 

@@ -502,7 +502,7 @@ struct ChainLoader : public ChainRunner {
     if (unlikely(!_provider->ready(_provider))) {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
-      data.consumables = _consumablesCopy();
+      data.consumables = _consumablesCopy;
       _provider->setup(_provider, context->chain->node->currentPath.c_str(),
                        data);
     }

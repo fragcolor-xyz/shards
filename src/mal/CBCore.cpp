@@ -417,7 +417,7 @@ struct ChainFileWatcher {
 
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
-            data.consumables = consumables();
+            data.consumables = consumables;
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(
