@@ -106,6 +106,8 @@ public:
   }
 
   IterableStb &operator=(const IterableStb &other) {
+    _seq = nullptr;
+    _owned = true;
     size_t size = stbds_arrlen(other._seq);
     stbds_arrsetlen(_seq, size);
     for (size_t i = 0; i < size; i++) {

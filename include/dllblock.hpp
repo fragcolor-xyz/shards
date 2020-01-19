@@ -118,6 +118,30 @@ public:
 
   static void freeArray(void *arr) { sCore._core.freeArray(arr); }
 
+  static CBSeq seqResize(CBSeq seq, uint64_t size) {
+    return sCore._core.seqResize(seq, size);
+  }
+
+  static CBSeq seqPush(CBSeq seq, const struct CBVar *value) {
+    return sCore._core.seqPush(seq, value);
+  }
+
+  static CBSeq seqInsert(CBSeq seq, uint64_t index, const struct CBVar *value) {
+    return sCore._core.seqInsert(seq, index, value);
+  }
+
+  static CBVar seqPop(CBSeq seq) { return sCore._core.seqPop(seq); }
+
+  static void seqFastDelete(CBSeq seq, uint64_t index) {
+    sCore._core.seqFastDelete(seq, index);
+  }
+
+  static void seqSlowDelete(CBSeq seq, uint64_t index) {
+    sCore._core.seqSlowDelete(seq, index);
+  }
+
+  static uint64_t seqLength(CBSeq seq) { return sCore._core.seqLength(seq); }
+
   static CBValidationResult validateChain(CBChain *chain,
                                           CBValidationCallback callback,
                                           void *userData, CBInstanceData data) {

@@ -582,6 +582,33 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.freeArray = [](void *arr) { stbds_arrfree(arr); };
 
+  result.seqResize = [](CBSeq seq, uint64_t size) {
+    stbds_arrsetlen(seq, size);
+    return seq;
+  };
+
+  result.seqPush = [](CBSeq seq, const CBVar *value) {
+    stbds_arrpush(seq, *value);
+    return seq;
+  };
+
+  result.seqInsert = [](CBSeq seq, uint64_t index, const CBVar *value) {
+    stbds_arrins(seq, index, *value);
+    return seq;
+  };
+
+  result.seqPop = [](CBSeq seq) { return stbds_arrpop(seq); };
+
+  result.seqFastDelete = [](CBSeq seq, uint64_t index) {
+    stbds_arrdelswap(seq, index);
+  };
+
+  result.seqSlowDelete = [](CBSeq seq, uint64_t index) {
+    stbds_arrdel(seq, index);
+  };
+
+  result.seqLength = [](CBSeq seq) { return (uint64_t)stbds_arrlenu(seq); };
+
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
     return validateConnections(chain, callback, userData, data);

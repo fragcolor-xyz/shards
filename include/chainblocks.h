@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Included 3rdpart
+// Included 3rdparty
 #ifdef USE_RPMALLOC
 #include "rpmalloc/rpmalloc.h"
 inline void *rp_init_realloc(void *ptr, size_t size) {
@@ -625,6 +625,15 @@ typedef void (__cdecl *CBSchedule)(struct CBNode *node,
 typedef void (__cdecl *CBTick)(struct CBNode *node);
 typedef void (__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
+// CBSeq external interface
+typedef CBSeq (__cdecl *CBSeqResize)(CBSeq, uint64_t);
+typedef CBSeq (__cdecl *CBSeqPush)(CBSeq, const struct CBVar *);
+typedef CBSeq (__cdecl *CBSeqInsert)(CBSeq, uint64_t, const struct CBVar *);
+typedef CBVar (__cdecl *CBSeqPop)(CBSeq);
+typedef void (__cdecl *CBSeqFastDelete)(CBSeq, uint64_t);
+typedef void (__cdecl *CBSeqSlowDelete)(CBSeq, uint64_t);
+typedef uint64_t (__cdecl *CBSeqLength)(CBSeq);
+
 struct CBCore {
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
@@ -657,6 +666,15 @@ struct CBCore {
   CBDestroyVar destroyVar;
   CBFreeArray freeArray;
 
+  // Utility to deal with CBSeqs
+  CBSeqResize seqResize;
+  CBSeqPush seqPush;
+  CBSeqInsert seqInsert;
+  CBSeqPop seqPop;
+  CBSeqFastDelete seqFastDelete;
+  CBSeqSlowDelete seqSlowDelete;
+  CBSeqLength seqLength;
+
   // Utility to use blocks within blocks
   CBValidateChain validateChain;
   CBRunChain runChain;
@@ -680,7 +698,7 @@ struct CBCore {
   CBSleep sleep;
 };
 
-typedef struct CBCore (__cdecl *CBChainblocksInterface)();
+typedef struct CBCore (__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
