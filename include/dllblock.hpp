@@ -58,7 +58,7 @@ struct CoreLoader {
 #endif
     }
     assert(ifaceproc);
-    _core = ifaceproc();
+    _core = ifaceproc(CHAINBLOCKS_CURRENT_ABI);
     _core.log("loading external blocks...");
     registerBlocks();
   }

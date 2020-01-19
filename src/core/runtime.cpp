@@ -78,6 +78,7 @@ void registerCoreBlocks() {
   rpmalloc_initialize();
 #endif
 
+  static_assert(sizeof(uint48_t) == 48 / 8);
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
 
@@ -521,8 +522,13 @@ thread_local std::vector<char> gLogCache;
 extern "C" {
 #endif
 
-EXPORTED struct CBCore __cdecl chainblocksInterface() {
-  CBCore result;
+EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
+  CBCore result{};
+
+  if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
+    LOG(ERROR) << "A plugin requested an invalid ABI version.";
+    return result;
+  }
 
   result.registerBlock = [](const char *fullName,
                             CBBlockConstructor constructor) {

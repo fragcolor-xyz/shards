@@ -70,9 +70,9 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 static void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    assert(stbds_arrcap(var.payload.seqValue) >= var.capacity);
-    assert(stbds_arrlenu(var.payload.seqValue) <= var.capacity);
-    for (size_t i = var.capacity; i > 0; i--) {
+    assert(stbds_arrcap(var.payload.seqValue) >= var.capacity.value);
+    assert(stbds_arrlenu(var.payload.seqValue) <= var.capacity.value);
+    for (size_t i = var.capacity.value; i > 0; i--) {
       destroyVar(var.payload.seqValue[i - 1]);
     }
     stbds_arrfree(var.payload.seqValue);
@@ -119,8 +119,8 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       }
     } else {
       size_t dstLen = stbds_arrlen(dst.payload.seqValue);
-      assert(dst.capacity >= dstLen);
-      if (srcLen <= dst.capacity) {
+      assert(dst.capacity.value >= dstLen);
+      if (srcLen <= dst.capacity.value) {
         // clone on top of current values
         stbds_arrsetlen(dst.payload.seqValue, srcLen);
         for (size_t i = 0; i < srcLen; i++) {
@@ -144,18 +144,18 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 #endif
     // take note of 'Var' capacity
-    dst.capacity =
-        std::max(dst.capacity,
-                 decltype(dst.capacity)(stbds_arrlenu(dst.payload.seqValue)));
+    dst.capacity.value = std::max(
+        dst.capacity.value,
+        decltype(dst.capacity.value)(stbds_arrlenu(dst.payload.seqValue)));
   } break;
   case String:
   case ContextVar: {
     auto srcSize = strlen(src.payload.stringValue) + 1;
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
-        dst.capacity < srcSize) {
+        dst.capacity.value < srcSize) {
       destroyVar(dst);
       dst.payload.stringValue = new char[srcSize];
-      dst.capacity = srcSize;
+      dst.capacity.value = srcSize;
     }
 
     dst.valueType = src.valueType;
@@ -167,11 +167,11 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     size_t srcImgSize = src.payload.imageValue.height *
                         src.payload.imageValue.width *
                         src.payload.imageValue.channels;
-    if (dst.valueType != Image || srcImgSize > dst.capacity) {
+    if (dst.valueType != Image || srcImgSize > dst.capacity.value) {
       destroyVar(dst);
       dst.valueType = Image;
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
-      dst.capacity = srcImgSize;
+      dst.capacity.value = srcImgSize;
     }
 
     dst.payload.imageValue.flags = dst.payload.imageValue.flags;
@@ -195,11 +195,11 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
   } break;
   case Bytes: {
-    if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {
+    if (dst.valueType != Bytes || dst.capacity.value < src.payload.bytesSize) {
       destroyVar(dst);
       dst.valueType = Bytes;
       dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
-      dst.capacity = src.payload.bytesSize;
+      dst.capacity.value = src.payload.bytesSize;
     }
 
     dst.payload.bytesSize = src.payload.bytesSize;
@@ -350,7 +350,7 @@ struct Serialization {
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
-      auto availBytes = recycle ? output.capacity : 0;
+      auto availBytes = recycle ? output.capacity.value : 0;
       read((uint8_t *)&output.payload.bytesSize,
            sizeof(output.payload.bytesSize));
 
@@ -365,14 +365,14 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      output.capacity = std::max(availBytes, output.payload.bytesSize);
+      output.capacity.value = std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
     case CBType::String:
     case CBType::ContextVar: {
-      auto availChars = recycle ? output.capacity : 0;
+      auto availChars = recycle ? output.capacity.value : 0;
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
@@ -386,7 +386,7 @@ struct Serialization {
       } // else recycling
 
       // record actualSize
-      output.capacity = std::max(availChars, len);
+      output.capacity.value = std::max(availChars, len);
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
@@ -444,7 +444,7 @@ struct Serialization {
                     output.payload.imageValue.height *
                     output.payload.imageValue.width;
 
-      size_t currentSize = recycle ? output.capacity : 0;
+      size_t currentSize = recycle ? output.capacity.value : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -455,7 +455,7 @@ struct Serialization {
       }
 
       // record actualSize
-      output.capacity = std::max(currentSize, (size_t)size);
+      output.capacity.value = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
