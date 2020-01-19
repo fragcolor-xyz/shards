@@ -116,7 +116,11 @@ public:
 
   static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
-  static void freeArray(void *arr) { sCore._core.freeArray(arr); }
+  static void arrayFree(CBArray arr) { sCore._core.arrayFree(arr); }
+
+  static uint64_t arrayLength(CBArray arr) {
+    return sCore._core.arrayLength(arr);
+  }
 
   static CBSeq seqResize(CBSeq seq, uint64_t size) {
     return sCore._core.seqResize(seq, size);
@@ -139,8 +143,6 @@ public:
   static void seqSlowDelete(CBSeq seq, uint64_t index) {
     sCore._core.seqSlowDelete(seq, index);
   }
-
-  static uint64_t seqLength(CBSeq seq) { return sCore._core.seqLength(seq); }
 
   static CBValidationResult validateChain(CBChain *chain,
                                           CBValidationCallback callback,

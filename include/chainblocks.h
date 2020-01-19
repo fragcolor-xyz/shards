@@ -144,6 +144,8 @@ enum CBInlineBlocks : uint8_t {
   MathRound,
 };
 
+typedef void* CBArray;
+
 // Forward declarations
 struct CBVar;
 typedef struct CBVar *CBSeq; // a stb array
@@ -588,8 +590,6 @@ typedef void (__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void (__cdecl *CBDestroyVar)(struct CBVar *var);
 
-typedef void (__cdecl *CBFreeArray)(void* stbarray);
-
 typedef struct CBValidationResult (__cdecl *CBValidateChain)(struct CBChain *chain,
 							     CBValidationCallback callback,
 							     void *userData,
@@ -626,13 +626,16 @@ typedef void (__cdecl *CBTick)(struct CBNode *node);
 typedef void (__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
 // CBSeq external interface
-typedef CBSeq (__cdecl *CBSeqResize)(CBSeq, uint64_t);
 typedef CBSeq (__cdecl *CBSeqPush)(CBSeq, const struct CBVar *);
 typedef CBSeq (__cdecl *CBSeqInsert)(CBSeq, uint64_t, const struct CBVar *);
-typedef CBVar (__cdecl *CBSeqPop)(CBSeq);
+typedef struct CBVar (__cdecl *CBSeqPop)(CBSeq);
+typedef CBSeq (__cdecl *CBSeqResize)(CBSeq, uint64_t);
 typedef void (__cdecl *CBSeqFastDelete)(CBSeq, uint64_t);
 typedef void (__cdecl *CBSeqSlowDelete)(CBSeq, uint64_t);
-typedef uint64_t (__cdecl *CBSeqLength)(CBSeq);
+
+// CB dynamic arrays interface
+typedef void (__cdecl *CBArrayFree)(CBArray);
+typedef uint64_t (__cdecl *CBArrayLength)(CBArray);
 
 struct CBCore {
   // Adds a block to the runtime database
@@ -664,16 +667,18 @@ struct CBCore {
   // Utility to deal with CBVars
   CBCloneVar cloneVar;
   CBDestroyVar destroyVar;
-  CBFreeArray freeArray;
 
+  // Utility to deal with CB dynamic arrays
+  CBArrayLength arrayLength;
+  CBArrayFree arrayFree;
+  
   // Utility to deal with CBSeqs
-  CBSeqResize seqResize;
   CBSeqPush seqPush;
   CBSeqInsert seqInsert;
   CBSeqPop seqPop;
+  CBSeqResize seqResize;
   CBSeqFastDelete seqFastDelete;
   CBSeqSlowDelete seqSlowDelete;
-  CBSeqLength seqLength;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

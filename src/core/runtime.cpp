@@ -580,7 +580,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
-  result.freeArray = [](void *arr) { stbds_arrfree(arr); };
+  result.arrayFree = [](void *arr) { stbds_arrfree(arr); };
 
   result.seqResize = [](CBSeq seq, uint64_t size) {
     stbds_arrsetlen(seq, size);
@@ -607,7 +607,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     stbds_arrdel(seq, index);
   };
 
-  result.seqLength = [](CBSeq seq) { return (uint64_t)stbds_arrlenu(seq); };
+  result.arrayLength = [](CBArray seq) { return (uint64_t)stbds_arrlenu(seq); };
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
