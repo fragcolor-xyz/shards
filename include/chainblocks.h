@@ -633,6 +633,14 @@ typedef CBSeq (__cdecl *CBSeqResize)(CBSeq, uint64_t);
 typedef void (__cdecl *CBSeqFastDelete)(CBSeq, uint64_t);
 typedef void (__cdecl *CBSeqSlowDelete)(CBSeq, uint64_t);
 
+// CBTypes external interface
+typedef CBTypesInfo (__cdecl *CBTypesPush)(CBTypesInfo, const struct CBTypeInfo *);
+typedef CBTypesInfo (__cdecl *CBTypesInsert)(CBTypesInfo, uint64_t, const struct CBTypeInfo *);
+typedef struct CBTypeInfo (__cdecl *CBTypesPop)(CBTypesInfo);
+typedef CBTypesInfo (__cdecl *CBTypesResize)(CBTypesInfo, uint64_t);
+typedef void (__cdecl *CBTypesFastDelete)(CBTypesInfo, uint64_t);
+typedef void (__cdecl *CBTypesSlowDelete)(CBTypesInfo, uint64_t);
+
 // CB dynamic arrays interface
 typedef void (__cdecl *CBArrayFree)(CBArray);
 typedef uint64_t (__cdecl *CBArrayLength)(CBArray);
@@ -679,6 +687,14 @@ struct CBCore {
   CBSeqResize seqResize;
   CBSeqFastDelete seqFastDelete;
   CBSeqSlowDelete seqSlowDelete;
+
+  // Utility to deal with CBTypesInfo
+  CBTypesPush typesPush;
+  CBTypesInsert typesInsert;
+  CBTypesPop typesPop;
+  CBTypesResize typesResize;
+  CBTypesFastDelete typesFastDelete;
+  CBTypesSlowDelete typesSlowDelete;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

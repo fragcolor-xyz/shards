@@ -582,6 +582,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.arrayFree = [](void *arr) { stbds_arrfree(arr); };
 
+  result.arrayLength = [](CBArray seq) { return (uint64_t)stbds_arrlenu(seq); };
+
   result.seqResize = [](CBSeq seq, uint64_t size) {
     stbds_arrsetlen(seq, size);
     return seq;
@@ -607,7 +609,31 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     stbds_arrdel(seq, index);
   };
 
-  result.arrayLength = [](CBArray seq) { return (uint64_t)stbds_arrlenu(seq); };
+  result.typesResize = [](CBTypesInfo types, uint64_t size) {
+    stbds_arrsetlen(types, size);
+    return types;
+  };
+
+  result.typesPush = [](CBTypesInfo types, const CBTypeInfo *value) {
+    stbds_arrpush(types, *value);
+    return types;
+  };
+
+  result.typesInsert = [](CBTypesInfo types, uint64_t index,
+                          const CBTypeInfo *value) {
+    stbds_arrins(types, index, *value);
+    return types;
+  };
+
+  result.typesPop = [](CBTypesInfo types) { return stbds_arrpop(types); };
+
+  result.typesFastDelete = [](CBTypesInfo types, uint64_t index) {
+    stbds_arrdelswap(types, index);
+  };
+
+  result.typesSlowDelete = [](CBTypesInfo types, uint64_t index) {
+    stbds_arrdel(types, index);
+  };
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
