@@ -5,6 +5,7 @@
 #define CB_STBPP_HPP
 
 #include "chainblocks.h"
+#include <cassert>
 
 template <typename T> class PtrIterator {
 public:
