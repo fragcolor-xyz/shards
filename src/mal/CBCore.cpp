@@ -705,7 +705,7 @@ BUILTIN(".") {
 
 BUILTIN("Node") {
   auto node = new malCBNode();
-  node->value()->currentPath = malpath();
+  chainblocks::Globals::RootPath = malpath();
   return malValuePtr(node);
 }
 

@@ -62,6 +62,8 @@ struct Globals {
   static inline phmap::flat_hash_map<std::string, CBChain *> GlobalChains;
 
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
+
+  static inline std::string RootPath;
 };
 
 ALWAYS_INLINE inline void destroyVar(CBVar &var);

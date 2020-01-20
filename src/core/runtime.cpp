@@ -687,6 +687,12 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     chainblocks::sleep(seconds, runCallbacks);
   };
 
+  result.getRootPath = []() { return chainblocks::Globals::RootPath.c_str(); };
+
+  result.setRootPath = [](const char *p) {
+    chainblocks::Globals::RootPath = p;
+  };
+
   return result;
 }
 

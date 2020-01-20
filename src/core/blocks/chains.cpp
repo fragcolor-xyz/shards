@@ -503,8 +503,7 @@ struct ChainLoader : public ChainRunner {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
       data.consumables = _consumablesCopy;
-      _provider->setup(_provider, context->chain->node->currentPath.c_str(),
-                       data);
+      _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 
     if (unlikely(_provider->updated(_provider))) {

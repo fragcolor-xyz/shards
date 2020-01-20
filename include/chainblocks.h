@@ -645,6 +645,9 @@ typedef void (__cdecl *CBTypesSlowDelete)(CBTypesInfo, uint64_t);
 typedef void (__cdecl *CBArrayFree)(CBArray);
 typedef uint64_t (__cdecl *CBArrayLength)(CBArray);
 
+typedef const char* (__cdecl *CBGetRootPath)();
+typedef void (__cdecl *CBSetRootPath)(const char *);
+
 struct CBCore {
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
@@ -717,6 +720,10 @@ struct CBCore {
   CBSchedule schedule;
   CBTick tick;
   CBSleep sleep;
+
+  // Environment utilities
+  CBGetRootPath getRootPath;
+  CBSetRootPath setRootPath;
 };
 
 typedef struct CBCore (__cdecl *CBChainblocksInterface)(uint32_t abi_version);

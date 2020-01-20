@@ -57,7 +57,7 @@ struct FileBase {
 
     filename = ctxFile.payload.stringValue;
 
-    std::filesystem::path cp(context->chain->node->currentPath);
+    std::filesystem::path cp(Globals::RootPath);
     if (std::filesystem::exists(cp)) {
       auto fullpath = cp / filename;
       filename = fullpath.string();

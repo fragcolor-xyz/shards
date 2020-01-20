@@ -685,8 +685,6 @@ struct CBNode {
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;
-  // filesystem current directory (if any/implemented) linked with this node
-  std::string currentPath;
 };
 
 #endif
