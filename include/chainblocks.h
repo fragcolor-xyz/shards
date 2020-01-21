@@ -641,6 +641,14 @@ typedef CBTypesInfo (__cdecl *CBTypesResize)(CBTypesInfo, uint64_t);
 typedef void (__cdecl *CBTypesFastDelete)(CBTypesInfo, uint64_t);
 typedef void (__cdecl *CBTypesSlowDelete)(CBTypesInfo, uint64_t);
 
+// CBParams external interface
+typedef CBParametersInfo (__cdecl *CBParamsPush)(CBParametersInfo, const struct CBParameterInfo *);
+typedef CBParametersInfo (__cdecl *CBParamsInsert)(CBParametersInfo, uint64_t, const struct CBParameterInfo *);
+typedef struct CBParameterInfo (__cdecl *CBParamsPop)(CBParametersInfo);
+typedef CBParametersInfo (__cdecl *CBParamsResize)(CBParametersInfo, uint64_t);
+typedef void (__cdecl *CBParamsFastDelete)(CBParametersInfo, uint64_t);
+typedef void (__cdecl *CBParamsSlowDelete)(CBParametersInfo, uint64_t);
+
 // CB dynamic arrays interface
 typedef void (__cdecl *CBArrayFree)(CBArray);
 typedef uint64_t (__cdecl *CBArrayLength)(CBArray);
@@ -698,6 +706,14 @@ struct CBCore {
   CBTypesResize typesResize;
   CBTypesFastDelete typesFastDelete;
   CBTypesSlowDelete typesSlowDelete;
+
+  // Utility to deal with CBParamsInfo
+  CBParamsPush paramsPush;
+  CBParamsInsert paramsInsert;
+  CBParamsPop paramsPop;
+  CBParamsResize paramsResize;
+  CBParamsFastDelete paramsFastDelete;
+  CBParamsSlowDelete paramsSlowDelete;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

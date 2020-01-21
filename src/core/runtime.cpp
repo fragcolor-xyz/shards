@@ -635,6 +635,35 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     stbds_arrdel(types, index);
   };
 
+  result.paramsResize = [](CBParametersInfo params, uint64_t size) {
+    stbds_arrsetlen(params, size);
+    return params;
+  };
+
+  result.paramsPush = [](CBParametersInfo params,
+                         const CBParameterInfo *value) {
+    stbds_arrpush(params, *value);
+    return params;
+  };
+
+  result.paramsInsert = [](CBParametersInfo params, uint64_t index,
+                           const CBParameterInfo *value) {
+    stbds_arrins(params, index, *value);
+    return params;
+  };
+
+  result.paramsPop = [](CBParametersInfo params) {
+    return stbds_arrpop(params);
+  };
+
+  result.paramsFastDelete = [](CBParametersInfo params, uint64_t index) {
+    stbds_arrdelswap(params, index);
+  };
+
+  result.paramsSlowDelete = [](CBParametersInfo params, uint64_t index) {
+    stbds_arrdel(params, index);
+  };
+
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
     return validateConnections(chain, callback, userData, data);
