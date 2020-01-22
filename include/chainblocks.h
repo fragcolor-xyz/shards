@@ -625,29 +625,25 @@ typedef void (__cdecl *CBSchedule)(struct CBNode *node,
 typedef void (__cdecl *CBTick)(struct CBNode *node);
 typedef void (__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
-// CBSeq external interface
-typedef CBSeq (__cdecl *CBSeqPush)(CBSeq, const struct CBVar *);
-typedef CBSeq (__cdecl *CBSeqInsert)(CBSeq, uint64_t, const struct CBVar *);
-typedef struct CBVar (__cdecl *CBSeqPop)(CBSeq);
-typedef CBSeq (__cdecl *CBSeqResize)(CBSeq, uint64_t);
-typedef void (__cdecl *CBSeqFastDelete)(CBSeq, uint64_t);
-typedef void (__cdecl *CBSeqSlowDelete)(CBSeq, uint64_t);
+#define CB_ARRAY_TYPE(_array_, _value_)						\
+  typedef _array_ (__cdecl *_array_##Push)(_array_, const struct _value_ *);	\
+  typedef _array_ (__cdecl *_array_##Insert)(_array_, uint64_t, const struct _value_ *); \
+  typedef struct _value_ (__cdecl *_array_##Pop)(_array_);			\
+  typedef _array_ (__cdecl *_array_##Resize)(_array_, uint64_t);		\
+  typedef void (__cdecl *_array_##FastDelete)(_array_, uint64_t);		\
+  typedef void (__cdecl *_array_##SlowDelete)(_array_, uint64_t)
 
-// CBTypes external interface
-typedef CBTypesInfo (__cdecl *CBTypesPush)(CBTypesInfo, const struct CBTypeInfo *);
-typedef CBTypesInfo (__cdecl *CBTypesInsert)(CBTypesInfo, uint64_t, const struct CBTypeInfo *);
-typedef struct CBTypeInfo (__cdecl *CBTypesPop)(CBTypesInfo);
-typedef CBTypesInfo (__cdecl *CBTypesResize)(CBTypesInfo, uint64_t);
-typedef void (__cdecl *CBTypesFastDelete)(CBTypesInfo, uint64_t);
-typedef void (__cdecl *CBTypesSlowDelete)(CBTypesInfo, uint64_t);
+CB_ARRAY_TYPE(CBSeq, CBVar);
+CB_ARRAY_TYPE(CBTypesInfo, CBTypeInfo);
+CB_ARRAY_TYPE(CBParametersInfo, CBParameterInfo);
 
-// CBParams external interface
-typedef CBParametersInfo (__cdecl *CBParamsPush)(CBParametersInfo, const struct CBParameterInfo *);
-typedef CBParametersInfo (__cdecl *CBParamsInsert)(CBParametersInfo, uint64_t, const struct CBParameterInfo *);
-typedef struct CBParameterInfo (__cdecl *CBParamsPop)(CBParametersInfo);
-typedef CBParametersInfo (__cdecl *CBParamsResize)(CBParametersInfo, uint64_t);
-typedef void (__cdecl *CBParamsFastDelete)(CBParametersInfo, uint64_t);
-typedef void (__cdecl *CBParamsSlowDelete)(CBParametersInfo, uint64_t);
+#define CB_ARRAY_PROCS(_array_, _short_)	\
+  _array_##Push _short_##Push;				\
+  _array_##Insert _short_##Insert;			\
+  _array_##Pop _short_##Pop;				\
+  _array_##Resize _short_##Resize;			\
+  _array_##FastDelete _short_##FastDelete;		\
+  _array_##SlowDelete _short_##SlowDelete
 
 // CB dynamic arrays interface
 typedef void (__cdecl *CBArrayFree)(CBArray);
@@ -692,28 +688,13 @@ struct CBCore {
   CBArrayFree arrayFree;
   
   // Utility to deal with CBSeqs
-  CBSeqPush seqPush;
-  CBSeqInsert seqInsert;
-  CBSeqPop seqPop;
-  CBSeqResize seqResize;
-  CBSeqFastDelete seqFastDelete;
-  CBSeqSlowDelete seqSlowDelete;
-
+  CB_ARRAY_PROCS(CBSeq, seq);
+ 
   // Utility to deal with CBTypesInfo
-  CBTypesPush typesPush;
-  CBTypesInsert typesInsert;
-  CBTypesPop typesPop;
-  CBTypesResize typesResize;
-  CBTypesFastDelete typesFastDelete;
-  CBTypesSlowDelete typesSlowDelete;
+  CB_ARRAY_PROCS(CBTypesInfo, types);
 
   // Utility to deal with CBParamsInfo
-  CBParamsPush paramsPush;
-  CBParamsInsert paramsInsert;
-  CBParamsPop paramsPop;
-  CBParamsResize paramsResize;
-  CBParamsFastDelete paramsFastDelete;
-  CBParamsSlowDelete paramsSlowDelete;
+  CB_ARRAY_PROCS(CBParametersInfo, params);
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;
