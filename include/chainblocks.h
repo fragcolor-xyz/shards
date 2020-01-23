@@ -160,6 +160,7 @@ struct CBNode;
 struct CBFlow;
 
 struct CBlock;
+typedef struct CBlock *CBlockRef;
 typedef struct CBlock **CBlocks; // a stb array
 
 struct CBChainProvider;
@@ -626,16 +627,17 @@ typedef void (__cdecl *CBTick)(struct CBNode *node);
 typedef void (__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
 #define CB_ARRAY_TYPE(_array_, _value_)						\
-  typedef _array_ (__cdecl *_array_##Push)(_array_, const struct _value_ *);	\
-  typedef _array_ (__cdecl *_array_##Insert)(_array_, uint64_t, const struct _value_ *); \
-  typedef struct _value_ (__cdecl *_array_##Pop)(_array_);			\
+  typedef _array_ (__cdecl *_array_##Push)(_array_, const _value_ *);	\
+  typedef _array_ (__cdecl *_array_##Insert)(_array_, uint64_t, const _value_ *); \
+  typedef _value_ (__cdecl *_array_##Pop)(_array_);			\
   typedef _array_ (__cdecl *_array_##Resize)(_array_, uint64_t);		\
   typedef void (__cdecl *_array_##FastDelete)(_array_, uint64_t);		\
   typedef void (__cdecl *_array_##SlowDelete)(_array_, uint64_t)
 
-CB_ARRAY_TYPE(CBSeq, CBVar);
-CB_ARRAY_TYPE(CBTypesInfo, CBTypeInfo);
-CB_ARRAY_TYPE(CBParametersInfo, CBParameterInfo);
+CB_ARRAY_TYPE(CBSeq, struct CBVar);
+CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
+CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
+CB_ARRAY_TYPE(CBlocks, CBlockRef);
 
 #define CB_ARRAY_PROCS(_array_, _short_)	\
   _array_##Push _short_##Push;				\
@@ -695,6 +697,9 @@ struct CBCore {
 
   // Utility to deal with CBParamsInfo
   CB_ARRAY_PROCS(CBParametersInfo, params);
+
+  // Utility to deal with CBlocks
+  CB_ARRAY_PROCS(CBlocks, blocks);
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

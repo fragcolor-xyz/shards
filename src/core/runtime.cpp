@@ -584,85 +584,36 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.arrayLength = [](CBArray seq) { return (uint64_t)stbds_arrlenu(seq); };
 
-  result.seqResize = [](CBSeq seq, uint64_t size) {
-    stbds_arrsetlen(seq, size);
-    return seq;
-  };
+#define CBARRAY_IMPL(_arr_, _val_, _name_)                                     \
+  result._name_##Resize = [](_arr_ seq, uint64_t size) {                       \
+    stbds_arrsetlen(seq, size);                                                \
+    return seq;                                                                \
+  };                                                                           \
+                                                                               \
+  result._name_##Push = [](_arr_ seq, const _val_ *value) {                    \
+    stbds_arrpush(seq, *value);                                                \
+    return seq;                                                                \
+  };                                                                           \
+                                                                               \
+  result._name_##Insert = [](_arr_ seq, uint64_t index, const _val_ *value) {  \
+    stbds_arrins(seq, index, *value);                                          \
+    return seq;                                                                \
+  };                                                                           \
+                                                                               \
+  result._name_##Pop = [](_arr_ seq) { return stbds_arrpop(seq); };            \
+                                                                               \
+  result._name_##FastDelete = [](_arr_ seq, uint64_t index) {                  \
+    stbds_arrdelswap(seq, index);                                              \
+  };                                                                           \
+                                                                               \
+  result._name_##SlowDelete = [](_arr_ seq, uint64_t index) {                  \
+    stbds_arrdel(seq, index);                                                  \
+  }
 
-  result.seqPush = [](CBSeq seq, const CBVar *value) {
-    stbds_arrpush(seq, *value);
-    return seq;
-  };
-
-  result.seqInsert = [](CBSeq seq, uint64_t index, const CBVar *value) {
-    stbds_arrins(seq, index, *value);
-    return seq;
-  };
-
-  result.seqPop = [](CBSeq seq) { return stbds_arrpop(seq); };
-
-  result.seqFastDelete = [](CBSeq seq, uint64_t index) {
-    stbds_arrdelswap(seq, index);
-  };
-
-  result.seqSlowDelete = [](CBSeq seq, uint64_t index) {
-    stbds_arrdel(seq, index);
-  };
-
-  result.typesResize = [](CBTypesInfo types, uint64_t size) {
-    stbds_arrsetlen(types, size);
-    return types;
-  };
-
-  result.typesPush = [](CBTypesInfo types, const CBTypeInfo *value) {
-    stbds_arrpush(types, *value);
-    return types;
-  };
-
-  result.typesInsert = [](CBTypesInfo types, uint64_t index,
-                          const CBTypeInfo *value) {
-    stbds_arrins(types, index, *value);
-    return types;
-  };
-
-  result.typesPop = [](CBTypesInfo types) { return stbds_arrpop(types); };
-
-  result.typesFastDelete = [](CBTypesInfo types, uint64_t index) {
-    stbds_arrdelswap(types, index);
-  };
-
-  result.typesSlowDelete = [](CBTypesInfo types, uint64_t index) {
-    stbds_arrdel(types, index);
-  };
-
-  result.paramsResize = [](CBParametersInfo params, uint64_t size) {
-    stbds_arrsetlen(params, size);
-    return params;
-  };
-
-  result.paramsPush = [](CBParametersInfo params,
-                         const CBParameterInfo *value) {
-    stbds_arrpush(params, *value);
-    return params;
-  };
-
-  result.paramsInsert = [](CBParametersInfo params, uint64_t index,
-                           const CBParameterInfo *value) {
-    stbds_arrins(params, index, *value);
-    return params;
-  };
-
-  result.paramsPop = [](CBParametersInfo params) {
-    return stbds_arrpop(params);
-  };
-
-  result.paramsFastDelete = [](CBParametersInfo params, uint64_t index) {
-    stbds_arrdelswap(params, index);
-  };
-
-  result.paramsSlowDelete = [](CBParametersInfo params, uint64_t index) {
-    stbds_arrdel(params, index);
-  };
+  CBARRAY_IMPL(CBSeq, CBVar, seq);
+  CBARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
+  CBARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
+  CBARRAY_IMPL(CBlocks, CBlockRef, blocks);
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {

@@ -577,7 +577,7 @@ struct InternalCore {
 
   static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
-  static void freeArray(void *arr) { stbds_arrfree(arr); }
+  static void arrayFree(void *arr) { stbds_arrfree(arr); }
 
   static void throwException(const char *msg) {
     throw chainblocks::CBException(msg);
