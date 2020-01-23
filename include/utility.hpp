@@ -171,7 +171,7 @@ public:
   ~TBlocksVar() {
     destroy();
     CB_CORE::destroyVar(_blocks);
-    CB_CORE::freeArray(_chainValidation.exposedInfo);
+    CB_CORE::arrayFree(_chainValidation.exposedInfo);
   }
 
   void reset() { cleanup(); }
