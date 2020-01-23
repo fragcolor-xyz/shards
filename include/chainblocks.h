@@ -638,6 +638,7 @@ CB_ARRAY_TYPE(CBSeq, struct CBVar);
 CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
 CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
 CB_ARRAY_TYPE(CBlocks, CBlockRef);
+CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
 
 #define CB_ARRAY_PROCS(_array_, _short_)	\
   _array_##Push _short_##Push;				\
@@ -700,6 +701,9 @@ struct CBCore {
 
   // Utility to deal with CBlocks
   CB_ARRAY_PROCS(CBlocks, blocks);
+
+  // Utility to deal with CBExposedTypeInfo
+  CB_ARRAY_PROCS(CBExposedTypesInfo, expTypes);
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

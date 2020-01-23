@@ -614,6 +614,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CBARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
   CBARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
   CBARRAY_IMPL(CBlocks, CBlockRef, blocks);
+  CBARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
