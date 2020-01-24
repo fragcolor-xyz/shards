@@ -186,7 +186,7 @@ public:
     if (_blocks.valueType == Block) {
       stbds_arrpush(_blocksArray, _blocks.payload.blockValue);
     } else {
-      for (auto i = 0; i < _blocks.payload.seqValue.len; i++) {
+      for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
         stbds_arrpush(_blocksArray,
                       _blocks.payload.seqValue.elements[i].payload.blockValue);
       }

@@ -667,7 +667,7 @@ struct ToBytes {
                             "make a flat sequence.");
         }
         _buffer.resize(itemSize * len);
-        for (auto i = 0; i < len; i++) {
+        for (uint32_t i = 0; i < len; i++) {
           // we cheat using any pointer in the union
           // since only blittables are allowed
           memcpy((&_buffer.front()) + (itemSize * i),

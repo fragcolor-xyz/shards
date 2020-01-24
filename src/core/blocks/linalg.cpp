@@ -267,7 +267,7 @@ struct MatMul : public VectorBinaryBase {
     CBVar output;
     output.valueType = b.valueType;
     auto dims = a.payload.seqValue.len;
-    for (auto i = 0; i < dims; i++) {
+    for (uint32_t i = 0; i < dims; i++) {
       const auto &x = a.payload.seqValue.elements[i];
       if (x.valueType != b.valueType) {
         // tbh this should be supported tho...

@@ -1262,7 +1262,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   // Failed until now but let's check if the type is a sequenced too
   if (value.valueType == Seq) {
     // Validate each type in the seq
-    for (auto i = 0; value.payload.seqValue.len > i; i++) {
+    for (uint32_t i = 0; value.payload.seqValue.len > i; i++) {
       if (validateSetParam(block, index, value.payload.seqValue.elements[i],
                            callback, userData)) {
         freeDerivedInfo(varType);

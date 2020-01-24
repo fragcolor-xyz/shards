@@ -243,7 +243,7 @@ struct IndexOf {
       itemLen = item.payload.seqValue.len;
     }
 
-    for (auto i = 0; i < inputLen; i++) {
+    for (uint32_t i = 0; i < inputLen; i++) {
       if (item.valueType == Seq) {
         if ((i + itemLen) > inputLen) {
           if (!_all)
@@ -261,17 +261,17 @@ struct IndexOf {
         }
 
         if (!_all)
-          return Var(i);
+          return Var((int64_t)i);
         else
-          chainblocks::arrayPush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var((int64_t)i));
 
       failed:
         continue;
       } else if (input.payload.seqValue.elements[i] == item) {
         if (!_all)
-          return Var(i);
+          return Var((int64_t)i);
         else
-          chainblocks::arrayPush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var((int64_t)i));
       }
     }
 

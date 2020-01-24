@@ -136,6 +136,7 @@ endif()
 
 if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
+  add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
 endif()
 ###
 

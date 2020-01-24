@@ -80,13 +80,13 @@ struct Cond {
         _conditions.resize(counter / 2);
         _actions.resize(counter / 2);
         auto idx = 0;
-        for (auto i = 0; i < counter; i++) {
+        for (uint32_t i = 0; i < counter; i++) {
           auto val = value.payload.seqValue.elements[i];
           if (i % 2) { // action
             if (val.valueType == Block) {
               _actions[idx].push_back(val.payload.blockValue);
             } else { // seq
-              for (auto y = 0; y < val.payload.seqValue.len; y++) {
+              for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == Block);
                 _actions[idx].push_back(
                     val.payload.seqValue.elements[y].payload.blockValue);
@@ -98,7 +98,7 @@ struct Cond {
             if (val.valueType == Block) {
               _conditions[idx].push_back(val.payload.blockValue);
             } else { // seq
-              for (auto y = 0; y < val.payload.seqValue.len; y++) {
+              for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == Block);
                 _conditions[idx].push_back(
                     val.payload.seqValue.elements[y].payload.blockValue);
