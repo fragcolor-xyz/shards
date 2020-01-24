@@ -149,6 +149,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
+  ${CHAINBLOCKS_DIR}/include/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/core.hpp
