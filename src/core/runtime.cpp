@@ -38,6 +38,12 @@ void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
 }
 void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
+
+#define CB_REALLOC rprealloc
+#define CB_FREE rpfree
+#else
+#define CB_REALLOC std::realloc
+#define CB_FREE std::free
 #endif
 
 INITIALIZE_EASYLOGGINGPP
@@ -121,6 +127,8 @@ void registerCoreBlocks() {
 
 #ifndef NDEBUG
   // TODO remove when we have better tests/samples
+
+  // Test chain DSL
   auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
                                              .looped(true)
                                              .let(1)
@@ -128,6 +136,55 @@ void registerCoreBlocks() {
                                              .block("Math.Add", 2)
                                              .block("Assert.Is", 3, true));
   assert(chain1->blocks.size() == 4);
+
+  // Test dynamic array
+  CBSeq ts{};
+  Var a{0}, b{1}, c{2}, d{3}, e{4}, f{5};
+  arrayPush(ts, a);
+  assert(ts.len == 1);
+  assert(ts.cap == 4);
+  arrayPush(ts, b);
+  arrayPush(ts, c);
+  arrayPush(ts, d);
+  arrayPush(ts, e);
+  assert(ts.len == 5);
+  assert(ts.cap == 8);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(1));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayInsert(ts, 1, f);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(1));
+  assert(ts.elements[3] == Var(2));
+  assert(ts.elements[4] == Var(3));
+
+  arrayDel(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayDelFast(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(4));
+  assert(ts.elements[3] == Var(3));
+
+  assert(ts.len == 4);
+
+  arrayFree(ts);
+  assert(ts.elements == nullptr);
+  assert(ts.len == 0);
+  assert(ts.cap == 0);
 #endif
 }
 
@@ -399,22 +456,22 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlenu(context->stack);
+  auto sidx = context->stack.len;
   for (auto i = 0; i < nblocks; i++) {
     output = activateBlock(blocks[i], context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -427,7 +484,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
     }
     input = output;
   }
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return Continuing;
 }
 
@@ -435,22 +492,23 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlenu(context->stack);
-  for (auto i = 0; i < stbds_arrlen(blocks); i++) {
-    output = activateBlock(blocks[i].payload.blockValue, context, input);
+  auto sidx = context->stack.len;
+  for (uint32_t i = 0; i < blocks.len; i++) {
+    output =
+        activateBlock(blocks.elements[i].payload.blockValue, context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -463,7 +521,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return Continuing;
 }
 }; // namespace chainblocks
@@ -494,12 +552,11 @@ void releaseMemory(CBVar &self) {
       self.payload.stringValue != nullptr) {
     delete[] self.payload.stringValue;
     self.payload.stringValue = nullptr;
-  } else if (self.valueType == Seq && self.payload.seqValue) {
-    for (auto i = 0; i < stbds_arrlen(self.payload.seqValue); i++) {
-      releaseMemory(self.payload.seqValue[i]);
+  } else if (self.valueType == Seq && self.payload.seqValue.elements) {
+    for (uint32_t i = 0; i < self.payload.seqValue.len; i++) {
+      releaseMemory(self.payload.seqValue.elements[i]);
     }
-    stbds_arrfree(self.payload.seqValue);
-    self.payload.seqValue = nullptr;
+    chainblocks::arrayFree(self.payload.seqValue);
   } else if (self.valueType == Table && self.payload.tableValue) {
     for (auto i = 0; i < stbds_shlen(self.payload.tableValue); i++) {
       delete[] self.payload.tableValue[i].key;
@@ -586,35 +643,37 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
 #define CBARRAY_IMPL(_arr_, _val_, _name_)                                     \
   result._name_##Resize = [](_arr_ seq, uint64_t size) {                       \
-    stbds_arrsetlen(seq, size);                                                \
+    chainblocks::arrayResize(seq, size);                                       \
     return seq;                                                                \
   };                                                                           \
                                                                                \
   result._name_##Push = [](_arr_ seq, const _val_ *value) {                    \
-    stbds_arrpush(seq, *value);                                                \
+    chainblocks::arrayPush(seq, *value);                                       \
     return seq;                                                                \
   };                                                                           \
                                                                                \
   result._name_##Insert = [](_arr_ seq, uint64_t index, const _val_ *value) {  \
-    stbds_arrins(seq, index, *value);                                          \
+    chainblocks::arrayInsert(seq, index, *value);                              \
     return seq;                                                                \
   };                                                                           \
                                                                                \
-  result._name_##Pop = [](_arr_ seq) { return stbds_arrpop(seq); };            \
+  result._name_##Pop = [](_arr_ seq) {                                         \
+    return chainblocks::arrayPop<_arr_, _val_>(seq);                           \
+  };                                                                           \
                                                                                \
   result._name_##FastDelete = [](_arr_ seq, uint64_t index) {                  \
-    stbds_arrdelswap(seq, index);                                              \
+    chainblocks::arrayDelFast(seq, index);                                     \
   };                                                                           \
                                                                                \
   result._name_##SlowDelete = [](_arr_ seq, uint64_t index) {                  \
-    stbds_arrdel(seq, index);                                                  \
+    chainblocks::arrayDel(seq, index);                                         \
   }
 
   CBARRAY_IMPL(CBSeq, CBVar, seq);
-  CBARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
-  CBARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
-  CBARRAY_IMPL(CBlocks, CBlockRef, blocks);
-  CBARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  // CBARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
+  // CBARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
+  // CBARRAY_IMPL(CBlocks, CBlockRef, blocks);
+  // CBARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
@@ -1161,8 +1220,8 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   }
   case Seq: {
     varType.seqType = new CBTypeInfo();
-    if (stbds_arrlen(value.payload.seqValue) > 0) {
-      *varType.seqType = deriveTypeInfo(value.payload.seqValue[0]);
+    if (value.payload.seqValue.len > 0) {
+      *varType.seqType = deriveTypeInfo(value.payload.seqValue.elements[0]);
     }
     break;
   }
@@ -1203,9 +1262,9 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   // Failed until now but let's check if the type is a sequenced too
   if (value.valueType == Seq) {
     // Validate each type in the seq
-    for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
-      if (validateSetParam(block, index, value.payload.seqValue[i], callback,
-                           userData)) {
+    for (auto i = 0; value.payload.seqValue.len > i; i++) {
+      if (validateSetParam(block, index, value.payload.seqValue.elements[i],
+                           callback, userData)) {
         freeDerivedInfo(varType);
         return true;
       }
@@ -1304,7 +1363,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->context = context;
 
   // store stack index
-  auto sidx = stbds_arrlenu(context->stack);
+  auto sidx = context->stack.len;
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {
@@ -1313,15 +1372,15 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           // Use input as output, return previous block result
           return {input, Restarted};
         }
@@ -1339,17 +1398,17 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
-      stbds_arrsetlen(context->stack, sidx);
+      context->stack.len = sidx;
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
-      stbds_arrsetlen(context->stack, sidx);
+      context->stack.len = sidx;
       return {chain->previousOutput, Failed};
     }
   }
 
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return {chain->previousOutput, Running};
 }
 
@@ -1383,7 +1442,7 @@ boost::context::continuation run(CBChain *chain,
     chain->finishedOutput = runRes.output; // Write result before setting flag
     chain->finished = true;                // Set finished flag (atomic)
     context.iterationCount++;              // increatse iteration counter
-    stbds_arrsetlen(context.stack, 0);     // clear the stack
+    context.stack.len = 0;
     if (unlikely(runRes.state == Failed)) {
       chain->failed = true;
       context.aborted = true;

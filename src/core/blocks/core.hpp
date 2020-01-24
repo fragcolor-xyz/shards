@@ -174,26 +174,27 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
-        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
-        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        auto vlen = value.payload.seqValue.len;                                \
+        auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
           throw CBException("Failed to compare, input len > value len.");      \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (input.payload.seqValue[i] OP value.payload.seqValue[i]) {        \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (input.payload.seqValue.elements[i] OP value.payload.seqValue     \
+                  .elements[i]) {                                              \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
         return False;                                                          \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (input.payload.seqValue[i] OP value) {                            \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (input.payload.seqValue.elements[i] OP value) {                   \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
         return False;                                                          \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
-          if (input OP value.payload.seqValue[i]) {                            \
+        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
+          if (input OP value.payload.seqValue.elements[i]) {                   \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
@@ -219,26 +220,27 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
-        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
-        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        auto vlen = value.payload.seqValue.len;                                \
+        auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
           throw CBException("Failed to compare, input len > value len.");      \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (!(input.payload.seqValue[i] OP value.payload.seqValue[i])) {     \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue   \
+                    .elements[i])) {                                           \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
         return True;                                                           \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (!(input.payload.seqValue[i] OP value)) {                         \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (!(input.payload.seqValue.elements[i] OP value)) {                \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
         return True;                                                           \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
-          if (!(input OP value.payload.seqValue[i])) {                         \
+        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
+          if (!(input OP value.payload.seqValue.elements[i])) {                \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
@@ -1003,10 +1005,9 @@ struct Push : public VariableBase {
           auto &seq = _target->payload.tableValue[index].value;
           if (seq.valueType == Seq) {
             for (uint64_t i = seq.capacity.value; i > 0; i--) {
-              destroyVar(seq.payload.seqValue[i - 1]);
+              destroyVar(seq.payload.seqValue.elements[i - 1]);
             }
-            stbds_arrfree(seq.payload.seqValue);
-            seq.payload.seqValue = nullptr;
+            chainblocks::arrayFree(seq.payload.seqValue);
             seq.capacity.value = 0;
           }
           stbds_shdel(_target->payload.tableValue, _key.c_str());
@@ -1017,10 +1018,10 @@ struct Push : public VariableBase {
         }
       } else if (_target->valueType == Seq) {
         for (uint64_t i = _target->capacity.value; i > 0; i--) {
-          destroyVar(_target->payload.seqValue[i - 1]);
+          destroyVar(_target->payload.seqValue.elements[i - 1]);
         }
-        stbds_arrfree(_target->payload.seqValue);
-        _target->payload.seqValue = nullptr;
+        chainblocks::arrayFree(_target->payload.seqValue);
+        _target->payload.seqValue = {};
         _target->capacity.value = 0;
       }
     }
@@ -1050,18 +1051,18 @@ struct Push : public VariableBase {
 
     if (seq.valueType != Seq) {
       seq.valueType = Seq;
-      seq.payload.seqValue = nullptr;
+      seq.payload.seqValue = {};
     }
 
     if (_firstPusher && _clear) {
-      stbds_arrsetlen(seq.payload.seqValue, 0);
+      chainblocks::arrayResize(seq.payload.seqValue, 0);
     }
 
     CBVar tmp{};
     cloneVar(tmp, input);
-    stbds_arrpush(seq.payload.seqValue, tmp);
-    seq.capacity.value = std::max(
-        seq.capacity.value, (uint64_t)(stbds_arrlenu(seq.payload.seqValue)));
+    chainblocks::arrayPush(seq.payload.seqValue, tmp);
+    seq.capacity.value =
+        std::max(seq.capacity.value, (uint64_t)(seq.payload.seqValue.len));
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1073,19 +1074,18 @@ struct Push : public VariableBase {
     } else {
       if (_target->valueType != Seq) {
         _target->valueType = Seq;
-        _target->payload.seqValue = nullptr;
+        _target->payload.seqValue = {};
       }
 
       if (_firstPusher && _clear) {
-        stbds_arrsetlen(_target->payload.seqValue, 0);
+        chainblocks::arrayResize(_target->payload.seqValue, 0);
       }
 
       CBVar tmp{};
       cloneVar(tmp, input);
-      stbds_arrpush(_target->payload.seqValue, tmp);
-      _target->capacity.value =
-          std::max(_target->capacity.value,
-                   (uint64_t)(stbds_arrlenu(_target->payload.seqValue)));
+      chainblocks::arrayPush(_target->payload.seqValue, tmp);
+      _target->capacity.value = std::max(
+          _target->capacity.value, (uint64_t)(_target->payload.seqValue.len));
     }
     return input;
   }
@@ -1140,7 +1140,7 @@ struct Count : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      return Var(int64_t(stbds_arrlen(var.payload.seqValue)));
+      return Var(int64_t(var.payload.seqValue.len));
     } else if (var.valueType == Table) {
       return Var(int64_t(stbds_shlen(var.payload.tableValue)));
     } else if (var.valueType == Bytes) {
@@ -1176,10 +1176,10 @@ struct Clear : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      stbds_arrsetlen(var.payload.seqValue, 0);
+      chainblocks::arrayResize(var.payload.seqValue, 0);
     } else if (var.valueType == Table) {
-      for (auto i = stbds_shlen(var.payload.tableValue) - 1; i >= 0; i--) {
-        auto &sv = var.payload.tableValue[i].value;
+      for (auto i = stbds_shlen(var.payload.tableValue); i > 0; i--) {
+        auto &sv = var.payload.tableValue[i - 1].value;
         // Clean allocation garbage in case it's not blittable!
         if (sv.valueType >= EndOfBlittableTypes) {
           destroyVar(sv);
@@ -1217,9 +1217,9 @@ struct Drop : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      auto len = stbds_arrlenu(var.payload.seqValue);
+      auto len = var.payload.seqValue.len;
       if (len > 0)
-        stbds_arrsetlen(var.payload.seqValue, len - 1);
+        chainblocks::arrayResize(var.payload.seqValue, len - 1);
     } else {
       throw CBException("Variable is not a sequence, failed to Pop.");
     }
@@ -1293,12 +1293,12 @@ struct Pop : SeqUser {
             "Variable (in table) is not a sequence, failed to Pop.");
       }
 
-      if (stbds_arrlen(seq.payload.seqValue) == 0) {
+      if (seq.payload.seqValue.len == 0) {
         throw CBException("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
-      auto pops = stbds_arrpop(seq.payload.seqValue);
+      auto pops = chainblocks::arrayPop<CBSeq, CBVar>(seq.payload.seqValue);
       cloneVar(_output, pops);
       return _output;
     } else {
@@ -1306,12 +1306,13 @@ struct Pop : SeqUser {
         throw CBException("Variable is not a sequence, failed to Pop.");
       }
 
-      if (stbds_arrlen(_target->payload.seqValue) == 0) {
+      if (_target->payload.seqValue.len == 0) {
         throw CBException("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
-      auto pops = stbds_arrpop(_target->payload.seqValue);
+      auto pops =
+          chainblocks::arrayPop<CBSeq, CBVar>(_target->payload.seqValue);
       cloneVar(_output, pops);
       return _output;
     }
@@ -1323,7 +1324,7 @@ struct Take {
       "Indices", "One or multiple indices to filter from a sequence.",
       CBTypesInfo(CoreInfo::intsVarInfo)));
 
-  CBSeq _cachedSeq = nullptr;
+  CBSeq _cachedSeq{};
   CBVar _output{};
   CBVar _indices{};
   CBVar *_indicesVar = nullptr;
@@ -1340,12 +1341,11 @@ struct Take {
 
   void cleanup() {
     _indicesVar = nullptr;
-    if (_cachedSeq) {
-      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
-        destroyVar(_cachedSeq[i - 1]);
+    if (_cachedSeq.elements) {
+      for (auto i = _cachedSeq.len; i > 0; i--) {
+        destroyVar(_cachedSeq.elements[i - 1]);
       }
-      stbds_arrfree(_cachedSeq);
-      _cachedSeq = nullptr;
+      chainblocks::arrayFree(_cachedSeq);
     }
   }
 
@@ -1427,7 +1427,7 @@ struct Take {
         _vectorOutputLen = 1;
         return CBTypeInfo(CoreInfo::floatInfo);
       } else {
-        _vectorOutputLen = (uint8_t)stbds_arrlen(_indices.payload.seqValue);
+        _vectorOutputLen = (uint8_t)_indices.payload.seqValue.len;
         switch (_vectorOutputLen) {
         case 2:
           _vectorOutput.valueType = Float2;
@@ -1501,7 +1501,7 @@ struct Take {
       _indicesVar = findVariable(context, _indices.payload.stringValue);
     }
 
-    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto inputLen = input.payload.seqValue.len;
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
 
     if (!_seqOutput) {
@@ -1509,18 +1509,19 @@ struct Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      cloneVar(_output, input.payload.seqValue[index]);
+      cloneVar(_output, input.payload.seqValue.elements[index]);
       return _output;
     } else {
-      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
-      stbds_arrsetlen(_cachedSeq, nindices);
+      const uint64_t nindices = indices.payload.seqValue.len;
+      chainblocks::arrayResize(_cachedSeq, nindices);
       for (uint64_t i = 0; nindices > i; i++) {
-        const auto index = indices.payload.seqValue[i].payload.intValue;
+        const auto index =
+            indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        cloneVar(_output, input.payload.seqValue[index]);
-        _cachedSeq[i] = _output;
+        cloneVar(_output, input.payload.seqValue.elements[index]);
+        _cachedSeq.elements[i] = _output;
       }
       return Var(_cachedSeq);
     }
@@ -1546,9 +1547,10 @@ struct Take {
         return Var(input.payload.float4Value[index]);
       }
     } else {
-      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
+      const uint64_t nindices = indices.payload.seqValue.len;
       for (uint64_t i = 0; nindices > i; i++) {
-        const auto index = indices.payload.seqValue[i].payload.intValue;
+        const auto index =
+            indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0 || nindices != _vectorOutputLen) {
           throw OutOfRangeEx(inputLen, index);
         }
@@ -1628,7 +1630,7 @@ struct Slice {
                  ParamsInfo::Param("Step", "The increment between each index.",
                                    CBTypesInfo(CoreInfo::intInfo)));
 
-  CBSeq _cachedSeq = nullptr;
+  CBSeq _cachedSeq{};
   CBVar _from{Var(0)};
   CBVar *_fromVar = nullptr;
   CBVar _to{};
@@ -1644,11 +1646,11 @@ struct Slice {
   void cleanup() {
     _fromVar = nullptr;
     _toVar = nullptr;
-    if (_cachedSeq) {
-      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
-        destroyVar(_cachedSeq[i - 1]);
+    if (_cachedSeq.elements) {
+      for (auto i = _cachedSeq.len; i > 0; i--) {
+        destroyVar(_cachedSeq.elements[i - 1]);
       }
-      stbds_arrfree(_cachedSeq);
+      chainblocks::arrayFree(_cachedSeq);
     }
   }
 
@@ -1768,7 +1770,7 @@ struct Slice {
       _toVar = findVariable(context, _to.payload.stringValue);
     }
 
-    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto inputLen = input.payload.seqValue.len;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
@@ -1781,11 +1783,11 @@ struct Slice {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    stbds_arrsetlen(_cachedSeq, 0);
+    chainblocks::arrayResize(_cachedSeq, 0);
     for (auto i = from; i < to; i += _step) {
       CBVar tmp{};
-      cloneVar(tmp, input.payload.seqValue[i]);
-      stbds_arrpush(_cachedSeq, tmp);
+      cloneVar(tmp, input.payload.seqValue.elements[i]);
+      chainblocks::arrayPush(_cachedSeq, tmp);
     }
 
     return Var(_cachedSeq);
@@ -1797,12 +1799,12 @@ struct Limit {
       "Max", "How many maximum elements to take from the input sequence.",
       CBTypesInfo(CoreInfo::intInfo)));
 
-  CBSeq _cachedResult = nullptr;
+  CBSeq _cachedResult{};
   int64_t _max = 0;
 
   void destroy() {
-    if (_cachedResult) {
-      stbds_arrfree(_cachedResult);
+    if (_cachedResult.elements) {
+      chainblocks::arrayFree(_cachedResult);
     }
   }
 
@@ -1833,7 +1835,7 @@ struct Limit {
   CBVar getParam(int index) { return Var(_max); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+    int64_t inputLen = input.payload.seqValue.len;
 
     if (_max == 1) {
       auto index = 0;
@@ -1842,13 +1844,13 @@ struct Limit {
                    << " wanted index: " << index;
         throw CBException("Limit out of range!");
       }
-      return input.payload.seqValue[index];
+      return input.payload.seqValue.elements[index];
     } else {
       // Else it's a seq
       auto nindices = (uint64_t)std::max((int64_t)0, std::min(inputLen, _max));
-      stbds_arrsetlen(_cachedResult, nindices);
+      chainblocks::arrayResize(_cachedResult, nindices);
       for (uint64_t i = 0; i < nindices; i++) {
-        _cachedResult[i] = input.payload.seqValue[i];
+        _cachedResult.elements[i] = input.payload.seqValue.elements[i];
       }
       return Var(_cachedResult);
     }
@@ -1861,8 +1863,8 @@ struct BlocksUser {
 
   void destroy() {
     if (_blocks.valueType == Seq) {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+      for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
+        auto &blk = _blocks.payload.seqValue.elements[i].payload.blockValue;
         blk->cleanup(blk);
         blk->destroy(blk);
       }
@@ -1876,8 +1878,8 @@ struct BlocksUser {
 
   void cleanup() {
     if (_blocks.valueType == Seq) {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
+      for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
+        auto &blk = _blocks.payload.seqValue.elements[i].payload.blockValue;
         blk->cleanup(blk);
       }
     } else if (_blocks.valueType == Block) {
@@ -1894,8 +1896,9 @@ struct BlocksUser {
     if (_blocks.valueType == Block) {
       blocks.push_back(_blocks.payload.blockValue);
     } else {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        blocks.push_back(_blocks.payload.seqValue[i].payload.blockValue);
+      for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
+        blocks.push_back(
+            _blocks.payload.seqValue.elements[i].payload.blockValue);
       }
     }
     _chainValidation = validateConnections(

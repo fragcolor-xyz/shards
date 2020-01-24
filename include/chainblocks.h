@@ -148,7 +148,14 @@ typedef void *CBArray;
 
 // Forward declarations
 struct CBVar;
-typedef struct CBVar *CBSeq; // a stb array
+typedef struct CBSeq {
+  CBVar *elements;
+  // This (32bit sizes) is for obvious packing reason, sizeof(CBVar) == 32
+  // But also for compatibility, chainblocks supports 32bit systems
+  // So the max array size should be INT32_SIZE indeed
+  uint32_t len;
+  uint32_t cap;
+} CBSeq;
 
 struct CBNamedVar;
 typedef struct CBNamedVar *CBTable; // a stb string map
@@ -156,14 +163,16 @@ typedef struct CBNamedVar *CBTable; // a stb string map
 struct CBChain;
 typedef struct CBChain *CBChainPtr;
 
+struct CBChainProvider;
+
+struct CBContext;
+
 struct CBNode;
 struct CBFlow;
 
 struct CBlock;
 typedef struct CBlock *CBlockRef;
 typedef struct CBlock **CBlocks; // a stb array
-
-struct CBChainProvider;
 
 struct CBTypeInfo;
 typedef struct CBTypeInfo *CBTypesInfo; // a stb array
@@ -173,8 +182,6 @@ typedef struct CBParameterInfo *CBParametersInfo; // a stb array
 
 struct CBExposedTypeInfo;
 typedef struct CBExposedTypeInfo *CBExposedTypesInfo; // a stb array
-
-struct CBContext;
 
 typedef void *CBPointer;
 typedef int64_t CBInt;
@@ -389,6 +396,9 @@ ALIGNED struct CBVarPayload {
     CBFloat3 float3Value;
     CBFloat4 float4Value;
 
+    // notice, this is assumed not mutable!
+    // unless specified in the CBTypeInfo of this value
+    // and only when used as variable (consumable)
     CBSeq seqValue;
 
     CBTable tableValue;

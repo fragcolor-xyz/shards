@@ -331,7 +331,7 @@
   0 (Push "unsortedList")
   1 (Push "unsortedList")
   5 (Push "unsortedList")
-  (Get "unsortedList") (Sort)
+  (Sort (# "unsortedList"))
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
 
@@ -349,10 +349,10 @@
   1 (Push "unsortedList3")
   5 (Push "unsortedList3")
   
-  (Get "unsortedList2") (Sort [(# "unsortedList3")])
+  (Sort (# "unsortedList2") [(# "unsortedList3")])
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
-  (Get "unsortedList2") (Sort (# "unsortedList3"))
+  (Sort (# "unsortedList2") (# "unsortedList3"))
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
   (Get "unsortedList3") 
@@ -366,7 +366,7 @@
   0 (Push "unsortedList")
   1 (Push "unsortedList")
   5 (Push "unsortedList")
-  (Get "unsortedList") (Sort :Desc true)
+  (Sort (# "unsortedList") :Desc true)
   (Log)
   (Assert.Is [5 4 2 1 1 0] true)
   (Count "unsortedList")
@@ -402,9 +402,8 @@
   (IndexOf (# "toFindVar"))
   (Assert.Is 3 true)
 
-  (Get "unsortedList")
-  (Remove :Predicate (-->(IsMore 3)))
-  (Sort :Desc true)
+  (Remove (# "unsortedList") :Predicate (--> (IsMore 3)))
+  (Sort (# "unsortedList") :Desc true)
   (Assert.Is [2 1 1 0] true)
   (Count "unsortedList")
   (Assert.Is 4 true)
@@ -414,9 +413,8 @@
 
   (Get "unsortedList2")
   (Set "unsortedList2Copy")
-  (Get "unsortedList2Copy")
-  (Remove [(# "unsortedList3")] (-->(IsMore 3)))
-  (Sort [(# "unsortedList3")])
+  (Remove (# "unsortedList2Copy") [(# "unsortedList3")] (--> (IsMore 3)))
+  (Sort (# "unsortedList2Copy") [(# "unsortedList3")])
   (Log)
   (Assert.Is [0 1 1 2] true)
   (Get "unsortedList3")
@@ -426,7 +424,8 @@
   (Assert.Is 6 true)
 
   (Const [[2 "x"] [3 "y"] [1 "z"]])
-  (Sort :Key (-->
+  (Ref "constSeq")
+  (Sort (# "constSeq") :Key (-->
               (Take 0)))
   (Assert.Is [[1 "z"] [2 "x"] [3 "y"]] true)
 

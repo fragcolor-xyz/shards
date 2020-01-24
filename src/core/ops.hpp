@@ -136,11 +136,11 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Seq:
     os << "[";
-    for (auto i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       if (i == 0)
-        os << var.payload.seqValue[i];
+        os << var.payload.seqValue.elements[i];
       else
-        os << ", " << var.payload.seqValue[i];
+        os << ", " << var.payload.seqValue.elements[i];
     }
     os << "]";
     break;
@@ -246,14 +246,14 @@ ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
 
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.seqValue == b.payload.seqValue)
+  if (a.payload.seqValue.elements == b.payload.seqValue.elements)
     return true;
 
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (!(a.payload.seqValue[i] == b.payload.seqValue[i]))
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (!(a.payload.seqValue.elements[i] == b.payload.seqValue.elements[i]))
       return false;
   }
 
@@ -267,7 +267,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -408,11 +408,11 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _seqLess(const CBVar &a, const CBVar &b) {
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (a.payload.seqValue[i] >= b.payload.seqValue[i])
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (a.payload.seqValue.elements[i] >= b.payload.seqValue.elements[i])
       return false;
   }
 
@@ -423,7 +423,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -545,11 +545,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (a.payload.seqValue[i] > b.payload.seqValue[i])
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (a.payload.seqValue.elements[i] > b.payload.seqValue.elements[i])
       return false;
   }
 
@@ -560,7 +560,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 

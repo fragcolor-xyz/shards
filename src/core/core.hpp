@@ -21,6 +21,14 @@
 
 #include "blockwrapper.hpp"
 
+#ifdef USE_RPMALLOC
+#define CB_REALLOC rprealloc
+#define CB_FREE rpfree
+#else
+#define CB_REALLOC std::realloc
+#define CB_FREE std::free
+#endif
+
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
 CBValidationResult validateConnections(const CBlocks chain,
@@ -66,18 +74,228 @@ struct Globals {
   static inline std::string RootPath;
 };
 
+template <typename T>
+void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
+  size_t min_len = arr.len + addlen;
+
+  // compute the minimum capacity needed
+  if (min_len > min_cap)
+    min_cap = min_len;
+
+  if (min_cap <= arr.cap)
+    return;
+
+  // increase needed capacity to guarantee O(1) amortized
+  if (min_cap < 2 * arr.cap)
+    min_cap = 2 * arr.cap;
+
+  arr.elements = (decltype(arr.elements))CB_REALLOC(
+      arr.elements, sizeof(*arr.elements) * min_cap);
+  arr.cap = min_cap;
+}
+
+template <typename T, typename V> void arrayPush(T &arr, const V &val) {
+  if (!arr.elements || (arr.len + 1) > arr.cap)
+    arrayGrow(arr, 1);
+  arr.elements[arr.len++] = val;
+}
+
+template <typename T> void arrayResize(T &arr, uint32_t size) {
+  if (arr.len < size)
+    arrayGrow(arr, size - arr.len);
+  arr.len = size;
+}
+
+template <typename T, typename V>
+void arrayInsert(T &arr, uint32_t index, const V &val) {
+  if (!arr.elements || (arr.len + 1) > arr.cap)
+    arrayGrow(arr, 1);
+  memmove(&arr.elements[index + 1], &arr.elements[index],
+          sizeof(*arr.elements) * (arr.len - index));
+  arr.len++;
+  arr.elements[index] = val;
+}
+
+template <typename T> void arrayDelFast(T &arr, uint32_t index) {
+  arr.elements[index] = arr.elements[arr.len - 1];
+  arr.len--;
+}
+
+template <typename T, typename V> V arrayPop(T &arr) {
+  arr.len--;
+  return arr.elements[arr.len];
+}
+
+template <typename T> void arrayDel(T &arr, uint32_t index) {
+  arr.len--;
+  memmove(&arr.elements[index], &arr.elements[index + 1],
+          sizeof(*arr.elements) * (arr.len - index));
+}
+
+template <typename T> void arrayFree(T &arr) {
+  if (arr.elements)
+    CB_FREE(arr.elements);
+  arr = {};
+}
+
+template <typename T> class PtrIterator {
+public:
+  typedef T value_type;
+
+  PtrIterator(T *ptr) : ptr(ptr) {}
+
+  PtrIterator &operator+=(std::ptrdiff_t s) {
+    ptr += s;
+    return *this;
+  }
+  PtrIterator &operator-=(std::ptrdiff_t s) {
+    ptr -= s;
+    return *this;
+  }
+
+  PtrIterator operator+(std::ptrdiff_t s) {
+    PtrIterator it(ptr);
+    return it += s;
+  }
+  PtrIterator operator-(std::ptrdiff_t s) {
+    PtrIterator it(ptr);
+    return it -= s;
+  }
+
+  PtrIterator operator++() {
+    ++ptr;
+    return *this;
+  }
+
+  PtrIterator operator++(int s) {
+    ptr += s;
+    return *this;
+  }
+
+  std::ptrdiff_t operator-(PtrIterator const &other) const {
+    return ptr - other.ptr;
+  }
+
+  bool operator!=(const PtrIterator &other) const { return ptr != other.ptr; }
+  const T &operator*() const { return *ptr; }
+
+private:
+  T *ptr;
+};
+
+template <typename S, typename T, typename Allocator = std::allocator<T>>
+class IterableArray {
+public:
+  typedef S seq_type;
+  typedef T value_type;
+  typedef size_t size_type;
+
+  typedef PtrIterator<T> iterator;
+  typedef PtrIterator<const T> const_iterator;
+
+  IterableArray() : _seq({}), _owned(true) {}
+
+  // Not OWNING!
+  IterableArray(seq_type seq) : _seq(seq), _owned(false) {}
+
+  // implicit converter
+  IterableArray(CBVar v) : _seq(v.payload.seqValue), _owned(false) {
+    assert(v.valueType == Seq);
+  }
+
+  IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
+
+  IterableArray(size_t s, T v) : _seq({}), _owned(true) {
+    arrayResize(_seq, s);
+    for (auto i = 0; i < s; i++) {
+      _seq[i] = v;
+    }
+  }
+
+  IterableArray(const_iterator first, const_iterator last)
+      : _seq({}), _owned(true) {
+    size_t size = last - first;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq[i] = *first++;
+    }
+  }
+
+  IterableArray(const IterableArray &other) : _seq(nullptr), _owned(true) {
+    size_t size = other._seq.len;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq[i] = other._seq[i];
+    }
+  }
+
+  IterableArray &operator=(IterableArray &other) {
+    std::swap(_seq, other._seq);
+    std::swap(_owned, other._owned);
+    return *this;
+  }
+
+  IterableArray &operator=(const IterableArray &other) {
+    _seq = nullptr;
+    _owned = true;
+    size_t size = other._seq.len;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq[i] = other._seq[i];
+    }
+    return *this;
+  }
+
+  ~IterableArray() {
+    if (_owned) {
+      arrayFree(_seq);
+    }
+  }
+
+private:
+  seq_type _seq;
+  bool _owned;
+
+public:
+  iterator begin() { return iterator(&_seq.elements[0]); }
+  const_iterator begin() const { return const_iterator(&_seq.elements[0]); }
+  const_iterator cbegin() const { return const_iterator(&_seq.elements[0]); }
+  iterator end() { return iterator(&_seq.elements[0] + size()); }
+  const_iterator end() const {
+    return const_iterator(&_seq.elements[0] + size());
+  }
+  const_iterator cend() const {
+    return const_iterator(&_seq.elements[0] + size());
+  }
+  T &operator[](int index) { return _seq.elements[index]; }
+  const T &operator[](int index) const { return _seq.elements[index]; }
+  T &front() { return _seq.elements[0]; }
+  const T &front() const { return _seq.elements[0]; }
+  T &back() { return _seq.elements[size() - 1]; }
+  const T &back() const { return _seq.elements[size() - 1]; }
+  T *data() { return _seq; }
+  size_t size() const { return _seq.len; }
+  bool empty() const { return _seq.elements == nullptr || size() == 0; }
+  void resize(size_t nsize) { arrayResize(_seq, nsize); }
+  void push_back(const T &value) { arrayPush(_seq, value); }
+  void clear() { arrayResize(_seq, 0); }
+  operator seq_type() const { return _seq; }
+};
+
+using IterableSeq = IterableArray<CBSeq, CBVar>;
+
 ALWAYS_INLINE inline void destroyVar(CBVar &var);
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 
 static void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    assert(stbds_arrcap(var.payload.seqValue) >= var.capacity.value);
-    assert(stbds_arrlenu(var.payload.seqValue) <= var.capacity.value);
+    assert(var.payload.seqValue.cap >= var.capacity.value);
+    assert(var.payload.seqValue.len <= var.capacity.value);
     for (size_t i = var.capacity.value; i > 0; i--) {
-      destroyVar(var.payload.seqValue[i - 1]);
+      destroyVar(var.payload.seqValue.elements[i - 1]);
     }
-    stbds_arrfree(var.payload.seqValue);
+    chainblocks::arrayFree(var.payload.seqValue);
   } break;
   case Table: {
     auto len = stbds_shlen(var.payload.tableValue);
@@ -97,16 +315,16 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 
   switch (src.valueType) {
   case Seq: {
-    size_t srcLen = stbds_arrlen(src.payload.seqValue);
+    size_t srcLen = src.payload.seqValue.len;
 #if 0
     destroyVar(dst);
     dst.valueType = Seq;
     dst.payload.seqValue = nullptr;
     for (size_t i = 0; i < srcLen; i++) {
-      auto &subsrc = src.payload.seqValue[i];
+      auto &subsrc = src.payload.seqValue.elements[i];
       CBVar tmp{};
       cloneVar(tmp, subsrc);
-      stbds_arrpush(dst.payload.seqValue, tmp);
+      chainblocks::arrayPush(dst.payload.seqValue, tmp);
     }
 #else
     // try our best to re-use memory
@@ -114,41 +332,41 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       destroyVar(dst);
       dst.valueType = Seq;
       for (size_t i = 0; i < srcLen; i++) {
-        auto &subsrc = src.payload.seqValue[i];
+        auto &subsrc = src.payload.seqValue.elements[i];
         CBVar tmp{};
         cloneVar(tmp, subsrc);
-        stbds_arrpush(dst.payload.seqValue, tmp);
+        chainblocks::arrayPush(dst.payload.seqValue, tmp);
       }
     } else {
-      size_t dstLen = stbds_arrlen(dst.payload.seqValue);
+      size_t dstLen = dst.payload.seqValue.len;
       assert(dst.capacity.value >= dstLen);
       if (srcLen <= dst.capacity.value) {
         // clone on top of current values
-        stbds_arrsetlen(dst.payload.seqValue, srcLen);
+        chainblocks::arrayResize(dst.payload.seqValue, srcLen);
         for (size_t i = 0; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue[i];
-          cloneVar(dst.payload.seqValue[i], subsrc);
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
         }
       } else {
         // re-use avail ones
         for (size_t i = 0; i < dstLen; i++) {
-          auto &subsrc = src.payload.seqValue[i];
-          cloneVar(dst.payload.seqValue[i], subsrc);
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
         }
         // append new values
         for (size_t i = dstLen; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue[i];
+          auto &subsrc = src.payload.seqValue.elements[i];
           CBVar tmp{};
           cloneVar(tmp, subsrc);
-          stbds_arrpush(dst.payload.seqValue, subsrc);
+          chainblocks::arrayPush(dst.payload.seqValue, subsrc);
         }
       }
     }
 #endif
     // take note of 'Var' capacity
-    dst.capacity.value = std::max(
-        dst.capacity.value,
-        decltype(dst.capacity.value)(stbds_arrlenu(dst.payload.seqValue)));
+    dst.capacity.value =
+        std::max(dst.capacity.value,
+                 decltype(dst.capacity.value)(dst.payload.seqValue.len));
   } break;
   case String:
   case ContextVar: {
@@ -287,11 +505,10 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      for (auto i = 0; i < stbds_arrlen(output.payload.seqValue); i++) {
-        varFree(output.payload.seqValue[i]);
+      for (uint32_t i = 0; i < output.payload.seqValue.len; i++) {
+        varFree(output.payload.seqValue.elements[i]);
       }
-      stbds_arrfree(output.payload.seqValue);
-      output.payload.seqValue = nullptr;
+      chainblocks::arrayFree(output.payload.seqValue);
       break;
     }
     case CBType::Table: {
@@ -398,19 +615,18 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
-      uint64_t currentUsed =
-          recycle ? stbds_arrlen(output.payload.seqValue) : 0;
+      uint64_t currentUsed = recycle ? output.payload.seqValue.len : 0;
       if (currentUsed > len) {
         // in this case we need to destroy the excess items
         // before resizing
         for (uint64_t i = len; i < currentUsed; i++) {
-          varFree(output.payload.seqValue[i]);
+          varFree(output.payload.seqValue.elements[i]);
         }
       }
 
-      stbds_arrsetlen(output.payload.seqValue, len);
+      chainblocks::arrayResize(output.payload.seqValue, len);
       for (uint64_t i = 0; i < len; i++) {
-        deserialize(read, output.payload.seqValue[i]);
+        deserialize(read, output.payload.seqValue.elements[i]);
       }
       break;
     }
@@ -512,11 +728,11 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      uint64_t len = stbds_arrlen(input.payload.seqValue);
+      uint64_t len = input.payload.seqValue.len;
       write((const uint8_t *)&len, sizeof(uint64_t));
       total += sizeof(uint64_t);
       for (uint64_t i = 0; i < len; i++) {
-        total += serialize(input.payload.seqValue[i], write);
+        total += serialize(input.payload.seqValue.elements[i], write);
       }
       break;
     }

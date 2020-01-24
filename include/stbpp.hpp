@@ -150,7 +150,6 @@ public:
 };
 
 namespace chainblocks {
-using IterableSeq = IterableStb<CBVar>;
 using IterableExposedInfo = IterableStb<CBExposedTypeInfo>;
 }; // namespace chainblocks
 

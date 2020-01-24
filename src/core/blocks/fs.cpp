@@ -9,12 +9,12 @@ namespace fs = std::filesystem;
 namespace chainblocks {
 namespace FS {
 struct Iterate {
-  CBSeq _storage = nullptr;
+  CBSeq _storage = {};
   std::vector<std::string> _strings;
 
   void destroy() {
-    if (_storage) {
-      stbds_arrfree(_storage);
+    if (_storage.elements) {
+      chainblocks::arrayFree(_storage);
     }
   }
 
@@ -62,7 +62,7 @@ struct Iterate {
 #endif
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    stbds_arrsetlen(_storage, 0);
+    chainblocks::arrayResize(_storage, 0);
     _strings.clear();
 
     if (_recursive) {
@@ -89,7 +89,12 @@ struct Iterate {
       }
     }
 
-    return Var(_storage, _strings);
+    chainblocks::arrayResize(_storage, 0);
+    for (auto &sref : _strings) {
+      chainblocks::arrayPush(_storage, Var(sref.c_str()));
+    }
+
+    return Var(_storage);
   }
 };
 

@@ -7,20 +7,31 @@
 namespace chainblocks {
 struct JointOp {
   std::vector<CBVar *> _multiSortColumns;
+
+  CBVar _inputVar{};
+  CBVar *_input = nullptr;
   CBVar _columns{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
 
-  static inline ParamsInfo joinOpParams = ParamsInfo(ParamsInfo::Param(
-      "Join",
-      "Other columns to join sort/filter using the input (they must be "
-      "of the same length).",
-      CBTypesInfo(CoreInfo::varSeqInfo)));
+  static inline ParamsInfo joinOpParams = ParamsInfo(
+      ParamsInfo::Param("From",
+                        "The name of the sequence variable to edit in place.",
+                        CBTypesInfo(CoreInfo::varInfo)),
+      ParamsInfo::Param(
+
+          "Join",
+          "Other columns to join sort/filter using the input (they must be "
+          "of the same length).",
+          CBTypesInfo(CoreInfo::varSeqInfo)));
 
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
+      cloneVar(_inputVar, value);
+      break;
+    case 1:
       cloneVar(_columns, value);
       // resets vars fetch in activate
       _multiSortColumns.clear();
@@ -33,6 +44,8 @@ struct JointOp {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
+      return _inputVar;
+    case 1:
       return _columns;
     default:
       break;
@@ -40,18 +53,31 @@ struct JointOp {
     throw CBException("Parameter out of range.");
   }
 
-  void cleanup() { _multiSortColumns.clear(); }
+  void cleanup() {
+    _multiSortColumns.clear();
+    _input = nullptr;
+  }
 
-  void ensureJoinSetup(CBContext *context, const CBVar &input) {
+  void ensureJoinSetup(CBContext *context) {
+    if (!_input) {
+      if (_inputVar.valueType != ContextVar)
+        throw CBException("From sequence variable invalid.");
+
+      _input = findVariable(context, _inputVar.payload.stringValue);
+
+      if (_input->valueType != Seq)
+        throw CBException("From sequence variable is not a Seq.");
+    }
+
     if (_columns.valueType != None) {
-      auto len = stbds_arrlen(input.payload.seqValue);
+      auto len = _input->payload.seqValue.len;
       if (_multiSortColumns.size() == 0) {
         if (_columns.valueType == Seq) {
           auto seq = IterableSeq(_columns.payload.seqValue);
           for (const auto &col : seq) {
             auto target = findVariable(context, col.payload.stringValue);
             if (target && target->valueType == Seq) {
-              auto mseqLen = stbds_arrlen(target->payload.seqValue);
+              auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
                 throw CBException(
                     "JointOp: All the sequences to be processed must have "
@@ -64,7 +90,7 @@ struct JointOp {
                    ContextVar) { // normal single context var
           auto target = findVariable(context, _columns.payload.stringValue);
           if (target && target->valueType == Seq) {
-            auto mseqLen = stbds_arrlen(target->payload.seqValue);
+            auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
               throw CBException(
                   "JointOp: All the sequences to be processed must have "
@@ -76,7 +102,7 @@ struct JointOp {
       } else {
         for (const auto &seqVar : _multiSortColumns) {
           const auto &seq = seqVar->payload.seqValue;
-          auto mseqLen = stbds_arrlen(seq);
+          auto mseqLen = seq.len;
           if (len != mseqLen) {
             throw CBException(
                 "JointOp: All the sequences to be processed must have "
@@ -109,11 +135,12 @@ struct Sort : public JointOp, public BlocksUser {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      return JointOp::setParam(index, value);
     case 1:
+      return JointOp::setParam(index, value);
+    case 2:
       _desc = value.payload.boolValue;
       break;
-    case 2:
+    case 3:
       cloneVar(_blocks, value);
       break;
     default:
@@ -124,10 +151,11 @@ struct Sort : public JointOp, public BlocksUser {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return JointOp::getParam(index);
     case 1:
-      return Var(_desc);
+      return JointOp::getParam(index);
     case 2:
+      return Var(_desc);
+    case 3:
       return _blocks;
     default:
       break;
@@ -136,10 +164,27 @@ struct Sort : public JointOp, public BlocksUser {
   }
 
   CBTypeInfo compose(CBInstanceData &data) {
+    if (_inputVar.valueType != ContextVar)
+      throw CBException("From variable was empty!");
+
+    IterableExposedInfo consumables(data.consumables);
+    CBExposedTypeInfo info{};
+    for (auto &consumable : consumables) {
+      if (strcmp(consumable.name, _inputVar.payload.stringValue) == 0) {
+        info = consumable;
+        goto found;
+      }
+    }
+
+    throw CBException("From variable not found!");
+
+  found:
     // need to replace input type of inner chain with inner of seq
-    assert(data.inputType.seqType);
-    auto inputType = data.inputType;
-    data.inputType = *inputType.seqType;
+    if (!info.exposedType.seqType)
+      throw CBException("From variable has no inner type!");
+
+    auto inputType = info.exposedType;
+    data.inputType = *info.exposedType.seqType;
     BlocksUser::compose(data);
     return inputType;
   }
@@ -179,7 +224,7 @@ struct Sort : public JointOp, public BlocksUser {
       _multiSortKeys.clear();
       for (const auto &seqVar : _multiSortColumns) {
         const auto &col = seqVar->payload.seqValue;
-        _multiSortKeys.push_back(col[i]);
+        _multiSortKeys.push_back(col.elements[i]);
       }
       j = i - 1;
       // notice no &, we WANT to copy
@@ -188,7 +233,7 @@ struct Sort : public JointOp, public BlocksUser {
         seq[j + 1] = seq[j];
         for (const auto &seqVar : _multiSortColumns) {
           const auto &col = seqVar->payload.seqValue;
-          col[j + 1] = col[j];
+          col.elements[j + 1] = col.elements[j];
         }
         j = j - 1;
       }
@@ -196,7 +241,7 @@ struct Sort : public JointOp, public BlocksUser {
       auto z = 0;
       for (const auto &seqVar : _multiSortColumns) {
         const auto &col = seqVar->payload.seqValue;
-        col[j + 1] = _multiSortKeys[z++];
+        col.elements[j + 1] = _multiSortKeys[z++];
       }
     }
   }
@@ -209,24 +254,26 @@ struct Sort : public JointOp, public BlocksUser {
   void setup() { blocksKeyFn._bu = this; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    JointOp::ensureJoinSetup(context, input);
-    // Sort in place
-    auto len = stbds_arrlen(input.payload.seqValue);
+    JointOp::ensureJoinSetup(context);
+    // Sort in plac
+    auto len = _input->payload.seqValue.len;
     if (_blocks.valueType != None) {
       blocksKeyFn._ctx = context;
       if (!_desc) {
-        insertSort(input.payload.seqValue, len, sortAsc, blocksKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortAsc,
+                   blocksKeyFn);
       } else {
-        insertSort(input.payload.seqValue, len, sortDesc, blocksKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortDesc,
+                   blocksKeyFn);
       }
     } else {
       if (!_desc) {
-        insertSort(input.payload.seqValue, len, sortAsc, noopKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortAsc, noopKeyFn);
       } else {
-        insertSort(input.payload.seqValue, len, sortDesc, noopKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortDesc, noopKeyFn);
       }
     }
-    return input;
+    return *_input;
   }
 };
 
@@ -249,11 +296,12 @@ struct Remove : public JointOp, public BlocksUser {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      return JointOp::setParam(index, value);
     case 1:
+      return JointOp::setParam(index, value);
+    case 2:
       cloneVar(_blocks, value);
       break;
-    case 2:
+    case 3:
       _fast = value.payload.boolValue;
       break;
     default:
@@ -264,10 +312,11 @@ struct Remove : public JointOp, public BlocksUser {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return JointOp::getParam(index);
     case 1:
-      return _blocks;
+      return JointOp::getParam(index);
     case 2:
+      return _blocks;
+    case 3:
       return Var(_fast);
     default:
       break;
@@ -276,20 +325,37 @@ struct Remove : public JointOp, public BlocksUser {
   }
 
   CBTypeInfo compose(CBInstanceData &data) {
+    if (_inputVar.valueType != ContextVar)
+      throw CBException("From variable was empty!");
+
+    IterableExposedInfo consumables(data.consumables);
+    CBExposedTypeInfo info{};
+    for (auto &consumable : consumables) {
+      if (strcmp(consumable.name, _inputVar.payload.stringValue) == 0) {
+        info = consumable;
+        goto found;
+      }
+    }
+
+    throw CBException("From variable not found!");
+
+  found:
     // need to replace input type of inner chain with inner of seq
-    assert(data.inputType.seqType);
-    auto inputType = data.inputType;
-    data.inputType = *inputType.seqType;
+    if (!info.exposedType.seqType)
+      throw CBException("From variable has no inner type!");
+
+    auto inputType = info.exposedType;
+    data.inputType = *info.exposedType.seqType;
     BlocksUser::compose(data);
     return inputType;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    JointOp::ensureJoinSetup(context, input);
+    JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
-    auto len = stbds_arrlen(input.payload.seqValue);
-    for (auto i = len - 1; i >= 0; i--) {
-      auto &var = input.payload.seqValue[i];
+    auto len = _input->payload.seqValue.len;
+    for (auto i = len; i > 0; i--) {
+      auto &var = _input->payload.seqValue.elements[i - 1];
       CBVar output{};
       if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, var,
                                    output))) {
@@ -299,29 +365,31 @@ struct Remove : public JointOp, public BlocksUser {
         if (var.valueType >= EndOfBlittableTypes) {
           destroyVar(var);
         }
+        // this is acceptable cos del ops don't call free! or grow
         if (_fast)
-          stbds_arrdelswap(input.payload.seqValue, i);
+          chainblocks::arrayDelFast(_input->payload.seqValue, i - 1);
         else
-          stbds_arrdel(input.payload.seqValue, i);
+          chainblocks::arrayDel(_input->payload.seqValue, i - 1);
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
-          const auto &seq = seqVar->payload.seqValue;
-          if (seq ==
-              input.payload.seqValue) // avoid removing from same seq as input!
+          auto &seq = seqVar->payload.seqValue;
+          if (seq.elements ==
+              _input->payload.seqValue
+                  .elements) // avoid removing from same seq as input!
             continue;
 
-          auto &jvar = seq[i];
+          auto &jvar = seq.elements[i - 1];
           if (var.valueType >= EndOfBlittableTypes) {
             destroyVar(jvar);
           }
           if (_fast)
-            stbds_arrdelswap(seq, i);
+            chainblocks::arrayDelFast(seq, i - 1);
           else
-            stbds_arrdel(seq, i);
+            chainblocks::arrayDel(seq, i - 1);
         }
       }
     }
-    return input;
+    return *_input;
   }
 };
 
@@ -443,11 +511,10 @@ struct AppendTo : public XpendTo {
     case Seq: {
       CBVar tmp{};
       cloneVar(tmp, input);
-      stbds_arrpush(collection.payload.seqValue, tmp);
-      collection.capacity.value =
-          std::max(collection.capacity.value,
-                   decltype(collection.capacity.value)(
-                       stbds_arrlenu(collection.payload.seqValue)));
+      chainblocks::arrayPush(collection.payload.seqValue, tmp);
+      collection.capacity.value = std::max(
+          collection.capacity.value,
+          decltype(collection.capacity.value)(collection.payload.seqValue.len));
       break;
     }
     case String: {
@@ -475,11 +542,10 @@ struct PrependTo : public XpendTo {
     case Seq: {
       CBVar tmp{};
       cloneVar(tmp, input);
-      stbds_arrins(collection.payload.seqValue, 0, tmp);
-      collection.capacity.value =
-          std::max(collection.capacity.value,
-                   decltype(collection.capacity.value)(
-                       stbds_arrlenu(collection.payload.seqValue)));
+      chainblocks::arrayInsert(collection.payload.seqValue, 0, tmp);
+      collection.capacity.value = std::max(
+          collection.capacity.value,
+          decltype(collection.capacity.value)(collection.payload.seqValue.len));
       break;
     }
     case String: {

@@ -23,10 +23,10 @@ void _releaseMemory(CBVar &var) {
     delete[] var.payload.bytesValue;
     break;
   case Seq:
-    for (auto i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
-      _releaseMemory(var.payload.seqValue[i]);
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      _releaseMemory(var.payload.seqValue.elements[i]);
     }
-    stbds_arrfree(var.payload.seqValue);
+    chainblocks::arrayFree(var.payload.seqValue);
     break;
   case Table:
     for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
@@ -170,8 +170,8 @@ void to_json(json &j, const CBVar &var) {
   }
   case Seq: {
     std::vector<json> items;
-    for (int i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
-      auto &v = var.payload.seqValue[i];
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      auto &v = var.payload.seqValue.elements[i];
       items.emplace_back(v);
     }
     j = json{{"type", valType}, {"values", items}};
@@ -349,9 +349,9 @@ void from_json(const json &j, CBVar &var) {
   case Seq: {
     var.valueType = Seq;
     auto items = j.at("values").get<std::vector<json>>();
-    var.payload.seqValue = nullptr;
+    var.payload.seqValue = {};
     for (const auto &item : items) {
-      stbds_arrpush(var.payload.seqValue, item.get<CBVar>());
+      chainblocks::arrayPush(var.payload.seqValue, item.get<CBVar>());
     }
     break;
   }

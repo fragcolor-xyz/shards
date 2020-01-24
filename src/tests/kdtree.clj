@@ -44,8 +44,7 @@
       (Math.Mod k)
       (Set "dimension")
                                         ; sort points
-      (Get "points")
-      (Sort :Key (--> (Take (# "dimension"))))
+      (Sort (# "points") :Key (--> (Take (# "dimension"))))
                                         ; split left and right, push points
       (Slice :To (# "median"))
                                         ; left points arg

@@ -12,7 +12,7 @@ struct Flatten {
 
   void destroy() {
     if (outputCache.valueType == Seq) {
-      stbds_arrfree(outputCache.payload.seqValue);
+      chainblocks::arrayFree(outputCache.payload.seqValue);
     }
   }
 
@@ -101,62 +101,62 @@ struct Flatten {
     case Float:
     case Bytes:
     case Bool:
-      stbds_arrpush(outputCache.payload.seqValue, input);
+      chainblocks::arrayPush(outputCache.payload.seqValue, input);
       break;
     case Color: {
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.r));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.g));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.b));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.a));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.r));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.g));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.b));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.a));
       break;
     }
     case Int2:
       for (auto i = 0; i < 2; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int2Value[i]));
       break;
     case Int3:
       for (auto i = 0; i < 3; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int3Value[i]));
       break;
     case Int4:
       for (auto i = 0; i < 4; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int4Value[i]));
       break;
     case Int8:
       for (auto i = 0; i < 8; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int8Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int8Value[i]));
       break;
     case Int16:
       for (auto i = 0; i < 16; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int16Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int16Value[i]));
       break;
     case Float2:
       for (auto i = 0; i < 2; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float2Value[i]));
       break;
     case Float3:
       for (auto i = 0; i < 3; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float3Value[i]));
       break;
     case Float4:
       for (auto i = 0; i < 4; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float4Value[i]));
       break;
     case Seq:
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {
-        add(input.payload.seqValue[i]);
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        add(input.payload.seqValue.elements[i]);
       }
       break;
     case Table: {
@@ -171,7 +171,7 @@ struct Flatten {
   CBVar activate(CBContext *context, const CBVar &input) {
     outputCache.valueType = Seq;
     // Quick reset no deallocs, slow first run only
-    stbds_arrsetlen(outputCache.payload.seqValue, 0);
+    chainblocks::arrayResize(outputCache.payload.seqValue, 0);
     add(input);
     return outputCache;
   }
@@ -188,12 +188,12 @@ RUNTIME_BLOCK_END(Flatten);
 
 struct IndexOf {
   ParamVar _item{};
-  CBSeq _results = nullptr;
+  CBSeq _results = {};
   bool _all = false;
 
   void destroy() {
-    if (_results) {
-      stbds_arrfree(_results);
+    if (_results.elements) {
+      chainblocks::arrayFree(_results);
     }
   }
 
@@ -235,12 +235,12 @@ struct IndexOf {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto inputLen = stbds_arrlen(input.payload.seqValue);
+    auto inputLen = input.payload.seqValue.len;
     auto itemLen = 0;
     auto item = _item(context);
-    stbds_arrsetlen(_results, 0);
+    chainblocks::arrayResize(_results, 0);
     if (item.valueType == Seq) {
-      itemLen = stbds_arrlen(item.payload.seqValue);
+      itemLen = item.payload.seqValue.len;
     }
 
     for (auto i = 0; i < inputLen; i++) {
@@ -254,7 +254,8 @@ struct IndexOf {
 
         auto ci = i;
         for (auto y = 0; y < itemLen; y++, ci++) {
-          if (item.payload.seqValue[y] != input.payload.seqValue[ci]) {
+          if (item.payload.seqValue.elements[y] !=
+              input.payload.seqValue.elements[ci]) {
             goto failed;
           }
         }
@@ -262,15 +263,15 @@ struct IndexOf {
         if (!_all)
           return Var(i);
         else
-          stbds_arrpush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var(i));
 
       failed:
         continue;
-      } else if (input.payload.seqValue[i] == item) {
+      } else if (input.payload.seqValue.elements[i] == item) {
         if (!_all)
           return Var(i);
         else
-          stbds_arrpush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var(i));
       }
     }
 

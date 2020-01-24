@@ -153,9 +153,9 @@ namespace chainblocks {
       output.valueType = _varName_##_width_;                                   \
       switch (input.valueType) {                                               \
       case Seq: {                                                              \
-        for (auto i = 0;                                                       \
-             i < _width_ && i < stbds_arrlen(input.payload.seqValue); i++) {   \
-          if (convert(output, index, input.payload.seqValue[i]))               \
+        for (uint32_t i = 0; i < _width_ && i < input.payload.seqValue.len;    \
+             i++) {                                                            \
+          if (convert(output, index, input.payload.seqValue.elements[i]))      \
             return output;                                                     \
         }                                                                      \
         break;                                                                 \
@@ -241,9 +241,8 @@ namespace chainblocks {
       output.valueType = _varName_;                                            \
       switch (input.valueType) {                                               \
       case Seq: {                                                              \
-        for (auto i = 0; i < 1 && i < stbds_arrlen(input.payload.seqValue);    \
-             i++) {                                                            \
-          if (convert(output, input.payload.seqValue[i]))                      \
+        for (uint32_t i = 0; i < 1 && i < input.payload.seqValue.len; i++) {   \
+          if (convert(output, input.payload.seqValue.elements[i]))             \
             return output;                                                     \
         }                                                                      \
         break;                                                                 \
@@ -371,12 +370,11 @@ template <CBType OT, typename AT> struct BytesToX {
   CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
   CBTypesInfo outputTypes() { return CBTypesInfo(outputInfo); }
 
-  CBSeq _outputCache = nullptr;
+  CBSeq _outputCache = {};
 
   void destroy() {
-    if (_outputCache) {
-      stbds_arrfree(_outputCache);
-      _outputCache = nullptr;
+    if (_outputCache.elements) {
+      chainblocks::arrayFree(_outputCache);
     }
   }
 
@@ -411,14 +409,15 @@ template <CBType OT, typename AT> struct BytesToX {
       return output;
     } else if (input.payload.bytesSize == tsize) {
       // exact size, 1 value
-      stbds_arrsetlen(_outputCache, 1);
-      convert(_outputCache[0], input.payload.bytesValue);
+      chainblocks::arrayResize(_outputCache, 1);
+      convert(_outputCache.elements[0], input.payload.bytesValue);
     } else {
       // many values
       auto len = input.payload.bytesSize / tsize; // int division, fine
-      stbds_arrsetlen(_outputCache, len);
+      chainblocks::arrayResize(_outputCache, len);
       for (size_t i = 0; i < len; i++) {
-        convert(_outputCache[i], input.payload.bytesValue + (sizeof(AT) * i));
+        convert(_outputCache.elements[i],
+                input.payload.bytesValue + (sizeof(AT) * i));
       }
     }
     return Var(_outputCache);
@@ -660,9 +659,9 @@ struct ToBytes {
     case CBType::Seq: {
       // For performance reasons we enforce this to be a flat sequence,
       // if not the case run (Flatten) before
-      auto len = stbds_arrlen(input.payload.seqValue);
+      auto len = input.payload.seqValue.len;
       if (len > 0) {
-        auto itemSize = getSize(input.payload.seqValue[0]);
+        auto itemSize = getSize(input.payload.seqValue.elements[0]);
         if (itemSize == 0) {
           throw CBException("ToBytes, unsupported Seq type, use Flatten to "
                             "make a flat sequence.");
@@ -672,7 +671,8 @@ struct ToBytes {
           // we cheat using any pointer in the union
           // since only blittables are allowed
           memcpy((&_buffer.front()) + (itemSize * i),
-                 &input.payload.seqValue[i].payload.intValue, itemSize);
+                 &input.payload.seqValue.elements[i].payload.intValue,
+                 itemSize);
         }
       }
       break;

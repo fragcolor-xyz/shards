@@ -799,18 +799,18 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     CBVar tmp{};
     tmp.valueType = Seq;
-    tmp.payload.seqValue = nullptr;
+    tmp.payload.seqValue = {};
     auto count = v->count();
     std::vector<malCBVarPtr> vars;
     for (auto i = 0; i < count; i++) {
       auto val = v->item(i);
       auto subVar = varify(mblk, val);
       vars.push_back(subVar);
-      stbds_arrpush(tmp.payload.seqValue, subVar->value());
+      chainblocks::arrayPush(tmp.payload.seqValue, subVar->value());
     }
     CBVar var{};
     chainblocks::cloneVar(var, tmp);
-    stbds_arrfree(tmp.payload.seqValue);
+    chainblocks::arrayFree(tmp.payload.seqValue);
     auto mvar = new malCBVar(var, true);
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());

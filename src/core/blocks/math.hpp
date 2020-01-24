@@ -25,13 +25,13 @@ struct Base {
 struct UnaryBase : public Base {
   void destroy() {
     if (_cachedSeq.valueType == Seq) {
-      stbds_arrfree(_cachedSeq.payload.seqValue);
+      chainblocks::arrayFree(_cachedSeq.payload.seqValue);
     }
   }
 
   void setup() {
     _cachedSeq.valueType = Seq;
-    _cachedSeq.payload.seqValue = nullptr;
+    _cachedSeq.payload.seqValue = {};
   }
 };
 
@@ -54,14 +54,14 @@ struct BinaryBase : public Base {
 
   void destroy() {
     if (_cachedSeq.valueType == Seq) {
-      stbds_arrfree(_cachedSeq.payload.seqValue);
+      chainblocks::arrayFree(_cachedSeq.payload.seqValue);
     }
     destroyVar(_operand);
   }
 
   void setup() {
     _cachedSeq.valueType = Seq;
-    _cachedSeq.payload.seqValue = nullptr;
+    _cachedSeq.payload.seqValue = {};
   }
 
   static CBParametersInfo parameters() {
@@ -266,20 +266,20 @@ struct BinaryBase : public Base {
         operate(output, input, operand);                                       \
         return output;                                                         \
       } else if (_opType == Seq1) {                                            \
-        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          operate(output, input.payload.seqValue[i], operand);                 \
-          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          operate(output, input.payload.seqValue.elements[i], operand);        \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
-        auto olen = stbds_arrlen(operand.payload.seqValue);                    \
-        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) && olen > 0; \
+        auto olen = operand.payload.seqValue.len;                              \
+        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
              i++) {                                                            \
-          operate(output, input.payload.seqValue[i],                           \
-                  operand.payload.seqValue[i % olen]);                         \
-          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+          operate(output, input.payload.seqValue.elements[i],                  \
+                  operand.payload.seqValue.elements[i % olen]);                \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
         }                                                                      \
         return _cachedSeq;                                                     \
       }                                                                        \
@@ -352,20 +352,20 @@ struct BinaryBase : public Base {
         operate(output, input, operand);                                       \
         return output;                                                         \
       } else if (_opType == Seq1) {                                            \
-        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          operate(output, input.payload.seqValue[i], operand);                 \
-          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          operate(output, input.payload.seqValue.elements[i], operand);        \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
-        auto olen = stbds_arrlen(operand.payload.seqValue);                    \
-        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) && olen > 0; \
+        auto olen = operand.payload.seqValue.len;                              \
+        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
              i++) {                                                            \
-          operate(output, input.payload.seqValue[i],                           \
-                  operand.payload.seqValue[i % olen]);                         \
-          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+          operate(output, input.payload.seqValue.elements[i],                  \
+                  operand.payload.seqValue.elements[i % olen]);                \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
         }                                                                      \
         return _cachedSeq;                                                     \
       }                                                                        \
@@ -434,10 +434,10 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       CBVar output{};                                                          \
       if (unlikely(input.valueType == Seq)) {                                  \
-        stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);                       \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
+        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           operate(output, input);                                              \
-          stbds_arrpush(_cachedSeq.payload.seqValue, output);                  \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
@@ -495,7 +495,7 @@ struct Mean {
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::floatInfo); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+    int64_t inputLen = input.payload.seqValue.len;
     double mean = 0.0;
     auto seq = IterableSeq(input.payload.seqValue);
     for (auto &f : seq) {

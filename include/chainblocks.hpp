@@ -265,15 +265,6 @@ struct Var : public CBVar {
     valueType = Color;
     payload.colorValue = color;
   }
-
-  explicit Var(CBSeq &storage, const std::vector<std::string> &strings)
-      : CBVar() {
-    valueType = Seq;
-    for (auto &str : strings) {
-      stbds_arrpush(storage, Var(str));
-    }
-    payload.seqValue = storage;
-  }
 };
 
 class ChainProvider {
@@ -407,19 +398,20 @@ public:
 
   operator CBChain *();
 
-  operator CBVar() {
-    CBVar res{};
-    res.valueType = Seq;
-    for (auto blk : _blocks) {
-      CBVar blkVar{};
-      blkVar.valueType = Block;
-      blkVar.payload.blockValue = blk;
-      stbds_arrpush(res.payload.seqValue, blkVar);
-    }
-    // blocks are unique so drain them here
-    _blocks.clear();
-    return res;
-  }
+  // -- LEAKS --
+  // operator CBVar() {
+  //   CBVar res{};
+  //   res.valueType = Seq;
+  //   for (auto blk : _blocks) {
+  //     CBVar blkVar{};
+  //     blkVar.valueType = Block;
+  //     blkVar.payload.blockValue = blk;
+  //     stbds_arrpush(res.payload.seqValue, blkVar);
+  //   }
+  //   // blocks are unique so drain them here
+  //   _blocks.clear();
+  //   return res;
+  // }
 
 private:
   std::string _name;

@@ -186,9 +186,9 @@ public:
     if (_blocks.valueType == Block) {
       stbds_arrpush(_blocksArray, _blocks.payload.blockValue);
     } else {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
+      for (auto i = 0; i < _blocks.payload.seqValue.len; i++) {
         stbds_arrpush(_blocksArray,
-                      _blocks.payload.seqValue[i].payload.blockValue);
+                      _blocks.payload.seqValue.elements[i].payload.blockValue);
       }
     }
 
