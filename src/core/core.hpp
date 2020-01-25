@@ -803,6 +803,8 @@ struct InternalCore {
     chainblocks::arrayFree<T>(arr);
   }
 
+  static void expTypesFree(CBExposedTypesInfo &arr) { arrayFree(arr); }
+
   static void throwException(const char *msg) {
     throw chainblocks::CBException(msg);
   }

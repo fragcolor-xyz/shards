@@ -305,7 +305,7 @@ struct SendKeyEventBase {
 
   CBExposedTypesInfo consumedVariables() {
     if (_windowVarName.size() == 0) {
-      return nullptr;
+      return {};
     } else {
       return CBExposedTypesInfo(_exposedInfo);
     }
@@ -352,7 +352,7 @@ struct MousePosBase {
           _window.variableName(), "The window.", CBTypeInfo(windowInfo)));
       return CBExposedTypesInfo(_consuming);
     } else {
-      return nullptr;
+      return {};
     }
   }
 

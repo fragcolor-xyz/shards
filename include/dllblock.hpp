@@ -116,33 +116,40 @@ public:
 
   static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
-  static void arrayFree(CBArray arr) { sCore._core.arrayFree(arr); }
-
-  static uint64_t arrayLength(CBArray arr) {
-    return sCore._core.arrayLength(arr);
+#define CB_ARRAY_INTERFACE(_arr_, _val_, _short_)                              \
+  static void _short_##Free(_arr_ &seq) { sCore._core._short_##Free(&seq); };  \
+                                                                               \
+  static void _short_##Resize(_arr_ &seq, uint64_t size) {                     \
+    sCore._core._short_##Resize(&seq, size);                                   \
+  };                                                                           \
+                                                                               \
+  static void _short_##Push(_arr_ &seq, const _val_ &value) {                  \
+    sCore._core._short_##Push(&seq, &value);                                   \
+  };                                                                           \
+                                                                               \
+  static void _short_##Insert(_arr_ &seq, uint64_t index,                      \
+                              const _val_ &value) {                            \
+    sCore._core._short_##Insert(&seq, index, &value);                          \
+  };                                                                           \
+                                                                               \
+  static _val_ _short_##Pop(_arr_ &seq) {                                      \
+    return sCore._core._short_##Pop(&seq);                                     \
+  };                                                                           \
+                                                                               \
+  static void _short_##FastDelete(_arr_ &seq, uint64_t index) {                \
+    sCore._core._short_##FastDelete(&seq, index);                              \
+  };                                                                           \
+                                                                               \
+  static void _short_##SlowDelete(_arr_ &seq, uint64_t index) {                \
+    sCore._core._short_##SlowDelete(&seq, index);                              \
   }
 
-  static CBSeq seqResize(CBSeq seq, uint64_t size) {
-    return sCore._core.seqResize(seq, size);
-  }
-
-  static CBSeq seqPush(CBSeq seq, const struct CBVar *value) {
-    return sCore._core.seqPush(seq, value);
-  }
-
-  static CBSeq seqInsert(CBSeq seq, uint64_t index, const struct CBVar *value) {
-    return sCore._core.seqInsert(seq, index, value);
-  }
-
-  static CBVar seqPop(CBSeq seq) { return sCore._core.seqPop(seq); }
-
-  static void seqFastDelete(CBSeq seq, uint64_t index) {
-    sCore._core.seqFastDelete(seq, index);
-  }
-
-  static void seqSlowDelete(CBSeq seq, uint64_t index) {
-    sCore._core.seqSlowDelete(seq, index);
-  }
+  CB_ARRAY_INTERFACE(CBSeq, CBVar, seq);
+  CB_ARRAY_INTERFACE(CBTypesInfo, CBTypeInfo, types);
+  CB_ARRAY_INTERFACE(CBParametersInfo, CBParameterInfo, params);
+  CB_ARRAY_INTERFACE(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 
   static CBValidationResult validateChain(CBChain *chain,
                                           CBValidationCallback callback,

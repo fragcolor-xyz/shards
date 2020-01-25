@@ -170,7 +170,7 @@ public:
   ~TBlocksVar() {
     destroy();
     CB_CORE::destroyVar(_blocks);
-    CB_CORE::arrayFree(_chainValidation.exposedInfo);
+    CB_CORE::expTypesFree(_chainValidation.exposedInfo);
   }
 
   void reset() { cleanup(); }
@@ -198,7 +198,7 @@ public:
 
   CBValidationResult validate(const CBInstanceData &data) {
     // Free any previous result!
-    CB_CORE::arrayFree(_chainValidation.exposedInfo);
+    CB_CORE::expTypesFree(_chainValidation.exposedInfo);
 
     CBlocks blocks{};
     blocks.elements = &_blocksArray[0];

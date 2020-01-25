@@ -476,7 +476,7 @@ struct PixelBase {
 
   CBExposedTypesInfo consumedVariables() {
     if (variableName.size() == 0) {
-      return nullptr;
+      return {};
     } else {
       return CBExposedTypesInfo(exposedInfo);
     }
