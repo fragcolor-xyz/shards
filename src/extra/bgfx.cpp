@@ -138,8 +138,8 @@ struct MainWindow : public BaseWindow {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
-    for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-      if (strcmp(data.consumables[i].name, "BGFX.Context") == 0) {
+    for (uint32_t i = 0; i < data.consumables.len; i++) {
+      if (strcmp(data.consumables.elements[i].name, "BGFX.Context") == 0) {
         throw CBException("BGFX.MainWindow must be unique, found another use!");
       }
     }

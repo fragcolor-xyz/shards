@@ -128,6 +128,7 @@ private:
   static constexpr auto eseq = magic_enum::enum_names<E>();
   CBEnumInfo info;
   std::vector<std::string> labels;
+  std::vector<CBString> clabels;
 
 public:
   TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
@@ -135,34 +136,32 @@ public:
     for (auto &view : eseq) {
       labels.emplace_back(view);
     }
-    for (auto &label : labels) {
-      stbds_arrpush(info.labels, label.c_str());
+    for (auto &s : labels) {
+      clabels.emplace_back(s.c_str());
     }
+    info.labels.elements = &clabels[0];
+    info.labels.len = labels.size();
     CB_CORE::registerEnumType(vendorId, enumId, info);
   }
-
-  ~TEnumInfo() { stbds_arrfree(info.labels); }
 };
 
 template <class CB_CORE> class TBlocksVar {
 private:
   CBVar _blocks{};
-  CBlocks _blocksArray = nullptr;
+  std::vector<CBlockRef> _blocksArray;
   CBValidationResult _chainValidation{};
 
   void destroy() {
-    for (auto i = 0; i < stbds_arrlen(_blocksArray); i++) {
-      auto &blk = _blocksArray[i];
+    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
+      auto blk = *it;
       blk->cleanup(blk);
       blk->destroy(blk);
     }
-    stbds_arrfree(_blocksArray);
-    _blocksArray = nullptr;
+    _blocksArray.clear();
   }
 
   void cleanup() {
-    for (auto i = 0; i < stbds_arrlen(_blocksArray); i++) {
-      auto &blk = _blocksArray[i];
+    for (auto &blk : _blocksArray) {
       blk->cleanup(blk);
     }
   }
@@ -184,11 +183,11 @@ public:
 
     destroy();
     if (_blocks.valueType == Block) {
-      stbds_arrpush(_blocksArray, _blocks.payload.blockValue);
+      _blocksArray.push_back(_blocks.payload.blockValue);
     } else {
       for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
-        stbds_arrpush(_blocksArray,
-                      _blocks.payload.seqValue.elements[i].payload.blockValue);
+        _blocksArray.push_back(
+            _blocks.payload.seqValue.elements[i].payload.blockValue);
       }
     }
 
@@ -199,11 +198,13 @@ public:
 
   CBValidationResult validate(const CBInstanceData &data) {
     // Free any previous result!
-    stbds_arrfree(_chainValidation.exposedInfo);
-    _chainValidation.exposedInfo = nullptr;
+    CB_CORE::arrayFree(_chainValidation.exposedInfo);
 
+    CBlocks blocks{};
+    blocks.elements = &_blocksArray[0];
+    blocks.len = _blocksArray.size();
     _chainValidation = CB_CORE::validateBlocks(
-        _blocksArray,
+        blocks,
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
@@ -222,10 +223,13 @@ public:
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return CB_CORE::runBlocks(_blocksArray, context, input);
+    CBlocks blocks{};
+    blocks.elements = &_blocksArray[0];
+    blocks.len = _blocksArray.size();
+    return CB_CORE::runBlocks(blocks, context, input);
   }
 
-  operator bool() const { return stbds_arrlen(_blocksArray) > 0; }
+  operator bool() const { return _blocksArray.size() > 0; }
 };
 }; // namespace chainblocks
 

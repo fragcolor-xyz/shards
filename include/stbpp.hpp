@@ -70,12 +70,12 @@ public:
   }
 
   IterableStb(size_t s) : _seq(nullptr), _owned(true) {
-    stbds_arrsetlen(_seq, s);
+    chainblocks::arrayResize(_seq, s);
   }
 
   IterableStb(size_t s, T v) : _seq(nullptr), _owned(true) {
-    stbds_arrsetlen(_seq, s);
-    for (auto i = 0; i < s; i++) {
+    chainblocks::arrayResize(_seq, s);
+    for (size_t i = 0; i < s; i++) {
       _seq[i] = v;
     }
   }
@@ -83,15 +83,15 @@ public:
   IterableStb(const_iterator first, const_iterator last)
       : _seq(nullptr), _owned(true) {
     size_t size = last - first;
-    stbds_arrsetlen(_seq, size);
+    chainblocks::arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq[i] = *first++;
     }
   }
 
   IterableStb(const IterableStb &other) : _seq(nullptr), _owned(true) {
-    size_t size = stbds_arrlen(other._seq);
-    stbds_arrsetlen(_seq, size);
+    size_t size = other._seq.len;
+    chainblocks::arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq[i] = other._seq[i];
     }
@@ -109,8 +109,8 @@ public:
   IterableStb &operator=(const IterableStb &other) {
     _seq = nullptr;
     _owned = true;
-    size_t size = stbds_arrlen(other._seq);
-    stbds_arrsetlen(_seq, size);
+    size_t size = other._seq.len;
+    chainblocks::arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq[i] = other._seq[i];
     }
@@ -119,7 +119,7 @@ public:
 
   ~IterableStb() {
     if (_owned) {
-      stbds_arrfree(_seq);
+      chainblocks::arrayFree(_seq);
     }
   }
 
@@ -141,11 +141,11 @@ public:
   T &back() { return _seq[size() - 1]; }
   const T &back() const { return _seq[size() - 1]; }
   T *data() { return _seq; }
-  size_t size() const { return stbds_arrlen(_seq); }
+  size_t size() const { return _seq.len; }
   bool empty() const { return _seq == nullptr || size() == 0; }
-  void resize(size_t nsize) { stbds_arrsetlen(_seq, nsize); }
-  void push_back(const T &value) { stbds_arrpush(_seq, value); }
-  void clear() { stbds_arrsetlen(_seq, 0); }
+  void resize(size_t nsize) { chainblocks::arrayResize(_seq, nsize); }
+  void push_back(const T &value) { chainblocks::arrayPush(_seq, value); }
+  void clear() { chainblocks::arrayResize(_seq, 0); }
   operator seq_type() const { return _seq; }
 };
 

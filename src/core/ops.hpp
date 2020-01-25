@@ -5,6 +5,7 @@
 
 #include "chainblocks.h"
 #include "easylogging++.h"
+#include "stb_ds.h"
 #include <cfloat>
 
 inline MAKE_LOGGABLE(CBVar, var, os) {
@@ -715,12 +716,12 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     return false;
   }
   case Table: {
-    auto atypes = stbds_arrlen(a.tableTypes);
-    auto btypes = stbds_arrlen(b.tableTypes);
+    auto atypes = a.tableTypes.len;
+    auto btypes = b.tableTypes.len;
     if (atypes != btypes)
       return false;
-    for (auto i = 0; i < atypes; i++) {
-      if (a.tableTypes[i] != b.tableTypes[i])
+    for (uint32_t i = 0; i < atypes; i++) {
+      if (a.tableTypes.elements[i] != b.tableTypes.elements[i])
         return false;
     }
     return true;

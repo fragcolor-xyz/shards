@@ -11,18 +11,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Included 3rdparty
-#ifdef USE_RPMALLOC
-#include "rpmalloc/rpmalloc.h"
-inline void *rp_init_realloc(void *ptr, size_t size) {
-  rpmalloc_initialize();
-  return rprealloc(ptr, size);
-}
-#define STBDS_REALLOC(context, ptr, size) rp_init_realloc(ptr, size)
-#define STBDS_FREE(context, ptr) rpfree(ptr)
-#endif
-#include "stb_ds.h"
-
 // All the available types
 enum CBType : uint8_t {
   None,
@@ -146,16 +134,20 @@ enum CBInlineBlocks : uint8_t {
 
 typedef void *CBArray;
 
+// This (32bit sizes) is for obvious packing reason, sizeof(CBVar) == 32
+// But also for compatibility, chainblocks supports 32bit systems
+// So the max array size should be INT32_SIZE indeed
+// Also most of array index operators in c++ use int
+#define CB_ARRAY_DECL(_seq_, _val_)                                            \
+  typedef struct _seq_ {                                                       \
+    _val_ *elements;                                                           \
+    uint32_t len;                                                              \
+    uint32_t cap;                                                              \
+  } _seq_
+
 // Forward declarations
 struct CBVar;
-typedef struct CBSeq {
-  CBVar *elements;
-  // This (32bit sizes) is for obvious packing reason, sizeof(CBVar) == 32
-  // But also for compatibility, chainblocks supports 32bit systems
-  // So the max array size should be INT32_SIZE indeed
-  uint32_t len;
-  uint32_t cap;
-} CBSeq;
+CB_ARRAY_DECL(CBSeq, CBVar);
 
 struct CBNamedVar;
 typedef struct CBNamedVar *CBTable; // a stb string map
@@ -172,24 +164,25 @@ struct CBFlow;
 
 struct CBlock;
 typedef struct CBlock *CBlockRef;
-typedef struct CBlock **CBlocks; // a stb array
+CB_ARRAY_DECL(CBlocks, CBlockRef);
 
 struct CBTypeInfo;
-typedef struct CBTypeInfo *CBTypesInfo; // a stb array
+CB_ARRAY_DECL(CBTypesInfo, CBTypeInfo);
 
 struct CBParameterInfo;
-typedef struct CBParameterInfo *CBParametersInfo; // a stb array
+CB_ARRAY_DECL(CBParametersInfo, CBParameterInfo);
 
 struct CBExposedTypeInfo;
-typedef struct CBExposedTypeInfo *CBExposedTypesInfo; // a stb array
+CB_ARRAY_DECL(CBExposedTypesInfo, CBExposedTypeInfo);
 
 typedef void *CBPointer;
 typedef int64_t CBInt;
 typedef double CBFloat;
 typedef bool CBBool;
 typedef int32_t CBEnum;
+
 typedef const char *CBString;
-typedef CBString *CBStrings; // a stb array
+CB_ARRAY_DECL(CBStrings, CBString);
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -634,31 +627,30 @@ typedef void(__cdecl *CBTick)(struct CBNode *node);
 typedef void(__cdecl *CBSleep)(double seconds, bool runCallbacks);
 
 #define CB_ARRAY_TYPE(_array_, _value_)                                        \
-  typedef _array_(__cdecl *_array_##Push)(_array_, const _value_ *);           \
-  typedef _array_(__cdecl *_array_##Insert)(_array_, uint64_t,                 \
-                                            const _value_ *);                  \
-  typedef _value_(__cdecl *_array_##Pop)(_array_);                             \
-  typedef _array_(__cdecl *_array_##Resize)(_array_, uint64_t);                \
-  typedef void(__cdecl * _array_##FastDelete)(_array_, uint64_t);              \
-  typedef void(__cdecl * _array_##SlowDelete)(_array_, uint64_t)
+  typedef void(__cdecl * _array_##Free)(_array_ *);                            \
+  typedef void(__cdecl * _array_##Push)(_array_ *, const _value_ *);           \
+  typedef void(__cdecl * _array_##Insert)(_array_ *, uint64_t,                 \
+                                          const _value_ *);                    \
+  typedef _value_(__cdecl *_array_##Pop)(_array_ *);                           \
+  typedef void(__cdecl * _array_##Resize)(_array_ *, uint64_t);                \
+  typedef void(__cdecl * _array_##FastDelete)(_array_ *, uint64_t);            \
+  typedef void(__cdecl * _array_##SlowDelete)(_array_ *, uint64_t)
 
 CB_ARRAY_TYPE(CBSeq, struct CBVar);
 CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
 CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
 CB_ARRAY_TYPE(CBlocks, CBlockRef);
 CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
+CB_ARRAY_TYPE(CBStrings, CBString);
 
 #define CB_ARRAY_PROCS(_array_, _short_)                                       \
+  _array_##Free _short_##Free;                                                 \
   _array_##Push _short_##Push;                                                 \
   _array_##Insert _short_##Insert;                                             \
   _array_##Pop _short_##Pop;                                                   \
   _array_##Resize _short_##Resize;                                             \
   _array_##FastDelete _short_##FastDelete;                                     \
   _array_##SlowDelete _short_##SlowDelete
-
-// CB dynamic arrays interface
-typedef void(__cdecl *CBArrayFree)(CBArray);
-typedef uint64_t(__cdecl *CBArrayLength)(CBArray);
 
 typedef const char *(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(const char *);
@@ -694,10 +686,6 @@ struct CBCore {
   CBCloneVar cloneVar;
   CBDestroyVar destroyVar;
 
-  // Utility to deal with CB dynamic arrays
-  CBArrayLength arrayLength;
-  CBArrayFree arrayFree;
-
   // Utility to deal with CBSeqs
   CB_ARRAY_PROCS(CBSeq, seq);
 
@@ -712,6 +700,9 @@ struct CBCore {
 
   // Utility to deal with CBExposedTypeInfo
   CB_ARRAY_PROCS(CBExposedTypesInfo, expTypes);
+
+  // Utility to deal with CBStrings
+  CB_ARRAY_PROCS(CBStrings, strings);
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

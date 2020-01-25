@@ -66,8 +66,8 @@ struct Flatten {
       }
       break;
     case Table: {
-      for (auto i = 0; i < stbds_arrlen(info.tableTypes); i++) {
-        verifyInnerType(info.tableTypes[i], currentType);
+      for (uint32_t i = 0; i < info.tableTypes.len; i++) {
+        verifyInnerType(info.tableTypes.elements[i], currentType);
       }
       break;
     }

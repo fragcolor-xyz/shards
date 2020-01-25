@@ -87,7 +87,7 @@ struct ChainBase {
   RunChainMode mode;
   CBValidationResult chainValidation{};
 
-  void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
+  void destroy() { chainblocks::arrayFree(chainValidation.exposedInfo); }
 
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
@@ -108,8 +108,7 @@ struct ChainBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
-    stbds_arrfree(chainValidation.exposedInfo);
-    chainValidation.exposedInfo = nullptr;
+    chainblocks::arrayFree(chainValidation.exposedInfo);
 
     // Actualize the chain here...
     if (chainref.valueType == CBType::Chain) {
@@ -280,7 +279,8 @@ struct ChainRunner : public ChainBase {
   CBExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
     // step and detach will run at different timing
-    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : nullptr;
+    CBExposedTypesInfo empty{};
+    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : empty;
   }
 
   void cleanup() {

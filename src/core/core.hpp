@@ -6,7 +6,6 @@
 
 #include "chainblocks.hpp"
 #include "ops.hpp"
-#include "stbpp.hpp"
 
 // Included 3rdparty
 #include "easylogging++.h"
@@ -22,7 +21,11 @@
 #include "blockwrapper.hpp"
 
 #ifdef USE_RPMALLOC
-#define CB_REALLOC rprealloc
+inline void *rp_init_realloc(void *ptr, size_t size) {
+  rpmalloc_initialize();
+  return rprealloc(ptr, size);
+}
+#define CB_REALLOC rp_init_realloc
 #define CB_FREE rpfree
 #else
 #define CB_REALLOC std::realloc
@@ -41,7 +44,7 @@ enum FlowState { Stopping, Continuing, Returning };
 
 FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
-FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+FlowState activateBlocks(CBlocks blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
 CBVar *findVariable(CBContext *ctx, const char *name);
 CBVar suspend(CBContext *context, double seconds);
@@ -94,21 +97,21 @@ void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   arr.cap = min_cap;
 }
 
-template <typename T, typename V> void arrayPush(T &arr, const V &val) {
-  if (!arr.elements || (arr.len + 1) > arr.cap)
+template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
+  if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   arr.elements[arr.len++] = val;
 }
 
-template <typename T> void arrayResize(T &arr, uint32_t size) {
+template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   if (arr.len < size)
     arrayGrow(arr, size - arr.len);
   arr.len = size;
 }
 
 template <typename T, typename V>
-void arrayInsert(T &arr, uint32_t index, const V &val) {
-  if (!arr.elements || (arr.len + 1) > arr.cap)
+inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+  if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   memmove(&arr.elements[index + 1], &arr.elements[index],
           sizeof(*arr.elements) * (arr.len - index));
@@ -116,23 +119,23 @@ void arrayInsert(T &arr, uint32_t index, const V &val) {
   arr.elements[index] = val;
 }
 
-template <typename T> void arrayDelFast(T &arr, uint32_t index) {
+template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
   arr.elements[index] = arr.elements[arr.len - 1];
   arr.len--;
 }
 
-template <typename T, typename V> V arrayPop(T &arr) {
+template <typename T, typename V> inline V arrayPop(T &arr) {
   arr.len--;
   return arr.elements[arr.len];
 }
 
-template <typename T> void arrayDel(T &arr, uint32_t index) {
+template <typename T> void inline arrayDel(T &arr, uint32_t index) {
   arr.len--;
   memmove(&arr.elements[index], &arr.elements[index + 1],
           sizeof(*arr.elements) * (arr.len - index));
 }
 
-template <typename T> void arrayFree(T &arr) {
+template <typename T> inline void arrayFree(T &arr) {
   if (arr.elements)
     CB_FREE(arr.elements);
   arr = {};
@@ -207,7 +210,7 @@ public:
 
   IterableArray(size_t s, T v) : _seq({}), _owned(true) {
     arrayResize(_seq, s);
-    for (auto i = 0; i < s; i++) {
+    for (size_t i = 0; i < s; i++) {
       _seq[i] = v;
     }
   }
@@ -236,12 +239,12 @@ public:
   }
 
   IterableArray &operator=(const IterableArray &other) {
-    _seq = nullptr;
+    _seq = {};
     _owned = true;
     size_t size = other._seq.len;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq[i] = other._seq[i];
+      _seq.elements[i] = other._seq.elements[i];
     }
     return *this;
   }
@@ -283,6 +286,8 @@ public:
 };
 
 using IterableSeq = IterableArray<CBSeq, CBVar>;
+using IterableExposedInfo =
+    IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
 
 ALWAYS_INLINE inline void destroyVar(CBVar &var);
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
@@ -319,7 +324,7 @@ static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 #if 0
     destroyVar(dst);
     dst.valueType = Seq;
-    dst.payload.seqValue = nullptr;
+    dst.payload.seqValue = {};
     for (size_t i = 0; i < srcLen; i++) {
       auto &subsrc = src.payload.seqValue.elements[i];
       CBVar tmp{};
@@ -793,7 +798,9 @@ struct InternalCore {
 
   static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
-  static void arrayFree(void *arr) { stbds_arrfree(arr); }
+  template <typename T> static void arrayFree(T &arr) {
+    chainblocks::arrayFree<T>(arr);
+  }
 
   static void throwException(const char *msg) {
     throw chainblocks::CBException(msg);
@@ -815,8 +822,7 @@ struct InternalCore {
 
   static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
     CBVar output{};
-    chainblocks::activateBlocks(blocks, (int)stbds_arrlen(blocks), context,
-                                input, output);
+    chainblocks::activateBlocks(blocks, context, input, output);
     return output;
   }
 };
@@ -836,14 +842,14 @@ struct TypeInfo : public CBTypeInfo {
 
   TypeInfo(CBType type) {
     basicType = type;
-    tableKeys = nullptr;
-    tableTypes = nullptr;
+    tableKeys = {};
+    tableTypes = {};
   }
 
   TypeInfo(CBTypeInfo other) {
     basicType = other.basicType;
-    tableKeys = nullptr;
-    tableTypes = nullptr;
+    tableKeys = {};
+    tableTypes = {};
 
     switch (basicType) {
     case CBType::Object: {
@@ -860,12 +866,12 @@ struct TypeInfo : public CBTypeInfo {
       }
     } break;
     case Table: {
-      if (other.tableTypes) {
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+      if (other.tableTypes.elements) {
+        for (uint32_t i = 0; i < other.tableTypes.len; i++) {
+          chainblocks::arrayPush(tableTypes, other.tableTypes.elements[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
-          stbds_arrpush(tableKeys, other.tableKeys[i]);
+        for (uint32_t i = 0; i < other.tableKeys.len; i++) {
+          chainblocks::arrayPush(tableKeys, other.tableKeys.elements[i]);
         }
       }
     } break;
@@ -900,26 +906,43 @@ struct TypeInfo : public CBTypeInfo {
   static TypeInfo TableRecord(CBTypeInfo contentType, const char *keyName) {
     TypeInfo result;
     result.basicType = Table;
-    result.tableTypes = nullptr;
-    result.tableKeys = nullptr;
-    stbds_arrpush(result.tableTypes, contentType);
-    stbds_arrpush(result.tableKeys, keyName);
+    result.tableTypes = {};
+    result.tableKeys = {};
+    chainblocks::arrayPush(result.tableTypes, contentType);
+    chainblocks::arrayPush(result.tableKeys, keyName);
+    return result;
+  }
+
+  template <typename... Types>
+  static TypeInfo MultiTypeTable(std::tuple<CBTypeInfo, const char *> record,
+                                 Types... records) {
+    std::vector<std::tuple<CBTypeInfo, const char *>> vec = {records...};
+    TypeInfo result;
+    result.basicType = Table;
+    result.tableTypes = {};
+    result.tableKeys = {};
+    chainblocks::arrayPush(result.tableTypes, std::get<0>(record));
+    chainblocks::arrayPush(result.tableKeys, std::get<1>(record));
+    for (auto &rec : vec) {
+      chainblocks::arrayPush(result.tableTypes, std::get<0>(rec));
+      chainblocks::arrayPush(result.tableKeys, std::get<1>(rec));
+    }
     return result;
   }
 
   static TypeInfo SingleTypeTable(CBTypeInfo contentType) {
     TypeInfo result;
     result.basicType = Table;
-    result.tableTypes = nullptr;
-    result.tableKeys = nullptr;
-    stbds_arrpush(result.tableTypes, contentType);
+    result.tableTypes = {};
+    result.tableKeys = {};
+    chainblocks::arrayPush(result.tableTypes, contentType);
     return result;
   }
 
   TypeInfo(const TypeInfo &other) : CBTypeInfo(other) {
     basicType = other.basicType;
-    tableKeys = nullptr;
-    tableTypes = nullptr;
+    tableKeys = {};
+    tableTypes = {};
 
     switch (basicType) {
     case CBType::Object: {
@@ -936,14 +959,14 @@ struct TypeInfo : public CBTypeInfo {
       }
     } break;
     case Table: {
-      tableKeys = nullptr;
-      tableTypes = nullptr;
-      if (other.tableTypes) {
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+      tableKeys = {};
+      tableTypes = {};
+      if (other.tableTypes.elements) {
+        for (uint32_t i = 0; i < other.tableTypes.len; i++) {
+          chainblocks::arrayPush(tableTypes, other.tableTypes.elements[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
-          stbds_arrpush(tableKeys, other.tableKeys[i]);
+        for (uint32_t i = 0; i < other.tableKeys.len; i++) {
+          chainblocks::arrayPush(tableKeys, other.tableKeys.elements[i]);
         }
       }
     } break;
@@ -959,9 +982,9 @@ struct TypeInfo : public CBTypeInfo {
         delete seqType;
     } break;
     case Table: {
-      if (other.tableTypes) {
-        stbds_arrfree(tableKeys);
-        stbds_arrfree(tableTypes);
+      if (other.tableTypes.elements) {
+        chainblocks::arrayFree(tableKeys);
+        chainblocks::arrayFree(tableTypes);
       }
     } break;
     default:
@@ -969,8 +992,8 @@ struct TypeInfo : public CBTypeInfo {
     }
 
     basicType = other.basicType;
-    tableKeys = nullptr;
-    tableTypes = nullptr;
+    tableKeys = {};
+    tableTypes = {};
 
     switch (basicType) {
     case CBType::Object: {
@@ -987,12 +1010,12 @@ struct TypeInfo : public CBTypeInfo {
       }
     } break;
     case Table: {
-      if (other.tableTypes) {
-        for (auto i = 0; i < stbds_arrlen(other.tableTypes); i++) {
-          stbds_arrpush(tableTypes, other.tableTypes[i]);
+      if (other.tableTypes.elements) {
+        for (uint32_t i = 0; i < other.tableTypes.len; i++) {
+          chainblocks::arrayPush(tableTypes, other.tableTypes.elements[i]);
         }
-        for (auto i = 0; i < stbds_arrlen(other.tableKeys); i++) {
-          stbds_arrpush(tableKeys, other.tableKeys[i]);
+        for (uint32_t i = 0; i < other.tableKeys.len; i++) {
+          chainblocks::arrayPush(tableKeys, other.tableKeys.elements[i]);
         }
       }
     } break;
@@ -1005,56 +1028,56 @@ struct TypeInfo : public CBTypeInfo {
 
   ~TypeInfo() {
     if (basicType == Table) {
-      if (tableTypes) {
-        stbds_arrfree(tableTypes);
-        stbds_arrfree(tableKeys);
+      if (tableTypes.elements) {
+        chainblocks::arrayFree(tableTypes);
+        chainblocks::arrayFree(tableKeys);
       }
     }
   }
 };
 
 struct TypesInfo {
-  TypesInfo() { _innerInfo = nullptr; }
+  TypesInfo() { _innerInfo = {}; }
 
   TypesInfo(const TypesInfo &other) {
     _innerTypes = other._innerTypes;
-    _innerInfo = nullptr;
+    _innerInfo = {};
     for (auto &type : _innerTypes) {
-      stbds_arrpush(_innerInfo, type);
+      chainblocks::arrayPush(_innerInfo, type);
     }
   }
 
   TypesInfo &operator=(const TypesInfo &other) {
     _innerTypes = other._innerTypes;
-    stbds_arrsetlen(_innerInfo, 0);
+    chainblocks::arrayResize(_innerInfo, 0);
     for (auto &type : _innerTypes) {
-      stbds_arrpush(_innerInfo, type);
+      chainblocks::arrayPush(_innerInfo, type);
     }
     return *this;
   }
 
   explicit TypesInfo(const TypeInfo &singleType, bool canBeSeq = false,
                      bool canBeNone = false) {
-    _innerInfo = nullptr;
+    _innerInfo = {};
     // NOTICE , we NEED to reserve in other to preserve those memory addresses!
     // See that we use .back and push "ref" to them
     _innerTypes.reserve(3);
     _innerTypes.push_back(singleType);
-    stbds_arrpush(_innerInfo, _innerTypes.back());
+    chainblocks::arrayPush(_innerInfo, _innerTypes.back());
     if (canBeSeq) {
       _innerTypes.push_back(TypeInfo::Sequence(_innerTypes.back()));
-      stbds_arrpush(_innerInfo, _innerTypes.back());
+      chainblocks::arrayPush(_innerInfo, _innerTypes.back());
     }
     if (canBeNone) {
       _innerTypes.push_back(TypeInfo(CBType::None));
-      stbds_arrpush(_innerInfo, _innerTypes.back());
+      chainblocks::arrayPush(_innerInfo, _innerTypes.back());
     }
   }
 
   template <typename... Args>
   static TypesInfo FromMany(bool canBeSeq, Args... types) {
     TypesInfo result;
-    result._innerInfo = nullptr;
+    result._innerInfo = {};
     std::vector<TypeInfo> vec = {types...};
 
     // Preallocate in order to be able to have always valid addresses
@@ -1068,25 +1091,25 @@ struct TypesInfo {
     for (auto &type : vec) {
       result._innerTypes.push_back(type);
       auto &nonSeq = result._innerTypes.back();
-      stbds_arrpush(result._innerInfo, nonSeq);
+      chainblocks::arrayPush(result._innerInfo, nonSeq);
       if (canBeSeq) {
         result._innerTypes.push_back(TypeInfo::Sequence(nonSeq));
         auto &seqType = result._innerTypes.back();
-        stbds_arrpush(result._innerInfo, seqType);
+        chainblocks::arrayPush(result._innerInfo, seqType);
       }
     }
     return result;
   }
 
   ~TypesInfo() {
-    if (_innerInfo) {
-      stbds_arrfree(_innerInfo);
+    if (_innerInfo.elements) {
+      chainblocks::arrayFree(_innerInfo);
     }
   }
 
   explicit operator CBTypesInfo() const { return _innerInfo; }
 
-  explicit operator CBTypeInfo() const { return _innerInfo[0]; }
+  explicit operator CBTypeInfo() const { return _innerInfo.elements[0]; }
 
   CBTypesInfo _innerInfo{};
   std::vector<TypeInfo> _innerTypes;
@@ -1094,16 +1117,16 @@ struct TypesInfo {
 
 struct ParamsInfo {
   ParamsInfo(const ParamsInfo &other) {
-    stbds_arrsetlen(_innerInfo, 0);
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    chainblocks::arrayResize(_innerInfo, 0);
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
   }
 
   ParamsInfo &operator=(const ParamsInfo &other) {
-    _innerInfo = nullptr;
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    _innerInfo = {};
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
     return *this;
   }
@@ -1111,24 +1134,24 @@ struct ParamsInfo {
   template <typename... Types>
   explicit ParamsInfo(CBParameterInfo first, Types... types) {
     std::vector<CBParameterInfo> vec = {first, types...};
-    _innerInfo = nullptr;
+    _innerInfo = {};
     for (auto pi : vec) {
-      stbds_arrpush(_innerInfo, pi);
+      chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
   template <typename... Types>
   explicit ParamsInfo(const ParamsInfo &other, CBParameterInfo first,
                       Types... types) {
-    _innerInfo = nullptr;
+    _innerInfo = {};
 
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
 
     std::vector<CBParameterInfo> vec = {first, types...};
     for (auto pi : vec) {
-      stbds_arrpush(_innerInfo, pi);
+      chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
@@ -1139,8 +1162,8 @@ struct ParamsInfo {
   }
 
   ~ParamsInfo() {
-    if (_innerInfo)
-      stbds_arrfree(_innerInfo);
+    if (_innerInfo.elements)
+      chainblocks::arrayFree(_innerInfo);
   }
 
   explicit operator CBParametersInfo() const { return _innerInfo; }
@@ -1149,57 +1172,57 @@ struct ParamsInfo {
 };
 
 struct ExposedInfo {
-  ExposedInfo() { _innerInfo = nullptr; }
+  ExposedInfo() { _innerInfo = {}; }
 
   ExposedInfo(const ExposedInfo &other) {
-    _innerInfo = nullptr;
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    _innerInfo = {};
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
   }
 
   ExposedInfo &operator=(const ExposedInfo &other) {
-    stbds_arrsetlen(_innerInfo, 0);
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    chainblocks::arrayResize(_innerInfo, 0);
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
     return *this;
   }
 
   template <typename... Types>
   explicit ExposedInfo(const ExposedInfo &other, Types... types) {
-    _innerInfo = nullptr;
+    _innerInfo = {};
 
-    for (auto i = 0; i < stbds_arrlen(other._innerInfo); i++) {
-      stbds_arrpush(_innerInfo, other._innerInfo[i]);
+    for (uint32_t i = 0; i < other._innerInfo.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
 
     std::vector<CBExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      stbds_arrpush(_innerInfo, pi);
+      chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
   template <typename... Types>
   explicit ExposedInfo(const CBExposedTypesInfo other, Types... types) {
-    _innerInfo = nullptr;
+    _innerInfo = {};
 
-    for (auto i = 0; i < stbds_arrlen(other); i++) {
-      stbds_arrpush(_innerInfo, other[i]);
+    for (uint32_t i = 0; i < other.len; i++) {
+      chainblocks::arrayPush(_innerInfo, other.elements[i]);
     }
 
     std::vector<CBExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      stbds_arrpush(_innerInfo, pi);
+      chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
   template <typename... Types>
   explicit ExposedInfo(const CBExposedTypeInfo first, Types... types) {
     std::vector<CBExposedTypeInfo> vec = {first, types...};
-    _innerInfo = nullptr;
+    _innerInfo = {};
     for (auto pi : vec) {
-      stbds_arrpush(_innerInfo, pi);
+      chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
@@ -1210,8 +1233,8 @@ struct ExposedInfo {
   }
 
   ~ExposedInfo() {
-    if (_innerInfo)
-      stbds_arrfree(_innerInfo);
+    if (_innerInfo.elements)
+      chainblocks::arrayFree(_innerInfo);
   }
 
   explicit operator CBExposedTypesInfo() const { return _innerInfo; }

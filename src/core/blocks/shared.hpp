@@ -76,9 +76,12 @@ struct SharedTypes {
 
   static void initEnums() {
     // These leak for now
-    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Inline");
-    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Detached");
-    stbds_arrpush((SharedTypes::runChainModeEnumInfo).labels, "Stepped");
+    chainblocks::arrayPush((SharedTypes::runChainModeEnumInfo).labels,
+                           "Inline");
+    chainblocks::arrayPush((SharedTypes::runChainModeEnumInfo).labels,
+                           "Detached");
+    chainblocks::arrayPush((SharedTypes::runChainModeEnumInfo).labels,
+                           "Stepped");
     registerEnumType('frag', 'runC', (SharedTypes::runChainModeEnumInfo));
   }
 };

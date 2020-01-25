@@ -70,16 +70,18 @@ struct BinaryBase : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_operand.valueType == ContextVar) {
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        if (strcmp(data.consumables[i].name, _operand.payload.stringValue) ==
-            0) {
-          if (data.consumables[i].exposedType.basicType != Seq &&
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        if (strcmp(data.consumables.elements[i].name,
+                   _operand.payload.stringValue) == 0) {
+          if (data.consumables.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
             _opType = Normal;
-          } else if (data.consumables[i].exposedType.basicType != Seq &&
+          } else if (data.consumables.elements[i].exposedType.basicType !=
+                         Seq &&
                      data.inputType.basicType == Seq) {
             _opType = Seq1;
-          } else if (data.consumables[i].exposedType.basicType == Seq &&
+          } else if (data.consumables.elements[i].exposedType.basicType ==
+                         Seq &&
                      data.inputType.basicType == Seq) {
             _opType = SeqSeq;
           } else {
@@ -114,7 +116,7 @@ struct BinaryBase : public Base {
           CBTypeInfo(CoreInfo::anyInfo)));
       return CBExposedTypesInfo(_consumedInfo);
     }
-    return nullptr;
+    return {};
   }
 
   void setParam(int index, CBVar value) {

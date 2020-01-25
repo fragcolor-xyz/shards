@@ -531,10 +531,12 @@ struct Style : public Base {
   }
 };
 
-struct Window : public Base, public chainblocks::BlocksUser {
+struct Window : public Base {
+  chainblocks::BlocksVar _blks{};
   std::string _title;
   int _curX = -1, _curY = -1, _curW = -1, _curH = -1;
   CBVar _posX{}, _posY{}, _width{}, _height{};
+  CBValidationResult _validation{};
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
@@ -554,6 +556,13 @@ struct Window : public Base, public chainblocks::BlocksUser {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blks.validate(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
@@ -572,7 +581,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
       _height = value;
       break;
     case 5:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     default:
       break;
@@ -592,17 +601,14 @@ struct Window : public Base, public chainblocks::BlocksUser {
     case 4:
       return _posY;
     case 5:
-      return _blocks;
+      return _blks;
     default:
       return Empty;
     }
   }
 
-  void destroy() { chainblocks::BlocksUser::destroy(); }
-
   void cleanup() {
-    chainblocks::BlocksUser::cleanup();
-
+    _blks.reset();
     _curX = -1;
     _curY = -1;
     _context = nullptr;
@@ -611,7 +617,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (_blocks.valueType != Seq)
+    if (!_blks)
       return input;
 
     int flags = ImGuiWindowFlags_NoSavedSettings;
@@ -641,7 +647,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
     ::ImGui::Begin(_title.c_str(), nullptr, flags);
 
     CBVar output = Empty;
-    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
+    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context, input,
                                  output))) {
       ::ImGui::End();
       return StopChain;
@@ -696,7 +702,7 @@ template <CBType CT> struct Variable : public Base {
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
@@ -708,7 +714,7 @@ template <CBType CT> struct Variable : public Base {
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
@@ -834,7 +840,8 @@ struct Text : public Base {
   }
 };
 
-struct Button : public Base, public BlocksUser {
+struct Button : public Base {
+  CBValidationResult _validation{};
   static inline TypeInfo buttonTypeInfo = TypeInfo::Enum('frag', 'ImGB');
   static inline TypesInfo buttonTypesInfo = TypesInfo(buttonTypeInfo);
 
@@ -851,6 +858,7 @@ struct Button : public Base, public BlocksUser {
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
   static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", 'frag', 'ImGB'};
 
+  BlocksVar _blks{};
   ButtonTypes _type{};
   std::string _label;
   ImVec2 _size = {0, 0};
@@ -882,7 +890,7 @@ struct Button : public Base, public BlocksUser {
       _label = value.payload.stringValue;
       break;
     case 1:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     case 2:
       _type = ButtonTypes(value.payload.enumValue);
@@ -901,7 +909,7 @@ struct Button : public Base, public BlocksUser {
     case 0:
       return Var(_label);
     case 1:
-      return _blocks;
+      return _blks;
     case 2:
       return Var::Enum(_type, 'frag', 'ImGB');
     case 3:
@@ -911,11 +919,20 @@ struct Button : public Base, public BlocksUser {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blks.validate(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  void cleanup() { _blks.reset(); }
+
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
     CBVar output = Empty;                                                      \
-    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,     \
-                                 output))) {                                   \
+    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context,       \
+                                 input, output))) {                            \
       return StopChain;                                                        \
     }                                                                          \
   }
@@ -1429,7 +1446,6 @@ RUNTIME_BLOCK_activate(Style);
 RUNTIME_BLOCK_END(Style);
 
 RUNTIME_BLOCK(ImGui, Window);
-RUNTIME_BLOCK_destroy(Window);
 RUNTIME_BLOCK_cleanup(Window);
 RUNTIME_BLOCK_compose(Window);
 RUNTIME_BLOCK_consumedVariables(Window);
@@ -1466,7 +1482,6 @@ RUNTIME_BLOCK_activate(Text);
 RUNTIME_BLOCK_END(Text);
 
 RUNTIME_BLOCK(ImGui, Button);
-RUNTIME_BLOCK_destroy(Button);
 RUNTIME_BLOCK_cleanup(Button);
 RUNTIME_BLOCK_compose(Button);
 RUNTIME_BLOCK_consumedVariables(Button);

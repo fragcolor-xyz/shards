@@ -114,10 +114,17 @@ struct JointOp {
   }
 };
 
-struct Sort : public JointOp, public BlocksUser {
+struct Sort : public JointOp {
+  BlocksVar _blks{};
   std::vector<CBVar> _multiSortKeys;
-
   bool _desc = false;
+
+  void setup() { blocksKeyFn._bu = this; }
+
+  void cleanup() {
+    _blks.reset();
+    JointOp::cleanup();
+  }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
@@ -141,7 +148,7 @@ struct Sort : public JointOp, public BlocksUser {
       _desc = value.payload.boolValue;
       break;
     case 3:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     default:
       break;
@@ -156,7 +163,7 @@ struct Sort : public JointOp, public BlocksUser {
     case 2:
       return Var(_desc);
     case 3:
-      return _blocks;
+      return _blks;
     default:
       break;
     }
@@ -185,7 +192,7 @@ struct Sort : public JointOp, public BlocksUser {
 
     auto inputType = info.exposedType;
     data.inputType = *info.exposedType.seqType;
-    BlocksUser::compose(data);
+    _blks.validate(data);
     return inputType;
   }
 
@@ -204,13 +211,10 @@ struct Sort : public JointOp, public BlocksUser {
   struct {
     Sort *_bu;
     CBContext *_ctx;
-    CBVar _o{};
+    CBVar _o;
 
     CBVar &operator()(CBVar &a) {
-      if (unlikely(
-              !activateBlocks(_bu->_blocks.payload.seqValue, _ctx, a, _o))) {
-        throw CBException("Sort - Key function failed");
-      }
+      _o = _bu->_blks.activate(_ctx, a);
       return _o;
     }
   } blocksKeyFn;
@@ -246,18 +250,11 @@ struct Sort : public JointOp, public BlocksUser {
     }
   }
 
-  void cleanup() {
-    BlocksUser::cleanup();
-    JointOp::cleanup();
-  }
-
-  void setup() { blocksKeyFn._bu = this; }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Sort in plac
     auto len = _input->payload.seqValue.len;
-    if (_blocks.valueType != None) {
+    if (_blks) {
       blocksKeyFn._ctx = context;
       if (!_desc) {
         insertSort(_input->payload.seqValue.elements, len, sortAsc,
@@ -277,8 +274,14 @@ struct Sort : public JointOp, public BlocksUser {
   }
 };
 
-struct Remove : public JointOp, public BlocksUser {
+struct Remove : public JointOp {
+  BlocksVar _blks{};
   bool _fast = false;
+
+  void cleanup() {
+    _blks.reset();
+    JointOp::cleanup();
+  }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
@@ -299,7 +302,7 @@ struct Remove : public JointOp, public BlocksUser {
     case 1:
       return JointOp::setParam(index, value);
     case 2:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     case 3:
       _fast = value.payload.boolValue;
@@ -315,7 +318,7 @@ struct Remove : public JointOp, public BlocksUser {
     case 1:
       return JointOp::getParam(index);
     case 2:
-      return _blocks;
+      return _blks;
     case 3:
       return Var(_fast);
     default:
@@ -346,7 +349,7 @@ struct Remove : public JointOp, public BlocksUser {
 
     auto inputType = info.exposedType;
     data.inputType = *info.exposedType.seqType;
-    BlocksUser::compose(data);
+    _blks.validate(data);
     return inputType;
   }
 
@@ -356,11 +359,7 @@ struct Remove : public JointOp, public BlocksUser {
     auto len = _input->payload.seqValue.len;
     for (auto i = len; i > 0; i--) {
       auto &var = _input->payload.seqValue.elements[i - 1];
-      CBVar output{};
-      if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, var,
-                                   output))) {
-        return StopChain;
-      } else if (output == True) {
+      if (_blks.activate(context, var) == True) {
         // remove from input
         if (var.valueType >= EndOfBlittableTypes) {
           destroyVar(var);
@@ -393,7 +392,8 @@ struct Remove : public JointOp, public BlocksUser {
   }
 };
 
-struct Profile : public BlocksUser {
+struct Profile {
+  BlocksVar _blocks{};
   static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
   static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
 
@@ -402,10 +402,17 @@ struct Profile : public BlocksUser {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
+  void cleanup() { _blocks.reset(); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.validate(data);
+    return data.inputType;
+  }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(_blocks, value);
+      _blocks = value;
       break;
     default:
       break;
@@ -425,8 +432,8 @@ struct Profile : public BlocksUser {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     TIMED_FUNC(timerObj);
     CBVar output{};
-    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
-                                 output))) {
+    if (unlikely(!activateBlocks(CBVar(_blocks).payload.seqValue, context,
+                                 input, output))) {
       return StopChain;
     }
     return input;
@@ -825,7 +832,6 @@ RUNTIME_BLOCK_parameters(Repeat);
 RUNTIME_BLOCK_setParam(Repeat);
 RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
-RUNTIME_BLOCK_destroy(Repeat);
 RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
 RUNTIME_BLOCK_consumedVariables(Repeat);
@@ -853,8 +859,7 @@ RUNTIME_BLOCK_parameters(Remove);
 RUNTIME_BLOCK_setParam(Remove);
 RUNTIME_BLOCK_getParam(Remove);
 RUNTIME_BLOCK_activate(Remove);
-RUNTIME_BLOCK_destroy(Remove);
-RUNTIME_BLOCK_cleanup(Repeat);
+RUNTIME_BLOCK_cleanup(Remove);
 RUNTIME_BLOCK_compose(Remove);
 RUNTIME_BLOCK_END(Remove);
 
@@ -866,7 +871,6 @@ RUNTIME_BLOCK_parameters(Profile);
 RUNTIME_BLOCK_setParam(Profile);
 RUNTIME_BLOCK_getParam(Profile);
 RUNTIME_BLOCK_activate(Profile);
-RUNTIME_BLOCK_destroy(Profile);
 RUNTIME_BLOCK_cleanup(Profile);
 RUNTIME_BLOCK_compose(Profile);
 RUNTIME_BLOCK_END(Profile);

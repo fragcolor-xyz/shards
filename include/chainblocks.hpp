@@ -273,23 +273,23 @@ public:
   class Info {
   public:
     Info() {
-      _info.objectVendorId = 'frag';
-      _info.objectTypeId = 'chnp';
-
       CBTypeInfo none{};
-      stbds_arrpush(_providerOrNone, none);
-      stbds_arrpush(_providerOrNone, _info);
+      _infos.push_back(none);
+      CBTypeInfo objInfo{CBType::Object};
+      objInfo.objectVendorId = 'frag';
+      objInfo.objectTypeId = 'chnp';
+      _infos.push_back(objInfo);
+      _providerOrNone.elements = &_infos[0];
+      _providerOrNone.len = 2;
     }
 
-    ~Info() { stbds_arrfree(_providerOrNone); }
-
-    operator CBTypeInfo() const { return _info; }
+    operator CBTypeInfo() const { return _infos[1]; }
 
     operator CBTypesInfo() const { return _providerOrNone; }
 
   private:
-    CBTypeInfo _info{CBType::Object};
-    CBTypesInfo _providerOrNone = nullptr;
+    std::vector<CBTypeInfo> _infos;
+    CBTypesInfo _providerOrNone = {};
   };
 
   struct Update {

@@ -190,8 +190,8 @@ void to_json(json &j, const CBVar &var) {
     auto blk = var.payload.blockValue;
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for (int i = 0; i < stbds_arrlen(paramsDesc); i++) {
-      auto &desc = paramsDesc[i];
+    for (uint32_t i = 0; i < paramsDesc.len; i++) {
+      auto &desc = paramsDesc.elements[i];
       auto value = blk->getParam(blk, i);
 
       json param_obj = {{"name", desc.name}, {"value", value}};
@@ -388,8 +388,8 @@ void from_json(const json &j, CBVar &var) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
-          auto &paramInfo = blkParams[i];
+        for (uint32_t i = 0; blkParams.len > i; i++) {
+          auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
             break;
@@ -410,8 +410,8 @@ void to_json(json &j, const CBChainPtr &chain) {
   for (auto blk : chain->blocks) {
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for (int i = 0; stbds_arrlen(paramsDesc) > i; i++) {
-      auto &desc = paramsDesc[i];
+    for (uint32_t i = 0; paramsDesc.len > i; i++) {
+      auto &desc = paramsDesc.elements[i];
       auto value = blk->getParam(blk, i);
 
       json param_obj = {{"name", desc.name}, {"value", value}};
@@ -466,8 +466,8 @@ void from_json(const json &j, CBChainPtr &chain) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
-          auto &paramInfo = blkParams[i];
+        for (uint32_t i = 0; blkParams.len > i; i++) {
+          auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
             break;

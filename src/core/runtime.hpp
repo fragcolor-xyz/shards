@@ -630,7 +630,7 @@ struct CBNode {
             }
           },
           this);
-      stbds_arrfree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.exposedInfo);
     }
 
     auto flow = std::make_shared<CBFlow>();
