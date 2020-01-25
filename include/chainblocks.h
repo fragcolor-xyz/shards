@@ -278,15 +278,27 @@ struct CBTypeInfo {
   enum CBType basicType;
 
   union {
+    // notice, dupes due to some compilers
+    // not liking anon structs
     struct {
       int32_t objectVendorId;
       int32_t objectTypeId;
     };
 
     struct {
+      int32_t vendorId;
+      int32_t typeId;
+    } object;
+
+    struct {
       int32_t enumVendorId;
       int32_t enumTypeId;
     };
+
+    struct {
+      int32_t vendorId;
+      int32_t typeId;
+    } enumeration;
 
     // If we are a simpe seq a pointer to the possible single type present in
     // this seq NULL if this is a any type seq, users must guard the outputs

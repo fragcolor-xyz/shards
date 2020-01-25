@@ -80,6 +80,10 @@ struct Globals {
 
 template <typename T>
 void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
+  // safety check to make sure this is not a borrowed foreign array!
+  assert((arr.cap == 0 && arr.elements == nullptr) ||
+         (arr.cap > 0 && arr.elements != nullptr));
+
   size_t min_len = arr.len + addlen;
 
   // compute the minimum capacity needed
