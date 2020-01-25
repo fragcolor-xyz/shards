@@ -21,6 +21,7 @@
 #include "blockwrapper.hpp"
 
 #ifdef USE_RPMALLOC
+#include "rpmalloc/rpmalloc.h"
 inline void *rp_init_realloc(void *ptr, size_t size) {
   rpmalloc_initialize();
   return rprealloc(ptr, size);
