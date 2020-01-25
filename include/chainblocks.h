@@ -147,7 +147,7 @@ typedef void *CBArray;
 
 // Forward declarations
 struct CBVar;
-CB_ARRAY_DECL(CBSeq, CBVar);
+CB_ARRAY_DECL(CBSeq, struct CBVar);
 
 struct CBNamedVar;
 typedef struct CBNamedVar *CBTable; // a stb string map
@@ -167,13 +167,13 @@ typedef struct CBlock *CBlockRef;
 CB_ARRAY_DECL(CBlocks, CBlockRef);
 
 struct CBTypeInfo;
-CB_ARRAY_DECL(CBTypesInfo, CBTypeInfo);
+CB_ARRAY_DECL(CBTypesInfo, struct CBTypeInfo);
 
 struct CBParameterInfo;
-CB_ARRAY_DECL(CBParametersInfo, CBParameterInfo);
+CB_ARRAY_DECL(CBParametersInfo, struct CBParameterInfo);
 
 struct CBExposedTypeInfo;
-CB_ARRAY_DECL(CBExposedTypesInfo, CBExposedTypeInfo);
+CB_ARRAY_DECL(CBExposedTypesInfo, struct CBExposedTypeInfo);
 
 typedef void *CBPointer;
 typedef int64_t CBInt;
