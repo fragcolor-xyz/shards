@@ -44,8 +44,6 @@
   (Assert.Is "9" true)
   (Assert.IsNot 9 true)
 
-  (Const [])
-  (Set "a")
   1
   (Push "a")
   2
@@ -60,8 +58,6 @@
   (Assert.Is [1 2 3 4 5] true)
   (Log)
 
-  (Const [])
-  (Set "a")
   1
   (Push "a")
   2
@@ -73,7 +69,7 @@
   5
   (Push "a")
   (Get "a")
-  (Assert.Is [1 2 3 4 5] true)
+  (Assert.Is [1 2 3 4 5 1 2 3 4 5] true)
   (Log)
 
   (Const [6 7 8 9])
