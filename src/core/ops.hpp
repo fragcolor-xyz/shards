@@ -709,11 +709,27 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       return false;
     return a.enumTypeId == b.enumTypeId;
   case Seq: {
-    if (a.seqType && b.seqType)
-      return *a.seqType == *b.seqType;
-    if (a.seqType == nullptr && b.seqType == nullptr)
+    if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
       return true;
-    return false;
+
+    if (a.seqTypes.elements && b.seqTypes.elements) {
+      if (a.seqTypes.len != b.seqTypes.len)
+        return false;
+      // compare but allow different orders of elements
+      for (uint32_t i = 0; i < a.seqTypes.len; i++) {
+        for (uint32_t j = 0; j < b.seqTypes.len; j++) {
+          if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
+            goto matched;
+        }
+        return false;
+      matched:
+        continue;
+      }
+    } else {
+      return false;
+    }
+
+    return true;
   }
   case Table: {
     auto atypes = a.tableTypes.len;

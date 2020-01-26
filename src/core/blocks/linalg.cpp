@@ -259,7 +259,10 @@ struct MatMul : public VectorBinaryBase {
     if (_opType == SeqSeq) {
       return data.inputType;
     } else {
-      return *data.inputType.seqType;
+      if (data.inputType.seqTypes.len != 1) {
+        throw CBException("MatMul expected a unique Seq inner type.");
+      }
+      return data.inputType.seqTypes.elements[0];
     }
   }
 

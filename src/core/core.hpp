@@ -845,6 +845,11 @@ public:
 typedef TBlocksVar<InternalCore> BlocksVar;
 
 struct TypeInfo : public CBTypeInfo {
+  /*
+    DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
+    IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
+    BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
+  */
   TypeInfo() { basicType = None; }
 
   TypeInfo(CBType type) {
@@ -855,6 +860,7 @@ struct TypeInfo : public CBTypeInfo {
 
   TypeInfo(CBTypeInfo other) {
     basicType = other.basicType;
+    seqTypes = {};
     tableKeys = {};
     tableTypes = {};
 
@@ -868,8 +874,10 @@ struct TypeInfo : public CBTypeInfo {
       enumTypeId = other.enumTypeId;
     } break;
     case Seq: {
-      if (other.seqType) {
-        seqType = other.seqType;
+      if (other.seqTypes.elements) {
+        for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+          chainblocks::arrayPush(seqTypes, other.seqTypes.elements[i]);
+        }
       }
     } break;
     case Table: {
@@ -906,7 +914,8 @@ struct TypeInfo : public CBTypeInfo {
   static TypeInfo Sequence(TypeInfo &contentType) {
     TypeInfo result;
     result.basicType = Seq;
-    result.seqType = &contentType;
+    result.seqTypes = {};
+    chainblocks::arrayPush(result.seqTypes, contentType);
     return result;
   }
 
@@ -948,6 +957,7 @@ struct TypeInfo : public CBTypeInfo {
 
   TypeInfo(const TypeInfo &other) : CBTypeInfo(other) {
     basicType = other.basicType;
+    seqTypes = {};
     tableKeys = {};
     tableTypes = {};
 
@@ -961,13 +971,13 @@ struct TypeInfo : public CBTypeInfo {
       enumTypeId = other.enumTypeId;
     } break;
     case Seq: {
-      if (other.seqType) {
-        seqType = other.seqType;
+      if (other.seqTypes.elements) {
+        for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+          chainblocks::arrayPush(seqTypes, other.seqTypes.elements[i]);
+        }
       }
     } break;
     case Table: {
-      tableKeys = {};
-      tableTypes = {};
       if (other.tableTypes.elements) {
         for (uint32_t i = 0; i < other.tableTypes.len; i++) {
           chainblocks::arrayPush(tableTypes, other.tableTypes.elements[i]);
@@ -985,8 +995,9 @@ struct TypeInfo : public CBTypeInfo {
   TypeInfo &operator=(const TypeInfo &other) {
     switch (basicType) {
     case Seq: {
-      if (seqType)
-        delete seqType;
+      if (other.seqTypes.elements) {
+        chainblocks::arrayFree(seqTypes);
+      }
     } break;
     case Table: {
       if (other.tableTypes.elements) {
@@ -1012,8 +1023,10 @@ struct TypeInfo : public CBTypeInfo {
       enumTypeId = other.enumTypeId;
     } break;
     case Seq: {
-      if (other.seqType) {
-        seqType = other.seqType;
+      if (other.seqTypes.elements) {
+        for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+          chainblocks::arrayPush(seqTypes, other.seqTypes.elements[i]);
+        }
       }
     } break;
     case Table: {
@@ -1039,11 +1052,18 @@ struct TypeInfo : public CBTypeInfo {
         chainblocks::arrayFree(tableTypes);
         chainblocks::arrayFree(tableKeys);
       }
+    } else if (basicType == Seq) {
+      chainblocks::arrayFree(seqTypes);
     }
   }
 };
 
 struct TypesInfo {
+  /*
+   DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
+   IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
+   BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
+ */
   TypesInfo() { _innerInfo = {}; }
 
   TypesInfo(const TypesInfo &other) {
@@ -1123,6 +1143,11 @@ struct TypesInfo {
 };
 
 struct ParamsInfo {
+  /*
+   DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
+   IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
+   BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
+ */
   ParamsInfo(const ParamsInfo &other) {
     chainblocks::arrayResize(_innerInfo, 0);
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
@@ -1179,6 +1204,11 @@ struct ParamsInfo {
 };
 
 struct ExposedInfo {
+  /*
+   DO NOT USE ANYMORE, THIS IS DEPRECATED AND MESSY
+   IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
+   BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
+ */
   ExposedInfo() { _innerInfo = {}; }
 
   ExposedInfo(const ExposedInfo &other) {

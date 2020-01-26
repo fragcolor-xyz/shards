@@ -38,12 +38,6 @@ void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
 }
 void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
-
-#define CB_REALLOC rprealloc
-#define CB_FREE rpfree
-#else
-#define CB_REALLOC std::realloc
-#define CB_FREE std::free
 #endif
 
 INITIALIZE_EASYLOGGINGPP
@@ -735,62 +729,67 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 };
 #endif
 
-bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
+bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
-  if (consumedType.basicType == Any ||
-      (!isParameter && consumedType.basicType == None))
+  if (receiverType.basicType == Any ||
+      // receiver is a none type input block basically
+      (!isParameter && receiverType.basicType == None))
     return true;
 
-  if (exposedType.basicType != consumedType.basicType) {
+  if (inputType.basicType != receiverType.basicType) {
     // Fail if basic type differs
     return false;
   }
 
-  switch (exposedType.basicType) {
+  switch (inputType.basicType) {
   case Object: {
-    if (exposedType.objectVendorId != consumedType.objectVendorId ||
-        exposedType.objectTypeId != consumedType.objectTypeId) {
+    if (inputType.objectVendorId != receiverType.objectVendorId ||
+        inputType.objectTypeId != receiverType.objectTypeId) {
       return false;
     }
     break;
   }
   case Enum: {
-    if (exposedType.enumVendorId != consumedType.enumVendorId ||
-        exposedType.enumTypeId != consumedType.enumTypeId) {
+    if (inputType.enumVendorId != receiverType.enumVendorId ||
+        inputType.enumTypeId != receiverType.enumTypeId) {
       return false;
     }
     break;
   }
   case Seq: {
     if (strict) {
-      if (exposedType.seqType && consumedType.seqType) {
-        if (!matchTypes(*exposedType.seqType, *consumedType.seqType,
-                        isParameter, strict)) {
+      if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
+        // all input types must be in receiver, receiver can have more ofc
+        for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
+          for (uint32_t j = 0; i < receiverType.seqTypes.len; j++) {
+            if (receiverType.seqTypes.elements[j].basicType == Any ||
+                inputType.seqTypes.elements[i] ==
+                    receiverType.seqTypes.elements[j])
+              goto matched;
+          }
           return false;
+        matched:
+          continue;
         }
-      } else if (exposedType.seqType == nullptr ||
-                 consumedType.seqType == nullptr) {
+      } else if (inputType.seqTypes.len == 0 ||
+                 receiverType.seqTypes.len == 0) {
         return false;
-      } else if (exposedType.seqType && consumedType.seqType == nullptr &&
-                 !isParameter) {
-        // Assume consumer is not strict
-        return true;
       }
     }
     break;
   }
   case Table: {
     if (strict) {
-      auto atypes = exposedType.tableTypes.len;
-      auto btypes = consumedType.tableTypes.len;
+      auto atypes = inputType.tableTypes.len;
+      auto btypes = receiverType.tableTypes.len;
       //  btypes != 0 assume consumer is not strict
       for (uint32_t i = 0; i < atypes && (isParameter || btypes != 0); i++) {
         // Go thru all exposed types and make sure we get a positive match with
         // the consumer
-        auto atype = exposedType.tableTypes.elements[i];
+        auto atype = inputType.tableTypes.elements[i];
         auto matched = false;
         for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = consumedType.tableTypes.elements[y];
+          auto btype = receiverType.tableTypes.elements[y];
           if (matchTypes(atype, btype, isParameter, strict)) {
             matched = true;
             break;
@@ -810,24 +809,40 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
 }
 
 namespace std {
+template <> struct hash<CBTypeInfo> {
+  std::size_t operator()(const CBTypeInfo &typeInfo) const {
+    using std::hash;
+    using std::size_t;
+    using std::string;
+    auto res = hash<int>()(typeInfo.basicType);
+    if (typeInfo.basicType == Table && typeInfo.tableTypes.elements &&
+        typeInfo.tableKeys.elements) {
+      for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
+        res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+      }
+    } else if (typeInfo.basicType == Seq) {
+      for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
+        res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+      }
+    } else if (typeInfo.basicType == Object) {
+      res = res ^ hash<int>()(typeInfo.objectVendorId);
+      res = res ^ hash<int>()(typeInfo.objectTypeId);
+    } else if (typeInfo.basicType == Enum) {
+      res = res ^ hash<int>()(typeInfo.enumVendorId);
+      res = res ^ hash<int>()(typeInfo.enumTypeId);
+    }
+    return res;
+  }
+};
+
 template <> struct hash<CBExposedTypeInfo> {
   std::size_t operator()(const CBExposedTypeInfo &typeInfo) const {
     using std::hash;
     using std::size_t;
     using std::string;
     auto res = hash<string>()(typeInfo.name);
-    res = res ^ hash<int>()(typeInfo.exposedType.basicType);
+    res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
-    if (typeInfo.exposedType.basicType == Table &&
-        typeInfo.exposedType.tableTypes.elements &&
-        typeInfo.exposedType.tableKeys.elements) {
-      for (uint32_t i = 0; i < typeInfo.exposedType.tableKeys.len; i++) {
-        res = res ^ hash<string>()(typeInfo.exposedType.tableKeys.elements[i]);
-      }
-    } else if (typeInfo.exposedType.basicType == Seq &&
-               typeInfo.exposedType.seqType) {
-      res = res ^ hash<int>()(typeInfo.exposedType.seqType->basicType);
-    }
     return res;
   }
 };
@@ -1041,10 +1056,19 @@ void validateConnection(ValidationContext &ctx) {
                 "(" + type2Name(type.exposedType.basicType) + " [" +
                 type2Name(type.exposedType.tableTypes.elements[0].basicType) +
                 " " + type.exposedType.tableKeys.elements[0] + "]) ";
-          } else if (type.exposedType.basicType == Seq &&
-                     type.exposedType.seqType) {
-            err += "(" + type2Name(type.exposedType.basicType) + " [" +
-                   type2Name(type.exposedType.seqType->basicType) + "]) ";
+          } else if (type.exposedType.basicType == Seq) {
+            err += "(" + type2Name(type.exposedType.basicType) + " [";
+            for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
+              if (i < type.exposedType.seqTypes.len - 1)
+                err +=
+                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                    " ";
+              else
+                err +=
+                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                    " ";
+            }
+            err += "]) ";
           } else {
             err += type2Name(type.exposedType.basicType) + " ";
           }
@@ -1184,8 +1208,10 @@ CBValidationResult validateConnections(const CBlocks chain,
 void freeDerivedInfo(CBTypeInfo info) {
   switch (info.basicType) {
   case Seq: {
-    freeDerivedInfo(*info.seqType);
-    delete info.seqType;
+    for (uint32_t i = 0; info.seqTypes.len > i; i++) {
+      freeDerivedInfo(info.seqTypes.elements[i]);
+    }
+    chainblocks::arrayFree(info.seqTypes);
   }
   case Table: {
     for (uint32_t i = 0; info.tableTypes.len > i; i++) {
@@ -1203,7 +1229,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
-  varType.seqType = {};
+  varType.seqTypes = {};
   varType.tableTypes = {};
   switch (value.valueType) {
   case Object: {
@@ -1217,16 +1243,24 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Seq: {
-    varType.seqType = new CBTypeInfo();
-    if (value.payload.seqValue.len > 0) {
-      *varType.seqType = deriveTypeInfo(value.payload.seqValue.elements[0]);
+    phmap::flat_hash_set<CBTypeInfo> types;
+    for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
+      if (!types.contains(derived)) {
+        chainblocks::arrayPush(varType.seqTypes, derived);
+        types.insert(derived);
+      }
     }
     break;
   }
   case Table: {
-    for (auto i = 0; stbds_shlen(value.payload.tableValue) > i; i++) {
-      chainblocks::arrayPush(varType.tableTypes,
-                             deriveTypeInfo(value.payload.tableValue[i].value));
+    phmap::flat_hash_set<CBTypeInfo> types;
+    for (size_t i = 0; stbds_shlenu(value.payload.tableValue) > i; i++) {
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
+      if (!types.contains(derived)) {
+        chainblocks::arrayPush(varType.tableTypes, derived);
+        types.insert(derived);
+      }
     }
     break;
   }

@@ -542,10 +542,11 @@ template <class T> struct UnaryBin : public T {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     switch (data.inputType.basicType) {
-    case Seq:
-      assert(data.inputType.seqType);
-      setOperand(data.inputType.seqType->basicType);
-      break;
+    case Seq: {
+      if (data.inputType.seqTypes.len != 1)
+        throw CBException("Expected a Seq with just one type as input");
+      setOperand(data.inputType.seqTypes.elements[0].basicType);
+    } break;
     default:
       setOperand(data.inputType.basicType);
     }

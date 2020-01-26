@@ -300,10 +300,7 @@ struct CBTypeInfo {
       int32_t typeId;
     } enumeration;
 
-    // If we are a simpe seq a pointer to the possible single type present in
-    // this seq NULL if this is a any type seq, users must guard the outputs
-    // with ExpectX type
-    struct CBTypeInfo *seqType;
+    struct CBTypesInfo seqTypes;
 
     // If we are a table, the possible types present in this table
     struct {

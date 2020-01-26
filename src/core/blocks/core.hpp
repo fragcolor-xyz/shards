@@ -939,6 +939,31 @@ struct Push : public VariableBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    const auto updateSeqInfo = [this, &data] {
+      _seqInfo.basicType = Seq;
+      _seqInnerInfo = data.inputType;
+      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed sequence.", _seqInfo, true));
+    };
+
+    const auto updateTableInfo = [this, &data] {
+      _tableInfo.basicType = Table;
+      if (_tableInfo.tableTypes.elements) {
+        chainblocks::arrayFree(_tableInfo.tableTypes);
+      }
+      if (_tableInfo.tableKeys.elements) {
+        chainblocks::arrayFree(_tableInfo.tableKeys);
+      }
+      _seqInfo.basicType = Seq;
+      _seqInnerInfo = data.inputType;
+      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+      chainblocks::arrayPush(_tableInfo.tableTypes, _seqInfo);
+      chainblocks::arrayPush(_tableInfo.tableKeys, _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+    };
+
     if (_isTable) {
       auto tableFound = false;
       for (uint32_t i = 0; data.consumables.len > i; i++) {
@@ -951,6 +976,7 @@ struct Push : public VariableBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {
+              updateTableInfo();
               return data.inputType; // found lets escape
             }
           }
@@ -961,44 +987,25 @@ struct Push : public VariableBase {
         _tableOwner = true;
       }
       _firstPusher = true;
-      _tableInfo.basicType = Table;
-      if (_tableInfo.tableTypes.elements) {
-        chainblocks::arrayFree(_tableInfo.tableTypes);
-      }
-      if (_tableInfo.tableKeys.elements) {
-        chainblocks::arrayFree(_tableInfo.tableKeys);
-      }
-      _seqInfo.basicType = Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqType = &_seqInnerInfo;
-      chainblocks::arrayPush(_tableInfo.tableTypes, _seqInfo);
-      chainblocks::arrayPush(_tableInfo.tableKeys, _key.c_str());
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      updateTableInfo();
     } else {
       for (uint32_t i = 0; i < data.consumables.len; i++) {
         auto &cv = data.consumables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          // found, let's just update our info
+          updateSeqInfo();
           return data.inputType; // found lets escape
         }
       }
       // Assume we are the first pushing this variable
       _firstPusher = true;
-      _seqInfo.basicType = Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqType = &_seqInnerInfo;
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed sequence.", _seqInfo, true));
+      updateSeqInfo();
     }
     return data.inputType;
   }
 
   CBExposedTypesInfo exposedVariables() {
-    if (_firstPusher) {
-      return CBExposedTypesInfo(_exposedInfo);
-    } else {
-      return {};
-    }
+    return CBExposedTypesInfo(_exposedInfo);
   }
 
   void cleanup() {
@@ -1251,14 +1258,13 @@ struct Pop : SeqUser {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {
-              if (tableTypes.elements[y].seqType != nullptr &&
-                  tableTypes.elements[y].seqType->basicType <
-                      EndOfBlittableTypes) {
-                _blittable = true;
-              } else {
-                _blittable = false;
-              }
-              return *tableTypes.elements[y].seqType; // found lets escape
+              // if we have 1 type we can predict the output
+              // with more just make us a any seq, will need ExpectX blocks
+              // likely
+              if (tableTypes.elements[y].seqTypes.len == 1)
+                return tableTypes.elements[y].seqTypes.elements[0];
+              else
+                return CBTypeInfo(CoreInfo::anySeqInfo);
             }
           }
         }
@@ -1268,13 +1274,12 @@ struct Pop : SeqUser {
       for (uint32_t i = 0; i < data.consumables.len; i++) {
         auto &cv = data.consumables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
-          if (cv.exposedType.seqType != nullptr &&
-              cv.exposedType.seqType->basicType < EndOfBlittableTypes) {
-            _blittable = true;
-          } else {
-            _blittable = false;
-          }
-          return *cv.exposedType.seqType; // found lets escape
+          // if we have 1 type we can predict the output
+          // with more just make us a any seq, will need ExpectX blocks likely
+          if (cv.exposedType.seqTypes.len == 1)
+            return cv.exposedType.seqTypes.elements[0];
+          else
+            return CBTypeInfo(CoreInfo::anySeqInfo);
         }
       }
     }
@@ -1380,8 +1385,9 @@ struct Take {
       IterableExposedInfo infos(data.consumables);
       for (auto &info : infos) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
-          if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
-              info.exposedType.seqType->basicType == Int) {
+          if (info.exposedType.basicType == Seq &&
+              info.exposedType.seqTypes.len == 1 &&
+              info.exposedType.seqTypes.elements[0].basicType == Int) {
             _seqOutput = true;
             valid = true;
             break;
@@ -1402,12 +1408,16 @@ struct Take {
       throw CBException("Take, invalid indices or malformed input.");
 
     if (data.inputType.basicType == Seq) {
-      if (_seqOutput)
-        return data.inputType; // multiple values
-      else if (data.inputType.seqType)
-        return *data.inputType.seqType; // single value
-      else                              // value from seq but no type info
+      if (_seqOutput) {
+        // multiple values, leave Seq
+        return data.inputType;
+      } else if (data.inputType.seqTypes.len == 1) {
+        // single unique seq type
+        return data.inputType.seqTypes.elements[0];
+      } else {
+        // value from seq but not unique
         return CBTypeInfo(CoreInfo::anyInfo);
+      }
     } else if (data.inputType.basicType >= Int2 &&
                data.inputType.basicType <= Int16) {
       // int vector
@@ -1831,8 +1841,12 @@ struct Limit {
         return data.inputType; // multiple values
       }
     } else {
-      if (data.inputType.basicType == Seq && data.inputType.seqType) {
-        return *data.inputType.seqType; // single value
+      if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
+        // single unique type
+        return data.inputType.seqTypes.elements[0];
+      } else {
+        // multiple types
+        return CBTypeInfo(CoreInfo::anySeqInfo);
       }
     }
     throw CBException("Limit expected a sequence as input.");

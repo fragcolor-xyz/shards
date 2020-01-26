@@ -61,8 +61,10 @@ struct Flatten {
       break;
     }
     case Seq:
-      if (info.seqType) {
-        verifyInnerType(*info.seqType, currentType);
+      if (info.seqTypes.len == 1) {
+        verifyInnerType(info.seqTypes.elements[0], currentType);
+      } else {
+        throw CBException("Expected a Seq of a single specific type.");
       }
       break;
     case Table: {

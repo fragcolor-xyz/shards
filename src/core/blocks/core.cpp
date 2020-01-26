@@ -187,11 +187,11 @@ struct Sort : public JointOp {
 
   found:
     // need to replace input type of inner chain with inner of seq
-    if (!info.exposedType.seqType)
-      throw CBException("From variable has no inner type!");
+    if (info.exposedType.seqTypes.len != 1)
+      throw CBException("From variable is not a single type Seq.");
 
     auto inputType = info.exposedType;
-    data.inputType = *info.exposedType.seqType;
+    data.inputType = info.exposedType.seqTypes.elements[0];
     _blks.validate(data);
     return inputType;
   }
@@ -344,11 +344,11 @@ struct Remove : public JointOp {
 
   found:
     // need to replace input type of inner chain with inner of seq
-    if (!info.exposedType.seqType)
-      throw CBException("From variable has no inner type!");
+    if (info.exposedType.seqTypes.len != 1)
+      throw CBException("From variable is not a single type Seq.");
 
     auto inputType = info.exposedType;
-    data.inputType = *info.exposedType.seqType;
+    data.inputType = info.exposedType.seqTypes.elements[0];
     _blks.validate(data);
     return inputType;
   }
@@ -475,8 +475,8 @@ struct XpendTo : public XPendBase {
               "AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
         if (cons.exposedType.basicType == Seq &&
-            (cons.exposedType.seqType == nullptr ||
-             *cons.exposedType.seqType != data.inputType)) {
+            (cons.exposedType.seqTypes.len != 1 ||
+             cons.exposedType.seqTypes.elements[0] != data.inputType)) {
           throw CBException("AppendTo/PrependTo input type is not compatible "
                             "with the backing Seq.");
         }
