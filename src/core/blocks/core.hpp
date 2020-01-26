@@ -17,9 +17,13 @@ struct CoreInfo {
   static inline Type _cbtype_##Type{{CBType::_cbtype_}};                       \
   static inline Type _cbtype_##SeqType{                                        \
       {CBType::Seq, {.seqTypes = _cbtype_##Type}}};                            \
-  static inline Type _cbtype_##VarType {                                       \
+  static inline Type _cbtype_##TableType{                                      \
+      {CBType::Table, {.tableTypes = _cbtype_##Type}}};                        \
+  static inline Type _cbtype_##VarType{                                        \
+      {CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};              \
+  static inline Type _cbtype_##VarSeqType {                                    \
     {                                                                          \
-      CBType::ContextVar, { .contextVarTypes = _cbtype_##Type }                \
+      CBType::ContextVar, { .contextVarTypes = _cbtype_##SeqType }             \
     }                                                                          \
   }
 
@@ -41,6 +45,17 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(Bytes);
   CB_CORE_TYPE_DEF(String);
   CB_CORE_TYPE_DEF(Image);
+
+  static inline Types IndexablesInfo{
+      {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
+       Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
+
+  static inline Types BlocksInfo{{BlockType, BlockSeqType}};
+
+  static inline Types IntsVarInfo{
+      {IntType, IntSeqType, IntVarType, IntVarSeqType}};
+
+  static inline Types IntsVarInfoOption{IntsVarInfo, {NoneType}};
 
   static inline TypesInfo bytesInfo = TypesInfo(CBType::Bytes);
   static inline TypeInfo intType = TypeInfo(CBType::Int);
@@ -85,10 +100,6 @@ struct CoreInfo {
   static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
       false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
       CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
-  static inline TypesInfo anyIndexableInfo = TypesInfo::FromMany(
-      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4,
-      CBType::Seq, CBType::Bytes, CBType::Color, CBType::String);
 };
 
 struct Const {
@@ -787,9 +798,8 @@ struct Get : public VariableBase {
       return {};
     } else {
       if (_isTable) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                  CBTypeInfo(CoreInfo::tableInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
             _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
@@ -1142,9 +1152,8 @@ struct SeqUser : VariableBase {
   CBExposedTypesInfo consumedVariables() {
     if (_name.size() > 0) {
       if (_isTable) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                  CBTypeInfo(CoreInfo::tableInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
             _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
@@ -1363,7 +1372,7 @@ struct Pop : SeqUser {
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CBTypesInfo(CoreInfo::intsVarInfo)));
+      CoreInfo::IntsVarInfo));
 
   CBSeq _cachedSeq{};
   CBVar _output{};
@@ -1390,9 +1399,7 @@ struct Take {
     }
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(CoreInfo::anyIndexableInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::IndexablesInfo; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -1668,13 +1675,11 @@ struct Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo =
-      ParamsInfo(ParamsInfo::Param("From", "From index.",
-                                   CBTypesInfo(CoreInfo::intVarInfo)),
-                 ParamsInfo::Param("To", "To index.",
-                                   CBTypesInfo(CoreInfo::intVarOrNoneInfo)),
-                 ParamsInfo::Param("Step", "The increment between each index.",
-                                   CoreInfo::IntType));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("From", "From index.", CoreInfo::IntsVarInfo),
+      ParamsInfo::Param("To", "To index.", CoreInfo::IntsVarInfoOption),
+      ParamsInfo::Param("Step", "The increment between each index.",
+                        CoreInfo::IntType));
 
   CBSeq _cachedSeq{};
   CBVar _from{Var(0)};
@@ -1921,9 +1926,9 @@ struct Repeat {
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.",
-                        CBTypesInfo(CoreInfo::blocksInfo)),
+                        CoreInfo::BlocksInfo),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
-                        CBTypesInfo(CoreInfo::intVarInfo)),
+                        CoreInfo::IntsVarInfo),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",
                         CoreInfo::BoolType));
 
