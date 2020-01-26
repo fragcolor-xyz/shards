@@ -300,11 +300,17 @@ struct CBTypeInfo {
       int32_t typeId;
     } enumeration;
 
-    struct CBTypesInfo seqTypes;
+    CBTypesInfo seqTypes;
 
     // If we are a table, the possible types present in this table
     struct {
-      CBStrings tableKeys; // todo, clarify/fix
+      // If tableKeys is populated, it is expected that
+      // tableTypes will be populated as well and that at the same
+      // key index there is the key's type
+      CBStrings tableKeys;
+      // If tableKeys is not populated, len == 0 and tableKeys is populated len
+      // > 0 it is assumed that tableTypes contains a sequence with the possible
+      // types in the table
       CBTypesInfo tableTypes;
     };
 
@@ -339,6 +345,12 @@ struct CBExposedTypeInfo {
   const char *help;
   struct CBTypeInfo exposedType;
   bool isMutable;
+  // if isTableEntry is true:
+  // `name` will be the name of the table variable
+  // `exposedType` will be of `Table` type
+  // and `tableKeys` will contain the record's key name
+  // while `tableTypes` the record's type
+  bool isTableEntry;
 };
 
 struct CBValidationResult {
@@ -781,5 +793,14 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version);
   if (CB_DEBUG_MODE) {                                                         \
     __CODE__;                                                                  \
   }
+
+#define CB_CAT_IMPL(s1, s2) s1##s2
+#define CB_CAT(s1, s2) CAT_IMPL(s1, s2)
+
+#ifdef __COUNTER__
+#define CB_GENSYM(str) CB_CAT(str, __COUNTER__)
+#else
+#define CB_GENSYM(str) CB_CAT(str, __LINE__)
+#endif
 
 #endif

@@ -820,6 +820,9 @@ template <> struct hash<CBTypeInfo> {
       for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
         res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
       }
+      for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
+        res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+      }
     } else if (typeInfo.basicType == Seq) {
       for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
         res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
@@ -843,6 +846,7 @@ template <> struct hash<CBExposedTypeInfo> {
     auto res = hash<string>()(typeInfo.name);
     res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
+    res = res ^ hash<int>()(typeInfo.isTableEntry);
     return res;
   }
 };

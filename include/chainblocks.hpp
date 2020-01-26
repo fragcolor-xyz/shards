@@ -25,6 +25,62 @@ private:
 
 CBlock *createBlock(const char *name);
 
+struct Type {
+  CBTypeInfo _type;
+
+  Type(CBTypeInfo type) { _type = type; }
+
+  operator CBTypesInfo() {
+    CBTypesInfo res{&_type, 1, 0};
+    return res;
+  }
+
+  operator CBTypeInfo() { return _type; }
+};
+
+struct Types {
+  std::vector<CBTypeInfo> _types;
+
+  Types(std::initializer_list<CBTypeInfo> types) { _types = types; }
+
+  operator CBTypesInfo() {
+    CBTypesInfo res{&_types[0], (uint32_t)_types.size(), 0};
+    return res;
+  }
+};
+
+struct ParameterInfo {
+  const char *_name;
+  const char *_help;
+  Types _types;
+
+  ParameterInfo(const char *name, const char *help, Types types)
+      : _name(name), _help(help), _types(types) {}
+  ParameterInfo(const char *name, Types types)
+      : _name(name), _help(""), _types(types) {}
+
+  operator CBParameterInfo() {
+    CBParameterInfo res{_name, _help, _types};
+    return res;
+  }
+};
+
+struct Parameters {
+  std::vector<ParameterInfo> _infos;
+  std::vector<CBParameterInfo> _pinfos;
+
+  Parameters(std::initializer_list<ParameterInfo> infos) : _infos(infos) {
+    for (auto &info : _infos) {
+      _pinfos.push_back(info);
+    }
+  }
+
+  operator CBParametersInfo() {
+    CBParametersInfo res{&_pinfos[0], (uint32_t)_pinfos.size(), 0};
+    return res;
+  }
+};
+
 struct Var : public CBVar {
   explicit Var() : CBVar() {
     valueType = None;

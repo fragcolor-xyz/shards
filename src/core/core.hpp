@@ -919,7 +919,7 @@ struct TypeInfo : public CBTypeInfo {
     return result;
   }
 
-  static TypeInfo TableRecord(CBTypeInfo contentType, const char *keyName) {
+  static TypeInfo TableEntry(CBTypeInfo contentType, const char *keyName) {
     TypeInfo result;
     result.basicType = Table;
     result.tableTypes = {};
@@ -1264,8 +1264,9 @@ struct ExposedInfo {
   }
 
   static CBExposedTypeInfo Variable(const char *name, const char *help,
-                                    CBTypeInfo type, bool isMutable = false) {
-    CBExposedTypeInfo res = {name, help, type, isMutable};
+                                    CBTypeInfo type, bool isMutable = false,
+                                    bool isTableField = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField};
     return res;
   }
 
