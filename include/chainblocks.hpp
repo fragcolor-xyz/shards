@@ -28,7 +28,19 @@ CBlock *createBlock(const char *name);
 struct Type {
   CBTypeInfo _type;
 
-  Type(CBTypeInfo type) { _type = type; }
+  Type() : _type({CBType::None}) {}
+
+  Type(CBTypeInfo type) : _type(type) {}
+
+  Type &operator=(Type other) {
+    _type = other._type;
+    return *this;
+  }
+
+  Type &operator=(CBTypeInfo other) {
+    _type = other;
+    return *this;
+  }
 
   operator CBTypesInfo() {
     CBTypesInfo res{&_type, 1, 0};

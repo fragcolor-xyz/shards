@@ -14,10 +14,8 @@ struct ProcessClock {
 struct Now {
   static inline ProcessClock _clock{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();

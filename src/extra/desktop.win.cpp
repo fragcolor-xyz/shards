@@ -53,9 +53,7 @@ public:
 
 class HasWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::boolInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_window || !IsWindow(_window)) {
@@ -614,9 +612,7 @@ struct Pixel : public PixelBase {
 
 struct Pixels : public PixelBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int4Info); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar _output;
 
@@ -879,11 +875,11 @@ struct Tap : public MousePosBase {
       ParamsInfo::Param(
           "Long",
           "A big delay will be injected after tap down to simulate a long tap.",
-          CBTypesInfo(SharedTypes::boolInfo)),
+          CoreInfo::BoolType),
       ParamsInfo::Param(
           "Natural",
           "Small pauses will be injected after tap events down & up.",
-          CBTypesInfo(SharedTypes::boolInfo)));
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -995,7 +991,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
       ParamsInfo::Param(
           "Natural",
           "Small pauses will be injected after click events down & up.",
-          CBTypesInfo(SharedTypes::boolInfo)));
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -1075,10 +1071,8 @@ typedef Click<MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP> RightClick;
 typedef Click<MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP> MiddleClick;
 
 struct CursorBitmap {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   HDC _hdcMem;
   HBITMAP _bitmap;
@@ -1129,8 +1123,8 @@ extern "C" NTSYSAPI NTSTATUS NTAPI NtSetTimerResolution(
     ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
 
 struct SetTimerResolution {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::intInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   void cleanup() {
     ULONG tmp;

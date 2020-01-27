@@ -7,13 +7,11 @@ namespace chainblocks {
 // TODO Write proper inputTypes Info
 #define TO_SOMETHING(_varName_, _width_, _type_, _payload_, _strOp_, _info_)   \
   struct To##_varName_##_width_ {                                              \
-    static inline TypesInfo &singleOutput = SharedTypes::_info_;               \
-    CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
-    CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
+    static inline Type &singleOutput = CoreInfo::_info_;                       \
+    CBTypesInfo inputTypes() { return CoreInfo::AnyType; }                     \
+    CBTypesInfo outputTypes() { return singleOutput; }                         \
                                                                                \
-    CBTypeInfo compose(const CBInstanceData &data) {                           \
-      return CBTypeInfo(singleOutput);                                         \
-    }                                                                          \
+    CBTypeInfo compose(const CBInstanceData &data) { return singleOutput; }    \
                                                                                \
     bool convert(CBVar &dst, int &index, const CBVar &src) {                   \
       switch (src.valueType) {                                                 \
@@ -188,13 +186,11 @@ namespace chainblocks {
 // TODO improve this
 #define TO_SOMETHING_SIMPLE(_varName_, _type_, _payload_, _strOp_, _info_)     \
   struct To##_varName_ {                                                       \
-    static inline TypesInfo &singleOutput = SharedTypes::_info_;               \
-    CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }     \
-    CBTypesInfo outputTypes() { return CBTypesInfo(singleOutput); }            \
+    static inline Type &singleOutput = CoreInfo::_info_;                       \
+    CBTypesInfo inputTypes() { return CoreInfo::AnyType; }                     \
+    CBTypesInfo outputTypes() { return singleOutput; }                         \
                                                                                \
-    CBTypeInfo compose(const CBInstanceData &data) {                           \
-      return CBTypeInfo(singleOutput);                                         \
-    }                                                                          \
+    CBTypeInfo compose(const CBInstanceData &data) { return singleOutput; }    \
                                                                                \
     bool convert(CBVar &dst, const CBVar &src) {                               \
       switch (src.valueType) {                                                 \
@@ -272,19 +268,19 @@ namespace chainblocks {
   RUNTIME_BLOCK_activate(To##_varName_);                                       \
   RUNTIME_BLOCK_END(To##_varName_);
 
-TO_SOMETHING_SIMPLE(Int, int64_t, intValue, stoi, intInfo);
-TO_SOMETHING(Int, 2, int64_t, int2Value, stoi, int2Info);
-TO_SOMETHING(Int, 3, int32_t, int3Value, stoi, int3Info);
-TO_SOMETHING(Int, 4, int32_t, int4Value, stoi, int4Info);
-TO_SOMETHING_SIMPLE(Float, double, floatValue, stod, floatInfo);
-TO_SOMETHING(Float, 2, double, float2Value, stod, float2Info);
-TO_SOMETHING(Float, 3, float, float3Value, stof, float3Info);
-TO_SOMETHING(Float, 4, float, float4Value, stof, float4Info);
+TO_SOMETHING_SIMPLE(Int, int64_t, intValue, stoi, IntType);
+TO_SOMETHING(Int, 2, int64_t, int2Value, stoi, Int2Type);
+TO_SOMETHING(Int, 3, int32_t, int3Value, stoi, Int3Type);
+TO_SOMETHING(Int, 4, int32_t, int4Value, stoi, Int4Type);
+TO_SOMETHING_SIMPLE(Float, double, floatValue, stod, FloatType);
+TO_SOMETHING(Float, 2, double, float2Value, stod, Float2Type);
+TO_SOMETHING(Float, 3, float, float3Value, stof, Float3Type);
+TO_SOMETHING(Float, 4, float, float4Value, stof, Float4Type);
 
 struct ToString {
   VarStringStream stream;
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     stream.write(input);
     return Var(stream.str());
@@ -299,8 +295,8 @@ RUNTIME_BLOCK_END(ToString);
 
 struct ToHex {
   VarStringStream stream;
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     stream.tryWriteHex(input);
     return Var(stream.str());
@@ -315,8 +311,8 @@ RUNTIME_BLOCK_END(ToHex);
 
 struct VarAddr {
   VarStringStream stream;
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     auto v = findVariable(context, input.payload.stringValue);
     return Var(reinterpret_cast<int64_t>(v));
@@ -330,8 +326,8 @@ RUNTIME_BLOCK_activate(VarAddr);
 RUNTIME_BLOCK_END(VarAddr);
 
 struct BitSwap32 {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     auto i32 = static_cast<uint32_t>(input.payload.intValue);
     i32 = __builtin_bswap32(i32);
@@ -346,8 +342,8 @@ RUNTIME_BLOCK_activate(BitSwap32);
 RUNTIME_BLOCK_END(BitSwap32);
 
 struct BitSwap64 {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     auto i64 = static_cast<uint64_t>(input.payload.intValue);
     i64 = __builtin_bswap64(i64);
@@ -362,13 +358,9 @@ RUNTIME_BLOCK_activate(BitSwap64);
 RUNTIME_BLOCK_END(BitSwap64);
 
 // actual type = AT = the c type
-template <CBType OT, typename AT> struct BytesToX {
-  static inline TypeInfo outputType = TypeInfo(OT);
-  static inline TypesInfo outputInfo =
-      TypesInfo(TypeInfo::Sequence(outputType));
-
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(outputInfo); }
+template <Type(&OT), typename AT> struct BytesToX {
+  CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  CBTypesInfo outputTypes() { return OT; }
 
   CBSeq _outputCache = {};
 
@@ -402,7 +394,7 @@ template <CBType OT, typename AT> struct BytesToX {
     const auto tsize = sizeof(AT);
     if (unlikely(input.payload.bytesSize < tsize)) {
       throw CBException("BytesToX, Not enough bytes to convert to " +
-                        type2Name(OT));
+                        type2Name(CBTypeInfo(OT).basicType));
     } else if constexpr (std::is_same<AT, char *>::value) {
       CBVar output{};
       convert(output, input.payload.bytesValue);
@@ -433,17 +425,17 @@ template <CBType OT, typename AT> struct BytesToX {
   RUNTIME_BLOCK_activate(BytesTo##_name_);                                     \
   RUNTIME_BLOCK_END(BytesTo##_name_);
 
-BYTES_TO_BLOCK(Float32, Float, float);
-BYTES_TO_BLOCK(Float64, Float, double);
-BYTES_TO_BLOCK(Int8, Int, int8_t);
-BYTES_TO_BLOCK(Int16, Int, int16_t);
-BYTES_TO_BLOCK(Int32, Int, int32_t);
-BYTES_TO_BLOCK(Int64, Int, int64_t);
-BYTES_TO_BLOCK(String, String, char *);
+BYTES_TO_BLOCK(Float32, CoreInfo::FloatSeqType, float);
+BYTES_TO_BLOCK(Float64, CoreInfo::FloatSeqType, double);
+BYTES_TO_BLOCK(Int8, CoreInfo::IntSeqType, int8_t);
+BYTES_TO_BLOCK(Int16, CoreInfo::IntSeqType, int16_t);
+BYTES_TO_BLOCK(Int32, CoreInfo::IntSeqType, int32_t);
+BYTES_TO_BLOCK(Int64, CoreInfo::IntSeqType, int64_t);
+BYTES_TO_BLOCK(String, CoreInfo::StringType, char *);
 
 struct BytesToStringUnsafe {
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     const char *str = (const char *)input.payload.bytesValue;
     return Var(str);
@@ -453,10 +445,9 @@ struct BytesToStringUnsafe {
 typedef BlockWrapper<BytesToStringUnsafe> BytesToStringBlock;
 
 template <CBType ET> struct ExpectX {
-  static inline TypeInfo outputType = TypeInfo(ET);
-  static inline TypesInfo outputInfo = TypesInfo(outputType);
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(outputInfo); }
+  static inline Type outputType{{ET}};
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  CBTypesInfo outputTypes() { return outputType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != ET)) {
       throw CBException("Expected type " + type2Name(ET) + " got instead " +
@@ -500,8 +491,8 @@ struct ToBytes {
 
   std::vector<uint8_t> _buffer;
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::bytesInfo); }
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   size_t getSize(const CBVar &input) {
     switch (input.valueType) {

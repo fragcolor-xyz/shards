@@ -46,71 +46,70 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(String);
   CB_CORE_TYPE_DEF(Image);
 
-  static inline Types IndexablesInfo{
+  static inline Types IntOrFloat{{IntType, FloatType}};
+
+  static inline Types Indexables{
       {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
        Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
 
-  static inline Types BlocksInfo{{BlockType, BlockSeqType}};
+  static inline Types FloatVectors{{Float2Type, Float3Type, Float4Type}};
+  static inline Types FloatVectorsOrVar{
+      FloatVectors, {Float2VarType, Float3VarType, Float4VarType}};
 
-  static inline Types IntsVarInfo{
-      {IntType, IntSeqType, IntVarType, IntVarSeqType}};
+  static inline Types IntOrNone{{IntType, NoneType}};
 
-  static inline Types IntsVarInfoOption{IntsVarInfo, {NoneType}};
+  static inline Types IntsVar{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
 
-  static inline TypesInfo bytesInfo = TypesInfo(CBType::Bytes);
-  static inline TypeInfo intType = TypeInfo(CBType::Int);
-  static inline TypeInfo floatType = TypeInfo(CBType::Float);
-  static inline TypesInfo intInfo = TypesInfo(CBType::Int);
-  static inline TypesInfo intVarInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
-  static inline TypesInfo intVarOrNoneInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar, CBType::None);
-  static inline TypesInfo strVarInfo =
-      TypesInfo::FromMany(false, CBType::String, CBType::ContextVar);
-  static inline TypesInfo intsVarInfo =
-      TypesInfo::FromMany(true, CBType::Int, CBType::ContextVar);
-  static inline TypesInfo strInfo = TypesInfo(CBType::String);
-  static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
-  static inline TypesInfo varInfo = TypesInfo(CBType::ContextVar);
-  static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
-  static inline TypesInfo anySeqInfo = TypesInfo(CBType::Seq);
-  static inline TypesInfo noneInfo = TypesInfo(CBType::None);
-  static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
-  static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
-  static inline TypesInfo float2Info = TypesInfo(CBType::Float2);
-  static inline TypesInfo float3Info = TypesInfo(CBType::Float3);
-  static inline TypesInfo float4Info = TypesInfo(CBType::Float4);
-  static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
-  static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
-  static inline TypeInfo blockType = TypeInfo(CBType::Block);
-  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
-  static inline TypesInfo blocksOrNoneInfo =
-      TypesInfo(CBType::Block, true, true);
-  static inline TypeInfo blockSeq = TypeInfo::Sequence(blockType);
-  static inline TypesInfo blocksSeqInfo =
-      TypesInfo(TypeInfo::Sequence(blockSeq));
-  static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
-  static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
-  static inline TypesInfo floatSeqInfo =
-      TypesInfo(TypeInfo::Sequence(floatType));
-  static inline TypesInfo intsOrNoneInfo =
-      TypesInfo::FromMany(true, CBType::Int, CBType::None);
-  static inline TypesInfo intOrNoneInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::None);
-  static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
-      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
+  static inline Types IntsVarOrNone{IntsVar, {NoneType}};
+
+  static inline Types IntIntSeqOrNone{{IntType, IntSeqType, NoneType}};
+
+  static inline Types BlockSeqOrNone{{BlockSeqType, NoneType}};
+
+  static inline Types Blocks{{BlockType, BlockSeqType}};
+
+  static inline Types BlocksOrNone{Blocks, {NoneType}};
+
+  static inline Types StringOrBytes{{StringType, BytesType}};
+
+  static inline Types StringOrNone{{StringType, NoneType}};
+
+  static inline Types StringOrStringVar{{StringType, StringVarType}};
+
+  static inline Types ColorOrNone{{ColorType, NoneType}};
+
+  static inline Types AnyNumbers{{
+      IntType,       IntSeqType,   Int2Type,      Int2SeqType,  Int3Type,
+      Int3SeqType,   Int4Type,     Int4SeqType,   Int8Type,     Int8SeqType,
+      Int16Type,     Int16SeqType, FloatType,     FloatSeqType, Float2Type,
+      Float2SeqType, Float3Type,   Float3SeqType, Float4Type,   Float4SeqType,
+      ColorType,     ColorSeqType,
+  }};
+
+  static inline Types StringOrBytesVarOrNone{
+      {StringVarType, BytesVarType, NoneType}};
+
+  static inline Types StringStringVarOrNone{
+      {StringType, StringVarType, NoneType}};
+
+  static inline Types IntOrIntVar{{IntType, IntVarType}};
 };
 
 struct Const {
-  static inline TypesInfo constTypesInfo = TypesInfo::FromMany(
-      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
-      CBType::Float4, CBType::None, CBType::String, CBType::Color,
-      CBType::Bool);
-  static inline ParamsInfo constParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Value", "The constant value to insert in the chain.",
-                        CBTypesInfo(constTypesInfo)));
+  static inline Types TypesInfo{{
+      CoreInfo::NoneType,      CoreInfo::BoolType,      CoreInfo::BoolSeqType,
+      CoreInfo::IntType,       CoreInfo::IntSeqType,    CoreInfo::Int2Type,
+      CoreInfo::Int2SeqType,   CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
+      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,   CoreInfo::Int8Type,
+      CoreInfo::Int8SeqType,   CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
+      CoreInfo::FloatType,     CoreInfo::FloatSeqType,  CoreInfo::Float2Type,
+      CoreInfo::Float2SeqType, CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
+      CoreInfo::Float4Type,    CoreInfo::Float4SeqType, CoreInfo::ColorType,
+      CoreInfo::ColorSeqType,  CoreInfo::StringType,    CoreInfo::StringSeqType,
+  }};
+
+  static inline ParamsInfo constParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Value", "The constant value to insert in the chain.", TypesInfo));
 
   CBVar _value{};
   CBTypeInfo _innerInfo{};
@@ -479,8 +478,9 @@ struct VariableBase {
 };
 
 struct SetBase : public VariableBase {
-  TypeInfo _tableTypeInfo{};
-  TypeInfo _tableContentInfo{};
+  Type _tableTypeInfo{};
+  CBString _tableContentKey{};
+  CBTypeInfo _tableContentInfo{};
 
   void cleanup() {
     if (_target) {
@@ -547,8 +547,11 @@ struct Set : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableEntry(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo = CBTypeInfo{CBType::Table,
+                                  {.tableKeys = {&_tableContentKey, 1, 0},
+                                   .tableTypes = {&_tableContentInfo, 1, 0}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
@@ -583,8 +586,11 @@ struct Ref : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableEntry(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo = CBTypeInfo{CBType::Table,
+                                  {.tableKeys = {&_tableContentKey, 1, 0},
+                                   .tableTypes = {&_tableContentInfo, 1, 0}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, false, true));
     } else {
@@ -675,8 +681,11 @@ struct Update : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableEntry(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo = CBTypeInfo{CBType::Table,
+                                  {.tableKeys = {&_tableContentKey, 1, 0},
+                                   .tableTypes = {&_tableContentInfo, 1, 0}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
@@ -1372,7 +1381,7 @@ struct Pop : SeqUser {
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CoreInfo::IntsVarInfo));
+      CoreInfo::IntsVar));
 
   CBSeq _cachedSeq{};
   CBVar _output{};
@@ -1399,7 +1408,7 @@ struct Take {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::IndexablesInfo; }
+  static CBTypesInfo inputTypes() { return CoreInfo::Indexables; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -1675,11 +1684,11 @@ struct Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("From", "From index.", CoreInfo::IntsVarInfo),
-      ParamsInfo::Param("To", "To index.", CoreInfo::IntsVarInfoOption),
-      ParamsInfo::Param("Step", "The increment between each index.",
-                        CoreInfo::IntType));
+  static inline ParamsInfo indicesParamsInfo =
+      ParamsInfo(ParamsInfo::Param("From", "From index.", CoreInfo::IntsVar),
+                 ParamsInfo::Param("To", "To index.", CoreInfo::IntsVarOrNone),
+                 ParamsInfo::Param("Step", "The increment between each index.",
+                                   CoreInfo::IntType));
 
   CBSeq _cachedSeq{};
   CBVar _from{Var(0)};
@@ -1925,10 +1934,9 @@ struct Repeat {
   }
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Action", "The blocks to repeat.",
-                        CoreInfo::BlocksInfo),
+      ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
-                        CoreInfo::IntsVarInfo),
+                        CoreInfo::IntsVar),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",
                         CoreInfo::BoolType));
 

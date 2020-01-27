@@ -8,13 +8,9 @@ namespace chainblocks {
 namespace Math {
 namespace LinAlg {
 struct VectorUnaryBase : public UnaryBase {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
@@ -37,16 +33,12 @@ struct VectorUnaryBase : public UnaryBase {
 };
 
 struct VectorBinaryBase : public BinaryBase {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", "The operand.", CBTypesInfo(SharedTypes::vectorsCtxInfo)));
+      "Operand", "The operand.", CoreInfo::FloatVectorsOrVar));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -112,9 +104,7 @@ struct Cross : public VectorBinaryBase {
 };
 
 struct Dot : public VectorBinaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
@@ -163,9 +153,7 @@ struct Dot : public VectorBinaryBase {
 };
 
 struct LengthSquared : public VectorUnaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     Dot::Operation dotOp;
@@ -180,9 +168,7 @@ struct LengthSquared : public VectorUnaryBase {
 };
 
 struct Length : public VectorUnaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     LengthSquared::Operation lenOp;
@@ -475,24 +461,18 @@ struct Orthographic : VectorUnaryBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    return CBTypeInfo(SharedTypes::matrix4x4Info);
+    return CoreInfo::Float4SeqType;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::matrix4x4Info);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }
 
   // left, right, bottom, top, near, far
-  static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Width", "Width size.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Height", "Height size.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Near", "Near plane.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Far", "Far plane.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Width", "Width size.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Height", "Height size.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Near", "Near plane.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Far", "Far plane.", CoreInfo::IntOrFloat));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 

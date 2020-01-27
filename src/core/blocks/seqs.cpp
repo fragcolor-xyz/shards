@@ -6,9 +6,8 @@
 namespace chainblocks {
 struct Flatten {
   CBVar outputCache{};
-  TypeInfo outputType{};
-  TypeInfo seqType{};
-  TypesInfo outputFinalType{};
+  CBTypeInfo outputType{};
+  Type seqType{};
 
   void destroy() {
     if (outputCache.valueType == Seq) {
@@ -16,8 +15,8 @@ struct Flatten {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void verifyInnerType(CBTypeInfo info, CBTypeInfo &currentType) {
     if (currentType.basicType != None) {
@@ -51,13 +50,13 @@ struct Flatten {
     case Int4:
     case Int8:
     case Int16: {
-      currentType = CBTypeInfo(SharedTypes::intInfo);
+      currentType = CoreInfo::IntType;
       break;
     }
     case Float2:
     case Float3:
     case Float4: {
-      currentType = CBTypeInfo(SharedTypes::floatInfo);
+      currentType = CoreInfo::FloatType;
       break;
     }
     case Seq:
@@ -79,10 +78,9 @@ struct Flatten {
   CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo current{};
     verifyInnerType(data.inputType, current);
-    outputType = TypeInfo(current);
-    seqType = TypeInfo::Sequence(outputType);
-    outputFinalType = TypesInfo(seqType);
-    return CBTypeInfo(outputFinalType);
+    outputType = current;
+    seqType = CBTypeInfo{CBType::Seq, {.seqTypes = {&outputType, 1, 0}}};
+    return seqType;
   }
 
   void add(const CBVar &input) {
@@ -201,12 +199,12 @@ struct IndexOf {
 
   void cleanup() { _item.reset(); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   CBTypesInfo outputTypes() {
     if (_all)
-      return CBTypesInfo(CoreInfo::intSeqInfo);
+      return CoreInfo::IntSeqType;
     else
-      return CBTypesInfo(CoreInfo::intInfo);
+      return CoreInfo::IntType;
   }
 
   static inline ParamsInfo params = ParamsInfo(
@@ -214,11 +212,11 @@ struct IndexOf {
           "Item",
           "The item to find the index of from the input, if it's a sequence it "
           "will try to match all the items in the sequence, in sequence.",
-          CBTypesInfo(CoreInfo::anyInfo)),
+          CoreInfo::AnyType),
       ParamsInfo::Param("All",
                         "If true will return a sequence with all the indices "
                         "of Item, empty sequence if not found.",
-                        CBTypesInfo(CoreInfo::boolInfo)));
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 

@@ -19,14 +19,12 @@ namespace chainblocks {
 namespace Process {
 
 struct Exec {
-  static inline TypeInfo tableType = TypeInfo::MultiTypeTable(
-      std::tuple<CBTypeInfo, const char *>{CBTypeInfo(SharedTypes::intInfo),
-                                           "error_code"},
-      std::tuple<CBTypeInfo, const char *>{CBTypeInfo(SharedTypes::strInfo),
-                                           "std_out"},
-      std::tuple<CBTypeInfo, const char *>{CBTypeInfo(SharedTypes::strInfo),
-                                           "std_err"});
-  static inline TypesInfo outType = TypesInfo(tableType);
+  static inline CBString keys[] = {"error_code", "std_out", "std_err"};
+  static inline CBTypeInfo types[] = {CoreInfo::IntType, CoreInfo::StringType,
+                                      CoreInfo::StringType};
+  static inline Types tableType{
+      {CBType::Table,
+       {.tableKeys = {keys, 3, 0}, .tableTypes = {types, 3, 0}}}};
 
   // Spawns a child runs it, waits results and outputs them!
   std::string outBuf;
@@ -35,9 +33,9 @@ struct Exec {
 
   void destroy() { stbds_shfree(outputTable); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(outType); }
+  static CBTypesInfo outputTypes() { return tableType; }
 
   CBVar activate(CBContext *ctx, CBVar input) {
     boost::process::ipstream opipe;

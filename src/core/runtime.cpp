@@ -100,9 +100,6 @@ void registerCoreBlocks() {
   registerOSBlocks();
   Regex::registerBlocks();
 
-  // also enums
-  SharedTypes::initEnums();
-
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
     int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);

@@ -6,15 +6,15 @@
 
 namespace chainblocks {
 struct LoggingBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 };
 
 struct Log : public LoggingBase {
   static inline ParamsInfo msgParamsInfo = ParamsInfo(
       ParamsInfo::Param("Prefix", "The prefix message to the value to log.",
-                        CBTypesInfo(SharedTypes::strInfo)));
+                        CoreInfo::StringType));
 
   std::string msg;
 
@@ -57,7 +57,7 @@ struct Log : public LoggingBase {
 
 struct Msg : public LoggingBase {
   static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Message", "The message to log.", CBTypesInfo(SharedTypes::strInfo)));
+      "Message", "The message to log.", CoreInfo::StringType));
 
   std::string msg;
 

@@ -164,9 +164,9 @@
   (Count "tab1")
   (Assert.Is 0 true)
 
-  ; "chain:initChain[1]"
-  ; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
-  ; (Log)
+  ;; "chain:initChain[1]"
+  ;; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
+  ;; (Log)
 
   "My input"
   (Dispatch inner1)

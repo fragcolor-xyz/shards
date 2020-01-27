@@ -9,16 +9,16 @@ static ParamsInfo condParamsInfo = ParamsInfo(
         "Chains",
         "A sequence of chains, interleaving condition test predicate and "
         "action to execute if the condition matches.",
-        CBTypesInfo(SharedTypes::blockSeqsOrNoneInfo)),
+        CoreInfo::BlockSeqOrNone),
     ParamsInfo::Param(
         "Passthrough",
         "The input of this block will be the output. (default: true)",
-        CBTypesInfo(SharedTypes::boolInfo)),
+        CoreInfo::BoolType),
     ParamsInfo::Param("Threading",
                       "Will not short circuit after the first true test "
                       "expression. The threaded value gets used in only the "
                       "action and not the test part of the clause.",
-                      CBTypesInfo(SharedTypes::boolInfo)));
+                      CoreInfo::BoolType));
 
 struct Cond {
   CBVar _chains{};
@@ -28,8 +28,8 @@ struct Cond {
   bool _threading = false;
   CBValidationResult _chainValidation{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBParametersInfo parameters() {
     return CBParametersInfo(condParamsInfo);
   }

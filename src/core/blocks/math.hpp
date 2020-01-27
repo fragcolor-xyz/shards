@@ -10,16 +10,22 @@
 namespace chainblocks {
 namespace Math {
 struct Base {
-  static inline TypesInfo mathTypesInfo = TypesInfo::FromMany(
-      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
-      CBType::Float4, CBType::Color);
+  static inline Types MathTypes{{
+      CoreInfo::IntType,       CoreInfo::IntSeqType,    CoreInfo::Int2Type,
+      CoreInfo::Int2SeqType,   CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
+      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,   CoreInfo::Int8Type,
+      CoreInfo::Int8SeqType,   CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
+      CoreInfo::FloatType,     CoreInfo::FloatSeqType,  CoreInfo::Float2Type,
+      CoreInfo::Float2SeqType, CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
+      CoreInfo::Float4Type,    CoreInfo::Float4SeqType, CoreInfo::ColorType,
+      CoreInfo::ColorSeqType,
+  }};
 
   CBVar _cachedSeq{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(mathTypesInfo); }
+  static CBTypesInfo inputTypes() { return MathTypes; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(mathTypesInfo); }
+  static CBTypesInfo outputTypes() { return MathTypes; }
 };
 
 struct UnaryBase : public Base {
@@ -38,12 +44,33 @@ struct UnaryBase : public Base {
 struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
-  static inline TypesInfo mathBaseTypesInfo1 = TypesInfo::FromMany(
-      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
-      CBType::Float4, CBType::Color, CBType::ContextVar);
-  static inline ParamsInfo mathParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", "The operand.", CBTypesInfo(mathBaseTypesInfo1)));
+  static inline Types MathTypesOrVar{{
+      CoreInfo::IntType,       CoreInfo::IntSeqType,
+      CoreInfo::IntVarType,    CoreInfo::IntVarSeqType,
+      CoreInfo::Int2Type,      CoreInfo::Int2SeqType,
+      CoreInfo::Int2VarType,   CoreInfo::Int2VarSeqType,
+      CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
+      CoreInfo::Int3VarType,   CoreInfo::Int3VarSeqType,
+      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,
+      CoreInfo::Int4VarType,   CoreInfo::Int4VarSeqType,
+      CoreInfo::Int8Type,      CoreInfo::Int8SeqType,
+      CoreInfo::Int8VarType,   CoreInfo::Int8VarSeqType,
+      CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
+      CoreInfo::Int16VarType,  CoreInfo::Int16VarSeqType,
+      CoreInfo::FloatType,     CoreInfo::FloatSeqType,
+      CoreInfo::FloatVarType,  CoreInfo::FloatVarSeqType,
+      CoreInfo::Float2Type,    CoreInfo::Float2SeqType,
+      CoreInfo::Float2VarType, CoreInfo::Float2VarSeqType,
+      CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
+      CoreInfo::Float3VarType, CoreInfo::Float3VarSeqType,
+      CoreInfo::Float4Type,    CoreInfo::Float4SeqType,
+      CoreInfo::Float4VarType, CoreInfo::Float4VarSeqType,
+      CoreInfo::ColorType,     CoreInfo::ColorSeqType,
+      CoreInfo::ColorVarType,  CoreInfo::ColorVarSeqType,
+  }};
+
+  static inline ParamsInfo mathParamsInfo =
+      ParamsInfo(ParamsInfo::Param("Operand", "The operand.", MathTypesOrVar));
 
   CBVar _operand{};
   CBVar *_ctxOperand{};
@@ -111,9 +138,9 @@ struct BinaryBase : public Base {
 
   CBExposedTypesInfo consumedVariables() {
     if (_operand.valueType == ContextVar) {
-      _consumedInfo = ExposedInfo(ExposedInfo::Variable(
-          _operand.payload.stringValue, "The consumed operand.",
-          CBTypeInfo(CoreInfo::anyInfo)));
+      _consumedInfo = ExposedInfo(
+          ExposedInfo::Variable(_operand.payload.stringValue,
+                                "The consumed operand.", CoreInfo::AnyType));
       return CBExposedTypesInfo(_consumedInfo);
     }
     return {};
@@ -491,10 +518,8 @@ MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf, "Round");
   RUNTIME_BLOCK_END(NAME);
 
 struct Mean {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(CoreInfo::floatSeqInfo);
-  }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::floatInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     int64_t inputLen = input.payload.seqValue.len;

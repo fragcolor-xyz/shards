@@ -491,7 +491,7 @@ struct ToJson {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Indent", "How many spaces to use as json prettify indent.",
-      CBTypesInfo(SharedTypes::intInfo)));
+      CoreInfo::IntType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -499,8 +499,8 @@ struct ToJson {
 
   CBVar getParam(int index) { return Var(_indent); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     json j = input;
     if (_indent == 0)
@@ -513,8 +513,8 @@ struct ToJson {
 
 struct FromJson {
   CBVar _output;
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);

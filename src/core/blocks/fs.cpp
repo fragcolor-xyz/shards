@@ -18,17 +18,15 @@ struct Iterate {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::strSeqInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
   bool _recursive = true;
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Recursive",
       "If the iteration should be recursive, following sub-directories.",
-      CBTypesInfo(CoreInfo::boolInfo)));
+      CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, CBVar value) {
@@ -111,8 +109,8 @@ RUNTIME_BLOCK_END(Iterate);
 struct Extension {
   std::string _output;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _output.clear();
@@ -130,10 +128,8 @@ RUNTIME_BLOCK_activate(Extension);
 RUNTIME_BLOCK_END(Extension);
 
 struct IsFile {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::boolInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     fs::path p(input.payload.stringValue);
     if (fs::exists(p) && !fs::is_directory(p)) {
@@ -151,10 +147,8 @@ RUNTIME_BLOCK_activate(IsFile);
 RUNTIME_BLOCK_END(IsFile);
 
 struct IsDirectory {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::boolInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     fs::path p(input.payload.stringValue);
     if (fs::exists(p) && fs::is_directory(p)) {
@@ -175,12 +169,12 @@ struct Filename {
   std::string _output;
   bool _noExt = false;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "NoExtension", "If the extension should be stripped from the result.",
-      CBTypesInfo(CoreInfo::boolInfo)));
+      CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, CBVar value) {
@@ -225,17 +219,17 @@ struct Read {
   std::vector<uint8_t> _buffer;
   bool _binary = false;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   CBTypesInfo outputTypes() {
     if (_binary)
-      return CBTypesInfo(SharedTypes::bytesInfo);
+      return CoreInfo::BytesType;
     else
-      return CBTypesInfo(SharedTypes::strInfo);
+      return CoreInfo::StringType;
   }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Bytes", "If the output should be Bytes instead of String.",
-      CBTypesInfo(CoreInfo::boolInfo)));
+      CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, CBVar value) {
@@ -289,18 +283,18 @@ struct Write {
   bool _overwrite = false;
   bool _append = false;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Contents",
                         "The string or bytes to write as the file's contents.",
-                        CBTypesInfo(SharedTypes::ctxOrNoneInfo)),
+                        CoreInfo::StringOrBytesVarOrNone),
       ParamsInfo::Param("Overwrite", "Overwrite the file if it already exists.",
-                        CBTypesInfo(SharedTypes::boolInfo)),
+                        CoreInfo::BoolType),
       ParamsInfo::Param("Append",
                         "If we should append Contents to an existing file.",
-                        CBTypesInfo(SharedTypes::boolInfo)));
+                        CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, CBVar value) {

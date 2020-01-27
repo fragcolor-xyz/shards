@@ -119,7 +119,7 @@ struct StructBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Definition", "A string defining the struct e.g. \"i32 f32 b i8[256]\".",
-      CBTypesInfo(CoreInfo::strInfo)));
+      CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -204,10 +204,8 @@ struct StructBase {
 struct Pack : public StructBase {
   std::vector<uint8_t> _storage;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::bytesInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   void setParam(int index, CBVar value) {
     StructBase::setParam(index, value);
@@ -347,10 +345,8 @@ RUNTIME_BLOCK_END(Pack);
 struct Unpack : public StructBase {
   CBSeq _output;
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::bytesInfo);
-  }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   void destroy() {
     if (_output.elements) {

@@ -25,7 +25,8 @@ struct NetworkBase {
   BlocksVar _blks{};
   CBValidationResult _validation{};
 
-  static inline TypeInfo SocketInfo = TypeInfo::Object(FragCC, SocketCC);
+  static inline Type SocketInfo{
+      {CBType::Object, {.objectVendorId = FragCC, .objectTypeId = SocketCC}}};
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
@@ -43,13 +44,13 @@ struct NetworkBase {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Address",
                         "The local bind address or the remote address.",
-                        CBTypesInfo(CoreInfo::strVarInfo)),
+                        CoreInfo::StringOrStringVar),
       ParamsInfo::Param(
           "Port", "The port to bind if server or to connect to if client.",
-          CBTypesInfo(CoreInfo::intVarInfo)),
+          CoreInfo::IntOrIntVar),
       ParamsInfo::Param("Receive",
                         "The flow to execute when a packet is received.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)));
+                        CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -114,9 +115,9 @@ struct NetworkBase {
     _port.reset();
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(CBInstanceData &data) {
     // inject our special context vars
@@ -444,8 +445,8 @@ struct Send {
     return reinterpret_cast<SocketData *>(_socketVar->payload.objectValue);
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto socket = getSocket(context);

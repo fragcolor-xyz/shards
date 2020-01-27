@@ -656,9 +656,9 @@ struct InnerCall {
     malActivate = malValuePtr(malActivateList);
   }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(CBInstanceData data) {
     // call a fn* [inputTypeKeyword] in place

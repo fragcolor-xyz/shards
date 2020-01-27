@@ -15,12 +15,13 @@ struct Base {
 };
 
 constexpr uint32_t windowCC = 'hwnd';
-const static TypeInfo windowType = TypeInfo::Object(FragCC, windowCC);
-const static TypesInfo windowInfo = TypesInfo(windowType);
 
 struct BaseConsumer : public Base {
+  static inline Type windowType{
+      {CBType::Object, {.objectVendorId = FragCC, .objectTypeId = windowCC}}};
+
   static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
-      "BGFX.Context", "The BGFX Context.", CBTypeInfo(Context::Info)));
+      "BGFX.Context", "The BGFX Context.", Context::Info));
 
   CBExposedTypesInfo consumedVariables() {
     return CBExposedTypesInfo(consumedInfo);
@@ -46,19 +47,15 @@ struct BaseWindow : public Base {
 
   const static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Width", "The width of the window to create",
-                        CBTypesInfo(SharedTypes::intInfo)),
+                        CoreInfo::IntType),
       ParamsInfo::Param("Height", "The height of the window to create.",
-                        CBTypesInfo(SharedTypes::intInfo)));
+                        CoreInfo::IntType));
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -103,11 +100,10 @@ struct BaseWindow : public Base {
 struct MainWindow : public BaseWindow {
   const static inline ExposedInfo exposedInfo = ExposedInfo(
       ExposedInfo::Variable("BGFX.CurrentWindow", "The exposed SDL window.",
-                            CBTypeInfo(windowInfo)),
-      ExposedInfo::Variable("BGFX.Context", "The BGFX Context.",
-                            CBTypeInfo(Context::Info)),
+                            BaseConsumer::windowType),
+      ExposedInfo::Variable("BGFX.Context", "The BGFX Context.", Context::Info),
       ExposedInfo::Variable("ImGui.Context", "The ImGui Context.",
-                            CBTypeInfo(chainblocks::ImGui::Context::Info)));
+                            chainblocks::ImGui::Context::Info));
 
   CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(exposedInfo);
@@ -389,9 +385,9 @@ struct Window : public BaseWindow {
 };
 
 struct Draw : public BaseConsumer {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     imguiEndFrame();
@@ -413,13 +409,9 @@ struct Texture2D : public BaseConsumer {
     _texture.channels = 0;
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(Texture::TextureHandleInfo);
-  }
+  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // Upload a completely new image if sizes changed, also first activation!

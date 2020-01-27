@@ -10,8 +10,8 @@ namespace Snappy {
 struct Compress {
   std::vector<char> _buffer;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::bytesInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::bytesInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _buffer.resize(snappy::MaxCompressedLength(input.payload.bytesSize));
@@ -25,8 +25,8 @@ struct Compress {
 struct Decompress {
   std::vector<char> _buffer;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::bytesInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::bytesInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     size_t len;

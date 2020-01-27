@@ -8,12 +8,12 @@ namespace chainblocks {
 namespace Regex {
 struct Common {
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Regex", "The regular expression.", CBTypesInfo(SharedTypes::strInfo)));
+      "Regex", "The regular expression.", CoreInfo::StringType));
 
   std::regex _re;
   std::string _re_str;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -43,9 +43,7 @@ struct Match : public Common {
   IterableSeq _output;
   std::vector<std::string> _pool;
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::strSeqInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::smatch match;
@@ -69,9 +67,7 @@ struct Search : public Common {
   IterableSeq _output;
   std::vector<std::string> _pool;
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::strSeqInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::smatch match;
@@ -101,11 +97,11 @@ struct Replace : public Common {
   static inline ParamsInfo params =
       ParamsInfo(Common::params,
                  ParamsInfo::Param("Replacement", "The replacement expression.",
-                                   CBTypesInfo(SharedTypes::strInfo)));
+                                   CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   void setParam(int index, CBVar value) {
     switch (index) {

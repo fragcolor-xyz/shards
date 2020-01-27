@@ -12,19 +12,19 @@ struct JointOp {
   CBVar *_input = nullptr;
   CBVar _columns{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline ParamsInfo joinOpParams = ParamsInfo(
       ParamsInfo::Param("From",
                         "The name of the sequence variable to edit in place.",
-                        CBTypesInfo(CoreInfo::varInfo)),
+                        CoreInfo::AnyVarSeqType),
       ParamsInfo::Param(
 
           "Join",
           "Other columns to join sort/filter using the input (they must be "
           "of the same length).",
-          CBTypesInfo(CoreInfo::varSeqInfo)));
+          CoreInfo::AnyVarSeqType));
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -131,11 +131,11 @@ struct Sort : public JointOp {
       ParamsInfo::Param(
           "Desc",
           "If sorting should be in descending order, defaults ascending.",
-          CBTypesInfo(CoreInfo::boolInfo)),
+          CoreInfo::BoolType),
       ParamsInfo::Param("Key",
                         "The blocks to use to transform the collection's items "
                         "before they are compared. Can be None.",
-                        CBTypesInfo(CoreInfo::blocksOrNoneInfo)));
+                        CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -288,11 +288,11 @@ struct Remove : public JointOp {
       ParamsInfo::Param("Predicate",
                         "The blocks to use as predicate, if true the item will "
                         "be popped from the sequence.",
-                        CBTypesInfo(CoreInfo::blocksInfo)),
+                        CoreInfo::Blocks),
       ParamsInfo::Param("Unordered",
                         "Turn on to remove items very quickly but will not "
                         "preserve the sequence items order.",
-                        CBTypesInfo(CoreInfo::boolInfo)));
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -394,11 +394,11 @@ struct Remove : public JointOp {
 
 struct Profile {
   BlocksVar _blocks{};
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Action", "The action to profile.", CBTypesInfo(CoreInfo::blocksInfo)));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Action", "The action to profile.", CoreInfo::Blocks));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -441,8 +441,8 @@ struct Profile {
 };
 
 struct XPendBase {
-  static inline TypesInfo xpendTypes = TypesInfo::FromMany(
-      false, CBTypeInfo(CoreInfo::anySeqInfo), CBTypeInfo(CoreInfo::strInfo));
+  static inline Types xpendTypes{
+      {CoreInfo::AnyVarSeqType, CoreInfo::StringVarType}};
 };
 
 struct XpendTo : public XPendBase {
@@ -450,13 +450,12 @@ struct XpendTo : public XPendBase {
 
   ParamVar _collection{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   // TODO use xpendTypes...
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Collection", "The collection to add the input to.",
-                        CBTypesInfo(CoreInfo::varInfo)));
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
+      "Collection", "The collection to add the input to.", xpendTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 

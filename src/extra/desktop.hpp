@@ -25,7 +25,7 @@ public:
     _window = WindowDefault();
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(windowParams);
@@ -60,10 +60,10 @@ public:
 protected:
   static inline ParamsInfo windowParams = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to look for.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Class",
                         "An optional and platform dependent window class.",
-                        CBTypesInfo(SharedTypes::strInfo)));
+                        CoreInfo::StringType));
 
   static T WindowDefault();
   std::string _winName;
@@ -73,14 +73,12 @@ protected:
 
 struct ActiveBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::boolInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 };
 
 struct PIDBase {
   static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::intInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 };
 
 struct WinOpBase {
@@ -96,11 +94,9 @@ struct SizeBase {
 };
 
 struct ResizeWindowBase : public WinOpBase {
-  static inline ParamsInfo sizeParams =
-      ParamsInfo(ParamsInfo::Param("Width", "The desired width.",
-                                   CBTypesInfo(SharedTypes::intInfo)),
-                 ParamsInfo::Param("Height", "The desired height.",
-                                   CBTypesInfo(SharedTypes::intInfo)));
+  static inline ParamsInfo sizeParams = ParamsInfo(
+      ParamsInfo::Param("Width", "The desired width.", CoreInfo::IntType),
+      ParamsInfo::Param("Height", "The desired height.", CoreInfo::IntType));
 
   int _width;
   int _height;
@@ -193,9 +189,8 @@ struct InjectHookBase : public WinOpBase {
     SharedMemory->destroy<SharedString>(codeId.c_str());
   }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Code", "The code to load and run once hooked.",
-                        CBTypesInfo(SharedTypes::strInfo)));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "Code", "The code to load and run once hooked.", CoreInfo::StringType));
 
   std::string _code;
 
@@ -211,9 +206,9 @@ struct InjectHookBase : public WinOpBase {
 struct MoveWindowBase : public WinOpBase {
   static inline ParamsInfo posParams =
       ParamsInfo(ParamsInfo::Param("X", "The desired horizontal coordinates.",
-                                   CBTypesInfo(SharedTypes::intInfo)),
+                                   CoreInfo::IntType),
                  ParamsInfo::Param("Y", "The desired vertical coordinates.",
-                                   CBTypesInfo(SharedTypes::intInfo)));
+                                   CoreInfo::IntType));
 
   int _x;
   int _y;
@@ -248,9 +243,8 @@ struct MoveWindowBase : public WinOpBase {
 };
 
 struct SetTitleBase : public WinOpBase {
-  static inline ParamsInfo windowParams = ParamsInfo(
-      ParamsInfo::Param("Title", "The title of the window to look for.",
-                        CBTypesInfo(SharedTypes::strInfo)));
+  static inline ParamsInfo windowParams = ParamsInfo(ParamsInfo::Param(
+      "Title", "The title of the window to look for.", CoreInfo::StringType));
 
   std::string _title;
 
@@ -266,7 +260,7 @@ struct SetTitleBase : public WinOpBase {
 };
 
 struct WaitKeyEventBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() {
     return CBTypesInfo(SharedTypes::int2Info);
   }
@@ -341,7 +335,7 @@ struct MousePosBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() {
     return CBTypesInfo(SharedTypes::int2Info);
   }
