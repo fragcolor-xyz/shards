@@ -584,7 +584,7 @@ struct PixelBase {
 struct Pixel : public PixelBase {
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::colorInfo);
+    return CoreInfo::ColorType;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -610,7 +610,7 @@ struct Pixel : public PixelBase {
 };
 
 struct Pixels : public PixelBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int4Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int4Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar _output;
