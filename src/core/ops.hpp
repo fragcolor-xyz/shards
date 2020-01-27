@@ -147,7 +147,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Table:
     os << "{";
-    for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
+    for (ptrdiff_t i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
       if (i == 0)
         os << var.payload.tableValue[i].key << ": "
            << var.payload.tableValue[i].value;
@@ -268,7 +268,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -424,7 +424,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -561,7 +561,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (uint32_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
