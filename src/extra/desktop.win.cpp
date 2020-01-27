@@ -70,7 +70,7 @@ public:
 
 class WaitWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() { return CBTypesInfo(windowInfo); }
+  static CBTypesInfo outputTypes() { return windowType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     while (!_window || !IsWindow(_window)) {
@@ -463,7 +463,7 @@ struct PixelBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Window", "The window variable name to use as coordinate origin.",
-      CBTypesInfo(SharedTypes::ctxOrNoneInfo)));
+      windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -486,8 +486,7 @@ struct PixelBase {
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            variableName.c_str(), "The window to use as origin.",
-            CBTypeInfo(windowInfo)));
+            variableName.c_str(), "The window to use as origin.", windowType));
       } else {
         variableName.clear();
       }
@@ -583,7 +582,7 @@ struct PixelBase {
 };
 
 struct Pixel : public PixelBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static CBTypesInfo outputTypes() {
     return CBTypesInfo(SharedTypes::colorInfo);
   }
@@ -820,7 +819,7 @@ struct GetMousePos : public MousePosBase {
 };
 
 struct SetMousePos : public MousePosBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     POINT p;
@@ -883,7 +882,7 @@ struct Tap : public MousePosBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   void setParam(int index, CBVar value) {
     if (index == 0)
@@ -995,7 +994,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   void setParam(int index, CBVar value) {
     if (index == 0)

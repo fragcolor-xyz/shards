@@ -14,8 +14,9 @@ using namespace chainblocks;
 
 namespace Desktop {
 constexpr uint32_t windowCC = 'hwnd';
-static TypeInfo windowType = TypeInfo::Object(FragCC, windowCC);
-static TypesInfo windowInfo = TypesInfo(windowType);
+static Type windowType{
+    {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
+static Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
 
 template <typename T> class WindowBase {
 public:
@@ -72,25 +73,23 @@ protected:
 };
 
 struct ActiveBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
+  static CBTypesInfo inputTypes() { return windowType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 };
 
 struct PIDBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
+  static CBTypesInfo inputTypes() { return windowType; }
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 };
 
 struct WinOpBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(windowInfo); }
+  static CBTypesInfo inputTypes() { return windowType; }
+  static CBTypesInfo outputTypes() { return windowType; }
 };
 
 struct SizeBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(windowInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::int2Info);
-  }
+  static CBTypesInfo inputTypes() { return windowType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 };
 
 struct ResizeWindowBase : public WinOpBase {
@@ -261,9 +260,7 @@ struct SetTitleBase : public WinOpBase {
 
 struct WaitKeyEventBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::int2Info);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static const char *help() {
     return "### Pauses the chain and waits for keyboard events.\n#### The "
@@ -278,14 +275,12 @@ struct SendKeyEventBase {
       ParamsInfo::Param("Window",
                         "None or a window variable if we wish to send the "
                         "event only to a specific target window.",
-                        CBTypesInfo(SharedTypes::ctxOrNoneInfo)));
+                        windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::int2Info);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static const char *help() {
     return "### Sends the input key event.\n#### The input of this block will "
@@ -311,8 +306,7 @@ struct SendKeyEventBase {
     } else {
       _windowVarName = value.payload.stringValue;
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _windowVarName.c_str(), "The window to send events to.",
-          CBTypeInfo(windowInfo)));
+          _windowVarName.c_str(), "The window to send events to.", windowType));
     }
   }
 
@@ -331,19 +325,17 @@ struct MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Window", "None or a window variable we wish to use as relative origin.",
-      CBTypesInfo(SharedTypes::ctxOrNoneInfo)));
+      windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::int2Info);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   CBExposedTypesInfo consumedVariables() {
     if (_window.isVariable()) {
       _consuming = ExposedInfo(ExposedInfo::Variable(
-          _window.variableName(), "The window.", CBTypeInfo(windowInfo)));
+          _window.variableName(), "The window.", windowType));
       return CBExposedTypesInfo(_consuming);
     } else {
       return {};
