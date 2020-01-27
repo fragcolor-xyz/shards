@@ -589,9 +589,10 @@ struct Ref : public SetBase {
       // we are a table!
       _tableContentInfo = data.inputType;
       _tableContentKey = _key.c_str();
-      _tableTypeInfo = CBTypeInfo{CBType::Table,
-                                  {.tableKeys = {&_tableContentKey, 1, 0},
-                                   .tableTypes = {&_tableContentInfo, 1, 0}}};
+      _tableTypeInfo =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {&_tableContentKey, 1, 0},
+                                .types = {&_tableContentInfo, 1, 0}}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, false, true));
     } else {
