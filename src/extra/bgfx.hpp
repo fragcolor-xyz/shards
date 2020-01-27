@@ -16,7 +16,7 @@ constexpr uint32_t BgfxContextCC = 'bgfx';
 struct Context {
   static inline Type Info{
       {CBType::Object,
-       {.objectVendorId = FragCC, .objectTypeId = BgfxContextCC}}};
+       {.object = {.vendorId = FragCC, .typeId = BgfxContextCC}}}};
 
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
@@ -25,7 +25,7 @@ struct Context {
 struct Texture {
   static inline Type TextureHandleType{
       {CBType::Object,
-       {.objectVendorId = FragCC, .objectTypeId = BgfxTextureHandleCC}}};
+       {.object = {.vendorId = FragCC, .typeId = BgfxTextureHandleCC}}}};
 
   bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
   uint16_t width = 0;

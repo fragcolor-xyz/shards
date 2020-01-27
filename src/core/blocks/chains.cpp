@@ -22,7 +22,7 @@ struct ChainBase {
   static inline RunChainModeInfo runChainModeInfo{"RunChainMode", 'frag',
                                                   'runC'};
   static inline Type ModeType{
-      {CBType::Enum, {.enumVendorId = 'frag', .enumTypeId = 'runC'}}};
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'runC'}}}};
 
   static inline Types ChainTypes{
       {CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};

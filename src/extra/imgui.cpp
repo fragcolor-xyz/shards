@@ -32,7 +32,7 @@ struct IDContext {
 
 struct Style : public Base {
   static inline Type styleEnumInfo{
-      {CBType::Enum, {.enumVendorId = 'frag', .enumTypeId = 'ImGS'}}};
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'ImGS'}}}};
 
   enum ImGuiStyle {
     Alpha,
@@ -835,7 +835,7 @@ struct Text : public Base {
 struct Button : public Base {
   CBValidationResult _validation{};
   static inline Type buttonTypeInfo{
-      {CBType::Enum, {.enumVendorId = 'frag', .enumTypeId = 'ImGB'}}};
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'ImGB'}}}};
 
   enum ButtonTypes {
     Normal,

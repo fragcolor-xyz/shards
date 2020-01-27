@@ -18,7 +18,7 @@ constexpr uint32_t windowCC = 'hwnd';
 
 struct BaseConsumer : public Base {
   static inline Type windowType{
-      {CBType::Object, {.objectVendorId = FragCC, .objectTypeId = windowCC}}};
+      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
 
   static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
       "BGFX.Context", "The BGFX Context.", Context::Info));

@@ -26,7 +26,7 @@ struct NetworkBase {
   CBValidationResult _validation{};
 
   static inline Type SocketInfo{
-      {CBType::Object, {.objectVendorId = FragCC, .objectTypeId = SocketCC}}};
+      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = SocketCC}}}};
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
