@@ -52,9 +52,23 @@ struct CoreInfo {
       {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
        Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
 
-  static inline Types FloatVectors{{Float2Type, Float3Type, Float4Type}};
-  static inline Types FloatVectorsOrVar{
-      FloatVectors, {Float2VarType, Float3VarType, Float4VarType}};
+  static inline Types FloatVectors{{
+      Float2Type,
+      Float2SeqType,
+      Float3Type,
+      Float3SeqType,
+      Float4Type,
+      Float4SeqType,
+  }};
+  static inline Types FloatVectorsOrVar{FloatVectors,
+                                        {
+                                            Float2VarType,
+                                            Float2VarSeqType,
+                                            Float3VarType,
+                                            Float3VarSeqType,
+                                            Float4VarType,
+                                            Float4VarSeqType,
+                                        }};
 
   static inline Types IntOrNone{{IntType, NoneType}};
 
