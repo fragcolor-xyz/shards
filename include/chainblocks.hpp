@@ -360,34 +360,10 @@ struct Var : public CBVar {
 class ChainProvider {
   // used specially for live editing chains, from host languages
 public:
-  class Info {
-  public:
-    Info() {
-      CBTypeInfo none{};
-      _infos.push_back(none);
-      CBTypeInfo objInfo{CBType::Object};
-      objInfo.objectVendorId = 'frag';
-      objInfo.objectTypeId = 'chnp';
-      _infos.push_back(objInfo);
-      _providerOrNone.elements = &_infos[0];
-      _providerOrNone.len = 2;
-    }
-
-    operator CBTypeInfo() const { return _infos[1]; }
-
-    operator CBTypesInfo() const { return _providerOrNone; }
-
-  private:
-    std::vector<CBTypeInfo> _infos;
-    CBTypesInfo _providerOrNone = {};
-  };
-
-  struct Update {
-    const char *error;
-    CBChain *chain;
-  };
-
-  static inline Info Info{};
+  static inline Type NoneType{{CBType::None}};
+  static inline Type ProviderType{
+      {CBType::Object, {.object = {.vendorId = 'frag', .typeId = 'chnp'}}}};
+  static inline Types ProviderOrNone{{ProviderType, NoneType}};
 
   ChainProvider() {
     _provider.userData = this;

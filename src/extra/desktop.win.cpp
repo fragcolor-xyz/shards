@@ -583,9 +583,7 @@ struct PixelBase {
 
 struct Pixel : public PixelBase {
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
-  static CBTypesInfo outputTypes() {
-    return CoreInfo::ColorType;
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     int x = input.payload.int2Value[0];
