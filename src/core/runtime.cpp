@@ -564,8 +564,6 @@ void releaseMemory(CBVar &self) {
   }
 }
 
-thread_local std::vector<char> gLogCache;
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -486,7 +486,8 @@ struct PixelBase {
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            variableName.c_str(), "The window to use as origin.", Globals::windowType));
+            variableName.c_str(), "The window to use as origin.",
+            Globals::windowType));
       } else {
         variableName.clear();
       }
@@ -862,7 +863,14 @@ struct Tap : public MousePosBase {
     }
   };
 
-  static inline GlobalInjector sInjectorState{};
+  static inline GlobalInjector *sInjectorState = nullptr;
+
+  void setup() {
+    // we cannot use static inline with value type..
+    // runtime error with 32 bit builds...
+    if (!sInjectorState)
+      sInjectorState = new GlobalInjector();
+  }
 
   bool _delays = true;
   bool _longTap = false;
@@ -1331,6 +1339,7 @@ RUNTIME_BLOCK_consumedVariables(SetMousePos);
 RUNTIME_BLOCK_END(SetMousePos);
 
 RUNTIME_BLOCK(Desktop, Tap);
+RUNTIME_BLOCK_setup(Tap);
 RUNTIME_BLOCK_cleanup(Tap);
 RUNTIME_BLOCK_inputTypes(Tap);
 RUNTIME_BLOCK_outputTypes(Tap);
