@@ -70,7 +70,7 @@ public:
 
 class WaitWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() { return windowType; }
+  static CBTypesInfo outputTypes() { return Globals::windowType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     while (!_window || !IsWindow(_window)) {
@@ -463,7 +463,7 @@ struct PixelBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Window", "The window variable name to use as coordinate origin.",
-      windowVarOrNone));
+      Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -486,7 +486,7 @@ struct PixelBase {
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            variableName.c_str(), "The window to use as origin.", windowType));
+            variableName.c_str(), "The window to use as origin.", Globals::windowType));
       } else {
         variableName.clear();
       }
