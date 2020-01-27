@@ -15,11 +15,11 @@ using namespace chainblocks;
 namespace Desktop {
 constexpr uint32_t windowCC = 'hwnd';
 
-  class Globals {
-    static Type windowType{
-			   {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
-    static Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
-  };
+struct Globals {
+  static Type windowType{
+      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
+  static Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
+};
 
 template <typename T> class WindowBase {
 public:
@@ -309,7 +309,8 @@ struct SendKeyEventBase {
     } else {
       _windowVarName = value.payload.stringValue;
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _windowVarName.c_str(), "The window to send events to.", Globals::windowType));
+          _windowVarName.c_str(), "The window to send events to.",
+          Globals::windowType));
     }
   }
 
