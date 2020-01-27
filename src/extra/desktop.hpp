@@ -16,9 +16,9 @@ namespace Desktop {
 constexpr uint32_t windowCC = 'hwnd';
 
 struct Globals {
-  static Type windowType{
+  static inline Type windowType{
       {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
-  static Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
+  static inline Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
 };
 
 template <typename T> class WindowBase {
