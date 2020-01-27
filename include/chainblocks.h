@@ -314,6 +314,11 @@ struct CBTypeInfo {
       CBTypesInfo tableTypes;
     };
 
+    struct {
+      CBStrings keys;
+      CBTypesInfo types;
+    } table;
+
     CBTypesInfo contextVarTypes;
   };
 };

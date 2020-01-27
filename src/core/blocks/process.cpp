@@ -24,7 +24,7 @@ struct Exec {
                                       CoreInfo::StringType};
   static inline Types tableType{
       {CBType::Table,
-       {.tableKeys = {keys, 3, 0}, .tableTypes = {types, 3, 0}}}};
+       {.tableKeys = {keys, 3, 0}, .table = {.types = {types, 3, 0}}}}};
 
   // Spawns a child runs it, waits results and outputs them!
   std::string outBuf;
