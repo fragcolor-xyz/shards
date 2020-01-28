@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_OPS
+#define CB_OPS
 
-#include "chainblocks.h"
-#include "easylogging++.h"
-#include "stb_ds.h"
 #include <cfloat>
+#include <chainblocks.h>
+#include <easylogging++.h>
+#include <stb_ds.h>
 
 inline MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
@@ -764,3 +765,5 @@ inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
 inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
   return !(a == b);
 }
+
+#endif

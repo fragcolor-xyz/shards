@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_SHARED_HPP
+#define CB_SHARED_HPP
 
 #include "../blocks_macros.hpp"
 #include "../runtime.hpp"
+
+#endif

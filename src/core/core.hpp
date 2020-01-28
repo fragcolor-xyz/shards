@@ -4,8 +4,8 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
-#include "chainblocks.hpp"
 #include "ops.hpp"
+#include <chainblocks.hpp>
 
 // Included 3rdparty
 #include "easylogging++.h"

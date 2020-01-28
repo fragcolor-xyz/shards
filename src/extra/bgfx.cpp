@@ -304,7 +304,7 @@ struct MainWindow : public BaseWindow {
 
 struct Window : public BaseWindow {
   // WIP/TODO
-  
+
   bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _viewId; // todo manage
   chainblocks::ImGui::Context _imgui_context{};
