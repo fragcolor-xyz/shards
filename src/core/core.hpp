@@ -76,7 +76,23 @@ struct Globals {
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
   static inline std::string RootPath;
+
+  static inline Var True = Var(true);
+  static inline Var False = Var(false);
+  static inline Var StopChain = Var::Stop();
+  static inline Var RestartChain = Var::Restart();
+  static inline Var ReturnPrevious = Var::Return();
+  static inline Var RebaseChain = Var::Rebase();
+  static inline Var Empty = Var();
 };
+
+#define True Globals::True
+#define False Globals::False
+#define StopChain Globals::StopChain
+#define RestartChain Globals::RestartChain
+#define ReturnPrevious Globals::ReturnPrevious
+#define RebaseChain Globals::RebaseChain
+#define Empty Globals::Empty
 
 template <typename T>
 void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
@@ -297,7 +313,7 @@ using IterableExposedInfo =
 ALWAYS_INLINE inline void destroyVar(CBVar &var);
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 
-static void _destroyVarSlow(CBVar &var) {
+inline void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
     assert(var.payload.seqValue.cap >= var.capacity.value);
@@ -319,7 +335,7 @@ static void _destroyVarSlow(CBVar &var) {
   };
 }
 
-static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+inline void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   if (src == dst)
     return;
 
@@ -477,14 +493,6 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
     _cloneVarSlow(dst, src);
   }
 }
-
-static Var True = Var(true);
-static Var False = Var(false);
-static Var StopChain = Var::Stop();
-static Var RestartChain = Var::Restart();
-static Var ReturnPrevious = Var::Return();
-static Var RebaseChain = Var::Rebase();
-static Var Empty = Var();
 
 struct Serialization {
   static inline void varFree(CBVar &output) {
