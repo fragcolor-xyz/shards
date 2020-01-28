@@ -293,12 +293,22 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
 }
 
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
+
+inline int cmp(const CBVar &a, const CBVar &b) {
+  if (a == b)
+    return 0;
+  else if (a < b)
+    return -1;
+  else
+    return 1;
+}
 
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
   if (a.payload.seqValue.elements == b.payload.seqValue.elements)
@@ -346,12 +356,32 @@ inline bool _vectorEq(const CBVar &a, const CBVar &b) {
   CBVar va{}, vb{};
   va.valueType = vb.valueType = a.payload.vectorType;
   for (uint32_t i = 0; i < a.payload.vectorSize; i++) {
-    va.payload = a.payload.vectorValue[i];
-    vb.payload = b.payload.vectorValue[i];
+    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
+    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
     if (!(va == vb))
       return false;
   }
 
+  return true;
+}
+
+inline bool _listEq(const CBVar &a, const CBVar &b) {
+  auto next_a = a.payload.listValue.value;
+  auto next_b = b.payload.listValue.value;
+  while (next_a && next_b) {
+    if (*next_a != *next_b)
+      return false;
+
+    next_a = a.payload.listValue.next;
+    next_b = b.payload.listValue.next;
+  }
+
+  // one of the 2 was not null!
+  if (next_a || next_b)
+    return false;
+
+  // if we reach this point both were null (no nexts)
+  // and equal check never failed
   return true;
 }
 
@@ -481,6 +511,8 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
                    a.payload.bytesSize) == 0);
   case Vector:
     return _vectorEq(a, b);
+  case List:
+    return _listEq(a, b);
   case Node:
     return a.payload.nodeValue == b.payload.nodeValue;
   case TypeInfo: {
@@ -502,30 +534,92 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _seqLess(const CBVar &a, const CBVar &b) {
-  if (a.payload.seqValue.len != b.payload.seqValue.len)
-    return false;
+  auto alen = a.payload.seqValue.len;
+  auto blen = b.payload.seqValue.len;
+  auto len = std::min(alen, blen);
 
-  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    if (a.payload.seqValue.elements[i] >= b.payload.seqValue.elements[i])
+  for (uint32_t i = 0; i < len; i++) {
+    auto c =
+        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    if (c < 0)
+      return true;
+    else if (c > 0)
       return false;
   }
 
-  return true;
+  if (alen < blen)
+    return true;
+  else
+    return false;
 }
 
 inline bool _tableLess(const CBVar &a, const CBVar &b) {
-  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-    return false;
+  auto alen = stbds_shlen(a.payload.tableValue);
+  auto blen = stbds_shlen(b.payload.tableValue);
+  auto len = std::min(alen, blen);
 
-  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+  for (ptrdiff_t i = 0; i < len; i++) {
+    auto sc = strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key);
+    if (sc < 0)
+      return true;
+    else if (sc > 0)
       return false;
 
-    if (a.payload.tableValue[i].value >= b.payload.tableValue[i].value)
+    auto c = cmp(a.payload.tableValue[i].value, b.payload.tableValue[i].value);
+    if (c < 0)
+      return true;
+    else if (c > 0)
       return false;
   }
 
-  return true;
+  if (alen < blen)
+    return true;
+  else
+    return false;
+}
+
+inline bool _vectorLess(const CBVar &a, const CBVar &b) {
+  auto alen = a.payload.vectorSize;
+  auto blen = b.payload.vectorSize;
+  auto len = std::min(alen, blen);
+
+  CBVar va{}, vb{};
+  va.valueType = vb.valueType = a.payload.vectorType;
+  for (uint32_t i = 0; i < len; i++) {
+    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
+    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
+    auto c = cmp(va, vb);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+  }
+
+  if (alen < blen)
+    return true;
+  else
+    return false;
+}
+
+inline bool _listLess(const CBVar &a, const CBVar &b) {
+  auto next_a = a.payload.listValue.value;
+  auto next_b = b.payload.listValue.value;
+  while (next_a && next_b) {
+    auto c = cmp(*next_a, *next_b);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+
+    next_a = a.payload.listValue.next;
+    next_b = b.payload.listValue.next;
+  }
+
+  // a ended before b!
+  if (!next_a && next_b)
+    return true;
+
+  return false;
 }
 
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
@@ -533,16 +627,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case CBType::Any:
-  case EndOfBlittableTypes:
-    return true;
   case None:
     return a.payload.chainState < b.payload.chainState;
-  case Object:
-    return a.payload.objectValue < b.payload.objectValue;
   case Enum:
-    return a.payload.enumVendorId == b.payload.enumVendorId &&
-           a.payload.enumTypeId == b.payload.enumTypeId &&
+    return a.payload.enumVendorId < b.payload.enumVendorId ||
+           a.payload.enumTypeId < b.payload.enumTypeId ||
            a.payload.enumValue < b.payload.enumValue;
   case Bool:
     return a.payload.boolValue < b.payload.boolValue;
@@ -553,68 +642,64 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Int2: {
     CBInt2 vec = a.payload.int2Value < b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0) // -1 is true
+        return true;
+    return false;
   }
   case Int3: {
     CBInt3 vec = a.payload.int3Value < b.payload.int3Value;
     for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Int4: {
     CBInt4 vec = a.payload.int4Value < b.payload.int4Value;
     for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Int8: {
     CBInt8 vec = a.payload.int8Value < b.payload.int8Value;
     for (auto i = 0; i < 8; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Int16: {
     auto vec = a.payload.int16Value < b.payload.int16Value;
     for (auto i = 0; i < 16; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Float2: {
     CBInt2 vec = a.payload.float2Value < b.payload.float2Value; // cast to int
     for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Float3: {
     CBInt3 vec = a.payload.float3Value < b.payload.float3Value; // cast to int
     for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Float4: {
     CBInt4 vec = a.payload.float4Value < b.payload.float4Value; // cast to int
     for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+      if (vec[i] < 0)
+        return true;
+    return false;
   }
   case Color:
-    return a.payload.colorValue.r < b.payload.colorValue.r &&
-           a.payload.colorValue.g < b.payload.colorValue.g &&
-           a.payload.colorValue.b < b.payload.colorValue.b &&
+    return a.payload.colorValue.r < b.payload.colorValue.r ||
+           a.payload.colorValue.g < b.payload.colorValue.g ||
+           a.payload.colorValue.b < b.payload.colorValue.b ||
            a.payload.colorValue.a < b.payload.colorValue.a;
-  case Chain:
-    return a.payload.chainValue < b.payload.chainValue;
-  case Block:
-    return a.payload.blockValue < b.payload.blockValue;
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
@@ -627,40 +712,114 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
                       a.payload.imageValue.height) < 0;
   case Seq:
     return _seqLess(a, b);
+  case Vector:
+    return _vectorLess(a, b);
+  case List:
+    return _listLess(a, b);
   case Table:
     return _tableLess(a, b);
   case Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) < 0;
+  case Chain:
+  case Block:
+  case Object:
+  case Node:
+  case TypeInfo:
+  case CBType::Any:
+  case EndOfBlittableTypes:
+    return false;
   }
 
   return false;
 }
 
 inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.seqValue.len != b.payload.seqValue.len)
-    return false;
+  auto alen = a.payload.seqValue.len;
+  auto blen = b.payload.seqValue.len;
+  auto len = std::min(alen, blen);
 
-  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    if (a.payload.seqValue.elements[i] > b.payload.seqValue.elements[i])
+  for (uint32_t i = 0; i < len; i++) {
+    auto c =
+        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    if (c < 0)
+      return true;
+    else if (c > 0)
       return false;
   }
 
-  return true;
+  if (alen <= blen)
+    return true;
+  else
+    return false;
 }
 
 inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
-  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
-    return false;
+  auto alen = stbds_shlen(a.payload.tableValue);
+  auto blen = stbds_shlen(b.payload.tableValue);
+  auto len = std::min(alen, blen);
 
-  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
+  for (ptrdiff_t i = 0; i < len; i++) {
+    auto sc = strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key);
+    if (sc < 0)
+      return true;
+    else if (sc > 0)
       return false;
 
-    if (a.payload.tableValue[i].value > b.payload.tableValue[i].value)
+    auto c = cmp(a.payload.tableValue[i].value, b.payload.tableValue[i].value);
+    if (c < 0)
+      return true;
+    else if (c > 0)
       return false;
   }
+
+  if (alen <= blen)
+    return true;
+  else
+    return false;
+}
+
+inline bool _vectorLessEq(const CBVar &a, const CBVar &b) {
+  auto alen = a.payload.vectorSize;
+  auto blen = b.payload.vectorSize;
+  auto len = std::min(alen, blen);
+
+  CBVar va{}, vb{};
+  va.valueType = vb.valueType = a.payload.vectorType;
+  for (uint32_t i = 0; i < len; i++) {
+    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
+    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
+    auto c = cmp(va, vb);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+  }
+
+  if (alen <= blen)
+    return true;
+  else
+    return false;
+}
+
+inline bool _listLessEq(const CBVar &a, const CBVar &b) {
+  auto next_a = a.payload.listValue.value;
+  auto next_b = b.payload.listValue.value;
+  while (next_a && next_b) {
+    auto c = cmp(*next_a, *next_b);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+
+    next_a = a.payload.listValue.next;
+    next_b = b.payload.listValue.next;
+  }
+
+  // a is bigger case
+  if (next_a)
+    return false;
 
   return true;
 }
@@ -670,13 +829,8 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case CBType::Any:
-  case EndOfBlittableTypes:
-    return true;
   case None:
     return a.payload.chainState <= b.payload.chainState;
-  case Object:
-    return a.payload.objectValue <= b.payload.objectValue;
   case Enum:
     return a.payload.enumVendorId == b.payload.enumVendorId &&
            a.payload.enumTypeId == b.payload.enumTypeId &&
@@ -748,10 +902,6 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.g <= b.payload.colorValue.g &&
            a.payload.colorValue.b <= b.payload.colorValue.b &&
            a.payload.colorValue.a <= b.payload.colorValue.a;
-  case Chain:
-    return a.payload.chainValue <= b.payload.chainValue;
-  case Block:
-    return a.payload.blockValue <= b.payload.blockValue;
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
@@ -764,12 +914,24 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
                       a.payload.imageValue.height) <= 0;
   case Seq:
     return _seqLessEq(a, b);
+  case Vector:
+    return _vectorLessEq(a, b);
+  case List:
+    return _listLessEq(a, b);
   case Table:
     return _tableLessEq(a, b);
   case Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) <= 0;
+  case Chain:
+  case Block:
+  case Object:
+  case Node:
+  case TypeInfo:
+  case CBType::Any:
+  case EndOfBlittableTypes:
+    return false;
   }
 
   return false;

@@ -638,6 +638,38 @@
   (Pop)
   (Assert.Is 8 true)
 
+  (Const [111 112 101 114 97 116 111 114])
+  (Set "seq-a")
+  (Const [111 112 101 114 97 116 105 111 110 115])
+  (Set "seq-b")
+  (Get "seq-a")
+  (IsMore (# "seq-b"))
+  (Assert.Is true true)
+
+  (Const [111 112 101 114 97])
+  (Update "seq-a")
+  (Const [111 112 101 114 97 116 105])
+  (Update "seq-b")
+  (Get "seq-a")
+  (IsLess (# "seq-b"))
+  (Assert.Is true true)
+
+  (Int4 111 112 101 200)
+  (Set "int4-a")
+  (Int4 111 112 99 300)
+  (Set "int4-b")
+  (Get "int4-a")
+  (IsMore (# "int4-b"))
+  (Assert.Is true true)
+
+  (Int4 111 112 101 300)
+  (Update "int4-a")
+  (Int4 111 112 101 100)
+  (Update "int4-b")
+  (Get "int4-a")
+  (IsMore (# "int4-b"))
+  (Assert.Is true true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
