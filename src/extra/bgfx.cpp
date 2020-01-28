@@ -144,7 +144,7 @@ struct MainWindow : public BaseWindow {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_initDone) {
-      auto initErr = SDL_Init(0);
+      auto initErr = SDL_Init(SDL_INIT_EVENTS);
       if (initErr != 0) {
         LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
         throw CBException("Failed to initialize SDL");
@@ -268,10 +268,22 @@ struct MainWindow : public BaseWindow {
     // find mouse wheel events
     for (auto &event : sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
-        if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-          _wheelScroll += event.wheel.y;
-        else
-          _wheelScroll -= event.wheel.y;
+        _wheelScroll += event.wheel.y;
+        // This is not needed seems.. not even on MacOS Natural On/Off
+        // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        //   _wheelScroll += event.wheel.y;
+        // else
+        //   _wheelScroll -= event.wheel.y;
+      } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        // need to make sure to pass those as well or in low fps/simulated
+        // clicks we might mess up
+        if (event.button.button == SDL_BUTTON_LEFT) {
+          imbtns = imbtns | IMGUI_MBUT_LEFT;
+        } else if (event.button.button == SDL_BUTTON_RIGHT) {
+          imbtns = imbtns | IMGUI_MBUT_RIGHT;
+        } else if (event.button.button == SDL_BUTTON_MIDDLE) {
+          imbtns = imbtns | IMGUI_MBUT_MIDDLE;
+        }
       } else if (event.type == SDL_TEXTINPUT) {
         io.AddInputCharactersUTF8(event.text.text);
       } else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
@@ -291,6 +303,8 @@ struct MainWindow : public BaseWindow {
 };
 
 struct Window : public BaseWindow {
+  // WIP/TODO
+  
   bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _viewId; // todo manage
   chainblocks::ImGui::Context _imgui_context{};
@@ -370,10 +384,12 @@ struct Window : public BaseWindow {
     // find mouse wheel events
     for (auto &event : MainWindow::sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
-        if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-          _wheelScroll += event.wheel.y;
-        else
-          _wheelScroll -= event.wheel.y;
+        _wheelScroll += event.wheel.y;
+        // This is not needed seems.. not even on MacOS Natural On/Off
+        // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        //   _wheelScroll += event.wheel.y;
+        // else
+        //   _wheelScroll -= event.wheel.y;
       }
     }
 

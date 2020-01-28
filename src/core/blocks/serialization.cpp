@@ -59,10 +59,14 @@ struct FileBase {
     std::filesystem::path cp(Globals::RootPath);
     if (std::filesystem::exists(cp)) {
       auto fullpath = cp / filename;
+      if (!std::filesystem::exists(fullpath)) {
+        return false;
+      }
       filename = fullpath.string();
+      return true;
+    } else {
+      return false;
     }
-
-    return true;
   }
 };
 
@@ -173,14 +177,13 @@ struct LoadImage : public FileBase {
       stbi_image_free(_output.payload.imageValue.data);
       _output = {};
     }
-
     FileBase::cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::string filename;
     if (!getFilename(context, filename)) {
-      throw CBException("No file name to load was given");
+      throw CBException("File not found!");
     }
 
     auto asyncRes = std::async(
