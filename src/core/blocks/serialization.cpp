@@ -49,7 +49,8 @@ struct FileBase {
     return res;
   }
 
-  bool getFilename(CBContext *context, std::string &filename) {
+  bool getFilename(CBContext *context, std::string &filename,
+                   bool checkExists = true) {
     auto &ctxFile = _filename(context);
     if (ctxFile.valueType != String)
       return false;
@@ -59,7 +60,7 @@ struct FileBase {
     std::filesystem::path cp(Globals::RootPath);
     if (std::filesystem::exists(cp)) {
       auto fullpath = cp / filename;
-      if (!std::filesystem::exists(fullpath)) {
+      if (checkExists && !std::filesystem::exists(fullpath)) {
         return false;
       }
       filename = fullpath.string();
@@ -92,7 +93,7 @@ struct WriteFile : public FileBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_fileStream.is_open()) {
       std::string filename;
-      if (!getFilename(context, filename)) {
+      if (!getFilename(context, filename, false)) {
         return input;
       }
 
