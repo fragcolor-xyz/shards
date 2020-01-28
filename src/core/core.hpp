@@ -95,7 +95,7 @@ struct Globals {
 #define Empty ::chainblocks::Globals::Empty
 
 template <typename T>
-void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
+NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!
   assert((arr.cap == 0 && arr.elements == nullptr) ||
          (arr.cap > 0 && arr.elements != nullptr));
@@ -118,20 +118,22 @@ void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   arr.cap = min_cap;
 }
 
-template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
+template <typename T, typename V>
+ALWAYS_INLINE inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   arr.elements[arr.len++] = val;
 }
 
-template <typename T> inline void arrayResize(T &arr, uint32_t size) {
+template <typename T>
+ALWAYS_INLINE inline void arrayResize(T &arr, uint32_t size) {
   if (arr.len < size)
     arrayGrow(arr, size - arr.len);
   arr.len = size;
 }
 
 template <typename T, typename V>
-inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+ALWAYS_INLINE inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   memmove(&arr.elements[index + 1], &arr.elements[index],
@@ -140,23 +142,25 @@ inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   arr.elements[index] = val;
 }
 
-template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
+template <typename T>
+ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
   arr.elements[index] = arr.elements[arr.len - 1];
   arr.len--;
 }
 
-template <typename T, typename V> inline V arrayPop(T &arr) {
+template <typename T, typename V> ALWAYS_INLINE inline V arrayPop(T &arr) {
   arr.len--;
   return arr.elements[arr.len];
 }
 
-template <typename T> void inline arrayDel(T &arr, uint32_t index) {
+template <typename T>
+void ALWAYS_INLINE inline arrayDel(T &arr, uint32_t index) {
   arr.len--;
   memmove(&arr.elements[index], &arr.elements[index + 1],
           sizeof(*arr.elements) * (arr.len - index));
 }
 
-template <typename T> inline void arrayFree(T &arr) {
+template <typename T> ALWAYS_INLINE inline void arrayFree(T &arr) {
   if (arr.elements)
     CB_FREE(arr.elements);
   arr = {};
@@ -313,7 +317,7 @@ using IterableExposedInfo =
 ALWAYS_INLINE inline void destroyVar(CBVar &var);
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 
-inline void _destroyVarSlow(CBVar &var) {
+NO_INLINE inline void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
     assert(var.payload.seqValue.cap >= var.capacity.value);
@@ -335,7 +339,7 @@ inline void _destroyVarSlow(CBVar &var) {
   };
 }
 
-inline void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+NO_INLINE inline void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   if (src == dst)
     return;
 

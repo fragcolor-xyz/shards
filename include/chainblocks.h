@@ -224,6 +224,8 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 #define ALWAYS_INLINE
 #endif
 
+#define NO_INLINE __attribute__((noinline))
+
 #define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
 #else // TODO
 typedef int64_t CBInt2[2];
@@ -239,6 +241,7 @@ typedef float CBFloat4[4];
 #define ALIGNED __declspec(align(16))
 
 #define ALWAYS_INLINE
+#define NO_INLINE
 
 #define PACK(__Declaration__)                                                  \
   __pragma(pack(push, 1)) __Declaration__ __pragma(pack(pop))
