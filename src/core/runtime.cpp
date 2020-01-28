@@ -656,7 +656,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBSeq, CBVar, seq);
   CB_ARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
   CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
-  CB_ARRAY_IMPL(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
 

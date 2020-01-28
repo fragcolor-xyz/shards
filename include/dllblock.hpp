@@ -147,7 +147,7 @@ public:
   CB_ARRAY_INTERFACE(CBSeq, CBVar, seq);
   CB_ARRAY_INTERFACE(CBTypesInfo, CBTypeInfo, types);
   CB_ARRAY_INTERFACE(CBParametersInfo, CBParameterInfo, params);
-  CB_ARRAY_INTERFACE(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_INTERFACE(CBlocks, CBlockPtr, blocks);
   CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 

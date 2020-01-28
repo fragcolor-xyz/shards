@@ -31,6 +31,8 @@ enum CBType : uint8_t {
   Color,  // A vector of 4 uint8
   Chain,  // sub chains, e.g. IF/ELSE
   Block,  // a block, useful for future introspection blocks!
+  Node,
+  TypeInfo,
 
   EndOfBlittableTypes, // anything below this is not blittable (not exactly but
                        // for cloneVar mostly)
@@ -41,10 +43,8 @@ enum CBType : uint8_t {
   Image,
   Seq,
   Table,
-
   Vector,
-  Node,
-  Type
+  List,
 };
 
 enum CBChainState : uint8_t {
@@ -169,11 +169,11 @@ typedef struct CBNode *CBNodePtr;
 struct CBFlow;
 
 struct CBlock;
-
-typedef struct CBlock *CBlockRef;
-CB_ARRAY_DECL(CBlocks, CBlockRef);
+typedef struct CBlock *CBlockPtr;
+CB_ARRAY_DECL(CBlocks, CBlockPtr);
 
 struct CBTypeInfo;
+typedef struct CBTypeInfo *CBTypeInfoPtr;
 CB_ARRAY_DECL(CBTypesInfo, struct CBTypeInfo);
 
 struct CBParameterInfo;
@@ -190,6 +190,11 @@ typedef int32_t CBEnum;
 
 typedef const char *CBString;
 CB_ARRAY_DECL(CBStrings, CBString);
+
+typedef struct CBList {
+  struct CBVar *value;
+  struct CBVar *next;
+} CBList;
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -464,15 +469,16 @@ ALIGNED struct CBVarPayload {
     };
 
     struct {
-      CBVarPayload *vectorValue;
+      struct CBVarPayload *vectorValue;
+      uint32_t vectorSize;
       enum CBType vectorType;
-      // 48 bits should be plenty for such sizes
-      uint64_t vectorSize:48;
     };
 
     CBNodePtr nodeValue;
 
     CBTypeInfoPtr typeInfoValue;
+
+    CBList listValue;
   };
 };
 
@@ -690,7 +696,7 @@ typedef void(__cdecl *CBSleep)(double seconds, bool runCallbacks);
 CB_ARRAY_TYPE(CBSeq, struct CBVar);
 CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
 CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
-CB_ARRAY_TYPE(CBlocks, CBlockRef);
+CB_ARRAY_TYPE(CBlocks, CBlockPtr);
 CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
 CB_ARRAY_TYPE(CBStrings, CBString);
 

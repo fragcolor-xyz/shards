@@ -89,10 +89,13 @@ inline std::string type2Name(CBType type) {
   case Vector:
     name = "Vector";
     break;
+  case List:
+    name = "List";
+    break;
   case Node:
     name = "Node";
     break;
-  case CBType::Type:
+  case CBType::TypeInfo:
     name = "Type";
     break;
   }
@@ -115,7 +118,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     else if (var.payload.chainState == CBChainState::Rebase)
       os << "*ChainRebase*";
     break;
-  case CBType::Type:
+  case CBType::TypeInfo:
     if (var.payload.typeInfoValue)
       os << type2Name(var.payload.typeInfoValue->basicType);
     else
@@ -259,11 +262,11 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     }
     os << "}";
     break;
-  case Vector:
+  case Vector: {
     os << "[";
     CBVar vv{};
     vv.valueType = var.payload.vectorType;
-    for (auto i = 0; i < var.payload.vectorSize; i++) {
+    for (uint32_t i = 0; i < var.payload.vectorSize; i++) {
       vv.payload = var.payload.vectorValue[i];
       if (i == 0)
         os << vv;
@@ -271,7 +274,20 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
         os << ", " << vv;
     }
     os << "]";
-    break;
+  } break;
+  case List: {
+    os << "(";
+    auto next = var.payload.listValue.value;
+    while (next) {
+      if (var.payload.listValue.next) {
+        os << next << " ";
+        next = var.payload.listValue.next;
+      } else {
+        os << *next;
+      }
+    }
+    os << ")";
+  } break;
   }
   return os;
 }
@@ -318,9 +334,9 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _vectorEq(const CBVar &a, const CBVar &b) {
-  if(a.payload.vectorValue == b.payload.vectorValue)
+  if (a.payload.vectorValue == b.payload.vectorValue)
     return true;
-  
+
   if (a.payload.vectorType != b.payload.vectorType)
     return false;
 
@@ -329,7 +345,7 @@ inline bool _vectorEq(const CBVar &a, const CBVar &b) {
 
   CBVar va{}, vb{};
   va.valueType = vb.valueType = a.payload.vectorType;
-  for (auto i = 0; i < a.payload.vectorSize; i++) {
+  for (uint32_t i = 0; i < a.payload.vectorSize; i++) {
     va.payload = a.payload.vectorValue[i];
     vb.payload = b.payload.vectorValue[i];
     if (!(va == vb))
@@ -467,7 +483,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return _vectorEq(a, b);
   case Node:
     return a.payload.nodeValue == b.payload.nodeValue;
-  case Type: {
+  case TypeInfo: {
     if (a.payload.typeInfoValue == nullptr) {
       if (b.payload.typeInfoValue == nullptr)
         return true;

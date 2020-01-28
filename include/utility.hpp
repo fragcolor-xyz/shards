@@ -148,7 +148,7 @@ public:
 template <class CB_CORE> class TBlocksVar {
 private:
   CBVar _blocks{};
-  std::vector<CBlockRef> _blocksArray;
+  std::vector<CBlockPtr> _blocksArray;
   CBValidationResult _chainValidation{};
 
   void destroy() {
