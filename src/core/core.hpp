@@ -86,13 +86,13 @@ struct Globals {
   static inline Var Empty = Var();
 };
 
-#define True Globals::True
-#define False Globals::False
-#define StopChain Globals::StopChain
-#define RestartChain Globals::RestartChain
-#define ReturnPrevious Globals::ReturnPrevious
-#define RebaseChain Globals::RebaseChain
-#define Empty Globals::Empty
+#define True ::chainblocks::Globals::True
+#define False ::chainblocks::Globals::False
+#define StopChain ::chainblocks::Globals::StopChain
+#define RestartChain ::chainblocks::Globals::RestartChain
+#define ReturnPrevious ::chainblocks::Globals::ReturnPrevious
+#define RebaseChain ::chainblocks::Globals::RebaseChain
+#define Empty ::chainblocks::Globals::Empty
 
 template <typename T>
 void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {

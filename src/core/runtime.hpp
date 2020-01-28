@@ -544,7 +544,7 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
 
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
-    if (rootInput != chainblocks::Empty) {
+    if (rootInput != Empty) {
       cloneVar(chain->rootTickInput, rootInput);
     }
     *chain->coro = chain->coro->resume();
@@ -642,7 +642,7 @@ struct CBNode {
     chainblocks::start(chain, input);
   }
 
-  bool tick(CBVar input = chainblocks::Empty) {
+  bool tick(CBVar input = Empty) {
     auto noErrors = true;
     _runningFlows = flows;
     for (auto &flow : _runningFlows) {

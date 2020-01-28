@@ -927,49 +927,49 @@ struct Button : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    auto result = chainblocks::False;
+    auto result = False;
     ImVec2 size;
     switch (_type) {
     case Normal:
       if (::ImGui::Button(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case Small:
       if (::ImGui::SmallButton(_label.c_str())) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case Invisible:
       if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowLeft:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowRight:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowUp:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowDown:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     }

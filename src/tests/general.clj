@@ -654,6 +654,14 @@
   (IsLess (# "seq-b"))
   (Assert.Is true true)
 
+  (Const [111 112 101 114 97 99])
+  (Update "seq-a")
+  (Const [111 112 101 114 97 99])
+  (Update "seq-b")
+  (Get "seq-a")
+  (IsMoreEqual (# "seq-b"))
+  (Assert.Is true true)
+
   (Int4 111 112 101 200)
   (Set "int4-a")
   (Int4 111 112 99 300)

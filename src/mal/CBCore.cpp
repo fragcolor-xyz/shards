@@ -1365,7 +1365,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
     (*penv)->set(std::to_string(sh), malValuePtr(mvar.ptr()));
     return mvar->value();
   } catch (...) {
-    return chainblocks::Empty;
+    return Empty;
   }
 }
 };

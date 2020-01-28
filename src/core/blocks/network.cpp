@@ -105,7 +105,7 @@ struct NetworkBase {
 
     // clean context vars
     if (_socketVar) {
-      *_socketVar = chainblocks::Empty;
+      *_socketVar = Empty;
       _socketVar = nullptr;
     }
 
