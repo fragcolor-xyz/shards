@@ -21,8 +21,12 @@ struct SocketData {
   udp::endpoint *endpoint;
 };
 
-struct NetworkBase : public BlocksUser {
-  static inline TypeInfo SocketInfo = TypeInfo::Object(FragCC, SocketCC);
+struct NetworkBase {
+  BlocksVar _blks{};
+  CBValidationResult _validation{};
+
+  static inline Type SocketInfo{
+      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = SocketCC}}}};
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
@@ -40,15 +44,17 @@ struct NetworkBase : public BlocksUser {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Address",
                         "The local bind address or the remote address.",
-                        CBTypesInfo(CoreInfo::strVarInfo)),
+                        CoreInfo::StringOrStringVar),
       ParamsInfo::Param(
           "Port", "The port to bind if server or to connect to if client.",
-          CBTypesInfo(CoreInfo::intVarInfo)),
+          CoreInfo::IntOrIntVar),
       ParamsInfo::Param("Receive",
                         "The flow to execute when a packet is received.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)));
+                        CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   static void setup() {
     if (_io_context_refc == 0) {
@@ -80,8 +86,6 @@ struct NetworkBase : public BlocksUser {
         }
       });
     }
-
-    BlocksUser::destroy();
   }
 
   void cleanup() {
@@ -105,22 +109,23 @@ struct NetworkBase : public BlocksUser {
       _socketVar = nullptr;
     }
 
-    BlocksUser::cleanup();
+    _blks.reset();
 
     _addr.reset();
     _port.reset();
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(CBInstanceData &data) {
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
-    stbds_arrpush(data.consumables, endpointInfo);
-    return BlocksUser::compose(data);
+    chainblocks::arrayPush(data.consumables, endpointInfo);
+    _validation = _blks.validate(data);
+    return _validation.outputType;
   }
 
   void setParam(int index, CBVar value) {
@@ -132,7 +137,7 @@ struct NetworkBase : public BlocksUser {
       _port = value;
       break;
     case 2:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     default:
       break;
@@ -146,7 +151,7 @@ struct NetworkBase : public BlocksUser {
     case 1:
       return _port;
     case 2:
-      return _blocks;
+      return _blks;
     default:
       return Empty;
     }
@@ -273,7 +278,7 @@ struct Server : public NetworkBase {
         CBVar output = Empty;
         // update remote as pops in context variable
         _socket.endpoint = pkt.remote;
-        if (unlikely(!activateBlocks(_blocks.payload.seqValue, context,
+        if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context,
                                      pkt.payload, output))) {
           LOG(ERROR) << "A Receiver chain had errors!.";
         }
@@ -378,7 +383,7 @@ struct Client : public NetworkBase {
       CBVar v;
       if (_queue.pop(v)) {
         CBVar output = Empty;
-        if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, v,
+        if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context, v,
                                      output))) {
           LOG(ERROR) << "A Receiver chain had errors!.";
         }
@@ -393,7 +398,7 @@ struct Client : public NetworkBase {
 
   CBExposedTypesInfo exposedVariables() {
     _exposedInfo = ExposedInfo(
-        ExposedInfo(BlocksUser::exposedVariables()),
+        ExposedInfo(NetworkBase::exposedVariables()),
         ExposedInfo::Variable("Network.Socket", "The current client socket.",
                               CBTypeInfo(SocketInfo)));
 
@@ -440,8 +445,8 @@ struct Send {
     return reinterpret_cast<SocketData *>(_socketVar->payload.objectValue);
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto socket = getSocket(context);

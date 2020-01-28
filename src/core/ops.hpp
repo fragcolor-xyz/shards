@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_OPS
+#define CB_OPS
 
-#include "chainblocks.h"
-#include "easylogging++.h"
 #include <cfloat>
+#include <chainblocks.h>
+#include <easylogging++.h>
+#include <stb_ds.h>
 
 inline std::string type2Name(CBType type) {
   std::string name = "";
@@ -237,17 +239,17 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Seq:
     os << "[";
-    for (auto i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       if (i == 0)
-        os << var.payload.seqValue[i];
+        os << var.payload.seqValue.elements[i];
       else
-        os << ", " << var.payload.seqValue[i];
+        os << ", " << var.payload.seqValue.elements[i];
     }
     os << "]";
     break;
   case Table:
     os << "{";
-    for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
+    for (ptrdiff_t i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
       if (i == 0)
         os << var.payload.tableValue[i].key << ": "
            << var.payload.tableValue[i].value;
@@ -283,14 +285,14 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.seqValue == b.payload.seqValue)
+  if (a.payload.seqValue.elements == b.payload.seqValue.elements)
     return true;
 
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (!(a.payload.seqValue[i] == b.payload.seqValue[i]))
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (!(a.payload.seqValue.elements[i] == b.payload.seqValue.elements[i]))
       return false;
   }
 
@@ -304,7 +306,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -484,11 +486,11 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _seqLess(const CBVar &a, const CBVar &b) {
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (a.payload.seqValue[i] >= b.payload.seqValue[i])
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (a.payload.seqValue.elements[i] >= b.payload.seqValue.elements[i])
       return false;
   }
 
@@ -499,7 +501,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -621,11 +623,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
-  if (stbds_arrlen(a.payload.seqValue) != stbds_arrlen(b.payload.seqValue))
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
     return false;
 
-  for (auto i = 0; i < stbds_arrlen(a.payload.seqValue); i++) {
-    if (a.payload.seqValue[i] > b.payload.seqValue[i])
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    if (a.payload.seqValue.elements[i] > b.payload.seqValue.elements[i])
       return false;
   }
 
@@ -636,7 +638,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
     return false;
 
-  for (auto i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
+  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
     if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
       return false;
 
@@ -782,19 +784,35 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       return false;
     return a.enumTypeId == b.enumTypeId;
   case Seq: {
-    if (a.seqType && b.seqType)
-      return *a.seqType == *b.seqType;
-    if (a.seqType == nullptr && b.seqType == nullptr)
+    if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
       return true;
-    return false;
+
+    if (a.seqTypes.elements && b.seqTypes.elements) {
+      if (a.seqTypes.len != b.seqTypes.len)
+        return false;
+      // compare but allow different orders of elements
+      for (uint32_t i = 0; i < a.seqTypes.len; i++) {
+        for (uint32_t j = 0; j < b.seqTypes.len; j++) {
+          if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
+            goto matched;
+        }
+        return false;
+      matched:
+        continue;
+      }
+    } else {
+      return false;
+    }
+
+    return true;
   }
   case Table: {
-    auto atypes = stbds_arrlen(a.tableTypes);
-    auto btypes = stbds_arrlen(b.tableTypes);
+    auto atypes = a.tableTypes.len;
+    auto btypes = b.tableTypes.len;
     if (atypes != btypes)
       return false;
-    for (auto i = 0; i < atypes; i++) {
-      if (a.tableTypes[i] != b.tableTypes[i])
+    for (uint32_t i = 0; i < atypes; i++) {
+      if (a.tableTypes.elements[i] != b.tableTypes.elements[i])
         return false;
     }
     return true;
@@ -821,3 +839,5 @@ inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
 inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
   return !(a == b);
 }
+
+#endif

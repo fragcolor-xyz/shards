@@ -23,10 +23,10 @@ void _releaseMemory(CBVar &var) {
     delete[] var.payload.bytesValue;
     break;
   case Seq:
-    for (auto i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
-      _releaseMemory(var.payload.seqValue[i]);
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      _releaseMemory(var.payload.seqValue.elements[i]);
     }
-    stbds_arrfree(var.payload.seqValue);
+    chainblocks::arrayFree(var.payload.seqValue);
     break;
   case Table:
     for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
@@ -170,8 +170,8 @@ void to_json(json &j, const CBVar &var) {
   }
   case Seq: {
     std::vector<json> items;
-    for (int i = 0; i < stbds_arrlen(var.payload.seqValue); i++) {
-      auto &v = var.payload.seqValue[i];
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      auto &v = var.payload.seqValue.elements[i];
       items.emplace_back(v);
     }
     j = json{{"type", valType}, {"values", items}};
@@ -190,8 +190,8 @@ void to_json(json &j, const CBVar &var) {
     auto blk = var.payload.blockValue;
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for (int i = 0; i < stbds_arrlen(paramsDesc); i++) {
-      auto &desc = paramsDesc[i];
+    for (uint32_t i = 0; i < paramsDesc.len; i++) {
+      auto &desc = paramsDesc.elements[i];
       auto value = blk->getParam(blk, i);
 
       json param_obj = {{"name", desc.name}, {"value", value}};
@@ -349,9 +349,9 @@ void from_json(const json &j, CBVar &var) {
   case Seq: {
     var.valueType = Seq;
     auto items = j.at("values").get<std::vector<json>>();
-    var.payload.seqValue = nullptr;
+    var.payload.seqValue = {};
     for (const auto &item : items) {
-      stbds_arrpush(var.payload.seqValue, item.get<CBVar>());
+      chainblocks::arrayPush(var.payload.seqValue, item.get<CBVar>());
     }
     break;
   }
@@ -388,8 +388,8 @@ void from_json(const json &j, CBVar &var) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
-          auto &paramInfo = blkParams[i];
+        for (uint32_t i = 0; blkParams.len > i; i++) {
+          auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
             break;
@@ -410,8 +410,8 @@ void to_json(json &j, const CBChainPtr &chain) {
   for (auto blk : chain->blocks) {
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
-    for (int i = 0; stbds_arrlen(paramsDesc) > i; i++) {
-      auto &desc = paramsDesc[i];
+    for (uint32_t i = 0; paramsDesc.len > i; i++) {
+      auto &desc = paramsDesc.elements[i];
       auto value = blk->getParam(blk, i);
 
       json param_obj = {{"name", desc.name}, {"value", value}};
@@ -466,8 +466,8 @@ void from_json(const json &j, CBChainPtr &chain) {
       auto value = jparam.at("value").get<CBVar>();
 
       if (value.valueType != None) {
-        for (auto i = 0; stbds_arrlen(blkParams) > i; i++) {
-          auto &paramInfo = blkParams[i];
+        for (uint32_t i = 0; blkParams.len > i; i++) {
+          auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
             blk->setParam(blk, i, value);
             break;
@@ -491,7 +491,7 @@ struct ToJson {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Indent", "How many spaces to use as json prettify indent.",
-      CBTypesInfo(SharedTypes::intInfo)));
+      CoreInfo::IntType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -499,8 +499,8 @@ struct ToJson {
 
   CBVar getParam(int index) { return Var(_indent); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     json j = input;
     if (_indent == 0)
@@ -513,8 +513,8 @@ struct ToJson {
 
 struct FromJson {
   CBVar _output;
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);

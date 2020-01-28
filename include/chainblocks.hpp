@@ -25,6 +25,96 @@ private:
 
 CBlock *createBlock(const char *name);
 
+struct Type {
+  CBTypeInfo _type;
+
+  Type() : _type({CBType::None}) {}
+
+  Type(CBTypeInfo type) : _type(type) {}
+
+  Type &operator=(Type other) {
+    _type = other._type;
+    return *this;
+  }
+
+  Type &operator=(CBTypeInfo other) {
+    _type = other;
+    return *this;
+  }
+
+  operator CBTypesInfo() {
+    CBTypesInfo res{&_type, 1, 0};
+    return res;
+  }
+
+  operator CBTypeInfo() { return _type; }
+};
+
+struct Types {
+  std::vector<CBTypeInfo> _types;
+
+  Types(std::initializer_list<CBTypeInfo> types) : _types(types) {}
+
+  Types(const Types &others, std::initializer_list<CBTypeInfo> types) {
+    for (auto &type : others._types) {
+      _types.push_back(type);
+    }
+    for (auto &type : types) {
+      _types.push_back(type);
+    }
+  }
+
+  operator CBTypesInfo() {
+    CBTypesInfo res{&_types[0], (uint32_t)_types.size(), 0};
+    return res;
+  }
+};
+
+struct ParameterInfo {
+  const char *_name;
+  const char *_help;
+  Types _types;
+
+  ParameterInfo(const char *name, const char *help, Types types)
+      : _name(name), _help(help), _types(types) {}
+  ParameterInfo(const char *name, Types types)
+      : _name(name), _help(""), _types(types) {}
+
+  operator CBParameterInfo() {
+    CBParameterInfo res{_name, _help, _types};
+    return res;
+  }
+};
+
+struct Parameters {
+  std::vector<ParameterInfo> _infos;
+  std::vector<CBParameterInfo> _pinfos;
+
+  Parameters(std::initializer_list<ParameterInfo> infos) : _infos(infos) {
+    for (auto &info : _infos) {
+      _pinfos.push_back(info);
+    }
+  }
+
+  Parameters(const Parameters &others,
+             std::initializer_list<ParameterInfo> infos) {
+    for (auto &info : others._infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : _infos) {
+      _pinfos.push_back(info);
+    }
+  }
+
+  operator CBParametersInfo() {
+    CBParametersInfo res{&_pinfos[0], (uint32_t)_pinfos.size(), 0};
+    return res;
+  }
+};
+
 struct Var : public CBVar {
   explicit Var() : CBVar() {
     valueType = None;
@@ -265,48 +355,15 @@ struct Var : public CBVar {
     valueType = Color;
     payload.colorValue = color;
   }
-
-  explicit Var(CBSeq &storage, const std::vector<std::string> &strings)
-      : CBVar() {
-    valueType = Seq;
-    for (auto &str : strings) {
-      stbds_arrpush(storage, Var(str));
-    }
-    payload.seqValue = storage;
-  }
 };
 
 class ChainProvider {
   // used specially for live editing chains, from host languages
 public:
-  class Info {
-  public:
-    Info() {
-      _info.objectVendorId = 'frag';
-      _info.objectTypeId = 'chnp';
-
-      CBTypeInfo none{};
-      stbds_arrpush(_providerOrNone, none);
-      stbds_arrpush(_providerOrNone, _info);
-    }
-
-    ~Info() { stbds_arrfree(_providerOrNone); }
-
-    operator CBTypeInfo() const { return _info; }
-
-    operator CBTypesInfo() const { return _providerOrNone; }
-
-  private:
-    CBTypeInfo _info{CBType::Object};
-    CBTypesInfo _providerOrNone = nullptr;
-  };
-
-  struct Update {
-    const char *error;
-    CBChain *chain;
-  };
-
-  static inline Info Info{};
+  static inline Type NoneType{{CBType::None}};
+  static inline Type ProviderType{
+      {CBType::Object, {.object = {.vendorId = 'frag', .typeId = 'chnp'}}}};
+  static inline Types ProviderOrNone{{ProviderType, NoneType}};
 
   ChainProvider() {
     _provider.userData = this;
@@ -407,19 +464,20 @@ public:
 
   operator CBChain *();
 
-  operator CBVar() {
-    CBVar res{};
-    res.valueType = Seq;
-    for (auto blk : _blocks) {
-      CBVar blkVar{};
-      blkVar.valueType = Block;
-      blkVar.payload.blockValue = blk;
-      stbds_arrpush(res.payload.seqValue, blkVar);
-    }
-    // blocks are unique so drain them here
-    _blocks.clear();
-    return res;
-  }
+  // -- LEAKS --
+  // operator CBVar() {
+  //   CBVar res{};
+  //   res.valueType = Seq;
+  //   for (auto blk : _blocks) {
+  //     CBVar blkVar{};
+  //     blkVar.valueType = Block;
+  //     blkVar.payload.blockValue = blk;
+  //     stbds_arrpush(res.payload.seqValue, blkVar);
+  //   }
+  //   // blocks are unique so drain them here
+  //   _blocks.clear();
+  //   return res;
+  // }
 
 private:
   std::string _name;

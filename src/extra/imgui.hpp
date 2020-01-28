@@ -15,7 +15,10 @@ namespace ImGui {
 constexpr uint32_t ImGuiContextCC = 'ImGu';
 
 struct Context {
-  static inline TypeInfo Info = TypeInfo::Object(FragCC, ImGuiContextCC);
+  static inline Type Info{
+      {CBType::Object,
+       {.object = {.vendorId = FragCC, .typeId = ImGuiContextCC}}}};
+
   // Useful to compare with with plugins, they might mismatch!
   static inline const char *Version = ::ImGui::GetVersion();
 

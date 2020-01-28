@@ -119,7 +119,7 @@ struct StructBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Definition", "A string defining the struct e.g. \"i32 f32 b i8[256]\".",
-      CBTypesInfo(CoreInfo::strInfo)));
+      CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -204,10 +204,8 @@ struct StructBase {
 struct Pack : public StructBase {
   std::vector<uint8_t> _storage;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::bytesInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   void setParam(int index, CBVar value) {
     StructBase::setParam(index, value);
@@ -231,13 +229,13 @@ struct Pack : public StructBase {
   template <typename T, CBType CBT, typename CT>
   void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset,
                  size_t len) {
-    if (len != (size_t)stbds_arrlen(input)) {
+    if (len != (size_t)input.len) {
       throw CBException("Expected " + std::to_string(len) +
                         " size sequence as value");
     }
 
     for (size_t i = 0; i < len; i++) {
-      auto &val = input[i];
+      auto &val = input.elements[i];
       ensureType(val, CBT);
       write<T, decltype(val.payload.*value)>(val.payload.*value,
                                              offset + (i * sizeof(T)));
@@ -245,7 +243,7 @@ struct Pack : public StructBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_members.size() != (size_t)stbds_arrlen(input.payload.seqValue)) {
+    if (_members.size() != (size_t)input.payload.seqValue.len) {
       throw CBException("Expected " + std::to_string(_members.size()) +
                         " members as input.");
     }
@@ -255,76 +253,77 @@ struct Pack : public StructBase {
     for (auto &member : _members) {
       switch (member.tag) {
       case Tags::i8Array:
-        ensureType(seq[idx], Seq);
-        writeMany<int8_t, Int>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<int8_t, Int>(seq.elements[idx].payload.seqValue,
                                &CBVarPayload::intValue, member.offset,
                                member.arrlen);
         break;
       case Tags::i8:
-        ensureType(seq[idx], Int);
-        write<int8_t>(seq[idx].payload.intValue, member.offset);
+        ensureType(seq.elements[idx], Int);
+        write<int8_t>(seq.elements[idx].payload.intValue, member.offset);
         break;
       case Tags::i16Array:
-        ensureType(seq[idx], Seq);
-        writeMany<int16_t, Int>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<int16_t, Int>(seq.elements[idx].payload.seqValue,
                                 &CBVarPayload::intValue, member.offset,
                                 member.arrlen);
         break;
       case Tags::i16:
-        ensureType(seq[idx], Int);
-        write<int16_t>(seq[idx].payload.intValue, member.offset);
+        ensureType(seq.elements[idx], Int);
+        write<int16_t>(seq.elements[idx].payload.intValue, member.offset);
         break;
       case Tags::i32Array:
-        ensureType(seq[idx], Seq);
-        writeMany<int32_t, Int>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<int32_t, Int>(seq.elements[idx].payload.seqValue,
                                 &CBVarPayload::intValue, member.offset,
                                 member.arrlen);
         break;
       case Tags::i32:
-        ensureType(seq[idx], Int);
-        write<int32_t>(seq[idx].payload.intValue, member.offset);
+        ensureType(seq.elements[idx], Int);
+        write<int32_t>(seq.elements[idx].payload.intValue, member.offset);
         break;
       case Tags::i64Array:
-        ensureType(seq[idx], Seq);
-        writeMany<int64_t, Int>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<int64_t, Int>(seq.elements[idx].payload.seqValue,
                                 &CBVarPayload::intValue, member.offset,
                                 member.arrlen);
         break;
       case Tags::i64:
-        ensureType(seq[idx], Int);
-        write<int64_t>(seq[idx].payload.intValue, member.offset);
+        ensureType(seq.elements[idx], Int);
+        write<int64_t>(seq.elements[idx].payload.intValue, member.offset);
         break;
       case Tags::f32Array:
-        ensureType(seq[idx], Seq);
-        writeMany<float, Float>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<float, Float>(seq.elements[idx].payload.seqValue,
                                 &CBVarPayload::floatValue, member.offset,
                                 member.arrlen);
         break;
       case Tags::f32:
-        ensureType(seq[idx], Float);
-        write<float>(seq[idx].payload.floatValue, member.offset);
+        ensureType(seq.elements[idx], Float);
+        write<float>(seq.elements[idx].payload.floatValue, member.offset);
         break;
       case Tags::f64Array:
-        ensureType(seq[idx], Seq);
-        writeMany<double, Float>(seq[idx].payload.seqValue,
+        ensureType(seq.elements[idx], Seq);
+        writeMany<double, Float>(seq.elements[idx].payload.seqValue,
                                  &CBVarPayload::floatValue, member.offset,
                                  member.arrlen);
         break;
       case Tags::f64:
-        ensureType(seq[idx], Float);
-        write<double>(seq[idx].payload.floatValue, member.offset);
+        ensureType(seq.elements[idx], Float);
+        write<double>(seq.elements[idx].payload.floatValue, member.offset);
         break;
       case Tags::Bool:
-        ensureType(seq[idx], CBType::Bool);
-        write<bool>(seq[idx].payload.boolValue, member.offset);
+        ensureType(seq.elements[idx], CBType::Bool);
+        write<bool>(seq.elements[idx].payload.boolValue, member.offset);
         break;
       case Tags::Pointer:
-        ensureType(seq[idx], Int);
-        write<uintptr_t>(seq[idx].payload.intValue, member.offset);
+        ensureType(seq.elements[idx], Int);
+        write<uintptr_t>(seq.elements[idx].payload.intValue, member.offset);
         break;
       case Tags::String:
-        ensureType(seq[idx], CBType::String);
-        write<const char *>(seq[idx].payload.stringValue, member.offset);
+        ensureType(seq.elements[idx], CBType::String);
+        write<const char *>(seq.elements[idx].payload.stringValue,
+                            member.offset);
       }
       idx++;
     }
@@ -346,76 +345,76 @@ RUNTIME_BLOCK_END(Pack);
 struct Unpack : public StructBase {
   CBSeq _output;
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::bytesInfo);
-  }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   void destroy() {
-    if (_output) {
+    if (_output.elements) {
       // cleanup sub seqs
       for (size_t i = 0; i < _members.size(); i++) {
-        if (_output[i].valueType == Seq) {
-          stbds_arrfree(_output[i].payload.seqValue);
+        if (_output.elements[i].valueType == Seq) {
+          chainblocks::arrayFree(_output.elements[i].payload.seqValue);
         }
       }
-      stbds_arrfree(_output);
+      chainblocks::arrayFree(_output);
     }
   }
 
   void setParam(int index, CBVar value) {
     StructBase::setParam(index, value);
     // now we know what size we need
-    size_t curLen = stbds_arrlen(_output);
+    size_t curLen = _output.len;
     if (_members.size() < curLen) {
       // need to destroy leftovers if arrays
       for (size_t i = _members.size(); i < curLen; i++) {
-        if (_output[i].valueType == Seq) {
-          stbds_arrfree(_output[i].payload.seqValue);
+        if (_output.elements[i].valueType == Seq) {
+          chainblocks::arrayFree(_output.elements[i].payload.seqValue);
         }
       }
     }
-    stbds_arrsetlen(_output, _members.size());
+    chainblocks::arrayResize(_output, _members.size());
     auto idx = 0;
     for (auto &member : _members) {
-      auto &arr = _output[idx].payload.seqValue;
+      auto &arr = _output.elements[idx].payload.seqValue;
       switch (member.tag) {
       case Tags::i8Array:
       case Tags::i16Array:
       case Tags::i32Array:
       case Tags::i64Array:
-        _output[idx].valueType = Seq;
-        stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
+        _output.elements[idx].valueType = Seq;
+        chainblocks::arrayResize(_output.elements[idx].payload.seqValue,
+                                 member.arrlen);
         for (size_t i = 0; i < member.arrlen; i++) {
-          arr[i].valueType = Int;
+          arr.elements[i].valueType = Int;
         }
         break;
       case Tags::i8:
       case Tags::i16:
       case Tags::i32:
       case Tags::i64:
-        _output[idx].valueType = Int;
+        _output.elements[idx].valueType = Int;
         break;
       case Tags::f32Array:
       case Tags::f64Array:
-        _output[idx].valueType = Seq;
-        stbds_arrsetlen(_output[idx].payload.seqValue, member.arrlen);
+        _output.elements[idx].valueType = Seq;
+        chainblocks::arrayResize(_output.elements[idx].payload.seqValue,
+                                 member.arrlen);
         for (size_t i = 0; i < member.arrlen; i++) {
-          arr[i].valueType = Float;
+          arr.elements[i].valueType = Float;
         }
         break;
       case Tags::f32:
       case Tags::f64:
-        _output[idx].valueType = Float;
+        _output.elements[idx].valueType = Float;
         break;
       case Tags::Bool:
-        _output[idx].valueType = CBType::Bool;
+        _output.elements[idx].valueType = CBType::Bool;
         break;
       case Tags::Pointer:
-        _output[idx].valueType = Int;
+        _output.elements[idx].valueType = Int;
         break;
       case Tags::String:
-        _output[idx].valueType = CBType::String;
+        _output.elements[idx].valueType = CBType::String;
         break;
       }
       idx++;
@@ -432,64 +431,73 @@ struct Unpack : public StructBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto idx = 0;
     for (auto &member : _members) {
-      auto &arr = _output[idx].payload.seqValue;
+      auto &arr = _output.elements[idx].payload.seqValue;
       switch (member.tag) {
       case Tags::i8Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int8_t>(arr[i].payload.intValue, input, member.offset);
+          read<int8_t>(arr.elements[i].payload.intValue, input, member.offset);
         }
         break;
       case Tags::i8:
-        read<int8_t>(_output[idx].payload.intValue, input, member.offset);
+        read<int8_t>(_output.elements[idx].payload.intValue, input,
+                     member.offset);
         break;
       case Tags::i16Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int16_t>(arr[i].payload.intValue, input, member.offset);
+          read<int16_t>(arr.elements[i].payload.intValue, input, member.offset);
         }
         break;
       case Tags::i16:
-        read<int16_t>(_output[idx].payload.intValue, input, member.offset);
+        read<int16_t>(_output.elements[idx].payload.intValue, input,
+                      member.offset);
         break;
       case Tags::i32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int32_t>(arr[i].payload.intValue, input, member.offset);
+          read<int32_t>(arr.elements[i].payload.intValue, input, member.offset);
         }
         break;
       case Tags::i32:
-        read<int32_t>(_output[idx].payload.intValue, input, member.offset);
+        read<int32_t>(_output.elements[idx].payload.intValue, input,
+                      member.offset);
         break;
       case Tags::i64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int64_t>(arr[i].payload.intValue, input, member.offset);
+          read<int64_t>(arr.elements[i].payload.intValue, input, member.offset);
         }
         break;
       case Tags::i64:
-        read<int64_t>(_output[idx].payload.intValue, input, member.offset);
+        read<int64_t>(_output.elements[idx].payload.intValue, input,
+                      member.offset);
         break;
       case Tags::f32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<float>(arr[i].payload.floatValue, input, member.offset);
+          read<float>(arr.elements[i].payload.floatValue, input, member.offset);
         }
         break;
       case Tags::f32:
-        read<float>(_output[idx].payload.floatValue, input, member.offset);
+        read<float>(_output.elements[idx].payload.floatValue, input,
+                    member.offset);
         break;
       case Tags::f64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<double>(arr[i].payload.floatValue, input, member.offset);
+          read<double>(arr.elements[i].payload.floatValue, input,
+                       member.offset);
         }
         break;
       case Tags::f64:
-        read<double>(_output[idx].payload.floatValue, input, member.offset);
+        read<double>(_output.elements[idx].payload.floatValue, input,
+                     member.offset);
         break;
       case Tags::Bool:
-        read<bool>(_output[idx].payload.boolValue, input, member.offset);
+        read<bool>(_output.elements[idx].payload.boolValue, input,
+                   member.offset);
         break;
       case Tags::Pointer:
-        read<uintptr_t>(_output[idx].payload.intValue, input, member.offset);
+        read<uintptr_t>(_output.elements[idx].payload.intValue, input,
+                        member.offset);
         break;
       case Tags::String:
-        read<const char *>(_output[idx].payload.stringValue, input,
+        read<const char *>(_output.elements[idx].payload.stringValue, input,
                            member.offset);
         break;
       }

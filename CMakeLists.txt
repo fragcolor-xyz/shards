@@ -136,6 +136,7 @@ endif()
 
 if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
+  add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
 endif()
 ###
 
@@ -149,6 +150,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
+  ${CHAINBLOCKS_DIR}/include/chainblocks.h
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/core.hpp

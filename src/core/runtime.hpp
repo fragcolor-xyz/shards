@@ -137,9 +137,9 @@ struct CBChain {
 struct CBContext {
   CBContext(CBCoro &&sink, const CBChain *running_chain)
       : chain(running_chain), restarted(false), aborted(false),
-        continuation(std::move(sink)), iterationCount(0), stack(nullptr) {}
+        continuation(std::move(sink)), iterationCount(0), stack({}) {}
 
-  ~CBContext() { stbds_arrfree(stack); }
+  ~CBContext() { chainblocks::arrayFree(stack); }
 
   const CBChain *chain;
 
@@ -170,21 +170,25 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
                                          const CBVar &input) {
   switch (blk->inlineBlockId) {
   case StackPush: {
-    stbds_arrpush(context->stack, input);
+    chainblocks::arrayPush(context->stack, input);
     return input;
   }
   case StackPop: {
-    return stbds_arrpop(context->stack);
+    if (context->stack.len == 0)
+      throw CBException("Pop: Stack underflow!");
+    return chainblocks::arrayPop<CBSeq, CBVar>(context->stack);
   }
   case StackSwap: {
-    auto s = stbds_arrlen(context->stack);
-    auto a = context->stack[s - 1];
-    context->stack[s - 1] = context->stack[s - 2];
-    context->stack[s - 2] = a;
+    auto s = context->stack.len;
+    auto a = context->stack.elements[s - 1];
+    context->stack.elements[s - 1] = context->stack.elements[s - 2];
+    context->stack.elements[s - 2] = a;
     return input;
   }
   case StackDrop: {
-    stbds_arrpop(context->stack);
+    if (context->stack.len == 0)
+      throw CBException("Drop: Stack underflow!");
+    context->stack.len--;
     return input;
   }
   case CoreConst: {
@@ -626,7 +630,7 @@ struct CBNode {
             }
           },
           this);
-      stbds_arrfree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.exposedInfo);
     }
 
     auto flow = std::make_shared<CBFlow>();
@@ -685,8 +689,6 @@ struct CBNode {
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;
-  // filesystem current directory (if any/implemented) linked with this node
-  std::string currentPath;
 };
 
 #endif

@@ -18,30 +18,36 @@ namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
-  static inline TypesInfo chainTypes =
-      TypesInfo::FromMany(false, CBType::Chain, CBType::String, CBType::None);
+  typedef EnumInfo<RunChainMode> RunChainModeInfo;
+  static inline RunChainModeInfo runChainModeInfo{"RunChainMode", 'frag',
+                                                  'runC'};
+  static inline Type ModeType{
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'runC'}}}};
+
+  static inline Types ChainTypes{
+      {CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};
 
   static inline ParamsInfo waitChainParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
+      ParamsInfo::Param("Chain", "The chain to run.", ChainTypes),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",
-                        CBTypesInfo(SharedTypes::boolInfo)),
+                        CoreInfo::BoolType),
       ParamsInfo::Param(
           "Passthrough",
           "The input of this block will be the output. Always on if Detached.",
-          CBTypesInfo(SharedTypes::boolInfo)));
+          CoreInfo::BoolType));
 
   static inline ParamsInfo runChainParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)),
+      ParamsInfo::Param("Chain", "The chain to run.", ChainTypes),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",
-                        CBTypesInfo(SharedTypes::boolInfo)),
+                        CoreInfo::BoolType),
       ParamsInfo::Param(
           "Passthrough",
           "The input of this block will be the output. Not used if Detached.",
-          CBTypesInfo(SharedTypes::boolInfo)),
+          CoreInfo::BoolType),
       ParamsInfo::Param(
           "Mode",
           "The way to run the chain. Inline: will run the sub chain inline "
@@ -53,16 +59,16 @@ struct ChainBase {
           "run as a child, the root will tick the chain every activation of "
           "this "
           "block and so a child pause won't pause the root.",
-          CBTypesInfo(SharedTypes::runChainModeInfo)));
+          ModeType));
 
   static inline ParamsInfo chainloaderParamsInfo = ParamsInfo(
       ParamsInfo::Param(
           "File", "The chainblocks lisp file of the chain to run and watch.",
-          CBTypesInfo(SharedTypes::strInfo)),
+          CoreInfo::StringType),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",
-                        CBTypesInfo(SharedTypes::boolInfo)),
+                        CoreInfo::BoolType),
       ParamsInfo::Param(
           "Mode",
           "The way to run the chain. Inline: will run the sub chain inline "
@@ -74,10 +80,10 @@ struct ChainBase {
           "run as a child, the root will tick the chain every activation of "
           "this "
           "block and so a child pause won't pause the root.",
-          CBTypesInfo(SharedTypes::runChainModeInfo)));
+          ModeType));
 
-  static inline ParamsInfo chainOnlyParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Chain", "The chain to run.", CBTypesInfo(chainTypes)));
+  static inline ParamsInfo chainOnlyParamsInfo =
+      ParamsInfo(ParamsInfo::Param("Chain", "The chain to run.", ChainTypes));
 
   CBChain *chain;
   CBVar chainref;
@@ -87,10 +93,10 @@ struct ChainBase {
   RunChainMode mode;
   CBValidationResult chainValidation{};
 
-  void destroy() { stbds_arrfree(chainValidation.exposedInfo); }
+  void destroy() { chainblocks::arrayFree(chainValidation.exposedInfo); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline thread_local std::set<CBChain *> visiting;
 
@@ -108,8 +114,7 @@ struct ChainBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
-    stbds_arrfree(chainValidation.exposedInfo);
-    chainValidation.exposedInfo = nullptr;
+    chainblocks::arrayFree(chainValidation.exposedInfo);
 
     // Actualize the chain here...
     if (chainref.valueType == CBType::Chain) {
@@ -220,14 +225,13 @@ struct WaitChain : public ChainBase {
 };
 
 struct ContinueChain : public ChainBase {
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Chain", "The name of the chain to switch to.",
-                        CBTypesInfo(ChainBase::chainTypes)));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "Chain", "The name of the chain to switch to.", ChainTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     ChainBase::compose(data);
@@ -280,7 +284,8 @@ struct ChainRunner : public ChainBase {
   CBExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
     // step and detach will run at different timing
-    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : nullptr;
+    CBExposedTypesInfo empty{};
+    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : empty;
   }
 
   void cleanup() {
@@ -408,11 +413,11 @@ struct RunChain : public ChainRunner {
 struct ChainLoader : public ChainRunner {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Provider", "The chainblocks chain provider.",
-                        ChainProvider::Info),
+                        ChainProvider::ProviderOrNone),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",
-                        CBTypesInfo(SharedTypes::boolInfo)),
+                        CoreInfo::BoolType),
       ParamsInfo::Param(
           "Mode",
           "The way to run the chain. Inline: will run the sub chain inline "
@@ -424,7 +429,7 @@ struct ChainLoader : public ChainRunner {
           "run as a child, the root will tick the chain every activation of "
           "this "
           "block and so a child pause won't pause the root.",
-          CBTypesInfo(SharedTypes::runChainModeInfo)));
+          ModeType));
 
   CBChainProvider *_provider;
 
@@ -502,9 +507,8 @@ struct ChainLoader : public ChainRunner {
     if (unlikely(!_provider->ready(_provider))) {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
-      data.consumables = _consumablesCopy();
-      _provider->setup(_provider, context->chain->node->currentPath.c_str(),
-                       data);
+      data.consumables = _consumablesCopy;
+      _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 
     if (unlikely(_provider->updated(_provider))) {

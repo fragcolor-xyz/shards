@@ -8,13 +8,9 @@ namespace chainblocks {
 namespace Math {
 namespace LinAlg {
 struct VectorUnaryBase : public UnaryBase {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
@@ -23,10 +19,10 @@ struct VectorUnaryBase : public UnaryBase {
                                  Operation operate) {
     CBVar output{};
     if (input.valueType == Seq) {
-      stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {
+      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
         operate(output, input);
-        stbds_arrpush(_cachedSeq.payload.seqValue, output);
+        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
       }
       return _cachedSeq;
     } else {
@@ -37,16 +33,12 @@ struct VectorUnaryBase : public UnaryBase {
 };
 
 struct VectorBinaryBase : public BinaryBase {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::vectorsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", "The operand.", CBTypesInfo(SharedTypes::vectorsCtxInfo)));
+      "Operand", "The operand.", CoreInfo::FloatVectorsOrVar));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -62,19 +54,20 @@ struct VectorBinaryBase : public BinaryBase {
       operate(output, input, operand);
       return output;
     } else if (_opType == Seq1) {
-      stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {
-        operate(output, input.payload.seqValue[i], operand);
-        stbds_arrpush(_cachedSeq.payload.seqValue, output);
+      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        operate(output, input.payload.seqValue.elements[i], operand);
+        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
       }
       return _cachedSeq;
     } else {
-      stbds_arrsetlen(_cachedSeq.payload.seqValue, 0);
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue) &&
-                       i < stbds_arrlen(operand.payload.seqValue);
+      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      for (uint32_t i = 0;
+           i < input.payload.seqValue.len && i < operand.payload.seqValue.len;
            i++) {
-        operate(output, input.payload.seqValue[i], operand.payload.seqValue[i]);
-        stbds_arrpush(_cachedSeq.payload.seqValue, output);
+        operate(output, input.payload.seqValue.elements[i],
+                operand.payload.seqValue.elements[i]);
+        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
       }
       return _cachedSeq;
     }
@@ -111,9 +104,7 @@ struct Cross : public VectorBinaryBase {
 };
 
 struct Dot : public VectorBinaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
@@ -162,9 +153,7 @@ struct Dot : public VectorBinaryBase {
 };
 
 struct LengthSquared : public VectorUnaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     Dot::Operation dotOp;
@@ -179,9 +168,7 @@ struct LengthSquared : public VectorUnaryBase {
 };
 
 struct Length : public VectorUnaryBase {
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::floatsInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   struct Operation {
     LengthSquared::Operation lenOp;
@@ -258,16 +245,19 @@ struct MatMul : public VectorBinaryBase {
     if (_opType == SeqSeq) {
       return data.inputType;
     } else {
-      return *data.inputType.seqType;
+      if (data.inputType.seqTypes.len != 1) {
+        throw CBException("MatMul expected a unique Seq inner type.");
+      }
+      return data.inputType.seqTypes.elements[0];
     }
   }
 
   CBVar mvmul(const CBVar &a, const CBVar &b) {
     CBVar output;
     output.valueType = b.valueType;
-    auto dims = stbds_arrlen(a.payload.seqValue);
-    for (auto i = 0; i < dims; i++) {
-      const auto &x = a.payload.seqValue[i];
+    auto dims = a.payload.seqValue.len;
+    for (uint32_t i = 0; i < dims; i++) {
+      const auto &x = a.payload.seqValue.elements[i];
       if (x.valueType != b.valueType) {
         // tbh this should be supported tho...
         throw CBException("MatMul expected same Float vector types");
@@ -306,18 +296,18 @@ struct MatMul : public VectorBinaryBase {
   }
 
   void mmmul(const CBVar &a, const CBVar &b) {
-    size_t dima = stbds_arrlen(a.payload.seqValue);
-    size_t dimb = stbds_arrlen(a.payload.seqValue);
+    size_t dima = a.payload.seqValue.len;
+    size_t dimb = a.payload.seqValue.len;
     if (dima != dimb) {
       throw CBException(
           "MatMul expected 2 arrays with the same number of columns");
     }
 
-    stbds_arrsetlen(_cachedSeq.payload.seqValue, dima);
+    chainblocks::arrayResize(_cachedSeq.payload.seqValue, dima);
     for (size_t i = 0; i < dima; i++) {
-      const auto &y = b.payload.seqValue[i];
+      const auto &y = b.payload.seqValue.elements[i];
       const auto r = mvmul(a, y);
-      _cachedSeq.payload.seqValue[i] = r;
+      _cachedSeq.payload.seqValue.elements[i] = r;
     }
   }
 
@@ -348,14 +338,14 @@ struct Transpose : public VectorUnaryBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    size_t height = stbds_arrlen(input.payload.seqValue);
+    size_t height = input.payload.seqValue.len;
     if (height < 2 || height > 4) {
       // todo 2x1 should be go too
       throw CBException("Transpose expects a 2x2 to 4x4 matrix array.");
     }
 
     size_t width = 0;
-    switch (input.payload.seqValue[0].valueType) {
+    switch (input.payload.seqValue.elements[0].valueType) {
     case Float2:
       width = 2;
       break;
@@ -369,85 +359,85 @@ struct Transpose : public VectorUnaryBase {
       break;
     }
 
-    stbds_arrsetlen(_cachedSeq.payload.seqValue, width);
+    chainblocks::arrayResize(_cachedSeq.payload.seqValue, width);
 
     double v1{}, v2{}, v3{}, v4{};
     for (size_t w = 0; w < width; w++) {
       switch (height) {
       case 2:
-        _cachedSeq.payload.seqValue[w].valueType = Float2;
+        _cachedSeq.payload.seqValue.elements[w].valueType = Float2;
         switch (width) {
         case 2:
-          v1 = input.payload.seqValue[0].payload.float2Value[w];
-          v2 = input.payload.seqValue[1].payload.float2Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float2Value[w];
           break;
         case 3:
-          v1 = input.payload.seqValue[0].payload.float3Value[w];
-          v2 = input.payload.seqValue[1].payload.float3Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float3Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float3Value[w];
           break;
         case 4:
-          v1 = input.payload.seqValue[0].payload.float4Value[w];
-          v2 = input.payload.seqValue[1].payload.float4Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float4Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float4Value[w];
           break;
         default:
           break;
         }
-        _cachedSeq.payload.seqValue[w].payload.float2Value[0] = v1;
-        _cachedSeq.payload.seqValue[w].payload.float2Value[1] = v2;
+        _cachedSeq.payload.seqValue.elements[w].payload.float2Value[0] = v1;
+        _cachedSeq.payload.seqValue.elements[w].payload.float2Value[1] = v2;
         break;
       case 3:
-        _cachedSeq.payload.seqValue[w].valueType = Float3;
+        _cachedSeq.payload.seqValue.elements[w].valueType = Float3;
         switch (width) {
         case 2:
-          v1 = input.payload.seqValue[0].payload.float2Value[w];
-          v2 = input.payload.seqValue[1].payload.float2Value[w];
-          v3 = input.payload.seqValue[2].payload.float2Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float2Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float2Value[w];
           break;
         case 3:
-          v1 = input.payload.seqValue[0].payload.float3Value[w];
-          v2 = input.payload.seqValue[1].payload.float3Value[w];
-          v3 = input.payload.seqValue[2].payload.float3Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float3Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float3Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float3Value[w];
           break;
         case 4:
-          v1 = input.payload.seqValue[0].payload.float4Value[w];
-          v2 = input.payload.seqValue[1].payload.float4Value[w];
-          v3 = input.payload.seqValue[2].payload.float4Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float4Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float4Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float4Value[w];
           break;
         default:
           break;
         }
-        _cachedSeq.payload.seqValue[w].payload.float3Value[0] = v1;
-        _cachedSeq.payload.seqValue[w].payload.float3Value[1] = v2;
-        _cachedSeq.payload.seqValue[w].payload.float3Value[2] = v3;
+        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[0] = v1;
+        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[1] = v2;
+        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[2] = v3;
         break;
       case 4:
-        _cachedSeq.payload.seqValue[w].valueType = Float4;
+        _cachedSeq.payload.seqValue.elements[w].valueType = Float4;
         switch (width) {
         case 2:
-          v1 = input.payload.seqValue[0].payload.float2Value[w];
-          v2 = input.payload.seqValue[1].payload.float2Value[w];
-          v3 = input.payload.seqValue[2].payload.float2Value[w];
-          v4 = input.payload.seqValue[3].payload.float2Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float2Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float2Value[w];
+          v4 = input.payload.seqValue.elements[3].payload.float2Value[w];
           break;
         case 3:
-          v1 = input.payload.seqValue[0].payload.float3Value[w];
-          v2 = input.payload.seqValue[1].payload.float3Value[w];
-          v3 = input.payload.seqValue[2].payload.float3Value[w];
-          v4 = input.payload.seqValue[3].payload.float3Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float3Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float3Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float3Value[w];
+          v4 = input.payload.seqValue.elements[3].payload.float3Value[w];
           break;
         case 4:
-          v1 = input.payload.seqValue[0].payload.float4Value[w];
-          v2 = input.payload.seqValue[1].payload.float4Value[w];
-          v3 = input.payload.seqValue[2].payload.float4Value[w];
-          v4 = input.payload.seqValue[3].payload.float4Value[w];
+          v1 = input.payload.seqValue.elements[0].payload.float4Value[w];
+          v2 = input.payload.seqValue.elements[1].payload.float4Value[w];
+          v3 = input.payload.seqValue.elements[2].payload.float4Value[w];
+          v4 = input.payload.seqValue.elements[3].payload.float4Value[w];
           break;
         default:
           break;
         }
-        _cachedSeq.payload.seqValue[w].payload.float4Value[0] = v1;
-        _cachedSeq.payload.seqValue[w].payload.float4Value[1] = v2;
-        _cachedSeq.payload.seqValue[w].payload.float4Value[2] = v3;
-        _cachedSeq.payload.seqValue[w].payload.float4Value[3] = v4;
+        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[0] = v1;
+        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[1] = v2;
+        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[2] = v3;
+        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[3] = v4;
         break;
       }
     }
@@ -463,32 +453,26 @@ struct Orthographic : VectorUnaryBase {
 
   void setup() {
     UnaryBase::setup();
-    stbds_arrsetlen(_cachedSeq.payload.seqValue, 4);
+    chainblocks::arrayResize(_cachedSeq.payload.seqValue, 4);
     for (auto i = 0; i < 4; i++) {
-      _cachedSeq.payload.seqValue[i] = CBVar();
-      _cachedSeq.payload.seqValue[i].valueType = Float4;
+      _cachedSeq.payload.seqValue.elements[i] = CBVar();
+      _cachedSeq.payload.seqValue.elements[i].valueType = Float4;
     }
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    return CBTypeInfo(SharedTypes::matrix4x4Info);
+    return CoreInfo::Float4SeqType;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::matrix4x4Info);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }
 
   // left, right, bottom, top, near, far
-  static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Width", "Width size.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Height", "Height size.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Near", "Near plane.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)),
-                 ParamsInfo::Param("Far", "Far plane.",
-                                   CBTypesInfo(SharedTypes::intOrFloatInfo)));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Width", "Width size.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Height", "Height size.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Near", "Near plane.", CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Far", "Far plane.", CoreInfo::IntOrFloat));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -532,17 +516,18 @@ struct Orthographic : VectorUnaryBase {
     auto top = 0.5 * _height;
     auto bottom = -top;
     auto zrange = 1.0 / (_far - _near);
-    _cachedSeq.payload.seqValue[0].payload.float4Value[0] =
+    _cachedSeq.payload.seqValue.elements[0].payload.float4Value[0] =
         2.0 / (right - left);
-    _cachedSeq.payload.seqValue[1].payload.float4Value[1] =
+    _cachedSeq.payload.seqValue.elements[1].payload.float4Value[1] =
         2.0 / (top - bottom);
-    _cachedSeq.payload.seqValue[2].payload.float4Value[2] = -zrange;
-    _cachedSeq.payload.seqValue[3].payload.float4Value[0] =
+    _cachedSeq.payload.seqValue.elements[2].payload.float4Value[2] = -zrange;
+    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[0] =
         (left + right) / (left - right);
-    _cachedSeq.payload.seqValue[3].payload.float4Value[1] =
+    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[1] =
         (top + bottom) / (bottom - top);
-    _cachedSeq.payload.seqValue[3].payload.float4Value[2] = -_near * zrange;
-    _cachedSeq.payload.seqValue[3].payload.float4Value[3] = 1.0;
+    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[2] =
+        -_near * zrange;
+    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[3] = 1.0;
     return _cachedSeq;
   }
 };

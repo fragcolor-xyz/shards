@@ -58,7 +58,7 @@ struct CoreLoader {
 #endif
     }
     assert(ifaceproc);
-    _core = ifaceproc();
+    _core = ifaceproc(CHAINBLOCKS_CURRENT_ABI);
     _core.log("loading external blocks...");
     registerBlocks();
   }
@@ -116,7 +116,40 @@ public:
 
   static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
 
-  static void freeArray(void *arr) { sCore._core.freeArray(arr); }
+#define CB_ARRAY_INTERFACE(_arr_, _val_, _short_)                              \
+  static void _short_##Free(_arr_ &seq) { sCore._core._short_##Free(&seq); };  \
+                                                                               \
+  static void _short_##Resize(_arr_ &seq, uint64_t size) {                     \
+    sCore._core._short_##Resize(&seq, size);                                   \
+  };                                                                           \
+                                                                               \
+  static void _short_##Push(_arr_ &seq, const _val_ &value) {                  \
+    sCore._core._short_##Push(&seq, &value);                                   \
+  };                                                                           \
+                                                                               \
+  static void _short_##Insert(_arr_ &seq, uint64_t index,                      \
+                              const _val_ &value) {                            \
+    sCore._core._short_##Insert(&seq, index, &value);                          \
+  };                                                                           \
+                                                                               \
+  static _val_ _short_##Pop(_arr_ &seq) {                                      \
+    return sCore._core._short_##Pop(&seq);                                     \
+  };                                                                           \
+                                                                               \
+  static void _short_##FastDelete(_arr_ &seq, uint64_t index) {                \
+    sCore._core._short_##FastDelete(&seq, index);                              \
+  };                                                                           \
+                                                                               \
+  static void _short_##SlowDelete(_arr_ &seq, uint64_t index) {                \
+    sCore._core._short_##SlowDelete(&seq, index);                              \
+  }
+
+  CB_ARRAY_INTERFACE(CBSeq, CBVar, seq);
+  CB_ARRAY_INTERFACE(CBTypesInfo, CBTypeInfo, types);
+  CB_ARRAY_INTERFACE(CBParametersInfo, CBParameterInfo, params);
+  CB_ARRAY_INTERFACE(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 
   static CBValidationResult validateChain(CBChain *chain,
                                           CBValidationCallback callback,

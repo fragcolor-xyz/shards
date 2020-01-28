@@ -78,6 +78,7 @@ void registerCoreBlocks() {
   rpmalloc_initialize();
 #endif
 
+  static_assert(sizeof(uint48_t) == 48 / 8);
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
 
@@ -99,9 +100,6 @@ void registerCoreBlocks() {
   registerOSBlocks();
   Regex::registerBlocks();
 
-  // also enums
-  SharedTypes::initEnums();
-
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
     int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);
@@ -120,6 +118,8 @@ void registerCoreBlocks() {
 
 #ifndef NDEBUG
   // TODO remove when we have better tests/samples
+
+  // Test chain DSL
   auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
                                              .looped(true)
                                              .let(1)
@@ -127,6 +127,55 @@ void registerCoreBlocks() {
                                              .block("Math.Add", 2)
                                              .block("Assert.Is", 3, true));
   assert(chain1->blocks.size() == 4);
+
+  // Test dynamic array
+  CBSeq ts{};
+  Var a{0}, b{1}, c{2}, d{3}, e{4}, f{5};
+  arrayPush(ts, a);
+  assert(ts.len == 1);
+  assert(ts.cap == 4);
+  arrayPush(ts, b);
+  arrayPush(ts, c);
+  arrayPush(ts, d);
+  arrayPush(ts, e);
+  assert(ts.len == 5);
+  assert(ts.cap == 8);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(1));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayInsert(ts, 1, f);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(1));
+  assert(ts.elements[3] == Var(2));
+  assert(ts.elements[4] == Var(3));
+
+  arrayDel(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayDelFast(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(4));
+  assert(ts.elements[3] == Var(3));
+
+  assert(ts.len == 4);
+
+  arrayFree(ts);
+  assert(ts.elements == nullptr);
+  assert(ts.len == 0);
+  assert(ts.cap == 0);
 #endif
 }
 
@@ -394,26 +443,26 @@ CBVar suspend(CBContext *context, double seconds) {
   return cont;
 }
 
-FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
+FlowState activateBlocks(CBlocks blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlenu(context->stack);
-  for (auto i = 0; i < nblocks; i++) {
-    output = activateBlock(blocks[i], context, input);
+  auto sidx = context->stack.len;
+  for (uint32_t i = 0; i < blocks.len; i++) {
+    output = activateBlock(blocks.elements[i], context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -426,7 +475,7 @@ FlowState activateBlocks(CBlocks blocks, int nblocks, CBContext *context,
     }
     input = output;
   }
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return Continuing;
 }
 
@@ -434,22 +483,23 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = stbds_arrlenu(context->stack);
-  for (auto i = 0; i < stbds_arrlen(blocks); i++) {
-    output = activateBlock(blocks[i].payload.blockValue, context, input);
+  auto sidx = context->stack.len;
+  for (uint32_t i = 0; i < blocks.len; i++) {
+    output =
+        activateBlock(blocks.elements[i].payload.blockValue, context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        stbds_arrsetlen(context->stack, sidx);
+        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -462,7 +512,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return Continuing;
 }
 }; // namespace chainblocks
@@ -493,12 +543,11 @@ void releaseMemory(CBVar &self) {
       self.payload.stringValue != nullptr) {
     delete[] self.payload.stringValue;
     self.payload.stringValue = nullptr;
-  } else if (self.valueType == Seq && self.payload.seqValue) {
-    for (auto i = 0; i < stbds_arrlen(self.payload.seqValue); i++) {
-      releaseMemory(self.payload.seqValue[i]);
+  } else if (self.valueType == Seq && self.payload.seqValue.elements) {
+    for (uint32_t i = 0; i < self.payload.seqValue.len; i++) {
+      releaseMemory(self.payload.seqValue.elements[i]);
     }
-    stbds_arrfree(self.payload.seqValue);
-    self.payload.seqValue = nullptr;
+    chainblocks::arrayFree(self.payload.seqValue);
   } else if (self.valueType == Table && self.payload.tableValue) {
     for (auto i = 0; i < stbds_shlen(self.payload.tableValue); i++) {
       delete[] self.payload.tableValue[i].key;
@@ -515,14 +564,17 @@ void releaseMemory(CBVar &self) {
   }
 }
 
-thread_local std::vector<char> gLogCache;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-EXPORTED struct CBCore __cdecl chainblocksInterface() {
-  CBCore result;
+EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
+  CBCore result{};
+
+  if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
+    LOG(ERROR) << "A plugin requested an invalid ABI version.";
+    return result;
+  }
 
   result.registerBlock = [](const char *fullName,
                             CBBlockConstructor constructor) {
@@ -574,7 +626,39 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 
   result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
-  result.freeArray = [](void *arr) { stbds_arrfree(arr); };
+#define CB_ARRAY_IMPL(_arr_, _val_, _name_)                                    \
+  result._name_##Free = [](_arr_ *seq) { chainblocks::arrayFree(*seq); };      \
+                                                                               \
+  result._name_##Resize = [](_arr_ *seq, uint64_t size) {                      \
+    chainblocks::arrayResize(*seq, size);                                      \
+  };                                                                           \
+                                                                               \
+  result._name_##Push = [](_arr_ *seq, const _val_ *value) {                   \
+    chainblocks::arrayPush(*seq, *value);                                      \
+  };                                                                           \
+                                                                               \
+  result._name_##Insert = [](_arr_ *seq, uint64_t index, const _val_ *value) { \
+    chainblocks::arrayInsert(*seq, index, *value);                             \
+  };                                                                           \
+                                                                               \
+  result._name_##Pop = [](_arr_ *seq) {                                        \
+    return chainblocks::arrayPop<_arr_, _val_>(*seq);                          \
+  };                                                                           \
+                                                                               \
+  result._name_##FastDelete = [](_arr_ *seq, uint64_t index) {                 \
+    chainblocks::arrayDelFast(*seq, index);                                    \
+  };                                                                           \
+                                                                               \
+  result._name_##SlowDelete = [](_arr_ *seq, uint64_t index) {                 \
+    chainblocks::arrayDel(*seq, index);                                        \
+  }
+
+  CB_ARRAY_IMPL(CBSeq, CBVar, seq);
+  CB_ARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
+  CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
+  CB_ARRAY_IMPL(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_IMPL(CBStrings, CBString, strings);
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
@@ -592,8 +676,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 
   result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input) {
     CBVar output{};
-    chainblocks::activateBlocks(blocks, stbds_arrlen(blocks), context, input,
-                                output);
+    chainblocks::activateBlocks(blocks, context, input, output);
     return output;
   };
 
@@ -608,8 +691,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
     auto chain = new CBChain(name);
     chain->looped = looped;
     chain->unsafe = unsafe;
-    for (size_t i = 0; i < stbds_arrlenu(blocks); i++) {
-      chain->addBlock(blocks[i]);
+    for (uint32_t i = 0; i < blocks.len; i++) {
+      chain->addBlock(blocks.elements[i]);
     }
     return chain;
   };
@@ -628,6 +711,12 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
     chainblocks::sleep(seconds, runCallbacks);
   };
 
+  result.getRootPath = []() { return chainblocks::Globals::RootPath.c_str(); };
+
+  result.setRootPath = [](const char *p) {
+    chainblocks::Globals::RootPath = p;
+  };
+
   return result;
 }
 
@@ -635,62 +724,67 @@ EXPORTED struct CBCore __cdecl chainblocksInterface() {
 };
 #endif
 
-bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
+bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
-  if (consumedType.basicType == Any ||
-      (!isParameter && consumedType.basicType == None))
+  if (receiverType.basicType == Any ||
+      // receiver is a none type input block basically
+      (!isParameter && receiverType.basicType == None))
     return true;
 
-  if (exposedType.basicType != consumedType.basicType) {
+  if (inputType.basicType != receiverType.basicType) {
     // Fail if basic type differs
     return false;
   }
 
-  switch (exposedType.basicType) {
+  switch (inputType.basicType) {
   case Object: {
-    if (exposedType.objectVendorId != consumedType.objectVendorId ||
-        exposedType.objectTypeId != consumedType.objectTypeId) {
+    if (inputType.objectVendorId != receiverType.objectVendorId ||
+        inputType.objectTypeId != receiverType.objectTypeId) {
       return false;
     }
     break;
   }
   case Enum: {
-    if (exposedType.enumVendorId != consumedType.enumVendorId ||
-        exposedType.enumTypeId != consumedType.enumTypeId) {
+    if (inputType.enumVendorId != receiverType.enumVendorId ||
+        inputType.enumTypeId != receiverType.enumTypeId) {
       return false;
     }
     break;
   }
   case Seq: {
     if (strict) {
-      if (exposedType.seqType && consumedType.seqType) {
-        if (!matchTypes(*exposedType.seqType, *consumedType.seqType,
-                        isParameter, strict)) {
+      if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
+        // all input types must be in receiver, receiver can have more ofc
+        for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
+          for (uint32_t j = 0; i < receiverType.seqTypes.len; j++) {
+            if (receiverType.seqTypes.elements[j].basicType == Any ||
+                inputType.seqTypes.elements[i] ==
+                    receiverType.seqTypes.elements[j])
+              goto matched;
+          }
           return false;
+        matched:
+          continue;
         }
-      } else if (exposedType.seqType == nullptr ||
-                 consumedType.seqType == nullptr) {
+      } else if (inputType.seqTypes.len == 0 ||
+                 receiverType.seqTypes.len == 0) {
         return false;
-      } else if (exposedType.seqType && consumedType.seqType == nullptr &&
-                 !isParameter) {
-        // Assume consumer is not strict
-        return true;
       }
     }
     break;
   }
   case Table: {
     if (strict) {
-      auto atypes = stbds_arrlen(exposedType.tableTypes);
-      auto btypes = stbds_arrlen(consumedType.tableTypes);
+      auto atypes = inputType.tableTypes.len;
+      auto btypes = receiverType.tableTypes.len;
       //  btypes != 0 assume consumer is not strict
-      for (auto i = 0; i < atypes && (isParameter || btypes != 0); i++) {
+      for (uint32_t i = 0; i < atypes && (isParameter || btypes != 0); i++) {
         // Go thru all exposed types and make sure we get a positive match with
         // the consumer
-        auto atype = exposedType.tableTypes[i];
+        auto atype = inputType.tableTypes.elements[i];
         auto matched = false;
-        for (auto y = 0; y < btypes; y++) {
-          auto btype = consumedType.tableTypes[y];
+        for (uint32_t y = 0; y < btypes; y++) {
+          auto btype = receiverType.tableTypes.elements[y];
           if (matchTypes(atype, btype, isParameter, strict)) {
             matched = true;
             break;
@@ -710,23 +804,44 @@ bool matchTypes(const CBTypeInfo &exposedType, const CBTypeInfo &consumedType,
 }
 
 namespace std {
+template <> struct hash<CBTypeInfo> {
+  std::size_t operator()(const CBTypeInfo &typeInfo) const {
+    using std::hash;
+    using std::size_t;
+    using std::string;
+    auto res = hash<int>()(typeInfo.basicType);
+    if (typeInfo.basicType == Table && typeInfo.tableTypes.elements &&
+        typeInfo.tableKeys.elements) {
+      for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
+        res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+      }
+      for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
+        res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+      }
+    } else if (typeInfo.basicType == Seq) {
+      for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
+        res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+      }
+    } else if (typeInfo.basicType == Object) {
+      res = res ^ hash<int>()(typeInfo.objectVendorId);
+      res = res ^ hash<int>()(typeInfo.objectTypeId);
+    } else if (typeInfo.basicType == Enum) {
+      res = res ^ hash<int>()(typeInfo.enumVendorId);
+      res = res ^ hash<int>()(typeInfo.enumTypeId);
+    }
+    return res;
+  }
+};
+
 template <> struct hash<CBExposedTypeInfo> {
   std::size_t operator()(const CBExposedTypeInfo &typeInfo) const {
     using std::hash;
     using std::size_t;
     using std::string;
     auto res = hash<string>()(typeInfo.name);
-    res = res ^ hash<int>()(typeInfo.exposedType.basicType);
+    res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
-    if (typeInfo.exposedType.basicType == Table &&
-        typeInfo.exposedType.tableTypes && typeInfo.exposedType.tableKeys) {
-      for (auto i = 0; i < stbds_arrlen(typeInfo.exposedType.tableKeys); i++) {
-        res = res ^ hash<string>()(typeInfo.exposedType.tableKeys[i]);
-      }
-    } else if (typeInfo.exposedType.basicType == Seq &&
-               typeInfo.exposedType.seqType) {
-      res = res ^ hash<int>()(typeInfo.exposedType.seqType->basicType);
-    }
+    res = res ^ hash<int>()(typeInfo.isTableEntry);
     return res;
   }
 };
@@ -754,8 +869,8 @@ void validateConnection(ValidationContext &ctx) {
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
   auto inputMatches = false;
   // validate our generic input
-  for (auto i = 0; stbds_arrlen(inputInfos) > i; i++) {
-    auto &inputInfo = inputInfos[i];
+  for (uint32_t i = 0; inputInfos.len > i; i++) {
+    auto &inputInfo = inputInfos.elements[i];
     if (matchTypes(previousOutput, inputInfo, false, false)) {
       inputMatches = true;
       break;
@@ -777,33 +892,33 @@ void validateConnection(ValidationContext &ctx) {
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
-        stbds_arrpush(data.consumables, type);
+        chainblocks::arrayPush(data.consumables, type);
       }
     }
     for (auto &info : ctx.stackTypes) {
-      stbds_arrpush(data.stack, info);
+      chainblocks::arrayPush(data.stack, info);
     }
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
-    stbds_arrfree(data.stack);
-    stbds_arrfree(data.consumables);
+    chainblocks::arrayFree(data.stack);
+    chainblocks::arrayFree(data.consumables);
   } else {
     // Short-cut if it's just one type and not any type
     // Any type tho means keep previous output type!
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
-    if (stbds_arrlen(outputTypes) == 1 && outputTypes[0].basicType != Any) {
-      ctx.previousOutputType = outputTypes[0];
+    if (outputTypes.len == 1 && outputTypes.elements[0].basicType != Any) {
+      ctx.previousOutputType = outputTypes.elements[0];
     }
   }
 
   // Grab those after type inference!
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
-  for (auto i = 0; stbds_arrlen(exposedVars) > i; i++) {
-    auto &exposed_param = exposedVars[i];
+  for (uint32_t i = 0; exposedVars.len > i; i++) {
+    auto &exposed_param = exposedVars.elements[i];
     std::string name(exposed_param.name);
     ctx.exposed[name].insert(exposed_param);
 
@@ -886,8 +1001,8 @@ void validateConnection(ValidationContext &ctx) {
 
   phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>>
       consumedVars;
-  for (auto i = 0; stbds_arrlen(consumedVar) > i; i++) {
-    auto &consumed_param = consumedVar[i];
+  for (uint32_t i = 0; consumedVar.len > i; i++) {
+    auto &consumed_param = consumedVar.elements[i];
     std::string name(consumed_param.name);
     consumedVars[name].push_back(consumed_param);
   }
@@ -934,14 +1049,25 @@ void validateConnection(ValidationContext &ctx) {
 
         for (auto type : info.second) {
           if (type.exposedType.basicType == Table &&
-              type.exposedType.tableTypes && type.exposedType.tableKeys) {
-            err += "(" + type2Name(type.exposedType.basicType) + " [" +
-                   type2Name(type.exposedType.tableTypes[0].basicType) + " " +
-                   type.exposedType.tableKeys[0] + "]) ";
-          } else if (type.exposedType.basicType == Seq &&
-                     type.exposedType.seqType) {
-            err += "(" + type2Name(type.exposedType.basicType) + " [" +
-                   type2Name(type.exposedType.seqType->basicType) + "]) ";
+              type.exposedType.tableTypes.elements &&
+              type.exposedType.tableKeys.elements) {
+            err +=
+                "(" + type2Name(type.exposedType.basicType) + " [" +
+                type2Name(type.exposedType.tableTypes.elements[0].basicType) +
+                " " + type.exposedType.tableKeys.elements[0] + "]) ";
+          } else if (type.exposedType.basicType == Seq) {
+            err += "(" + type2Name(type.exposedType.basicType) + " [";
+            for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
+              if (i < type.exposedType.seqTypes.len - 1)
+                err +=
+                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                    " ";
+              else
+                err +=
+                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                    " ";
+            }
+            err += "]) ";
           } else {
             err += type2Name(type.exposedType.basicType) + " ";
           }
@@ -963,13 +1089,13 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
   ctx.userData = userData;
-  for (auto i = 0; i < stbds_arrlen(data.stack); i++) {
-    ctx.stackTypes.push_back(data.stack[i]);
+  for (uint32_t i = 0; i < data.stack.len; i++) {
+    ctx.stackTypes.push_back(data.stack.elements[i]);
   }
 
-  if (data.consumables) {
-    for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-      auto &info = data.consumables[i];
+  if (data.consumables.elements) {
+    for (uint32_t i = 0; i < data.consumables.len; i++) {
+      auto &info = data.consumables.elements[i];
       ctx.exposed[info.name].insert(info);
     }
   }
@@ -1056,7 +1182,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   CBValidationResult result = {ctx.previousOutputType};
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
-      stbds_arrpush(result.exposedInfo, type);
+      chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
   return result;
@@ -1072,8 +1198,8 @@ CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
-  for (auto i = 0; stbds_arrlen(chain) > i; i++) {
-    blocks.push_back(chain[i]);
+  for (uint32_t i = 0; chain.len > i; i++) {
+    blocks.push_back(chain.elements[i]);
   }
   return validateConnections(blocks, callback, userData, data);
 }
@@ -1081,14 +1207,16 @@ CBValidationResult validateConnections(const CBlocks chain,
 void freeDerivedInfo(CBTypeInfo info) {
   switch (info.basicType) {
   case Seq: {
-    freeDerivedInfo(*info.seqType);
-    delete info.seqType;
+    for (uint32_t i = 0; info.seqTypes.len > i; i++) {
+      freeDerivedInfo(info.seqTypes.elements[i]);
+    }
+    chainblocks::arrayFree(info.seqTypes);
   }
   case Table: {
-    for (auto i = 0; stbds_arrlen(info.tableTypes) > i; i++) {
-      freeDerivedInfo(info.tableTypes[i]);
+    for (uint32_t i = 0; info.tableTypes.len > i; i++) {
+      freeDerivedInfo(info.tableTypes.elements[i]);
     }
-    stbds_arrfree(info.tableTypes);
+    chainblocks::arrayFree(info.tableTypes);
   }
   default:
     break;
@@ -1100,8 +1228,8 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
-  varType.seqType = nullptr;
-  varType.tableTypes = nullptr;
+  varType.seqTypes = {};
+  varType.tableTypes = {};
   switch (value.valueType) {
   case Object: {
     varType.objectVendorId = value.payload.objectVendorId;
@@ -1114,16 +1242,24 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Seq: {
-    varType.seqType = new CBTypeInfo();
-    if (stbds_arrlen(value.payload.seqValue) > 0) {
-      *varType.seqType = deriveTypeInfo(value.payload.seqValue[0]);
+    phmap::flat_hash_set<CBTypeInfo> types;
+    for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
+      if (!types.contains(derived)) {
+        chainblocks::arrayPush(varType.seqTypes, derived);
+        types.insert(derived);
+      }
     }
     break;
   }
   case Table: {
-    for (auto i = 0; stbds_shlen(value.payload.tableValue) > i; i++) {
-      stbds_arrpush(varType.tableTypes,
-                    deriveTypeInfo(value.payload.tableValue[i].value));
+    phmap::flat_hash_set<CBTypeInfo> types;
+    for (size_t i = 0; stbds_shlenu(value.payload.tableValue) > i; i++) {
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
+      if (!types.contains(derived)) {
+        chainblocks::arrayPush(varType.tableTypes, derived);
+        types.insert(derived);
+      }
     }
     break;
   }
@@ -1136,19 +1272,19 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData) {
   auto params = block->parameters(block);
-  if (stbds_arrlen(params) <= index) {
+  if (params.len <= (uint32_t)index) {
     std::string err("Parameter index out of range");
     callback(block, err.c_str(), false, userData);
     return false;
   }
 
-  auto param = params[index];
+  auto param = params.elements[index];
 
   // Build a CBTypeInfo for the var
   auto varType = deriveTypeInfo(value);
 
-  for (auto i = 0; stbds_arrlen(param.valueTypes) > i; i++) {
-    if (matchTypes(varType, param.valueTypes[i], true, true)) {
+  for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true)) {
       freeDerivedInfo(varType);
       return true; // we are good just exit
     }
@@ -1157,9 +1293,9 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   // Failed until now but let's check if the type is a sequenced too
   if (value.valueType == Seq) {
     // Validate each type in the seq
-    for (auto i = 0; stbds_arrlen(value.payload.seqValue) > i; i++) {
-      if (validateSetParam(block, index, value.payload.seqValue[i], callback,
-                           userData)) {
+    for (uint32_t i = 0; value.payload.seqValue.len > i; i++) {
+      if (validateSetParam(block, index, value.payload.seqValue.elements[i],
+                           callback, userData)) {
         freeDerivedInfo(varType);
         return true;
       }
@@ -1180,9 +1316,9 @@ void CBChain::cleanup() {
     node = nullptr;
   }
 
-  for (auto blk : blocks) {
-    blk->cleanup(blk);
-    blk->destroy(blk);
+  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+    (*it)->cleanup(*it);
+    (*it)->destroy(*it);
     // blk is responsible to free itself, as they might use any allocation
     // strategy they wish!
   }
@@ -1258,7 +1394,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->context = context;
 
   // store stack index
-  auto sidx = stbds_arrlenu(context->stack);
+  auto sidx = context->stack.len;
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {
@@ -1267,15 +1403,15 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
-          stbds_arrsetlen(context->stack, sidx);
+          context->stack.len = sidx;
           // Use input as output, return previous block result
           return {input, Restarted};
         }
@@ -1293,17 +1429,17 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
-      stbds_arrsetlen(context->stack, sidx);
+      context->stack.len = sidx;
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
-      stbds_arrsetlen(context->stack, sidx);
+      context->stack.len = sidx;
       return {chain->previousOutput, Failed};
     }
   }
 
-  stbds_arrsetlen(context->stack, sidx);
+  context->stack.len = sidx;
   return {chain->previousOutput, Running};
 }
 
@@ -1337,7 +1473,7 @@ boost::context::continuation run(CBChain *chain,
     chain->finishedOutput = runRes.output; // Write result before setting flag
     chain->finished = true;                // Set finished flag (atomic)
     context.iterationCount++;              // increatse iteration counter
-    stbds_arrsetlen(context.stack, 0);     // clear the stack
+    context.stack.len = 0;
     if (unlikely(runRes.state == Failed)) {
       chain->failed = true;
       context.aborted = true;

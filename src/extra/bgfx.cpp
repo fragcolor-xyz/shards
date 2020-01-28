@@ -15,12 +15,13 @@ struct Base {
 };
 
 constexpr uint32_t windowCC = 'hwnd';
-const static TypeInfo windowType = TypeInfo::Object(FragCC, windowCC);
-const static TypesInfo windowInfo = TypesInfo(windowType);
 
 struct BaseConsumer : public Base {
+  static inline Type windowType{
+      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
+
   static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
-      "BGFX.Context", "The BGFX Context.", CBTypeInfo(Context::Info)));
+      "BGFX.Context", "The BGFX Context.", Context::Info));
 
   CBExposedTypesInfo consumedVariables() {
     return CBExposedTypesInfo(consumedInfo);
@@ -46,19 +47,15 @@ struct BaseWindow : public Base {
 
   const static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Width", "The width of the window to create",
-                        CBTypesInfo(SharedTypes::intInfo)),
+                        CoreInfo::IntType),
       ParamsInfo::Param("Height", "The height of the window to create.",
-                        CBTypesInfo(SharedTypes::intInfo)));
+                        CoreInfo::IntType));
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -103,11 +100,10 @@ struct BaseWindow : public Base {
 struct MainWindow : public BaseWindow {
   const static inline ExposedInfo exposedInfo = ExposedInfo(
       ExposedInfo::Variable("BGFX.CurrentWindow", "The exposed SDL window.",
-                            CBTypeInfo(windowInfo)),
-      ExposedInfo::Variable("BGFX.Context", "The BGFX Context.",
-                            CBTypeInfo(Context::Info)),
+                            BaseConsumer::windowType),
+      ExposedInfo::Variable("BGFX.Context", "The BGFX Context.", Context::Info),
       ExposedInfo::Variable("ImGui.Context", "The ImGui Context.",
-                            CBTypeInfo(chainblocks::ImGui::Context::Info)));
+                            chainblocks::ImGui::Context::Info));
 
   CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(exposedInfo);
@@ -138,8 +134,8 @@ struct MainWindow : public BaseWindow {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
-    for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-      if (strcmp(data.consumables[i].name, "BGFX.Context") == 0) {
+    for (uint32_t i = 0; i < data.consumables.len; i++) {
+      if (strcmp(data.consumables.elements[i].name, "BGFX.Context") == 0) {
         throw CBException("BGFX.MainWindow must be unique, found another use!");
       }
     }
@@ -148,7 +144,7 @@ struct MainWindow : public BaseWindow {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_initDone) {
-      auto initErr = SDL_Init(0);
+      auto initErr = SDL_Init(SDL_INIT_EVENTS);
       if (initErr != 0) {
         LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
         throw CBException("Failed to initialize SDL");
@@ -272,10 +268,22 @@ struct MainWindow : public BaseWindow {
     // find mouse wheel events
     for (auto &event : sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
-        if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-          _wheelScroll += event.wheel.y;
-        else
-          _wheelScroll -= event.wheel.y;
+        _wheelScroll += event.wheel.y;
+        // This is not needed seems.. not even on MacOS Natural On/Off
+        // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        //   _wheelScroll += event.wheel.y;
+        // else
+        //   _wheelScroll -= event.wheel.y;
+      } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        // need to make sure to pass those as well or in low fps/simulated
+        // clicks we might mess up
+        if (event.button.button == SDL_BUTTON_LEFT) {
+          imbtns = imbtns | IMGUI_MBUT_LEFT;
+        } else if (event.button.button == SDL_BUTTON_RIGHT) {
+          imbtns = imbtns | IMGUI_MBUT_RIGHT;
+        } else if (event.button.button == SDL_BUTTON_MIDDLE) {
+          imbtns = imbtns | IMGUI_MBUT_MIDDLE;
+        }
       } else if (event.type == SDL_TEXTINPUT) {
         io.AddInputCharactersUTF8(event.text.text);
       } else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
@@ -295,6 +303,8 @@ struct MainWindow : public BaseWindow {
 };
 
 struct Window : public BaseWindow {
+  // WIP/TODO
+
   bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _viewId; // todo manage
   chainblocks::ImGui::Context _imgui_context{};
@@ -374,10 +384,12 @@ struct Window : public BaseWindow {
     // find mouse wheel events
     for (auto &event : MainWindow::sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
-        if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-          _wheelScroll += event.wheel.y;
-        else
-          _wheelScroll -= event.wheel.y;
+        _wheelScroll += event.wheel.y;
+        // This is not needed seems.. not even on MacOS Natural On/Off
+        // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        //   _wheelScroll += event.wheel.y;
+        // else
+        //   _wheelScroll -= event.wheel.y;
       }
     }
 
@@ -389,9 +401,9 @@ struct Window : public BaseWindow {
 };
 
 struct Draw : public BaseConsumer {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     imguiEndFrame();
@@ -413,13 +425,9 @@ struct Texture2D : public BaseConsumer {
     _texture.channels = 0;
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(Texture::TextureHandleInfo);
-  }
+  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // Upload a completely new image if sizes changed, also first activation!

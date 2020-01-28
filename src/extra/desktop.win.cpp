@@ -53,9 +53,7 @@ public:
 
 class HasWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::boolInfo);
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_window || !IsWindow(_window)) {
@@ -72,7 +70,7 @@ public:
 
 class WaitWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() { return CBTypesInfo(windowInfo); }
+  static CBTypesInfo outputTypes() { return Globals::windowType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     while (!_window || !IsWindow(_window)) {
@@ -156,7 +154,7 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
               }
             },
             gHookChain); // detached don't share context!
-        stbds_arrfree(chainValidation.exposedInfo);
+        chainblocks::arrayFree(chainValidation.exposedInfo);
         if (gHookChain) {
           chainblocks::prepare(gHookChain);
           chainblocks::start(gHookChain);
@@ -465,7 +463,7 @@ struct PixelBase {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Window", "The window variable name to use as coordinate origin.",
-      CBTypesInfo(SharedTypes::ctxOrNoneInfo)));
+      Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -476,7 +474,7 @@ struct PixelBase {
 
   CBExposedTypesInfo consumedVariables() {
     if (variableName.size() == 0) {
-      return nullptr;
+      return {};
     } else {
       return CBExposedTypesInfo(exposedInfo);
     }
@@ -489,7 +487,7 @@ struct PixelBase {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(ExposedInfo::Variable(
             variableName.c_str(), "The window to use as origin.",
-            CBTypeInfo(windowInfo)));
+            Globals::windowType));
       } else {
         variableName.clear();
       }
@@ -585,10 +583,8 @@ struct PixelBase {
 };
 
 struct Pixel : public PixelBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::colorInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     int x = input.payload.int2Value[0];
@@ -613,10 +609,8 @@ struct Pixel : public PixelBase {
 };
 
 struct Pixels : public PixelBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int4Info); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int4Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar _output;
 
@@ -824,7 +818,7 @@ struct GetMousePos : public MousePosBase {
 };
 
 struct SetMousePos : public MousePosBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     POINT p;
@@ -869,7 +863,14 @@ struct Tap : public MousePosBase {
     }
   };
 
-  static inline GlobalInjector sInjectorState{};
+  static inline GlobalInjector *sInjectorState = nullptr;
+
+  void setup() {
+    // we cannot use static inline with value type..
+    // runtime error with 32 bit builds...
+    if (!sInjectorState)
+      sInjectorState = new GlobalInjector();
+  }
 
   bool _delays = true;
   bool _longTap = false;
@@ -879,15 +880,15 @@ struct Tap : public MousePosBase {
       ParamsInfo::Param(
           "Long",
           "A big delay will be injected after tap down to simulate a long tap.",
-          CBTypesInfo(SharedTypes::boolInfo)),
+          CoreInfo::BoolType),
       ParamsInfo::Param(
           "Natural",
           "Small pauses will be injected after tap events down & up.",
-          CBTypesInfo(SharedTypes::boolInfo)));
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   void setParam(int index, CBVar value) {
     if (index == 0)
@@ -995,11 +996,11 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
       ParamsInfo::Param(
           "Natural",
           "Small pauses will be injected after click events down & up.",
-          CBTypesInfo(SharedTypes::boolInfo)));
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::int2Info); }
+  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
   void setParam(int index, CBVar value) {
     if (index == 0)
@@ -1075,10 +1076,8 @@ typedef Click<MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP> RightClick;
 typedef Click<MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP> MiddleClick;
 
 struct CursorBitmap {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   HDC _hdcMem;
   HBITMAP _bitmap;
@@ -1129,8 +1128,8 @@ extern "C" NTSYSAPI NTSTATUS NTAPI NtSetTimerResolution(
     ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
 
 struct SetTimerResolution {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::intInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   void cleanup() {
     ULONG tmp;
@@ -1340,6 +1339,7 @@ RUNTIME_BLOCK_consumedVariables(SetMousePos);
 RUNTIME_BLOCK_END(SetMousePos);
 
 RUNTIME_BLOCK(Desktop, Tap);
+RUNTIME_BLOCK_setup(Tap);
 RUNTIME_BLOCK_cleanup(Tap);
 RUNTIME_BLOCK_inputTypes(Tap);
 RUNTIME_BLOCK_outputTypes(Tap);

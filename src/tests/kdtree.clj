@@ -44,8 +44,7 @@
       (Math.Mod k)
       (Set "dimension")
                                         ; sort points
-      (Get "points")
-      (Sort :Key (--> (Take (# "dimension"))))
+      (Sort (# "points") :Key (--> (Take (# "dimension"))))
                                         ; split left and right, push points
       (Slice :To (# "median"))
                                         ; left points arg
@@ -114,5 +113,6 @@
   (Push)
   (Do build-tree)
   (Log)
+  (Assert.Is [[7, 2], [[5, 4], [[2, 3], [], []], [[4, 7], [], []]], [[9, 6], [[8, 1], [], []], []]] true)
   ))
 (run Root 0.1)

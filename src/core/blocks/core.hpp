@@ -11,64 +11,119 @@
 
 namespace chainblocks {
 struct CoreInfo {
-  static inline TypesInfo bytesInfo = TypesInfo(CBType::Bytes);
-  static inline TypeInfo intType = TypeInfo(CBType::Int);
-  static inline TypeInfo floatType = TypeInfo(CBType::Float);
-  static inline TypesInfo intInfo = TypesInfo(CBType::Int);
-  static inline TypesInfo intVarInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar);
-  static inline TypesInfo intVarOrNoneInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::ContextVar, CBType::None);
-  static inline TypesInfo strVarInfo =
-      TypesInfo::FromMany(false, CBType::String, CBType::ContextVar);
-  static inline TypesInfo intsVarInfo =
-      TypesInfo::FromMany(true, CBType::Int, CBType::ContextVar);
-  static inline TypesInfo strInfo = TypesInfo(CBType::String);
-  static inline TypesInfo varSeqInfo = TypesInfo(CBType::ContextVar, true);
-  static inline TypesInfo varInfo = TypesInfo(CBType::ContextVar);
-  static inline TypesInfo anyInfo = TypesInfo(CBType::Any);
-  static inline TypesInfo anySeqInfo = TypesInfo(CBType::Seq);
-  static inline TypesInfo noneInfo = TypesInfo(CBType::None);
-  static inline TypesInfo tableInfo = TypesInfo(CBType::Table);
-  static inline TypesInfo floatInfo = TypesInfo(CBType::Float);
-  static inline TypesInfo float2Info = TypesInfo(CBType::Float2);
-  static inline TypesInfo float3Info = TypesInfo(CBType::Float3);
-  static inline TypesInfo float4Info = TypesInfo(CBType::Float4);
-  static inline TypesInfo boolInfo = TypesInfo(CBType::Bool);
-  static inline TypesInfo blockInfo = TypesInfo(CBType::Block);
-  static inline TypeInfo blockType = TypeInfo(CBType::Block);
-  static inline TypesInfo blocksInfo = TypesInfo(CBType::Block, true);
-  static inline TypesInfo blocksOrNoneInfo =
-      TypesInfo(CBType::Block, true, true);
-  static inline TypeInfo blockSeq = TypeInfo::Sequence(blockType);
-  static inline TypesInfo blocksSeqInfo =
-      TypesInfo(TypeInfo::Sequence(blockSeq));
-  static inline TypesInfo intsInfo = TypesInfo(CBType::Int, true);
-  static inline TypesInfo intSeqInfo = TypesInfo(TypeInfo::Sequence(intType));
-  static inline TypesInfo floatSeqInfo =
-      TypesInfo(TypeInfo::Sequence(floatType));
-  static inline TypesInfo intsOrNoneInfo =
-      TypesInfo::FromMany(true, CBType::Int, CBType::None);
-  static inline TypesInfo intOrNoneInfo =
-      TypesInfo::FromMany(false, CBType::Int, CBType::None);
-  static inline TypesInfo anyVectorInfo = TypesInfo::FromMany(
-      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4);
-  static inline TypesInfo anyIndexableInfo = TypesInfo::FromMany(
-      false, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float2, CBType::Float3, CBType::Float4,
-      CBType::Seq, CBType::Bytes, CBType::Color, CBType::String);
+  static inline Type NoneType{{CBType::None}};
+
+#define CB_CORE_TYPE_DEF(_cbtype_)                                             \
+  static inline Type _cbtype_##Type{{CBType::_cbtype_}};                       \
+  static inline Type _cbtype_##SeqType{                                        \
+      {CBType::Seq, {.seqTypes = _cbtype_##Type}}};                            \
+  static inline Type _cbtype_##TableType{                                      \
+      {CBType::Table, {.table = {.types = _cbtype_##Type}}}};                  \
+  static inline Type _cbtype_##VarType{                                        \
+      {CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};              \
+  static inline Type _cbtype_##VarSeqType {                                    \
+    {                                                                          \
+      CBType::ContextVar, { .contextVarTypes = _cbtype_##SeqType }             \
+    }                                                                          \
+  }
+
+  CB_CORE_TYPE_DEF(Any);
+  CB_CORE_TYPE_DEF(Bool);
+  CB_CORE_TYPE_DEF(Int);
+  CB_CORE_TYPE_DEF(Int2);
+  CB_CORE_TYPE_DEF(Int3);
+  CB_CORE_TYPE_DEF(Int4);
+  CB_CORE_TYPE_DEF(Int8);
+  CB_CORE_TYPE_DEF(Int16);
+  CB_CORE_TYPE_DEF(Float);
+  CB_CORE_TYPE_DEF(Float2);
+  CB_CORE_TYPE_DEF(Float3);
+  CB_CORE_TYPE_DEF(Float4);
+  CB_CORE_TYPE_DEF(Color);
+  CB_CORE_TYPE_DEF(Chain);
+  CB_CORE_TYPE_DEF(Block);
+  CB_CORE_TYPE_DEF(Bytes);
+  CB_CORE_TYPE_DEF(String);
+  CB_CORE_TYPE_DEF(Image);
+
+  static inline Types IntOrFloat{{IntType, FloatType}};
+
+  static inline Types Indexables{
+      {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
+       Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
+
+  static inline Types FloatVectors{{
+      Float2Type,
+      Float2SeqType,
+      Float3Type,
+      Float3SeqType,
+      Float4Type,
+      Float4SeqType,
+  }};
+  static inline Types FloatVectorsOrVar{FloatVectors,
+                                        {
+                                            Float2VarType,
+                                            Float2VarSeqType,
+                                            Float3VarType,
+                                            Float3VarSeqType,
+                                            Float4VarType,
+                                            Float4VarSeqType,
+                                        }};
+
+  static inline Types IntOrNone{{IntType, NoneType}};
+
+  static inline Types IntsVar{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
+
+  static inline Types IntsVarOrNone{IntsVar, {NoneType}};
+
+  static inline Types IntIntSeqOrNone{{IntType, IntSeqType, NoneType}};
+
+  static inline Types BlockSeqOrNone{{BlockSeqType, NoneType}};
+
+  static inline Types Blocks{{BlockType, BlockSeqType}};
+
+  static inline Types BlocksOrNone{Blocks, {NoneType}};
+
+  static inline Types StringOrBytes{{StringType, BytesType}};
+
+  static inline Types StringOrNone{{StringType, NoneType}};
+
+  static inline Types StringOrStringVar{{StringType, StringVarType}};
+
+  static inline Types ColorOrNone{{ColorType, NoneType}};
+
+  static inline Types AnyNumbers{{
+      IntType,       IntSeqType,   Int2Type,      Int2SeqType,  Int3Type,
+      Int3SeqType,   Int4Type,     Int4SeqType,   Int8Type,     Int8SeqType,
+      Int16Type,     Int16SeqType, FloatType,     FloatSeqType, Float2Type,
+      Float2SeqType, Float3Type,   Float3SeqType, Float4Type,   Float4SeqType,
+      ColorType,     ColorSeqType,
+  }};
+
+  static inline Types StringOrBytesVarOrNone{
+      {StringVarType, BytesVarType, NoneType}};
+
+  static inline Types StringStringVarOrNone{
+      {StringType, StringVarType, NoneType}};
+
+  static inline Types IntOrIntVar{{IntType, IntVarType}};
 };
 
 struct Const {
-  static inline TypesInfo constTypesInfo = TypesInfo::FromMany(
-      true, CBType::Int, CBType::Int2, CBType::Int3, CBType::Int4, CBType::Int8,
-      CBType::Int16, CBType::Float, CBType::Float2, CBType::Float3,
-      CBType::Float4, CBType::None, CBType::String, CBType::Color,
-      CBType::Bool);
-  static inline ParamsInfo constParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Value", "The constant value to insert in the chain.",
-                        CBTypesInfo(constTypesInfo)));
+  static inline Types TypesInfo{{
+      CoreInfo::NoneType,      CoreInfo::BoolType,      CoreInfo::BoolSeqType,
+      CoreInfo::IntType,       CoreInfo::IntSeqType,    CoreInfo::Int2Type,
+      CoreInfo::Int2SeqType,   CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
+      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,   CoreInfo::Int8Type,
+      CoreInfo::Int8SeqType,   CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
+      CoreInfo::FloatType,     CoreInfo::FloatSeqType,  CoreInfo::Float2Type,
+      CoreInfo::Float2SeqType, CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
+      CoreInfo::Float4Type,    CoreInfo::Float4SeqType, CoreInfo::ColorType,
+      CoreInfo::ColorSeqType,  CoreInfo::StringType,    CoreInfo::StringSeqType,
+  }};
+
+  static inline ParamsInfo constParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Value", "The constant value to insert in the chain.", TypesInfo));
 
   CBVar _value{};
   CBTypeInfo _innerInfo{};
@@ -78,9 +133,9 @@ struct Const {
     freeDerivedInfo(_innerInfo);
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(constParamsInfo);
@@ -101,9 +156,8 @@ struct Const {
   }
 };
 
-static ParamsInfo compareParamsInfo = ParamsInfo(
-    ParamsInfo::Param("Value", "The value to test against for equality.",
-                      CBTypesInfo(CoreInfo::anyInfo)));
+static ParamsInfo compareParamsInfo = ParamsInfo(ParamsInfo::Param(
+    "Value", "The value to test against for equality.", CoreInfo::AnyType));
 
 struct BaseOpsBin {
   CBVar _value{};
@@ -113,9 +167,9 @@ struct BaseOpsBin {
 
   void cleanup() { _target = nullptr; }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
 
@@ -174,26 +228,27 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
-        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
-        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        auto vlen = value.payload.seqValue.len;                                \
+        auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
           throw CBException("Failed to compare, input len > value len.");      \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (input.payload.seqValue[i] OP value.payload.seqValue[i]) {        \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (input.payload.seqValue.elements[i] OP value.payload.seqValue     \
+                  .elements[i]) {                                              \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
         return False;                                                          \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (input.payload.seqValue[i] OP value) {                            \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (input.payload.seqValue.elements[i] OP value) {                   \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
         return False;                                                          \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
-          if (input OP value.payload.seqValue[i]) {                            \
+        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
+          if (input OP value.payload.seqValue.elements[i]) {                   \
             return True;                                                       \
           }                                                                    \
         }                                                                      \
@@ -219,26 +274,27 @@ LOGIC_OP(IsLessEqual, <=);
       }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
-        auto vlen = stbds_arrlen(value.payload.seqValue);                      \
-        auto ilen = stbds_arrlen(input.payload.seqValue);                      \
+        auto vlen = value.payload.seqValue.len;                                \
+        auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
           throw CBException("Failed to compare, input len > value len.");      \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (!(input.payload.seqValue[i] OP value.payload.seqValue[i])) {     \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue   \
+                    .elements[i])) {                                           \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
         return True;                                                           \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {      \
-          if (!(input.payload.seqValue[i] OP value)) {                         \
+        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
+          if (!(input.payload.seqValue.elements[i] OP value)) {                \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
         return True;                                                           \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
-        for (auto i = 0; i < stbds_arrlen(value.payload.seqValue); i++) {      \
-          if (!(input OP value.payload.seqValue[i])) {                         \
+        for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
+          if (!(input OP value.payload.seqValue.elements[i])) {                \
             return False;                                                      \
           }                                                                    \
         }                                                                      \
@@ -280,8 +336,8 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
   RUNTIME_BLOCK_END(NAME);
 
 struct Input {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return RebaseChain;
@@ -289,8 +345,8 @@ struct Input {
 };
 
 struct SetInput {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     chainblocks::cloneVar(const_cast<CBChain *>(context->chain)->rootTickInput,
@@ -302,13 +358,13 @@ struct SetInput {
 struct Sleep {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Time", "The amount of time in seconds (float) to pause this chain.",
-      CBTypesInfo(CoreInfo::floatInfo)));
+      CoreInfo::FloatType));
 
   double time{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(sleepParamsInfo);
@@ -325,8 +381,8 @@ struct Sleep {
 };
 
 struct And {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
@@ -339,8 +395,8 @@ struct And {
 };
 
 struct Or {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
@@ -353,40 +409,40 @@ struct Or {
 };
 
 struct Not {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var(!input.payload.boolValue);
   }
 };
 
 struct Stop {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var::Stop();
   }
 };
 
 struct Restart {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var::Restart();
   }
 };
 
 struct Return {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var::Return();
   }
 };
 
 struct IsValidNumber {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::floatInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::boolInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     return Var(std::isnormal(input.payload.floatValue));
   }
@@ -402,11 +458,11 @@ struct VariableBase {
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", "The name of the variable.",
-                        CBTypesInfo(CoreInfo::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
-                        CBTypesInfo(CoreInfo::strInfo)));
+                        CoreInfo::StringType));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(variableParamsInfo);
@@ -436,8 +492,9 @@ struct VariableBase {
 };
 
 struct SetBase : public VariableBase {
-  TypeInfo _tableTypeInfo{};
-  TypeInfo _tableContentInfo{};
+  Type _tableTypeInfo{};
+  CBString _tableContentKey{};
+  CBTypeInfo _tableContentInfo{};
 
   void cleanup() {
     if (_target) {
@@ -460,9 +517,9 @@ struct SetBase : public VariableBase {
     _shortCut = false;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_shortCut)) {
@@ -504,20 +561,25 @@ struct Set : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {&_tableContentKey, 1, 0},
+                                .types = {&_tableContentInfo, 1, 0}}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo, true));
+          _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
       // Set... we warn if the variable is overwritten
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        if (data.consumables[i].name == _name) {
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        if (data.consumables.elements[i].name == _name) {
           LOG(INFO) << "Set - Warning: setting an already exposed variable, "
                        "use Update to avoid this warning, variable: "
                     << _name;
         }
       }
-      if (data.inputType.basicType == Table && data.inputType.tableKeys) {
+      if (data.inputType.basicType == Table &&
+          data.inputType.tableKeys.elements) {
         assert(false);
       } else {
         // just a variable!
@@ -539,10 +601,14 @@ struct Ref : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {&_tableContentKey, 1, 0},
+                                .types = {&_tableContentInfo, 1, 0}}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo));
+          _name.c_str(), "The exposed table.", _tableTypeInfo, false, true));
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
@@ -597,17 +663,18 @@ struct Update : public SetBase {
   CBTypeInfo compose(const CBInstanceData &data) {
     // make sure we update to the same type
     if (_isTable) {
-      for (auto i = 0; stbds_arrlen(data.consumables) > i; i++) {
-        auto &name = data.consumables[i].name;
+      for (uint32_t i = 0; data.consumables.len > i; i++) {
+        auto &name = data.consumables.elements[i].name;
         if (name == _name &&
-            data.consumables[i].exposedType.basicType == Table &&
-            data.consumables[i].exposedType.tableTypes) {
-          auto &tableKeys = data.consumables[i].exposedType.tableKeys;
-          auto &tableTypes = data.consumables[i].exposedType.tableTypes;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            auto &key = tableKeys[y];
+            data.consumables.elements[i].exposedType.basicType == Table &&
+            data.consumables.elements[i].exposedType.tableTypes.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+          auto &tableTypes =
+              data.consumables.elements[i].exposedType.tableTypes;
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            auto &key = tableKeys.elements[y];
             if (_key == key) {
-              if (data.inputType != tableTypes[y]) {
+              if (data.inputType != tableTypes.elements[y]) {
                 throw CBException(
                     "Update: error, update is changing the variable type.");
               }
@@ -616,8 +683,8 @@ struct Update : public SetBase {
         }
       }
     } else {
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        auto &cv = data.consumables[i];
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        auto &cv = data.consumables.elements[i];
         if (_name == cv.name) {
           if (data.inputType != cv.exposedType) {
             throw CBException(
@@ -630,10 +697,14 @@ struct Update : public SetBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = TypeInfo(data.inputType);
-      _tableTypeInfo = TypeInfo::TableRecord(_tableContentInfo, _key.c_str());
+      _tableContentInfo = data.inputType;
+      _tableContentKey = _key.c_str();
+      _tableTypeInfo =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {&_tableContentKey, 1, 0},
+                                .types = {&_tableContentInfo, 1, 0}}}};
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo, true));
+          _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(
@@ -659,7 +730,7 @@ struct Get : public VariableBase {
           "Default",
           "The default value to use to infer types and output if the variable "
           "is not set, key is not there and/or type mismatches.",
-          CBTypesInfo(CoreInfo::anyInfo)));
+          CoreInfo::AnyType));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(getParamsInfo);
@@ -688,36 +759,36 @@ struct Get : public VariableBase {
 
   void destroy() { freeDerivedInfo(_defaultType); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (auto i = 0; stbds_arrlen(data.consumables) > i; i++) {
-        auto &name = data.consumables[i].name;
+      for (uint32_t i = 0; data.consumables.len > i; i++) {
+        auto &name = data.consumables.elements[i].name;
         if (name == _name &&
-            data.consumables[i].exposedType.basicType == Table &&
-            data.consumables[i].exposedType.tableTypes) {
-          auto &tableKeys = data.consumables[i].exposedType.tableKeys;
-          auto &tableTypes = data.consumables[i].exposedType.tableTypes;
-          if (tableKeys) {
+            data.consumables.elements[i].exposedType.basicType == Table) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+          auto &tableTypes =
+              data.consumables.elements[i].exposedType.tableTypes;
+          if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
-            for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-              auto &key = tableKeys[y];
+            for (uint32_t y = 0; y < tableKeys.len; y++) {
+              auto &key = tableKeys.elements[y];
               if (_key == key) {
-                return tableTypes[y];
+                return tableTypes.elements[y];
               }
             }
           } else {
             // we got no key names
-            if (stbds_arrlen(tableTypes) == 1) {
+            if (tableTypes.len == 1) {
               // 1 type only so we assume we return that type
-              return tableTypes[0];
+              return tableTypes.elements[0];
             } else {
               // multiple types...
               // return any, can still be used with ExpectX
-              return CBTypeInfo(CoreInfo::anyInfo);
+              return CoreInfo::AnyType;
             }
           }
         }
@@ -727,12 +798,12 @@ struct Get : public VariableBase {
         _defaultType = deriveTypeInfo(_defaultValue);
         return _defaultType;
       } else {
-        throw CBException(
-            "Get: Could not infer an output type, key not found.");
+        throw CBException("Get: Could not infer an output type, key not found "
+                          "and no Default value provided.");
       }
     } else {
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        auto &cv = data.consumables[i];
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        auto &cv = data.consumables.elements[i];
         if (_name == cv.name) {
           return cv.exposedType;
         }
@@ -743,22 +814,21 @@ struct Get : public VariableBase {
       _defaultType = deriveTypeInfo(_defaultValue);
       return _defaultType;
     } else {
-      throw CBException("Get: Could not infer an output type.");
+      throw CBException(
+          "Get: Could not infer an output type and no Default value provided.");
     }
   }
 
   CBExposedTypesInfo consumedVariables() {
     if (_defaultValue.valueType != None) {
-      return nullptr;
+      return {};
     } else {
       if (_isTable) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                  CBTypeInfo(CoreInfo::tableInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
       } else {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
-                                  CBTypeInfo(CoreInfo::anyInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
       }
       return CBExposedTypesInfo(_exposedInfo);
     }
@@ -830,9 +900,9 @@ struct Get : public VariableBase {
 struct Swap {
   static inline ParamsInfo swapParamsInfo =
       ParamsInfo(ParamsInfo::Param("NameA", "The name of first variable.",
-                                   CBTypesInfo(CoreInfo::strInfo)),
+                                   CoreInfo::StringType),
                  ParamsInfo::Param("NameB", "The name of second variable.",
-                                   CBTypesInfo(CoreInfo::strInfo)));
+                                   CoreInfo::StringType));
 
   std::string _nameA;
   std::string _nameB;
@@ -845,16 +915,16 @@ struct Swap {
     _targetB = nullptr;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBExposedTypesInfo consumedVariables() {
     _exposedInfo = ExposedInfo(
         ExposedInfo::Variable(_nameA.c_str(), "The consumed variable.",
-                              CBTypeInfo(CoreInfo::anyInfo)),
+                              CoreInfo::AnyType),
         ExposedInfo::Variable(_nameB.c_str(), "The consumed variable.",
-                              CBTypeInfo(CoreInfo::anyInfo)));
+                              CoreInfo::AnyType));
     return CBExposedTypesInfo(_exposedInfo);
   }
 
@@ -904,7 +974,7 @@ struct Push : public VariableBase {
           "Clear",
           "If we should clear this sequence at every chain iteration; works "
           "only if this is the first push; default: true.",
-          CBTypesInfo(CoreInfo::boolInfo)));
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
@@ -926,24 +996,52 @@ struct Push : public VariableBase {
 
   void destroy() {
     if (_firstPusher) {
-      if (_tableInfo.tableKeys)
-        stbds_arrfree(_tableInfo.tableKeys);
-      if (_tableInfo.tableTypes)
-        stbds_arrfree(_tableInfo.tableTypes);
+      if (_tableInfo.tableKeys.elements)
+        chainblocks::arrayFree(_tableInfo.tableKeys);
+      if (_tableInfo.tableTypes.elements)
+        chainblocks::arrayFree(_tableInfo.tableTypes);
     }
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    const auto updateSeqInfo = [this, &data] {
+      _seqInfo.basicType = Seq;
+      _seqInnerInfo = data.inputType;
+      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed sequence.", _seqInfo, true));
+    };
+
+    const auto updateTableInfo = [this, &data] {
+      _tableInfo.basicType = Table;
+      if (_tableInfo.tableTypes.elements) {
+        chainblocks::arrayFree(_tableInfo.tableTypes);
+      }
+      if (_tableInfo.tableKeys.elements) {
+        chainblocks::arrayFree(_tableInfo.tableKeys);
+      }
+      _seqInfo.basicType = Seq;
+      _seqInnerInfo = data.inputType;
+      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+      chainblocks::arrayPush(_tableInfo.tableTypes, _seqInfo);
+      chainblocks::arrayPush(_tableInfo.tableKeys, _key.c_str());
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+    };
+
     if (_isTable) {
       auto tableFound = false;
-      for (auto i = 0; stbds_arrlen(data.consumables) > i; i++) {
-        if (data.consumables[i].name == _name &&
-            data.consumables[i].exposedType.tableTypes) {
-          auto &tableKeys = data.consumables[i].exposedType.tableKeys;
-          auto &tableTypes = data.consumables[i].exposedType.tableTypes;
+      for (uint32_t i = 0; data.consumables.len > i; i++) {
+        if (data.consumables.elements[i].name == _name &&
+            data.consumables.elements[i].exposedType.tableTypes.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+          auto &tableTypes =
+              data.consumables.elements[i].exposedType.tableTypes;
           tableFound = true;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            if (_key == tableKeys.elements[y] &&
+                tableTypes.elements[y].basicType == Seq) {
+              updateTableInfo();
               return data.inputType; // found lets escape
             }
           }
@@ -954,44 +1052,25 @@ struct Push : public VariableBase {
         _tableOwner = true;
       }
       _firstPusher = true;
-      _tableInfo.basicType = Table;
-      if (_tableInfo.tableTypes) {
-        stbds_arrfree(_tableInfo.tableTypes);
-      }
-      if (_tableInfo.tableKeys) {
-        stbds_arrfree(_tableInfo.tableKeys);
-      }
-      _seqInfo.basicType = Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqType = &_seqInnerInfo;
-      stbds_arrpush(_tableInfo.tableTypes, _seqInfo);
-      stbds_arrpush(_tableInfo.tableKeys, _key.c_str());
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      updateTableInfo();
     } else {
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        auto &cv = data.consumables[i];
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        auto &cv = data.consumables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          // found, let's just update our info
+          updateSeqInfo();
           return data.inputType; // found lets escape
         }
       }
       // Assume we are the first pushing this variable
       _firstPusher = true;
-      _seqInfo.basicType = Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqType = &_seqInnerInfo;
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed sequence.", _seqInfo, true));
+      updateSeqInfo();
     }
     return data.inputType;
   }
 
   CBExposedTypesInfo exposedVariables() {
-    if (_firstPusher) {
-      return CBExposedTypesInfo(_exposedInfo);
-    } else {
-      return nullptr;
-    }
+    return CBExposedTypesInfo(_exposedInfo);
   }
 
   void cleanup() {
@@ -1002,12 +1081,11 @@ struct Push : public VariableBase {
         if (index != -1) {
           auto &seq = _target->payload.tableValue[index].value;
           if (seq.valueType == Seq) {
-            for (uint64_t i = seq.capacity; i > 0; i--) {
-              destroyVar(seq.payload.seqValue[i - 1]);
+            for (uint64_t i = seq.capacity.value; i > 0; i--) {
+              destroyVar(seq.payload.seqValue.elements[i - 1]);
             }
-            stbds_arrfree(seq.payload.seqValue);
-            seq.payload.seqValue = nullptr;
-            seq.capacity = 0;
+            chainblocks::arrayFree(seq.payload.seqValue);
+            seq.capacity.value = 0;
           }
           stbds_shdel(_target->payload.tableValue, _key.c_str());
         }
@@ -1016,20 +1094,20 @@ struct Push : public VariableBase {
           memset(_target, 0x0, sizeof(CBVar));
         }
       } else if (_target->valueType == Seq) {
-        for (uint64_t i = _target->capacity; i > 0; i--) {
-          destroyVar(_target->payload.seqValue[i - 1]);
+        for (uint64_t i = _target->capacity.value; i > 0; i--) {
+          destroyVar(_target->payload.seqValue.elements[i - 1]);
         }
-        stbds_arrfree(_target->payload.seqValue);
-        _target->payload.seqValue = nullptr;
-        _target->capacity = 0;
+        chainblocks::arrayFree(_target->payload.seqValue);
+        _target->payload.seqValue = {};
+        _target->capacity.value = 0;
       }
     }
     _target = nullptr;
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void activateTable(CBContext *context, const CBVar &input) {
     if (_target->valueType != Table) {
@@ -1050,18 +1128,18 @@ struct Push : public VariableBase {
 
     if (seq.valueType != Seq) {
       seq.valueType = Seq;
-      seq.payload.seqValue = nullptr;
+      seq.payload.seqValue = {};
     }
 
     if (_firstPusher && _clear) {
-      stbds_arrsetlen(seq.payload.seqValue, 0);
+      chainblocks::arrayResize(seq.payload.seqValue, 0);
     }
 
     CBVar tmp{};
     cloneVar(tmp, input);
-    stbds_arrpush(seq.payload.seqValue, tmp);
-    seq.capacity =
-        std::max(seq.capacity, (uint64_t)(stbds_arrlenu(seq.payload.seqValue)));
+    chainblocks::arrayPush(seq.payload.seqValue, tmp);
+    seq.capacity.value =
+        std::max(seq.capacity.value, (uint64_t)(seq.payload.seqValue.len));
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1073,19 +1151,18 @@ struct Push : public VariableBase {
     } else {
       if (_target->valueType != Seq) {
         _target->valueType = Seq;
-        _target->payload.seqValue = nullptr;
+        _target->payload.seqValue = {};
       }
 
       if (_firstPusher && _clear) {
-        stbds_arrsetlen(_target->payload.seqValue, 0);
+        chainblocks::arrayResize(_target->payload.seqValue, 0);
       }
 
       CBVar tmp{};
       cloneVar(tmp, input);
-      stbds_arrpush(_target->payload.seqValue, tmp);
-      _target->capacity =
-          std::max(_target->capacity,
-                   (uint64_t)(stbds_arrlenu(_target->payload.seqValue)));
+      chainblocks::arrayPush(_target->payload.seqValue, tmp);
+      _target->capacity.value = std::max(
+          _target->capacity.value, (uint64_t)(_target->payload.seqValue.len));
     }
     return input;
   }
@@ -1096,29 +1173,27 @@ struct SeqUser : VariableBase {
 
   void cleanup() { _target = nullptr; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBExposedTypesInfo consumedVariables() {
     if (_name.size() > 0) {
       if (_isTable) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed table.",
-                                  CBTypeInfo(CoreInfo::tableInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
       } else {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The consumed variable.",
-                                  CBTypeInfo(CoreInfo::anyInfo)));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
       }
       return CBExposedTypesInfo(_exposedInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 };
 
 struct Count : SeqUser {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::intInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
@@ -1140,7 +1215,7 @@ struct Count : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      return Var(int64_t(stbds_arrlen(var.payload.seqValue)));
+      return Var(int64_t(var.payload.seqValue.len));
     } else if (var.valueType == Table) {
       return Var(int64_t(stbds_shlen(var.payload.tableValue)));
     } else if (var.valueType == Bytes) {
@@ -1154,7 +1229,7 @@ struct Count : SeqUser {
 };
 
 struct Clear : SeqUser {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
@@ -1176,10 +1251,10 @@ struct Clear : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      stbds_arrsetlen(var.payload.seqValue, 0);
+      chainblocks::arrayResize(var.payload.seqValue, 0);
     } else if (var.valueType == Table) {
-      for (auto i = stbds_shlen(var.payload.tableValue) - 1; i >= 0; i--) {
-        auto &sv = var.payload.tableValue[i].value;
+      for (auto i = stbds_shlen(var.payload.tableValue); i > 0; i--) {
+        auto &sv = var.payload.tableValue[i - 1].value;
         // Clean allocation garbage in case it's not blittable!
         if (sv.valueType >= EndOfBlittableTypes) {
           destroyVar(sv);
@@ -1195,7 +1270,7 @@ struct Clear : SeqUser {
 };
 
 struct Drop : SeqUser {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
@@ -1217,9 +1292,9 @@ struct Drop : SeqUser {
     }
 
     if (likely(var.valueType == Seq)) {
-      auto len = stbds_arrlenu(var.payload.seqValue);
+      auto len = var.payload.seqValue.len;
       if (len > 0)
-        stbds_arrsetlen(var.payload.seqValue, len - 1);
+        chainblocks::arrayResize(var.payload.seqValue, len - 1);
     } else {
       throw CBException("Variable is not a sequence, failed to Pop.");
     }
@@ -1229,7 +1304,7 @@ struct Drop : SeqUser {
 };
 
 struct Pop : SeqUser {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   CBVar _output{};
 
@@ -1237,36 +1312,37 @@ struct Pop : SeqUser {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (auto i = 0; stbds_arrlen(data.consumables) > i; i++) {
-        if (data.consumables[i].name == _name &&
-            data.consumables[i].exposedType.tableTypes) {
-          auto &tableKeys = data.consumables[i].exposedType.tableKeys;
-          auto &tableTypes = data.consumables[i].exposedType.tableTypes;
-          for (auto y = 0; y < stbds_arrlen(tableKeys); y++) {
-            if (_key == tableKeys[y] && tableTypes[y].basicType == Seq) {
-              if (tableTypes[y].seqType != nullptr &&
-                  tableTypes[y].seqType->basicType < EndOfBlittableTypes) {
-                _blittable = true;
-              } else {
-                _blittable = false;
-              }
-              return *tableTypes[y].seqType; // found lets escape
+      for (uint32_t i = 0; data.consumables.len > i; i++) {
+        if (data.consumables.elements[i].name == _name &&
+            data.consumables.elements[i].exposedType.tableTypes.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+          auto &tableTypes =
+              data.consumables.elements[i].exposedType.tableTypes;
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            if (_key == tableKeys.elements[y] &&
+                tableTypes.elements[y].basicType == Seq) {
+              // if we have 1 type we can predict the output
+              // with more just make us a any seq, will need ExpectX blocks
+              // likely
+              if (tableTypes.elements[y].seqTypes.len == 1)
+                return tableTypes.elements[y].seqTypes.elements[0];
+              else
+                return CoreInfo::AnySeqType;
             }
           }
         }
       }
       throw CBException("Pop: key not found or key value is not a sequence!.");
     } else {
-      for (auto i = 0; i < stbds_arrlen(data.consumables); i++) {
-        auto &cv = data.consumables[i];
+      for (uint32_t i = 0; i < data.consumables.len; i++) {
+        auto &cv = data.consumables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
-          if (cv.exposedType.seqType != nullptr &&
-              cv.exposedType.seqType->basicType < EndOfBlittableTypes) {
-            _blittable = true;
-          } else {
-            _blittable = false;
-          }
-          return *cv.exposedType.seqType; // found lets escape
+          // if we have 1 type we can predict the output
+          // with more just make us a any seq, will need ExpectX blocks likely
+          if (cv.exposedType.seqTypes.len == 1)
+            return cv.exposedType.seqTypes.elements[0];
+          else
+            return CoreInfo::AnySeqType;
         }
       }
     }
@@ -1293,12 +1369,12 @@ struct Pop : SeqUser {
             "Variable (in table) is not a sequence, failed to Pop.");
       }
 
-      if (stbds_arrlen(seq.payload.seqValue) == 0) {
+      if (seq.payload.seqValue.len == 0) {
         throw CBException("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
-      auto pops = stbds_arrpop(seq.payload.seqValue);
+      auto pops = chainblocks::arrayPop<CBSeq, CBVar>(seq.payload.seqValue);
       cloneVar(_output, pops);
       return _output;
     } else {
@@ -1306,12 +1382,13 @@ struct Pop : SeqUser {
         throw CBException("Variable is not a sequence, failed to Pop.");
       }
 
-      if (stbds_arrlen(_target->payload.seqValue) == 0) {
+      if (_target->payload.seqValue.len == 0) {
         throw CBException("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
-      auto pops = stbds_arrpop(_target->payload.seqValue);
+      auto pops =
+          chainblocks::arrayPop<CBSeq, CBVar>(_target->payload.seqValue);
       cloneVar(_output, pops);
       return _output;
     }
@@ -1321,9 +1398,9 @@ struct Pop : SeqUser {
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CBTypesInfo(CoreInfo::intsVarInfo)));
+      CoreInfo::IntsVar));
 
-  CBSeq _cachedSeq = nullptr;
+  CBSeq _cachedSeq{};
   CBVar _output{};
   CBVar _indices{};
   CBVar *_indicesVar = nullptr;
@@ -1340,20 +1417,17 @@ struct Take {
 
   void cleanup() {
     _indicesVar = nullptr;
-    if (_cachedSeq) {
-      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
-        destroyVar(_cachedSeq[i - 1]);
+    if (_cachedSeq.elements) {
+      for (auto i = _cachedSeq.len; i > 0; i--) {
+        destroyVar(_cachedSeq.elements[i - 1]);
       }
-      stbds_arrfree(_cachedSeq);
-      _cachedSeq = nullptr;
+      chainblocks::arrayFree(_cachedSeq);
     }
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(CoreInfo::anyIndexableInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::Indexables; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(indicesParamsInfo);
@@ -1372,8 +1446,9 @@ struct Take {
       IterableExposedInfo infos(data.consumables);
       for (auto &info : infos) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
-          if (info.exposedType.basicType == Seq && info.exposedType.seqType &&
-              info.exposedType.seqType->basicType == Int) {
+          if (info.exposedType.basicType == Seq &&
+              info.exposedType.seqTypes.len == 1 &&
+              info.exposedType.seqTypes.elements[0].basicType == Int) {
             _seqOutput = true;
             valid = true;
             break;
@@ -1394,12 +1469,16 @@ struct Take {
       throw CBException("Take, invalid indices or malformed input.");
 
     if (data.inputType.basicType == Seq) {
-      if (_seqOutput)
-        return data.inputType; // multiple values
-      else if (data.inputType.seqType)
-        return *data.inputType.seqType; // single value
-      else                              // value from seq but no type info
-        return CBTypeInfo(CoreInfo::anyInfo);
+      if (_seqOutput) {
+        // multiple values, leave Seq
+        return data.inputType;
+      } else if (data.inputType.seqTypes.len == 1) {
+        // single unique seq type
+        return data.inputType.seqTypes.elements[0];
+      } else {
+        // value from seq but not unique
+        return CoreInfo::AnyType;
+      }
     } else if (data.inputType.basicType >= Int2 &&
                data.inputType.basicType <= Int16) {
       // int vector
@@ -1425,20 +1504,20 @@ struct Take {
 
       if (!_seqOutput) {
         _vectorOutputLen = 1;
-        return CBTypeInfo(CoreInfo::floatInfo);
+        return CoreInfo::FloatType;
       } else {
-        _vectorOutputLen = (uint8_t)stbds_arrlen(_indices.payload.seqValue);
+        _vectorOutputLen = (uint8_t)_indices.payload.seqValue.len;
         switch (_vectorOutputLen) {
         case 2:
           _vectorOutput.valueType = Float2;
-          return CBTypeInfo(CoreInfo::float2Info);
+          return CoreInfo::Float2Type;
         case 3:
           _vectorOutput.valueType = Float3;
-          return CBTypeInfo(CoreInfo::float3Info);
+          return CoreInfo::Float3Type;
         case 4:
         default:
           _vectorOutput.valueType = Float4;
-          return CBTypeInfo(CoreInfo::float4Info);
+          return CoreInfo::Float4Type;
         }
       }
     } else if (data.inputType.basicType == Color) {
@@ -1457,14 +1536,14 @@ struct Take {
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
             _indices.payload.stringValue, "The consumed variables.",
-            CBTypeInfo(CoreInfo::intSeqInfo)));
+            CoreInfo::IntSeqType));
       else
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _indices.payload.stringValue, "The consumed variable.",
-            CBTypeInfo(CoreInfo::intInfo)));
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_indices.payload.stringValue,
+                                  "The consumed variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
@@ -1501,7 +1580,7 @@ struct Take {
       _indicesVar = findVariable(context, _indices.payload.stringValue);
     }
 
-    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto inputLen = input.payload.seqValue.len;
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
 
     if (!_seqOutput) {
@@ -1509,18 +1588,19 @@ struct Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      cloneVar(_output, input.payload.seqValue[index]);
+      cloneVar(_output, input.payload.seqValue.elements[index]);
       return _output;
     } else {
-      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
-      stbds_arrsetlen(_cachedSeq, nindices);
+      const uint64_t nindices = indices.payload.seqValue.len;
+      chainblocks::arrayResize(_cachedSeq, nindices);
       for (uint64_t i = 0; nindices > i; i++) {
-        const auto index = indices.payload.seqValue[i].payload.intValue;
+        const auto index =
+            indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        cloneVar(_output, input.payload.seqValue[index]);
-        _cachedSeq[i] = _output;
+        cloneVar(_output, input.payload.seqValue.elements[index]);
+        _cachedSeq.elements[i] = _output;
       }
       return Var(_cachedSeq);
     }
@@ -1546,9 +1626,10 @@ struct Take {
         return Var(input.payload.float4Value[index]);
       }
     } else {
-      const uint64_t nindices = stbds_arrlen(indices.payload.seqValue);
+      const uint64_t nindices = indices.payload.seqValue.len;
       for (uint64_t i = 0; nindices > i; i++) {
-        const auto index = indices.payload.seqValue[i].payload.intValue;
+        const auto index =
+            indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0 || nindices != _vectorOutputLen) {
           throw OutOfRangeEx(inputLen, index);
         }
@@ -1621,14 +1702,12 @@ struct Take {
 
 struct Slice {
   static inline ParamsInfo indicesParamsInfo =
-      ParamsInfo(ParamsInfo::Param("From", "From index.",
-                                   CBTypesInfo(CoreInfo::intVarInfo)),
-                 ParamsInfo::Param("To", "To index.",
-                                   CBTypesInfo(CoreInfo::intVarOrNoneInfo)),
+      ParamsInfo(ParamsInfo::Param("From", "From index.", CoreInfo::IntsVar),
+                 ParamsInfo::Param("To", "To index.", CoreInfo::IntsVarOrNone),
                  ParamsInfo::Param("Step", "The increment between each index.",
-                                   CBTypesInfo(CoreInfo::intInfo)));
+                                   CoreInfo::IntType));
 
-  CBSeq _cachedSeq = nullptr;
+  CBSeq _cachedSeq{};
   CBVar _from{Var(0)};
   CBVar *_fromVar = nullptr;
   CBVar _to{};
@@ -1644,17 +1723,17 @@ struct Slice {
   void cleanup() {
     _fromVar = nullptr;
     _toVar = nullptr;
-    if (_cachedSeq) {
-      for (auto i = stbds_arrlen(_cachedSeq); i > 0; i--) {
-        destroyVar(_cachedSeq[i - 1]);
+    if (_cachedSeq.elements) {
+      for (auto i = _cachedSeq.len; i > 0; i--) {
+        destroyVar(_cachedSeq.elements[i - 1]);
       }
-      stbds_arrfree(_cachedSeq);
+      chainblocks::arrayFree(_cachedSeq);
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(indicesParamsInfo);
@@ -1698,26 +1777,24 @@ struct Slice {
 
   CBExposedTypesInfo consumedVariables() {
     if (_from.valueType == ContextVar && _to.valueType == ContextVar) {
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue,
-                                            "The consumed variable.",
-                                            CBTypeInfo(CoreInfo::intInfo)),
-                      ExposedInfo::Variable(_to.payload.stringValue,
-                                            "The consumed variable.",
-                                            CBTypeInfo(CoreInfo::intInfo)));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_from.payload.stringValue,
+                                "The consumed variable.", CoreInfo::IntType),
+          ExposedInfo::Variable(_to.payload.stringValue,
+                                "The consumed variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else if (_from.valueType == ContextVar) {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _from.payload.stringValue, "The consumed variable.",
-          CBTypeInfo(CoreInfo::intInfo)));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_from.payload.stringValue,
+                                "The consumed variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else if (_to.valueType == ContextVar) {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _to.payload.stringValue, "The consumed variable.",
-          CBTypeInfo(CoreInfo::intInfo)));
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_to.payload.stringValue,
+                                                       "The consumed variable.",
+                                                       CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
@@ -1768,7 +1845,7 @@ struct Slice {
       _toVar = findVariable(context, _to.payload.stringValue);
     }
 
-    const auto inputLen = stbds_arrlen(input.payload.seqValue);
+    const auto inputLen = input.payload.seqValue.len;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
@@ -1781,11 +1858,11 @@ struct Slice {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    stbds_arrsetlen(_cachedSeq, 0);
+    chainblocks::arrayResize(_cachedSeq, 0);
     for (auto i = from; i < to; i += _step) {
       CBVar tmp{};
-      cloneVar(tmp, input.payload.seqValue[i]);
-      stbds_arrpush(_cachedSeq, tmp);
+      cloneVar(tmp, input.payload.seqValue.elements[i]);
+      chainblocks::arrayPush(_cachedSeq, tmp);
     }
 
     return Var(_cachedSeq);
@@ -1795,20 +1872,20 @@ struct Slice {
 struct Limit {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Max", "How many maximum elements to take from the input sequence.",
-      CBTypesInfo(CoreInfo::intInfo)));
+      CoreInfo::IntType));
 
-  CBSeq _cachedResult = nullptr;
+  CBSeq _cachedResult{};
   int64_t _max = 0;
 
   void destroy() {
-    if (_cachedResult) {
-      stbds_arrfree(_cachedResult);
+    if (_cachedResult.elements) {
+      chainblocks::arrayFree(_cachedResult);
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(indicesParamsInfo);
@@ -1821,8 +1898,12 @@ struct Limit {
         return data.inputType; // multiple values
       }
     } else {
-      if (data.inputType.basicType == Seq && data.inputType.seqType) {
-        return *data.inputType.seqType; // single value
+      if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
+        // single unique type
+        return data.inputType.seqTypes.elements[0];
+      } else {
+        // multiple types
+        return CoreInfo::AnySeqType;
       }
     }
     throw CBException("Limit expected a sequence as input.");
@@ -1833,7 +1914,7 @@ struct Limit {
   CBVar getParam(int index) { return Var(_max); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    int64_t inputLen = stbds_arrlen(input.payload.seqValue);
+    int64_t inputLen = input.payload.seqValue.len;
 
     if (_max == 1) {
       auto index = 0;
@@ -1842,104 +1923,43 @@ struct Limit {
                    << " wanted index: " << index;
         throw CBException("Limit out of range!");
       }
-      return input.payload.seqValue[index];
+      return input.payload.seqValue.elements[index];
     } else {
       // Else it's a seq
       auto nindices = (uint64_t)std::max((int64_t)0, std::min(inputLen, _max));
-      stbds_arrsetlen(_cachedResult, nindices);
+      chainblocks::arrayResize(_cachedResult, nindices);
       for (uint64_t i = 0; i < nindices; i++) {
-        _cachedResult[i] = input.payload.seqValue[i];
+        _cachedResult.elements[i] = input.payload.seqValue.elements[i];
       }
       return Var(_cachedResult);
     }
   }
 };
 
-struct BlocksUser {
-  CBVar _blocks{};
-  CBValidationResult _chainValidation{};
-
-  void destroy() {
-    if (_blocks.valueType == Seq) {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
-        blk->cleanup(blk);
-        blk->destroy(blk);
-      }
-    } else if (_blocks.valueType == Block) {
-      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
-      _blocks.payload.blockValue->destroy(_blocks.payload.blockValue);
-    }
-    destroyVar(_blocks);
-    stbds_arrfree(_chainValidation.exposedInfo);
-  }
-
-  void cleanup() {
-    if (_blocks.valueType == Seq) {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        auto &blk = _blocks.payload.seqValue[i].payload.blockValue;
-        blk->cleanup(blk);
-      }
-    } else if (_blocks.valueType == Block) {
-      _blocks.payload.blockValue->cleanup(_blocks.payload.blockValue);
-    }
-  }
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    // Free any previous result!
-    stbds_arrfree(_chainValidation.exposedInfo);
-    _chainValidation.exposedInfo = nullptr;
-
-    std::vector<CBlock *> blocks;
-    if (_blocks.valueType == Block) {
-      blocks.push_back(_blocks.payload.blockValue);
-    } else {
-      for (auto i = 0; i < stbds_arrlen(_blocks.payload.seqValue); i++) {
-        blocks.push_back(_blocks.payload.seqValue[i].payload.blockValue);
-      }
-    }
-    _chainValidation = validateConnections(
-        blocks,
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
-          if (!nonfatalWarning) {
-            LOG(ERROR) << "Failed inner chain validation, error: " << errorTxt;
-            throw CBException("Failed inner chain validation.");
-          } else {
-            LOG(INFO) << "Warning during inner chain validation: " << errorTxt;
-          }
-        },
-        this, data);
-
-    return data.inputType;
-  }
-
-  CBExposedTypesInfo exposedVariables() { return _chainValidation.exposedInfo; }
-};
-
-struct Repeat : public BlocksUser {
+struct Repeat {
+  BlocksVar _blks;
   std::string _ctxVar;
   CBVar *_ctxTimes = nullptr;
   int64_t _times = 0;
   bool _forever = false;
   ExposedInfo _consumedInfo{};
+  CBValidationResult _validation{};
 
   void cleanup() {
-    BlocksUser::cleanup();
     _ctxTimes = nullptr;
+    _blks.reset();
   }
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Action", "The blocks to repeat.",
-                        CBTypesInfo(CoreInfo::blocksInfo)),
+      ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks),
       ParamsInfo::Param("Times", "How many times we should repeat the action.",
-                        CBTypesInfo(CoreInfo::intVarInfo)),
+                        CoreInfo::IntsVar),
       ParamsInfo::Param("Forever", "If we should repeat the action forever.",
-                        CBTypesInfo(CoreInfo::boolInfo)));
+                        CoreInfo::BoolType));
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() { return CBTypesInfo(CoreInfo::anyInfo); }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(repeatParamsInfo);
@@ -1948,7 +1968,7 @@ struct Repeat : public BlocksUser {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     case 1:
       if (value.valueType == Int) {
@@ -1970,7 +1990,7 @@ struct Repeat : public BlocksUser {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
+      return _blks;
     case 1:
       if (_ctxVar.size() == 0) {
         return Var(_times);
@@ -1987,16 +2007,23 @@ struct Repeat : public BlocksUser {
     throw CBException("Parameter out of range.");
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _validation = _blks.validate(data);
+    return data.inputType;
+  }
+
   CBExposedTypesInfo consumedVariables() {
     if (_ctxVar.size() == 0) {
-      return nullptr;
+      return {};
     } else {
       _consumedInfo = ExposedInfo(ExposedInfo::Variable(
           _ctxVar.c_str(), "The Int number of repeats variable.",
-          CBTypeInfo(CoreInfo::intInfo)));
+          CoreInfo::IntType));
       return CBExposedTypesInfo(_consumedInfo);
     }
   }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto repeats = _forever ? 1 : _times;
@@ -2011,8 +2038,9 @@ struct Repeat : public BlocksUser {
       CBVar repeatOutput{};
       repeatOutput.valueType = None;
       repeatOutput.payload.chainState = CBChainState::Continue;
-      auto state = activateBlocks(_blocks.payload.seqValue, context, input,
-                                  repeatOutput);
+      CBVar blks = _blks;
+      auto state =
+          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
       if (unlikely(state == FlowState::Stopping)) {
         return StopChain;
       } else if (unlikely(state == FlowState::Returning)) {

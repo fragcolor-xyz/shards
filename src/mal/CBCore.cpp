@@ -10,7 +10,6 @@
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
 #include "rigtorp/SPSCQueue.h"
-#include "stbpp.hpp"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
 #include <boost/process/environment.hpp>
@@ -417,7 +416,7 @@ struct ChainFileWatcher {
 
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
-            data.consumables = consumables();
+            data.consumables = consumables;
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(
@@ -436,7 +435,7 @@ struct ChainFileWatcher {
                   }
                 },
                 nullptr, data);
-            stbds_arrfree(chainValidation.exposedInfo);
+            chainblocks::arrayFree(chainValidation.exposedInfo);
 
             liveChains[chain] = std::make_tuple(env, res);
 
@@ -657,9 +656,9 @@ struct InnerCall {
     malActivate = malValuePtr(malActivateList);
   }
 
-  CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(CBInstanceData data) {
     // call a fn* [inputTypeKeyword] in place
@@ -705,7 +704,7 @@ BUILTIN(".") {
 
 BUILTIN("Node") {
   auto node = new malCBNode();
-  node->value()->currentPath = malpath();
+  chainblocks::Globals::RootPath = malpath();
   return malValuePtr(node);
 }
 
@@ -799,18 +798,18 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     CBVar tmp{};
     tmp.valueType = Seq;
-    tmp.payload.seqValue = nullptr;
+    tmp.payload.seqValue = {};
     auto count = v->count();
     std::vector<malCBVarPtr> vars;
     for (auto i = 0; i < count; i++) {
       auto val = v->item(i);
       auto subVar = varify(mblk, val);
       vars.push_back(subVar);
-      stbds_arrpush(tmp.payload.seqValue, subVar->value());
+      chainblocks::arrayPush(tmp.payload.seqValue, subVar->value());
     }
     CBVar var{};
     chainblocks::cloneVar(var, tmp);
-    stbds_arrfree(tmp.payload.seqValue);
+    chainblocks::arrayFree(tmp.payload.seqValue);
     auto mvar = new malCBVar(var, true);
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
@@ -858,10 +857,10 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
 }
 
 int findParamIndex(const std::string &name, CBParametersInfo params) {
-  for (auto i = 0; stbds_arrlen(params) > i; i++) {
-    auto param = params[i];
+  for (uint32_t i = 0; params.len > i; i++) {
+    auto param = params.elements[i];
     if (param.name == name)
-      return i;
+      return (int)i;
   }
   return -1;
 }
@@ -952,8 +951,8 @@ struct Observer : public chainblocks::RuntimeObserver {
     auto block = constructor();
     // add params keywords if any
     auto params = block->parameters(block);
-    for (auto i = 0; i < stbds_arrlen(params); i++) {
-      auto param = params[i];
+    for (uint32_t i = 0; i < params.len; i++) {
+      auto param = params.elements[i];
       _env->set(":" + MalString(param.name),
                 mal::keyword(":" + MalString(param.name)));
     }
@@ -977,8 +976,9 @@ struct Observer : public chainblocks::RuntimeObserver {
 
   void registerEnumType(int32_t vendorId, int32_t typeId,
                         CBEnumInfo info) override {
-    for (auto i = 0; i < stbds_arrlen(info.labels); i++) {
-      auto enumName = MalString(info.name) + "." + MalString(info.labels[i]);
+    for (uint32_t i = 0; i < info.labels.len; i++) {
+      auto enumName =
+          MalString(info.name) + "." + MalString(info.labels.elements[i]);
       auto enumValue = newEnum(vendorId, typeId, i);
       builtIns[enumName] = enumValue;
       _env->set(enumName, enumValue);
@@ -1060,7 +1060,7 @@ BUILTIN("prepare") {
         }
       },
       nullptr);
-  stbds_arrfree(chainValidation.exposedInfo);
+  chainblocks::arrayFree(chainValidation.exposedInfo);
   chain->value()->node = &TLSRootNode;
   chainblocks::prepare(chain->value());
   return mal::nilValue();

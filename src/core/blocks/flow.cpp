@@ -9,16 +9,16 @@ static ParamsInfo condParamsInfo = ParamsInfo(
         "Chains",
         "A sequence of chains, interleaving condition test predicate and "
         "action to execute if the condition matches.",
-        CBTypesInfo(SharedTypes::blockSeqsOrNoneInfo)),
+        CoreInfo::BlockSeqOrNone),
     ParamsInfo::Param(
         "Passthrough",
         "The input of this block will be the output. (default: true)",
-        CBTypesInfo(SharedTypes::boolInfo)),
+        CoreInfo::BoolType),
     ParamsInfo::Param("Threading",
                       "Will not short circuit after the first true test "
                       "expression. The threaded value gets used in only the "
                       "action and not the test part of the clause.",
-                      CBTypesInfo(SharedTypes::boolInfo)));
+                      CoreInfo::BoolType));
 
 struct Cond {
   CBVar _chains{};
@@ -28,40 +28,48 @@ struct Cond {
   bool _threading = false;
   CBValidationResult _chainValidation{};
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBParametersInfo parameters() {
     return CBParametersInfo(condParamsInfo);
   }
 
   void cleanup() {
-    for (const auto &blocks : _conditions) {
-      for (auto block : blocks) {
+    for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
+      auto blocks = *it;
+      for (auto jt = blocks.rbegin(); jt != blocks.rend(); ++jt) {
+        auto block = *jt;
         block->cleanup(block);
       }
     }
-    for (const auto &blocks : _actions) {
-      for (auto block : blocks) {
+    for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
+      auto blocks = *it;
+      for (auto jt = blocks.rbegin(); jt != blocks.rend(); ++jt) {
+        auto block = *jt;
         block->cleanup(block);
       }
     }
   }
 
   void destroy() {
-    for (const auto &blocks : _conditions) {
-      for (auto block : blocks) {
+    for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
+      auto blocks = *it;
+      for (auto jt = blocks.rbegin(); jt != blocks.rend(); ++jt) {
+        auto block = *jt;
         block->cleanup(block);
         block->destroy(block);
       }
     }
-    for (const auto &blocks : _actions) {
-      for (auto block : blocks) {
+    for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
+      auto blocks = *it;
+      for (auto jt = blocks.rbegin(); jt != blocks.rend(); ++jt) {
+        auto block = *jt;
         block->cleanup(block);
         block->destroy(block);
       }
     }
     destroyVar(_chains);
-    stbds_arrfree(_chainValidation.exposedInfo);
+    chainblocks::arrayFree(_chainValidation.exposedInfo);
   }
 
   void setParam(int index, CBVar value) {
@@ -72,7 +80,7 @@ struct Cond {
       _actions.clear();
       cloneVar(_chains, value);
       if (value.valueType == Seq) {
-        auto counter = stbds_arrlen(value.payload.seqValue);
+        auto counter = value.payload.seqValue.len;
         if (counter % 2)
           throw CBException("Cond: first parameter must contain a sequence of "
                             "pairs [condition to check & action to perform if "
@@ -80,16 +88,16 @@ struct Cond {
         _conditions.resize(counter / 2);
         _actions.resize(counter / 2);
         auto idx = 0;
-        for (auto i = 0; i < counter; i++) {
-          auto val = value.payload.seqValue[i];
+        for (uint32_t i = 0; i < counter; i++) {
+          auto val = value.payload.seqValue.elements[i];
           if (i % 2) { // action
             if (val.valueType == Block) {
               _actions[idx].push_back(val.payload.blockValue);
             } else { // seq
-              for (auto y = 0; y < stbds_arrlen(val.payload.seqValue); y++) {
-                assert(val.payload.seqValue[y].valueType == Block);
+              for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
+                assert(val.payload.seqValue.elements[y].valueType == Block);
                 _actions[idx].push_back(
-                    val.payload.seqValue[y].payload.blockValue);
+                    val.payload.seqValue.elements[y].payload.blockValue);
               }
             }
 
@@ -98,10 +106,10 @@ struct Cond {
             if (val.valueType == Block) {
               _conditions[idx].push_back(val.payload.blockValue);
             } else { // seq
-              for (auto y = 0; y < stbds_arrlen(val.payload.seqValue); y++) {
-                assert(val.payload.seqValue[y].valueType == Block);
+              for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
+                assert(val.payload.seqValue.elements[y].valueType == Block);
                 _conditions[idx].push_back(
-                    val.payload.seqValue[y].payload.blockValue);
+                    val.payload.seqValue.elements[y].payload.blockValue);
               }
             }
           }
@@ -136,8 +144,7 @@ struct Cond {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
-    stbds_arrfree(_chainValidation.exposedInfo);
-    _chainValidation.exposedInfo = nullptr;
+    chainblocks::arrayFree(_chainValidation.exposedInfo);
 
     // Validate condition chains, altho they do not influence anything we need
     // to report errors
@@ -156,7 +163,7 @@ struct Cond {
             }
           },
           this, data);
-      stbds_arrfree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.exposedInfo);
     }
 
     // Evaluate all actions, all must return the same type in order to be safe
@@ -186,8 +193,8 @@ struct Cond {
         first = false;
       } else {
         if (exposing) {
-          auto curlen = stbds_arrlen(_chainValidation.exposedInfo);
-          auto newlen = stbds_arrlen(validation.exposedInfo);
+          auto curlen = _chainValidation.exposedInfo.len;
+          auto newlen = validation.exposedInfo.len;
           if (curlen != newlen) {
             LOG(INFO) << "Cond: number of exposed variables between actions "
                          "mismatch, "
@@ -196,9 +203,9 @@ struct Cond {
           }
 
           if (exposing) {
-            for (auto i = 0; i < curlen; i++) {
-              if (_chainValidation.exposedInfo[i] !=
-                  validation.exposedInfo[i]) {
+            for (uint32_t i = 0; i < curlen; i++) {
+              if (_chainValidation.exposedInfo.elements[i] !=
+                  validation.exposedInfo.elements[i]) {
                 LOG(INFO)
                     << "Cond: types of exposed variables between actions "
                        "mismatch, "
@@ -211,12 +218,11 @@ struct Cond {
         }
 
         // free the exposed info part
-        stbds_arrfree(validation.exposedInfo);
+        chainblocks::arrayFree(validation.exposedInfo);
 
         if (!exposing) {
           // make sure we expose nothing in this case!
-          stbds_arrfree(_chainValidation.exposedInfo);
-          _chainValidation.exposedInfo = nullptr;
+          chainblocks::arrayFree(_chainValidation.exposedInfo);
         }
       }
 
@@ -243,17 +249,17 @@ struct Cond {
     auto idx = 0;
     CBVar actionInput = input;
     CBVar finalOutput = RestartChain;
-    for (const auto &cond : _conditions) {
+    for (auto &cond : _conditions) {
       CBVar output{};
-      if (unlikely(!activateBlocks(const_cast<CBlocks>(&cond[0]), cond.size(),
-                                   context, input, output))) {
+      CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
+      if (unlikely(!activateBlocks(blocks, context, input, output))) {
         return StopChain;
       } else if (output == True) {
         // Do the action if true!
         // And stop here
         output = Empty;
-        auto state = activateBlocks(&_actions[idx][0], _actions[idx].size(),
-                                    context, actionInput, output);
+        CBlocks action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
+        auto state = activateBlocks(action, context, actionInput, output);
         if (unlikely(state == FlowState::Stopping)) {
           return StopChain;
         } else if (unlikely(state == FlowState::Returning)) {

@@ -14,19 +14,15 @@ struct Base {
   CBVar *_context;
 
   static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
-      "ImGui.Context", "The ImGui Context.", CBTypeInfo(Context::Info)));
+      "ImGui.Context", "The ImGui Context.", Context::Info));
 
   CBExposedTypesInfo consumedVariables() {
     return CBExposedTypesInfo(consumedInfo);
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::anyInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 };
 
 struct IDContext {
@@ -35,8 +31,8 @@ struct IDContext {
 };
 
 struct Style : public Base {
-  static inline TypeInfo styleEnumInfo = TypeInfo::Enum('frag', 'ImGS');
-  static inline TypesInfo styleEnumInfos = TypesInfo(styleEnumInfo);
+  static inline Type styleEnumInfo{
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'ImGS'}}}};
 
   enum ImGuiStyle {
     Alpha,
@@ -128,8 +124,8 @@ struct Style : public Base {
 
   ImGuiStyle _key{};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Style", "A style key to set.", CBTypesInfo(styleEnumInfos)));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Style", "A style key to set.", styleEnumInfo));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -531,28 +527,37 @@ struct Style : public Base {
   }
 };
 
-struct Window : public Base, public chainblocks::BlocksUser {
+struct Window : public Base {
+  chainblocks::BlocksVar _blks{};
   std::string _title;
   int _curX = -1, _curY = -1, _curW = -1, _curH = -1;
   CBVar _posX{}, _posY{}, _width{}, _height{};
+  CBValidationResult _validation{};
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("PosX",
                         "The horizontal position of the window to create",
-                        CBTypesInfo(SharedTypes::intOrNoneInfo)),
+                        CoreInfo::IntOrNone),
       ParamsInfo::Param("PosY",
                         "The vertical position of the window to create.",
-                        CBTypesInfo(SharedTypes::intOrNoneInfo)),
+                        CoreInfo::IntOrNone),
       ParamsInfo::Param("Width", "The width of the window to create",
-                        CBTypesInfo(SharedTypes::intOrNoneInfo)),
+                        CoreInfo::IntOrNone),
       ParamsInfo::Param("Height", "The height of the window to create.",
-                        CBTypesInfo(SharedTypes::intOrNoneInfo)),
+                        CoreInfo::IntOrNone),
       ParamsInfo::Param("Contents", "The inner contents blocks.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)));
+                        CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blks.validate(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -572,7 +577,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
       _height = value;
       break;
     case 5:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     default:
       break;
@@ -592,17 +597,14 @@ struct Window : public Base, public chainblocks::BlocksUser {
     case 4:
       return _posY;
     case 5:
-      return _blocks;
+      return _blks;
     default:
       return Empty;
     }
   }
 
-  void destroy() { chainblocks::BlocksUser::destroy(); }
-
   void cleanup() {
-    chainblocks::BlocksUser::cleanup();
-
+    _blks.reset();
     _curX = -1;
     _curY = -1;
     _context = nullptr;
@@ -611,7 +613,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (_blocks.valueType != Seq)
+    if (!_blks)
       return input;
 
     int flags = ImGuiWindowFlags_NoSavedSettings;
@@ -641,7 +643,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
     ::ImGui::Begin(_title.c_str(), nullptr, flags);
 
     CBVar output = Empty;
-    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,
+    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context, input,
                                  output))) {
       ::ImGui::End();
       return StopChain;
@@ -652,7 +654,7 @@ struct Window : public Base, public chainblocks::BlocksUser {
 };
 
 template <CBType CT> struct Variable : public Base {
-  static inline TypeInfo varType = TypeInfo(CT);
+  static inline Type varType{{CT}};
 
   std::string _label;
   std::string _variable_name;
@@ -685,7 +687,7 @@ template <CBType CT> struct Variable : public Base {
         }
       }
     }
-    return CBTypeInfo(varType);
+    return varType;
   }
 
   CBExposedTypesInfo consumedVariables() {
@@ -696,7 +698,7 @@ template <CBType CT> struct Variable : public Base {
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
@@ -708,16 +710,16 @@ template <CBType CT> struct Variable : public Base {
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
-      return nullptr;
+      return {};
     }
   }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Label", "The label for this widget.",
-                        CBTypesInfo(SharedTypes::strOrNoneInfo)),
+                        CoreInfo::StringOrNone),
       ParamsInfo::Param("Variable",
                         "The name of the variable that holds the input value.",
-                        CBTypesInfo(SharedTypes::strOrNoneInfo)));
+                        CoreInfo::StringOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -748,13 +750,9 @@ template <CBType CT> struct Variable : public Base {
 };
 
 struct CheckBox : public Variable<CBType::Bool> {
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::noneInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::boolInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -783,9 +781,9 @@ struct Text : public Base {
 
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Label", "An optional label for the value.",
-                                   CBTypesInfo(SharedTypes::strOrNoneInfo)),
+                                   CoreInfo::StringOrNone),
                  ParamsInfo::Param("Color", "The optional color of the text.",
-                                   CBTypesInfo(SharedTypes::colorOrNoneInfo)));
+                                   CoreInfo::ColorOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -834,9 +832,10 @@ struct Text : public Base {
   }
 };
 
-struct Button : public Base, public BlocksUser {
-  static inline TypeInfo buttonTypeInfo = TypeInfo::Enum('frag', 'ImGB');
-  static inline TypesInfo buttonTypesInfo = TypesInfo(buttonTypeInfo);
+struct Button : public Base {
+  CBValidationResult _validation{};
+  static inline Type buttonTypeInfo{
+      {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'ImGB'}}}};
 
   enum ButtonTypes {
     Normal,
@@ -851,28 +850,24 @@ struct Button : public Base, public BlocksUser {
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
   static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", 'frag', 'ImGB'};
 
+  BlocksVar _blks{};
   ButtonTypes _type{};
   std::string _label;
   ImVec2 _size = {0, 0};
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::noneInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::boolInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Label", "The text label of this button.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Action",
                         "The blocks to execute when the button is pressed.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)),
-      ParamsInfo::Param("Type", "The button type.",
-                        CBTypesInfo(buttonTypesInfo)),
+                        CoreInfo::BlocksOrNone),
+      ParamsInfo::Param("Type", "The button type.", buttonTypeInfo),
       ParamsInfo::Param("Size", "The optional size override.",
-                        CBTypesInfo(SharedTypes::float2Info)));
+                        CoreInfo::Float2Type));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -882,7 +877,7 @@ struct Button : public Base, public BlocksUser {
       _label = value.payload.stringValue;
       break;
     case 1:
-      cloneVar(_blocks, value);
+      _blks = value;
       break;
     case 2:
       _type = ButtonTypes(value.payload.enumValue);
@@ -901,7 +896,7 @@ struct Button : public Base, public BlocksUser {
     case 0:
       return Var(_label);
     case 1:
-      return _blocks;
+      return _blks;
     case 2:
       return Var::Enum(_type, 'frag', 'ImGB');
     case 3:
@@ -911,11 +906,20 @@ struct Button : public Base, public BlocksUser {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blks.validate(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  void cleanup() { _blks.reset(); }
+
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
     CBVar output = Empty;                                                      \
-    if (unlikely(!activateBlocks(_blocks.payload.seqValue, context, input,     \
-                                 output))) {                                   \
+    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context,       \
+                                 input, output))) {                            \
       return StopChain;                                                        \
     }                                                                          \
   }
@@ -976,13 +980,9 @@ struct Button : public Base, public BlocksUser {
 struct HexViewer : public Base {
   // TODO use a variable so edits are possible and easy
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::bytesInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::bytesInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   ImGuiExtra::MemoryEditor _editor{};
 
@@ -1039,12 +1039,12 @@ struct TreeNode : public Base {
 
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Label", "The label of this node.",
-                        CBTypesInfo(SharedTypes::strInfo)),
+                        CoreInfo::StringType),
       ParamsInfo::Param("Contents", "The contents of this node.",
-                        CBTypesInfo(SharedTypes::blocksOrNoneInfo)),
+                        CoreInfo::BlocksOrNone),
       ParamsInfo::Param("StartOpen",
                         "If this node should start in the open state.",
-                        CBTypesInfo(SharedTypes::boolInfo)));
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -1111,13 +1111,9 @@ typedef BlockWrapper<TreeNode> TreeNodeBlock;
   struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
     _T_ _tmp;                                                                  \
                                                                                \
-    static CBTypesInfo inputTypes() {                                          \
-      return CBTypesInfo(SharedTypes::noneInfo);                               \
-    }                                                                          \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() {                                         \
-      return CBTypesInfo(SharedTypes::_INFO_);                                 \
-    }                                                                          \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1143,20 +1139,16 @@ typedef BlockWrapper<TreeNode> TreeNodeBlock;
                                                                                \
   typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
 
-IMGUIDRAG(Int, int64_t, intInfo, ImGuiDataType_S64, intValue);
-IMGUIDRAG(Float, double, floatInfo, ImGuiDataType_Double, floatValue);
+IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
+IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
 
 #define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                    \
   struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
     CBVar _tmp;                                                                \
                                                                                \
-    static CBTypesInfo inputTypes() {                                          \
-      return CBTypesInfo(SharedTypes::noneInfo);                               \
-    }                                                                          \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() {                                         \
-      return CBTypesInfo(SharedTypes::_INFO_);                                 \
-    }                                                                          \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1184,24 +1176,20 @@ IMGUIDRAG(Float, double, floatInfo, ImGuiDataType_Double, floatValue);
                                                                                \
   typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
 
-IMGUIDRAG2(Int2, int64_t, int2Info, ImGuiDataType_S64, int2Value, 2);
-IMGUIDRAG2(Int3, int32_t, int3Info, ImGuiDataType_S32, int3Value, 3);
-IMGUIDRAG2(Int4, int32_t, int4Info, ImGuiDataType_S32, int4Value, 4);
-IMGUIDRAG2(Float2, double, float2Info, ImGuiDataType_Double, float2Value, 2);
-IMGUIDRAG2(Float3, float, float3Info, ImGuiDataType_Float, float3Value, 3);
-IMGUIDRAG2(Float4, float, float4Info, ImGuiDataType_Float, float4Value, 4);
+IMGUIDRAG2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, 2);
+IMGUIDRAG2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, 3);
+IMGUIDRAG2(Int4, int32_t, Int4Type, ImGuiDataType_S32, int4Value, 4);
+IMGUIDRAG2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value, 2);
+IMGUIDRAG2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, 3);
+IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
 
 #define IMGUIINPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                    \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
     _T_ _tmp;                                                                  \
                                                                                \
-    static CBTypesInfo inputTypes() {                                          \
-      return CBTypesInfo(SharedTypes::noneInfo);                               \
-    }                                                                          \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() {                                         \
-      return CBTypesInfo(SharedTypes::_INFO_);                                 \
-    }                                                                          \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1230,20 +1218,16 @@ IMGUIDRAG2(Float4, float, float4Info, ImGuiDataType_Float, float4Value, 4);
                                                                                \
   typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
 
-IMGUIINPUT(Int, int64_t, intInfo, ImGuiDataType_S64, intValue, "%lld");
-IMGUIINPUT(Float, double, floatInfo, ImGuiDataType_Double, floatValue, "%f");
+IMGUIINPUT(Int, int64_t, IntType, ImGuiDataType_S64, intValue, "%lld");
+IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
 
 #define IMGUIINPUT2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_, _CMP_)            \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
     CBVar _tmp;                                                                \
                                                                                \
-    static CBTypesInfo inputTypes() {                                          \
-      return CBTypesInfo(SharedTypes::noneInfo);                               \
-    }                                                                          \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() {                                         \
-      return CBTypesInfo(SharedTypes::_INFO_);                                 \
-    }                                                                          \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1274,15 +1258,15 @@ IMGUIINPUT(Float, double, floatInfo, ImGuiDataType_Double, floatValue, "%f");
                                                                                \
   typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
 
-IMGUIINPUT2(Int2, int64_t, int2Info, ImGuiDataType_S64, int2Value, "%lld", 2);
-IMGUIINPUT2(Int3, int32_t, int3Info, ImGuiDataType_S32, int3Value, "%d", 3);
-IMGUIINPUT2(Int4, int32_t, int4Info, ImGuiDataType_S32, int4Value, "%d", 4);
+IMGUIINPUT2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, "%lld", 2);
+IMGUIINPUT2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, "%d", 3);
+IMGUIINPUT2(Int4, int32_t, Int4Type, ImGuiDataType_S32, int4Value, "%d", 4);
 
-IMGUIINPUT2(Float2, double, float2Info, ImGuiDataType_Double, float2Value,
+IMGUIINPUT2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value,
             "%.3f", 2);
-IMGUIINPUT2(Float3, float, float3Info, ImGuiDataType_Float, float3Value, "%.3f",
+IMGUIINPUT2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, "%.3f",
             3);
-IMGUIINPUT2(Float4, float, float4Info, ImGuiDataType_Float, float4Value, "%.3f",
+IMGUIINPUT2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, "%.3f",
             4);
 
 struct TextInput : public Variable<CBType::String> {
@@ -1296,13 +1280,9 @@ struct TextInput : public Variable<CBType::String> {
     Variable<CBType::String>::cleanup();
   }
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo((SharedTypes::noneInfo));
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo((SharedTypes::strInfo));
-  }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static int InputTextCallback(ImGuiInputTextCallbackData *data) {
     TextInput *it = (TextInput *)data->UserData;
@@ -1310,8 +1290,9 @@ struct TextInput : public Variable<CBType::String> {
       // Resize string callback
       if (it->_variable) {
         delete[] it->_variable->payload.stringValue;
-        it->_variable->capacity = data->BufTextLen * 2;
-        it->_variable->payload.stringValue = new char[it->_variable->capacity];
+        it->_variable->capacity.value = data->BufTextLen * 2;
+        it->_variable->payload.stringValue =
+            new char[it->_variable->capacity.value];
         data->Buf = (char *)it->_variable->payload.stringValue;
       } else {
         it->_buffer.resize(data->BufTextLen * 2);
@@ -1330,14 +1311,14 @@ struct TextInput : public Variable<CBType::String> {
         // we own the variable so let's run some init
         _variable->valueType = String;
         _variable->payload.stringValue = new char[32];
-        _variable->capacity = 32;
+        _variable->capacity.value = 32;
         memset((void *)_variable->payload.stringValue, 0x0, 32);
       }
     }
 
     if (_variable) {
       ::ImGui::InputText(_label.c_str(), (char *)_variable->payload.stringValue,
-                         _variable->capacity,
+                         _variable->capacity.value,
                          ImGuiInputTextFlags_CallbackResize, &InputTextCallback,
                          this);
       return *_variable;
@@ -1355,20 +1336,16 @@ struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
 
-  static CBTypesInfo inputTypes() {
-    return CBTypesInfo(BGFX::Texture::TextureHandleInfo);
-  }
+  static CBTypesInfo inputTypes() { return BGFX::Texture::TextureHandleType; }
 
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(BGFX::Texture::TextureHandleInfo);
-  }
+  static CBTypesInfo outputTypes() { return BGFX::Texture::TextureHandleType; }
 
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Size", "The drawing size of the image.",
-                                   CBTypesInfo(SharedTypes::float2Info)),
+                                   CoreInfo::Float2Type),
                  ParamsInfo::Param("TrueSize",
                                    "If the given size is in true image pixels.",
-                                   CBTypesInfo(SharedTypes::boolInfo)));
+                                   CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -1428,7 +1405,6 @@ RUNTIME_BLOCK_activate(Style);
 RUNTIME_BLOCK_END(Style);
 
 RUNTIME_BLOCK(ImGui, Window);
-RUNTIME_BLOCK_destroy(Window);
 RUNTIME_BLOCK_cleanup(Window);
 RUNTIME_BLOCK_compose(Window);
 RUNTIME_BLOCK_consumedVariables(Window);
@@ -1465,7 +1441,6 @@ RUNTIME_BLOCK_activate(Text);
 RUNTIME_BLOCK_END(Text);
 
 RUNTIME_BLOCK(ImGui, Button);
-RUNTIME_BLOCK_destroy(Button);
 RUNTIME_BLOCK_cleanup(Button);
 RUNTIME_BLOCK_compose(Button);
 RUNTIME_BLOCK_consumedVariables(Button);

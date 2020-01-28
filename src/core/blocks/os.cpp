@@ -10,8 +10,8 @@ struct GetEnv {
   std::string _value;
   ParamVar _name;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto envs = boost::this_process::environment();
@@ -23,8 +23,8 @@ struct GetEnv {
 struct SetEnv {
   ParamVar _name;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto envs = boost::this_process::environment();
@@ -36,8 +36,8 @@ struct SetEnv {
 struct AddEnv {
   ParamVar _name;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::strInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto envs = boost::this_process::environment();
@@ -49,8 +49,8 @@ struct AddEnv {
 struct UnsetEnv {
   ParamVar _name;
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto envs = boost::this_process::environment();

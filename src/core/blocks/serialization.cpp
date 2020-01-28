@@ -15,12 +15,11 @@
 
 namespace chainblocks {
 struct FileBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("File", "The file to read/write from.",
-                        CBTypesInfo(SharedTypes::ctxOrStrOrNoneInfo)));
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
+      "File", "The file to read/write from.", CoreInfo::StringStringVarOrNone));
 
   ParamVar _filename{};
 
@@ -57,13 +56,17 @@ struct FileBase {
 
     filename = ctxFile.payload.stringValue;
 
-    std::filesystem::path cp(context->chain->node->currentPath);
+    std::filesystem::path cp(Globals::RootPath);
     if (std::filesystem::exists(cp)) {
       auto fullpath = cp / filename;
+      if (!std::filesystem::exists(fullpath)) {
+        return false;
+      }
       filename = fullpath.string();
+      return true;
+    } else {
+      return false;
     }
-
-    return true;
   }
 };
 
@@ -114,7 +117,7 @@ RUNTIME_BLOCK_activate(WriteFile);
 RUNTIME_BLOCK_END(WriteFile);
 
 struct ReadFile : public FileBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   std::ifstream _fileStream;
   CBVar _output{};
@@ -164,10 +167,8 @@ RUNTIME_BLOCK_activate(ReadFile);
 RUNTIME_BLOCK_END(ReadFile);
 
 struct LoadImage : public FileBase {
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::noneInfo); }
-  static CBTypesInfo outputTypes() {
-    return CBTypesInfo(SharedTypes::imageInfo);
-  }
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar _output{};
 
@@ -176,14 +177,13 @@ struct LoadImage : public FileBase {
       stbi_image_free(_output.payload.imageValue.data);
       _output = {};
     }
-
     FileBase::cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::string filename;
     if (!getFilename(context, filename)) {
-      throw CBException("No file name to load was given");
+      throw CBException("File not found!");
     }
 
     auto asyncRes = std::async(

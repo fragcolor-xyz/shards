@@ -6,18 +6,17 @@
 namespace chainblocks {
 struct Flatten {
   CBVar outputCache{};
-  TypeInfo outputType{};
-  TypeInfo seqType{};
-  TypesInfo outputFinalType{};
+  CBTypeInfo outputType{};
+  Type seqType{};
 
   void destroy() {
     if (outputCache.valueType == Seq) {
-      stbds_arrfree(outputCache.payload.seqValue);
+      chainblocks::arrayFree(outputCache.payload.seqValue);
     }
   }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
-  static CBTypesInfo outputTypes() { return CBTypesInfo(SharedTypes::anyInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void verifyInnerType(CBTypeInfo info, CBTypeInfo &currentType) {
     if (currentType.basicType != None) {
@@ -51,23 +50,25 @@ struct Flatten {
     case Int4:
     case Int8:
     case Int16: {
-      currentType = CBTypeInfo(SharedTypes::intInfo);
+      currentType = CoreInfo::IntType;
       break;
     }
     case Float2:
     case Float3:
     case Float4: {
-      currentType = CBTypeInfo(SharedTypes::floatInfo);
+      currentType = CoreInfo::FloatType;
       break;
     }
     case Seq:
-      if (info.seqType) {
-        verifyInnerType(*info.seqType, currentType);
+      if (info.seqTypes.len == 1) {
+        verifyInnerType(info.seqTypes.elements[0], currentType);
+      } else {
+        throw CBException("Expected a Seq of a single specific type.");
       }
       break;
     case Table: {
-      for (auto i = 0; i < stbds_arrlen(info.tableTypes); i++) {
-        verifyInnerType(info.tableTypes[i], currentType);
+      for (uint32_t i = 0; i < info.tableTypes.len; i++) {
+        verifyInnerType(info.tableTypes.elements[i], currentType);
       }
       break;
     }
@@ -77,10 +78,9 @@ struct Flatten {
   CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo current{};
     verifyInnerType(data.inputType, current);
-    outputType = TypeInfo(current);
-    seqType = TypeInfo::Sequence(outputType);
-    outputFinalType = TypesInfo(seqType);
-    return CBTypeInfo(outputFinalType);
+    outputType = current;
+    seqType = CBTypeInfo{CBType::Seq, {.seqTypes = {&outputType, 1, 0}}};
+    return seqType;
   }
 
   void add(const CBVar &input) {
@@ -101,62 +101,62 @@ struct Flatten {
     case Float:
     case Bytes:
     case Bool:
-      stbds_arrpush(outputCache.payload.seqValue, input);
+      chainblocks::arrayPush(outputCache.payload.seqValue, input);
       break;
     case Color: {
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.r));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.g));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.b));
-      stbds_arrpush(outputCache.payload.seqValue,
-                    Var(input.payload.colorValue.a));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.r));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.g));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.b));
+      chainblocks::arrayPush(outputCache.payload.seqValue,
+                             Var(input.payload.colorValue.a));
       break;
     }
     case Int2:
       for (auto i = 0; i < 2; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int2Value[i]));
       break;
     case Int3:
       for (auto i = 0; i < 3; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int3Value[i]));
       break;
     case Int4:
       for (auto i = 0; i < 4; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int4Value[i]));
       break;
     case Int8:
       for (auto i = 0; i < 8; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int8Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int8Value[i]));
       break;
     case Int16:
       for (auto i = 0; i < 16; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.int16Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.int16Value[i]));
       break;
     case Float2:
       for (auto i = 0; i < 2; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float2Value[i]));
       break;
     case Float3:
       for (auto i = 0; i < 3; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float3Value[i]));
       break;
     case Float4:
       for (auto i = 0; i < 4; i++)
-        stbds_arrpush(outputCache.payload.seqValue,
-                      Var(input.payload.float4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue,
+                               Var(input.payload.float4Value[i]));
       break;
     case Seq:
-      for (auto i = 0; i < stbds_arrlen(input.payload.seqValue); i++) {
-        add(input.payload.seqValue[i]);
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        add(input.payload.seqValue.elements[i]);
       }
       break;
     case Table: {
@@ -171,7 +171,7 @@ struct Flatten {
   CBVar activate(CBContext *context, const CBVar &input) {
     outputCache.valueType = Seq;
     // Quick reset no deallocs, slow first run only
-    stbds_arrsetlen(outputCache.payload.seqValue, 0);
+    chainblocks::arrayResize(outputCache.payload.seqValue, 0);
     add(input);
     return outputCache;
   }
@@ -188,23 +188,23 @@ RUNTIME_BLOCK_END(Flatten);
 
 struct IndexOf {
   ParamVar _item{};
-  CBSeq _results = nullptr;
+  CBSeq _results = {};
   bool _all = false;
 
   void destroy() {
-    if (_results) {
-      stbds_arrfree(_results);
+    if (_results.elements) {
+      chainblocks::arrayFree(_results);
     }
   }
 
   void cleanup() { _item.reset(); }
 
-  static CBTypesInfo inputTypes() { return CBTypesInfo(CoreInfo::anySeqInfo); }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   CBTypesInfo outputTypes() {
     if (_all)
-      return CBTypesInfo(CoreInfo::intSeqInfo);
+      return CoreInfo::IntSeqType;
     else
-      return CBTypesInfo(CoreInfo::intInfo);
+      return CoreInfo::IntType;
   }
 
   static inline ParamsInfo params = ParamsInfo(
@@ -212,11 +212,11 @@ struct IndexOf {
           "Item",
           "The item to find the index of from the input, if it's a sequence it "
           "will try to match all the items in the sequence, in sequence.",
-          CBTypesInfo(CoreInfo::anyInfo)),
+          CoreInfo::AnyType),
       ParamsInfo::Param("All",
                         "If true will return a sequence with all the indices "
                         "of Item, empty sequence if not found.",
-                        CBTypesInfo(CoreInfo::boolInfo)));
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -235,15 +235,15 @@ struct IndexOf {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto inputLen = stbds_arrlen(input.payload.seqValue);
+    auto inputLen = input.payload.seqValue.len;
     auto itemLen = 0;
     auto item = _item(context);
-    stbds_arrsetlen(_results, 0);
+    chainblocks::arrayResize(_results, 0);
     if (item.valueType == Seq) {
-      itemLen = stbds_arrlen(item.payload.seqValue);
+      itemLen = item.payload.seqValue.len;
     }
 
-    for (auto i = 0; i < inputLen; i++) {
+    for (uint32_t i = 0; i < inputLen; i++) {
       if (item.valueType == Seq) {
         if ((i + itemLen) > inputLen) {
           if (!_all)
@@ -254,23 +254,24 @@ struct IndexOf {
 
         auto ci = i;
         for (auto y = 0; y < itemLen; y++, ci++) {
-          if (item.payload.seqValue[y] != input.payload.seqValue[ci]) {
+          if (item.payload.seqValue.elements[y] !=
+              input.payload.seqValue.elements[ci]) {
             goto failed;
           }
         }
 
         if (!_all)
-          return Var(i);
+          return Var((int64_t)i);
         else
-          stbds_arrpush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var((int64_t)i));
 
       failed:
         continue;
-      } else if (input.payload.seqValue[i] == item) {
+      } else if (input.payload.seqValue.elements[i] == item) {
         if (!_all)
-          return Var(i);
+          return Var((int64_t)i);
         else
-          stbds_arrpush(_results, Var(i));
+          chainblocks::arrayPush(_results, Var((int64_t)i));
       }
     }
 
