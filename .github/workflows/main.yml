@@ -85,3 +85,36 @@ jobs:
         ./cbl ../src/tests/network.clj
         ./cbl ../src/tests/struct.clj
         ./cbl ../src/tests/flows.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/stack.clj
+        ./cbl ../src/tests/kdtree.clj
+
+  ciMacRel:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Deps
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_11.app
+        brew install boost cmake ninja clang-format
+    - name: Build
+      run: |
+        git submodule update --init --recursive
+        mkdir build
+        cd build
+        cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release ..
+        ninja cbl
+    - name: Test
+      run: |
+        cd build
+        ./cbl ../src/tests/general.clj
+        ./cbl ../src/tests/variables.clj
+        ./cbl ../src/tests/subchains.clj
+        ./cbl ../src/tests/linalg.clj
+        ./cbl ../src/tests/loader.clj
+        ./cbl ../src/tests/network.clj
+        ./cbl ../src/tests/struct.clj
+        ./cbl ../src/tests/flows.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/stack.clj
+        ./cbl ../src/tests/kdtree.clj
