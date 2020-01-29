@@ -4,7 +4,7 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
-#include "ops.hpp"
+#include "ops_internal.hpp"
 #include <chainblocks.hpp>
 
 // Included 3rdparty
@@ -382,10 +382,17 @@ struct Serialization {
       delete[] output.payload.imageValue.data;
       break;
     }
+    case CBType::Vector: {
+      delete[] output.payload.vectorValue;
+      break;
+    }
     case CBType::Object:
     case CBType::Chain:
     case CBType::Block:
-      break;
+    case CBType::Node:
+    case CBType::TypeInfo:
+      throw CBException("Serialization not supported for the given type: " +
+                        type2Name(output.valueType));
     }
 
     output = {};
