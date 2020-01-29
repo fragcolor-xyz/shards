@@ -87,13 +87,9 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-fuse-ld=lld)
-    # need those for custom new/delete
-    add_link_options(-static-libstdc++)
-    add_compile_options(-Wall -static-libstdc++)
   endif()
 elseif(WIN32)
   add_link_options(-static)
-  add_compile_options(-static)
 endif()
 
 add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
