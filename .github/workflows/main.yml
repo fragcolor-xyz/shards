@@ -37,7 +37,7 @@ jobs:
       with:
         msystem: MINGW64
     - run: msys2do pacman -Syu --noconfirm
-    - run: msys2do ./build-win.sh
+    - run: msys2do ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win64
@@ -53,11 +53,35 @@ jobs:
       with:
         msystem: MINGW32
     - run: msys2do pacman -Syu --noconfirm
-    - run: msys2do ./build-win32.sh
+    - run: msys2do ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
         path: build/cbl.exe
+
+  ciWindowsDbg:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: |
+        git submodule update --init --recursive
+    - uses: numworks/setup-msys2@v1
+      with:
+        msystem: MINGW64
+    - run: msys2do pacman -Syu --noconfirm
+    - run: msys2do ./build-win.sh Debug
+
+  ciWindowsDbg32:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: |
+        git submodule update --init --recursive
+    - uses: numworks/setup-msys2@v1
+      with:
+        msystem: MINGW32
+    - run: msys2do pacman -Syu --noconfirm
+    - run: msys2do ./build-win32.sh Debug
 
   ciMacDbg:
     runs-on: macos-latest
