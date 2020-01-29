@@ -811,13 +811,16 @@ template <> struct hash<CBTypeInfo> {
     using std::size_t;
     using std::string;
     auto res = hash<int>()(typeInfo.basicType);
-    if (typeInfo.basicType == Table && typeInfo.tableTypes.elements &&
-        typeInfo.tableKeys.elements) {
-      for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
-        res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+    if (typeInfo.basicType == Table) {
+      if (typeInfo.tableKeys.elements) {
+        for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
+          res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+        }
       }
-      for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
-        res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+      if (typeInfo.tableTypes.elements) {
+        for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
+          res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+        }
       }
     } else if (typeInfo.basicType == Seq) {
       for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
@@ -849,7 +852,7 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
+  std::unordered_map<std::string, std::unordered_multiset<CBExposedTypeInfo>>
       exposed;
   std::unordered_set<std::string> variables;
   std::unordered_set<std::string> references;

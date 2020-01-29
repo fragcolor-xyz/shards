@@ -473,34 +473,53 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      uint64_t len;
-      read((uint8_t *)&len, sizeof(uint64_t));
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
 
-      uint64_t currentUsed = recycle ? output.payload.seqValue.len : 0;
+      uint32_t currentUsed = recycle ? output.payload.seqValue.len : 0;
       if (currentUsed > len) {
         // in this case we need to destroy the excess items
         // before resizing
-        for (uint64_t i = len; i < currentUsed; i++) {
+        for (uint32_t i = len; i < currentUsed; i++) {
           varFree(output.payload.seqValue.elements[i]);
         }
       }
 
       chainblocks::arrayResize(output.payload.seqValue, len);
-      for (uint64_t i = 0; i < len; i++) {
+      for (uint32_t i = 0; i < len; i++) {
         deserialize(read, output.payload.seqValue.elements[i]);
       }
       break;
     }
+    // case CBType::Vector: {
+    //   uint32_t len;
+    //   read((uint8_t *)&len, sizeof(uint32_t));
+
+    //   uint32_t currentUsed = recycle ? output.payload.vectorSize : 0;
+    //   if (currentUsed > len) {
+    //     // in this case we need to destroy the excess items
+    //     // before resizing
+    //     for (uint32_t i = len; i < currentUsed; i++) {
+    //       varFree(output.payload.seqValue.elements[i]);
+    //     }
+    //   }
+
+    //   chainblocks::arrayResize(output.payload.seqValue, len);
+    //   for (uint32_t i = 0; i < len; i++) {
+    //     deserialize(read, output.payload.vectorValue[i]);
+    //   }
+    //   break;
+    // }
     case CBType::Table: {
       if (recycle) // tables are slow for now...
         varFree(output);
 
-      uint64_t len;
-      read((uint8_t *)&len, sizeof(uint64_t));
-      for (uint64_t i = 0; i < len; i++) {
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
+      for (uint32_t i = 0; i < len; i++) {
         CBNamedVar v;
-        uint64_t klen;
-        read((uint8_t *)&klen, sizeof(uint64_t));
+        uint32_t klen;
+        read((uint8_t *)&klen, sizeof(uint32_t));
         v.key = new char[klen + 1];
         read((uint8_t *)v.key, len);
         const_cast<char *>(v.key)[klen] = 0;
@@ -589,23 +608,23 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      uint64_t len = input.payload.seqValue.len;
-      write((const uint8_t *)&len, sizeof(uint64_t));
-      total += sizeof(uint64_t);
-      for (uint64_t i = 0; i < len; i++) {
+      uint32_t len = input.payload.seqValue.len;
+      write((const uint8_t *)&len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      for (uint32_t i = 0; i < len; i++) {
         total += serialize(input.payload.seqValue.elements[i], write);
       }
       break;
     }
     case CBType::Table: {
-      uint64_t len = stbds_shlen(input.payload.tableValue);
-      write((const uint8_t *)&len, sizeof(uint64_t));
-      total += sizeof(uint64_t);
-      for (uint64_t i = 0; i < len; i++) {
+      uint32_t len = stbds_shlen(input.payload.tableValue);
+      write((const uint8_t *)&len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      for (uint32_t i = 0; i < len; i++) {
         auto &v = input.payload.tableValue[i];
-        uint64_t klen = strlen(v.key);
-        write((const uint8_t *)&klen, sizeof(uint64_t));
-        total += sizeof(uint64_t);
+        uint32_t klen = strlen(v.key);
+        write((const uint8_t *)&klen, sizeof(uint32_t));
+        total += sizeof(uint32_t);
         write((const uint8_t *)v.key, len);
         total += len;
         total += serialize(v.value, write);

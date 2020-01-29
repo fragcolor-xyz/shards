@@ -767,7 +767,7 @@ struct Get : public VariableBase {
     if (_isTable) {
       for (uint32_t i = 0; data.consumables.len > i; i++) {
         auto &name = data.consumables.elements[i].name;
-        if (name == _name &&
+        if (strcmp(name, _name.c_str()) == 0 &&
             data.consumables.elements[i].exposedType.basicType == Table) {
           auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
           auto &tableTypes =
@@ -776,7 +776,7 @@ struct Get : public VariableBase {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
               auto &key = tableKeys.elements[y];
-              if (_key == key) {
+              if (strcmp(_key.c_str(), key) == 0) {
                 return tableTypes.elements[y];
               }
             }
@@ -804,7 +804,7 @@ struct Get : public VariableBase {
     } else {
       for (uint32_t i = 0; i < data.consumables.len; i++) {
         auto &cv = data.consumables.elements[i];
-        if (_name == cv.name) {
+        if (strcmp(_name.c_str(), cv.name) == 0) {
           return cv.exposedType;
         }
       }
