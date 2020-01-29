@@ -389,8 +389,6 @@ struct Serialization {
     case CBType::Object:
     case CBType::Chain:
     case CBType::Block:
-    case CBType::Node:
-    case CBType::TypeInfo:
       throw CBException("Serialization not supported for the given type: " +
                         type2Name(output.valueType));
     }

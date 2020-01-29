@@ -23,22 +23,12 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     else if (var.payload.chainState == CBChainState::Rebase)
       os << "*ChainRebase*";
     break;
-  case CBType::TypeInfo:
-    if (var.payload.typeInfoValue)
-      os << type2Name(var.payload.typeInfoValue->basicType);
-    else
-      os << "None";
-    break;
   case CBType::Any:
     os << "*Any*";
     break;
   case Object:
     os << "Object: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.objectValue) << std::dec;
-    break;
-  case Node:
-    os << "Node: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.nodeValue) << std::dec;
     break;
   case Chain:
     os << "Chain: 0x" << std::hex
@@ -179,19 +169,6 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
         os << ", " << vv;
     }
     os << "]";
-  } break;
-  case List: {
-    os << "(";
-    auto next = var.payload.listValue.value;
-    while (next) {
-      if (var.payload.listValue.next) {
-        os << next << " ";
-        next = var.payload.listValue.next;
-      } else {
-        os << *next;
-      }
-    }
-    os << ")";
   } break;
   }
   return os;

@@ -31,8 +31,6 @@ enum CBType : uint8_t {
   Color,  // A vector of 4 uint8
   Chain,  // sub chains, e.g. IF/ELSE
   Block,  // a block, useful for future introspection blocks!
-  Node,
-  TypeInfo,
 
   EndOfBlittableTypes, // anything below this is not blittable (not exactly but
                        // for cloneVar mostly)
@@ -42,9 +40,8 @@ enum CBType : uint8_t {
   ContextVar, // A string label to find from CBContext variables
   Image,
   Seq,
-  Table,
   Vector,
-  List,
+  Table,
 };
 
 enum CBChainState : uint8_t {
@@ -190,11 +187,6 @@ typedef int32_t CBEnum;
 
 typedef const char *CBString;
 CB_ARRAY_DECL(CBStrings, CBString);
-
-typedef struct CBList {
-  struct CBVar *value;
-  struct CBVar *next;
-} CBList;
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -480,8 +472,6 @@ ALIGNED struct CBVarPayload {
     CBNodePtr nodeValue;
 
     CBTypeInfoPtr typeInfoValue;
-
-    CBList listValue;
   };
 };
 

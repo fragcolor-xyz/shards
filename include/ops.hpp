@@ -5,7 +5,7 @@
 #define CB_OPS_HPP
 
 #include <cfloat>
-#include <chainblocks.h>
+#include <chainblocks.hpp>
 #include <stb_ds.h>
 #include <string>
 
@@ -89,15 +89,6 @@ inline std::string type2Name(CBType type) {
   case Vector:
     name = "Vector";
     break;
-  case List:
-    name = "List";
-    break;
-  case Node:
-    name = "Node";
-    break;
-  case CBType::TypeInfo:
-    name = "Type";
-    break;
   }
   return name;
 }
@@ -175,26 +166,6 @@ inline bool _vectorEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-inline bool _listEq(const CBVar &a, const CBVar &b) {
-  auto next_a = a.payload.listValue.value;
-  auto next_b = b.payload.listValue.value;
-  while (next_a && next_b) {
-    if (*next_a != *next_b)
-      return false;
-
-    next_a = a.payload.listValue.next;
-    next_b = b.payload.listValue.next;
-  }
-
-  // one of the 2 was not null!
-  if (next_a || next_b)
-    return false;
-
-  // if we reach this point both were null (no nexts)
-  // and equal check never failed
-  return true;
-}
-
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
@@ -247,7 +218,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return true;
   }
   case Int16: {
-    auto vec = a.payload.int16Value == b.payload.int16Value;
+    CBInt16 vec = a.payload.int16Value == b.payload.int16Value;
     for (auto i = 0; i < 16; i++)
       if (vec[i] == 0)
         return false;
@@ -255,7 +226,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   }
   case Float2: {
     const CBFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
-    auto diff = a.payload.float2Value - b.payload.float2Value;
+    CBFloat2 diff = a.payload.float2Value - b.payload.float2Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
     CBInt2 vec = diff <= vepsi;
@@ -266,7 +237,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   }
   case Float3: {
     const CBFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    auto diff = a.payload.float3Value - b.payload.float3Value;
+    CBFloat3 diff = a.payload.float3Value - b.payload.float3Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
     diff[2] = __builtin_fabs(diff[2]);
@@ -278,7 +249,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   }
   case Float4: {
     const CBFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    auto diff = a.payload.float4Value - b.payload.float4Value;
+    CBFloat4 diff = a.payload.float4Value - b.payload.float4Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
     diff[2] = __builtin_fabs(diff[2]);
@@ -321,23 +292,6 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
                    a.payload.bytesSize) == 0);
   case Vector:
     return _vectorEq(a, b);
-  case List:
-    return _listEq(a, b);
-  case Node:
-    return a.payload.nodeValue == b.payload.nodeValue;
-  case TypeInfo: {
-    if (a.payload.typeInfoValue == nullptr) {
-      if (b.payload.typeInfoValue == nullptr)
-        return true;
-      else
-        return false;
-    }
-
-    if (b.payload.typeInfoValue == nullptr)
-      return false;
-
-    return *a.payload.typeInfoValue == *b.payload.typeInfoValue;
-  }
   }
 
   return false;
@@ -409,27 +363,6 @@ inline bool _vectorLess(const CBVar &a, const CBVar &b) {
     return true;
   else
     return false;
-}
-
-inline bool _listLess(const CBVar &a, const CBVar &b) {
-  auto next_a = a.payload.listValue.value;
-  auto next_b = b.payload.listValue.value;
-  while (next_a && next_b) {
-    auto c = cmp(*next_a, *next_b);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-
-    next_a = a.payload.listValue.next;
-    next_b = b.payload.listValue.next;
-  }
-
-  // a ended before b!
-  if (!next_a && next_b)
-    return true;
-
-  return false;
 }
 
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
@@ -524,8 +457,6 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return _seqLess(a, b);
   case Vector:
     return _vectorLess(a, b);
-  case List:
-    return _listLess(a, b);
   case Table:
     return _tableLess(a, b);
   case Bytes:
@@ -535,11 +466,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Chain:
   case Block:
   case Object:
-  case Node:
-  case TypeInfo:
   case CBType::Any:
   case EndOfBlittableTypes:
-    return false;
+    throw chainblocks::CBException(
+        "Comparison operator < not supported for the given type: " +
+        type2Name(a.valueType));
   }
 
   return false;
@@ -611,27 +542,6 @@ inline bool _vectorLessEq(const CBVar &a, const CBVar &b) {
     return true;
   else
     return false;
-}
-
-inline bool _listLessEq(const CBVar &a, const CBVar &b) {
-  auto next_a = a.payload.listValue.value;
-  auto next_b = b.payload.listValue.value;
-  while (next_a && next_b) {
-    auto c = cmp(*next_a, *next_b);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-
-    next_a = a.payload.listValue.next;
-    next_b = b.payload.listValue.next;
-  }
-
-  // a is bigger case
-  if (next_a)
-    return false;
-
-  return true;
 }
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
@@ -726,8 +636,6 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return _seqLessEq(a, b);
   case Vector:
     return _vectorLessEq(a, b);
-  case List:
-    return _listLessEq(a, b);
   case Table:
     return _tableLessEq(a, b);
   case Bytes:
@@ -737,11 +645,11 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Chain:
   case Block:
   case Object:
-  case Node:
-  case TypeInfo:
   case CBType::Any:
   case EndOfBlittableTypes:
-    return false;
+    throw chainblocks::CBException(
+        "Comparison operator <= not supported for the given type: " +
+        type2Name(a.valueType));
   }
 
   return false;
