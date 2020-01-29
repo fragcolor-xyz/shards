@@ -76,8 +76,12 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
 endif()
 
 if(X86)
-  add_compile_definitions(USE_RPMALLOC ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-  add_compile_options(-Wall -march=core2)
+  add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
+  add_compile_options(-Wall
+    # force avx
+    -mavx
+    # prefer -march=native if you know where it is gonna run!
+    )
 else()
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
   add_compile_options(-Wall)
