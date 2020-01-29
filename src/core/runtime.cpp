@@ -1509,6 +1509,174 @@ endOfChain:
   chain->returned = true;
   return std::move(context.continuation);
 }
+
+template <typename T>
+NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
+  // safety check to make sure this is not a borrowed foreign array!
+  assert((arr.cap == 0 && arr.elements == nullptr) ||
+         (arr.cap > 0 && arr.elements != nullptr));
+
+  size_t min_len = arr.len + addlen;
+
+  // compute the minimum capacity needed
+  if (min_len > min_cap)
+    min_cap = min_len;
+
+  if (min_cap <= arr.cap)
+    return;
+
+  // increase needed capacity to guarantee O(1) amortized
+  if (min_cap < 2 * arr.cap)
+    min_cap = 2 * arr.cap;
+
+  arr.elements = (decltype(arr.elements))CB_REALLOC(
+      arr.elements, sizeof(*arr.elements) * min_cap);
+  arr.cap = min_cap;
+}
+
+NO_INLINE void _destroyVarSlow(CBVar &var) {
+  switch (var.valueType) {
+  case Seq: {
+    assert(var.payload.seqValue.cap >= var.capacity.value);
+    assert(var.payload.seqValue.len <= var.capacity.value);
+    for (size_t i = var.capacity.value; i > 0; i--) {
+      destroyVar(var.payload.seqValue.elements[i - 1]);
+    }
+    chainblocks::arrayFree(var.payload.seqValue);
+  } break;
+  case Table: {
+    auto len = stbds_shlen(var.payload.tableValue);
+    for (auto i = len; i > 0; i--) {
+      destroyVar(var.payload.tableValue[i - 1].value);
+    }
+    stbds_shfree(var.payload.tableValue);
+  } break;
+  default:
+    break;
+  };
+}
+
+NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+  if (src == dst)
+    return;
+
+  switch (src.valueType) {
+  case Seq: {
+    size_t srcLen = src.payload.seqValue.len;
+#if 0
+    destroyVar(dst);
+    dst.valueType = Seq;
+    dst.payload.seqValue = {};
+    for (size_t i = 0; i < srcLen; i++) {
+      auto &subsrc = src.payload.seqValue.elements[i];
+      CBVar tmp{};
+      cloneVar(tmp, subsrc);
+      chainblocks::arrayPush(dst.payload.seqValue, tmp);
+    }
+#else
+    // try our best to re-use memory
+    if (dst.valueType != Seq) {
+      destroyVar(dst);
+      dst.valueType = Seq;
+      for (size_t i = 0; i < srcLen; i++) {
+        auto &subsrc = src.payload.seqValue.elements[i];
+        CBVar tmp{};
+        cloneVar(tmp, subsrc);
+        chainblocks::arrayPush(dst.payload.seqValue, tmp);
+      }
+    } else {
+      size_t dstLen = dst.payload.seqValue.len;
+      assert(dst.capacity.value >= dstLen);
+      if (srcLen <= dst.capacity.value) {
+        // clone on top of current values
+        chainblocks::arrayResize(dst.payload.seqValue, srcLen);
+        for (size_t i = 0; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
+        }
+      } else {
+        // re-use avail ones
+        for (size_t i = 0; i < dstLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
+        }
+        // append new values
+        for (size_t i = dstLen; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          CBVar tmp{};
+          cloneVar(tmp, subsrc);
+          chainblocks::arrayPush(dst.payload.seqValue, subsrc);
+        }
+      }
+    }
+#endif
+    // take note of 'Var' capacity
+    dst.capacity.value =
+        std::max(dst.capacity.value,
+                 decltype(dst.capacity.value)(dst.payload.seqValue.len));
+  } break;
+  case String:
+  case ContextVar: {
+    auto srcSize = strlen(src.payload.stringValue) + 1;
+    if ((dst.valueType != String && dst.valueType != ContextVar) ||
+        dst.capacity.value < srcSize) {
+      destroyVar(dst);
+      dst.payload.stringValue = new char[srcSize];
+      dst.capacity.value = srcSize;
+    }
+
+    dst.valueType = src.valueType;
+    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
+           srcSize - 1);
+    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
+  } break;
+  case Image: {
+    size_t srcImgSize = src.payload.imageValue.height *
+                        src.payload.imageValue.width *
+                        src.payload.imageValue.channels;
+    if (dst.valueType != Image || srcImgSize > dst.capacity.value) {
+      destroyVar(dst);
+      dst.valueType = Image;
+      dst.payload.imageValue.data = new uint8_t[srcImgSize];
+      dst.capacity.value = srcImgSize;
+    }
+
+    dst.payload.imageValue.flags = dst.payload.imageValue.flags;
+    dst.payload.imageValue.height = src.payload.imageValue.height;
+    dst.payload.imageValue.width = src.payload.imageValue.width;
+    dst.payload.imageValue.channels = src.payload.imageValue.channels;
+    memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
+           srcImgSize);
+  } break;
+  case Table: {
+    // Slowest case, it's a full copy using arena tho
+    destroyVar(dst);
+    dst.valueType = Table;
+    dst.payload.tableValue = nullptr;
+    stbds_sh_new_arena(dst.payload.tableValue);
+    auto srcLen = stbds_shlen(src.payload.tableValue);
+    for (auto i = 0; i < srcLen; i++) {
+      CBVar clone{};
+      cloneVar(clone, src.payload.tableValue[i].value);
+      stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
+    }
+  } break;
+  case Bytes: {
+    if (dst.valueType != Bytes || dst.capacity.value < src.payload.bytesSize) {
+      destroyVar(dst);
+      dst.valueType = Bytes;
+      dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
+      dst.capacity.value = src.payload.bytesSize;
+    }
+
+    dst.payload.bytesSize = src.payload.bytesSize;
+    memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
+           src.payload.bytesSize);
+  } break;
+  default:
+    break;
+  };
+}
 }; // namespace chainblocks
 
 #ifdef TESTING
