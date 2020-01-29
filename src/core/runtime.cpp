@@ -9,6 +9,7 @@
 #include <csignal>
 #include <cstdarg>
 #include <string.h>
+#include <unordered_set>
 
 #ifdef USE_RPMALLOC
 void *operator new(std::size_t s) {
@@ -848,10 +849,10 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
+  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
       exposed;
-  phmap::flat_hash_set<std::string> variables;
-  phmap::flat_hash_set<std::string> references;
+  std::unordered_set<std::string> variables;
+  std::unordered_set<std::string> references;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -999,8 +1000,7 @@ void validateConnection(ValidationContext &ctx) {
   // Finally do checks on what we consume
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
 
-  phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>>
-      consumedVars;
+  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> consumedVars;
   for (uint32_t i = 0; consumedVar.len > i; i++) {
     auto &consumed_param = consumedVar.elements[i];
     std::string name(consumed_param.name);
@@ -1242,10 +1242,10 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Seq: {
-    phmap::flat_hash_set<CBTypeInfo> types;
+    std::unordered_set<CBTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
       auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-      if (!types.contains(derived)) {
+      if (!types.count(derived)) {
         chainblocks::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
       }
@@ -1253,10 +1253,10 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Table: {
-    phmap::flat_hash_set<CBTypeInfo> types;
+    std::unordered_set<CBTypeInfo> types;
     for (size_t i = 0; stbds_shlenu(value.payload.tableValue) > i; i++) {
       auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-      if (!types.contains(derived)) {
+      if (!types.count(derived)) {
         chainblocks::arrayPush(varType.tableTypes, derived);
         types.insert(derived);
       }

@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <cassert>
 #include <list>
-#include <parallel_hashmap/phmap.h>
 #include <set>
 #include <type_traits>
 

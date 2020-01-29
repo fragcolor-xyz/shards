@@ -362,8 +362,7 @@ struct ChainFileWatcher {
   std::string fileName;
   std::string path;
   rigtorp::SPSCQueue<ChainLoadResult> results;
-  phmap::node_hash_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>>
-      liveChains;
+  std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
   boost::lockfree::queue<CBChain *> garbage;
 
   CBTypeInfo inputTypeInfo;
