@@ -220,11 +220,11 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 
 #ifdef NDEBUG
 #define ALWAYS_INLINE __attribute__((always_inline))
+#define NO_INLINE __attribute__((noinline))
 #else
 #define ALWAYS_INLINE
+#define NO_INLINE
 #endif
-
-#define NO_INLINE __attribute__((noinline))
 
 #define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
 #else // TODO

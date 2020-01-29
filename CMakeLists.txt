@@ -77,11 +77,7 @@ endif()
 
 if(X86)
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-  add_compile_options(-Wall
-    # force avx
-    -mavx
-    # prefer -march=native if you know where it is gonna run!
-    )
+  add_compile_options(-Wall)
 else()
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
   add_compile_options(-Wall)
@@ -155,10 +151,11 @@ set(
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.h
+  ${CHAINBLOCKS_DIR}/include/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/core.hpp
-  ${CHAINBLOCKS_DIR}/src/core/ops.hpp
+  ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
