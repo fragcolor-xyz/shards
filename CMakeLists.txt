@@ -113,6 +113,9 @@ endif()
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   # 64 bits
   add_compile_definitions(AMD64_BUILD)
+  if(X86)
+    add_compile_options(-march=core2)
+  endif()
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   # 32 bits
   add_compile_definitions(I386_BUILD)
