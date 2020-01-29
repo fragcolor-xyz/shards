@@ -62,16 +62,16 @@ void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 struct RuntimeObserver;
 
 struct Globals {
-  static inline phmap::flat_hash_map<std::string, CBBlockConstructor>
+  static inline std::unordered_map<std::string, CBBlockConstructor>
       BlocksRegister;
-  static inline phmap::flat_hash_map<int64_t, CBObjectInfo> ObjectTypesRegister;
-  static inline phmap::flat_hash_map<int64_t, CBEnumInfo> EnumTypesRegister;
+  static inline std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+  static inline std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 
   // map = ordered! we need that for those
   static inline std::map<std::string, CBCallback> RunLoopHooks;
   static inline std::map<std::string, CBCallback> ExitHooks;
 
-  static inline phmap::flat_hash_map<std::string, CBChain *> GlobalChains;
+  static inline std::unordered_map<std::string, CBChain *> GlobalChains;
 
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 

@@ -5,9 +5,6 @@ set -e
 
 pacman -S --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang wget
 
-export CC=clang
-export CXX=clang++
-
 # bimg
 cd deps/bimg/
 export MINGW=/d/a/_temp/msys/msys64/mingw32 # chainblocks/setup-msys2, needed by bimg
