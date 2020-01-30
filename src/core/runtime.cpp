@@ -12,6 +12,8 @@
 #include <unordered_set>
 
 #ifdef USE_RPMALLOC
+#include <rpmalloc/rpmalloc.h>
+
 void *operator new(std::size_t s) {
   rpmalloc_initialize();
   return rpmalloc(s);
@@ -28,6 +30,10 @@ void *operator new[](std::size_t s, const std::nothrow_t &tag) noexcept {
   rpmalloc_initialize();
   return rpmalloc(s);
 }
+void *operator new(std::size_t size, std::align_val_t align) {
+  rpmalloc_initialize();
+  return rpaligned_alloc(static_cast<std::size_t>(align), size);
+}
 
 void operator delete(void *ptr) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr) noexcept { rpfree(ptr); }
@@ -39,6 +45,14 @@ void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
 }
 void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
+
+void operator delete(void *ptr, std::size_t size,
+                     std::align_val_t align) noexcept {
+  rpfree(ptr);
+}
+void operator delete(void *ptr, std::align_val_t align) noexcept {
+  rpfree(ptr);
+}
 #endif
 
 INITIALIZE_EASYLOGGINGPP
@@ -48,7 +62,6 @@ extern void registerAssertBlocks();
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
-extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
 extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
@@ -79,7 +92,6 @@ void registerCoreBlocks() {
   rpmalloc_initialize();
 #endif
 
-  static_assert(sizeof(uint48_t) == 48 / 8);
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
 
@@ -88,7 +100,6 @@ void registerCoreBlocks() {
   registerChainsBlocks();
   registerLoggingBlocks();
   registerFlowBlocks();
-  registerProcessBlocks();
   registerSeqsBlocks();
   registerCastingBlocks();
   registerSerializationBlocks();
@@ -1513,6 +1524,19 @@ endOfChain:
   return std::move(context.continuation);
 }
 
+#ifdef USE_RPMALLOC
+#include "rpmalloc/rpmalloc.h"
+inline void *rp_init_realloc(void *ptr, size_t size) {
+  rpmalloc_initialize();
+  return rprealloc(ptr, size);
+}
+#define CB_REALLOC rp_init_realloc
+#define CB_FREE rpfree
+#else
+#define CB_REALLOC std::realloc
+#define CB_FREE std::free
+#endif
+
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   // safety check to make sure this is not a borrowed foreign array!
@@ -1532,17 +1556,32 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   if (min_cap < 2 * arr.cap)
     min_cap = 2 * arr.cap;
 
-  arr.elements = (decltype(arr.elements))CB_REALLOC(
-      arr.elements, sizeof(*arr.elements) * min_cap);
+  auto newbuf =
+      new (std::align_val_t{64}) uint8_t[sizeof(*arr.elements) * min_cap];
+  if (arr.elements) {
+    memcpy(newbuf, arr.elements, sizeof(*arr.elements) * arr.len);
+    ::operator delete (arr.elements, std::align_val_t{64});
+  }
+
+  // arr.elements = (decltype(arr.elements))CB_REALLOC(
+  //     arr.elements, sizeof(*arr.elements) * min_cap);
+
+  arr.elements = (decltype(arr.elements))newbuf;
   arr.cap = min_cap;
+}
+
+template <typename T> NO_INLINE void arrayFree(T &arr) {
+  if (arr.elements)
+    ::operator delete (arr.elements, std::align_val_t{64});
+  arr = {};
 }
 
 NO_INLINE void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    assert(var.payload.seqValue.cap >= var.capacity.value);
-    assert(var.payload.seqValue.len <= var.capacity.value);
-    for (size_t i = var.capacity.value; i > 0; i--) {
+    assert(var.payload.seqValue.cap >= var.capacity);
+    assert(var.payload.seqValue.len <= var.capacity);
+    for (size_t i = var.capacity; i > 0; i--) {
       destroyVar(var.payload.seqValue.elements[i - 1]);
     }
     chainblocks::arrayFree(var.payload.seqValue);
@@ -1560,9 +1599,6 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
 }
 
 NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
-  if (src == dst)
-    return;
-
   switch (src.valueType) {
   case Seq: {
     size_t srcLen = src.payload.seqValue.len;
@@ -1588,9 +1624,12 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
         chainblocks::arrayPush(dst.payload.seqValue, tmp);
       }
     } else {
+      if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
+        return;
+
       size_t dstLen = dst.payload.seqValue.len;
-      assert(dst.capacity.value >= dstLen);
-      if (srcLen <= dst.capacity.value) {
+      assert(dst.capacity >= dstLen);
+      if (srcLen <= dst.capacity) {
         // clone on top of current values
         chainblocks::arrayResize(dst.payload.seqValue, srcLen);
         for (size_t i = 0; i < srcLen; i++) {
@@ -1614,18 +1653,20 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 #endif
     // take note of 'Var' capacity
-    dst.capacity.value =
-        std::max(dst.capacity.value,
-                 decltype(dst.capacity.value)(dst.payload.seqValue.len));
+    dst.capacity = std::max(dst.capacity,
+                            decltype(dst.capacity)(dst.payload.seqValue.len));
   } break;
   case String:
   case ContextVar: {
     auto srcSize = strlen(src.payload.stringValue) + 1;
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
-        dst.capacity.value < srcSize) {
+        dst.capacity < srcSize) {
       destroyVar(dst);
       dst.payload.stringValue = new char[srcSize];
-      dst.capacity.value = srcSize;
+      dst.capacity = srcSize;
+    } else {
+      if (src.payload.stringValue == dst.payload.stringValue)
+        return;
     }
 
     dst.valueType = src.valueType;
@@ -1637,21 +1678,28 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     size_t srcImgSize = src.payload.imageValue.height *
                         src.payload.imageValue.width *
                         src.payload.imageValue.channels;
-    if (dst.valueType != Image || srcImgSize > dst.capacity.value) {
+    if (dst.valueType != Image || srcImgSize > dst.capacity) {
       destroyVar(dst);
       dst.valueType = Image;
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
-      dst.capacity.value = srcImgSize;
+      dst.capacity = srcImgSize;
     }
 
     dst.payload.imageValue.flags = dst.payload.imageValue.flags;
     dst.payload.imageValue.height = src.payload.imageValue.height;
     dst.payload.imageValue.width = src.payload.imageValue.width;
     dst.payload.imageValue.channels = src.payload.imageValue.channels;
+
+    if (src.payload.imageValue.data == dst.payload.imageValue.data)
+      return;
+
     memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
            srcImgSize);
   } break;
   case Table: {
+    if (src.payload.tableValue == dst.payload.tableValue)
+      return;
+
     // Slowest case, it's a full copy using arena tho
     destroyVar(dst);
     dst.valueType = Table;
@@ -1665,14 +1713,18 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
   } break;
   case Bytes: {
-    if (dst.valueType != Bytes || dst.capacity.value < src.payload.bytesSize) {
+    if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {
       destroyVar(dst);
       dst.valueType = Bytes;
       dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
-      dst.capacity.value = src.payload.bytesSize;
+      dst.capacity = src.payload.bytesSize;
     }
 
     dst.payload.bytesSize = src.payload.bytesSize;
+
+    if (src.payload.bytesValue == dst.payload.bytesValue)
+      return;
+
     memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
            src.payload.bytesSize);
   } break;

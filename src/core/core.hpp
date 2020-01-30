@@ -19,19 +19,6 @@
 
 #include "blockwrapper.hpp"
 
-#ifdef USE_RPMALLOC
-#include "rpmalloc/rpmalloc.h"
-inline void *rp_init_realloc(void *ptr, size_t size) {
-  rpmalloc_initialize();
-  return rprealloc(ptr, size);
-}
-#define CB_REALLOC rp_init_realloc
-#define CB_FREE rpfree
-#else
-#define CB_REALLOC std::realloc
-#define CB_FREE std::free
-#endif
-
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
 CBValidationResult validateConnections(const CBlocks chain,
@@ -138,11 +125,7 @@ void ALWAYS_INLINE inline arrayDel(T &arr, uint32_t index) {
           sizeof(*arr.elements) * (arr.len - index));
 }
 
-template <typename T> ALWAYS_INLINE inline void arrayFree(T &arr) {
-  if (arr.elements)
-    CB_FREE(arr.elements);
-  arr = {};
-}
+template <typename T> NO_INLINE void arrayFree(T &arr);
 
 template <typename T> class PtrIterator {
 public:
@@ -381,10 +364,6 @@ struct Serialization {
       delete[] output.payload.imageValue.data;
       break;
     }
-    case CBType::Vector: {
-      delete[] output.payload.vectorValue;
-      break;
-    }
     case CBType::Object:
     case CBType::Chain:
     case CBType::Block:
@@ -430,7 +409,7 @@ struct Serialization {
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
-      auto availBytes = recycle ? output.capacity.value : 0;
+      auto availBytes = recycle ? output.capacity : 0;
       read((uint8_t *)&output.payload.bytesSize,
            sizeof(output.payload.bytesSize));
 
@@ -445,14 +424,14 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      output.capacity.value = std::max(availBytes, output.payload.bytesSize);
+      output.capacity = std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
     case CBType::String:
     case CBType::ContextVar: {
-      auto availChars = recycle ? output.capacity.value : 0;
+      auto availChars = recycle ? output.capacity : 0;
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
@@ -466,7 +445,7 @@ struct Serialization {
       } // else recycling
 
       // record actualSize
-      output.capacity.value = std::max(availChars, len);
+      output.capacity = std::max(availChars, len);
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
@@ -542,7 +521,7 @@ struct Serialization {
                     output.payload.imageValue.height *
                     output.payload.imageValue.width;
 
-      size_t currentSize = recycle ? output.capacity.value : 0;
+      size_t currentSize = recycle ? output.capacity : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -553,7 +532,7 @@ struct Serialization {
       }
 
       // record actualSize
-      output.capacity.value = std::max(currentSize, (size_t)size);
+      output.capacity = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;

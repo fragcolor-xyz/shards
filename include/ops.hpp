@@ -4,6 +4,7 @@
 #ifndef CB_OPS_HPP
 #define CB_OPS_HPP
 
+#include <cassert>
 #include <cfloat>
 #include <chainblocks.hpp>
 #include <stb_ds.h>
@@ -86,9 +87,6 @@ inline std::string type2Name(CBType type) {
   case Table:
     name = "Table";
     break;
-  case Vector:
-    name = "Vector";
-    break;
   }
   return name;
 }
@@ -144,29 +142,12 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-inline bool _vectorEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.vectorValue == b.payload.vectorValue)
-    return true;
-
-  if (a.payload.vectorType != b.payload.vectorType)
-    return false;
-
-  if (a.payload.vectorSize != b.payload.vectorSize)
-    return false;
-
-  CBVar va{}, vb{};
-  va.valueType = vb.valueType = a.payload.vectorType;
-  for (uint32_t i = 0; i < a.payload.vectorSize; i++) {
-    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
-    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
-    if (!(va == vb))
-      return false;
-  }
-
-  return true;
-}
-
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
+  // // we had issues on 32bit builds.. the following is not
+  // // related to == but it's a runtime check we need to prevent future bugs
+  // assert(((intptr_t)&a & 15) == 0);
+  // assert(((intptr_t)&b & 15) == 0);
+
   if (a.valueType != b.valueType)
     return false;
 
@@ -290,8 +271,6 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
            (a.payload.bytesValue == b.payload.bytesValue ||
             memcmp(a.payload.bytesValue, b.payload.bytesValue,
                    a.payload.bytesSize) == 0);
-  case Vector:
-    return _vectorEq(a, b);
   }
 
   return false;
@@ -342,30 +321,12 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-inline bool _vectorLess(const CBVar &a, const CBVar &b) {
-  auto alen = a.payload.vectorSize;
-  auto blen = b.payload.vectorSize;
-  auto len = std::min(alen, blen);
-
-  CBVar va{}, vb{};
-  va.valueType = vb.valueType = a.payload.vectorType;
-  for (uint32_t i = 0; i < len; i++) {
-    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
-    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
-    auto c = cmp(va, vb);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
-
-  if (alen < blen)
-    return true;
-  else
-    return false;
-}
-
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
+  // // we had issues on 32bit builds.. the following is not
+  // // related to == but it's a runtime check we need to prevent future bugs
+  // assert(((intptr_t)&a & 15) == 0);
+  // assert(((intptr_t)&b & 15) == 0);
+
   if (a.valueType != b.valueType)
     return false;
 
@@ -455,8 +416,6 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
                       a.payload.imageValue.height) < 0;
   case Seq:
     return _seqLess(a, b);
-  case Vector:
-    return _vectorLess(a, b);
   case Table:
     return _tableLess(a, b);
   case Bytes:
@@ -521,30 +480,12 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-inline bool _vectorLessEq(const CBVar &a, const CBVar &b) {
-  auto alen = a.payload.vectorSize;
-  auto blen = b.payload.vectorSize;
-  auto len = std::min(alen, blen);
-
-  CBVar va{}, vb{};
-  va.valueType = vb.valueType = a.payload.vectorType;
-  for (uint32_t i = 0; i < len; i++) {
-    memcpy(&va.payload, &a.payload.vectorValue[i], sizeof(CBVarPayload));
-    memcpy(&vb.payload, &b.payload.vectorValue[i], sizeof(CBVarPayload));
-    auto c = cmp(va, vb);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
-
-  if (alen <= blen)
-    return true;
-  else
-    return false;
-}
-
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
+  // // we had issues on 32bit builds.. the following is not
+  // // related to == but it's a runtime check we need to prevent future bugs
+  // assert(((intptr_t)&a & 15) == 0);
+  // assert(((intptr_t)&b & 15) == 0);
+
   if (a.valueType != b.valueType)
     return false;
 
@@ -634,8 +575,6 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
                       a.payload.imageValue.height) <= 0;
   case Seq:
     return _seqLessEq(a, b);
-  case Vector:
-    return _vectorLessEq(a, b);
   case Table:
     return _tableLessEq(a, b);
   case Bytes:

@@ -86,15 +86,36 @@ endif()
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
-    add_link_options(-fuse-ld=lld)
+    # add_link_options(-fuse-ld=lld)
   endif()
 elseif(WIN32)
   add_link_options(-static)
 endif()
 
-add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
+add_compile_options(-fno-threadsafe-statics -ffast-math -funroll-loops -Wno-multichar)
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(X86)
+  add_compile_options(-march=core2)
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # 64 bits
+  add_compile_definitions(CPUBITS64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # 32 bits
+  add_compile_definitions(CPUBITS32)
+
+  # # workarounds for 32bit mingw gcc and SIMD usage
+  # if(X86)
+  #   add_compile_options(-mstackrealign -mpreferred-stack-boundary=4)
+  # endif()
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  # custom allocator
+  add_compile_definitions(USE_RPMALLOC)
+
+  # aggressive inlining
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_options(-mllvm -inline-threshold=100000)
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -105,22 +126,11 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     # using Visual Studio C++
   endif()
 endif()
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  # 64 bits
-  add_compile_definitions(AMD64_BUILD)
-  if(X86)
-    add_compile_options(-march=core2)
-  endif()
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  # 32 bits
-  add_compile_definitions(I386_BUILD)
-endif()
 ###
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
   if(NOT IOS)
@@ -159,7 +169,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
@@ -419,7 +428,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
@@ -449,7 +457,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp

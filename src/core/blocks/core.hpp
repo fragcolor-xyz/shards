@@ -1081,11 +1081,11 @@ struct Push : public VariableBase {
         if (index != -1) {
           auto &seq = _target->payload.tableValue[index].value;
           if (seq.valueType == Seq) {
-            for (uint64_t i = seq.capacity.value; i > 0; i--) {
+            for (uint64_t i = seq.capacity; i > 0; i--) {
               destroyVar(seq.payload.seqValue.elements[i - 1]);
             }
             chainblocks::arrayFree(seq.payload.seqValue);
-            seq.capacity.value = 0;
+            seq.capacity = 0;
           }
           stbds_shdel(_target->payload.tableValue, _key.c_str());
         }
@@ -1094,12 +1094,12 @@ struct Push : public VariableBase {
           memset(_target, 0x0, sizeof(CBVar));
         }
       } else if (_target->valueType == Seq) {
-        for (uint64_t i = _target->capacity.value; i > 0; i--) {
+        for (uint64_t i = _target->capacity; i > 0; i--) {
           destroyVar(_target->payload.seqValue.elements[i - 1]);
         }
         chainblocks::arrayFree(_target->payload.seqValue);
         _target->payload.seqValue = {};
-        _target->capacity.value = 0;
+        _target->capacity = 0;
       }
     }
     _target = nullptr;
@@ -1138,8 +1138,7 @@ struct Push : public VariableBase {
     CBVar tmp{};
     cloneVar(tmp, input);
     chainblocks::arrayPush(seq.payload.seqValue, tmp);
-    seq.capacity.value =
-        std::max(seq.capacity.value, (uint64_t)(seq.payload.seqValue.len));
+    seq.capacity = std::max(seq.capacity, (uint64_t)(seq.payload.seqValue.len));
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1161,8 +1160,8 @@ struct Push : public VariableBase {
       CBVar tmp{};
       cloneVar(tmp, input);
       chainblocks::arrayPush(_target->payload.seqValue, tmp);
-      _target->capacity.value = std::max(
-          _target->capacity.value, (uint64_t)(_target->payload.seqValue.len));
+      _target->capacity = std::max(_target->capacity,
+                                   (uint64_t)(_target->payload.seqValue.len));
     }
     return input;
   }

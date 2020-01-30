@@ -34,6 +34,8 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <time.h>
 #endif
+// Needed specially for win32/32bit
+#include <boost/align/aligned_allocator.hpp>
 
 namespace chainblocks {
 CBlock *createBlock(const char *name);
@@ -685,7 +687,11 @@ struct CBNode {
   bool empty() { return flows.empty(); }
 
   // must use node_hash_map, cos flat might move memory around!
-  std::unordered_map<std::string, CBVar> variables;
+  std::unordered_map<std::string, CBVar, std::hash<std::string>,
+                     std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<
+                         std::pair<const std::string, CBVar>, 16>>
+      variables;
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;

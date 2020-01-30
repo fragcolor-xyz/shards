@@ -1,19 +1,24 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019 Giovanni Petrantoni */
 
+#ifndef CB_BLOCK_MACROS
+#define CB_BLOCK_MACROS
+
 #define RUNTIME_BLOCK(_namespace_, _name_)                                     \
   struct _name_##Runtime {                                                     \
     CBlock header;                                                             \
     _name_ core;                                                               \
   };                                                                           \
   __cdecl CBlock *createBlock##_name_() {                                      \
-    CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{64})     \
+                                                    _name_##Runtime());        \
     result->name = static_cast<CBNameProc>(                                    \
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>(                              \
-        [](CBlock *block) { delete (_name_##Runtime *)block; });               \
+    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      ::operator delete ((_name_##Runtime *)block, std::align_val_t{64});      \
+    });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -37,13 +42,15 @@
     _name_ core;                                                               \
   };                                                                           \
   __cdecl CBlock *createBlock##_name_() {                                      \
-    CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{64})     \
+                                                    _name_##Runtime());        \
     result->name =                                                             \
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>(                              \
-        [](CBlock *block) { delete (_name_##Runtime *)block; });               \
+    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      ::operator delete ((_name_##Runtime *)block, std::align_val_t{64});      \
+    });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -68,13 +75,15 @@
   };
 #define RUNTIME_BLOCK_FACTORY(_namespace_, _name_)                             \
   __cdecl CBlock *createBlock##_name_() {                                      \
-    CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{64})     \
+                                                    _name_##Runtime());        \
     result->name = static_cast<CBNameProc>(                                    \
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>(                              \
-        [](CBlock *block) { delete (_name_##Runtime *)block; });               \
+    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      ::operator delete ((_name_##Runtime *)block, std::align_val_t{64});      \
+    });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -99,13 +108,15 @@
   };
 #define RUNTIME_CORE_BLOCK_FACTORY(_name_)                                     \
   __cdecl CBlock *createBlock##_name_() {                                      \
-    CBlock *result = reinterpret_cast<CBlock *>(new _name_##Runtime());        \
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{64})     \
+                                                    _name_##Runtime());        \
     result->name =                                                             \
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
-    result->destroy = static_cast<CBDestroyProc>(                              \
-        [](CBlock *block) { delete (_name_##Runtime *)block; });               \
+    result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      ::operator delete ((_name_##Runtime *)block, std::align_val_t{64});      \
+    });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->outputTypes = static_cast<CBOutputTypesProc>(                      \
@@ -141,7 +152,7 @@
 #define RUNTIME_BLOCK_destroy(_name_)                                          \
   result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {             \
     reinterpret_cast<_name_##Runtime *>(block)->core.destroy();                \
-    delete (_name_##Runtime *)block;                                           \
+    ::operator delete ((_name_##Runtime *)block, std::align_val_t{64});        \
   });
 
 #define RUNTIME_BLOCK_inputTypes(_name_)                                       \
@@ -208,3 +219,5 @@
                              _namespace_::createBlock##_name_)
 #define REGISTER_CORE_BLOCK(_name_)                                            \
   chainblocks::registerBlock(#_name_, createBlock##_name_)
+
+#endif

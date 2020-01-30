@@ -157,19 +157,6 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     }
     os << "}";
     break;
-  case Vector: {
-    os << "[";
-    CBVar vv{};
-    vv.valueType = var.payload.vectorType;
-    for (uint32_t i = 0; i < var.payload.vectorSize; i++) {
-      vv.payload = var.payload.vectorValue[i];
-      if (i == 0)
-        os << vv;
-      else
-        os << ", " << vv;
-    }
-    os << "]";
-  } break;
   }
   return os;
 }

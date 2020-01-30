@@ -8,6 +8,7 @@
 // Cannot afford to use any C++ std as any block maker should be free to use
 // their versions
 
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -40,7 +41,6 @@ enum CBType : uint8_t {
   ContextVar, // A string label to find from CBContext variables
   Image,
   Seq,
-  Vector,
   Table,
 };
 
@@ -208,8 +208,6 @@ typedef double CBFloat2 __attribute__((vector_size(16)));
 typedef float CBFloat3 __attribute__((vector_size(16)));
 typedef float CBFloat4 __attribute__((vector_size(16)));
 
-#define ALIGNED
-
 #ifdef NDEBUG
 #define ALWAYS_INLINE __attribute__((always_inline))
 #define NO_INLINE __attribute__((noinline))
@@ -218,7 +216,6 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 #define NO_INLINE
 #endif
 
-#define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
 #else // TODO
 typedef int64_t CBInt2[2];
 typedef int32_t CBInt3[3];
@@ -230,37 +227,18 @@ typedef double CBFloat2[2];
 typedef float CBFloat3[3];
 typedef float CBFloat4[4];
 
-#define ALIGNED __declspec(align(16))
-
 #define ALWAYS_INLINE
 #define NO_INLINE
 
-#define PACK(__Declaration__)                                                  \
-  __pragma(pack(push, 1)) __Declaration__ __pragma(pack(pop))
 #endif
 
 #ifndef _WIN32
-#ifdef I386_BUILD
+#ifdef CPUBITS32
 #define __cdecl __attribute__((__cdecl__))
 #else
 #define __cdecl
 #endif
 #endif
-
-PACK(struct _uint48_t {
-  PACK(union {
-    PACK(struct {
-      uint32_t _x_u32;
-      uint16_t _y_u16;
-    });
-
-#ifndef NO_BITFIELDS
-    uint64_t value : 48;
-#endif
-  });
-});
-
-typedef struct _uint48_t uint48_t;
 
 struct CBColor {
   uint8_t r;
@@ -405,7 +383,7 @@ struct CBFlow {
 // ### What about exposed/consumedVariables, parameters and input/outputTypes:
 // * Same for them, they are just read only basically
 
-ALIGNED struct CBVarPayload {
+struct alignas(16) CBVarPayload {
   union {
     enum CBChainState chainState;
 
@@ -463,40 +441,26 @@ ALIGNED struct CBVarPayload {
       uint64_t bytesSize;
     };
 
-    struct {
-      struct CBVarPayload *vectorValue;
-      uint32_t vectorSize;
-      enum CBType vectorType;
-    };
-
     CBNodePtr nodeValue;
 
     CBTypeInfoPtr typeInfoValue;
   };
 };
 
-struct CBVar {
+struct alignas(16) CBVar {
   struct CBVarPayload payload;
-
-  union {
-    int64_t _reserved;
-  };
-
+  uint64_t capacity;
   enum CBType valueType;
-
-  // Used by serialization/clone routines to keep track of actual storage
-  // capacity 48 bits should be plenty for such sizes
-  uint48_t capacity;
 };
 
-struct CBNamedVar {
+struct alignas(16) CBNamedVar {
   const char *key;
   struct CBVar value;
 };
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
-struct CBRunChainOutput {
+struct alignas(16) CBRunChainOutput {
   struct CBVar output;
   enum CBRunChainOutputState state;
 };

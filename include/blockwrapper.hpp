@@ -31,7 +31,8 @@ template <class T> struct BlockWrapper {
   constexpr static auto type_name = NAMEOF_TYPE(T);
 
   static __cdecl CBlock *create() {
-    CBlock *result = reinterpret_cast<CBlock *>(new BlockWrapper<T>());
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{64})
+                                                    BlockWrapper<T>());
 
     // name
     if constexpr (has_name<T>::value) {
@@ -66,12 +67,12 @@ template <class T> struct BlockWrapper {
       result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
         auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
         bw->block.destroy();
-        delete bw;
+        ::operator delete (bw, std::align_val_t{64});
       });
     } else {
       result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
         auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
-        delete bw;
+        ::operator delete (bw, std::align_val_t{64});
       });
     }
 
