@@ -4,13 +4,10 @@
 #ifndef CB_CHAINBLOCKS_H
 #define CB_CHAINBLOCKS_H
 
-// Use only basic types and libs, we want full ABI compatibility between blocks
-// Cannot afford to use any C++ std as any block maker should be free to use
-// their versions
-
-#include <stdalign.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <stdalign.h> // alignas
+#include <stdbool.h>  // bool
+#include <stddef.h>   // size_t
+#include <stdint.h>   // ints
 
 // All the available types
 enum CBType : uint8_t {

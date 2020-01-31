@@ -1556,15 +1556,13 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   if (min_cap < 2 * arr.cap)
     min_cap = 2 * arr.cap;
 
+  // honestly realloc would be better here...
   auto newbuf =
-      new (std::align_val_t{64}) uint8_t[sizeof(*arr.elements) * min_cap];
+      new (std::align_val_t{16}) uint8_t[sizeof(*arr.elements) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(*arr.elements) * arr.len);
-    ::operator delete (arr.elements, std::align_val_t{64});
+    ::operator delete (arr.elements, std::align_val_t{16});
   }
-
-  // arr.elements = (decltype(arr.elements))CB_REALLOC(
-  //     arr.elements, sizeof(*arr.elements) * min_cap);
 
   arr.elements = (decltype(arr.elements))newbuf;
   arr.cap = min_cap;
@@ -1572,7 +1570,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
 
 template <typename T> NO_INLINE void arrayFree(T &arr) {
   if (arr.elements)
-    ::operator delete (arr.elements, std::align_val_t{64});
+    ::operator delete (arr.elements, std::align_val_t{16});
   arr = {};
 }
 
