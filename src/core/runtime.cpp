@@ -533,53 +533,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
 void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
 #endif
 
-// Utility
-void dealloc(CBImage &self) {
-  if (self.data) {
-    delete[] self.data;
-    self.data = nullptr;
-  }
-}
-
-// Utility
-void alloc(CBImage &self) {
-  if (self.data)
-    dealloc(self);
-
-  auto binsize = self.width * self.height * self.channels;
-  self.data = new uint8_t[binsize];
-}
-
-void releaseMemory(CBVar &self) {
-  if ((self.valueType == String || self.valueType == ContextVar) &&
-      self.payload.stringValue != nullptr) {
-    delete[] self.payload.stringValue;
-    self.payload.stringValue = nullptr;
-  } else if (self.valueType == Seq && self.payload.seqValue.elements) {
-    for (uint32_t i = 0; i < self.payload.seqValue.len; i++) {
-      releaseMemory(self.payload.seqValue.elements[i]);
-    }
-    chainblocks::arrayFree(self.payload.seqValue);
-  } else if (self.valueType == Table && self.payload.tableValue) {
-    for (auto i = 0; i < stbds_shlen(self.payload.tableValue); i++) {
-      delete[] self.payload.tableValue[i].key;
-      releaseMemory(self.payload.tableValue[i].value);
-    }
-    stbds_shfree(self.payload.tableValue);
-    self.payload.tableValue = nullptr;
-  } else if (self.valueType == Image) {
-    dealloc(self.payload.imageValue);
-  } else if (self.valueType == Bytes) {
-    delete[] self.payload.bytesValue;
-    self.payload.bytesValue = nullptr;
-    self.payload.bytesSize = 0;
-  }
-}
-
-#ifdef __cplusplus
 extern "C" {
-#endif
-
 EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CBCore result{};
 
@@ -672,6 +626,13 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
 
+  result.tableNew = []() {
+    CBTable res;
+    res.interface = &chainblocks::Globals::TableInterface;
+    res.opaque = new chainblocks::CBMap();
+    return res;
+  };
+
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
     return validateConnections(chain, callback, userData, data);
@@ -731,10 +692,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   return result;
 }
-
-#ifdef __cplusplus
 };
-#endif
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
@@ -1268,13 +1226,24 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   }
   case Table: {
     std::unordered_set<CBTypeInfo> types;
-    for (size_t i = 0; stbds_shlenu(value.payload.tableValue) > i; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-      if (!types.count(derived)) {
-        chainblocks::arrayPush(varType.tableTypes, derived);
-        types.insert(derived);
-      }
-    }
+    auto &ta = value.payload.tableValue;
+    struct iterdata {
+      std::unordered_set<CBTypeInfo> *types;
+      CBTypeInfo *varType;
+    } data;
+    ta.interface->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *_data) {
+          auto data = (iterdata *)_data;
+          auto derived = deriveTypeInfo(*value);
+          if (!data->types->count(derived)) {
+            chainblocks::arrayPush(data->varType->tableTypes, derived);
+            data->types->insert(derived);
+          }
+          return true;
+        },
+        &data);
+
     break;
   }
   default:
@@ -1524,19 +1493,6 @@ endOfChain:
   return std::move(context.continuation);
 }
 
-#ifdef USE_RPMALLOC
-#include "rpmalloc/rpmalloc.h"
-inline void *rp_init_realloc(void *ptr, size_t size) {
-  rpmalloc_initialize();
-  return rprealloc(ptr, size);
-}
-#define CB_REALLOC rp_init_realloc
-#define CB_FREE rpfree
-#else
-#define CB_REALLOC std::realloc
-#define CB_FREE std::free
-#endif
-
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   // safety check to make sure this is not a borrowed foreign array!
@@ -1585,11 +1541,10 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
     chainblocks::arrayFree(var.payload.seqValue);
   } break;
   case Table: {
-    auto len = stbds_shlen(var.payload.tableValue);
-    for (auto i = len; i > 0; i--) {
-      destroyVar(var.payload.tableValue[i - 1].value);
-    }
-    stbds_shfree(var.payload.tableValue);
+    assert(var.payload.tableValue.interface == &Globals::TableInterface);
+    assert(var.payload.tableValue.opaque);
+    auto map = (CBMap *)var.payload.tableValue.opaque;
+    delete map;
   } break;
   default:
     break;
@@ -1695,20 +1650,30 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
            srcImgSize);
   } break;
   case Table: {
-    if (src.payload.tableValue == dst.payload.tableValue)
+    if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
       return;
 
-    // Slowest case, it's a full copy using arena tho
-    destroyVar(dst);
-    dst.valueType = Table;
-    dst.payload.tableValue = nullptr;
-    stbds_sh_new_arena(dst.payload.tableValue);
-    auto srcLen = stbds_shlen(src.payload.tableValue);
-    for (auto i = 0; i < srcLen; i++) {
-      CBVar clone{};
-      cloneVar(clone, src.payload.tableValue[i].value);
-      stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
+    CBMap *map;
+    if (dst.valueType == Table) {
+      map = (CBMap *)dst.payload.tableValue.opaque;
+      map->clear();
+    } else {
+      destroyVar(dst);
+      dst.valueType = Table;
+      dst.payload.tableValue.interface = &Globals::TableInterface;
+      map = new CBMap();
+      dst.payload.tableValue.opaque = map;
     }
+
+    auto &ta = src.payload.tableValue;
+    ta.interface->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *data) {
+          auto map = (CBMap *)data;
+          (*map)[key] = *value;
+          return true;
+        },
+        map);
   } break;
   case Bytes: {
     if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {

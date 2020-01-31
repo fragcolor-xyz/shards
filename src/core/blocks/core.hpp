@@ -450,11 +450,11 @@ struct IsValidNumber {
 
 struct VariableBase {
   CBVar *_target = nullptr;
+  CBVar *_cell = nullptr;
   std::string _name;
   std::string _key;
   ExposedInfo _exposedInfo{};
   bool _isTable = false;
-  bool _shortCut = false; // performance trick to have a small LR per call
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", "The name of the variable.",
@@ -471,8 +471,6 @@ struct VariableBase {
   void setParam(int index, CBVar value) {
     if (index == 0) {
       _name = value.payload.stringValue;
-      _shortCut = false;
-      _target = nullptr;
     } else if (index == 1) {
       _key = value.payload.stringValue;
       if (_key.size() > 0)
@@ -480,6 +478,8 @@ struct VariableBase {
       else
         _isTable = false;
     }
+    _target = nullptr;
+    _cell = nullptr;
   }
 
   CBVar getParam(int index) {
@@ -498,23 +498,10 @@ struct SetBase : public VariableBase {
 
   void cleanup() {
     if (_target) {
-      if (_isTable && _target->valueType == Table) {
-        // Remove from table
-        auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-        if (idx != -1)
-          destroyVar(_target->payload.tableValue[idx].value);
-        stbds_shdel(_target->payload.tableValue, _key.c_str());
-        // Finally free the table if has no values
-        if (stbds_shlen(_target->payload.tableValue) == 0) {
-          stbds_shfree(_target->payload.tableValue);
-          memset(_target, 0x0, sizeof(CBVar));
-        }
-      } else {
-        destroyVar(*_target);
-      }
+      destroyVar(*_target);
     }
     _target = nullptr;
-    _shortCut = false;
+    _cell = nullptr;
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -522,36 +509,39 @@ struct SetBase : public VariableBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_shortCut)) {
-      cloneVar(*_target, input);
+    if (likely(_cell != nullptr)) {
+      cloneVar(*_cell, input);
       return input;
     }
 
     if (!_target) {
       _target = findVariable(context, _name.c_str());
     }
+
     if (_isTable) {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue = nullptr;
+        _target->payload.tableValue.interface = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
       }
 
-      auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (idx != -1) {
-        // Clone on top of it so we recycle memory
-        cloneVar(_target->payload.tableValue[idx].value, input);
-      } else {
-        CBVar tmp{};
-        cloneVar(tmp, input);
-        stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
-      }
+      CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+          _target->payload.tableValue, _key.c_str());
+
+      // Clone will try to recyle memory and such
+      cloneVar(*vptr, input);
+
+      // use fast cell from now
+      _cell = vptr;
     } else {
-      // Fastest path, flag it as shortcut
-      _shortCut = true;
       // Clone will try to recyle memory and such
       cloneVar(*_target, input);
+
+      // use fast cell from now
+      _cell = _target;
     }
+
     return input;
   }
 };
@@ -623,12 +613,12 @@ struct Ref : public SetBase {
 
   void cleanup() {
     _target = nullptr;
-    _shortCut = false;
+    _cell = nullptr;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (_shortCut) {
-      *_target = input;
+    if (likely(_cell != nullptr)) {
+      *_cell = input;
       return input;
     }
 
@@ -640,21 +630,26 @@ struct Ref : public SetBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue = nullptr;
+        _target->payload.tableValue.interface = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
       }
 
-      auto idx = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (idx != -1) {
-        _target->payload.tableValue[idx].value = input;
-      } else {
-        stbds_shput(_target->payload.tableValue, _key.c_str(), input);
-      }
+      CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+          _target->payload.tableValue, _key.c_str());
+
+      // Notice, NO Cloning!
+      *vptr = input;
+
+      // use fast cell from now
+      _cell = vptr;
     } else {
-      // Fastest path, flag it as shortcut
-      _shortCut = true;
-      // NO CLONING! it's a ref!
+      // Notice, NO Cloning!
       *_target = input;
+
+      // use fast cell from now
+      _cell = _target;
     }
+
     return input;
   }
 };
@@ -754,7 +749,7 @@ struct Get : public VariableBase {
 
   void cleanup() {
     _target = nullptr;
-    _shortCut = false;
+    _cell = nullptr;
   }
 
   void destroy() { freeDerivedInfo(_defaultType); }
@@ -852,29 +847,36 @@ struct Get : public VariableBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_shortCut))
-      return *_target;
+    if (likely(_cell != nullptr))
+      return *_cell;
 
     if (!_target) {
       _target = findVariable(context, _name.c_str());
     }
+
     if (_isTable) {
       if (_target->valueType == Table) {
-        ptrdiff_t index =
-            stbds_shgeti(_target->payload.tableValue, _key.c_str());
-        if (index == -1) {
+        if (_target->payload.tableValue.interface->tableContains(
+                _target->payload.tableValue, _key.c_str())) {
+          // Has it
+          CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+              _target->payload.tableValue, _key.c_str());
+
+          if (unlikely(_defaultValue.valueType != None &&
+                       !defaultTypeCheck(*vptr))) {
+            return _defaultValue;
+          } else {
+            // Pin fast cell
+            _cell = vptr;
+            return *vptr;
+          }
+        } else {
+          // No record
           if (_defaultType.basicType != None) {
             return _defaultValue;
           } else {
             throw CBException("Get - Key not found in table.");
           }
-        }
-        auto &value = _target->payload.tableValue[index].value;
-        if (unlikely(_defaultValue.valueType != None &&
-                     !defaultTypeCheck(value))) {
-          return _defaultValue;
-        } else {
-          return value;
         }
       } else {
         if (_defaultType.basicType != None) {
@@ -889,8 +891,8 @@ struct Get : public VariableBase {
                    !defaultTypeCheck(value))) {
         return _defaultValue;
       } else {
-        // Fastest path, flag it as shortcut
-        _shortCut = true;
+        // Pin fast cell
+        _cell = _target;
         return value;
       }
     }
@@ -1076,33 +1078,17 @@ struct Push : public VariableBase {
   void cleanup() {
     if (_firstPusher && _target) {
       if (_isTable && _target->valueType == Table) {
-        ptrdiff_t index =
-            stbds_shgeti(_target->payload.tableValue, _key.c_str());
-        if (index != -1) {
-          auto &seq = _target->payload.tableValue[index].value;
-          if (seq.valueType == Seq) {
-            for (uint64_t i = seq.capacity; i > 0; i--) {
-              destroyVar(seq.payload.seqValue.elements[i - 1]);
-            }
-            chainblocks::arrayFree(seq.payload.seqValue);
-            seq.capacity = 0;
-          }
-          stbds_shdel(_target->payload.tableValue, _key.c_str());
-        }
-        if (_tableOwner && stbds_shlen(_target->payload.tableValue) == 0) {
-          stbds_shfree(_target->payload.tableValue);
-          memset(_target, 0x0, sizeof(CBVar));
-        }
+        destroyVar(*_target);
       } else if (_target->valueType == Seq) {
         for (uint64_t i = _target->capacity; i > 0; i--) {
           destroyVar(_target->payload.seqValue.elements[i - 1]);
         }
         chainblocks::arrayFree(_target->payload.seqValue);
-        _target->payload.seqValue = {};
-        _target->capacity = 0;
+        _target = {};
       }
     }
     _target = nullptr;
+    _cell = nullptr;
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -1113,18 +1099,15 @@ struct Push : public VariableBase {
     if (_target->valueType != Table) {
       // Not initialized yet
       _target->valueType = Table;
-      _target->payload.tableValue = nullptr;
+      _target->payload.tableValue.interface = &Globals::TableInterface;
+      _target->payload.tableValue.opaque = new CBMap();
     }
 
-    ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-    if (index == -1) {
-      // First empty insertion
-      CBVar tmp{};
-      stbds_shput(_target->payload.tableValue, _key.c_str(), tmp);
-      index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
+    if (unlikely(_cell == nullptr)) {
+      _cell = _target->payload.tableValue.interface->tableAt(
+          _target->payload.tableValue, _key.c_str());
     }
-
-    auto &seq = _target->payload.tableValue[index].value;
+    auto &seq = *_cell;
 
     if (seq.valueType != Seq) {
       seq.valueType = Seq;
@@ -1145,6 +1128,7 @@ struct Push : public VariableBase {
     if (unlikely(!_target)) {
       _target = findVariable(context, _name.c_str());
     }
+
     if (unlikely(_isTable)) {
       activateTable(context, input);
     } else {
@@ -1170,7 +1154,10 @@ struct Push : public VariableBase {
 struct SeqUser : VariableBase {
   bool _blittable = false;
 
-  void cleanup() { _target = nullptr; }
+  void cleanup() {
+    _target = nullptr;
+    _cell = nullptr;
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -1200,23 +1187,24 @@ struct Count : SeqUser {
     }
 
     CBVar &var = *_target;
+
     if (unlikely(_isTable)) {
       if (_target->valueType != Table) {
         throw CBException("Variable is not a table, failed to Count.");
       }
 
-      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (index == -1) {
-        return Var(0);
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.interface->tableAt(
+            _target->payload.tableValue, _key.c_str());
       }
-
-      var = _target->payload.tableValue[index].value;
+      var = *_cell;
     }
 
     if (likely(var.valueType == Seq)) {
       return Var(int64_t(var.payload.seqValue.len));
     } else if (var.valueType == Table) {
-      return Var(int64_t(stbds_shlen(var.payload.tableValue)));
+      return Var(int64_t(
+          var.payload.tableValue.interface->tableSize(var.payload.tableValue)));
     } else if (var.valueType == Bytes) {
       return Var(var.payload.bytesSize);
     } else if (var.valueType == String) {
@@ -1236,32 +1224,23 @@ struct Clear : SeqUser {
     }
 
     CBVar &var = *_target;
+
     if (_isTable) {
       if (_target->valueType != Table) {
         throw CBException("Variable is not a table, failed to Clear.");
       }
 
-      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (index == -1) {
-        return input;
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.interface->tableAt(
+            _target->payload.tableValue, _key.c_str());
       }
-
-      var = _target->payload.tableValue[index].value;
+      var = *_cell;
     }
 
     if (likely(var.valueType == Seq)) {
       chainblocks::arrayResize(var.payload.seqValue, 0);
     } else if (var.valueType == Table) {
-      for (auto i = stbds_shlen(var.payload.tableValue); i > 0; i--) {
-        auto &sv = var.payload.tableValue[i - 1].value;
-        // Clean allocation garbage in case it's not blittable!
-        if (sv.valueType >= EndOfBlittableTypes) {
-          destroyVar(sv);
-        }
-      }
-      // not efficient but for now the only choice is to free it
-      stbds_shfree(var.payload.tableValue);
-      var.payload.tableValue = nullptr;
+      var.payload.tableValue.interface->tableClear(var.payload.tableValue);
     }
 
     return input;
@@ -1282,12 +1261,11 @@ struct Drop : SeqUser {
         throw CBException("Variable is not a table, failed to Clear.");
       }
 
-      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (index == -1) {
-        return input;
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.interface->tableAt(
+            _target->payload.tableValue, _key.c_str());
       }
-
-      var = _target->payload.tableValue[index].value;
+      var = *_cell;
     }
 
     if (likely(var.valueType == Seq)) {
@@ -1295,7 +1273,7 @@ struct Drop : SeqUser {
       if (len > 0)
         chainblocks::arrayResize(var.payload.seqValue, len - 1);
     } else {
-      throw CBException("Variable is not a sequence, failed to Pop.");
+      throw CBException("Variable is not a sequence, failed to Drop.");
     }
 
     return input;
@@ -1354,15 +1332,15 @@ struct Pop : SeqUser {
     }
     if (_isTable) {
       if (_target->valueType != Table) {
-        throw CBException("Variable (in table) is not a table, failed to Pop.");
+        throw CBException("Variable is not a table, failed to Pop.");
       }
 
-      ptrdiff_t index = stbds_shgeti(_target->payload.tableValue, _key.c_str());
-      if (index == -1) {
-        throw CBException("Record not found in table, failed to Pop.");
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.interface->tableAt(
+            _target->payload.tableValue, _key.c_str());
       }
+      auto &seq = *_cell;
 
-      auto &seq = _target->payload.tableValue[index].value;
       if (seq.valueType != Seq) {
         throw CBException(
             "Variable (in table) is not a sequence, failed to Pop.");

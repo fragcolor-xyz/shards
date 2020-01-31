@@ -19,6 +19,9 @@
 
 #include "blockwrapper.hpp"
 
+// Needed specially for win32/32bit
+#include <boost/align/aligned_allocator.hpp>
+
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
 CBValidationResult validateConnections(const CBlocks chain,
@@ -47,6 +50,28 @@ void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 struct RuntimeObserver;
 
+ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
+ALWAYS_INLINE inline void destroyVar(CBVar &src);
+
+struct OwnedVar : public CBVar {
+  OwnedVar() : CBVar() {}
+  OwnedVar(const CBVar &source) { cloneVar(*this, source); }
+  OwnedVar &operator=(const CBVar &other) {
+    cloneVar(*this, other);
+    return *this;
+  }
+  ~OwnedVar() { destroyVar(*this); }
+};
+
+using CBMap = std::unordered_map<
+    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
+                                        16>>;
+using CBMapIt = std::unordered_map<
+    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
+                                        16>>::iterator;
+
 struct Globals {
   static inline std::unordered_map<std::string, CBBlockConstructor>
       BlocksRegister;
@@ -70,6 +95,54 @@ struct Globals {
   static inline Var ReturnPrevious = Var::Return();
   static inline Var RebaseChain = Var::Rebase();
   static inline Var Empty = Var();
+
+  static inline CBTableInterface TableInterface{
+      .tableForEach =
+          [](CBTable table, CBTableForEachCallback cb, void *data) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            for (auto &entry : *map) {
+              if (!cb(entry.first.c_str(), &entry.second, data))
+                break;
+            }
+          },
+      .tableSize =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            return map->size();
+          },
+      .tableContains =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            return map->count(key) > 0;
+          },
+      .tableAt =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            CBVar &vref = (*map)[key];
+            return &vref;
+          },
+      .tableRemove =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            map->erase(key);
+          },
+      .tableClear =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            map->clear();
+          },
+      .tableFree =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            delete map;
+          }};
 };
 
 #define True ::chainblocks::Globals::True
@@ -351,13 +424,12 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      for (auto i = 0; i < stbds_shlen(output.payload.tableValue); i++) {
-        auto &v = output.payload.tableValue[i];
-        varFree(v.value);
-        delete[] v.key;
+      if (output.payload.tableValue.interface &&
+          output.payload.tableValue.opaque) {
+        output.payload.tableValue.interface->tableFree(
+            output.payload.tableValue);
       }
-      stbds_shfree(output.payload.tableValue);
-      output.payload.tableValue = nullptr;
+      output.payload.tableValue = {};
       break;
     }
     case CBType::Image: {
@@ -470,40 +542,31 @@ struct Serialization {
       }
       break;
     }
-    // case CBType::Vector: {
-    //   uint32_t len;
-    //   read((uint8_t *)&len, sizeof(uint32_t));
-
-    //   uint32_t currentUsed = recycle ? output.payload.vectorSize : 0;
-    //   if (currentUsed > len) {
-    //     // in this case we need to destroy the excess items
-    //     // before resizing
-    //     for (uint32_t i = len; i < currentUsed; i++) {
-    //       varFree(output.payload.seqValue.elements[i]);
-    //     }
-    //   }
-
-    //   chainblocks::arrayResize(output.payload.seqValue, len);
-    //   for (uint32_t i = 0; i < len; i++) {
-    //     deserialize(read, output.payload.vectorValue[i]);
-    //   }
-    //   break;
-    // }
     case CBType::Table: {
-      if (recycle) // tables are slow for now...
-        varFree(output);
+      CBMap *map;
+      if (recycle) {
+        if (output.payload.tableValue.interface &&
+            output.payload.tableValue.opaque) {
+          map = (CBMap *)output.payload.tableValue.opaque;
+          map->clear();
+        } else {
+          map = new CBMap();
+          output.payload.tableValue.interface = &Globals::TableInterface;
+          output.payload.tableValue.opaque = map;
+        }
+      }
 
-      uint32_t len;
-      read((uint8_t *)&len, sizeof(uint32_t));
-      for (uint32_t i = 0; i < len; i++) {
-        CBNamedVar v;
+      uint64_t len;
+      std::string keyBuf;
+      read((uint8_t *)&len, sizeof(uint64_t));
+      for (uint64_t i = 0; i < len; i++) {
         uint32_t klen;
         read((uint8_t *)&klen, sizeof(uint32_t));
-        v.key = new char[klen + 1];
-        read((uint8_t *)v.key, len);
-        const_cast<char *>(v.key)[klen] = 0;
-        deserialize(read, v.value);
-        stbds_shputs(output.payload.tableValue, v);
+        keyBuf.resize(klen + 1);
+        read((uint8_t *)keyBuf.c_str(), len);
+        const_cast<char *>(keyBuf.c_str())[klen] = 0;
+        auto dst = (*map)[keyBuf.c_str()];
+        deserialize(read, dst);
       }
       break;
     }
@@ -596,17 +659,35 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      uint32_t len = stbds_shlen(input.payload.tableValue);
-      write((const uint8_t *)&len, sizeof(uint32_t));
-      total += sizeof(uint32_t);
-      for (uint32_t i = 0; i < len; i++) {
-        auto &v = input.payload.tableValue[i];
-        uint32_t klen = strlen(v.key);
-        write((const uint8_t *)&klen, sizeof(uint32_t));
-        total += sizeof(uint32_t);
-        write((const uint8_t *)v.key, len);
-        total += len;
-        total += serialize(v.value, write);
+      if (input.payload.tableValue.interface &&
+          input.payload.tableValue.opaque) {
+        auto &t = input.payload.tableValue;
+        uint64_t len = (uint64_t)t.interface->tableSize(t);
+        write((const uint8_t *)&len, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+        struct iterdata {
+          BinaryWriter *write;
+          size_t *total;
+        } data;
+        data.write = &write;
+        data.total = &total;
+        t.interface->tableForEach(
+            t,
+            [](const char *key, CBVar *value, void *_data) {
+              auto data = (iterdata *)_data;
+              uint32_t klen = strlen(key);
+              (*data->write)((const uint8_t *)&klen, sizeof(uint32_t));
+              *data->total += sizeof(uint32_t);
+              (*data->write)((const uint8_t *)key, klen);
+              *data->total += klen;
+              *data->total += serialize(*value, *data->write);
+              return true;
+            },
+            &data);
+      } else {
+        uint64_t none = 0;
+        write((const uint8_t *)&none, sizeof(uint64_t));
+        total += sizeof(uint64_t);
       }
       break;
     }

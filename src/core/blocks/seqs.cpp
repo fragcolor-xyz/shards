@@ -160,9 +160,15 @@ struct Flatten {
       }
       break;
     case Table: {
-      for (auto i = 0; i < stbds_shlen(input.payload.tableValue); i++) {
-        add(input.payload.tableValue[i].value);
-      }
+      auto &ta = input.payload.tableValue;
+      ta.interface->tableForEach(
+          ta,
+          [](const char *key, CBVar *value, void *data) {
+            auto self = (Flatten *)data;
+            self->add(*value);
+            return true;
+          },
+          this);
       break;
     }
     }

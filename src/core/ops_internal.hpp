@@ -147,14 +147,26 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Table:
     os << "{";
-    for (ptrdiff_t i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
-      if (i == 0)
-        os << var.payload.tableValue[i].key << ": "
-           << var.payload.tableValue[i].value;
-      else
-        os << ", " << var.payload.tableValue[i].key << ": "
-           << var.payload.tableValue[i].value;
-    }
+    auto &ta = var.payload.tableValue;
+    struct iterdata {
+      bool first;
+      decltype(&os) os;
+    } data;
+    data.first = true;
+    data.os = &os;
+    ta.interface->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *_data) {
+          auto data = (iterdata *)_data;
+          if (data->first) {
+            *data->os << key << ": " << *value;
+            data->first = false;
+          } else {
+            *data->os << ", " << key << ": " << *value;
+          }
+          return true;
+        },
+        &data);
     os << "}";
     break;
   }

@@ -28,12 +28,10 @@ void _releaseMemory(CBVar &var) {
     }
     chainblocks::arrayFree(var.payload.seqValue);
     break;
-  case Table:
-    for (auto i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
-      _releaseMemory(var.payload.tableValue[i].value);
-    }
-    stbds_shfree(var.payload.tableValue);
-    break;
+  case Table: {
+    auto map = (chainblocks::CBMap *)var.payload.tableValue.opaque;
+    delete map;
+  } break;
   default:
     break;
   }
@@ -179,10 +177,16 @@ void to_json(json &j, const CBVar &var) {
   }
   case Table: {
     std::vector<json> items;
-    for (int i = 0; i < stbds_shlen(var.payload.tableValue); i++) {
-      auto &v = var.payload.tableValue[i];
-      items.push_back(json{{"key", v.key}, {"value", v.value}});
-    }
+    auto &ta = var.payload.tableValue;
+    ta.interface->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *data) {
+          auto items = (std::vector<json> *)data;
+          json entry{{"key", key}, {"value", *value}};
+          items->push_back(entry);
+          return true;
+        },
+        &items);
     j = json{{"type", valType}, {"values", items}};
     break;
   }
@@ -356,14 +360,15 @@ void from_json(const json &j, CBVar &var) {
     break;
   }
   case Table: {
-    var.valueType = Seq;
+    auto map = new chainblocks::CBMap();
+    var.valueType = Table;
+    var.payload.tableValue.interface = &chainblocks::Globals::TableInterface;
+    var.payload.tableValue.opaque = map;
     auto items = j.at("values").get<std::vector<json>>();
-    var.payload.tableValue = nullptr;
-    stbds_sh_new_arena(var.payload.tableValue);
     for (const auto &item : items) {
       auto key = item.at("key").get<std::string>();
       auto value = item.at("value").get<CBVar>();
-      stbds_shput(var.payload.tableValue, key.c_str(), value);
+      (*map)[key] = value;
     }
     break;
   }

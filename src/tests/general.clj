@@ -152,22 +152,13 @@
   (Assert.IsNot "Value1" true)
   (Log)
 
-  ;; (Get "tab1")
-  ;; (Set "tab1-set-copy")
-  ;; (Get "tab1-set-copy" "v1")
-  ;; (Assert.Is "Value1" true)
-
   (Count "tab1")
   (Assert.Is 2 true)
 
   (Clear "tab1")
   (Count "tab1")
   (Assert.Is 0 true)
-
-  ;; "chain:initChain[1]"
-  ;; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
-  ;; (Log)
-
+  
   "My input"
   (Dispatch inner1)
   (Assert.Is "My input" true)
@@ -321,9 +312,11 @@
     10 (Set "tableInList" "x")
     20 (Set "tableInList" "y")
     30 (Set "tableInList" "z")
-    (Get "tableInList") (Push "newListInRepeat")
+    (Get "tableInList")
+    (Push "newListInRepeat" :Clear false)
   ) 5)
   (Get "newListInRepeat") (Log)
+  (Count "newListInRepeat") (Assert.Is 5 true)
 
   2 (Push "unsortedList")
   4 (Push "unsortedList")

@@ -147,8 +147,39 @@ typedef void *CBArray;
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
-struct CBNamedVar;
-typedef struct CBNamedVar *CBTable; // a stb string map
+struct CBTable;
+typedef void *CBTableIterator;
+
+// return false to abort iteration
+typedef bool(__cdecl *CBTableForEachCallback)(const char *key,
+                                              struct CBVar *value,
+                                              void *userData);
+// table interface
+typedef void(__cdecl *CBTableForEach)(struct CBTable table,
+                                      CBTableForEachCallback cb,
+                                      void *userData);
+typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
+typedef bool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
+typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
+                                           const char *key);
+typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
+typedef void(__cdecl *CBTableClear)(struct CBTable table);
+typedef void(__cdecl *CBTableFree)(struct CBTable table);
+
+struct CBTableInterface {
+  CBTableForEach tableForEach;
+  CBTableSize tableSize;
+  CBTableContains tableContains;
+  CBTableAt tableAt;
+  CBTableRemove tableRemove;
+  CBTableClear tableClear;
+  CBTableFree tableFree;
+};
+
+struct CBTable {
+  void *opaque;
+  struct CBTableInterface *interface;
+};
 
 struct CBChain;
 typedef struct CBChain *CBChainPtr;
@@ -460,11 +491,6 @@ struct alignas(16) CBVar {
   enum CBType valueType;
 };
 
-struct alignas(16) CBNamedVar {
-  const char *key;
-  struct CBVar value;
-};
-
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
 struct alignas(16) CBRunChainOutput {
@@ -673,6 +699,8 @@ CB_ARRAY_TYPE(CBStrings, CBString);
   _array_##FastDelete _short_##FastDelete;                                     \
   _array_##SlowDelete _short_##SlowDelete
 
+typedef struct CBTable(__cdecl *CBTableNew)();
+
 typedef const char *(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(const char *);
 
@@ -724,6 +752,9 @@ struct CBCore {
 
   // Utility to deal with CBStrings
   CB_ARRAY_PROCS(CBStrings, strings);
+
+  // CBTable interface
+  CBTableNew tableNew;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

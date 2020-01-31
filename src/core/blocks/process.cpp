@@ -29,9 +29,7 @@ struct Exec {
   // Spawns a child runs it, waits results and outputs them!
   std::string outBuf;
   std::string errBuf;
-  CBTable outputTable;
-
-  void destroy() { stbds_shfree(outputTable); }
+  CBMap map;
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
@@ -66,11 +64,16 @@ struct Exec {
     ss << epipe.rdbuf();
     errBuf.assign(ss.str());
 
-    stbds_shput(outputTable, "error_code", Var(cmd.exit_code()));
-    stbds_shput(outputTable, "std_out", Var(outBuf));
-    stbds_shput(outputTable, "std_err", Var(errBuf));
+    map["error_code"] = Var(cmd.exit_code());
+    map["std_out"] = Var(outBuf);
+    map["std_err"] = Var(errBuf);
 
-    return Var(outputTable);
+    CBVar res{};
+    res.valueType = Table;
+    res.payload.tableValue.interface = &Globals::TableInterface;
+    res.payload.tableValue.opaque = &map;
+
+    return res;
   }
 };
 

@@ -34,8 +34,6 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <time.h>
 #endif
-// Needed specially for win32/32bit
-#include <boost/align/aligned_allocator.hpp>
 
 namespace chainblocks {
 CBlock *createBlock(const char *name);

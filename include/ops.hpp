@@ -7,7 +7,6 @@
 #include <cassert>
 #include <cfloat>
 #include <chainblocks.hpp>
-#include <stb_ds.h>
 #include <string>
 
 inline std::string type2Name(CBType type) {
@@ -109,6 +108,7 @@ inline int cmp(const CBVar &a, const CBVar &b) {
     return 1;
 }
 
+// recursive, likely not inlining
 inline bool _seqEq(const CBVar &a, const CBVar &b) {
   if (a.payload.seqValue.elements == b.payload.seqValue.elements)
     return true;
@@ -117,37 +117,59 @@ inline bool _seqEq(const CBVar &a, const CBVar &b) {
     return false;
 
   for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    if (!(a.payload.seqValue.elements[i] == b.payload.seqValue.elements[i]))
+    if (a.payload.seqValue.elements[i] != b.payload.seqValue.elements[i])
       return false;
   }
 
   return true;
 }
 
+// recursive, likely not inlining
 inline bool _tableEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.tableValue == b.payload.tableValue)
+  auto &ta = a.payload.tableValue;
+  auto &tb = a.payload.tableValue;
+  if (ta.opaque == tb.opaque)
     return true;
 
-  if (stbds_shlen(a.payload.tableValue) != stbds_shlen(b.payload.tableValue))
+  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
     return false;
 
-  for (ptrdiff_t i = 0; i < stbds_shlen(a.payload.tableValue); i++) {
-    if (strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key) != 0)
-      return false;
+  struct CmpState {
+    CBTable tb;
+    bool result;
+    bool valid;
+  } state;
+  state.tb = tb;
+  state.result = false;
+  state.valid = false;
+  ta.interface->tableForEach(
+      ta,
+      [](const char *key, CBVar *value, void *data) {
+        auto state = (CmpState *)data;
+        if (!state->tb.interface->tableContains(state->tb, key)) {
+          state->result = false;
+          state->valid = true;
+          return false;
+        }
 
-    if (!(a.payload.tableValue[i].value == b.payload.tableValue[i].value))
-      return false;
-  }
+        auto &aval = *value;
+        auto &bval = *state->tb.interface->tableAt(state->tb, key);
+        if (aval != bval) {
+          state->result = false;
+          state->valid = true;
+          return false;
+        }
+        return true;
+      },
+      &state);
+
+  if (state.valid)
+    return state.result;
 
   return true;
 }
 
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
-  // // we had issues on 32bit builds.. the following is not
-  // // related to == but it's a runtime check we need to prevent future bugs
-  // assert(((intptr_t)&a & 15) == 0);
-  // assert(((intptr_t)&b & 15) == 0);
-
   if (a.valueType != b.valueType)
     return false;
 
@@ -276,6 +298,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   return false;
 }
 
+// recursive, likely not inlining
 inline bool _seqLess(const CBVar &a, const CBVar &b) {
   auto alen = a.payload.seqValue.len;
   auto blen = b.payload.seqValue.len;
@@ -296,37 +319,65 @@ inline bool _seqLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
+// recursive, likely not inlining
 inline bool _tableLess(const CBVar &a, const CBVar &b) {
-  auto alen = stbds_shlen(a.payload.tableValue);
-  auto blen = stbds_shlen(b.payload.tableValue);
-  auto len = std::min(alen, blen);
+  auto &ta = a.payload.tableValue;
+  auto &tb = a.payload.tableValue;
+  if (ta.opaque == tb.opaque)
+    return false;
 
-  for (ptrdiff_t i = 0; i < len; i++) {
-    auto sc = strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key);
-    if (sc < 0)
-      return true;
-    else if (sc > 0)
-      return false;
+  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
+    return false;
 
-    auto c = cmp(a.payload.tableValue[i].value, b.payload.tableValue[i].value);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
+  struct CmpState {
+    CBTable ta;
+    size_t len;
+    bool result;
+    bool valid;
+  } state;
+  state.ta = ta;
+  state.len = 0;
+  state.result = false;
+  state.valid = false;
+  tb.interface->tableForEach(
+      tb,
+      [](const char *key, CBVar *value, void *data) {
+        auto state = (CmpState *)data;
+        state->len++;
 
-  if (alen < blen)
+        // if a key in tb is not in ta, ta is less
+        if (!state->ta.interface->tableContains(state->ta, key)) {
+          state->result = true;
+          state->valid = true;
+          return false;
+        }
+
+        auto &bval = *value;
+        auto &aval = *state->ta.interface->tableAt(state->ta, key);
+        auto c = cmp(aval, bval);
+        if (c < 0) {
+          state->result = true;
+          state->valid = true;
+          return false;
+        } else if (c > 0) {
+          state->result = false;
+          state->valid = true;
+          return false;
+        }
+        return true;
+      },
+      &state);
+
+  if (state.valid)
+    return state.result;
+
+  if (ta.interface->tableSize(ta) < state.len)
     return true;
   else
     return false;
 }
 
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
-  // // we had issues on 32bit builds.. the following is not
-  // // related to == but it's a runtime check we need to prevent future bugs
-  // assert(((intptr_t)&a & 15) == 0);
-  // assert(((intptr_t)&b & 15) == 0);
-
   if (a.valueType != b.valueType)
     return false;
 
@@ -456,36 +507,63 @@ inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
 }
 
 inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
-  auto alen = stbds_shlen(a.payload.tableValue);
-  auto blen = stbds_shlen(b.payload.tableValue);
-  auto len = std::min(alen, blen);
+  auto &ta = a.payload.tableValue;
+  auto &tb = a.payload.tableValue;
+  if (ta.opaque == tb.opaque)
+    return false;
 
-  for (ptrdiff_t i = 0; i < len; i++) {
-    auto sc = strcmp(a.payload.tableValue[i].key, b.payload.tableValue[i].key);
-    if (sc < 0)
-      return true;
-    else if (sc > 0)
-      return false;
+  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
+    return false;
 
-    auto c = cmp(a.payload.tableValue[i].value, b.payload.tableValue[i].value);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
+  struct CmpState {
+    CBTable ta;
+    size_t len;
+    bool result;
+    bool valid;
+  } state;
+  state.ta = ta;
+  state.len = 0;
+  state.result = false;
+  state.valid = false;
+  tb.interface->tableForEach(
+      tb,
+      [](const char *key, CBVar *value, void *data) {
+        auto state = (CmpState *)data;
+        state->len++;
 
-  if (alen <= blen)
+        // if a key in tb is not in ta, ta is less
+        if (!state->ta.interface->tableContains(state->ta, key)) {
+          state->result = true;
+          state->valid = true;
+          return false;
+        }
+
+        auto &bval = *value;
+        auto &aval = *state->ta.interface->tableAt(state->ta, key);
+        auto c = cmp(aval, bval);
+        if (c < 0) {
+          state->result = true;
+          state->valid = true;
+          return false;
+        } else if (c > 0) {
+          state->result = false;
+          state->valid = true;
+          return false;
+        }
+        return true;
+      },
+      &state);
+
+  if (state.valid)
+    return state.result;
+
+  if (ta.interface->tableSize(ta) <= state.len)
     return true;
   else
     return false;
 }
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
-  // // we had issues on 32bit builds.. the following is not
-  // // related to == but it's a runtime check we need to prevent future bugs
-  // assert(((intptr_t)&a & 15) == 0);
-  // assert(((intptr_t)&b & 15) == 0);
-
   if (a.valueType != b.valueType)
     return false;
 
