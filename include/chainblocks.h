@@ -4,7 +4,6 @@
 #ifndef CB_CHAINBLOCKS_H
 #define CB_CHAINBLOCKS_H
 
-#include <stdalign.h> // alignas
 #include <stdbool.h>  // bool
 #include <stddef.h>   // size_t
 #include <stdint.h>   // ints
@@ -408,7 +407,7 @@ struct CBFlow {
 // ### What about exposed/consumedVariables, parameters and input/outputTypes:
 // * Same for them, they are just read only basically
 
-struct alignas(16) CBVarPayload {
+struct CBVarPayload {
   union {
     enum CBChainState chainState;
 
@@ -437,7 +436,7 @@ struct alignas(16) CBVarPayload {
     // and only when used as variable (consumable)
     CBSeq seqValue;
 
-    CBTable tableValue;
+    struct CBTable tableValue;
 
     struct {
       CBString stringValue;
@@ -469,20 +468,20 @@ struct alignas(16) CBVarPayload {
       uint64_t bytesSize;
     };
   };
-};
+} __attribute__((aligned (16)));
 
-struct alignas(16) CBVar {
+struct CBVar {
   struct CBVarPayload payload;
   uint64_t capacity;
   enum CBType valueType;
-};
+} __attribute__ ((aligned (16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
-struct alignas(16) CBRunChainOutput {
+struct CBRunChainOutput {
   struct CBVar output;
   enum CBRunChainOutputState state;
-};
+} __attribute__ ((aligned (16)));
 
 struct CBInstanceData {
   // Used to optimize activations, replacing function pointers during
