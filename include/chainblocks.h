@@ -162,7 +162,6 @@ struct CBChainProvider;
 struct CBContext;
 
 struct CBNode;
-typedef struct CBNode *CBNodePtr;
 
 struct CBFlow;
 
@@ -171,7 +170,6 @@ typedef struct CBlock *CBlockPtr;
 CB_ARRAY_DECL(CBlocks, CBlockPtr);
 
 struct CBTypeInfo;
-typedef struct CBTypeInfo *CBTypeInfoPtr;
 CB_ARRAY_DECL(CBTypesInfo, struct CBTypeInfo);
 
 struct CBParameterInfo;
@@ -339,13 +337,6 @@ struct CBTypeInfo {
     } table;
 
     CBTypesInfo contextVarTypes;
-
-    struct {
-      CBTypeInfoPtr vectorType;
-      // 0 for unknown, specify to enforce a fixed size vector!
-      // e.g. a Matrix4x4 could be a vector of Float4 x 4
-      uint64_t vectorSize;
-    };
   };
 };
 
@@ -477,10 +468,6 @@ struct alignas(16) CBVarPayload {
       uint8_t *bytesValue;
       uint64_t bytesSize;
     };
-
-    CBNodePtr nodeValue;
-
-    CBTypeInfoPtr typeInfoValue;
   };
 };
 

@@ -422,10 +422,7 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
-        output.payload.tableValue.api->tableFree(output.payload.tableValue);
-      }
-      output.payload.tableValue = {};
+      output.payload.tableValue.api->tableFree(output.payload.tableValue);
       break;
     }
     case CBType::Image: {

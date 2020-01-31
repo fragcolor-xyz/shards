@@ -86,7 +86,7 @@ endif()
 ### general
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
-    # add_link_options(-fuse-ld=lld)
+    add_link_options(-fuse-ld=lld)
   endif()
 elseif(WIN32)
   add_link_options(-static)
@@ -104,11 +104,6 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   # 32 bits
   add_compile_definitions(CPUBITS32)
-
-  # # workarounds for 32bit mingw gcc and SIMD usage
-  # if(X86)
-  #   add_compile_options(-mstackrealign -mpreferred-stack-boundary=4)
-  # endif()
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

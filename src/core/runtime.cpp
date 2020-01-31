@@ -72,6 +72,7 @@ extern void registerNetworkBlocks();
 extern void registerStructBlocks();
 extern void registerTimeBlocks();
 extern void registerOSBlocks();
+extern void registerProcessBlocks();
 
 namespace Math {
 namespace LinAlg {
@@ -111,6 +112,7 @@ void registerCoreBlocks() {
   registerTimeBlocks();
   registerOSBlocks();
   Regex::registerBlocks();
+  registerProcessBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
@@ -1512,15 +1514,21 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   if (min_cap < 2 * arr.cap)
     min_cap = 2 * arr.cap;
 
-  // honestly realloc would be better here...
+#ifdef USE_RPMALLOC
+  rpmalloc_initialize();
+  arr.elements = (decltype(arr.elements))rpaligned_realloc(
+      arr.elements, 16, sizeof(*arr.elements) * min_cap,
+      sizeof(*arr.elements) * arr.len, 0);
+#else
   auto newbuf =
       new (std::align_val_t{16}) uint8_t[sizeof(*arr.elements) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(*arr.elements) * arr.len);
     ::operator delete (arr.elements, std::align_val_t{16});
   }
-
   arr.elements = (decltype(arr.elements))newbuf;
+#endif
+
   arr.cap = min_cap;
 }
 
