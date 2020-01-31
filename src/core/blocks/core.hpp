@@ -508,6 +508,34 @@ struct SetBase : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  void sanityChecks(const CBInstanceData &data, bool warnIfExists) {
+    for (uint32_t i = 0; i < data.consumables.len; i++) {
+      auto &consumable = data.consumables.elements[i];
+      if (strcmp(consumable.name, _name.c_str()) == 0) {
+        if (_isTable && !consumable.isTableEntry) {
+          throw CBException("Set/Ref/Update, variable was not a table: " +
+                            _name);
+        } else if (!_isTable && consumable.isTableEntry) {
+          throw CBException("Set/Ref/Update, variable was a table: " + _name);
+        } else if (!_isTable && data.inputType != consumable.exposedType) {
+          throw CBException("Set/Ref/Update, variable already set as another "
+                            "type: " +
+                            _name);
+        }
+        if (!_isTable && warnIfExists) {
+          LOG(INFO)
+              << "Set/Ref - Warning: setting an already exposed variable, "
+                 "use Update to avoid this warning, variable: "
+              << _name;
+        }
+        if (!consumable.isMutable) {
+          throw CBException(
+              "Set/Ref/Update, attempted to write a immutable variable.");
+        }
+      }
+    }
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
@@ -520,6 +548,9 @@ struct SetBase : public VariableBase {
 
     if (_isTable) {
       if (_target->valueType != Table) {
+        if (_target->valueType != None)
+          destroyVar(*_target);
+
         // Not initialized yet
         _target->valueType = Table;
         _target->payload.tableValue.api = &Globals::TableInterface;
@@ -548,6 +579,8 @@ struct SetBase : public VariableBase {
 
 struct Set : public SetBase {
   CBTypeInfo compose(const CBInstanceData &data) {
+    sanityChecks(data, true);
+
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -560,23 +593,10 @@ struct Set : public SetBase {
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
-      // Set... we warn if the variable is overwritten
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        if (data.consumables.elements[i].name == _name) {
-          LOG(INFO) << "Set - Warning: setting an already exposed variable, "
-                       "use Update to avoid this warning, variable: "
-                    << _name;
-        }
-      }
-      if (data.inputType.basicType == Table &&
-          data.inputType.tableKeys.elements) {
-        assert(false);
-      } else {
-        // just a variable!
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
-                                  CBTypeInfo(data.inputType), true));
-      }
+      // just a variable!
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
+                                CBTypeInfo(data.inputType), true));
     }
     return data.inputType;
   }
@@ -588,6 +608,8 @@ struct Set : public SetBase {
 
 struct Ref : public SetBase {
   CBTypeInfo compose(const CBInstanceData &data) {
+    sanityChecks(data, true);
+
     // bake exposed types
     if (_isTable) {
       // we are a table!
@@ -656,6 +678,8 @@ struct Ref : public SetBase {
 
 struct Update : public SetBase {
   CBTypeInfo compose(const CBInstanceData &data) {
+    sanityChecks(data, false);
+
     // make sure we update to the same type
     if (_isTable) {
       for (uint32_t i = 0; data.consumables.len > i; i++) {

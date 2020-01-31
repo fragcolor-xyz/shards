@@ -371,18 +371,16 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   };
 
-  var = {};
+  memset(&var, 0x0, sizeof(CBVar));
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
-    dst.payload = src.payload;
-    dst.valueType = src.valueType;
+    memcpy(&dst, &src, sizeof(CBVar));
   } else if (src.valueType < EndOfBlittableTypes) {
     destroyVar(dst);
-    dst.payload = src.payload;
-    dst.valueType = src.valueType;
+    memcpy(&dst, &src, sizeof(CBVar));
   } else {
     _cloneVarSlow(dst, src);
   }

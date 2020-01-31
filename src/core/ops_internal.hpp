@@ -150,7 +150,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     auto &ta = var.payload.tableValue;
     struct iterdata {
       bool first;
-      decltype(&os) os;
+      el::base::type::ostream_t *os;
     } data;
     data.first = true;
     data.os = &os;

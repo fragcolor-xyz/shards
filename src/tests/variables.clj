@@ -8,22 +8,23 @@
   (Assert.Is 20 true)
   (Get "x")
   (Assert.Is 10 true)
-  (Set "x" "key1") ; we overwrite "x" and turn it into a table
+  
+  (Set "y" "key1")
   (Assert.Is 10 true)
-  (Get "x")
+  (Get "y")
   (Assert.IsNot 10 true)
   (Log)
-  (Get "x" "key1")
+  (Get "y" "key1")
   (Assert.Is 10 true)
   (Log)
   77
-  (Set "x" "key2")
+  (Set "y" "key2")
   (Assert.Is 77 true)
   20
   (Assert.Is 20 true)
-  (Get "x" "key1")
+  (Get "y" "key1")
   (Assert.Is 10 true)
-  (Get "x" "key2")
+  (Get "y" "key2")
   (Assert.Is 77 true)
 
   9
@@ -40,35 +41,35 @@
   (Get "b")
   (Assert.Is 9 true)
   (ToString)
-  (Set "a")
+  (Set "as")
   (Assert.Is "9" true)
   (Assert.IsNot 9 true)
 
   1
-  (Push "a")
+  (Push "e")
   2
-  (Push "a")
+  (Push "e")
   3
-  (Push "a")
+  (Push "e")
   4
-  (Push "a")
+  (Push "e")
   5
-  (Push "a")
-  (Get "a")
+  (Push "e")
+  (Get "e")
   (Assert.Is [1 2 3 4 5] true)
   (Log)
 
   1
-  (Push "a")
+  (Push "e")
   2
-  (Push "a")
+  (Push "e")
   3
-  (Push "a")
+  (Push "e")
   4
-  (Push "a")
+  (Push "e")
   5
-  (Push "a")
-  (Get "a")
+  (Push "e")
+  (Get "e")
   (Assert.Is [1 2 3 4 5 1 2 3 4 5] true)
   (Log)
 
