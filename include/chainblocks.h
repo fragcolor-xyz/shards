@@ -256,6 +256,13 @@ struct CBImage {
   uint8_t *data;
 };
 
+struct CBAudio {
+  float sampleRate;
+  uint16_t nsamples;
+  uint16_t channels;
+  float *samples;
+};
+
 struct CBTypeInfo {
   enum CBType basicType;
 
@@ -422,6 +429,9 @@ struct alignas(16) CBVarPayload {
     struct CBColor colorValue;
 
     struct CBImage imageValue;
+
+    // TODO
+    struct CBAudio audioValue;
 
     CBChainPtr chainValue;
 
