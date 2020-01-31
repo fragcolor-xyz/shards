@@ -3,7 +3,7 @@
 # fail on errors
 set -e
 
-pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang wget
+pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
 
 # bimg
 cd deps/bimg/
@@ -28,7 +28,7 @@ cd ../
 
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..
 ninja cbl
 ./cbl ../src/tests/general.clj
 ./cbl ../src/tests/variables.clj

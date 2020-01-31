@@ -152,22 +152,13 @@
   (Assert.IsNot "Value1" true)
   (Log)
 
-  ;; (Get "tab1")
-  ;; (Set "tab1-set-copy")
-  ;; (Get "tab1-set-copy" "v1")
-  ;; (Assert.Is "Value1" true)
-
   (Count "tab1")
   (Assert.Is 2 true)
 
   (Clear "tab1")
   (Count "tab1")
   (Assert.Is 0 true)
-
-  ;; "chain:initChain[1]"
-  ;; (ReplaceText "[^abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\-\\.\\_]+" "_")
-  ;; (Log)
-
+  
   "My input"
   (Dispatch inner1)
   (Assert.Is "My input" true)
@@ -321,9 +312,11 @@
     10 (Set "tableInList" "x")
     20 (Set "tableInList" "y")
     30 (Set "tableInList" "z")
-    (Get "tableInList") (Push "newListInRepeat")
+    (Get "tableInList")
+    (Push "newListInRepeat" :Clear false)
   ) 5)
   (Get "newListInRepeat") (Log)
+  (Count "newListInRepeat") (Assert.Is 5 true)
 
   2 (Push "unsortedList")
   4 (Push "unsortedList")
@@ -638,6 +631,46 @@
   (Pop)
   (Assert.Is 8 true)
 
+  (Const [111 112 101 114 97 116 111 114])
+  (Set "seq-a")
+  (Const [111 112 101 114 97 116 105 111 110 115])
+  (Set "seq-b")
+  (Get "seq-a")
+  (IsMore (# "seq-b"))
+  (Assert.Is true true)
+
+  (Const [111 112 101 114 97])
+  (Update "seq-a")
+  (Const [111 112 101 114 97 116 105])
+  (Update "seq-b")
+  (Get "seq-a")
+  (IsLess (# "seq-b"))
+  (Assert.Is true true)
+
+  (Const [111 112 101 114 97 99])
+  (Update "seq-a")
+  (Const [111 112 101 114 97 99])
+  (Update "seq-b")
+  (Get "seq-a")
+  (IsMoreEqual (# "seq-b"))
+  (Assert.Is true true)
+
+  (Int4 111 112 101 200)
+  (Set "int4-a")
+  (Int4 111 112 99 300)
+  (Set "int4-b")
+  (Get "int4-a")
+  (IsMore (# "int4-b"))
+  (Assert.Is true true)
+
+  (Int4 111 112 101 300)
+  (Update "int4-a")
+  (Int4 111 112 101 100)
+  (Update "int4-b")
+  (Get "int4-a")
+  (IsMore (# "int4-b"))
+  (Assert.Is true true)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)
@@ -680,3 +713,5 @@
 ))
 
 (schedule Root fileReader)
+(if (tick Root) nil (throw "Root tick failed"))
+

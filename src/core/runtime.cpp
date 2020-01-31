@@ -9,8 +9,11 @@
 #include <csignal>
 #include <cstdarg>
 #include <string.h>
+#include <unordered_set>
 
 #ifdef USE_RPMALLOC
+#include <rpmalloc/rpmalloc.h>
+
 void *operator new(std::size_t s) {
   rpmalloc_initialize();
   return rpmalloc(s);
@@ -27,6 +30,10 @@ void *operator new[](std::size_t s, const std::nothrow_t &tag) noexcept {
   rpmalloc_initialize();
   return rpmalloc(s);
 }
+void *operator new(std::size_t size, std::align_val_t align) {
+  rpmalloc_initialize();
+  return rpaligned_alloc(static_cast<std::size_t>(align), size);
+}
 
 void operator delete(void *ptr) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr) noexcept { rpfree(ptr); }
@@ -38,6 +45,14 @@ void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
 }
 void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
 void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
+
+void operator delete(void *ptr, std::size_t size,
+                     std::align_val_t align) noexcept {
+  rpfree(ptr);
+}
+void operator delete(void *ptr, std::align_val_t align) noexcept {
+  rpfree(ptr);
+}
 #endif
 
 INITIALIZE_EASYLOGGINGPP
@@ -47,7 +62,6 @@ extern void registerAssertBlocks();
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
-extern void registerProcessBlocks();
 extern void registerSeqsBlocks();
 extern void registerCastingBlocks();
 extern void registerBlocksCoreBlocks();
@@ -58,6 +72,7 @@ extern void registerNetworkBlocks();
 extern void registerStructBlocks();
 extern void registerTimeBlocks();
 extern void registerOSBlocks();
+extern void registerProcessBlocks();
 
 namespace Math {
 namespace LinAlg {
@@ -78,7 +93,6 @@ void registerCoreBlocks() {
   rpmalloc_initialize();
 #endif
 
-  static_assert(sizeof(uint48_t) == 48 / 8);
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
 
@@ -87,7 +101,6 @@ void registerCoreBlocks() {
   registerChainsBlocks();
   registerLoggingBlocks();
   registerFlowBlocks();
-  registerProcessBlocks();
   registerSeqsBlocks();
   registerCastingBlocks();
   registerSerializationBlocks();
@@ -99,6 +112,7 @@ void registerCoreBlocks() {
   registerTimeBlocks();
   registerOSBlocks();
   Regex::registerBlocks();
+  registerProcessBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
@@ -521,53 +535,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
 void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
 #endif
 
-// Utility
-void dealloc(CBImage &self) {
-  if (self.data) {
-    delete[] self.data;
-    self.data = nullptr;
-  }
-}
-
-// Utility
-void alloc(CBImage &self) {
-  if (self.data)
-    dealloc(self);
-
-  auto binsize = self.width * self.height * self.channels;
-  self.data = new uint8_t[binsize];
-}
-
-void releaseMemory(CBVar &self) {
-  if ((self.valueType == String || self.valueType == ContextVar) &&
-      self.payload.stringValue != nullptr) {
-    delete[] self.payload.stringValue;
-    self.payload.stringValue = nullptr;
-  } else if (self.valueType == Seq && self.payload.seqValue.elements) {
-    for (uint32_t i = 0; i < self.payload.seqValue.len; i++) {
-      releaseMemory(self.payload.seqValue.elements[i]);
-    }
-    chainblocks::arrayFree(self.payload.seqValue);
-  } else if (self.valueType == Table && self.payload.tableValue) {
-    for (auto i = 0; i < stbds_shlen(self.payload.tableValue); i++) {
-      delete[] self.payload.tableValue[i].key;
-      releaseMemory(self.payload.tableValue[i].value);
-    }
-    stbds_shfree(self.payload.tableValue);
-    self.payload.tableValue = nullptr;
-  } else if (self.valueType == Image) {
-    dealloc(self.payload.imageValue);
-  } else if (self.valueType == Bytes) {
-    delete[] self.payload.bytesValue;
-    self.payload.bytesValue = nullptr;
-    self.payload.bytesSize = 0;
-  }
-}
-
-#ifdef __cplusplus
 extern "C" {
-#endif
-
 EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CBCore result{};
 
@@ -656,9 +624,16 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBSeq, CBVar, seq);
   CB_ARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
   CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
-  CB_ARRAY_IMPL(CBlocks, CBlockRef, blocks);
+  CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
+
+  result.tableNew = []() {
+    CBTable res;
+    res.api = &chainblocks::Globals::TableInterface;
+    res.opaque = new chainblocks::CBMap();
+    return res;
+  };
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
@@ -719,10 +694,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   return result;
 }
-
-#ifdef __cplusplus
 };
-#endif
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
@@ -810,13 +782,16 @@ template <> struct hash<CBTypeInfo> {
     using std::size_t;
     using std::string;
     auto res = hash<int>()(typeInfo.basicType);
-    if (typeInfo.basicType == Table && typeInfo.tableTypes.elements &&
-        typeInfo.tableKeys.elements) {
-      for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
-        res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+    if (typeInfo.basicType == Table) {
+      if (typeInfo.tableKeys.elements) {
+        for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
+          res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+        }
       }
-      for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
-        res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+      if (typeInfo.tableTypes.elements) {
+        for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
+          res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+        }
       }
     } else if (typeInfo.basicType == Seq) {
       for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
@@ -848,10 +823,10 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  phmap::flat_hash_map<std::string, phmap::flat_hash_set<CBExposedTypeInfo>>
+  std::unordered_map<std::string, std::unordered_multiset<CBExposedTypeInfo>>
       exposed;
-  phmap::flat_hash_set<std::string> variables;
-  phmap::flat_hash_set<std::string> references;
+  std::unordered_set<std::string> variables;
+  std::unordered_set<std::string> references;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -999,8 +974,7 @@ void validateConnection(ValidationContext &ctx) {
   // Finally do checks on what we consume
   auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
 
-  phmap::flat_hash_map<std::string, std::vector<CBExposedTypeInfo>>
-      consumedVars;
+  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> consumedVars;
   for (uint32_t i = 0; consumedVar.len > i; i++) {
     auto &consumed_param = consumedVar.elements[i];
     std::string name(consumed_param.name);
@@ -1242,10 +1216,10 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Seq: {
-    phmap::flat_hash_set<CBTypeInfo> types;
+    std::unordered_set<CBTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
       auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-      if (!types.contains(derived)) {
+      if (!types.count(derived)) {
         chainblocks::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
       }
@@ -1253,14 +1227,25 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
     break;
   }
   case Table: {
-    phmap::flat_hash_set<CBTypeInfo> types;
-    for (size_t i = 0; stbds_shlenu(value.payload.tableValue) > i; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-      if (!types.contains(derived)) {
-        chainblocks::arrayPush(varType.tableTypes, derived);
-        types.insert(derived);
-      }
-    }
+    std::unordered_set<CBTypeInfo> types;
+    auto &ta = value.payload.tableValue;
+    struct iterdata {
+      std::unordered_set<CBTypeInfo> *types;
+      CBTypeInfo *varType;
+    } data;
+    ta.api->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *_data) {
+          auto data = (iterdata *)_data;
+          auto derived = deriveTypeInfo(*value);
+          if (!data->types->count(derived)) {
+            chainblocks::arrayPush(data->varType->tableTypes, derived);
+            data->types->insert(derived);
+          }
+          return true;
+        },
+        &data);
+
     break;
   }
   default:
@@ -1508,6 +1493,215 @@ endOfChain:
   // errors and the next eventual stop() should avoid resuming
   chain->returned = true;
   return std::move(context.continuation);
+}
+
+template <typename T>
+NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
+  // safety check to make sure this is not a borrowed foreign array!
+  assert((arr.cap == 0 && arr.elements == nullptr) ||
+         (arr.cap > 0 && arr.elements != nullptr));
+
+  size_t min_len = arr.len + addlen;
+
+  // compute the minimum capacity needed
+  if (min_len > min_cap)
+    min_cap = min_len;
+
+  if (min_cap <= arr.cap)
+    return;
+
+  // increase needed capacity to guarantee O(1) amortized
+  if (min_cap < 2 * arr.cap)
+    min_cap = 2 * arr.cap;
+
+#ifdef USE_RPMALLOC
+  rpmalloc_initialize();
+  arr.elements = (decltype(arr.elements))rpaligned_realloc(
+      arr.elements, 16, sizeof(*arr.elements) * min_cap,
+      sizeof(*arr.elements) * arr.len, 0);
+#else
+  auto newbuf =
+      new (std::align_val_t{16}) uint8_t[sizeof(*arr.elements) * min_cap];
+  if (arr.elements) {
+    memcpy(newbuf, arr.elements, sizeof(*arr.elements) * arr.len);
+    ::operator delete (arr.elements, std::align_val_t{16});
+  }
+  arr.elements = (decltype(arr.elements))newbuf;
+#endif
+
+  arr.cap = min_cap;
+}
+
+template <typename T> NO_INLINE void arrayFree(T &arr) {
+  if (arr.elements)
+    ::operator delete (arr.elements, std::align_val_t{16});
+  arr = {};
+}
+
+NO_INLINE void _destroyVarSlow(CBVar &var) {
+  switch (var.valueType) {
+  case Seq: {
+    assert(var.payload.seqValue.cap >= var.capacity);
+    assert(var.payload.seqValue.len <= var.capacity);
+    for (size_t i = var.capacity; i > 0; i--) {
+      destroyVar(var.payload.seqValue.elements[i - 1]);
+    }
+    chainblocks::arrayFree(var.payload.seqValue);
+  } break;
+  case Table: {
+    assert(var.payload.tableValue.api == &Globals::TableInterface);
+    assert(var.payload.tableValue.opaque);
+    auto map = (CBMap *)var.payload.tableValue.opaque;
+    delete map;
+  } break;
+  default:
+    break;
+  };
+}
+
+NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
+  switch (src.valueType) {
+  case Seq: {
+    size_t srcLen = src.payload.seqValue.len;
+#if 0
+    destroyVar(dst);
+    dst.valueType = Seq;
+    dst.payload.seqValue = {};
+    for (size_t i = 0; i < srcLen; i++) {
+      auto &subsrc = src.payload.seqValue.elements[i];
+      CBVar tmp{};
+      cloneVar(tmp, subsrc);
+      chainblocks::arrayPush(dst.payload.seqValue, tmp);
+    }
+#else
+    // try our best to re-use memory
+    if (dst.valueType != Seq) {
+      destroyVar(dst);
+      dst.valueType = Seq;
+      for (size_t i = 0; i < srcLen; i++) {
+        auto &subsrc = src.payload.seqValue.elements[i];
+        CBVar tmp{};
+        cloneVar(tmp, subsrc);
+        chainblocks::arrayPush(dst.payload.seqValue, tmp);
+      }
+    } else {
+      if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
+        return;
+
+      size_t dstLen = dst.payload.seqValue.len;
+      assert(dst.capacity >= dstLen);
+      if (srcLen <= dst.capacity) {
+        // clone on top of current values
+        chainblocks::arrayResize(dst.payload.seqValue, srcLen);
+        for (size_t i = 0; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
+        }
+      } else {
+        // re-use avail ones
+        for (size_t i = 0; i < dstLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          cloneVar(dst.payload.seqValue.elements[i], subsrc);
+        }
+        // append new values
+        for (size_t i = dstLen; i < srcLen; i++) {
+          auto &subsrc = src.payload.seqValue.elements[i];
+          CBVar tmp{};
+          cloneVar(tmp, subsrc);
+          chainblocks::arrayPush(dst.payload.seqValue, subsrc);
+        }
+      }
+    }
+#endif
+    // take note of 'Var' capacity
+    dst.capacity = std::max(dst.capacity,
+                            decltype(dst.capacity)(dst.payload.seqValue.len));
+  } break;
+  case String:
+  case ContextVar: {
+    auto srcSize = strlen(src.payload.stringValue) + 1;
+    if ((dst.valueType != String && dst.valueType != ContextVar) ||
+        dst.capacity < srcSize) {
+      destroyVar(dst);
+      dst.payload.stringValue = new char[srcSize];
+      dst.capacity = srcSize;
+    } else {
+      if (src.payload.stringValue == dst.payload.stringValue)
+        return;
+    }
+
+    dst.valueType = src.valueType;
+    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
+           srcSize - 1);
+    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
+  } break;
+  case Image: {
+    size_t srcImgSize = src.payload.imageValue.height *
+                        src.payload.imageValue.width *
+                        src.payload.imageValue.channels;
+    if (dst.valueType != Image || srcImgSize > dst.capacity) {
+      destroyVar(dst);
+      dst.valueType = Image;
+      dst.payload.imageValue.data = new uint8_t[srcImgSize];
+      dst.capacity = srcImgSize;
+    }
+
+    dst.payload.imageValue.flags = dst.payload.imageValue.flags;
+    dst.payload.imageValue.height = src.payload.imageValue.height;
+    dst.payload.imageValue.width = src.payload.imageValue.width;
+    dst.payload.imageValue.channels = src.payload.imageValue.channels;
+
+    if (src.payload.imageValue.data == dst.payload.imageValue.data)
+      return;
+
+    memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
+           srcImgSize);
+  } break;
+  case Table: {
+    if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
+      return;
+
+    CBMap *map;
+    if (dst.valueType == Table) {
+      map = (CBMap *)dst.payload.tableValue.opaque;
+      map->clear();
+    } else {
+      destroyVar(dst);
+      dst.valueType = Table;
+      dst.payload.tableValue.api = &Globals::TableInterface;
+      map = new CBMap();
+      dst.payload.tableValue.opaque = map;
+    }
+
+    auto &ta = src.payload.tableValue;
+    ta.api->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *data) {
+          auto map = (CBMap *)data;
+          (*map)[key] = *value;
+          return true;
+        },
+        map);
+  } break;
+  case Bytes: {
+    if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {
+      destroyVar(dst);
+      dst.valueType = Bytes;
+      dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
+      dst.capacity = src.payload.bytesSize;
+    }
+
+    dst.payload.bytesSize = src.payload.bytesSize;
+
+    if (src.payload.bytesValue == dst.payload.bytesValue)
+      return;
+
+    memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
+           src.payload.bytesSize);
+  } break;
+  default:
+    break;
+  };
 }
 }; // namespace chainblocks
 

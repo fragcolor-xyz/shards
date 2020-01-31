@@ -4,7 +4,7 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
-#include "ops.hpp"
+#include "ops_internal.hpp"
 #include <chainblocks.hpp>
 
 // Included 3rdparty
@@ -14,24 +14,13 @@
 #include <algorithm>
 #include <cassert>
 #include <list>
-#include <parallel_hashmap/phmap.h>
 #include <set>
 #include <type_traits>
 
 #include "blockwrapper.hpp"
 
-#ifdef USE_RPMALLOC
-#include "rpmalloc/rpmalloc.h"
-inline void *rp_init_realloc(void *ptr, size_t size) {
-  rpmalloc_initialize();
-  return rprealloc(ptr, size);
-}
-#define CB_REALLOC rp_init_realloc
-#define CB_FREE rpfree
-#else
-#define CB_REALLOC std::realloc
-#define CB_FREE std::free
-#endif
+// Needed specially for win32/32bit
+#include <boost/align/aligned_allocator.hpp>
 
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
@@ -61,61 +50,128 @@ void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 struct RuntimeObserver;
 
+ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
+ALWAYS_INLINE inline void destroyVar(CBVar &src);
+
+struct OwnedVar : public CBVar {
+  OwnedVar() : CBVar() {}
+  OwnedVar(const CBVar &source) { cloneVar(*this, source); }
+  OwnedVar &operator=(const CBVar &other) {
+    cloneVar(*this, other);
+    return *this;
+  }
+  ~OwnedVar() { destroyVar(*this); }
+};
+
+using CBMap = std::unordered_map<
+    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
+                                        16>>;
+using CBMapIt = std::unordered_map<
+    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
+                                        16>>::iterator;
+
 struct Globals {
-  static inline phmap::flat_hash_map<std::string, CBBlockConstructor>
+  static inline std::unordered_map<std::string, CBBlockConstructor>
       BlocksRegister;
-  static inline phmap::flat_hash_map<int64_t, CBObjectInfo> ObjectTypesRegister;
-  static inline phmap::flat_hash_map<int64_t, CBEnumInfo> EnumTypesRegister;
+  static inline std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+  static inline std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 
   // map = ordered! we need that for those
   static inline std::map<std::string, CBCallback> RunLoopHooks;
   static inline std::map<std::string, CBCallback> ExitHooks;
 
-  static inline phmap::flat_hash_map<std::string, CBChain *> GlobalChains;
+  static inline std::unordered_map<std::string, CBChain *> GlobalChains;
 
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
   static inline std::string RootPath;
+
+  static inline Var True = Var(true);
+  static inline Var False = Var(false);
+  static inline Var StopChain = Var::Stop();
+  static inline Var RestartChain = Var::Restart();
+  static inline Var ReturnPrevious = Var::Return();
+  static inline Var RebaseChain = Var::Rebase();
+  static inline Var Empty = Var();
+
+  static inline CBTableInterface TableInterface{
+      .tableForEach =
+          [](CBTable table, CBTableForEachCallback cb, void *data) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            for (auto &entry : *map) {
+              if (!cb(entry.first.c_str(), &entry.second, data))
+                break;
+            }
+          },
+      .tableSize =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            return map->size();
+          },
+      .tableContains =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            return map->count(key) > 0;
+          },
+      .tableAt =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            CBVar &vref = (*map)[key];
+            return &vref;
+          },
+      .tableRemove =
+          [](CBTable table, const char *key) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            map->erase(key);
+          },
+      .tableClear =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            map->clear();
+          },
+      .tableFree =
+          [](CBTable table) {
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            delete map;
+          }};
 };
 
+#define True ::chainblocks::Globals::True
+#define False ::chainblocks::Globals::False
+#define StopChain ::chainblocks::Globals::StopChain
+#define RestartChain ::chainblocks::Globals::RestartChain
+#define ReturnPrevious ::chainblocks::Globals::ReturnPrevious
+#define RebaseChain ::chainblocks::Globals::RebaseChain
+#define Empty ::chainblocks::Globals::Empty
+
 template <typename T>
-void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
-  // safety check to make sure this is not a borrowed foreign array!
-  assert((arr.cap == 0 && arr.elements == nullptr) ||
-         (arr.cap > 0 && arr.elements != nullptr));
+NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
 
-  size_t min_len = arr.len + addlen;
-
-  // compute the minimum capacity needed
-  if (min_len > min_cap)
-    min_cap = min_len;
-
-  if (min_cap <= arr.cap)
-    return;
-
-  // increase needed capacity to guarantee O(1) amortized
-  if (min_cap < 2 * arr.cap)
-    min_cap = 2 * arr.cap;
-
-  arr.elements = (decltype(arr.elements))CB_REALLOC(
-      arr.elements, sizeof(*arr.elements) * min_cap);
-  arr.cap = min_cap;
-}
-
-template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
+template <typename T, typename V>
+ALWAYS_INLINE inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   arr.elements[arr.len++] = val;
 }
 
-template <typename T> inline void arrayResize(T &arr, uint32_t size) {
+template <typename T>
+ALWAYS_INLINE inline void arrayResize(T &arr, uint32_t size) {
   if (arr.len < size)
     arrayGrow(arr, size - arr.len);
   arr.len = size;
 }
 
 template <typename T, typename V>
-inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+ALWAYS_INLINE inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   if ((arr.len + 1) > arr.cap)
     arrayGrow(arr, 1);
   memmove(&arr.elements[index + 1], &arr.elements[index],
@@ -124,27 +180,25 @@ inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   arr.elements[index] = val;
 }
 
-template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
+template <typename T>
+ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
   arr.elements[index] = arr.elements[arr.len - 1];
   arr.len--;
 }
 
-template <typename T, typename V> inline V arrayPop(T &arr) {
+template <typename T, typename V> ALWAYS_INLINE inline V arrayPop(T &arr) {
   arr.len--;
   return arr.elements[arr.len];
 }
 
-template <typename T> void inline arrayDel(T &arr, uint32_t index) {
+template <typename T>
+void ALWAYS_INLINE inline arrayDel(T &arr, uint32_t index) {
   arr.len--;
   memmove(&arr.elements[index], &arr.elements[index + 1],
           sizeof(*arr.elements) * (arr.len - index));
 }
 
-template <typename T> inline void arrayFree(T &arr) {
-  if (arr.elements)
-    CB_FREE(arr.elements);
-  arr = {};
-}
+template <typename T> NO_INLINE void arrayFree(T &arr);
 
 template <typename T> class PtrIterator {
 public:
@@ -294,152 +348,8 @@ using IterableSeq = IterableArray<CBSeq, CBVar>;
 using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
 
-ALWAYS_INLINE inline void destroyVar(CBVar &var);
-ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
-
-static void _destroyVarSlow(CBVar &var) {
-  switch (var.valueType) {
-  case Seq: {
-    assert(var.payload.seqValue.cap >= var.capacity.value);
-    assert(var.payload.seqValue.len <= var.capacity.value);
-    for (size_t i = var.capacity.value; i > 0; i--) {
-      destroyVar(var.payload.seqValue.elements[i - 1]);
-    }
-    chainblocks::arrayFree(var.payload.seqValue);
-  } break;
-  case Table: {
-    auto len = stbds_shlen(var.payload.tableValue);
-    for (auto i = len; i > 0; i--) {
-      destroyVar(var.payload.tableValue[i - 1].value);
-    }
-    stbds_shfree(var.payload.tableValue);
-  } break;
-  default:
-    break;
-  };
-}
-
-static void _cloneVarSlow(CBVar &dst, const CBVar &src) {
-  if (src == dst)
-    return;
-
-  switch (src.valueType) {
-  case Seq: {
-    size_t srcLen = src.payload.seqValue.len;
-#if 0
-    destroyVar(dst);
-    dst.valueType = Seq;
-    dst.payload.seqValue = {};
-    for (size_t i = 0; i < srcLen; i++) {
-      auto &subsrc = src.payload.seqValue.elements[i];
-      CBVar tmp{};
-      cloneVar(tmp, subsrc);
-      chainblocks::arrayPush(dst.payload.seqValue, tmp);
-    }
-#else
-    // try our best to re-use memory
-    if (dst.valueType != Seq) {
-      destroyVar(dst);
-      dst.valueType = Seq;
-      for (size_t i = 0; i < srcLen; i++) {
-        auto &subsrc = src.payload.seqValue.elements[i];
-        CBVar tmp{};
-        cloneVar(tmp, subsrc);
-        chainblocks::arrayPush(dst.payload.seqValue, tmp);
-      }
-    } else {
-      size_t dstLen = dst.payload.seqValue.len;
-      assert(dst.capacity.value >= dstLen);
-      if (srcLen <= dst.capacity.value) {
-        // clone on top of current values
-        chainblocks::arrayResize(dst.payload.seqValue, srcLen);
-        for (size_t i = 0; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          cloneVar(dst.payload.seqValue.elements[i], subsrc);
-        }
-      } else {
-        // re-use avail ones
-        for (size_t i = 0; i < dstLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          cloneVar(dst.payload.seqValue.elements[i], subsrc);
-        }
-        // append new values
-        for (size_t i = dstLen; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          CBVar tmp{};
-          cloneVar(tmp, subsrc);
-          chainblocks::arrayPush(dst.payload.seqValue, subsrc);
-        }
-      }
-    }
-#endif
-    // take note of 'Var' capacity
-    dst.capacity.value =
-        std::max(dst.capacity.value,
-                 decltype(dst.capacity.value)(dst.payload.seqValue.len));
-  } break;
-  case String:
-  case ContextVar: {
-    auto srcSize = strlen(src.payload.stringValue) + 1;
-    if ((dst.valueType != String && dst.valueType != ContextVar) ||
-        dst.capacity.value < srcSize) {
-      destroyVar(dst);
-      dst.payload.stringValue = new char[srcSize];
-      dst.capacity.value = srcSize;
-    }
-
-    dst.valueType = src.valueType;
-    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
-           srcSize - 1);
-    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
-  } break;
-  case Image: {
-    size_t srcImgSize = src.payload.imageValue.height *
-                        src.payload.imageValue.width *
-                        src.payload.imageValue.channels;
-    if (dst.valueType != Image || srcImgSize > dst.capacity.value) {
-      destroyVar(dst);
-      dst.valueType = Image;
-      dst.payload.imageValue.data = new uint8_t[srcImgSize];
-      dst.capacity.value = srcImgSize;
-    }
-
-    dst.payload.imageValue.flags = dst.payload.imageValue.flags;
-    dst.payload.imageValue.height = src.payload.imageValue.height;
-    dst.payload.imageValue.width = src.payload.imageValue.width;
-    dst.payload.imageValue.channels = src.payload.imageValue.channels;
-    memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
-           srcImgSize);
-  } break;
-  case Table: {
-    // Slowest case, it's a full copy using arena tho
-    destroyVar(dst);
-    dst.valueType = Table;
-    dst.payload.tableValue = nullptr;
-    stbds_sh_new_arena(dst.payload.tableValue);
-    auto srcLen = stbds_shlen(src.payload.tableValue);
-    for (auto i = 0; i < srcLen; i++) {
-      CBVar clone{};
-      cloneVar(clone, src.payload.tableValue[i].value);
-      stbds_shput(dst.payload.tableValue, src.payload.tableValue[i].key, clone);
-    }
-  } break;
-  case Bytes: {
-    if (dst.valueType != Bytes || dst.capacity.value < src.payload.bytesSize) {
-      destroyVar(dst);
-      dst.valueType = Bytes;
-      dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
-      dst.capacity.value = src.payload.bytesSize;
-    }
-
-    dst.payload.bytesSize = src.payload.bytesSize;
-    memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
-           src.payload.bytesSize);
-  } break;
-  default:
-    break;
-  };
-}
+NO_INLINE void _destroyVarSlow(CBVar &var);
+NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 
 ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
@@ -461,30 +371,20 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   };
 
-  var = {};
+  memset(&var, 0x0, sizeof(CBVar));
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
-    dst.payload = src.payload;
-    dst.valueType = src.valueType;
+    memcpy(&dst, &src, sizeof(CBVar));
   } else if (src.valueType < EndOfBlittableTypes) {
     destroyVar(dst);
-    dst.payload = src.payload;
-    dst.valueType = src.valueType;
+    memcpy(&dst, &src, sizeof(CBVar));
   } else {
     _cloneVarSlow(dst, src);
   }
 }
-
-static Var True = Var(true);
-static Var False = Var(false);
-static Var StopChain = Var::Stop();
-static Var RestartChain = Var::Restart();
-static Var ReturnPrevious = Var::Return();
-static Var RebaseChain = Var::Rebase();
-static Var Empty = Var();
 
 struct Serialization {
   static inline void varFree(CBVar &output) {
@@ -522,13 +422,7 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      for (auto i = 0; i < stbds_shlen(output.payload.tableValue); i++) {
-        auto &v = output.payload.tableValue[i];
-        varFree(v.value);
-        delete[] v.key;
-      }
-      stbds_shfree(output.payload.tableValue);
-      output.payload.tableValue = nullptr;
+      output.payload.tableValue.api->tableFree(output.payload.tableValue);
       break;
     }
     case CBType::Image: {
@@ -538,7 +432,8 @@ struct Serialization {
     case CBType::Object:
     case CBType::Chain:
     case CBType::Block:
-      break;
+      throw CBException("Serialization not supported for the given type: " +
+                        type2Name(output.valueType));
     }
 
     output = {};
@@ -579,7 +474,7 @@ struct Serialization {
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
-      auto availBytes = recycle ? output.capacity.value : 0;
+      auto availBytes = recycle ? output.capacity : 0;
       read((uint8_t *)&output.payload.bytesSize,
            sizeof(output.payload.bytesSize));
 
@@ -594,14 +489,14 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      output.capacity.value = std::max(availBytes, output.payload.bytesSize);
+      output.capacity = std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
     case CBType::String:
     case CBType::ContextVar: {
-      auto availChars = recycle ? output.capacity.value : 0;
+      auto availChars = recycle ? output.capacity : 0;
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
 
@@ -615,46 +510,55 @@ struct Serialization {
       } // else recycling
 
       // record actualSize
-      output.capacity.value = std::max(availChars, len);
+      output.capacity = std::max(availChars, len);
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
       break;
     }
     case CBType::Seq: {
-      uint64_t len;
-      read((uint8_t *)&len, sizeof(uint64_t));
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
 
-      uint64_t currentUsed = recycle ? output.payload.seqValue.len : 0;
+      uint32_t currentUsed = recycle ? output.payload.seqValue.len : 0;
       if (currentUsed > len) {
         // in this case we need to destroy the excess items
         // before resizing
-        for (uint64_t i = len; i < currentUsed; i++) {
+        for (uint32_t i = len; i < currentUsed; i++) {
           varFree(output.payload.seqValue.elements[i]);
         }
       }
 
       chainblocks::arrayResize(output.payload.seqValue, len);
-      for (uint64_t i = 0; i < len; i++) {
+      for (uint32_t i = 0; i < len; i++) {
         deserialize(read, output.payload.seqValue.elements[i]);
       }
       break;
     }
     case CBType::Table: {
-      if (recycle) // tables are slow for now...
-        varFree(output);
+      CBMap *map;
+      if (recycle) {
+        if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
+          map = (CBMap *)output.payload.tableValue.opaque;
+          map->clear();
+        } else {
+          map = new CBMap();
+          output.payload.tableValue.api = &Globals::TableInterface;
+          output.payload.tableValue.opaque = map;
+        }
+      }
 
       uint64_t len;
+      std::string keyBuf;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
-        CBNamedVar v;
-        uint64_t klen;
-        read((uint8_t *)&klen, sizeof(uint64_t));
-        v.key = new char[klen + 1];
-        read((uint8_t *)v.key, len);
-        const_cast<char *>(v.key)[klen] = 0;
-        deserialize(read, v.value);
-        stbds_shputs(output.payload.tableValue, v);
+        uint32_t klen;
+        read((uint8_t *)&klen, sizeof(uint32_t));
+        keyBuf.resize(klen + 1);
+        read((uint8_t *)keyBuf.c_str(), len);
+        const_cast<char *>(keyBuf.c_str())[klen] = 0;
+        auto dst = (*map)[keyBuf.c_str()];
+        deserialize(read, dst);
       }
       break;
     }
@@ -672,7 +576,7 @@ struct Serialization {
                     output.payload.imageValue.height *
                     output.payload.imageValue.width;
 
-      size_t currentSize = recycle ? output.capacity.value : 0;
+      size_t currentSize = recycle ? output.capacity : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -683,7 +587,7 @@ struct Serialization {
       }
 
       // record actualSize
-      output.capacity.value = std::max(currentSize, (size_t)size);
+      output.capacity = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
@@ -738,26 +642,43 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      uint64_t len = input.payload.seqValue.len;
-      write((const uint8_t *)&len, sizeof(uint64_t));
-      total += sizeof(uint64_t);
-      for (uint64_t i = 0; i < len; i++) {
+      uint32_t len = input.payload.seqValue.len;
+      write((const uint8_t *)&len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      for (uint32_t i = 0; i < len; i++) {
         total += serialize(input.payload.seqValue.elements[i], write);
       }
       break;
     }
     case CBType::Table: {
-      uint64_t len = stbds_shlen(input.payload.tableValue);
-      write((const uint8_t *)&len, sizeof(uint64_t));
-      total += sizeof(uint64_t);
-      for (uint64_t i = 0; i < len; i++) {
-        auto &v = input.payload.tableValue[i];
-        uint64_t klen = strlen(v.key);
-        write((const uint8_t *)&klen, sizeof(uint64_t));
+      if (input.payload.tableValue.api && input.payload.tableValue.opaque) {
+        auto &t = input.payload.tableValue;
+        uint64_t len = (uint64_t)t.api->tableSize(t);
+        write((const uint8_t *)&len, sizeof(uint64_t));
         total += sizeof(uint64_t);
-        write((const uint8_t *)v.key, len);
-        total += len;
-        total += serialize(v.value, write);
+        struct iterdata {
+          BinaryWriter *write;
+          size_t *total;
+        } data;
+        data.write = &write;
+        data.total = &total;
+        t.api->tableForEach(
+            t,
+            [](const char *key, CBVar *value, void *_data) {
+              auto data = (iterdata *)_data;
+              uint32_t klen = strlen(key);
+              (*data->write)((const uint8_t *)&klen, sizeof(uint32_t));
+              *data->total += sizeof(uint32_t);
+              (*data->write)((const uint8_t *)key, klen);
+              *data->total += klen;
+              *data->total += serialize(*value, *data->write);
+              return true;
+            },
+            &data);
+      } else {
+        uint64_t none = 0;
+        write((const uint8_t *)&none, sizeof(uint64_t));
+        total += sizeof(uint64_t);
       }
       break;
     }

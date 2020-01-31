@@ -22,6 +22,7 @@ struct Base {
   }};
 
   CBVar _cachedSeq{};
+  CBVar _output{};
 
   static CBTypesInfo inputTypes() { return MathTypes; }
 
@@ -29,16 +30,9 @@ struct Base {
 };
 
 struct UnaryBase : public Base {
-  void destroy() {
-    if (_cachedSeq.valueType == Seq) {
-      chainblocks::arrayFree(_cachedSeq.payload.seqValue);
-    }
-  }
+  void destroy() { chainblocks::arrayFree(_cachedSeq.payload.seqValue); }
 
-  void setup() {
-    _cachedSeq.valueType = Seq;
-    _cachedSeq.payload.seqValue = {};
-  }
+  void setup() { _cachedSeq.valueType = Seq; }
 };
 
 struct BinaryBase : public Base {
@@ -290,15 +284,14 @@ struct BinaryBase : public Base {
         _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
-      CBVar output{};                                                          \
       if (likely(_opType == Normal)) {                                         \
-        operate(output, input, operand);                                       \
-        return output;                                                         \
+        operate(_output, input, operand);                                      \
+        return _output;                                                        \
       } else if (_opType == Seq1) {                                            \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(output, input.payload.seqValue.elements[i], operand);        \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
+          operate(_output, input.payload.seqValue.elements[i], operand);       \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
@@ -306,9 +299,9 @@ struct BinaryBase : public Base {
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
              i++) {                                                            \
-          operate(output, input.payload.seqValue.elements[i],                  \
+          operate(_output, input.payload.seqValue.elements[i],                 \
                   operand.payload.seqValue.elements[i % olen]);                \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
       }                                                                        \
@@ -376,15 +369,14 @@ struct BinaryBase : public Base {
         _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
-      CBVar output{};                                                          \
       if (likely(_opType == Normal)) {                                         \
-        operate(output, input, operand);                                       \
-        return output;                                                         \
+        operate(_output, input, operand);                                      \
+        return _output;                                                        \
       } else if (_opType == Seq1) {                                            \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(output, input.payload.seqValue.elements[i], operand);        \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
+          operate(_output, input.payload.seqValue.elements[i], operand);       \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
@@ -392,9 +384,9 @@ struct BinaryBase : public Base {
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
              i++) {                                                            \
-          operate(output, input.payload.seqValue.elements[i],                  \
+          operate(_output, input.payload.seqValue.elements[i],                 \
                   operand.payload.seqValue.elements[i % olen]);                \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
       }                                                                        \
@@ -461,17 +453,16 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
     }                                                                          \
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      CBVar output{};                                                          \
       if (unlikely(input.valueType == Seq)) {                                  \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(output, input);                                              \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);         \
+          operate(_output, input);                                             \
+          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
       } else {                                                                 \
-        operate(output, input);                                                \
-        return output;                                                         \
+        operate(_output, input);                                               \
+        return _output;                                                        \
       }                                                                        \
     }                                                                          \
   };                                                                           \

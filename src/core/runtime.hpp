@@ -544,7 +544,7 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
 
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
-    if (rootInput != chainblocks::Empty) {
+    if (rootInput != Empty) {
       cloneVar(chain->rootTickInput, rootInput);
     }
     *chain->coro = chain->coro->resume();
@@ -642,7 +642,7 @@ struct CBNode {
     chainblocks::start(chain, input);
   }
 
-  bool tick(CBVar input = chainblocks::Empty) {
+  bool tick(CBVar input = Empty) {
     auto noErrors = true;
     _runningFlows = flows;
     for (auto &flow : _runningFlows) {
@@ -685,7 +685,11 @@ struct CBNode {
   bool empty() { return flows.empty(); }
 
   // must use node_hash_map, cos flat might move memory around!
-  phmap::node_hash_map<std::string, CBVar> variables;
+  std::unordered_map<std::string, CBVar, std::hash<std::string>,
+                     std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<
+                         std::pair<const std::string, CBVar>, 16>>
+      variables;
   std::list<std::shared_ptr<CBFlow>> flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
   std::string errorMsg;

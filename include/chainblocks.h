@@ -4,12 +4,10 @@
 #ifndef CB_CHAINBLOCKS_H
 #define CB_CHAINBLOCKS_H
 
-// Use only basic types and libs, we want full ABI compatibility between blocks
-// Cannot afford to use any C++ std as any block maker should be free to use
-// their versions
-
-#include <stdbool.h>
-#include <stdint.h>
+#include <stdalign.h> // alignas
+#include <stdbool.h>  // bool
+#include <stddef.h>   // size_t
+#include <stdint.h>   // ints
 
 // All the available types
 enum CBType : uint8_t {
@@ -40,7 +38,7 @@ enum CBType : uint8_t {
   ContextVar, // A string label to find from CBContext variables
   Image,
   Seq,
-  Table
+  Table,
 };
 
 enum CBChainState : uint8_t {
@@ -149,8 +147,12 @@ typedef void *CBArray;
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
-struct CBNamedVar;
-typedef struct CBNamedVar *CBTable; // a stb string map
+typedef void *CBTableIterator;
+struct CBTableInterface;
+struct CBTable {
+  void *opaque;
+  struct CBTableInterface *api;
+};
 
 struct CBChain;
 typedef struct CBChain *CBChainPtr;
@@ -160,11 +162,12 @@ struct CBChainProvider;
 struct CBContext;
 
 struct CBNode;
+
 struct CBFlow;
 
 struct CBlock;
-typedef struct CBlock *CBlockRef;
-CB_ARRAY_DECL(CBlocks, CBlockRef);
+typedef struct CBlock *CBlockPtr;
+CB_ARRAY_DECL(CBlocks, CBlockPtr);
 
 struct CBTypeInfo;
 CB_ARRAY_DECL(CBTypesInfo, struct CBTypeInfo);
@@ -204,15 +207,14 @@ typedef double CBFloat2 __attribute__((vector_size(16)));
 typedef float CBFloat3 __attribute__((vector_size(16)));
 typedef float CBFloat4 __attribute__((vector_size(16)));
 
-#define ALIGNED
-
 #ifdef NDEBUG
 #define ALWAYS_INLINE __attribute__((always_inline))
+#define NO_INLINE __attribute__((noinline))
 #else
 #define ALWAYS_INLINE
+#define NO_INLINE
 #endif
 
-#define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
 #else // TODO
 typedef int64_t CBInt2[2];
 typedef int32_t CBInt3[3];
@@ -224,36 +226,18 @@ typedef double CBFloat2[2];
 typedef float CBFloat3[3];
 typedef float CBFloat4[4];
 
-#define ALIGNED __declspec(align(16))
-
 #define ALWAYS_INLINE
+#define NO_INLINE
 
-#define PACK(__Declaration__)                                                  \
-  __pragma(pack(push, 1)) __Declaration__ __pragma(pack(pop))
 #endif
 
 #ifndef _WIN32
-#ifdef I386_BUILD
+#ifdef CPUBITS32
 #define __cdecl __attribute__((__cdecl__))
 #else
 #define __cdecl
 #endif
 #endif
-
-PACK(struct _uint48_t {
-  PACK(union {
-    PACK(struct {
-      uint32_t _x_u32;
-      uint16_t _y_u16;
-    });
-
-#ifndef NO_BITFIELDS
-    uint64_t value : 48;
-#endif
-  });
-});
-
-typedef struct _uint48_t uint48_t;
 
 struct CBColor {
   uint8_t r;
@@ -272,6 +256,39 @@ struct CBImage {
   uint8_t channels;
   uint8_t flags;
   uint8_t *data;
+};
+
+struct CBAudio {
+  float sampleRate;
+  uint16_t nsamples;
+  uint16_t channels;
+  float *samples;
+};
+
+// return false to abort iteration
+typedef bool(__cdecl *CBTableForEachCallback)(const char *key,
+                                              struct CBVar *value,
+                                              void *userData);
+// table interface
+typedef void(__cdecl *CBTableForEach)(struct CBTable table,
+                                      CBTableForEachCallback cb,
+                                      void *userData);
+typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
+typedef bool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
+typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
+                                           const char *key);
+typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
+typedef void(__cdecl *CBTableClear)(struct CBTable table);
+typedef void(__cdecl *CBTableFree)(struct CBTable table);
+
+struct CBTableInterface {
+  CBTableForEach tableForEach;
+  CBTableSize tableSize;
+  CBTableContains tableContains;
+  CBTableAt tableAt;
+  CBTableRemove tableRemove;
+  CBTableClear tableClear;
+  CBTableFree tableFree;
 };
 
 struct CBTypeInfo {
@@ -391,7 +408,7 @@ struct CBFlow {
 // ### What about exposed/consumedVariables, parameters and input/outputTypes:
 // * Same for them, they are just read only basically
 
-ALIGNED struct CBVarPayload {
+struct alignas(16) CBVarPayload {
   union {
     enum CBChainState chainState;
 
@@ -434,9 +451,12 @@ ALIGNED struct CBVarPayload {
 
     struct CBImage imageValue;
 
+    // TODO
+    struct CBAudio audioValue;
+
     CBChainPtr chainValue;
 
-    struct CBlock *blockValue;
+    CBlockPtr blockValue;
 
     struct {
       CBEnum enumValue;
@@ -451,28 +471,15 @@ ALIGNED struct CBVarPayload {
   };
 };
 
-struct CBVar {
+struct alignas(16) CBVar {
   struct CBVarPayload payload;
-
-  union {
-    int64_t _reserved;
-  };
-
+  uint64_t capacity;
   enum CBType valueType;
-
-  // Used by serialization/clone routines to keep track of actual storage
-  // capacity 48 bits should be plenty for such sizes
-  uint48_t capacity;
-};
-
-struct CBNamedVar {
-  const char *key;
-  struct CBVar value;
 };
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
-struct CBRunChainOutput {
+struct alignas(16) CBRunChainOutput {
   struct CBVar output;
   enum CBRunChainOutputState state;
 };
@@ -665,7 +672,7 @@ typedef void(__cdecl *CBSleep)(double seconds, bool runCallbacks);
 CB_ARRAY_TYPE(CBSeq, struct CBVar);
 CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
 CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
-CB_ARRAY_TYPE(CBlocks, CBlockRef);
+CB_ARRAY_TYPE(CBlocks, CBlockPtr);
 CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
 CB_ARRAY_TYPE(CBStrings, CBString);
 
@@ -677,6 +684,8 @@ CB_ARRAY_TYPE(CBStrings, CBString);
   _array_##Resize _short_##Resize;                                             \
   _array_##FastDelete _short_##FastDelete;                                     \
   _array_##SlowDelete _short_##SlowDelete
+
+typedef struct CBTable(__cdecl *CBTableNew)();
 
 typedef const char *(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(const char *);
@@ -729,6 +738,9 @@ struct CBCore {
 
   // Utility to deal with CBStrings
   CB_ARRAY_PROCS(CBStrings, strings);
+
+  // CBTable interface
+  CBTableNew tableNew;
 
   // Utility to use blocks within blocks
   CBValidateChain validateChain;

@@ -77,11 +77,7 @@ endif()
 
 if(X86)
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-  add_compile_options(-Wall
-    # force avx
-    -mavx
-    # prefer -march=native if you know where it is gonna run!
-    )
+  add_compile_options(-Wall)
 else()
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
   add_compile_options(-Wall)
@@ -91,18 +87,30 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-fuse-ld=lld)
-    # need those for custom new/delete
-    add_link_options(-static-libstdc++)
-    add_compile_options(-Wall -static-libstdc++)
   endif()
 elseif(WIN32)
   add_link_options(-static)
-  add_compile_options(-static)
 endif()
 
-add_compile_options(-fno-threadsafe-statics -ffast-math -Wno-multichar)
+add_compile_options(-fno-threadsafe-statics -ffast-math -funroll-loops -Wno-multichar)
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(X86)
+  add_compile_options(-march=core2)
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  # 64 bits
+  add_compile_definitions(CPUBITS64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # 32 bits
+  add_compile_definitions(CPUBITS32)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  # custom allocator
+  add_compile_definitions(USE_RPMALLOC)
+
+  # aggressive inlining
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_options(-mllvm -inline-threshold=100000)
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -112,14 +120,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     # using Visual Studio C++
   endif()
-endif()
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  # 64 bits
-  add_compile_definitions(AMD64_BUILD)
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  # 32 bits
-  add_compile_definitions(I386_BUILD)
 endif()
 ###
 
@@ -155,15 +155,16 @@ set(
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.h
+  ${CHAINBLOCKS_DIR}/include/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/core.hpp
-  ${CHAINBLOCKS_DIR}/src/core/ops.hpp
+  ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/shared.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
@@ -423,7 +424,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
@@ -436,6 +436,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CB_EXTRAS}
   )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
@@ -453,7 +454,6 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
@@ -466,6 +466,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CB_EXTRAS}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")

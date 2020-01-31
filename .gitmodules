@@ -7,18 +7,12 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/chainblocks/json.git
-[submodule "deps/xxHash"]
-	path = deps/xxHash
-	url = https://github.com/chainblocks/xxHash.git
 [submodule "deps/easyloggingpp"]
 	path = deps/easyloggingpp
 	url = https://github.com/chainblocks/easyloggingpp.git
 [submodule "deps/SPSCQueue"]
 	path = deps/SPSCQueue
 	url = https://github.com/chainblocks/SPSCQueue.git
-[submodule "deps/parallel-hashmap"]
-	path = deps/parallel-hashmap
-	url = https://github.com/chainblocks/parallel-hashmap.git
 [submodule "deps/bgfx"]
 	path = deps/bgfx
 	url = https://github.com/chainblocks/bgfx.git

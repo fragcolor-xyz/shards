@@ -927,49 +927,49 @@ struct Button : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    auto result = chainblocks::False;
+    auto result = False;
     ImVec2 size;
     switch (_type) {
     case Normal:
       if (::ImGui::Button(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case Small:
       if (::ImGui::SmallButton(_label.c_str())) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case Invisible:
       if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowLeft:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowRight:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowUp:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     case ArrowDown:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
         IMBTN_RUN_ACTION;
-        result = chainblocks::True;
+        result = True;
       }
       break;
     }
@@ -1290,9 +1290,8 @@ struct TextInput : public Variable<CBType::String> {
       // Resize string callback
       if (it->_variable) {
         delete[] it->_variable->payload.stringValue;
-        it->_variable->capacity.value = data->BufTextLen * 2;
-        it->_variable->payload.stringValue =
-            new char[it->_variable->capacity.value];
+        it->_variable->capacity = data->BufTextLen * 2;
+        it->_variable->payload.stringValue = new char[it->_variable->capacity];
         data->Buf = (char *)it->_variable->payload.stringValue;
       } else {
         it->_buffer.resize(data->BufTextLen * 2);
@@ -1311,14 +1310,14 @@ struct TextInput : public Variable<CBType::String> {
         // we own the variable so let's run some init
         _variable->valueType = String;
         _variable->payload.stringValue = new char[32];
-        _variable->capacity.value = 32;
+        _variable->capacity = 32;
         memset((void *)_variable->payload.stringValue, 0x0, 32);
       }
     }
 
     if (_variable) {
       ::ImGui::InputText(_label.c_str(), (char *)_variable->payload.stringValue,
-                         _variable->capacity.value,
+                         _variable->capacity,
                          ImGuiInputTextFlags_CallbackResize, &InputTextCallback,
                          this);
       return *_variable;
