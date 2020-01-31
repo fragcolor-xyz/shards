@@ -130,7 +130,7 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
   if(NOT IOS)
@@ -166,6 +166,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/core.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
@@ -440,6 +441,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CB_EXTRAS}
   )
 set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
@@ -469,6 +471,7 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CB_EXTRAS}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
