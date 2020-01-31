@@ -154,7 +154,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     } data;
     data.first = true;
     data.os = &os;
-    ta.interface->tableForEach(
+    ta.api->tableForEach(
         ta,
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;

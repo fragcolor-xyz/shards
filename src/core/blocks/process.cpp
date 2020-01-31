@@ -70,7 +70,7 @@ struct Exec {
 
     CBVar res{};
     res.valueType = Table;
-    res.payload.tableValue.interface = &Globals::TableInterface;
+    res.payload.tableValue.api = &Globals::TableInterface;
     res.payload.tableValue.opaque = &map;
 
     return res;

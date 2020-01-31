@@ -161,7 +161,7 @@ struct Flatten {
       break;
     case Table: {
       auto &ta = input.payload.tableValue;
-      ta.interface->tableForEach(
+      ta.api->tableForEach(
           ta,
           [](const char *key, CBVar *value, void *data) {
             auto self = (Flatten *)data;

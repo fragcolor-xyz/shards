@@ -178,7 +178,7 @@ void to_json(json &j, const CBVar &var) {
   case Table: {
     std::vector<json> items;
     auto &ta = var.payload.tableValue;
-    ta.interface->tableForEach(
+    ta.api->tableForEach(
         ta,
         [](const char *key, CBVar *value, void *data) {
           auto items = (std::vector<json> *)data;
@@ -362,7 +362,7 @@ void from_json(const json &j, CBVar &var) {
   case Table: {
     auto map = new chainblocks::CBMap();
     var.valueType = Table;
-    var.payload.tableValue.interface = &chainblocks::Globals::TableInterface;
+    var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
     var.payload.tableValue.opaque = map;
     auto items = j.at("values").get<std::vector<json>>();
     for (const auto &item : items) {

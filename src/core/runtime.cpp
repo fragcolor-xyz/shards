@@ -628,7 +628,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.tableNew = []() {
     CBTable res;
-    res.interface = &chainblocks::Globals::TableInterface;
+    res.api = &chainblocks::Globals::TableInterface;
     res.opaque = new chainblocks::CBMap();
     return res;
   };
@@ -1231,7 +1231,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
       std::unordered_set<CBTypeInfo> *types;
       CBTypeInfo *varType;
     } data;
-    ta.interface->tableForEach(
+    ta.api->tableForEach(
         ta,
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;
@@ -1541,7 +1541,7 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
     chainblocks::arrayFree(var.payload.seqValue);
   } break;
   case Table: {
-    assert(var.payload.tableValue.interface == &Globals::TableInterface);
+    assert(var.payload.tableValue.api == &Globals::TableInterface);
     assert(var.payload.tableValue.opaque);
     auto map = (CBMap *)var.payload.tableValue.opaque;
     delete map;
@@ -1660,13 +1660,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     } else {
       destroyVar(dst);
       dst.valueType = Table;
-      dst.payload.tableValue.interface = &Globals::TableInterface;
+      dst.payload.tableValue.api = &Globals::TableInterface;
       map = new CBMap();
       dst.payload.tableValue.opaque = map;
     }
 
     auto &ta = src.payload.tableValue;
-    ta.interface->tableForEach(
+    ta.api->tableForEach(
         ta,
         [](const char *key, CBVar *value, void *data) {
           auto map = (CBMap *)data;

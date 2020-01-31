@@ -131,7 +131,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   if (ta.opaque == tb.opaque)
     return true;
 
-  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
   struct CmpState {
@@ -142,18 +142,18 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   state.tb = tb;
   state.result = false;
   state.valid = false;
-  ta.interface->tableForEach(
+  ta.api->tableForEach(
       ta,
       [](const char *key, CBVar *value, void *data) {
         auto state = (CmpState *)data;
-        if (!state->tb.interface->tableContains(state->tb, key)) {
+        if (!state->tb.api->tableContains(state->tb, key)) {
           state->result = false;
           state->valid = true;
           return false;
         }
 
         auto &aval = *value;
-        auto &bval = *state->tb.interface->tableAt(state->tb, key);
+        auto &bval = *state->tb.api->tableAt(state->tb, key);
         if (aval != bval) {
           state->result = false;
           state->valid = true;
@@ -326,7 +326,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (ta.opaque == tb.opaque)
     return false;
 
-  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
   struct CmpState {
@@ -339,21 +339,21 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   state.len = 0;
   state.result = false;
   state.valid = false;
-  tb.interface->tableForEach(
+  tb.api->tableForEach(
       tb,
       [](const char *key, CBVar *value, void *data) {
         auto state = (CmpState *)data;
         state->len++;
 
         // if a key in tb is not in ta, ta is less
-        if (!state->ta.interface->tableContains(state->ta, key)) {
+        if (!state->ta.api->tableContains(state->ta, key)) {
           state->result = true;
           state->valid = true;
           return false;
         }
 
         auto &bval = *value;
-        auto &aval = *state->ta.interface->tableAt(state->ta, key);
+        auto &aval = *state->ta.api->tableAt(state->ta, key);
         auto c = cmp(aval, bval);
         if (c < 0) {
           state->result = true;
@@ -371,7 +371,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
   if (state.valid)
     return state.result;
 
-  if (ta.interface->tableSize(ta) < state.len)
+  if (ta.api->tableSize(ta) < state.len)
     return true;
   else
     return false;
@@ -512,7 +512,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (ta.opaque == tb.opaque)
     return false;
 
-  if (ta.interface->tableSize(ta) != ta.interface->tableSize(tb))
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
   struct CmpState {
@@ -525,21 +525,21 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   state.len = 0;
   state.result = false;
   state.valid = false;
-  tb.interface->tableForEach(
+  tb.api->tableForEach(
       tb,
       [](const char *key, CBVar *value, void *data) {
         auto state = (CmpState *)data;
         state->len++;
 
         // if a key in tb is not in ta, ta is less
-        if (!state->ta.interface->tableContains(state->ta, key)) {
+        if (!state->ta.api->tableContains(state->ta, key)) {
           state->result = true;
           state->valid = true;
           return false;
         }
 
         auto &bval = *value;
-        auto &aval = *state->ta.interface->tableAt(state->ta, key);
+        auto &aval = *state->ta.api->tableAt(state->ta, key);
         auto c = cmp(aval, bval);
         if (c < 0) {
           state->result = true;
@@ -557,7 +557,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (state.valid)
     return state.result;
 
-  if (ta.interface->tableSize(ta) <= state.len)
+  if (ta.api->tableSize(ta) <= state.len)
     return true;
   else
     return false;

@@ -147,38 +147,11 @@ typedef void *CBArray;
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
-struct CBTable;
 typedef void *CBTableIterator;
-
-// return false to abort iteration
-typedef bool(__cdecl *CBTableForEachCallback)(const char *key,
-                                              struct CBVar *value,
-                                              void *userData);
-// table interface
-typedef void(__cdecl *CBTableForEach)(struct CBTable table,
-                                      CBTableForEachCallback cb,
-                                      void *userData);
-typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
-typedef bool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
-typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
-                                           const char *key);
-typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
-typedef void(__cdecl *CBTableClear)(struct CBTable table);
-typedef void(__cdecl *CBTableFree)(struct CBTable table);
-
-struct CBTableInterface {
-  CBTableForEach tableForEach;
-  CBTableSize tableSize;
-  CBTableContains tableContains;
-  CBTableAt tableAt;
-  CBTableRemove tableRemove;
-  CBTableClear tableClear;
-  CBTableFree tableFree;
-};
-
+struct CBTableInterface;
 struct CBTable {
   void *opaque;
-  struct CBTableInterface *interface;
+  struct CBTableInterface *api;
 };
 
 struct CBChain;
@@ -292,6 +265,32 @@ struct CBAudio {
   uint16_t nsamples;
   uint16_t channels;
   float *samples;
+};
+
+// return false to abort iteration
+typedef bool(__cdecl *CBTableForEachCallback)(const char *key,
+                                              struct CBVar *value,
+                                              void *userData);
+// table interface
+typedef void(__cdecl *CBTableForEach)(struct CBTable table,
+                                      CBTableForEachCallback cb,
+                                      void *userData);
+typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
+typedef bool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
+typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
+                                           const char *key);
+typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
+typedef void(__cdecl *CBTableClear)(struct CBTable table);
+typedef void(__cdecl *CBTableFree)(struct CBTable table);
+
+struct CBTableInterface {
+  CBTableForEach tableForEach;
+  CBTableSize tableSize;
+  CBTableContains tableContains;
+  CBTableAt tableAt;
+  CBTableRemove tableRemove;
+  CBTableClear tableClear;
+  CBTableFree tableFree;
 };
 
 struct CBTypeInfo {

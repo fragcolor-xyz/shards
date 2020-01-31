@@ -424,10 +424,8 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      if (output.payload.tableValue.interface &&
-          output.payload.tableValue.opaque) {
-        output.payload.tableValue.interface->tableFree(
-            output.payload.tableValue);
+      if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
+        output.payload.tableValue.api->tableFree(output.payload.tableValue);
       }
       output.payload.tableValue = {};
       break;
@@ -545,13 +543,12 @@ struct Serialization {
     case CBType::Table: {
       CBMap *map;
       if (recycle) {
-        if (output.payload.tableValue.interface &&
-            output.payload.tableValue.opaque) {
+        if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
           map = (CBMap *)output.payload.tableValue.opaque;
           map->clear();
         } else {
           map = new CBMap();
-          output.payload.tableValue.interface = &Globals::TableInterface;
+          output.payload.tableValue.api = &Globals::TableInterface;
           output.payload.tableValue.opaque = map;
         }
       }
@@ -659,10 +656,9 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      if (input.payload.tableValue.interface &&
-          input.payload.tableValue.opaque) {
+      if (input.payload.tableValue.api && input.payload.tableValue.opaque) {
         auto &t = input.payload.tableValue;
-        uint64_t len = (uint64_t)t.interface->tableSize(t);
+        uint64_t len = (uint64_t)t.api->tableSize(t);
         write((const uint8_t *)&len, sizeof(uint64_t));
         total += sizeof(uint64_t);
         struct iterdata {
@@ -671,7 +667,7 @@ struct Serialization {
         } data;
         data.write = &write;
         data.total = &total;
-        t.interface->tableForEach(
+        t.api->tableForEach(
             t,
             [](const char *key, CBVar *value, void *_data) {
               auto data = (iterdata *)_data;

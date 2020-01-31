@@ -522,11 +522,11 @@ struct SetBase : public VariableBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.interface = &Globals::TableInterface;
+        _target->payload.tableValue.api = &Globals::TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
-      CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+      CBVar *vptr = _target->payload.tableValue.api->tableAt(
           _target->payload.tableValue, _key.c_str());
 
       // Clone will try to recyle memory and such
@@ -630,11 +630,11 @@ struct Ref : public SetBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.interface = &Globals::TableInterface;
+        _target->payload.tableValue.api = &Globals::TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
-      CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+      CBVar *vptr = _target->payload.tableValue.api->tableAt(
           _target->payload.tableValue, _key.c_str());
 
       // Notice, NO Cloning!
@@ -856,10 +856,10 @@ struct Get : public VariableBase {
 
     if (_isTable) {
       if (_target->valueType == Table) {
-        if (_target->payload.tableValue.interface->tableContains(
+        if (_target->payload.tableValue.api->tableContains(
                 _target->payload.tableValue, _key.c_str())) {
           // Has it
-          CBVar *vptr = _target->payload.tableValue.interface->tableAt(
+          CBVar *vptr = _target->payload.tableValue.api->tableAt(
               _target->payload.tableValue, _key.c_str());
 
           if (unlikely(_defaultValue.valueType != None &&
@@ -1099,12 +1099,12 @@ struct Push : public VariableBase {
     if (_target->valueType != Table) {
       // Not initialized yet
       _target->valueType = Table;
-      _target->payload.tableValue.interface = &Globals::TableInterface;
+      _target->payload.tableValue.api = &Globals::TableInterface;
       _target->payload.tableValue.opaque = new CBMap();
     }
 
     if (unlikely(_cell == nullptr)) {
-      _cell = _target->payload.tableValue.interface->tableAt(
+      _cell = _target->payload.tableValue.api->tableAt(
           _target->payload.tableValue, _key.c_str());
     }
     auto &seq = *_cell;
@@ -1194,7 +1194,7 @@ struct Count : SeqUser {
       }
 
       if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.interface->tableAt(
+        _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
       var = *_cell;
@@ -1204,7 +1204,7 @@ struct Count : SeqUser {
       return Var(int64_t(var.payload.seqValue.len));
     } else if (var.valueType == Table) {
       return Var(int64_t(
-          var.payload.tableValue.interface->tableSize(var.payload.tableValue)));
+          var.payload.tableValue.api->tableSize(var.payload.tableValue)));
     } else if (var.valueType == Bytes) {
       return Var(var.payload.bytesSize);
     } else if (var.valueType == String) {
@@ -1231,7 +1231,7 @@ struct Clear : SeqUser {
       }
 
       if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.interface->tableAt(
+        _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
       var = *_cell;
@@ -1240,7 +1240,7 @@ struct Clear : SeqUser {
     if (likely(var.valueType == Seq)) {
       chainblocks::arrayResize(var.payload.seqValue, 0);
     } else if (var.valueType == Table) {
-      var.payload.tableValue.interface->tableClear(var.payload.tableValue);
+      var.payload.tableValue.api->tableClear(var.payload.tableValue);
     }
 
     return input;
@@ -1262,7 +1262,7 @@ struct Drop : SeqUser {
       }
 
       if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.interface->tableAt(
+        _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
       var = *_cell;
@@ -1336,7 +1336,7 @@ struct Pop : SeqUser {
       }
 
       if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.interface->tableAt(
+        _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
       auto &seq = *_cell;
