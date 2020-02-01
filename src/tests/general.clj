@@ -541,12 +541,12 @@
   (Get "unsortedList2Copy")
   (ToJson)
   (Log)
-  (Assert.Is "{\"type\":23,\"values\":[{\"type\":5,\"value\":0},{\"type\":5,\"value\":1},{\"type\":5,\"value\":1},{\"type\":5,\"value\":2}]}" true)
+  (Assert.Is "{\"type\":24,\"values\":[{\"type\":5,\"value\":0},{\"type\":5,\"value\":1},{\"type\":5,\"value\":1},{\"type\":5,\"value\":2}]}" true)
 
   (Get "tab1new")
   (ToJson)
   (Log)
-  (Assert.Is "{\"type\":24,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":23,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
+  (Assert.Is "{\"type\":25,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":24,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
 
   (Float4 1 2 3 4)
   (Take 0)
