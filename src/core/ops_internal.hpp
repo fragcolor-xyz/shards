@@ -127,7 +127,10 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     os << var.payload.stringValue;
     break;
   case ContextVar:
-    os << "*ContextVariable*: " << var.payload.stringValue;
+    os << "ContextVariable: " << var.payload.stringValue;
+    break;
+  case CBType::Path:
+    os << "Path: " << var.payload.stringValue;
     break;
   case Image:
     os << "Image";

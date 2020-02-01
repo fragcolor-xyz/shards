@@ -710,15 +710,15 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
 
   switch (inputType.basicType) {
   case Object: {
-    if (inputType.objectVendorId != receiverType.objectVendorId ||
-        inputType.objectTypeId != receiverType.objectTypeId) {
+    if (inputType.object.vendorId != receiverType.object.vendorId ||
+        inputType.object.typeId != receiverType.object.typeId) {
       return false;
     }
     break;
   }
   case Enum: {
-    if (inputType.enumVendorId != receiverType.enumVendorId ||
-        inputType.enumTypeId != receiverType.enumTypeId) {
+    if (inputType.enumeration.vendorId != receiverType.enumeration.vendorId ||
+        inputType.enumeration.typeId != receiverType.enumeration.typeId) {
       return false;
     }
     break;
@@ -747,16 +747,16 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
   }
   case Table: {
     if (strict) {
-      auto atypes = inputType.tableTypes.len;
-      auto btypes = receiverType.tableTypes.len;
+      auto atypes = inputType.table.types.len;
+      auto btypes = receiverType.table.types.len;
       //  btypes != 0 assume consumer is not strict
       for (uint32_t i = 0; i < atypes && (isParameter || btypes != 0); i++) {
         // Go thru all exposed types and make sure we get a positive match with
         // the consumer
-        auto atype = inputType.tableTypes.elements[i];
+        auto atype = inputType.table.types.elements[i];
         auto matched = false;
         for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = receiverType.tableTypes.elements[y];
+          auto btype = receiverType.table.types.elements[y];
           if (matchTypes(atype, btype, isParameter, strict)) {
             matched = true;
             break;
@@ -783,14 +783,14 @@ template <> struct hash<CBTypeInfo> {
     using std::string;
     auto res = hash<int>()(typeInfo.basicType);
     if (typeInfo.basicType == Table) {
-      if (typeInfo.tableKeys.elements) {
-        for (uint32_t i = 0; i < typeInfo.tableKeys.len; i++) {
-          res = res ^ hash<string>()(typeInfo.tableKeys.elements[i]);
+      if (typeInfo.table.keys.elements) {
+        for (uint32_t i = 0; i < typeInfo.table.keys.len; i++) {
+          res = res ^ hash<string>()(typeInfo.table.keys.elements[i]);
         }
       }
-      if (typeInfo.tableTypes.elements) {
-        for (uint32_t i = 0; i < typeInfo.tableTypes.len; i++) {
-          res = res ^ hash<CBTypeInfo>()(typeInfo.tableTypes.elements[i]);
+      if (typeInfo.table.types.elements) {
+        for (uint32_t i = 0; i < typeInfo.table.types.len; i++) {
+          res = res ^ hash<CBTypeInfo>()(typeInfo.table.types.elements[i]);
         }
       }
     } else if (typeInfo.basicType == Seq) {
@@ -798,11 +798,11 @@ template <> struct hash<CBTypeInfo> {
         res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
       }
     } else if (typeInfo.basicType == Object) {
-      res = res ^ hash<int>()(typeInfo.objectVendorId);
-      res = res ^ hash<int>()(typeInfo.objectTypeId);
+      res = res ^ hash<int>()(typeInfo.object.vendorId);
+      res = res ^ hash<int>()(typeInfo.object.typeId);
     } else if (typeInfo.basicType == Enum) {
-      res = res ^ hash<int>()(typeInfo.enumVendorId);
-      res = res ^ hash<int>()(typeInfo.enumTypeId);
+      res = res ^ hash<int>()(typeInfo.enumeration.vendorId);
+      res = res ^ hash<int>()(typeInfo.enumeration.typeId);
     }
     return res;
   }
@@ -1023,12 +1023,12 @@ void validateConnection(ValidationContext &ctx) {
 
         for (auto type : info.second) {
           if (type.exposedType.basicType == Table &&
-              type.exposedType.tableTypes.elements &&
-              type.exposedType.tableKeys.elements) {
+              type.exposedType.table.types.elements &&
+              type.exposedType.table.keys.elements) {
             err +=
                 "(" + type2Name(type.exposedType.basicType) + " [" +
-                type2Name(type.exposedType.tableTypes.elements[0].basicType) +
-                " " + type.exposedType.tableKeys.elements[0] + "]) ";
+                type2Name(type.exposedType.table.types.elements[0].basicType) +
+                " " + type.exposedType.table.keys.elements[0] + "]) ";
           } else if (type.exposedType.basicType == Seq) {
             err += "(" + type2Name(type.exposedType.basicType) + " [";
             for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
@@ -1187,10 +1187,10 @@ void freeDerivedInfo(CBTypeInfo info) {
     chainblocks::arrayFree(info.seqTypes);
   }
   case Table: {
-    for (uint32_t i = 0; info.tableTypes.len > i; i++) {
-      freeDerivedInfo(info.tableTypes.elements[i]);
+    for (uint32_t i = 0; info.table.types.len > i; i++) {
+      freeDerivedInfo(info.table.types.elements[i]);
     }
-    chainblocks::arrayFree(info.tableTypes);
+    chainblocks::arrayFree(info.table.types);
   }
   default:
     break;
@@ -1203,16 +1203,16 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
   varType.seqTypes = {};
-  varType.tableTypes = {};
+  varType.table.types = {};
   switch (value.valueType) {
   case Object: {
-    varType.objectVendorId = value.payload.objectVendorId;
-    varType.objectTypeId = value.payload.objectTypeId;
+    varType.object.vendorId = value.payload.objectVendorId;
+    varType.object.typeId = value.payload.objectTypeId;
     break;
   }
   case Enum: {
-    varType.enumVendorId = value.payload.enumVendorId;
-    varType.enumTypeId = value.payload.enumTypeId;
+    varType.enumeration.vendorId = value.payload.enumVendorId;
+    varType.enumeration.typeId = value.payload.enumTypeId;
     break;
   }
   case Seq: {
@@ -1239,7 +1239,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value) {
           auto data = (iterdata *)_data;
           auto derived = deriveTypeInfo(*value);
           if (!data->types->count(derived)) {
-            chainblocks::arrayPush(data->varType->tableTypes, derived);
+            chainblocks::arrayPush(data->varType->table.types, derived);
             data->types->insert(derived);
           }
           return true;

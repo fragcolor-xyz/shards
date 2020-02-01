@@ -36,6 +36,7 @@ struct Flatten {
     case Enum:
     case String:
     case ContextVar:
+    case Path:
     case Image:
     case Int:
     case Float:
@@ -67,8 +68,8 @@ struct Flatten {
       }
       break;
     case Table: {
-      for (uint32_t i = 0; i < info.tableTypes.len; i++) {
-        verifyInnerType(info.tableTypes.elements[i], currentType);
+      for (uint32_t i = 0; i < info.table.types.len; i++) {
+        verifyInnerType(info.table.types.elements[i], currentType);
       }
       break;
     }
@@ -95,6 +96,7 @@ struct Flatten {
     case Object:
     case Enum:
     case String:
+    case Path:
     case ContextVar:
     case Image:
     case Int:

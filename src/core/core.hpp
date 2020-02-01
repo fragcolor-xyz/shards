@@ -409,6 +409,7 @@ struct Serialization {
     case CBType::Bytes:
       delete[] output.payload.bytesValue;
       break;
+    case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
       delete[] output.payload.stringValue;
@@ -494,6 +495,7 @@ struct Serialization {
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
+    case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
       auto availChars = recycle ? output.capacity : 0;
@@ -632,6 +634,7 @@ struct Serialization {
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
       total += input.payload.bytesSize;
       break;
+    case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
       uint64_t len = strlen(input.payload.stringValue);

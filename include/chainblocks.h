@@ -34,6 +34,7 @@ enum CBType : uint8_t {
 
   Bytes, // pointer + size
   String,
+  Path,       // An OS filesystem path
   ContextVar, // A string label to find from CBContext variables
   Image,
   Seq,
@@ -294,22 +295,10 @@ struct CBTypeInfo {
   enum CBType basicType;
 
   union {
-    // notice, dupes due to some compilers
-    // not liking anon structs
-    struct {
-      int32_t objectVendorId;
-      int32_t objectTypeId;
-    };
-
     struct {
       int32_t vendorId;
       int32_t typeId;
     } object;
-
-    struct {
-      int32_t enumVendorId;
-      int32_t enumTypeId;
-    };
 
     struct {
       int32_t vendorId;
@@ -318,24 +307,29 @@ struct CBTypeInfo {
 
     CBTypesInfo seqTypes;
 
-    // If we are a table, the possible types present in this table
     struct {
       // If tableKeys is populated, it is expected that
       // tableTypes will be populated as well and that at the same
       // key index there is the key's type
-      CBStrings tableKeys;
+      CBStrings keys;
       // If tableKeys is not populated, len == 0 and tableKeys is populated len
       // > 0 it is assumed that tableTypes contains a sequence with the possible
       // types in the table
-      CBTypesInfo tableTypes;
-    };
-
-    struct {
-      CBStrings keys;
       CBTypesInfo types;
     } table;
 
     CBTypesInfo contextVarTypes;
+
+    struct {
+      // if is File, the extension allowed
+      CBStrings extensions;
+      // expects a path to a file
+      bool isFile;
+      // expects an existing path
+      bool existing;
+      // expects a relative path
+      bool relative;
+    } path;
   };
 };
 

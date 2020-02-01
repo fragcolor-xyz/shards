@@ -686,10 +686,10 @@ struct Update : public SetBase {
         auto &name = data.consumables.elements[i].name;
         if (name == _name &&
             data.consumables.elements[i].exposedType.basicType == Table &&
-            data.consumables.elements[i].exposedType.tableTypes.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+            data.consumables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.tableTypes;
+              data.consumables.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             auto &key = tableKeys.elements[y];
             if (_key == key) {
@@ -788,9 +788,9 @@ struct Get : public VariableBase {
         auto &name = data.consumables.elements[i].name;
         if (strcmp(name, _name.c_str()) == 0 &&
             data.consumables.elements[i].exposedType.basicType == Table) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.tableTypes;
+              data.consumables.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
@@ -1022,10 +1022,10 @@ struct Push : public VariableBase {
 
   void destroy() {
     if (_firstPusher) {
-      if (_tableInfo.tableKeys.elements)
-        chainblocks::arrayFree(_tableInfo.tableKeys);
-      if (_tableInfo.tableTypes.elements)
-        chainblocks::arrayFree(_tableInfo.tableTypes);
+      if (_tableInfo.table.keys.elements)
+        chainblocks::arrayFree(_tableInfo.table.keys);
+      if (_tableInfo.table.types.elements)
+        chainblocks::arrayFree(_tableInfo.table.types);
     }
   }
 
@@ -1040,17 +1040,17 @@ struct Push : public VariableBase {
 
     const auto updateTableInfo = [this, &data] {
       _tableInfo.basicType = Table;
-      if (_tableInfo.tableTypes.elements) {
-        chainblocks::arrayFree(_tableInfo.tableTypes);
+      if (_tableInfo.table.types.elements) {
+        chainblocks::arrayFree(_tableInfo.table.types);
       }
-      if (_tableInfo.tableKeys.elements) {
-        chainblocks::arrayFree(_tableInfo.tableKeys);
+      if (_tableInfo.table.keys.elements) {
+        chainblocks::arrayFree(_tableInfo.table.keys);
       }
       _seqInfo.basicType = Seq;
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
-      chainblocks::arrayPush(_tableInfo.tableTypes, _seqInfo);
-      chainblocks::arrayPush(_tableInfo.tableKeys, _key.c_str());
+      chainblocks::arrayPush(_tableInfo.table.types, _seqInfo);
+      chainblocks::arrayPush(_tableInfo.table.keys, _key.c_str());
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
     };
@@ -1059,10 +1059,10 @@ struct Push : public VariableBase {
       auto tableFound = false;
       for (uint32_t i = 0; data.consumables.len > i; i++) {
         if (data.consumables.elements[i].name == _name &&
-            data.consumables.elements[i].exposedType.tableTypes.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+            data.consumables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.tableTypes;
+              data.consumables.elements[i].exposedType.table.types;
           tableFound = true;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
@@ -1315,10 +1315,10 @@ struct Pop : SeqUser {
     if (_isTable) {
       for (uint32_t i = 0; data.consumables.len > i; i++) {
         if (data.consumables.elements[i].name == _name &&
-            data.consumables.elements[i].exposedType.tableTypes.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.tableKeys;
+            data.consumables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.tableTypes;
+              data.consumables.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {

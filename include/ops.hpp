@@ -77,6 +77,9 @@ inline std::string type2Name(CBType type) {
   case ContextVar:
     name = "ContextVar";
     break;
+  case CBType::Path:
+    name = "Path";
+    break;
   case Image:
     name = "Image";
     break;
@@ -272,6 +275,7 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return a.payload.chainValue == b.payload.chainValue;
   case Block:
     return a.payload.blockValue == b.payload.blockValue;
+  case CBType::Path:
   case ContextVar:
   case CBType::String:
     return a.payload.stringValue == b.payload.stringValue ||
@@ -455,6 +459,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.g < b.payload.colorValue.g ||
            a.payload.colorValue.b < b.payload.colorValue.b ||
            a.payload.colorValue.a < b.payload.colorValue.a;
+  case CBType::Path:
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
@@ -641,6 +646,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.g <= b.payload.colorValue.g &&
            a.payload.colorValue.b <= b.payload.colorValue.b &&
            a.payload.colorValue.a <= b.payload.colorValue.a;
+  case CBType::Path:
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
@@ -689,13 +695,13 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     return false;
   switch (a.basicType) {
   case Object:
-    if (a.objectVendorId != b.objectVendorId)
+    if (a.object.vendorId != b.object.vendorId)
       return false;
-    return a.objectTypeId == b.objectTypeId;
+    return a.object.typeId == b.object.typeId;
   case Enum:
-    if (a.enumVendorId != b.enumVendorId)
+    if (a.enumeration.vendorId != b.enumeration.vendorId)
       return false;
-    return a.enumTypeId == b.enumTypeId;
+    return a.enumeration.typeId == b.enumeration.typeId;
   case Seq: {
     if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
       return true;
@@ -720,22 +726,23 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     return true;
   }
   case Table: {
-    auto atypes = a.tableTypes.len;
-    auto btypes = b.tableTypes.len;
+    auto atypes = a.table.types.len;
+    auto btypes = b.table.types.len;
     if (atypes != btypes)
       return false;
 
-    auto akeys = a.tableKeys.len;
-    auto bkeys = b.tableKeys.len;
+    auto akeys = a.table.keys.len;
+    auto bkeys = b.table.keys.len;
     if (akeys != bkeys)
       return false;
 
     // compare but allow different orders of elements
     for (uint32_t i = 0; i < atypes; i++) {
       for (uint32_t j = 0; j < btypes; j++) {
-        if (a.tableTypes.elements[i] == b.tableTypes.elements[j]) {
-          if (a.tableKeys.elements) { // this is enough to know they exist
-            if (strcmp(a.tableKeys.elements[i], b.tableKeys.elements[j]) == 0) {
+        if (a.table.types.elements[i] == b.table.types.elements[j]) {
+          if (a.table.keys.elements) { // this is enough to know they exist
+            if (strcmp(a.table.keys.elements[i], b.table.keys.elements[j]) ==
+                0) {
               goto matched_table;
             }
           } else {
