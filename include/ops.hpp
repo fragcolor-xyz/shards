@@ -707,10 +707,10 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       for (uint32_t i = 0; i < a.seqTypes.len; i++) {
         for (uint32_t j = 0; j < b.seqTypes.len; j++) {
           if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
-            goto matched;
+            goto matched_seq;
         }
         return false;
-      matched:
+      matched_seq:
         continue;
       }
     } else {
@@ -724,9 +724,28 @@ inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     auto btypes = b.tableTypes.len;
     if (atypes != btypes)
       return false;
+
+    auto akeys = a.tableKeys.len;
+    auto bkeys = b.tableKeys.len;
+    if (akeys != bkeys)
+      return false;
+
+    // compare but allow different orders of elements
     for (uint32_t i = 0; i < atypes; i++) {
-      if (a.tableTypes.elements[i] != b.tableTypes.elements[i])
-        return false;
+      for (uint32_t j = 0; j < btypes; j++) {
+        if (a.tableTypes.elements[i] == b.tableTypes.elements[j]) {
+          if (a.tableKeys.elements) { // this is enough to know they exist
+            if (strcmp(a.tableKeys.elements[i], b.tableKeys.elements[j]) == 0) {
+              goto matched_table;
+            }
+          } else {
+            goto matched_table;
+          }
+        }
+      }
+      return false;
+    matched_table:
+      continue;
     }
     return true;
   }

@@ -57,16 +57,27 @@ struct FileBase {
 
     filename = ctxFile.payload.stringValue;
 
-    std::filesystem::path cp(Globals::RootPath);
-    if (std::filesystem::exists(cp)) {
-      auto fullpath = cp / filename;
-      if (checkExists && !std::filesystem::exists(fullpath)) {
+    // if absolute we are fine to begin with
+    std::filesystem::path fp(filename);
+    if (fp.is_absolute()) {
+      if (checkExists) {
+        return std::filesystem::exists(fp);
+      } else {
+        return true;
+      }
+    } else {
+      // check if script root path is populated if so use it
+      std::filesystem::path cp(Globals::RootPath);
+      if (std::filesystem::exists(cp)) {
+        auto fullpath = cp / filename;
+        if (checkExists && !std::filesystem::exists(fullpath)) {
+          return false;
+        }
+        filename = fullpath.string();
+        return true;
+      } else {
         return false;
       }
-      filename = fullpath.string();
-      return true;
-    } else {
-      return false;
     }
   }
 };

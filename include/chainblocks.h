@@ -4,9 +4,9 @@
 #ifndef CB_CHAINBLOCKS_H
 #define CB_CHAINBLOCKS_H
 
-#include <stdbool.h>  // bool
-#include <stddef.h>   // size_t
-#include <stdint.h>   // ints
+#include <stdbool.h> // bool
+#include <stddef.h>  // size_t
+#include <stdint.h>  // ints
 
 // All the available types
 enum CBType : uint8_t {
@@ -468,20 +468,20 @@ struct CBVarPayload {
       uint64_t bytesSize;
     };
   };
-} __attribute__((aligned (16)));
+} __attribute__((aligned(16)));
 
 struct CBVar {
   struct CBVarPayload payload;
   uint64_t capacity;
   enum CBType valueType;
-} __attribute__ ((aligned (16)));
+} __attribute__((aligned(16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
 
 struct CBRunChainOutput {
   struct CBVar output;
   enum CBRunChainOutputState state;
-} __attribute__ ((aligned (16)));
+} __attribute__((aligned(16)));
 
 struct CBInstanceData {
   // Used to optimize activations, replacing function pointers during

@@ -823,7 +823,7 @@ template <> struct hash<CBExposedTypeInfo> {
 } // namespace std
 
 struct ValidationContext {
-  std::unordered_map<std::string, std::unordered_multiset<CBExposedTypeInfo>>
+  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
       exposed;
   std::unordered_set<std::string> variables;
   std::unordered_set<std::string> references;
