@@ -621,6 +621,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":String");
   case ContextVar:
     return mal::keyword(":ContextVar");
+  case Path:
+    return mal::keyword(":Path");
   case Image:
     return mal::keyword(":Image");
   case Bytes:
@@ -1148,6 +1150,18 @@ BUILTIN("#") {
   auto &s = value->ref();
   CBVar var{};
   var.valueType = ContextVar;
+  var.payload.stringValue = s.c_str();
+  auto mvar = new malCBVar(var);
+  mvar->reference(value);
+  return malValuePtr(mvar);
+}
+
+BUILTIN("Path") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  auto &s = value->ref();
+  CBVar var{};
+  var.valueType = Path;
   var.payload.stringValue = s.c_str();
   auto mvar = new malCBVar(var);
   mvar->reference(value);

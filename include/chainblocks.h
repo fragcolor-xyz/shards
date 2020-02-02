@@ -294,20 +294,36 @@ struct CBTableInterface {
 struct CBTypeInfo {
   enum CBType basicType;
 
+#ifdef CB_NO_ANON
+  union Details {
+#else
   union {
+#endif
+#ifdef CB_NO_ANON
+    struct Object {
+#else
     struct {
+#endif
       int32_t vendorId;
       int32_t typeId;
     } object;
 
+#ifdef CB_NO_ANON
+    struct Enum {
+#else
     struct {
+#endif
       int32_t vendorId;
       int32_t typeId;
     } enumeration;
 
     CBTypesInfo seqTypes;
 
+#ifdef CB_NO_ANON
+    struct Table {
+#else
     struct {
+#endif
       // If tableKeys is populated, it is expected that
       // tableTypes will be populated as well and that at the same
       // key index there is the key's type
@@ -320,17 +336,25 @@ struct CBTypeInfo {
 
     CBTypesInfo contextVarTypes;
 
+#ifdef CB_NO_ANON
+    struct Path {
+#else
     struct {
+#endif
       // if is File, the extension allowed
       CBStrings extensions;
       // expects a path to a file
       bool isFile;
       // expects an existing path
       bool existing;
-      // expects a relative path
+      // expects a relative path (relative to the CBCore.getRootPath)
       bool relative;
     } path;
+#ifdef CB_NO_ANON
+  } details;
+#else
   };
+#endif
 };
 
 typedef const char *(__cdecl *CBObjectSerializer)(CBPointer);

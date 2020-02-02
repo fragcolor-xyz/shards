@@ -357,6 +357,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case Seq:
     _destroyVarSlow(var);
     break;
+  case CBType::Path:
   case CBType::String:
   case ContextVar:
     delete[] var.payload.stringValue;

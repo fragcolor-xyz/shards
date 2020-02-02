@@ -1617,6 +1617,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     dst.capacity = std::max(dst.capacity,
                             decltype(dst.capacity)(dst.payload.seqValue.len));
   } break;
+  case Path:
   case String:
   case ContextVar: {
     auto srcSize = strlen(src.payload.stringValue) + 1;

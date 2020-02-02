@@ -12,6 +12,7 @@ void to_json(json &j, const CBChainPtr &chain);
 void _releaseMemory(CBVar &var) {
   // Used by Block and Chain from_json
   switch (var.valueType) {
+  case Path:
   case ContextVar:
   case String:
     delete[] var.payload.stringValue;
@@ -121,6 +122,7 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
+  case Path:
   case ContextVar:
   case String: {
     j = json{{"type", valType}, {"value", var.payload.stringValue}};
@@ -309,6 +311,14 @@ void from_json(const json &j, CBVar &var) {
   }
   case String: {
     var.valueType = String;
+    auto strVal = j.at("value").get<std::string>();
+    var.payload.stringValue = new char[strVal.length() + 1];
+    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    break;
+  }
+  case Path: {
+    var.valueType = Path;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
     memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
