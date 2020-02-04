@@ -162,7 +162,8 @@ private:
   }
 
   void cleanup() {
-    for (auto &blk : _blocksArray) {
+    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
+      auto blk = *it;
       blk->cleanup(blk);
     }
   }

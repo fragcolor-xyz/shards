@@ -98,8 +98,12 @@ public:
     sCore._core.unregisterExitCallback(eventName);
   }
 
-  static CBVar *findVariable(CBContext *context, const char *name) {
-    return sCore._core.findVariable(context, name);
+  static CBVar *referenceVariable(CBContext *context, const char *name) {
+    return sCore._core.referenceVariable(context, name);
+  }
+
+  static void releaseVariable(CBVar *variable) {
+    return sCore._core.releaseVariable(variable);
   }
 
   static void throwException(const char *errorText) {
