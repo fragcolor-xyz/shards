@@ -416,8 +416,7 @@ else()
     )
 endif()
 
-add_library(
-  cbruntime STATIC
+set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
@@ -439,35 +438,21 @@ add_library(
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CB_EXTRAS}
   )
-set_property(TARGET cbruntime PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-add_dependencies(cbruntime format)
 
-set(CB_RUNTIME_LIBS cbruntime)
+add_library(
+  cb_static STATIC
+  ${RUNTIME_SRC}
+  )
+set_property(TARGET cb_static PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
+add_dependencies(cb_static format)
+
+set(CB_RUNTIME_LIBS cb_static)
 
 # also shared lib target
 # can't use OBJECT sadly due to xcode generator not liking it
 add_library(
   cb_shared SHARED
-  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
-  ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/flow.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/seqs.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/casting.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
-  ${CB_EXTRAS}
+  ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cb_shared format)
@@ -489,7 +474,7 @@ add_executable(
   "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
   )
-add_dependencies(cbl cbruntime)
+add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
