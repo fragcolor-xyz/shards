@@ -95,7 +95,9 @@ endif()
 add_compile_options(-fno-threadsafe-statics -ffast-math -funroll-loops -Wno-multichar)
 
 if(X86)
-  add_compile_options(-march=core2)
+  add_compile_options(
+    -march=sandybridge
+    )
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
