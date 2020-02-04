@@ -540,6 +540,7 @@ struct ToBytes {
     case CBType::Object:
     case CBType::Any:
     case CBType::String:
+    case CBType::Path:
     case CBType::ContextVar:
     case CBType::Image:
     case CBType::Chain:
@@ -632,6 +633,7 @@ struct ToBytes {
              input.payload.bytesSize);
       break;
     }
+    case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
       auto len = strlen(input.payload.stringValue);
