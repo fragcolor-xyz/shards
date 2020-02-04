@@ -295,7 +295,7 @@ struct SendKeyEventBase {
   std::string _windowVarName;
   ExposedInfo _exposedInfo;
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_windowVarName.size() == 0) {
       return {};
     } else {
@@ -336,7 +336,7 @@ struct MousePosBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_window.isVariable()) {
       _consuming = ExposedInfo(ExposedInfo::Variable(
           _window.variableName(), "The window.", Globals::windowType));

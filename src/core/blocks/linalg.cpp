@@ -541,7 +541,7 @@ struct Orthographic : VectorUnaryBase {
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
   RUNTIME_BLOCK_parameters(_name_);                                            \
   RUNTIME_BLOCK_compose(_name_);                                               \
-  RUNTIME_BLOCK_consumedVariables(_name_);                                     \
+  RUNTIME_BLOCK_requiredVariables(_name_);                                     \
   RUNTIME_BLOCK_setParam(_name_);                                              \
   RUNTIME_BLOCK_getParam(_name_);                                              \
   RUNTIME_BLOCK_activate(_name_);                                              \

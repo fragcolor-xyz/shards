@@ -366,13 +366,13 @@ struct ChainFileWatcher {
   boost::lockfree::queue<CBChain *> garbage;
 
   CBTypeInfo inputTypeInfo;
-  chainblocks::IterableExposedInfo consumables;
+  chainblocks::IterableExposedInfo acquirables;
 
   explicit ChainFileWatcher(std::string &file, std::string currentPath,
                             const CBInstanceData &data)
       : running(true), fileName(file), path(currentPath), results(2),
         garbage(2), inputTypeInfo(data.inputType),
-        consumables(data.consumables) {
+        acquirables(data.acquirables) {
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
@@ -415,7 +415,7 @@ struct ChainFileWatcher {
 
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
-            data.consumables = consumables;
+            data.acquirables = acquirables;
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(

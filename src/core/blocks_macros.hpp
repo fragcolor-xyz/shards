@@ -25,7 +25,7 @@
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->exposedVariables = static_cast<CBExposedVariablesProc>(            \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>(          \
+    result->requiredVariables = static_cast<CBRequiredVariablesProc>(          \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
@@ -57,7 +57,7 @@
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->exposedVariables = static_cast<CBExposedVariablesProc>(            \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>(          \
+    result->requiredVariables = static_cast<CBRequiredVariablesProc>(          \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
@@ -90,7 +90,7 @@
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->exposedVariables = static_cast<CBExposedVariablesProc>(            \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>(          \
+    result->requiredVariables = static_cast<CBRequiredVariablesProc>(          \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
@@ -123,7 +123,7 @@
         [](CBlock *block) { return CBTypesInfo(); });                          \
     result->exposedVariables = static_cast<CBExposedVariablesProc>(            \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
-    result->consumedVariables = static_cast<CBConsumedVariablesProc>(          \
+    result->requiredVariables = static_cast<CBRequiredVariablesProc>(          \
         [](CBlock *block) { return CBExposedTypesInfo(); });                   \
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
@@ -170,11 +170,11 @@
         return reinterpret_cast<_name_##Runtime *>(block)                      \
             ->core.exposedVariables();                                         \
       });
-#define RUNTIME_BLOCK_consumedVariables(_name_)                                \
-  result->consumedVariables =                                                  \
-      static_cast<CBConsumedVariablesProc>([](CBlock *block) {                 \
+#define RUNTIME_BLOCK_requiredVariables(_name_)                                \
+  result->requiredVariables =                                                  \
+      static_cast<CBRequiredVariablesProc>([](CBlock *block) {                 \
         return reinterpret_cast<_name_##Runtime *>(block)                      \
-            ->core.consumedVariables();                                        \
+            ->core.requiredVariables();                                        \
       });
 
 #define RUNTIME_BLOCK_parameters(_name_)                                       \

@@ -16,7 +16,7 @@ CB_HAS_MEMBER_TEST(destroy);
 CB_HAS_MEMBER_TEST(inputTypes);
 CB_HAS_MEMBER_TEST(outputTypes);
 CB_HAS_MEMBER_TEST(exposedVariables);
-CB_HAS_MEMBER_TEST(consumedVariables);
+CB_HAS_MEMBER_TEST(requiredVariables);
 CB_HAS_MEMBER_TEST(compose);
 CB_HAS_MEMBER_TEST(parameters);
 CB_HAS_MEMBER_TEST(setParam);
@@ -106,15 +106,15 @@ template <class T> struct BlockWrapper {
           [](CBlock *b) { return CBExposedTypesInfo(); });
     }
 
-    // consumedVariables
-    if constexpr (has_consumedVariables<T>::value) {
-      result->consumedVariables =
-          static_cast<CBConsumedVariablesProc>([](CBlock *b) {
+    // requiredVariables
+    if constexpr (has_requiredVariables<T>::value) {
+      result->requiredVariables =
+          static_cast<CBRequiredVariablesProc>([](CBlock *b) {
             return reinterpret_cast<BlockWrapper<T> *>(b)
-                ->block.consumedVariables();
+                ->block.requiredVariables();
           });
     } else {
-      result->consumedVariables = static_cast<CBConsumedVariablesProc>(
+      result->requiredVariables = static_cast<CBRequiredVariablesProc>(
           [](CBlock *b) { return CBExposedTypesInfo(); });
     }
 

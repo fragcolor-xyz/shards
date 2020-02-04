@@ -472,7 +472,7 @@ struct PixelBase {
 
   void cleanup() { windowVar = nullptr; }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (variableName.size() == 0) {
       return {};
     } else {
@@ -1283,7 +1283,7 @@ RUNTIME_BLOCK_cleanup(Pixel);
 RUNTIME_BLOCK_parameters(Pixel);
 RUNTIME_BLOCK_setParam(Pixel);
 RUNTIME_BLOCK_getParam(Pixel);
-RUNTIME_BLOCK_consumedVariables(Pixel);
+RUNTIME_BLOCK_requiredVariables(Pixel);
 RUNTIME_BLOCK_END(Pixel);
 
 RUNTIME_BLOCK(Desktop, Pixels);
@@ -1294,7 +1294,7 @@ RUNTIME_BLOCK_cleanup(Pixels);
 RUNTIME_BLOCK_parameters(Pixels);
 RUNTIME_BLOCK_setParam(Pixels);
 RUNTIME_BLOCK_getParam(Pixels);
-RUNTIME_BLOCK_consumedVariables(Pixels);
+RUNTIME_BLOCK_requiredVariables(Pixels);
 RUNTIME_BLOCK_END(Pixels);
 
 RUNTIME_BLOCK(Desktop, WaitKeyEvent);
@@ -1313,7 +1313,7 @@ RUNTIME_BLOCK_setParam(SendKeyEvent);
 RUNTIME_BLOCK_getParam(SendKeyEvent);
 RUNTIME_BLOCK_activate(SendKeyEvent);
 RUNTIME_BLOCK_help(SendKeyEvent);
-RUNTIME_BLOCK_consumedVariables(SendKeyEvent);
+RUNTIME_BLOCK_requiredVariables(SendKeyEvent);
 RUNTIME_BLOCK_END(SendKeyEvent);
 
 RUNTIME_BLOCK(Desktop, GetMousePos);
@@ -1324,7 +1324,7 @@ RUNTIME_BLOCK_parameters(GetMousePos);
 RUNTIME_BLOCK_setParam(GetMousePos);
 RUNTIME_BLOCK_getParam(GetMousePos);
 RUNTIME_BLOCK_activate(GetMousePos);
-RUNTIME_BLOCK_consumedVariables(GetMousePos);
+RUNTIME_BLOCK_requiredVariables(GetMousePos);
 RUNTIME_BLOCK_END(GetMousePos);
 
 RUNTIME_BLOCK(Desktop, SetMousePos);
@@ -1335,7 +1335,7 @@ RUNTIME_BLOCK_parameters(SetMousePos);
 RUNTIME_BLOCK_setParam(SetMousePos);
 RUNTIME_BLOCK_getParam(SetMousePos);
 RUNTIME_BLOCK_activate(SetMousePos);
-RUNTIME_BLOCK_consumedVariables(SetMousePos);
+RUNTIME_BLOCK_requiredVariables(SetMousePos);
 RUNTIME_BLOCK_END(SetMousePos);
 
 RUNTIME_BLOCK(Desktop, Tap);
@@ -1347,7 +1347,7 @@ RUNTIME_BLOCK_parameters(Tap);
 RUNTIME_BLOCK_setParam(Tap);
 RUNTIME_BLOCK_getParam(Tap);
 RUNTIME_BLOCK_activate(Tap);
-RUNTIME_BLOCK_consumedVariables(Tap);
+RUNTIME_BLOCK_requiredVariables(Tap);
 RUNTIME_BLOCK_END(Tap);
 
 RUNTIME_BLOCK(Desktop, LeftClick);
@@ -1358,7 +1358,7 @@ RUNTIME_BLOCK_parameters(LeftClick);
 RUNTIME_BLOCK_setParam(LeftClick);
 RUNTIME_BLOCK_getParam(LeftClick);
 RUNTIME_BLOCK_activate(LeftClick);
-RUNTIME_BLOCK_consumedVariables(LeftClick);
+RUNTIME_BLOCK_requiredVariables(LeftClick);
 RUNTIME_BLOCK_END(LeftClick);
 
 RUNTIME_BLOCK(Desktop, RightClick);
@@ -1369,7 +1369,7 @@ RUNTIME_BLOCK_parameters(RightClick);
 RUNTIME_BLOCK_setParam(RightClick);
 RUNTIME_BLOCK_getParam(RightClick);
 RUNTIME_BLOCK_activate(RightClick);
-RUNTIME_BLOCK_consumedVariables(RightClick);
+RUNTIME_BLOCK_requiredVariables(RightClick);
 RUNTIME_BLOCK_END(RightClick);
 
 RUNTIME_BLOCK(Desktop, MiddleClick);
@@ -1380,7 +1380,7 @@ RUNTIME_BLOCK_parameters(MiddleClick);
 RUNTIME_BLOCK_setParam(MiddleClick);
 RUNTIME_BLOCK_getParam(MiddleClick);
 RUNTIME_BLOCK_activate(MiddleClick);
-RUNTIME_BLOCK_consumedVariables(MiddleClick);
+RUNTIME_BLOCK_requiredVariables(MiddleClick);
 RUNTIME_BLOCK_END(MiddleClick);
 
 RUNTIME_BLOCK(Desktop, CursorBitmap);

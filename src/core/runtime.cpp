@@ -867,7 +867,7 @@ void validateConnection(ValidationContext &ctx) {
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
-        chainblocks::arrayPush(data.consumables, type);
+        chainblocks::arrayPush(data.acquirables, type);
       }
     }
     for (auto &info : ctx.stackTypes) {
@@ -879,7 +879,7 @@ void validateConnection(ValidationContext &ctx) {
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
     chainblocks::arrayFree(data.stack);
-    chainblocks::arrayFree(data.consumables);
+    chainblocks::arrayFree(data.acquirables);
   } else {
     // Short-cut if it's just one type and not any type
     // Any type tho means keep previous output type!
@@ -972,21 +972,21 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   // Finally do checks on what we consume
-  auto consumedVar = ctx.bottom->consumedVariables(ctx.bottom);
+  auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 
-  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> consumedVars;
-  for (uint32_t i = 0; consumedVar.len > i; i++) {
-    auto &consumed_param = consumedVar.elements[i];
-    std::string name(consumed_param.name);
-    consumedVars[name].push_back(consumed_param);
+  std::unordered_map<std::string, std::vector<CBExposedTypeInfo>> requiredVars;
+  for (uint32_t i = 0; requiredVar.len > i; i++) {
+    auto &required_param = requiredVar.elements[i];
+    std::string name(required_param.name);
+    requiredVars[name].push_back(required_param);
   }
 
   // make sure we have the vars we need, collect first
-  for (const auto &consumed : consumedVars) {
+  for (const auto &required : requiredVars) {
     auto matching = false;
 
-    for (const auto &consumed_param : consumed.second) {
-      std::string name(consumed_param.name);
+    for (const auto &required_param : required.second) {
+      std::string name(required_param.name);
       if (name.find(' ') !=
           std::string::npos) { // take only the first part of variable name
         // the remaining should be a table key which we don't care here
@@ -994,14 +994,14 @@ void validateConnection(ValidationContext &ctx) {
       }
       auto findIt = ctx.exposed.find(name);
       if (findIt == ctx.exposed.end()) {
-        std::string err("Required consumed variable not found: " + name);
+        std::string err("Required required variable not found: " + name);
         // Warning only, delegate compose to decide
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       } else {
 
         for (auto type : findIt->second) {
           auto exposedType = type.exposedType;
-          auto requiredType = consumed_param.exposedType;
+          auto requiredType = required_param.exposedType;
           // Finally deep compare types
           if (matchTypes(exposedType, requiredType, false, true)) {
             matching = true;
@@ -1015,8 +1015,8 @@ void validateConnection(ValidationContext &ctx) {
 
     if (!matching) {
       std::string err(
-          "Required consumed types do not match currently exposed ones: " +
-          consumed.first);
+          "Required required types do not match currently exposed ones: " +
+          required.first);
       err += " exposed types:";
       for (const auto &info : ctx.exposed) {
         err += " (" + info.first + " [";
@@ -1067,9 +1067,9 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
     ctx.stackTypes.push_back(data.stack.elements[i]);
   }
 
-  if (data.consumables.elements) {
-    for (uint32_t i = 0; i < data.consumables.len; i++) {
-      auto &info = data.consumables.elements[i];
+  if (data.acquirables.elements) {
+    for (uint32_t i = 0; i < data.acquirables.len; i++) {
+      auto &info = data.acquirables.elements[i];
       ctx.exposed[info.name].insert(info);
     }
   }

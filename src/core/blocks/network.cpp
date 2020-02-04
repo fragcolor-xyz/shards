@@ -123,7 +123,7 @@ struct NetworkBase {
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
-    chainblocks::arrayPush(data.consumables, endpointInfo);
+    chainblocks::arrayPush(data.acquirables, endpointInfo);
     _validation = _blks.validate(data);
     return _validation.outputType;
   }

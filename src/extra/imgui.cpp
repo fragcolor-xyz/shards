@@ -13,11 +13,11 @@ namespace ImGui {
 struct Base {
   CBVar *_context;
 
-  static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
+  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
       "ImGui.Context", "The ImGui Context.", Context::Info));
 
-  CBExposedTypesInfo consumedVariables() {
-    return CBExposedTypesInfo(consumedInfo);
+  CBExposedTypesInfo requiredVariables() {
+    return CBExposedTypesInfo(requiredInfo);
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -666,7 +666,7 @@ template <CBType CT> struct Variable : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_variable_name.size() > 0) {
-      IterableExposedInfo vars(data.consumables);
+      IterableExposedInfo vars(data.acquirables);
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : vars) {
@@ -690,11 +690,11 @@ template <CBType CT> struct Variable : public Base {
     return varType;
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_variable_name.size() > 0 && !_exposing) {
       _expInfo = ExposedInfo(
-          consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
-                                              "The consumed input variable.",
+          requiredInfo, ExposedInfo::Variable(_variable_name.c_str(),
+                                              "The required input variable.",
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
@@ -705,7 +705,7 @@ template <CBType CT> struct Variable : public Base {
   CBExposedTypesInfo exposedVariables() {
     if (_variable_name.size() > 0 && _exposing) {
       _expInfo = ExposedInfo(
-          consumedInfo, ExposedInfo::Variable(_variable_name.c_str(),
+          requiredInfo, ExposedInfo::Variable(_variable_name.c_str(),
                                               "The exposed input variable.",
                                               CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
@@ -1394,7 +1394,7 @@ typedef BlockWrapper<Image> ImageBlock;
 // Register
 RUNTIME_BLOCK(ImGui, Style);
 RUNTIME_BLOCK_compose(Style);
-RUNTIME_BLOCK_consumedVariables(Style);
+RUNTIME_BLOCK_requiredVariables(Style);
 RUNTIME_BLOCK_parameters(Style);
 RUNTIME_BLOCK_setParam(Style);
 RUNTIME_BLOCK_getParam(Style);
@@ -1406,7 +1406,7 @@ RUNTIME_BLOCK_END(Style);
 RUNTIME_BLOCK(ImGui, Window);
 RUNTIME_BLOCK_cleanup(Window);
 RUNTIME_BLOCK_compose(Window);
-RUNTIME_BLOCK_consumedVariables(Window);
+RUNTIME_BLOCK_requiredVariables(Window);
 RUNTIME_BLOCK_exposedVariables(Window);
 RUNTIME_BLOCK_parameters(Window);
 RUNTIME_BLOCK_setParam(Window);
@@ -1419,7 +1419,7 @@ RUNTIME_BLOCK_END(Window);
 RUNTIME_BLOCK(ImGui, CheckBox);
 RUNTIME_BLOCK_cleanup(CheckBox);
 RUNTIME_BLOCK_compose(CheckBox);
-RUNTIME_BLOCK_consumedVariables(CheckBox);
+RUNTIME_BLOCK_requiredVariables(CheckBox);
 RUNTIME_BLOCK_exposedVariables(CheckBox);
 RUNTIME_BLOCK_parameters(CheckBox);
 RUNTIME_BLOCK_setParam(CheckBox);
@@ -1430,7 +1430,7 @@ RUNTIME_BLOCK_activate(CheckBox);
 RUNTIME_BLOCK_END(CheckBox);
 
 RUNTIME_BLOCK(ImGui, Text);
-RUNTIME_BLOCK_consumedVariables(Text);
+RUNTIME_BLOCK_requiredVariables(Text);
 RUNTIME_BLOCK_parameters(Text);
 RUNTIME_BLOCK_setParam(Text);
 RUNTIME_BLOCK_getParam(Text);
@@ -1442,7 +1442,7 @@ RUNTIME_BLOCK_END(Text);
 RUNTIME_BLOCK(ImGui, Button);
 RUNTIME_BLOCK_cleanup(Button);
 RUNTIME_BLOCK_compose(Button);
-RUNTIME_BLOCK_consumedVariables(Button);
+RUNTIME_BLOCK_requiredVariables(Button);
 RUNTIME_BLOCK_exposedVariables(Button);
 RUNTIME_BLOCK_parameters(Button);
 RUNTIME_BLOCK_setParam(Button);
@@ -1453,7 +1453,7 @@ RUNTIME_BLOCK_activate(Button);
 RUNTIME_BLOCK_END(Button);
 
 RUNTIME_BLOCK(ImGui, HexViewer);
-RUNTIME_BLOCK_consumedVariables(HexViewer);
+RUNTIME_BLOCK_requiredVariables(HexViewer);
 RUNTIME_BLOCK_inputTypes(HexViewer);
 RUNTIME_BLOCK_outputTypes(HexViewer);
 RUNTIME_BLOCK_activate(HexViewer);

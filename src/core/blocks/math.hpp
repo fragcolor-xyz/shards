@@ -68,7 +68,7 @@ struct BinaryBase : public Base {
 
   CBVar _operand{};
   CBVar *_ctxOperand{};
-  ExposedInfo _consumedInfo{};
+  ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
   void cleanup() { _ctxOperand = nullptr; }
@@ -91,17 +91,17 @@ struct BinaryBase : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_operand.valueType == ContextVar) {
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        if (strcmp(data.consumables.elements[i].name,
+      for (uint32_t i = 0; i < data.acquirables.len; i++) {
+        if (strcmp(data.acquirables.elements[i].name,
                    _operand.payload.stringValue) == 0) {
-          if (data.consumables.elements[i].exposedType.basicType != Seq &&
+          if (data.acquirables.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
             _opType = Normal;
-          } else if (data.consumables.elements[i].exposedType.basicType !=
+          } else if (data.acquirables.elements[i].exposedType.basicType !=
                          Seq &&
                      data.inputType.basicType == Seq) {
             _opType = Seq1;
-          } else if (data.consumables.elements[i].exposedType.basicType ==
+          } else if (data.acquirables.elements[i].exposedType.basicType ==
                          Seq &&
                      data.inputType.basicType == Seq) {
             _opType = SeqSeq;
@@ -130,12 +130,12 @@ struct BinaryBase : public Base {
     return data.inputType;
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_operand.valueType == ContextVar) {
-      _consumedInfo = ExposedInfo(
+      _requiredInfo = ExposedInfo(
           ExposedInfo::Variable(_operand.payload.stringValue,
-                                "The consumed operand.", CoreInfo::AnyType));
-      return CBExposedTypesInfo(_consumedInfo);
+                                "The required operand.", CoreInfo::AnyType));
+      return CBExposedTypesInfo(_requiredInfo);
     }
     return {};
   }
@@ -414,7 +414,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \
   RUNTIME_BLOCK_compose(NAME);                                                 \
-  RUNTIME_BLOCK_consumedVariables(NAME);                                       \
+  RUNTIME_BLOCK_requiredVariables(NAME);                                       \
   RUNTIME_BLOCK_setParam(NAME);                                                \
   RUNTIME_BLOCK_getParam(NAME);                                                \
   RUNTIME_BLOCK_activate(NAME);                                                \

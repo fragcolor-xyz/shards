@@ -20,11 +20,11 @@ struct BaseConsumer : public Base {
   static inline Type windowType{
       {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
 
-  static inline ExposedInfo consumedInfo = ExposedInfo(ExposedInfo::Variable(
+  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
       "BGFX.Context", "The BGFX Context.", Context::Info));
 
-  CBExposedTypesInfo consumedVariables() {
-    return CBExposedTypesInfo(consumedInfo);
+  CBExposedTypesInfo requiredVariables() {
+    return CBExposedTypesInfo(requiredInfo);
   }
 };
 
@@ -134,8 +134,8 @@ struct MainWindow : public BaseWindow {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
-    for (uint32_t i = 0; i < data.consumables.len; i++) {
-      if (strcmp(data.consumables.elements[i].name, "BGFX.Context") == 0) {
+    for (uint32_t i = 0; i < data.acquirables.len; i++) {
+      if (strcmp(data.acquirables.elements[i].name, "BGFX.Context") == 0) {
         throw CBException("BGFX.MainWindow must be unique, found another use!");
       }
     }

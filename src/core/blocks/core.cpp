@@ -174,11 +174,11 @@ struct Sort : public JointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo consumables(data.consumables);
+    IterableExposedInfo acquirables(data.acquirables);
     CBExposedTypeInfo info{};
-    for (auto &consumable : consumables) {
-      if (strcmp(consumable.name, _inputVar.payload.stringValue) == 0) {
-        info = consumable;
+    for (auto &acquirable : acquirables) {
+      if (strcmp(acquirable.name, _inputVar.payload.stringValue) == 0) {
+        info = acquirable;
         goto found;
       }
     }
@@ -331,11 +331,11 @@ struct Remove : public JointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo consumables(data.consumables);
+    IterableExposedInfo acquirables(data.acquirables);
     CBExposedTypeInfo info{};
-    for (auto &consumable : consumables) {
-      if (strcmp(consumable.name, _inputVar.payload.stringValue) == 0) {
-        info = consumable;
+    for (auto &acquirable : acquirables) {
+      if (strcmp(acquirable.name, _inputVar.payload.stringValue) == 0) {
+        info = acquirable;
         goto found;
       }
     }
@@ -460,7 +460,7 @@ struct XpendTo : public XPendBase {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    auto conss = IterableExposedInfo(data.consumables);
+    auto conss = IterableExposedInfo(data.acquirables);
     for (auto &cons : conss) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != CBType::Seq &&
@@ -690,7 +690,7 @@ RUNTIME_BLOCK_inputTypes(Update);
 RUNTIME_BLOCK_outputTypes(Update);
 RUNTIME_BLOCK_parameters(Update);
 RUNTIME_BLOCK_compose(Update);
-RUNTIME_BLOCK_consumedVariables(Update);
+RUNTIME_BLOCK_requiredVariables(Update);
 RUNTIME_BLOCK_setParam(Update);
 RUNTIME_BLOCK_getParam(Update);
 RUNTIME_BLOCK_activate(Update);
@@ -718,7 +718,7 @@ RUNTIME_BLOCK_inputTypes(Pop);
 RUNTIME_BLOCK_outputTypes(Pop);
 RUNTIME_BLOCK_parameters(Pop);
 RUNTIME_BLOCK_compose(Pop);
-RUNTIME_BLOCK_consumedVariables(Pop);
+RUNTIME_BLOCK_requiredVariables(Pop);
 RUNTIME_BLOCK_setParam(Pop);
 RUNTIME_BLOCK_getParam(Pop);
 RUNTIME_BLOCK_activate(Pop);
@@ -765,7 +765,7 @@ RUNTIME_BLOCK_inputTypes(Get);
 RUNTIME_BLOCK_outputTypes(Get);
 RUNTIME_BLOCK_parameters(Get);
 RUNTIME_BLOCK_compose(Get);
-RUNTIME_BLOCK_consumedVariables(Get);
+RUNTIME_BLOCK_requiredVariables(Get);
 RUNTIME_BLOCK_setParam(Get);
 RUNTIME_BLOCK_getParam(Get);
 RUNTIME_BLOCK_activate(Get);
@@ -777,7 +777,7 @@ RUNTIME_BLOCK_cleanup(Swap);
 RUNTIME_BLOCK_inputTypes(Swap);
 RUNTIME_BLOCK_outputTypes(Swap);
 RUNTIME_BLOCK_parameters(Swap);
-RUNTIME_BLOCK_consumedVariables(Swap);
+RUNTIME_BLOCK_requiredVariables(Swap);
 RUNTIME_BLOCK_setParam(Swap);
 RUNTIME_BLOCK_getParam(Swap);
 RUNTIME_BLOCK_activate(Swap);
@@ -787,7 +787,7 @@ RUNTIME_BLOCK_END(Swap);
 RUNTIME_CORE_BLOCK_FACTORY(Take);
 RUNTIME_BLOCK_destroy(Take);
 RUNTIME_BLOCK_cleanup(Take);
-RUNTIME_BLOCK_consumedVariables(Take);
+RUNTIME_BLOCK_requiredVariables(Take);
 RUNTIME_BLOCK_inputTypes(Take);
 RUNTIME_BLOCK_outputTypes(Take);
 RUNTIME_BLOCK_parameters(Take);
@@ -801,7 +801,7 @@ RUNTIME_BLOCK_END(Take);
 RUNTIME_CORE_BLOCK_FACTORY(Slice);
 RUNTIME_BLOCK_destroy(Slice);
 RUNTIME_BLOCK_cleanup(Slice);
-RUNTIME_BLOCK_consumedVariables(Slice);
+RUNTIME_BLOCK_requiredVariables(Slice);
 RUNTIME_BLOCK_inputTypes(Slice);
 RUNTIME_BLOCK_outputTypes(Slice);
 RUNTIME_BLOCK_parameters(Slice);
@@ -833,7 +833,7 @@ RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_cleanup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
-RUNTIME_BLOCK_consumedVariables(Repeat);
+RUNTIME_BLOCK_requiredVariables(Repeat);
 RUNTIME_BLOCK_compose(Repeat);
 RUNTIME_BLOCK_END(Repeat);
 

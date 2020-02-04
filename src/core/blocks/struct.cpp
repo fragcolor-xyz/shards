@@ -32,7 +32,7 @@ private:
   }
 
   void advance() {
-    // skip current token, previosly consumed
+    // skip current token, previosly required
     _iter += _token.size();
 
     skipSpaces();

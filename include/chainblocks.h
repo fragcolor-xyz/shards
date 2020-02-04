@@ -422,7 +422,7 @@ struct CBFlow {
 // deep copy it.
 //   * Callers should free up any allocated memory.
 
-// ### What about exposed/consumedVariables, parameters and input/outputTypes:
+// ### What about exposed/requiredVariables, parameters and input/outputTypes:
 // * Same for them, they are just read only basically
 
 struct CBVarPayload {
@@ -451,7 +451,7 @@ struct CBVarPayload {
 
     // notice, this is assumed not mutable!
     // unless specified in the CBTypeInfo of this value
-    // and only when used as variable (consumable)
+    // and only when used as variable (acquirable)
     CBSeq seqValue;
 
     struct CBTable tableValue;
@@ -509,7 +509,7 @@ struct CBInstanceData {
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBTypesInfo stack;
-  CBExposedTypesInfo consumables;
+  CBExposedTypesInfo acquirables;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
@@ -526,7 +526,7 @@ typedef CBTypesInfo(__cdecl *CBInputTypesProc)(struct CBlock *);
 typedef CBTypesInfo(__cdecl *CBOutputTypesProc)(struct CBlock *);
 
 typedef CBExposedTypesInfo(__cdecl *CBExposedVariablesProc)(struct CBlock *);
-typedef CBExposedTypesInfo(__cdecl *CBConsumedVariablesProc)(struct CBlock *);
+typedef CBExposedTypesInfo(__cdecl *CBRequiredVariablesProc)(struct CBlock *);
 
 typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
 typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, struct CBVar);
@@ -546,6 +546,7 @@ typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
 struct CBlock {
   enum CBInlineBlocks inlineBlockId;
 
+  // The interface to fill
   CBNameProc name; // Returns the name of the block, do not free the string,
                    // generally const
   CBHelpProc help; // Returns the help text of the block, do not free the
@@ -559,7 +560,7 @@ struct CBlock {
   CBOutputTypesProc outputTypes;
 
   CBExposedVariablesProc exposedVariables;
-  CBConsumedVariablesProc consumedVariables;
+  CBRequiredVariablesProc requiredVariables;
 
   // Optional call used during validation to fixup "Any" input
   // type and provide valid output and exposed variable types

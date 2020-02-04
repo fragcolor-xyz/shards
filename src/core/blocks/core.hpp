@@ -509,15 +509,15 @@ struct SetBase : public VariableBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void sanityChecks(const CBInstanceData &data, bool warnIfExists) {
-    for (uint32_t i = 0; i < data.consumables.len; i++) {
-      auto &consumable = data.consumables.elements[i];
-      if (strcmp(consumable.name, _name.c_str()) == 0) {
-        if (_isTable && !consumable.isTableEntry) {
+    for (uint32_t i = 0; i < data.acquirables.len; i++) {
+      auto &acquirable = data.acquirables.elements[i];
+      if (strcmp(acquirable.name, _name.c_str()) == 0) {
+        if (_isTable && !acquirable.isTableEntry) {
           throw CBException("Set/Ref/Update, variable was not a table: " +
                             _name);
-        } else if (!_isTable && consumable.isTableEntry) {
+        } else if (!_isTable && acquirable.isTableEntry) {
           throw CBException("Set/Ref/Update, variable was a table: " + _name);
-        } else if (!_isTable && data.inputType != consumable.exposedType) {
+        } else if (!_isTable && data.inputType != acquirable.exposedType) {
           throw CBException("Set/Ref/Update, variable already set as another "
                             "type: " +
                             _name);
@@ -528,7 +528,7 @@ struct SetBase : public VariableBase {
                  "use Update to avoid this warning, variable: "
               << _name;
         }
-        if (!consumable.isMutable) {
+        if (!acquirable.isMutable) {
           throw CBException(
               "Set/Ref/Update, attempted to write a immutable variable.");
         }
@@ -682,14 +682,14 @@ struct Update : public SetBase {
 
     // make sure we update to the same type
     if (_isTable) {
-      for (uint32_t i = 0; data.consumables.len > i; i++) {
-        auto &name = data.consumables.elements[i].name;
+      for (uint32_t i = 0; data.acquirables.len > i; i++) {
+        auto &name = data.acquirables.elements[i].name;
         if (name == _name &&
-            data.consumables.elements[i].exposedType.basicType == Table &&
-            data.consumables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
+            data.acquirables.elements[i].exposedType.basicType == Table &&
+            data.acquirables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.table.types;
+              data.acquirables.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             auto &key = tableKeys.elements[y];
             if (_key == key) {
@@ -702,8 +702,8 @@ struct Update : public SetBase {
         }
       }
     } else {
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        auto &cv = data.consumables.elements[i];
+      for (uint32_t i = 0; i < data.acquirables.len; i++) {
+        auto &cv = data.acquirables.elements[i];
         if (_name == cv.name) {
           if (data.inputType != cv.exposedType) {
             throw CBException(
@@ -734,7 +734,7 @@ struct Update : public SetBase {
     return data.inputType;
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(_exposedInfo);
   }
 };
@@ -784,13 +784,13 @@ struct Get : public VariableBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (uint32_t i = 0; data.consumables.len > i; i++) {
-        auto &name = data.consumables.elements[i].name;
+      for (uint32_t i = 0; data.acquirables.len > i; i++) {
+        auto &name = data.acquirables.elements[i].name;
         if (strcmp(name, _name.c_str()) == 0 &&
-            data.consumables.elements[i].exposedType.basicType == Table) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
+            data.acquirables.elements[i].exposedType.basicType == Table) {
+          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.table.types;
+              data.acquirables.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
@@ -821,8 +821,8 @@ struct Get : public VariableBase {
                           "and no Default value provided.");
       }
     } else {
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        auto &cv = data.consumables.elements[i];
+      for (uint32_t i = 0; i < data.acquirables.len; i++) {
+        auto &cv = data.acquirables.elements[i];
         if (strcmp(_name.c_str(), cv.name) == 0) {
           return cv.exposedType;
         }
@@ -838,16 +838,16 @@ struct Get : public VariableBase {
     }
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_defaultValue.valueType != None) {
       return {};
     } else {
       if (_isTable) {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
+            _name.c_str(), "The required table.", CoreInfo::AnyTableType));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
+            _name.c_str(), "The required variable.", CoreInfo::AnyType));
       }
       return CBExposedTypesInfo(_exposedInfo);
     }
@@ -945,11 +945,11 @@ struct Swap {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     _exposedInfo = ExposedInfo(
-        ExposedInfo::Variable(_nameA.c_str(), "The consumed variable.",
+        ExposedInfo::Variable(_nameA.c_str(), "The required variable.",
                               CoreInfo::AnyType),
-        ExposedInfo::Variable(_nameB.c_str(), "The consumed variable.",
+        ExposedInfo::Variable(_nameB.c_str(), "The required variable.",
                               CoreInfo::AnyType));
     return CBExposedTypesInfo(_exposedInfo);
   }
@@ -1057,12 +1057,12 @@ struct Push : public VariableBase {
 
     if (_isTable) {
       auto tableFound = false;
-      for (uint32_t i = 0; data.consumables.len > i; i++) {
-        if (data.consumables.elements[i].name == _name &&
-            data.consumables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
+      for (uint32_t i = 0; data.acquirables.len > i; i++) {
+        if (data.acquirables.elements[i].name == _name &&
+            data.acquirables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.table.types;
+              data.acquirables.elements[i].exposedType.table.types;
           tableFound = true;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
@@ -1080,8 +1080,8 @@ struct Push : public VariableBase {
       _firstPusher = true;
       updateTableInfo();
     } else {
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        auto &cv = data.consumables.elements[i];
+      for (uint32_t i = 0; i < data.acquirables.len; i++) {
+        auto &cv = data.acquirables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
           // found, let's just update our info
           updateSeqInfo();
@@ -1185,14 +1185,14 @@ struct SeqUser : VariableBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_name.size() > 0) {
       if (_isTable) {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The consumed table.", CoreInfo::AnyTableType));
+            _name.c_str(), "The required table.", CoreInfo::AnyTableType));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The consumed variable.", CoreInfo::AnyType));
+            _name.c_str(), "The required variable.", CoreInfo::AnyType));
       }
       return CBExposedTypesInfo(_exposedInfo);
     } else {
@@ -1313,12 +1313,12 @@ struct Pop : SeqUser {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (uint32_t i = 0; data.consumables.len > i; i++) {
-        if (data.consumables.elements[i].name == _name &&
-            data.consumables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.consumables.elements[i].exposedType.table.keys;
+      for (uint32_t i = 0; data.acquirables.len > i; i++) {
+        if (data.acquirables.elements[i].name == _name &&
+            data.acquirables.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
           auto &tableTypes =
-              data.consumables.elements[i].exposedType.table.types;
+              data.acquirables.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {
@@ -1335,8 +1335,8 @@ struct Pop : SeqUser {
       }
       throw CBException("Pop: key not found or key value is not a sequence!.");
     } else {
-      for (uint32_t i = 0; i < data.consumables.len; i++) {
-        auto &cv = data.consumables.elements[i];
+      for (uint32_t i = 0; i < data.acquirables.len; i++) {
+        auto &cv = data.acquirables.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
           // if we have 1 type we can predict the output
           // with more just make us a any seq, will need ExpectX blocks likely
@@ -1444,7 +1444,7 @@ struct Take {
       _seqOutput = false;
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.consumables);
+      IterableExposedInfo infos(data.acquirables);
       for (auto &info : infos) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq &&
@@ -1532,16 +1532,16 @@ struct Take {
     throw CBException("Take, invalid input type or not implemented.");
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_indices.valueType == ContextVar) {
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _indices.payload.stringValue, "The consumed variables.",
+            _indices.payload.stringValue, "The required variables.",
             CoreInfo::IntSeqType));
       else
         _exposedInfo = ExposedInfo(
             ExposedInfo::Variable(_indices.payload.stringValue,
-                                  "The consumed variable.", CoreInfo::IntType));
+                                  "The required variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
       return {};
@@ -1746,7 +1746,7 @@ struct Slice {
     if (_from.valueType == Int) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.consumables);
+      IterableExposedInfo infos(data.acquirables);
       for (auto &info : infos) {
         if (strcmp(info.name, _from.payload.stringValue) == 0) {
           valid = true;
@@ -1761,7 +1761,7 @@ struct Slice {
     if (_to.valueType == Int || _to.valueType == None) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.consumables);
+      IterableExposedInfo infos(data.acquirables);
       for (auto &info : infos) {
         if (strcmp(info.name, _to.payload.stringValue) == 0) {
           valid = true;
@@ -1776,22 +1776,22 @@ struct Slice {
     return data.inputType;
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_from.valueType == ContextVar && _to.valueType == ContextVar) {
       _exposedInfo = ExposedInfo(
           ExposedInfo::Variable(_from.payload.stringValue,
-                                "The consumed variable.", CoreInfo::IntType),
+                                "The required variable.", CoreInfo::IntType),
           ExposedInfo::Variable(_to.payload.stringValue,
-                                "The consumed variable.", CoreInfo::IntType));
+                                "The required variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else if (_from.valueType == ContextVar) {
       _exposedInfo = ExposedInfo(
           ExposedInfo::Variable(_from.payload.stringValue,
-                                "The consumed variable.", CoreInfo::IntType));
+                                "The required variable.", CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else if (_to.valueType == ContextVar) {
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(_to.payload.stringValue,
-                                                       "The consumed variable.",
+                                                       "The required variable.",
                                                        CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
@@ -1943,7 +1943,7 @@ struct Repeat {
   CBVar *_ctxTimes = nullptr;
   int64_t _times = 0;
   bool _forever = false;
-  ExposedInfo _consumedInfo{};
+  ExposedInfo _requiredInfo{};
   CBValidationResult _validation{};
 
   void cleanup() {
@@ -2013,14 +2013,14 @@ struct Repeat {
     return data.inputType;
   }
 
-  CBExposedTypesInfo consumedVariables() {
+  CBExposedTypesInfo requiredVariables() {
     if (_ctxVar.size() == 0) {
       return {};
     } else {
-      _consumedInfo = ExposedInfo(ExposedInfo::Variable(
+      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
           _ctxVar.c_str(), "The Int number of repeats variable.",
           CoreInfo::IntType));
-      return CBExposedTypesInfo(_consumedInfo);
+      return CBExposedTypesInfo(_requiredInfo);
     }
   }
 
