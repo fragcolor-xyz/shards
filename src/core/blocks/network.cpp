@@ -105,7 +105,7 @@ struct NetworkBase {
 
     // clean context vars
     if (_socketVar) {
-      *_socketVar = Empty;
+      releaseVariable(_socketVar);
       _socketVar = nullptr;
     }
 
@@ -123,7 +123,7 @@ struct NetworkBase {
     // inject our special context vars
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
-    chainblocks::arrayPush(data.acquirables, endpointInfo);
+    chainblocks::arrayPush(data.shared, endpointInfo);
     _validation = _blks.validate(data);
     return _validation.outputType;
   }
@@ -193,7 +193,7 @@ struct NetworkBase {
 
   void setSocket(CBContext *context) {
     if (!_socketVar) {
-      _socketVar = findVariable(context, "Network.Socket");
+      _socketVar = referenceVariable(context, "Network.Socket");
     }
     *_socketVar = Var::Object(&_socket, FragCC, SocketCC);
   }
@@ -433,12 +433,15 @@ struct Send {
 
   void cleanup() {
     // clean context vars
-    _socketVar = nullptr;
+    if (_socketVar) {
+      releaseVariable(_socketVar);
+      _socketVar = nullptr;
+    }
   }
 
   SocketData *getSocket(CBContext *context) {
     if (!_socketVar) {
-      _socketVar = findVariable(context, "Network.Socket");
+      _socketVar = referenceVariable(context, "Network.Socket");
     }
     assert(_socketVar->payload.objectVendorId == FragCC);
     assert(_socketVar->payload.objectTypeId == SocketCC);

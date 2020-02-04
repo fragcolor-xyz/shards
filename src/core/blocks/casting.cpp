@@ -314,8 +314,10 @@ struct VarAddr {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto v = findVariable(context, input.payload.stringValue);
-    return Var(reinterpret_cast<int64_t>(v));
+    auto v = referenceVariable(context, input.payload.stringValue);
+    auto res = Var(reinterpret_cast<int64_t>(v));
+    releaseVariable(v);
+    return res;
   }
 };
 

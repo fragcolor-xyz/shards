@@ -434,13 +434,13 @@ struct ChainLoader : public ChainRunner {
   CBChainProvider *_provider;
 
   CBTypeInfo _inputTypeCopy{};
-  IterableExposedInfo _acquirablesCopy;
+  IterableExposedInfo _sharedCopy;
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _inputTypeCopy = data.inputType;
-    const IterableExposedInfo acquirablesStb(data.acquirables);
-    // copy acquirables
-    _acquirablesCopy = acquirablesStb;
+    const IterableExposedInfo sharedStb(data.shared);
+    // copy shared
+    _sharedCopy = sharedStb;
     return data.inputType;
   }
 
@@ -507,7 +507,7 @@ struct ChainLoader : public ChainRunner {
     if (unlikely(!_provider->ready(_provider))) {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
-      data.acquirables = _acquirablesCopy;
+      data.shared = _sharedCopy;
       _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 

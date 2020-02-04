@@ -33,8 +33,7 @@ struct JointOp {
       break;
     case 1:
       cloneVar(_columns, value);
-      // resets vars fetch in activate
-      _multiSortColumns.clear();
+      cleanup();
       break;
     default:
       break;
@@ -54,8 +53,15 @@ struct JointOp {
   }
 
   void cleanup() {
+    for (auto ref : _multiSortColumns) {
+      releaseVariable(ref);
+    }
     _multiSortColumns.clear();
-    _input = nullptr;
+
+    if (_input) {
+      releaseVariable(_input);
+      _input = nullptr;
+    }
   }
 
   void ensureJoinSetup(CBContext *context) {
@@ -63,7 +69,7 @@ struct JointOp {
       if (_inputVar.valueType != ContextVar)
         throw CBException("From sequence variable invalid.");
 
-      _input = findVariable(context, _inputVar.payload.stringValue);
+      _input = referenceVariable(context, _inputVar.payload.stringValue);
 
       if (_input->valueType != Seq)
         throw CBException("From sequence variable is not a Seq.");
@@ -75,7 +81,7 @@ struct JointOp {
         if (_columns.valueType == Seq) {
           auto seq = IterableSeq(_columns.payload.seqValue);
           for (const auto &col : seq) {
-            auto target = findVariable(context, col.payload.stringValue);
+            auto target = referenceVariable(context, col.payload.stringValue);
             if (target && target->valueType == Seq) {
               auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
@@ -88,7 +94,8 @@ struct JointOp {
           }
         } else if (_columns.valueType ==
                    ContextVar) { // normal single context var
-          auto target = findVariable(context, _columns.payload.stringValue);
+          auto target =
+              referenceVariable(context, _columns.payload.stringValue);
           if (target && target->valueType == Seq) {
             auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
@@ -174,11 +181,11 @@ struct Sort : public JointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo acquirables(data.acquirables);
+    IterableExposedInfo shared(data.shared);
     CBExposedTypeInfo info{};
-    for (auto &acquirable : acquirables) {
-      if (strcmp(acquirable.name, _inputVar.payload.stringValue) == 0) {
-        info = acquirable;
+    for (auto &reference : shared) {
+      if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
+        info = reference;
         goto found;
       }
     }
@@ -331,11 +338,11 @@ struct Remove : public JointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo acquirables(data.acquirables);
+    IterableExposedInfo shared(data.shared);
     CBExposedTypeInfo info{};
-    for (auto &acquirable : acquirables) {
-      if (strcmp(acquirable.name, _inputVar.payload.stringValue) == 0) {
-        info = acquirable;
+    for (auto &reference : shared) {
+      if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
+        info = reference;
         goto found;
       }
     }
@@ -460,7 +467,7 @@ struct XpendTo : public XPendBase {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    auto conss = IterableExposedInfo(data.acquirables);
+    auto conss = IterableExposedInfo(data.shared);
     for (auto &cons : conss) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != CBType::Seq &&

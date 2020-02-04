@@ -124,9 +124,33 @@ struct MainWindow : public BaseWindow {
       SDL_DestroyWindow(_window);
       SDL_Quit();
       _window = nullptr;
-      _sdlWinVar = nullptr;
-      _bgfxCtx = nullptr;
       _sysWnd = nullptr;
+
+      if (_sdlWinVar) {
+        if (_sdlWinVar->refcount > 1) {
+          throw CBException(
+              "MainWindow: Found a dangling reference to BGFX.CurrentWindow.");
+        }
+        memset(_sdlWinVar, 0x0, sizeof(CBVar));
+        _sdlWinVar = nullptr;
+      }
+      if (_bgfxCtx) {
+        if (_bgfxCtx->refcount > 1) {
+          throw CBException(
+              "MainWindow: Found a dangling reference to BGFX.Context.");
+        }
+        memset(_bgfxCtx, 0x0, sizeof(CBVar));
+        _bgfxCtx = nullptr;
+      }
+      if (_imguiCtx) {
+        if (_imguiCtx->refcount > 1) {
+          throw CBException(
+              "MainWindow: Found a dangling reference to ImGui.Context.");
+        }
+        memset(_imguiCtx, 0x0, sizeof(CBVar));
+        _imguiCtx = nullptr;
+      }
+
       _initDone = false;
       _wheelScroll = 0;
     }
@@ -134,8 +158,8 @@ struct MainWindow : public BaseWindow {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
-    for (uint32_t i = 0; i < data.acquirables.len; i++) {
-      if (strcmp(data.acquirables.elements[i].name, "BGFX.Context") == 0) {
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      if (strcmp(data.shared.elements[i].name, "BGFX.Context") == 0) {
         throw CBException("BGFX.MainWindow must be unique, found another use!");
       }
     }
@@ -223,9 +247,9 @@ struct MainWindow : public BaseWindow {
       bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
                          1.0f, 0);
 
-      _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
-      _bgfxCtx = findVariable(context, "BGFX.Context");
-      _imguiCtx = findVariable(context, "ImGui.Context");
+      _sdlWinVar = referenceVariable(context, "BGFX.CurrentWindow");
+      _bgfxCtx = referenceVariable(context, "BGFX.Context");
+      _imguiCtx = referenceVariable(context, "ImGui.Context");
 
       _initDone = true;
     }
@@ -302,103 +326,105 @@ struct MainWindow : public BaseWindow {
   }
 };
 
+/*
 struct Window : public BaseWindow {
-  // WIP/TODO
+// WIP/TODO
 
-  bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
-  bgfx::ViewId _viewId; // todo manage
-  chainblocks::ImGui::Context _imgui_context{};
-  int32_t _wheelScroll = 0;
+bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
+bgfx::ViewId _viewId; // todo manage
+chainblocks::ImGui::Context _imgui_context{};
+int32_t _wheelScroll = 0;
 
-  void cleanup() {
-    _imgui_context.Reset();
+void cleanup() {
+  _imgui_context.Reset();
 
-    if (_initDone) {
-      if (bgfx::isValid(_frameBuffer)) {
-        bgfx::destroy(_frameBuffer);
-      }
-      SDL_DestroyWindow(_window);
-      _window = nullptr;
-      _sdlWinVar = nullptr;
-      _sysWnd = nullptr;
-      _initDone = false;
-      _wheelScroll = 0;
+  if (_initDone) {
+    if (bgfx::isValid(_frameBuffer)) {
+      bgfx::destroy(_frameBuffer);
     }
+    SDL_DestroyWindow(_window);
+    _window = nullptr;
+    _sdlWinVar = nullptr;
+    _sysWnd = nullptr;
+    _initDone = false;
+    _wheelScroll = 0;
   }
+}
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_initDone) {
-      SDL_SysWMinfo winInfo{};
-      SDL_version sdlVer{};
-      Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
-      _window =
-          SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                           SDL_WINDOWPOS_CENTERED, _width, _height, flags);
-      SDL_VERSION(&sdlVer);
-      winInfo.version = sdlVer;
-      if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-        throw CBException("Failed to call SDL_GetWindowWMInfo");
-      }
+CBVar activate(CBContext *context, const CBVar &input) {
+  if (!_initDone) {
+    SDL_SysWMinfo winInfo{};
+    SDL_version sdlVer{};
+    Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
+    _window =
+        SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
+                         SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+    SDL_VERSION(&sdlVer);
+    winInfo.version = sdlVer;
+    if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
+      throw CBException("Failed to call SDL_GetWindowWMInfo");
+    }
 
 #ifdef __APPLE__
-      _sysWnd = winInfo.info.cocoa.window;
+    _sysWnd = winInfo.info.cocoa.window;
 #elif defined(_WIN32)
-      _sysWnd = winInfo.info.win.window;
+    _sysWnd = winInfo.info.win.window;
 #endif
-      _frameBuffer = bgfx::createFrameBuffer(_sysWnd, _width, _height);
+    _frameBuffer = bgfx::createFrameBuffer(_sysWnd, _width, _height);
 
-      bgfx::setViewRect(_viewId, 0, 0, _width, _height);
-      bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                         0x303030FF, 1.0f, 0);
+    bgfx::setViewRect(_viewId, 0, 0, _width, _height);
+    bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                       0x303030FF, 1.0f, 0);
 
-      _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
-      _imguiCtx = findVariable(context, "ImGui.Context");
+    _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
+    _imguiCtx = findVariable(context, "ImGui.Context");
 
-      _initDone = true;
-    }
-
-    // Set them always as they might override each other during the chain
-    *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
-    *_imguiCtx = Var::Object(&_imgui_context, FragCC,
-                             chainblocks::ImGui::ImGuiContextCC);
-
-    // Touch view 0
-    bgfx::touch(_viewId);
-
-    _imgui_context.Set();
-
-    // Draw imgui and deal with inputs
-    int32_t mouseX, mouseY;
-    uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
-    uint8_t imbtns = 0;
-    if (mouseBtns & SDL_BUTTON(SDL_BUTTON_LEFT)) {
-      imbtns = imbtns | IMGUI_MBUT_LEFT;
-    }
-    if (mouseBtns & SDL_BUTTON(SDL_BUTTON_RIGHT)) {
-      imbtns = imbtns | IMGUI_MBUT_RIGHT;
-    }
-    if (mouseBtns & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
-      imbtns = imbtns | IMGUI_MBUT_MIDDLE;
-    }
-
-    // find mouse wheel events
-    for (auto &event : MainWindow::sdlEvents) {
-      if (event.type == SDL_MOUSEWHEEL) {
-        _wheelScroll += event.wheel.y;
-        // This is not needed seems.. not even on MacOS Natural On/Off
-        // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-        //   _wheelScroll += event.wheel.y;
-        // else
-        //   _wheelScroll -= event.wheel.y;
-      }
-    }
-
-    imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height,
-                    _viewId);
-
-    return input;
+    _initDone = true;
   }
+
+  // Set them always as they might override each other during the chain
+  *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
+  *_imguiCtx = Var::Object(&_imgui_context, FragCC,
+                           chainblocks::ImGui::ImGuiContextCC);
+
+  // Touch view 0
+  bgfx::touch(_viewId);
+
+  _imgui_context.Set();
+
+  // Draw imgui and deal with inputs
+  int32_t mouseX, mouseY;
+  uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
+  uint8_t imbtns = 0;
+  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+    imbtns = imbtns | IMGUI_MBUT_LEFT;
+  }
+  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_RIGHT)) {
+    imbtns = imbtns | IMGUI_MBUT_RIGHT;
+  }
+  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
+    imbtns = imbtns | IMGUI_MBUT_MIDDLE;
+  }
+
+  // find mouse wheel events
+  for (auto &event : MainWindow::sdlEvents) {
+    if (event.type == SDL_MOUSEWHEEL) {
+      _wheelScroll += event.wheel.y;
+      // This is not needed seems.. not even on MacOS Natural On/Off
+      // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+      //   _wheelScroll += event.wheel.y;
+      // else
+      //   _wheelScroll -= event.wheel.y;
+    }
+  }
+
+  imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height,
+                  _viewId);
+
+  return input;
+}
 };
+*/
 
 struct Draw : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }

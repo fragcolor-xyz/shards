@@ -36,7 +36,8 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
 FlowState activateBlocks(CBlocks blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
-CBVar *findVariable(CBContext *ctx, const char *name);
+CBVar *referenceVariable(CBContext *ctx, const char *name);
+void releaseVariable(CBVar *variable);
 CBVar suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
@@ -376,6 +377,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
+  auto rc = dst.refcount;
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
     memcpy(&dst, &src, sizeof(CBVar));
@@ -385,6 +387,7 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   } else {
     _cloneVarSlow(dst, src);
   }
+  dst.refcount = rc;
 }
 
 struct Serialization {
@@ -718,8 +721,12 @@ struct Serialization {
 
 struct InternalCore {
   // need to emulate dllblock Core a bit
-  static CBVar *findVariable(CBContext *context, const char *name) {
-    return chainblocks::findVariable(context, name);
+  static CBVar *referenceVariable(CBContext *context, const char *name) {
+    return chainblocks::referenceVariable(context, name);
+  }
+
+  static void releaseVariable(CBVar *variable) {
+    chainblocks::releaseVariable(variable);
   }
 
   static void cloneVar(CBVar &dst, const CBVar &src) {

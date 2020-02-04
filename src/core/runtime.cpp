@@ -427,10 +427,20 @@ void callExitCallbacks() {
   }
 }
 
-CBVar *findVariable(CBContext *ctx, const char *name) {
-  cbassert(ctx->chain->node);
+CBVar *referenceVariable(CBContext *ctx, const char *name) {
+  assert(ctx->chain->node);
   CBVar &v = ctx->chain->node->variables[name];
+  v.refcount++;
+  // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
   return &v;
+}
+
+void releaseVariable(CBVar *variable) {
+  assert(variable->refcount > 0);
+  variable->refcount--;
+  if (variable->refcount == 0) {
+    destroyVar(*variable);
+  }
 }
 
 CBVar suspend(CBContext *context, double seconds) {
@@ -576,8 +586,12 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     chainblocks::unregisterExitCallback(eventName);
   };
 
-  result.findVariable = [](CBContext *context, const char *name) {
-    return chainblocks::findVariable(context, name);
+  result.referenceVariable = [](CBContext *context, const char *name) {
+    return chainblocks::referenceVariable(context, name);
+  };
+
+  result.releaseVariable = [](CBVar *variable) {
+    return chainblocks::releaseVariable(variable);
   };
 
   result.throwException = [](const char *errorText) {
@@ -867,7 +881,7 @@ void validateConnection(ValidationContext &ctx) {
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
-        chainblocks::arrayPush(data.acquirables, type);
+        chainblocks::arrayPush(data.shared, type);
       }
     }
     for (auto &info : ctx.stackTypes) {
@@ -879,7 +893,7 @@ void validateConnection(ValidationContext &ctx) {
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
     chainblocks::arrayFree(data.stack);
-    chainblocks::arrayFree(data.acquirables);
+    chainblocks::arrayFree(data.shared);
   } else {
     // Short-cut if it's just one type and not any type
     // Any type tho means keep previous output type!
@@ -1067,9 +1081,9 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
     ctx.stackTypes.push_back(data.stack.elements[i]);
   }
 
-  if (data.acquirables.elements) {
-    for (uint32_t i = 0; i < data.acquirables.len; i++) {
-      auto &info = data.acquirables.elements[i];
+  if (data.shared.elements) {
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      auto &info = data.shared.elements[i];
       ctx.exposed[info.name].insert(info);
     }
   }

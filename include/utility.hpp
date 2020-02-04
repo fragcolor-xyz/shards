@@ -87,14 +87,15 @@ public:
   ~TParamVar() { CB_CORE::destroyVar(_v); }
 
   void reset() {
-    // reset is useful specially
-    // if we swap nodes
-    _cp = nullptr;
+    if (_cp) {
+      CB_CORE::releaseVariable(_cp);
+      _cp = nullptr;
+    }
   }
 
   CBVar &operator=(const CBVar &value) {
     CB_CORE::cloneVar(_v, value);
-    _cp = nullptr; // reset this!
+    reset();
     return _v;
   }
 
@@ -103,7 +104,7 @@ public:
   CBVar &operator()(CBContext *ctx) {
     if (_v.valueType == ContextVar) {
       if (unlikely(!_cp)) {
-        _cp = CB_CORE::findVariable(ctx, _v.payload.stringValue);
+        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
         return *_cp;
       } else {
         return *_cp;

@@ -165,7 +165,12 @@ struct BaseOpsBin {
 
   void destroy() { destroyVar(_value); }
 
-  void cleanup() { _target = nullptr; }
+  void cleanup() {
+    if (_target && _value.valueType == ContextVar) {
+      releaseVariable(_target);
+      _target = nullptr;
+    }
+  }
 
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -177,7 +182,7 @@ struct BaseOpsBin {
     switch (index) {
     case 0:
       cloneVar(_value, value);
-      _target = nullptr;
+      cleanup();
       break;
     default:
       break;
@@ -199,7 +204,7 @@ struct BaseOpsBin {
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? findVariable(context, _value.payload.stringValue)      \
+                      ? referenceVariable(context, _value.payload.stringValue) \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -223,7 +228,7 @@ LOGIC_OP(IsLessEqual, <=);
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? findVariable(context, _value.payload.stringValue)      \
+                      ? referenceVariable(context, _value.payload.stringValue) \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -269,7 +274,7 @@ LOGIC_OP(IsLessEqual, <=);
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (!_target) {                                                          \
         _target = _value.valueType == ContextVar                               \
-                      ? findVariable(context, _value.payload.stringValue)      \
+                      ? referenceVariable(context, _value.payload.stringValue) \
                       : &_value;                                               \
       }                                                                        \
       const auto &value = *_target;                                            \
@@ -498,9 +503,9 @@ struct SetBase : public VariableBase {
 
   void cleanup() {
     if (_target) {
-      destroyVar(*_target);
+      releaseVariable(_target);
+      _target = nullptr;
     }
-    _target = nullptr;
     _cell = nullptr;
   }
 
@@ -509,15 +514,15 @@ struct SetBase : public VariableBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void sanityChecks(const CBInstanceData &data, bool warnIfExists) {
-    for (uint32_t i = 0; i < data.acquirables.len; i++) {
-      auto &acquirable = data.acquirables.elements[i];
-      if (strcmp(acquirable.name, _name.c_str()) == 0) {
-        if (_isTable && !acquirable.isTableEntry) {
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      auto &reference = data.shared.elements[i];
+      if (strcmp(reference.name, _name.c_str()) == 0) {
+        if (_isTable && !reference.isTableEntry) {
           throw CBException("Set/Ref/Update, variable was not a table: " +
                             _name);
-        } else if (!_isTable && acquirable.isTableEntry) {
+        } else if (!_isTable && reference.isTableEntry) {
           throw CBException("Set/Ref/Update, variable was a table: " + _name);
-        } else if (!_isTable && data.inputType != acquirable.exposedType) {
+        } else if (!_isTable && data.inputType != reference.exposedType) {
           throw CBException("Set/Ref/Update, variable already set as another "
                             "type: " +
                             _name);
@@ -528,7 +533,7 @@ struct SetBase : public VariableBase {
                  "use Update to avoid this warning, variable: "
               << _name;
         }
-        if (!acquirable.isMutable) {
+        if (!reference.isMutable) {
           throw CBException(
               "Set/Ref/Update, attempted to write a immutable variable.");
         }
@@ -543,7 +548,7 @@ struct SetBase : public VariableBase {
     }
 
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -634,18 +639,31 @@ struct Ref : public SetBase {
   }
 
   void cleanup() {
-    _target = nullptr;
+    // this is a special case
+    // Ref will reference previous block result..
+    // And so we are almost sure the memory will be junk after this..
+    // so if we detect refcount > 1, we except signaling a dangling reference
+    if (_target) {
+      if (_target->refcount > 1) {
+        throw CBException("Ref - detected a dangling reference.");
+      }
+      memset(_target, 0x0, sizeof(CBVar));
+      _target = nullptr;
+    }
     _cell = nullptr;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr)) {
-      *_cell = input;
+      // must keep refcount!
+      auto rc = _cell->refcount;
+      memcpy(_cell, &input, sizeof(CBVar));
+      _cell->refcount = rc;
       return input;
     }
 
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -665,11 +683,14 @@ struct Ref : public SetBase {
       // use fast cell from now
       _cell = vptr;
     } else {
-      // Notice, NO Cloning!
-      *_target = input;
-
       // use fast cell from now
       _cell = _target;
+
+      // Notice, NO Cloning!
+      // must keep refcount!
+      auto rc = _cell->refcount;
+      memcpy(_cell, &input, sizeof(CBVar));
+      _cell->refcount = rc;
     }
 
     return input;
@@ -682,14 +703,13 @@ struct Update : public SetBase {
 
     // make sure we update to the same type
     if (_isTable) {
-      for (uint32_t i = 0; data.acquirables.len > i; i++) {
-        auto &name = data.acquirables.elements[i].name;
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        auto &name = data.shared.elements[i].name;
         if (name == _name &&
-            data.acquirables.elements[i].exposedType.basicType == Table &&
-            data.acquirables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
-          auto &tableTypes =
-              data.acquirables.elements[i].exposedType.table.types;
+            data.shared.elements[i].exposedType.basicType == Table &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             auto &key = tableKeys.elements[y];
             if (_key == key) {
@@ -702,8 +722,8 @@ struct Update : public SetBase {
         }
       }
     } else {
-      for (uint32_t i = 0; i < data.acquirables.len; i++) {
-        auto &cv = data.acquirables.elements[i];
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &cv = data.shared.elements[i];
         if (_name == cv.name) {
           if (data.inputType != cv.exposedType) {
             throw CBException(
@@ -772,7 +792,10 @@ struct Get : public VariableBase {
   }
 
   void cleanup() {
-    _target = nullptr;
+    if (_target) {
+      releaseVariable(_target);
+      _target = nullptr;
+    }
     _cell = nullptr;
   }
 
@@ -784,13 +807,12 @@ struct Get : public VariableBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (uint32_t i = 0; data.acquirables.len > i; i++) {
-        auto &name = data.acquirables.elements[i].name;
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        auto &name = data.shared.elements[i].name;
         if (strcmp(name, _name.c_str()) == 0 &&
-            data.acquirables.elements[i].exposedType.basicType == Table) {
-          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
-          auto &tableTypes =
-              data.acquirables.elements[i].exposedType.table.types;
+            data.shared.elements[i].exposedType.basicType == Table) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
@@ -821,8 +843,8 @@ struct Get : public VariableBase {
                           "and no Default value provided.");
       }
     } else {
-      for (uint32_t i = 0; i < data.acquirables.len; i++) {
-        auto &cv = data.acquirables.elements[i];
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &cv = data.shared.elements[i];
         if (strcmp(_name.c_str(), cv.name) == 0) {
           return cv.exposedType;
         }
@@ -875,7 +897,7 @@ struct Get : public VariableBase {
       return *_cell;
 
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -937,8 +959,12 @@ struct Swap {
   ExposedInfo _exposedInfo;
 
   void cleanup() {
-    _targetA = nullptr;
-    _targetB = nullptr;
+    if (_targetA) {
+      releaseVariable(_targetA);
+      releaseVariable(_targetB);
+      _targetA = nullptr;
+      _targetB = nullptr;
+    }
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -976,8 +1002,8 @@ struct Swap {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_targetA) {
-      _targetA = findVariable(context, _nameA.c_str());
-      _targetB = findVariable(context, _nameB.c_str());
+      _targetA = referenceVariable(context, _nameA.c_str());
+      _targetB = referenceVariable(context, _nameB.c_str());
     }
     auto tmp = *_targetA;
     *_targetA = *_targetB;
@@ -989,7 +1015,6 @@ struct Swap {
 struct Push : public VariableBase {
   bool _clear = true;
   bool _firstPusher = false; // if we are the initializers!
-  bool _tableOwner = false;  // we are the first in the table too!
   CBTypeInfo _seqInfo{};
   CBTypeInfo _seqInnerInfo{};
   CBTypeInfo _tableInfo{};
@@ -1057,12 +1082,11 @@ struct Push : public VariableBase {
 
     if (_isTable) {
       auto tableFound = false;
-      for (uint32_t i = 0; data.acquirables.len > i; i++) {
-        if (data.acquirables.elements[i].name == _name &&
-            data.acquirables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
-          auto &tableTypes =
-              data.acquirables.elements[i].exposedType.table.types;
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        if (data.shared.elements[i].name == _name &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           tableFound = true;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
@@ -1073,15 +1097,11 @@ struct Push : public VariableBase {
           }
         }
       }
-      if (!tableFound) {
-        // Assume we are the first pushing
-        _tableOwner = true;
-      }
       _firstPusher = true;
       updateTableInfo();
     } else {
-      for (uint32_t i = 0; i < data.acquirables.len; i++) {
-        auto &cv = data.acquirables.elements[i];
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &cv = data.shared.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
           // found, let's just update our info
           updateSeqInfo();
@@ -1100,18 +1120,10 @@ struct Push : public VariableBase {
   }
 
   void cleanup() {
-    if (_firstPusher && _target) {
-      if (_isTable && _target->valueType == Table) {
-        destroyVar(*_target);
-      } else if (_target->valueType == Seq) {
-        for (uint64_t i = _target->capacity; i > 0; i--) {
-          destroyVar(_target->payload.seqValue.elements[i - 1]);
-        }
-        chainblocks::arrayFree(_target->payload.seqValue);
-        _target = {};
-      }
+    if (_target) {
+      releaseVariable(_target);
+      _target = nullptr;
     }
-    _target = nullptr;
     _cell = nullptr;
   }
 
@@ -1150,7 +1162,7 @@ struct Push : public VariableBase {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!_target)) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
     if (unlikely(_isTable)) {
@@ -1179,7 +1191,10 @@ struct SeqUser : VariableBase {
   bool _blittable = false;
 
   void cleanup() {
-    _target = nullptr;
+    if (_target) {
+      releaseVariable(_target);
+      _target = nullptr;
+    }
     _cell = nullptr;
   }
 
@@ -1207,10 +1222,10 @@ struct Count : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
-    CBVar &var = *_target;
+    CBVar *var = _target;
 
     if (unlikely(_isTable)) {
       if (_target->valueType != Table) {
@@ -1221,18 +1236,18 @@ struct Count : SeqUser {
         _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
-      var = *_cell;
+      var = _cell;
     }
 
-    if (likely(var.valueType == Seq)) {
-      return Var(int64_t(var.payload.seqValue.len));
-    } else if (var.valueType == Table) {
+    if (likely(var->valueType == Seq)) {
+      return Var(int64_t(var->payload.seqValue.len));
+    } else if (var->valueType == Table) {
       return Var(int64_t(
-          var.payload.tableValue.api->tableSize(var.payload.tableValue)));
-    } else if (var.valueType == Bytes) {
-      return Var(var.payload.bytesSize);
-    } else if (var.valueType == String) {
-      return Var(int64_t(strlen(var.payload.stringValue)));
+          var->payload.tableValue.api->tableSize(var->payload.tableValue)));
+    } else if (var->valueType == Bytes) {
+      return Var(var->payload.bytesSize);
+    } else if (var->valueType == String) {
+      return Var(int64_t(strlen(var->payload.stringValue)));
     } else {
       return Var(0);
     }
@@ -1244,10 +1259,10 @@ struct Clear : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
-    CBVar &var = *_target;
+    CBVar *var = _target;
 
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -1258,13 +1273,13 @@ struct Clear : SeqUser {
         _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
-      var = *_cell;
+      var = _cell;
     }
 
-    if (likely(var.valueType == Seq)) {
-      chainblocks::arrayResize(var.payload.seqValue, 0);
-    } else if (var.valueType == Table) {
-      var.payload.tableValue.api->tableClear(var.payload.tableValue);
+    if (likely(var->valueType == Seq)) {
+      chainblocks::arrayResize(var->payload.seqValue, 0);
+    } else if (var->valueType == Table) {
+      var->payload.tableValue.api->tableClear(var->payload.tableValue);
     }
 
     return input;
@@ -1276,10 +1291,11 @@ struct Drop : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
 
-    CBVar &var = *_target;
+    CBVar *var = _target;
+
     if (_isTable) {
       if (_target->valueType != Table) {
         throw CBException("Variable is not a table, failed to Clear.");
@@ -1289,13 +1305,13 @@ struct Drop : SeqUser {
         _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, _key.c_str());
       }
-      var = *_cell;
+      var = _cell;
     }
 
-    if (likely(var.valueType == Seq)) {
-      auto len = var.payload.seqValue.len;
+    if (likely(var->valueType == Seq)) {
+      auto len = var->payload.seqValue.len;
       if (len > 0)
-        chainblocks::arrayResize(var.payload.seqValue, len - 1);
+        chainblocks::arrayResize(var->payload.seqValue, len - 1);
     } else {
       throw CBException("Variable is not a sequence, failed to Drop.");
     }
@@ -1313,12 +1329,11 @@ struct Pop : SeqUser {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_isTable) {
-      for (uint32_t i = 0; data.acquirables.len > i; i++) {
-        if (data.acquirables.elements[i].name == _name &&
-            data.acquirables.elements[i].exposedType.table.types.elements) {
-          auto &tableKeys = data.acquirables.elements[i].exposedType.table.keys;
-          auto &tableTypes =
-              data.acquirables.elements[i].exposedType.table.types;
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        if (data.shared.elements[i].name == _name &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {
@@ -1335,8 +1350,8 @@ struct Pop : SeqUser {
       }
       throw CBException("Pop: key not found or key value is not a sequence!.");
     } else {
-      for (uint32_t i = 0; i < data.acquirables.len; i++) {
-        auto &cv = data.acquirables.elements[i];
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &cv = data.shared.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == Seq) {
           // if we have 1 type we can predict the output
           // with more just make us a any seq, will need ExpectX blocks likely
@@ -1352,7 +1367,7 @@ struct Pop : SeqUser {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (!_target) {
-      _target = findVariable(context, _name.c_str());
+      _target = referenceVariable(context, _name.c_str());
     }
     if (_isTable) {
       if (_target->valueType != Table) {
@@ -1417,7 +1432,10 @@ struct Take {
   }
 
   void cleanup() {
-    _indicesVar = nullptr;
+    if (_indicesVar) {
+      releaseVariable(_indicesVar);
+      _indicesVar = nullptr;
+    }
     if (_cachedSeq.elements) {
       for (auto i = _cachedSeq.len; i > 0; i--) {
         destroyVar(_cachedSeq.elements[i - 1]);
@@ -1444,7 +1462,7 @@ struct Take {
       _seqOutput = false;
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.acquirables);
+      IterableExposedInfo infos(data.shared);
       for (auto &info : infos) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq &&
@@ -1578,7 +1596,7 @@ struct Take {
 
   ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
     if (_indices.valueType == ContextVar && !_indicesVar) {
-      _indicesVar = findVariable(context, _indices.payload.stringValue);
+      _indicesVar = referenceVariable(context, _indices.payload.stringValue);
     }
 
     const auto inputLen = input.payload.seqValue.len;
@@ -1722,8 +1740,14 @@ struct Slice {
   }
 
   void cleanup() {
-    _fromVar = nullptr;
-    _toVar = nullptr;
+    if (_fromVar) {
+      releaseVariable(_fromVar);
+      _fromVar = nullptr;
+    }
+    if (_toVar) {
+      releaseVariable(_toVar);
+      _toVar = nullptr;
+    }
     if (_cachedSeq.elements) {
       for (auto i = _cachedSeq.len; i > 0; i--) {
         destroyVar(_cachedSeq.elements[i - 1]);
@@ -1746,7 +1770,7 @@ struct Slice {
     if (_from.valueType == Int) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.acquirables);
+      IterableExposedInfo infos(data.shared);
       for (auto &info : infos) {
         if (strcmp(info.name, _from.payload.stringValue) == 0) {
           valid = true;
@@ -1761,7 +1785,7 @@ struct Slice {
     if (_to.valueType == Int || _to.valueType == None) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.acquirables);
+      IterableExposedInfo infos(data.shared);
       for (auto &info : infos) {
         if (strcmp(info.name, _to.payload.stringValue) == 0) {
           valid = true;
@@ -1840,10 +1864,10 @@ struct Slice {
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_from.valueType == ContextVar && !_fromVar) {
-      _fromVar = findVariable(context, _from.payload.stringValue);
+      _fromVar = referenceVariable(context, _from.payload.stringValue);
     }
     if (_to.valueType == ContextVar && !_toVar) {
-      _toVar = findVariable(context, _to.payload.stringValue);
+      _toVar = referenceVariable(context, _to.payload.stringValue);
     }
 
     const auto inputLen = input.payload.seqValue.len;
@@ -1947,7 +1971,10 @@ struct Repeat {
   CBValidationResult _validation{};
 
   void cleanup() {
-    _ctxTimes = nullptr;
+    if (_ctxTimes) {
+      releaseVariable(_ctxTimes);
+      _ctxTimes = nullptr;
+    }
     _blks.reset();
   }
 
@@ -2031,7 +2058,7 @@ struct Repeat {
 
     if (_ctxVar.size()) {
       if (!_ctxTimes)
-        _ctxTimes = findVariable(context, _ctxVar.c_str());
+        _ctxTimes = referenceVariable(context, _ctxVar.c_str());
       repeats = _ctxTimes->payload.intValue;
     }
 

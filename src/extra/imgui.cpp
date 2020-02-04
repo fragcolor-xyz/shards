@@ -662,11 +662,16 @@ template <CBType CT> struct Variable : public Base {
   ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  virtual void cleanup() { _variable = nullptr; }
+  virtual void cleanup() {
+    if (_variable) {
+      releaseVariable(_variable);
+      _variable = nullptr;
+    }
+  }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_variable_name.size() > 0) {
-      IterableExposedInfo vars(data.acquirables);
+      IterableExposedInfo vars(data.shared);
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : vars) {
@@ -758,7 +763,7 @@ struct CheckBox : public Variable<CBType::Bool> {
     IDContext idCtx(this);
 
     if (!_variable && _variable_name.size() > 0) {
-      _variable = findVariable(context, _variable_name.c_str());
+      _variable = referenceVariable(context, _variable_name.c_str());
     }
 
     if (_variable) {
@@ -1119,7 +1124,7 @@ typedef BlockWrapper<TreeNode> TreeNodeBlock;
       IDContext idCtx(this);                                                   \
                                                                                \
       if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = findVariable(context, _variable_name.c_str());             \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
         if (_exposing) {                                                       \
           _variable->valueType = _CBT_;                                        \
         }                                                                      \
@@ -1154,7 +1159,7 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
       IDContext idCtx(this);                                                   \
                                                                                \
       if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = findVariable(context, _variable_name.c_str());             \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
         if (_exposing) {                                                       \
           _variable->valueType = _CBT_;                                        \
         }                                                                      \
@@ -1195,7 +1200,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
       IDContext idCtx(this);                                                   \
                                                                                \
       if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = findVariable(context, _variable_name.c_str());             \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
         if (_exposing) {                                                       \
           _variable->valueType = _CBT_;                                        \
         }                                                                      \
@@ -1233,7 +1238,7 @@ IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
       IDContext idCtx(this);                                                   \
                                                                                \
       if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = findVariable(context, _variable_name.c_str());             \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
         if (_exposing) {                                                       \
           _variable->valueType = _CBT_;                                        \
         }                                                                      \
@@ -1273,13 +1278,6 @@ struct TextInput : public Variable<CBType::String> {
   // fallback, used only when no variable name is set
   std::string _buffer;
 
-  void cleanup() override {
-    if (_variable && _exposing) {
-      destroyVar(*_variable);
-    }
-    Variable<CBType::String>::cleanup();
-  }
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1305,7 +1303,7 @@ struct TextInput : public Variable<CBType::String> {
     IDContext idCtx(this);
 
     if (!_variable && _variable_name.size() > 0) {
-      _variable = findVariable(context, _variable_name.c_str());
+      _variable = referenceVariable(context, _variable_name.c_str());
       if (_exposing) {
         // we own the variable so let's run some init
         _variable->valueType = String;

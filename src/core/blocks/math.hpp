@@ -71,7 +71,12 @@ struct BinaryBase : public Base {
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() { _ctxOperand = nullptr; }
+  void cleanup() {
+    if (_ctxOperand) {
+      releaseVariable(_ctxOperand);
+      _ctxOperand = nullptr;
+    }
+  }
 
   void destroy() {
     if (_cachedSeq.valueType == Seq) {
@@ -91,18 +96,16 @@ struct BinaryBase : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_operand.valueType == ContextVar) {
-      for (uint32_t i = 0; i < data.acquirables.len; i++) {
-        if (strcmp(data.acquirables.elements[i].name,
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        if (strcmp(data.shared.elements[i].name,
                    _operand.payload.stringValue) == 0) {
-          if (data.acquirables.elements[i].exposedType.basicType != Seq &&
+          if (data.shared.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
             _opType = Normal;
-          } else if (data.acquirables.elements[i].exposedType.basicType !=
-                         Seq &&
+          } else if (data.shared.elements[i].exposedType.basicType != Seq &&
                      data.inputType.basicType == Seq) {
             _opType = Seq1;
-          } else if (data.acquirables.elements[i].exposedType.basicType ==
-                         Seq &&
+          } else if (data.shared.elements[i].exposedType.basicType == Seq &&
                      data.inputType.basicType == Seq) {
             _opType = SeqSeq;
           } else {
@@ -281,7 +284,8 @@ struct BinaryBase : public Base {
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
+        _ctxOperand =                                                          \
+            referenceVariable(context, _operand.payload.stringValue);          \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       if (likely(_opType == Normal)) {                                         \
@@ -366,7 +370,8 @@ struct BinaryBase : public Base {
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand = findVariable(context, _operand.payload.stringValue);     \
+        _ctxOperand =                                                          \
+            referenceVariable(context, _operand.payload.stringValue);          \
       }                                                                        \
       auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
       if (likely(_opType == Normal)) {                                         \

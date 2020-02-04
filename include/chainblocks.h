@@ -451,7 +451,7 @@ struct CBVarPayload {
 
     // notice, this is assumed not mutable!
     // unless specified in the CBTypeInfo of this value
-    // and only when used as variable (acquirable)
+    // and only when used as variable (shared)
     CBSeq seqValue;
 
     struct CBTable tableValue;
@@ -491,6 +491,7 @@ struct CBVarPayload {
 struct CBVar {
   struct CBVarPayload payload;
   uint64_t capacity;
+  uint32_t refcount;
   enum CBType valueType;
 } __attribute__((aligned(16)));
 
@@ -509,7 +510,7 @@ struct CBInstanceData {
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBTypesInfo stack;
-  CBExposedTypesInfo acquirables;
+  CBExposedTypesInfo shared;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
@@ -634,8 +635,10 @@ typedef void(__cdecl *CBUnregisterRunLoopCallback)(const char *eventName);
 
 typedef void(__cdecl *CBUnregisterExitCallback)(const char *eventName);
 
-typedef struct CBVar *(__cdecl *CBContextVariable)(struct CBContext *context,
-                                                   const char *name);
+typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
+                                                     const char *name);
+
+typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef void(__cdecl *CBThrowException)(const char *errorText);
 
@@ -728,8 +731,10 @@ struct CBCore {
   // Removes a previously added exit callback
   CBUnregisterExitCallback unregisterExitCallback;
 
-  // To be used within blocks, to fetch context variables
-  CBContextVariable findVariable;
+  // To be used within blocks, to manipulate variables
+  CBReferenceVariable referenceVariable;
+  CBReleaseVariable releaseVariable;
+
   // Can be used to propagate block errors
   CBThrowException throwException;
   // To be used within blocks, to suspend the coroutine
