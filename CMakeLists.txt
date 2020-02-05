@@ -95,9 +95,13 @@ endif()
 add_compile_options(-fno-threadsafe-statics -ffast-math -funroll-loops -Wno-multichar)
 
 if(X86)
-  add_compile_options(
-    -march=sandybridge
-    )
+  if(NOT FORCE_CORE2)
+    # CBVars are m256 basically, so this is extremely good! (AVX!)
+    add_compile_options(-march=sandybridge)
+  else()
+    # Not as good as AVX but CBVarPayload being m128 and such rocks it!
+    add_compile_options(-march=core2)
+  endif()
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

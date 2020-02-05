@@ -96,7 +96,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
+        cmake -G Ninja -DFORCE_CORE2=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug ..
         ninja cbl
     - name: Test
       run: |
@@ -125,7 +125,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release ..
+        cmake -G Ninja -DFORCE_CORE2=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release ..
         ninja cbl
     - name: Test
       run: |
