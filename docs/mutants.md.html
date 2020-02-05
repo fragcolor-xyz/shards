@@ -9,9 +9,10 @@ This allows genetic programming and various optimizations too.
 
 ~~~~~~ lisp
 "Hello universe"
-(Push) ;; mutate reads values from the stack
+(Set "x")
 ;; Const has no input but here we could have a input!
-(Mutate (Const "Hello world") [0]) ;; [0], first param
+(Mutate (Const "Hello world") ["x"] [0])
+;; ["x"] [0], first param, read value from variable x
 (Assert.Is "Hello universe")
 ~~~~~~
 
@@ -23,27 +24,28 @@ The mutation block tries to amortize this by setting the parameter only if the i
 
 ~~~~~~ lisp
 10
-(Probe (Math.Add 10) [0]) ;; [0], first param
+(Probe (Math.Add 10) ["x"] [0])
+;; ["x"] [0], first param, write value to variable x
 (Assert.Is 20)
-(Pop) ;; Probe pushes into the stack the parameter value
+(Get "x")
 (Assert.Is 10)
 ~~~~~~
 
 `Probe` is a bit the reverse of `Mutate`, where the latter is a `setParam` the former is `getParam`.
-`Probe` pushes the value into the stack in order to allow normal block output flow.
+`Probe` sets the value into variables in order to allow normal block output flow.
 It is especially useful when combined with `Mutate` like:
 
 ~~~~~~ lisp
 20
-(Push) ;; mutate reads values from the stack
+(Set "x")
 10
-(Mutate (Probe (Math.Add 10) [0]) [0])
+(Mutate (Probe (Math.Add 10) ["y"] [0]) ["x"] [0])
 (Assert.Is 30)
-(Pop)
+(Get "y")
 (Assert.Is 20)
 ~~~~~~
 
-In the above case `Mutate` will proposely ignore and bypass the `Probe` block.
+In the above case `Mutate` will on purpose ignore and bypass the `Probe` block.
 
 Neural network training idea using a GA
 
