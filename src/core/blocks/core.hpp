@@ -1081,13 +1081,11 @@ struct Push : public VariableBase {
     };
 
     if (_isTable) {
-      auto tableFound = false;
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name &&
             data.shared.elements[i].exposedType.table.types.elements) {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
-          tableFound = true;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == Seq) {

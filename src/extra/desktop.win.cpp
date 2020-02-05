@@ -470,7 +470,12 @@ struct PixelBase {
   ExposedInfo exposedInfo;
   CBVar *windowVar = nullptr;
 
-  void cleanup() { windowVar = nullptr; }
+  void cleanup() {
+    if (windowVar) {
+      releaseVariable(windowVar);
+      windowVar = nullptr;
+    }
+  }
 
   CBExposedTypesInfo requiredVariables() {
     if (variableName.size() == 0) {
@@ -561,7 +566,7 @@ struct PixelBase {
 
   DXGIDesktopCapture *preActivate(CBContext *context, int &x, int &y) {
     if (windowVar == nullptr && variableName.size() != 0) {
-      windowVar = findVariable(context, variableName.c_str());
+      windowVar = referenceVariable(context, variableName.c_str());
     }
 
     if (windowVar) {
@@ -764,12 +769,19 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 struct SendKeyEvent : public SendKeyEventBase {
   CBVar *_window = nullptr;
 
+  void cleanup() {
+    if (_window) {
+      releaseVariable(_window);
+      _window = nullptr;
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto state = input.payload.int2Value[0];
     UINT vkCode = input.payload.int2Value[1];
 
     if (_windowVarName.size() > 0 && !_window) {
-      _window = findVariable(context, _windowVarName.c_str());
+      _window = referenceVariable(context, _windowVarName.c_str());
     }
 
     if (_windowVarName.size() > 0) {
@@ -1312,6 +1324,7 @@ RUNTIME_BLOCK_parameters(SendKeyEvent);
 RUNTIME_BLOCK_setParam(SendKeyEvent);
 RUNTIME_BLOCK_getParam(SendKeyEvent);
 RUNTIME_BLOCK_activate(SendKeyEvent);
+RUNTIME_BLOCK_cleanup(SendKeyEvent);
 RUNTIME_BLOCK_help(SendKeyEvent);
 RUNTIME_BLOCK_requiredVariables(SendKeyEvent);
 RUNTIME_BLOCK_END(SendKeyEvent);
