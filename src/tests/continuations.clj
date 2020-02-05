@@ -4,9 +4,9 @@
   (Chain
    "d1" :Looped
    (Msg "D1 started")
-   (ContinueChain "d2")
+   (Resume "d2")
    (Msg "D1 returned")
-   (ContinueChain "main")
+   (Resume "main")
    ))
 
 (def depth2Chain
@@ -14,7 +14,7 @@
    "d2" :Looped
    (Msg "D2 started")
                                         ; go back
-   (ContinueChain "d1")
+   (Resume "d1")
    (Msg "D2 returned")
    ))
 
@@ -22,7 +22,7 @@
   (Chain
    "main" :Looped
    (Msg "Main started")
-   (ContinueChain "d1")
+   (Resume "d1")
    (Msg "Main returned")
    ))
 

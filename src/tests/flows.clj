@@ -8,22 +8,22 @@
   (Chain
    "one"
    (Msg "one - 1")
-   (ContinueChain "two")
+   (Resume "two")
    (Msg "one - 2")
    (Msg "one - 3")
-   (ContinueChain "two")
+   (Resume "two")
    (Msg "one - Done")
-   (ContinueChain "two")
+   (Resume "two")
    ))
 
 (def chain2
   (Chain
    "two"
    (Msg "two - 1")
-   (ContinueChain "one")
+   (Resume "one")
    (Msg "two - 2")
    (Msg "two - 3")
-   (ContinueChain "one")
+   (Resume "one")
    (Msg "two - 4")
    (Msg "two - Done")
    ))

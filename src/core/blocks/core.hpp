@@ -898,6 +898,14 @@ struct Get : public VariableBase {
 
     if (!_target) {
       _target = referenceVariable(context, _name.c_str());
+      // sanity check that the variable is not pristine...
+      // the setter chain might have stopped actually!
+      if (_defaultValue.valueType == None && _target->refcount == 1) {
+        throw CBException("Variable: " + _name +
+                          " did not exist in the context and no default value "
+                          "was given, likely "
+                          "the Set block was in chain that already ended.");
+      }
     }
 
     if (_isTable) {

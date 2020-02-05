@@ -369,6 +369,12 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case Bytes:
     delete[] var.payload.bytesValue;
     break;
+  case Object:
+    if (var.objectInfo && var.objectInfo->destroy) {
+      // in this case the custom object needs actual destruction
+      var.objectInfo->destroy(var.payload.objectValue);
+    }
+    break;
   default:
     break;
   };
@@ -377,6 +383,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
+  // don't loose dst refcount!
   auto rc = dst.refcount;
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {

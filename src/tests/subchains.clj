@@ -26,7 +26,7 @@
   (Chain
    "jumphere!"
    (Msg "jumped...")
-   (ContinueChain "ticked")))
+   (Resume "ticked")))
 
 (def tickedChain (Chain "ticked"
   (Msg "message 1")
@@ -34,7 +34,7 @@
   (Sleep (Float 0))
   
   (Msg "message 2")
-  (ContinueChain "jumphere!")
+  (Resume "jumphere!")
   2
   (Sleep (Float 0))
   

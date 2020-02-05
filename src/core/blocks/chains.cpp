@@ -224,7 +224,7 @@ struct WaitChain : public ChainBase {
   }
 };
 
-struct ContinueChain : public ChainBase {
+struct Resume : public ChainBase {
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Chain", "The name of the chain to switch to.", ChainTypes));
 
@@ -245,7 +245,7 @@ struct ContinueChain : public ChainBase {
   // NO cleanup, other chains reference this chain but should not stop it
   // An arbitrary chain should be able to resume it!
   // Cleanup mechanics still to figure, for now ref count of the actual chain
-  // symbol
+  // symbol, TODO maybe use CBVar refcount!
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // assign current flow to the chain we are going to
@@ -271,6 +271,9 @@ struct ContinueChain : public ChainBase {
     }
 
     // And normally we just delegate the CBNode + CBFlow
+    // the following will suspend this current chain
+    // and in node tick when re-evaluated tick will
+    // resume with the chain we just set above!
     chainblocks::suspend(context, 0);
 
     return input;
@@ -556,13 +559,13 @@ struct ChainLoader : public ChainRunner {
   }
 };
 
-typedef BlockWrapper<ContinueChain> ContinueChainBlock;
+typedef BlockWrapper<Resume> ResumeBlock;
 typedef BlockWrapper<WaitChain> WaitChainBlock;
 typedef BlockWrapper<RunChain> RunChainBlock;
 typedef BlockWrapper<ChainLoader> ChainLoaderBlock;
 
 void registerChainsBlocks() {
-  registerBlock("ContinueChain", &ContinueChainBlock::create);
+  registerBlock("Resume", &ResumeBlock::create);
   registerBlock("WaitChain", &WaitChainBlock::create);
   registerBlock("RunChain", &RunChainBlock::create);
   registerBlock("ChainLoader", &ChainLoaderBlock::create);

@@ -490,7 +490,13 @@ struct CBVarPayload {
 
 struct CBVar {
   struct CBVarPayload payload;
-  uint64_t capacity;
+  union {
+    // currently used when dealing with Object type variables
+    // if you need (serialization & destroy) you should populate this field
+    struct CBObjectInfo *objectInfo;
+    // currently used internally when serializing
+    uint64_t capacity;
+  };
   uint32_t refcount;
   enum CBType valueType;
 } __attribute__((aligned(16)));
