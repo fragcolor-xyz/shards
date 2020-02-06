@@ -5,9 +5,12 @@
 
 #include <cstdint>
 #include <list>
-#include <parallel_hashmap/phmap.h>
+#include <map>
 #include <regex>
+#include <set>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -84,11 +87,10 @@ struct FormWrapper;
 class FormWrapperHash;
 class FormWrapperEquality;
 
-using FormWrapperMap =
-    phmap::flat_hash_map<FormWrapper, FormWrapper, FormWrapperHash,
-                         FormWrapperEquality>;
+using FormWrapperMap = std::unordered_map<FormWrapper, FormWrapper,
+                                          FormWrapperHash, FormWrapperEquality>;
 using FormWrapperSet =
-    phmap::flat_hash_set<FormWrapper, FormWrapperHash, FormWrapperEquality>;
+    std::unordered_set<FormWrapper, FormWrapperHash, FormWrapperEquality>;
 
 using Form = std::variant<
     Special, token::Token, std::list<FormWrapper>, std::vector<FormWrapper>,
@@ -286,12 +288,12 @@ bool equals(const FormWrapper &fw1, const FormWrapper &fw2) {
 
 } // namespace form
 
-const phmap::flat_hash_map<std::variant<char, std::string>, std::string>
+const std::unordered_map<std::variant<char, std::string>, std::string>
     SYMBOL_TO_NAME = {{'\'', "quote"},    {'`', "quasiquote"},
                       {'~', "unquote"},   {'@', "deref"},
                       {'^', "with-meta"}, {"~@", "splice-unquote"}};
 
-const phmap::flat_hash_map<std::variant<char, std::string>, form::Type>
+const std::unordered_map<std::variant<char, std::string>, form::Type>
     DELIMITER_TO_TYPE = {
         {'(', form::LIST},
         {'[', form::VECTOR},
@@ -299,7 +301,7 @@ const phmap::flat_hash_map<std::variant<char, std::string>, form::Type>
         {"#{", form::SET},
 };
 
-const phmap::flat_hash_map<form::Type, char> TYPE_TO_DELIMITER = {
+const std::unordered_map<form::Type, char> TYPE_TO_DELIMITER = {
     {form::LIST, ')'}, {form::VECTOR, ']'}, {form::MAP, '}'}, {form::SET, '}'}};
 
 std::pair<form::Form, std::list<token::Token>::const_iterator>

@@ -3,8 +3,9 @@
 #ifndef CB_LSP_EVAL_HPP
 #define CB_LSP_EVAL_HPP
 
+#include "../runtime.hpp"
+#include "print.hpp"
 #include "read.hpp"
-#include <chainblocks.hpp>
 
 namespace chainblocks {
 namespace edn {
@@ -13,9 +14,10 @@ class EvalException : public std::exception {
 public:
   explicit EvalException(std::string errmsg, token::Token token)
       : errorMessage(errmsg) {
-    errorMessage = "At line: " + std::to_string(token.line) +
-                   " column: " + std::to_string(token.column) +
-                   " error: " + errorMessage;
+    errorMessage =
+        "Script evaluation error!\nAt line: " + std::to_string(token.line) +
+        "\ncolumn: " + std::to_string(token.column) +
+        "\nerror: " + errorMessage;
   }
 
   [[nodiscard]] const char *what() const noexcept override {
@@ -32,6 +34,10 @@ class ValueBase {
 public:
   ValueBase(const token::Token &token, const std::shared_ptr<Environment> &env)
       : _token(token), _owner(env) {}
+
+  virtual std::string pr_str(document &doc) {
+    return ::chainblocks::edn::pr_str(doc, _token);
+  }
 
 private:
   token::Token _token;
@@ -105,6 +111,9 @@ public:
          const std::shared_ptr<Environment> &env)
       : ValueBase(token, env), _argNames(argNames), _body(body) {}
 
+  const form::Form &body() const { return _body.form; }
+  const std::vector<std::string> &args() { return _argNames; }
+
 private:
   std::vector<std::string> _argNames;
   form::FormWrapper _body;
@@ -125,13 +134,31 @@ using Value = std::variant<CBVarValue, Lambda, Node>;
 
 class Environment {
 public:
-  void set(std::string name, Value value) {
-    _contents.insert(std::pair<std::string, Value>(name, value));
+  Environment() {}
+  Environment(std::shared_ptr<Environment> parent) : _parent(parent) {}
+
+  void set(const std::string &name, Value value, bool deep = false) {
+    if (deep && _parent) {
+      _parent->set(name, value, deep);
+    } else {
+      _contents.insert(std::pair<std::string, Value>(name, value));
+    }
+  }
+
+  Value *find(const std::string &name) {
+    auto it = _contents.find(name);
+    if (it != _contents.end()) {
+      return &it->second;
+    }
+    if (_parent)
+      return _parent->find(name);
+    else
+      return nullptr;
   }
 
 private:
-  phmap::flat_hash_map<std::string, Value> _contents;
-  std::weak_ptr<Environment> _parent;
+  std::unordered_map<std::string, Value> _contents;
+  std::shared_ptr<Environment> _parent;
 };
 
 class Program {
@@ -166,7 +193,7 @@ public:
               }
 
               continue;
-            } else if (value == "def!") {
+            } else if (value == "def") {
               if (list.size() != 2) {
                 throw EvalException("def! requires two arguments", token);
               }
@@ -175,27 +202,29 @@ public:
               auto fbody = list.back().form;
               if (fname.index() != form::TOKEN) {
                 throw EvalException(
-                    "def! first argument should be a valid symbol name", token);
+                    "def first argument should be a valid symbol name", token);
               }
               auto tname = std::get<token::Token>(fname);
               if (tname.type != token::type::SYMBOL) {
                 throw EvalException(
-                    "def! first argument should be a valid symbol name", tname);
+                    "def first argument should be a valid symbol name", tname);
               }
 
               auto name = std::get<std::string>(tname.value);
               auto sym = eval(fbody, env);
-              env->set(name, sym);
+              // set "deep" into global root env
+              env->set(name, sym, true);
               return sym;
-            } else if (value == "fn*") {
+            } else if (value == "fn") {
+              // Nice to have - multi-arity function
               if (list.size() != 2) {
-                throw EvalException("fn* requires two arguments", token);
+                throw EvalException("fn requires two arguments", token);
               }
 
               auto fbindings = list.front().form;
               auto fbody = list.back().form;
               if (fbindings.index() != form::VECTOR) {
-                throw EvalException("fn* first arguments should be a vector",
+                throw EvalException("fn first arguments should be a vector",
                                     token);
               }
 
@@ -206,12 +235,12 @@ public:
                 auto &fbind = binding.form;
                 if (fbind.index() != form::TOKEN) {
                   throw EvalException(
-                      "fn* arguments have to be a valid symbol name", token);
+                      "fn arguments have to be a valid symbol name", token);
                 }
                 auto &tbind = std::get<token::Token>(fbind);
                 if (tbind.type != token::type::SYMBOL) {
                   throw EvalException(
-                      "fn* arguments have to be a valid symbol name", tbind);
+                      "fn arguments have to be a valid symbol name", tbind);
                 }
                 auto &name = std::get<std::string>(tbind.value);
                 args.push_back(name);
@@ -246,6 +275,33 @@ public:
               return NilValue(token, env);
             } else if (value == "Node") {
               return Node(token, env);
+            } else {
+              // seek the env
+              auto sym = env->find(value);
+              if (sym) {
+                if (sym->index() == 1) { // lambda
+                  auto &lmbd = std::get<Lambda>(*sym);
+                  ast = lmbd.body();
+                  // create a env with args
+                  auto subenv = std::make_shared<Environment>(env);
+                  auto args = lmbd.args();
+                  for (auto &arg : args) {
+                    if (list.size() == 0) {
+                      throw EvalException(
+                          "Not enough arguments for call: " + value, token);
+                    }
+                    auto argAst = list.front().form;
+                    list.pop_front();
+                    // eval the arg and add it to the local env
+                    auto argVal = eval(argAst, env);
+                    subenv->set(arg, argVal);
+                  }
+                  env = subenv;
+                  continue; // tailcall
+                }
+              } else {
+                throw EvalException("Symbol not found: " + value, token);
+              }
             }
           }
           break;
@@ -257,8 +313,16 @@ public:
           auto token = std::get<token::Token>(ast);
           if (token.type == token::type::SYMBOL) {
             if (token.value.index() == token::value::STRING) {
-              if (std::get<std::string>(token.value) == "nil") {
+              auto &value = std::get<std::string>(token.value);
+              if (value == "nil") {
                 return NilValue(token, env);
+              } else {
+                auto sym = env->find(value);
+                if (sym) {
+                  return *sym;
+                } else {
+                  throw EvalException("Symbol not found: " + value, token);
+                }
               }
             } else if (token.value.index() == token::value::BOOL) {
               return BoolValue(std::get<bool>(token.value), token, env);

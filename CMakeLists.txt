@@ -485,3 +485,15 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
 ###
+
+### our experimental edn eval
+add_executable(
+  cbedn
+  "${CHAINBLOCKS_DIR}/src/core/edn/main.cpp"
+  )
+add_dependencies(cbedn cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+###
+

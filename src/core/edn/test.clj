@@ -1,0 +1,6 @@
+(def Root (Node))
+(def callme (fn [] Root))
+(callme)
+
+(def call2 (fn [a b c] b))
+(call2 0 1 2)

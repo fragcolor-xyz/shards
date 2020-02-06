@@ -12,7 +12,6 @@ namespace chainblocks {
 namespace edn {
 
 struct document {
-  constexpr auto indents = 2;
   int indent = 0;
 };
 
