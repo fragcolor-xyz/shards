@@ -81,21 +81,21 @@ std::string pr_str(document &doc, form::Form form) {
   case form::TOKEN:
     return pr_str(doc, std::get<token::Token>(form));
   case form::LIST:
-    return "\n(" +
+    return "(" +
            pr_str<std::list<form::FormWrapper>>(
                doc, std::get<std::list<form::FormWrapper>>(form)) +
            ")";
   case form::VECTOR:
-    return "\n[" +
+    return "[" +
            pr_str<std::vector<form::FormWrapper>>(
                doc, std::get<std::vector<form::FormWrapper>>(form)) +
            "]";
   case form::MAP:
-    return "\n{" +
+    return "{" +
            pr_str(doc, *std::get<std::shared_ptr<form::FormWrapperMap>>(form)) +
            "}";
   case form::SET:
-    return "\n#{" +
+    return "#{" +
            pr_str<form::FormWrapperSet>(
                doc, *std::get<std::shared_ptr<form::FormWrapperSet>>(form)) +
            "}";

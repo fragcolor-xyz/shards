@@ -1,4 +1,5 @@
 #include "eval.hpp"
+#include "print.hpp"
 #include <string>
 #include <fstream>
 #include <streambuf>
@@ -27,6 +28,10 @@ int main(int argc, const char** argv) {
     case 2: {
       auto v = std::get<Node>(res);
       std::cout << v.pr_str(doc) << "\n";
+    } break;
+    case 3: {
+      auto v = std::get<chainblocks::edn::form::Form>(res);
+      std::cout << ::chainblocks::edn::pr_str(doc, v) << "\n";
     } break;
     default:
       break;
