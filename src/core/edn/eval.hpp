@@ -139,32 +139,26 @@ private:
 
 class BuiltIn {
 public:
-  virtual Value eval(form::Form ast, std::shared_ptr<Environment> env,
-                     int *line) {
-    assert(false);
-  }
+  virtual Value apply(std::vector<Value> &args, int line) { assert(false); }
 };
 
 class First : public BuiltIn {
 public:
   virtual ~First() {}
-  Value eval(form::Form ast, std::shared_ptr<Environment> env,
-             int *line) override {
-    if (ast.index() == form::LIST) {
-      auto list = std::get<std::list<form::FormWrapper>>(ast);
-      if (list.size() == 0) {
-        throw EvalException("first, did not expect an empty list", *line);
-      }
-      return list.front().form;
-    } else if (ast.index() == form::VECTOR) {
-      auto vec = std::get<std::vector<form::FormWrapper>>(ast);
-      if (vec.size() == 0) {
-        throw EvalException("first, did not expect an empty vector", *line);
-      }
-      return vec[0].form;
-    } else {
-      throw EvalException("first, list or vector expected", *line);
+  Value apply(std::vector<Value> &args, int line) override {
+    if (args.size() != 1) {
+      throw EvalException("first, expected a single argument", line);
     }
+    auto &v = args[0];
+    if(v.index() == value::types::Form) {
+      auto &f = std::get<form::Form>(v);
+      if(f.index() == form::LIST) {
+      } else if(f.index() == form::VECTOR) {
+      } else {
+      }
+    }
+    // todo
+    return args[0];
   }
 };
 
@@ -383,8 +377,12 @@ public:
                 if (sym) {
                   if (sym->index() == value::types::BuiltIn) {
                     auto &bin = std::get<std::shared_ptr<BuiltIn>>(*sym);
-		    // todo eval args actually!
-                    return bin->eval(list, env, line); // tailcall
+                    // todo eval args actually!
+                    std::vector<Value> args;
+                    for (auto &arg : list) {
+                      args.emplace_back(eval(arg.form, env, line));
+                    }
+                    return bin->apply(args, *line); // tailcall
                   } else if (sym->index() == value::types::Lambda) {
                     auto &lmbd = std::get<Lambda>(*sym);
                     ast = lmbd.body();
