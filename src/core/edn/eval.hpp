@@ -25,7 +25,16 @@ private:
   std::string errorMessage;
 };
 
+namespace value {
+enum types { Var, Lambda, Node, Form, BuiltIn };
+}
+
 class Environment;
+class CBVarValue;
+class Lambda;
+class Node;
+class BuiltIn;
+using Value = std::variant<CBVarValue, Lambda, Node, form::Form, BuiltIn>;
 
 class ValueBase {
 public:
@@ -36,7 +45,7 @@ public:
     return ::chainblocks::edn::pr_str(doc, _token);
   }
 
-private:
+protected:
   token::Token _token;
   std::weak_ptr<Environment> _owner;
 };
@@ -127,11 +136,16 @@ private:
   std::shared_ptr<CBNode> _node;
 };
 
-namespace value {
-enum types { Var, Lambda, Node, Form };
-}
+class BuiltIn : public ValueBase {
+public:
+  BuiltIn(const token::Token &token, const std::shared_ptr<Environment> &env)
+      : ValueBase(token, env) {}
 
-using Value = std::variant<CBVarValue, Lambda, Node, form::Form>;
+  virtual Value eval(form::Form ast, std::shared_ptr<Environment> env,
+                     int *line) {
+    return NilValue(_token, env);
+  }
+};
 
 class Environment {
 public:
@@ -201,8 +215,7 @@ public:
                 continue;
               } else if (value == "def") {
                 if (list.size() != 2) {
-                  throw EvalException("def! requires two arguments",
-                                      token.line);
+                  throw EvalException("def requires two arguments", token.line);
                 }
 
                 auto fname = list.front().form;
@@ -288,17 +301,59 @@ public:
                 }
 
                 return NilValue(token, env);
+              } else if (value == "let") {
+                if (list.size() != 2) {
+                  throw EvalException("let requires two arguments", token.line);
+                }
+
+                auto fbinds = list.front().form;
+                auto fexprs = list.back().form;
+
+                if (fbinds.index() != form::VECTOR) {
+                  throw EvalException("let bindings should be a vector",
+                                      token.line);
+                }
+                auto binds = std::get<std::vector<form::FormWrapper>>(fbinds);
+
+                if ((binds.size() % 2) != 0) {
+                  throw EvalException("let expected bindings in pairs",
+                                      token.line);
+                }
+
+                // create a env with args
+                auto subenv = std::make_shared<Environment>(env);
+                for (size_t i = 0; i < binds.size(); i += 2) {
+                  auto fbname = binds[i].form;
+                  auto fbexpr = binds[i + 1].form;
+                  if (fbname.index() != form::TOKEN) {
+                    throw EvalException("let expected a token as first in the "
+                                        "pair of a binding",
+                                        token.line);
+                  }
+                  auto tbname = std::get<token::Token>(fbname);
+                  if (tbname.type != token::type::SYMBOL) {
+                    throw EvalException("symbol expected", tbname.line);
+                  }
+                  subenv->set(std::get<std::string>(tbname.value),
+                              eval(fbexpr, env, line));
+                }
+                ast = fexprs;
+                env = subenv;
+                *line = token.line;
+                continue; // tailcall
               } else if (value == "quote") {
                 if (list.size() != 1) {
                   throw EvalException("quote expected 1 argument", token.line);
                 }
                 return list.back().form;
               } else if (value == "quasiquote") {
-		// https://docs.racket-lang.org/reference/quasiquote.html
+                // https://docs.racket-lang.org/reference/quasiquote.html
                 if (list.size() != 1) {
-                  throw EvalException("quasiquote expected 1 argument", token.line);
+                  throw EvalException("quasiquote expected 1 argument",
+                                      token.line);
                 }
-                throw EvalException("quasiquote not implemented yet!", token.line);
+                throw EvalException("quasiquote not implemented yet!",
+                                    token.line);
               } else if (value == "Node") {
                 return Node(token, env);
               } else {

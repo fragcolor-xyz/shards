@@ -22,9 +22,9 @@ Basically load, define the chain and return a ready to run node from it.
 (Chain
   :Name "Test Chain 2"
   (3.14)
-  (Set x)
+  (Set 'x)
   (2)
-  (Math.Multiply x)
+  (Math.Multiply 'x)
   (Log))
 
 (def mul Math.Multiply)
@@ -32,8 +32,8 @@ Basically load, define the chain and return a ready to run node from it.
 (defn chainme [a]
   (Chain
     :Name (str "Test Chain " a)
-    BadPI (Set x)
-    (a) (mul x)
+    BadPI (Set 'x)
+    (a) (mul 'x)
     (Log)))
 (chainme 3)
 (chainme 5)
@@ -42,10 +42,23 @@ Basically load, define the chain and return a ready to run node from it.
 ### Core keywords
 
 ##### `def`
+* They are always global definitions.
 ##### `defn`
+##### `defmacro`
+*TODO*
+##### `let`
 ##### `if`
 ##### `do`
 ##### `str`
+##### `seq`
+##### `conj`
+##### `cons`
+##### `concat`
+##### `nth`
+##### `first`
+##### `rest`
+##### `apply`
+##### `map`
 
 ### Operators
 
