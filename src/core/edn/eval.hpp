@@ -34,7 +34,8 @@ class CBVarValue;
 class Lambda;
 class Node;
 class BuiltIn;
-using Value = std::variant<CBVarValue, Lambda, Node, form::Form, BuiltIn>;
+using Value = std::variant<CBVarValue, Lambda, Node, form::Form,
+                           std::shared_ptr<BuiltIn>>;
 
 class ValueBase {
 public:
@@ -136,20 +137,40 @@ private:
   std::shared_ptr<CBNode> _node;
 };
 
-class BuiltIn : public ValueBase {
+class BuiltIn {
 public:
-  BuiltIn(const token::Token &token, const std::shared_ptr<Environment> &env)
-      : ValueBase(token, env) {}
-
   virtual Value eval(form::Form ast, std::shared_ptr<Environment> env,
                      int *line) {
-    return NilValue(_token, env);
+    assert(false);
+  }
+};
+
+class First : public BuiltIn {
+public:
+  virtual ~First() {}
+  Value eval(form::Form ast, std::shared_ptr<Environment> env,
+             int *line) override {
+    if (ast.index() == form::LIST) {
+      auto list = std::get<std::list<form::FormWrapper>>(ast);
+      if (list.size() == 0) {
+        throw EvalException("first, did not expect an empty list", *line);
+      }
+      return list.front().form;
+    } else if (ast.index() == form::VECTOR) {
+      auto vec = std::get<std::vector<form::FormWrapper>>(ast);
+      if (vec.size() == 0) {
+        throw EvalException("first, did not expect an empty vector", *line);
+      }
+      return vec[0].form;
+    } else {
+      throw EvalException("first, list or vector expected", *line);
+    }
   }
 };
 
 class Environment {
 public:
-  Environment() {}
+  Environment() { set("first", std::make_shared<First>()); }
   Environment(std::shared_ptr<Environment> parent) : _parent(parent) {}
 
   void set(const std::string &name, Value value, bool deep = false) {
@@ -360,7 +381,11 @@ public:
                 // seek the env
                 auto sym = env->find(value);
                 if (sym) {
-                  if (sym->index() == value::types::Lambda) {
+                  if (sym->index() == value::types::BuiltIn) {
+                    auto &bin = std::get<std::shared_ptr<BuiltIn>>(*sym);
+		    // todo eval args actually!
+                    return bin->eval(list, env, line); // tailcall
+                  } else if (sym->index() == value::types::Lambda) {
                     auto &lmbd = std::get<Lambda>(*sym);
                     ast = lmbd.body();
                     // create a env with args
@@ -426,7 +451,10 @@ public:
           } else if (token.type == token::type::STRING) {
             return StringValue(std::get<std::string>(token.value), token, env);
           }
-        }
+        } break;
+        default: {
+          return ast;
+        } break;
         }
       }
     }

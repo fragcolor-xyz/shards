@@ -10,4 +10,4 @@
   '(call2 5 5 5)
   )
 
-(let [a 10 b 11] b)
+(let [a 10 b [3 4 11]] (first b))

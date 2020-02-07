@@ -21,9 +21,11 @@ Basically load, define the chain and return a ready to run node from it.
   
 (Chain
   :Name "Test Chain 2"
-  (3.14)
+  (2.0 1.0) ; Float2
+  [2.0 1.0] ; Seq of Float
+  (3.14) ; Float
   (Set 'x)
-  (2)
+  (2.0)
   (Math.Multiply 'x)
   (Log))
 
