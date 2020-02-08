@@ -150,10 +150,10 @@ public:
       throw EvalException("first, expected a single argument", line);
     }
     auto &v = args[0];
-    if(v.index() == value::types::Form) {
+    if (v.index() == value::types::Form) {
       auto &f = std::get<form::Form>(v);
-      if(f.index() == form::LIST) {
-      } else if(f.index() == form::VECTOR) {
+      if (f.index() == form::LIST) {
+      } else if (f.index() == form::VECTOR) {
       } else {
       }
     }

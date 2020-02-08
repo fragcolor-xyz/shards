@@ -24,9 +24,9 @@ Basically load, define the chain and return a ready to run node from it.
   (2.0 1.0) ; Float2
   [2.0 1.0] ; Seq of Float
   (3.14) ; Float
-  (Set 'x)
+  (Set .x)
   (2.0)
-  (Math.Multiply 'x)
+  (Math.Multiply .x)
   (Log))
 
 (def mul Math.Multiply)
@@ -34,8 +34,8 @@ Basically load, define the chain and return a ready to run node from it.
 (defn chainme [a]
   (Chain
     :Name (str "Test Chain " a)
-    BadPI (Set 'x)
-    (a) (mul 'x)
+    BadPI (Set .x)
+    (a) (mul .x)
     (Log)))
 (chainme 3)
 (chainme 5)
