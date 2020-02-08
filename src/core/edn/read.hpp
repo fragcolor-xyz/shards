@@ -153,10 +153,10 @@ inline value::Value parse(std::string value, type::Type type) {
   case type::SPECIAL_CHAR:
     return value[0];
   case type::HEX:
-    return std::stoll(value, nullptr, 16);
+    return (int64_t)std::stoll(value, nullptr, 16);
   case type::NUMBER:
     if (value.find('.') == std::string::npos) {
-      return std::stoll(value);
+      return (int64_t)std::stoll(value);
     } else {
       return std::stod(value);
     }
