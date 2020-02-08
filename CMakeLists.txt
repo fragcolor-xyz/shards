@@ -200,6 +200,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/print.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   )
 
 #### Header paths for tidy
@@ -442,6 +443,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
 

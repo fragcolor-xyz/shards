@@ -15,12 +15,12 @@ struct document {
   int indent = 0;
 };
 
-std::string escape_str(std::string &s) {
+inline std::string escape_str(std::string &s) {
   // return std::regex_replace(s, std::regex("\""), "\\\"");
   return s;
 }
 
-std::string pr_str(document &doc, token::Token &token) {
+inline std::string pr_str(document &doc, token::Token &token) {
   switch (token.value.index()) {
   case token::value::BOOL:
     return std::get<bool>(token.value) ? "true" : "false";
@@ -42,15 +42,15 @@ std::string pr_str(document &doc, token::Token &token) {
   return "";
 }
 
-std::string pr_str(document &doc, form::Form form);
+inline std::string pr_str(document &doc, form::Form form);
 
-std::string pr_str(document &doc, form::FormWrapper formWrapper) {
+inline std::string pr_str(document &doc, form::FormWrapper formWrapper) {
   return pr_str(doc, formWrapper.form);
 }
 
-std::string pr_str(document &doc, std::string &s) { return s; }
+inline std::string pr_str(document &doc, std::string &s) { return s; }
 
-template <class T> std::string pr_str(document &doc, T &list) {
+template <class T> inline std::string pr_str(document &doc, T &list) {
   std::string s;
   for (auto &item : list) {
     if (s.size() > 0) {
@@ -61,7 +61,7 @@ template <class T> std::string pr_str(document &doc, T &list) {
   return s;
 }
 
-std::string pr_str(document &doc, form::FormWrapperMap &map) {
+inline std::string pr_str(document &doc, form::FormWrapperMap &map) {
   std::string s;
   for (auto &item : map) {
     if (s.size() > 0) {
@@ -72,7 +72,7 @@ std::string pr_str(document &doc, form::FormWrapperMap &map) {
   return s;
 }
 
-std::string pr_str(document &doc, form::Form form) {
+inline std::string pr_str(document &doc, form::Form form) {
   switch (form.index()) {
   case form::SPECIAL: {
     auto error = std::get<form::Special>(form);
@@ -103,7 +103,7 @@ std::string pr_str(document &doc, form::Form form) {
   return "";
 }
 
-std::string print(const std::list<form::Form> &forms) {
+inline std::string print(const std::list<form::Form> &forms) {
   std::string s;
   document doc;
   for (auto &form : forms) {
