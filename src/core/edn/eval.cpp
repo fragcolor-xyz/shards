@@ -228,6 +228,8 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
           case token::type::HEX:
           case token::type::NUMBER: {
           } break;
+          default:
+            break;
           }
         }
       } break;
