@@ -461,7 +461,9 @@ struct CBVarPayload {
       // If ContextVar and stringValue == nullptr
       // assume we use the context stack if pos < 0
       // where -1 == stack top
-      int64_t stackPosition;
+      int32_t stackPosition;
+      // If ContextVar, signals a chain variable rather then node
+      bool chainLocal;
     };
 
     struct CBColor colorValue;
@@ -642,7 +644,8 @@ typedef void(__cdecl *CBUnregisterRunLoopCallback)(const char *eventName);
 typedef void(__cdecl *CBUnregisterExitCallback)(const char *eventName);
 
 typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
-                                                     const char *name);
+                                                     const char *name,
+                                                     bool chainLocal);
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 

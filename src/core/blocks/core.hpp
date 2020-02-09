@@ -354,7 +354,7 @@ struct SetInput {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    chainblocks::cloneVar(const_cast<CBChain *>(context->chain)->rootTickInput,
+    chainblocks::cloneVar(const_cast<CBChain *>(context->main)->rootTickInput,
                           input);
     return input;
   }

@@ -249,9 +249,9 @@ struct Resume : public ChainBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // assign current flow to the chain we are going to
-    chain->flow = context->chain->flow;
+    chain->flow = context->main->flow;
     // if we have a node also make sure chain knows about it
-    chain->node = context->chain->node;
+    chain->node = context->main->node;
     // assign the new chain as current chain on the flow
     chain->flow->chain = chain;
 
@@ -300,7 +300,7 @@ struct ChainRunner : public ChainBase {
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
     if (!chainblocks::isRunning(chain)) {
       // validated during infer not here! (false)
-      context->chain->node->schedule(chain, input, false);
+      context->main->node->schedule(chain, input, false);
     }
   }
 
@@ -309,7 +309,7 @@ struct ChainRunner : public ChainBase {
     if (!_steppedFlow.chain) {
       _steppedFlow.chain = chain;
       chain->flow = &_steppedFlow;
-      chain->node = context->chain->node;
+      chain->node = context->main->node;
     }
 
     // Allow to re run chains
@@ -320,7 +320,7 @@ struct ChainRunner : public ChainBase {
       // swap flow to the root chain
       _steppedFlow.chain = chain;
       chain->flow = &_steppedFlow;
-      chain->node = context->chain->node;
+      chain->node = context->main->node;
     }
 
     // Prepare if no callc was called
@@ -396,8 +396,8 @@ struct RunChain : public ChainRunner {
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
-        chain->flow = context->chain->flow;
-        chain->node = context->chain->node;
+        chain->flow = context->main->flow;
+        chain->node = context->main->node;
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;
@@ -544,8 +544,8 @@ struct ChainLoader : public ChainRunner {
         return input;
       } else {
         // Run within the root flow
-        chain->flow = context->chain->flow;
-        chain->node = context->chain->node;
+        chain->flow = context->main->flow;
+        chain->node = context->main->node;
         auto runRes = runSubChain(chain, context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;

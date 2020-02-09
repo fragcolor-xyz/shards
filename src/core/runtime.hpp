@@ -132,16 +132,22 @@ struct CBChain {
   CBNode *node;
   CBFlow *flow;
   std::vector<CBlock *> blocks;
+  std::unordered_map<std::string, CBVar, std::hash<std::string>,
+                     std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<
+                         std::pair<const std::string, CBVar>, 16>>
+      variables;
 };
 
 struct CBContext {
-  CBContext(CBCoro &&sink, const CBChain *running_chain)
-      : chain(running_chain), restarted(false), aborted(false),
+  CBContext(CBCoro &&sink, CBChain *starter)
+      : main(starter), current(starter), restarted(false), aborted(false),
         continuation(std::move(sink)), iterationCount(0), stack({}) {}
 
   ~CBContext() { chainblocks::arrayFree(stack); }
 
-  const CBChain *chain;
+  const CBChain *main;
+  CBChain *current;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -453,6 +459,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
+  // store current chain to restore at end
+  auto previous = context->current;
   // Reset finished flag (atomic), TODO take care of recursions!
   chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
@@ -460,6 +468,8 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
   chain->finishedOutput = runRes.output;
   // Set finished flag (atomic), recursion??
   chain->finished = true;
+  // restore previous as current
+  context->current = previous;
   return runRes;
 }
 
@@ -684,7 +694,6 @@ struct CBNode {
 
   bool empty() { return flows.empty(); }
 
-  // must use node_hash_map, cos flat might move memory around!
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,
                      boost::alignment::aligned_allocator<
