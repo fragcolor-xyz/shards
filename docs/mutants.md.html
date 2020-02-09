@@ -8,11 +8,11 @@ This allows genetic programming and various optimizations too.
 ### The `Mutate` block
 
 ~~~~~~ lisp
-"Hello universe"
-(Set "x")
+("Hello universe")
+(Set .x)
 ;; Const has no input but here we could have a input!
-(Mutate (Const "Hello world") ["x"] [0])
-;; ["x"] [0], first param, read value from variable x
+(Mutate ("Hello world") [.x] [0])
+;; [.x] [0], first param, read value from variable x
 (Assert.Is "Hello universe")
 ~~~~~~
 
@@ -23,11 +23,11 @@ The mutation block tries to amortize this by setting the parameter only if the i
 ### The `Probe` block
 
 ~~~~~~ lisp
-10
-(Probe (Math.Add 10) ["x"] [0])
-;; ["x"] [0], first param, write value to variable x
+(10)
+(Probe (Math.Add 10) [.x] [0])
+;; [.x] [0], first param, write value to variable x
 (Assert.Is 20)
-(Get "x")
+(Get .x)
 (Assert.Is 10)
 ~~~~~~
 
@@ -36,12 +36,12 @@ The mutation block tries to amortize this by setting the parameter only if the i
 It is especially useful when combined with `Mutate` like:
 
 ~~~~~~ lisp
-20
-(Set "x")
-10
-(Mutate (Probe (Math.Add 10) ["y"] [0]) ["x"] [0])
+(20)
+(Set .x)
+(10)
+(Mutate (Probe (Math.Add 10) [.y] [0]) [.x] [0])
 (Assert.Is 30)
-(Get "y")
+(Get .y)
 (Assert.Is 20)
 ~~~~~~
 

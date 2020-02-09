@@ -200,6 +200,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/print.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   )
 
 #### Header paths for tidy
@@ -442,6 +443,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
 
@@ -485,3 +487,15 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
 ###
+
+### our experimental edn eval
+add_executable(
+  cbedn
+  "${CHAINBLOCKS_DIR}/src/core/edn/main.cpp"
+  )
+add_dependencies(cbedn cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+###
+

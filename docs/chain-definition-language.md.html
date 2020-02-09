@@ -1,0 +1,86 @@
+<meta charset="utf-8">
+
+## Chain definition language
+
+Chainblocks is more oriented to be a meta language or a visual language rather then a pure language but to nicely describe chains and the data around it we adopt and write a simple language based on EDN and Clojure.
+
+You can basically think of it as a comprehensible json on steroids that can be evaluated.
+
+The exection of each of these programs is meant to be fast, no run loops within.
+
+Basically load, define the chain and return a ready to run node from it.
+
+### Example
+
+``` lisp
+(Chain 
+  :Name "Test Chain 1"
+  :Looped true
+  ("Hello world!")
+  (Log))
+  
+(Chain
+  :Name "Test Chain 2"
+  (2.0 1.0) ; Float2
+  [2.0 1.0] ; Seq of Float
+  (3.14) ; Float
+  (Set .x)
+  (2.0)
+  (Math.Multiply .x)
+  (Log))
+
+(def mul Math.Multiply)
+(def BadPI (3.14))
+(defn chainme [a]
+  (Chain
+    :Name (str "Test Chain " a)
+    BadPI (Set .x)
+    (a) (mul .x)
+    (Log)))
+(chainme 3)
+(chainme 5)
+```
+
+### Core keywords
+
+##### `def`
+* They are always global definitions.
+##### `defn`
+##### `defmacro`
+*TODO*
+##### `let`
+##### `if`
+##### `do`
+##### `str`
+##### `seq`
+##### `conj`
+##### `cons`
+##### `concat`
+##### `nth`
+##### `first`
+##### `rest`
+##### `apply`
+##### `map`
+
+### Operators
+
+#### Math
+
+##### `+`
+##### `-`
+##### `*`
+##### `/`
+##### `mod`
+
+#### Logic
+
+##### `=`
+##### `not`
+##### `<`
+##### `>`
+##### `>=`
+##### `>=`
+##### `and`
+##### `or`
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="markdeep.min.js" charset="utf-8"></script><script src="markdeep.min.js" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>

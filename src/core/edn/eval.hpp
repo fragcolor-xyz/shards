@@ -3,19 +3,18 @@
 #ifndef CB_LSP_EVAL_HPP
 #define CB_LSP_EVAL_HPP
 
+#include "../runtime.hpp"
+#include "print.hpp"
 #include "read.hpp"
-#include <chainblocks.hpp>
 
 namespace chainblocks {
 namespace edn {
 namespace eval {
 class EvalException : public std::exception {
 public:
-  explicit EvalException(std::string errmsg, token::Token token)
-      : errorMessage(errmsg) {
-    errorMessage = "At line: " + std::to_string(token.line) +
-                   " column: " + std::to_string(token.column) +
-                   " error: " + errorMessage;
+  explicit EvalException(std::string errmsg, int line) : errorMessage(errmsg) {
+    errorMessage = "\nScript evaluation error!\nline: " + std::to_string(line) +
+                   "\nerror: " + errorMessage;
   }
 
   [[nodiscard]] const char *what() const noexcept override {
@@ -26,14 +25,28 @@ private:
   std::string errorMessage;
 };
 
+namespace value {
+enum types { Var, Lambda, Node, Form, BuiltIn };
+}
+
 class Environment;
+class CBVarValue;
+class Lambda;
+class Node;
+class BuiltIn;
+using Value = std::variant<CBVarValue, Lambda, Node, form::Form,
+                           std::shared_ptr<BuiltIn>>;
 
 class ValueBase {
 public:
   ValueBase(const token::Token &token, const std::shared_ptr<Environment> &env)
       : _token(token), _owner(env) {}
 
-private:
+  virtual std::string pr_str(document &doc) {
+    return ::chainblocks::edn::pr_str(doc, _token);
+  }
+
+protected:
   token::Token _token;
   std::weak_ptr<Environment> _owner;
 };
@@ -98,12 +111,41 @@ public:
   }
 };
 
+class BlockValue : public CBVarValue {
+public:
+  BlockValue(CBlockPtr value, const token::Token &token,
+             const std::shared_ptr<Environment> &env)
+      : CBVarValue(token, env) {
+    _var.valueType = Block;
+    _var.payload.blockValue = value;
+    _block = std::shared_ptr<CBlock>(value, [this](CBlock *blk) {
+      // Make sure we are not consumed (inside a chain or another block)
+      if (_var.valueType == Block)
+        blk->destroy(blk);
+    });
+  }
+
+  void consume() {
+    if (_var.valueType != Block) {
+      throw EvalException("Attempt to use an already consumed block",
+                          _token.line);
+    }
+    _var = {};
+  }
+
+private:
+  std::shared_ptr<CBlock> _block;
+};
+
 class Lambda : public ValueBase {
 public:
   Lambda(const std::vector<std::string> &argNames,
          const form::FormWrapper &body, const token::Token &token,
          const std::shared_ptr<Environment> &env)
       : ValueBase(token, env), _argNames(argNames), _body(body) {}
+
+  const form::Form &body() const { return _body.form; }
+  const std::vector<std::string> &args() { return _argNames; }
 
 private:
   std::vector<std::string> _argNames;
@@ -121,178 +163,90 @@ private:
   std::shared_ptr<CBNode> _node;
 };
 
-using Value = std::variant<CBVarValue, Lambda, Node>;
-
-class Environment {
-public:
-  void set(std::string name, Value value) {
-    _contents.insert(std::pair<std::string, Value>(name, value));
-  }
-
-private:
-  phmap::flat_hash_map<std::string, Value> _contents;
-  std::weak_ptr<Environment> _parent;
-};
-
+class Environment;
 class Program {
 public:
   Program() { _rootEnv = std::make_shared<Environment>(); }
 
-  Value eval(form::Form ast, std::shared_ptr<Environment> env) {
-    while (1) {
-      auto idx = ast.index();
-      if (idx == form::LIST) {
-        auto list = std::get<std::list<form::FormWrapper>>(ast);
-        // get first and pop it
-        auto head = list.front().form;
-        list.pop_front();
-
-        switch (head.index()) {
-        case form::TOKEN: {
-          auto token = std::get<token::Token>(head);
-          if (token.type == token::type::SYMBOL) {
-            auto &value = std::get<std::string>(token.value);
-            if (value == "do") {
-              if (list.size() == 0) {
-                throw EvalException("do requires at least one argument", token);
-              }
-
-              // take the last for tail calling
-              auto ast = list.back().form;
-              list.pop_back();
-
-              for (auto &item : list) {
-                eval(item.form, env);
-              }
-
-              continue;
-            } else if (value == "def!") {
-              if (list.size() != 2) {
-                throw EvalException("def! requires two arguments", token);
-              }
-
-              auto fname = list.front().form;
-              auto fbody = list.back().form;
-              if (fname.index() != form::TOKEN) {
-                throw EvalException(
-                    "def! first argument should be a valid symbol name", token);
-              }
-              auto tname = std::get<token::Token>(fname);
-              if (tname.type != token::type::SYMBOL) {
-                throw EvalException(
-                    "def! first argument should be a valid symbol name", tname);
-              }
-
-              auto name = std::get<std::string>(tname.value);
-              auto sym = eval(fbody, env);
-              env->set(name, sym);
-              return sym;
-            } else if (value == "fn*") {
-              if (list.size() != 2) {
-                throw EvalException("fn* requires two arguments", token);
-              }
-
-              auto fbindings = list.front().form;
-              auto fbody = list.back().form;
-              if (fbindings.index() != form::VECTOR) {
-                throw EvalException("fn* first arguments should be a vector",
-                                    token);
-              }
-
-              std::vector<std::string> args;
-              auto bindings =
-                  std::get<std::vector<form::FormWrapper>>(fbindings);
-              for (auto &binding : bindings) {
-                auto &fbind = binding.form;
-                if (fbind.index() != form::TOKEN) {
-                  throw EvalException(
-                      "fn* arguments have to be a valid symbol name", token);
-                }
-                auto &tbind = std::get<token::Token>(fbind);
-                if (tbind.type != token::type::SYMBOL) {
-                  throw EvalException(
-                      "fn* arguments have to be a valid symbol name", tbind);
-                }
-                auto &name = std::get<std::string>(tbind.value);
-                args.push_back(name);
-              }
-
-              return Lambda(args, fbody, token, env);
-            } else if (value == "if") {
-              if (list.size() < 2 || list.size() > 3) {
-                throw EvalException("if expects between 1 or 2 arguments",
-                                    token);
-              }
-
-              auto &pred = list.front().form;
-              auto res = eval(pred, env);
-              list.pop_front();
-              if (res.index() == 0) {
-                // is cbvarvalue
-                auto &var = std::get<CBVarValue>(res);
-                if (var.value().valueType == Bool &&
-                    var.value().payload.boolValue) {
-                  // is true
-                  ast = list.front().form;
-                  continue; // tailcall
-                }
-              }
-
-              if (list.size() == 2) {
-                ast = list.back().form;
-                continue; // tailcall
-              }
-
-              return NilValue(token, env);
-            } else if (value == "Node") {
-              return Node(token, env);
-            }
-          }
-          break;
-        }
-        }
-      } else {
-        switch (idx) {
-        case form::TOKEN: {
-          auto token = std::get<token::Token>(ast);
-          if (token.type == token::type::SYMBOL) {
-            if (token.value.index() == token::value::STRING) {
-              if (std::get<std::string>(token.value) == "nil") {
-                return NilValue(token, env);
-              }
-            } else if (token.value.index() == token::value::BOOL) {
-              return BoolValue(std::get<bool>(token.value), token, env);
-            }
-          } else if (token.type == token::type::NUMBER) {
-            if (token.value.index() == token::value::LONG) {
-              return IntValue(std::get<int64_t>(token.value), token, env);
-            } else {
-              return FloatValue(std::get<double>(token.value), token, env);
-            }
-          } else if (token.type == token::type::HEX) {
-            return IntValue(std::get<int64_t>(token.value), token, env);
-          } else if (token.type == token::type::STRING) {
-            return StringValue(std::get<std::string>(token.value), token, env);
-          }
-        }
-        }
-      }
-    }
-  }
+  static Value eval(form::Form ast, std::shared_ptr<Environment> env,
+                    int *line);
 
   Value eval(const std::string &code) {
     auto forms = read(code);
     auto last = forms.back();
-    forms.pop_back();
+    int line = 0;
     for (auto &form : forms) {
-      eval(form, _rootEnv);
+      eval(form, _rootEnv, &line);
     }
-    return eval(last, _rootEnv);
+    return eval(last, _rootEnv, &line);
   }
 
 private:
   std::string _directory;
   std::shared_ptr<Environment> _rootEnv;
+};
+
+class BuiltIn {
+public:
+  virtual Value apply(const std::shared_ptr<Environment> &env,
+                      std::vector<Value> &args, int line) {
+    assert(false);
+  }
+};
+
+class First : public BuiltIn {
+public:
+  virtual ~First() {}
+  Value apply(const std::shared_ptr<Environment> &env, std::vector<Value> &args,
+              int line) override {
+    if (args.size() != 1) {
+      throw EvalException("first, expected a single argument", line);
+    }
+    auto &v = args[0];
+    if (v.index() == value::types::Form) {
+      auto &f = std::get<form::Form>(v);
+      if (f.index() == form::LIST) {
+        auto &list = std::get<std::list<form::FormWrapper>>(f);
+        return Program::eval(list.front().form, env, &line);
+      } else if (f.index() == form::VECTOR) {
+        auto &vec = std::get<std::vector<form::FormWrapper>>(f);
+        return Program::eval(vec[0].form, env, &line);
+      } else {
+        throw EvalException("first, list or vector expected", line);
+      }
+    } else {
+      throw EvalException("first, list or vector expected", line);
+    }
+  }
+};
+
+class Environment {
+public:
+  Environment() { set("first", std::make_shared<First>()); }
+  Environment(std::shared_ptr<Environment> parent) : _parent(parent) {}
+
+  void set(const std::string &name, Value value, bool deep = false) {
+    if (deep && _parent) {
+      _parent->set(name, value, deep);
+    } else {
+      _contents.insert(std::pair<std::string, Value>(name, value));
+    }
+  }
+
+  Value *find(const std::string &name) {
+    auto it = _contents.find(name);
+    if (it != _contents.end()) {
+      return &it->second;
+    }
+    if (_parent)
+      return _parent->find(name);
+    else
+      return nullptr;
+  }
+
+private:
+  std::unordered_map<std::string, Value> _contents;
+  std::shared_ptr<Environment> _parent;
 };
 } // namespace eval
 } // namespace edn
