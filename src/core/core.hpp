@@ -36,7 +36,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
 FlowState activateBlocks(CBlocks blocks, CBContext *context,
                          const CBVar &chainInput, CBVar &output);
-CBVar *referenceVariable(CBContext *ctx, const char *name);
+CBVar *referenceVariable(CBContext *ctx, const char *name, bool local = false);
 void releaseVariable(CBVar *variable);
 CBVar suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
@@ -728,8 +728,9 @@ struct Serialization {
 
 struct InternalCore {
   // need to emulate dllblock Core a bit
-  static CBVar *referenceVariable(CBContext *context, const char *name) {
-    return chainblocks::referenceVariable(context, name);
+  static CBVar *referenceVariable(CBContext *context, const char *name,
+                                  bool chainLocal = false) {
+    return chainblocks::referenceVariable(context, name, chainLocal);
   }
 
   static void releaseVariable(CBVar *variable) {

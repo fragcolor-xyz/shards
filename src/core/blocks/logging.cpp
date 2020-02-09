@@ -47,9 +47,10 @@ struct Log : public LoggingBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (msg.size() > 0) {
-      LOG(INFO) << "{" << context->chain->name << "} " << msg << ": " << input;
+      LOG(INFO) << "{" << context->current->name << "} " << msg << ": "
+                << input;
     } else {
-      LOG(INFO) << "{" << context->chain->name << "} " << input;
+      LOG(INFO) << "{" << context->current->name << "} " << input;
     }
     return input;
   }
@@ -89,7 +90,7 @@ struct Msg : public LoggingBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    LOG(INFO) << "{" << context->chain->name << "} " << msg;
+    LOG(INFO) << "{" << context->current->name << "} " << msg;
     return input;
   }
 };

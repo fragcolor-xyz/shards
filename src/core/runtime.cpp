@@ -427,12 +427,20 @@ void callExitCallbacks() {
   }
 }
 
-CBVar *referenceVariable(CBContext *ctx, const char *name) {
-  assert(ctx->chain->node);
-  CBVar &v = ctx->chain->node->variables[name];
-  v.refcount++;
-  // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
-  return &v;
+CBVar *referenceVariable(CBContext *ctx, const char *name, bool local) {
+  if (local) {
+    assert(ctx->current);
+    CBVar &v = ctx->current->variables[name];
+    v.refcount++;
+    // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
+    return &v;
+  } else {
+    assert(ctx->main->node);
+    CBVar &v = ctx->main->node->variables[name];
+    v.refcount++;
+    // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
+    return &v;
+  }
 }
 
 void releaseVariable(CBVar *variable) {
@@ -586,8 +594,9 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     chainblocks::unregisterExitCallback(eventName);
   };
 
-  result.referenceVariable = [](CBContext *context, const char *name) {
-    return chainblocks::referenceVariable(context, name);
+  result.referenceVariable = [](CBContext *context, const char *name,
+                                bool chainLocal) {
+    return chainblocks::referenceVariable(context, name, chainLocal);
   };
 
   result.releaseVariable = [](CBVar *variable) {
