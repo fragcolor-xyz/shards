@@ -547,6 +547,8 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
   context->stack.len = sidx;
   return Continuing;
 }
+
+CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
@@ -602,6 +604,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   result.releaseVariable = [](CBVar *variable) {
     return chainblocks::releaseVariable(variable);
   };
+
+  result.getStack = [](CBContext *context) { return &context->stack; };
 
   result.throwException = [](const char *errorText) {
     throw chainblocks::CBException(errorText);

@@ -291,39 +291,35 @@ struct CBTableInterface {
   CBTableFree tableFree;
 };
 
+#ifdef CB_NO_ANON
+#define CB_STRUCT(_name_) struct _name_
+#define CB_UNION(_name_) union _name_
+#define CB_UNION_NAME(_name_) _name_
+#else
+#define CB_STRUCT(_name_) struct
+#define CB_UNION(_name_) union
+#define CB_UNION_NAME(_name_)
+#endif
+
 struct CBTypeInfo {
   enum CBType basicType;
 
-#ifdef CB_NO_ANON
-  union Details {
-#else
-  union {
-#endif
-#ifdef CB_NO_ANON
-    struct Object {
-#else
-    struct {
-#endif
+  CB_UNION(Details) {
+    CB_STRUCT(Object) {
       int32_t vendorId;
       int32_t typeId;
-    } object;
+    }
+    object;
 
-#ifdef CB_NO_ANON
-    struct Enum {
-#else
-    struct {
-#endif
+    CB_STRUCT(Enum) {
       int32_t vendorId;
       int32_t typeId;
-    } enumeration;
+    }
+    enumeration;
 
     CBTypesInfo seqTypes;
 
-#ifdef CB_NO_ANON
-    struct Table {
-#else
-    struct {
-#endif
+    CB_STRUCT(Table) {
       // If tableKeys is populated, it is expected that
       // tableTypes will be populated as well and that at the same
       // key index there is the key's type
@@ -332,15 +328,12 @@ struct CBTypeInfo {
       // > 0 it is assumed that tableTypes contains a sequence with the possible
       // types in the table
       CBTypesInfo types;
-    } table;
+    }
+    table;
 
     CBTypesInfo contextVarTypes;
 
-#ifdef CB_NO_ANON
-    struct Path {
-#else
-    struct {
-#endif
+    CB_STRUCT(Path) {
       // if is File, the extension allowed
       CBStrings extensions;
       // expects a path to a file
@@ -349,12 +342,28 @@ struct CBTypeInfo {
       bool existing;
       // expects a relative path (relative to the CBCore.getRootPath)
       bool relative;
-    } path;
-#ifdef CB_NO_ANON
-  } details;
-#else
-  };
-#endif
+    }
+    path;
+
+    // Not meant for chain runtime checks
+    // rather validation/compose checks of params and mutations
+    CB_STRUCT(Integers) {
+      int64_t min;
+      int64_t max;
+      bool valid;
+    }
+    integers;
+
+    // Not meant for chain runtime checks
+    // rather validation/compose checks of params and mutations
+    CB_STRUCT(Real) {
+      double min;
+      double max;
+      bool valid;
+    }
+    real;
+  }
+  CB_UNION_NAME(details);
 };
 
 typedef const char *(__cdecl *CBObjectSerializer)(CBPointer);
@@ -461,7 +470,7 @@ struct CBVarPayload {
       // If ContextVar and stringValue == nullptr
       // assume we use the context stack if pos < 0
       // where -1 == stack top
-      int32_t stackPosition;
+      uint32_t stackPosition;
       // If ContextVar, signals a chain variable rather then node
       bool chainLocal;
     };
@@ -649,6 +658,8 @@ typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
+typedef CBSeq *(__cdecl *CBGetStack)(struct CBContext *context);
+
 typedef void(__cdecl *CBThrowException)(const char *errorText);
 
 typedef struct CBVar(__cdecl *CBSuspend)(struct CBContext *context,
@@ -743,6 +754,9 @@ struct CBCore {
   // To be used within blocks, to manipulate variables
   CBReferenceVariable referenceVariable;
   CBReleaseVariable releaseVariable;
+
+  // Context stack access
+  CBGetStack getStack;
 
   // Can be used to propagate block errors
   CBThrowException throwException;

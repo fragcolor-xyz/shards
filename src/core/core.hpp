@@ -737,6 +737,8 @@ struct InternalCore {
     chainblocks::releaseVariable(variable);
   }
 
+  static CBSeq *getStack(CBContext *context);
+
   static void cloneVar(CBVar &dst, const CBVar &src) {
     chainblocks::cloneVar(dst, src);
   }

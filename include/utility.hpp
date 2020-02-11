@@ -67,30 +67,26 @@ template <class CB_CORE> class TParamVar {
 private:
   CBVar _v{};
   CBVar *_cp = nullptr;
+  CBSeq *_stack = nullptr;
 
 public:
   TParamVar() {}
 
   explicit TParamVar(CBVar initialValue) {
-    // notice, no cloning here!, purely utility
-    _v = initialValue;
+    CB_CORE::cloneVar(_v, initialValue);
   }
 
-  explicit TParamVar(CBVar initialValue, bool clone) {
-    if (clone) {
-      CB_CORE::cloneVar(_v, initialValue);
-    } else {
-      _v = initialValue;
-    }
+  ~TParamVar() {
+    reset();
+    CB_CORE::destroyVar(_v);
   }
-
-  ~TParamVar() { CB_CORE::destroyVar(_v); }
 
   void reset() {
     if (_cp) {
       CB_CORE::releaseVariable(_cp);
       _cp = nullptr;
     }
+    _stack = nullptr;
   }
 
   CBVar &operator=(const CBVar &value) {
@@ -103,11 +99,17 @@ public:
 
   CBVar &operator()(CBContext *ctx) {
     if (_v.valueType == ContextVar) {
-      if (unlikely(!_cp)) {
-        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
+      if (_v.payload.stringValue) {
+        if (unlikely(!_cp)) {
+          _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue,
+                                           _v.payload.chainLocal);
+        }
         return *_cp;
       } else {
-        return *_cp;
+        if (unlikely(!_stack)) {
+          _stack = CB_CORE::getStack(ctx);
+        }
+        return _stack->elements[(_stack->len - 1) - _v.payload.stackPosition];
       }
     } else {
       return _v;

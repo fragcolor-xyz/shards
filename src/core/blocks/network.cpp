@@ -31,7 +31,7 @@ struct NetworkBase {
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
 
-  ParamVar _addr{Var("localhost"), true};
+  ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
 
   // Every server/client will share same context, so sharing the same recv
