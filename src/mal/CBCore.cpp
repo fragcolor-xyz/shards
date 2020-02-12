@@ -1388,3 +1388,21 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   chainblocks::Globals::Observers.emplace_back(obs);
   observers[env.ptr()] = obs;
 }
+
+namespace mal {
+malValuePtr contextVar(const MalString &token, bool stack) {
+  if (stack) {
+    auto offset = std::stoul(token);
+    CBVar v{};
+    v.valueType = CBType::ContextVar;
+    v.payload.stackPosition = offset;
+    return malValuePtr(new malCBVar(v));
+  } else {
+    CBVar tmp{}, v{};
+    tmp.valueType = CBType::ContextVar;
+    tmp.payload.stringValue = token.c_str();
+    chainblocks::cloneVar(v, tmp);
+    return malValuePtr(new malCBVar(v, true));
+  }
+}
+} // namespace mal

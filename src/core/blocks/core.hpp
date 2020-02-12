@@ -460,6 +460,7 @@ struct VariableBase {
   std::string _key;
   ExposedInfo _exposedInfo{};
   bool _isTable = false;
+  bool _global = false;
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", "The name of the variable.",
@@ -467,10 +468,22 @@ struct VariableBase {
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
-                        CoreInfo::StringType));
+                        CoreInfo::StringType),
+      ParamsInfo::Param("Global",
+                        "If the variable is or should be available to all "
+                        "of the chains in the same node.",
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(variableParamsInfo);
+  }
+
+  void cleanup() {
+    if (_target) {
+      releaseVariable(_target);
+      _target = nullptr;
+    }
+    _cell = nullptr;
   }
 
   void setParam(int index, CBVar value) {
@@ -482,9 +495,10 @@ struct VariableBase {
         _isTable = true;
       else
         _isTable = false;
+    } else {
+      _global = value.payload.boolValue;
     }
-    _target = nullptr;
-    _cell = nullptr;
+    cleanup();
   }
 
   CBVar getParam(int index) {
@@ -492,7 +506,8 @@ struct VariableBase {
       return Var(_name.c_str());
     else if (index == 1)
       return Var(_key.c_str());
-    throw CBException("Param index out of range.");
+    else
+      return Var(_global);
   }
 };
 
@@ -500,14 +515,6 @@ struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   CBString _tableContentKey{};
   CBTypeInfo _tableContentInfo{};
-
-  void cleanup() {
-    if (_target) {
-      releaseVariable(_target);
-      _target = nullptr;
-    }
-    _cell = nullptr;
-  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -548,7 +555,10 @@ struct SetBase : public VariableBase {
     }
 
     if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
+      if (_global)
+        _target = referenceGlobalVariable(context, _name.c_str());
+      else
+        _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -776,27 +786,19 @@ struct Get : public VariableBase {
   }
 
   void setParam(int index, CBVar value) {
-    if (index <= 1)
+    if (index <= 2)
       VariableBase::setParam(index, value);
-    else if (index == 2) {
+    else if (index == 3) {
       cloneVar(_defaultValue, value);
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 1)
+    if (index <= 2)
       return VariableBase::getParam(index);
-    else if (index == 2)
+    else if (index == 3)
       return _defaultValue;
     throw CBException("Param index out of range.");
-  }
-
-  void cleanup() {
-    if (_target) {
-      releaseVariable(_target);
-      _target = nullptr;
-    }
-    _cell = nullptr;
   }
 
   void destroy() { freeDerivedInfo(_defaultType); }
@@ -1038,17 +1040,17 @@ struct Push : public VariableBase {
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, CBVar value) {
-    if (index <= 1)
+    if (index <= 2)
       VariableBase::setParam(index, value);
-    else if (index == 2) {
+    else if (index == 3) {
       _clear = value.payload.boolValue;
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 1)
+    if (index <= 2)
       return VariableBase::getParam(index);
-    else if (index == 2)
+    else if (index == 3)
       return Var(_clear);
     throw CBException("Param index out of range.");
   }
@@ -1125,14 +1127,6 @@ struct Push : public VariableBase {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
-  void cleanup() {
-    if (_target) {
-      releaseVariable(_target);
-      _target = nullptr;
-    }
-    _cell = nullptr;
-  }
-
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -1195,14 +1189,6 @@ struct Push : public VariableBase {
 
 struct SeqUser : VariableBase {
   bool _blittable = false;
-
-  void cleanup() {
-    if (_target) {
-      releaseVariable(_target);
-      _target = nullptr;
-    }
-    _cell = nullptr;
-  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 

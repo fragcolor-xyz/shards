@@ -1,3 +1,4 @@
+
 #ifndef INCLUDE_TYPES_H
 #define INCLUDE_TYPES_H
 
@@ -377,6 +378,7 @@ namespace mal {
     malValuePtr trueValue();
     malValuePtr vector(malValueVec* items);
     malValuePtr vector(malValueIter begin, malValueIter end);
+    malValuePtr contextVar(const String& name, bool stackPos);
 };
 
 #endif // INCLUDE_TYPES_H

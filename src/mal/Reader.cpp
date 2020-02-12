@@ -2,6 +2,7 @@
 #include "Types.h"
 
 #include <regex>
+#include <iostream>
 
 typedef std::regex              Regex;
 
@@ -178,7 +179,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     };
     Constant constantTable[] = {
         { "false",  mal::falseValue()  },
-        { "nil",    mal::nilValue()          },
+        { "nil",    mal::nilValue()    },
         { "true",   mal::trueValue()   },
     };
 
@@ -188,6 +189,14 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
     if (token[0] == ':') {
         return mal::keyword(token);
+    }
+    if (token[0] == '.') {
+      auto str = token.substr(1);
+      if (std::regex_match(str, intRegex)) {
+	return mal::contextVar(str, true);
+      } else {
+	return mal::contextVar(str, false);
+      }
     }
     if (token == "^") {
         malValuePtr meta = readForm(tokeniser);

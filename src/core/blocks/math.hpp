@@ -92,7 +92,23 @@ struct BinaryBase : public Base {
     if (operandSpec.valueType == ContextVar) {
       if (operandSpec.payload.stringValue == nullptr) {
         // pick from stack
-
+        auto wanted = (int64_t(data.stack.len) - 1) -
+                      int64_t(operandSpec.payload.stackPosition);
+        if (wanted < 0)
+          throw CBException("Operand not found in the stack");
+        if (data.stack.elements[wanted].basicType != Seq &&
+            data.inputType.basicType != Seq) {
+          _opType = Normal;
+        } else if (data.stack.elements[wanted].basicType != Seq &&
+                   data.inputType.basicType == Seq) {
+          _opType = Seq1;
+        } else if (data.stack.elements[wanted].basicType == Seq &&
+                   data.inputType.basicType == Seq) {
+          _opType = SeqSeq;
+        } else {
+          throw CBException(
+              "Math broadcasting not supported between given types!");
+        }
       } else {
         for (uint32_t i = 0; i < data.shared.len; i++) {
           // normal variable
@@ -137,7 +153,8 @@ struct BinaryBase : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     CBVar operandSpec = _operand;
-    if (operandSpec.valueType == ContextVar) {
+    if (operandSpec.valueType == ContextVar &&
+        operandSpec.payload.stringValue) {
       _requiredInfo = ExposedInfo(
           ExposedInfo::Variable(operandSpec.payload.stringValue,
                                 "The required operand.", CoreInfo::AnyType));

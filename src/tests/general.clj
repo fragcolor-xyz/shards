@@ -671,6 +671,12 @@
   (IsMore (# "int4-b"))
   (Assert.Is true true)
 
+  10
+  (Set "x")
+  (Push)
+  9
+  (Math.Multiply .0)
+
   (Msg "All looking good!")))
 
 (schedule Root testChain)

@@ -362,7 +362,8 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case CBType::Path:
   case CBType::String:
   case ContextVar:
-    delete[] var.payload.stringValue;
+    if (var.payload.stringValue)
+      delete[] var.payload.stringValue;
     break;
   case Image:
     delete[] var.payload.imageValue.data;
