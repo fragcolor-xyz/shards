@@ -667,7 +667,7 @@
   (Update "int4-a")
   (Int4 111 112 101 100)
   (Update "int4-b")
-  (Get "int4-a")
+  (Get .int4-a)
   (IsMore .int4-b)
   (Assert.Is true true)
 

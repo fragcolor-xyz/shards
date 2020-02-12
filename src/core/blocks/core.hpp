@@ -91,6 +91,8 @@ struct CoreInfo {
 
   static inline Types StringOrStringVar{{StringType, StringVarType}};
 
+  static inline Types StringOrAnyVar{{StringType, AnyVarType}};
+
   static inline Types ColorOrNone{{ColorType, NoneType}};
 
   static inline Types AnyNumbers{{
@@ -465,7 +467,7 @@ struct VariableBase {
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", "The name of the variable.",
-                        CoreInfo::StringType),
+                        CoreInfo::StringOrAnyVar),
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
