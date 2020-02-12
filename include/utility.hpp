@@ -101,8 +101,7 @@ public:
     if (_v.valueType == ContextVar) {
       if (_v.payload.stringValue) {
         if (unlikely(!_cp)) {
-          _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue,
-                                           _v.payload.chainLocal);
+          _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
         }
         return *_cp;
       } else {

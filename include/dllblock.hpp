@@ -98,9 +98,8 @@ public:
     sCore._core.unregisterExitCallback(eventName);
   }
 
-  static CBVar *referenceVariable(CBContext *context, const char *name,
-                                  bool chainLocal = false) {
-    return sCore._core.referenceVariable(context, name, chainLocal);
+  static CBVar *referenceVariable(CBContext *context, const char *name) {
+    return sCore._core.referenceVariable(context, name);
   }
 
   static void releaseVariable(CBVar *variable) {

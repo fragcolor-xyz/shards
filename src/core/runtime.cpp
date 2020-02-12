@@ -427,20 +427,30 @@ void callExitCallbacks() {
   }
 }
 
-CBVar *referenceVariable(CBContext *ctx, const char *name, bool local) {
-  if (local) {
-    assert(ctx->current);
-    CBVar &v = ctx->current->variables[name];
-    v.refcount++;
-    // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
-    return &v;
-  } else {
-    assert(ctx->main->node);
-    CBVar &v = ctx->main->node->variables[name];
-    v.refcount++;
-    // LOG(DEBUG) << "IncRef: " << name << " rc: " << v.refcount;
-    return &v;
+CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
+  assert(ctx->main->node);
+  CBVar &v = ctx->main->node->variables[name];
+  v.refcount++;
+  return &v;
+}
+
+CBVar *referenceVariable(CBContext *ctx, const char *name) {
+  assert(ctx->current);
+  assert(ctx->main->node);
+
+  // try find a chain variable
+  CBVar &cv = ctx->current->variables[name];
+  if (cv.refcount == 0) {
+    // if no chain variable try take from node
+    CBVar &nv = ctx->main->node->variables[name];
+    if (nv.refcount > 0) {
+      // if node variable is also empty, return chain one instead!
+      nv.refcount++;
+      return &nv;
+    }
   }
+  cv.refcount++;
+  return &cv;
 }
 
 void releaseVariable(CBVar *variable) {
@@ -596,9 +606,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     chainblocks::unregisterExitCallback(eventName);
   };
 
-  result.referenceVariable = [](CBContext *context, const char *name,
-                                bool chainLocal) {
-    return chainblocks::referenceVariable(context, name, chainLocal);
+  result.referenceVariable = [](CBContext *context, const char *name) {
+    return chainblocks::referenceVariable(context, name);
   };
 
   result.releaseVariable = [](CBVar *variable) {

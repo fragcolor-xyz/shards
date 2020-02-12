@@ -392,13 +392,22 @@ struct CBExposedTypeInfo {
   const char *name;
   const char *help;
   struct CBTypeInfo exposedType;
+
+  // the following are actually used only when exposing.
+
+  // generally those are from internal blocks like Set, means they can change in
+  // place
   bool isMutable;
+
   // if isTableEntry is true:
   // `name` will be the name of the table variable
   // `exposedType` will be of `Table` type
   // and `tableKeys` will contain the record's key name
   // while `tableTypes` the record's type
   bool isTableEntry;
+
+  // If the exposed variable should be available to all chains in the node
+  bool global;
 };
 
 struct CBValidationResult {
@@ -471,8 +480,6 @@ struct CBVarPayload {
       // assume we use the context stack if pos < 0
       // where -1 == stack top
       uint32_t stackPosition;
-      // If ContextVar, signals a chain variable rather then node
-      bool chainLocal;
     };
 
     struct CBColor colorValue;
@@ -653,8 +660,7 @@ typedef void(__cdecl *CBUnregisterRunLoopCallback)(const char *eventName);
 typedef void(__cdecl *CBUnregisterExitCallback)(const char *eventName);
 
 typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
-                                                     const char *name,
-                                                     bool chainLocal);
+                                                     const char *name);
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 

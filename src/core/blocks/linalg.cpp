@@ -45,10 +45,7 @@ struct VectorBinaryBase : public BinaryBase {
   template <class Operation>
   ALWAYS_INLINE CBVar doActivate(CBContext *context, const CBVar &input,
                                  Operation operate) {
-    if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {
-      _ctxOperand = referenceVariable(context, _operand.payload.stringValue);
-    }
-    auto &operand = _ctxOperand ? *_ctxOperand : _operand;
+    auto &operand = _operand(context);
     CBVar output{};
     if (_opType == Normal) {
       operate(output, input, operand);
@@ -312,10 +309,7 @@ struct MatMul : public VectorBinaryBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {
-      _ctxOperand = referenceVariable(context, _operand.payload.stringValue);
-    }
-    const auto &operand = _ctxOperand ? *_ctxOperand : _operand;
+    const auto &operand = _operand(context);
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
       mmmul(input, operand);

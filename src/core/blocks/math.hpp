@@ -66,23 +66,16 @@ struct BinaryBase : public Base {
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", "The operand.", MathTypesOrVar));
 
-  CBVar _operand{};
-  CBVar *_ctxOperand{};
+  ParamVar _operand{Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() {
-    if (_ctxOperand) {
-      releaseVariable(_ctxOperand);
-      _ctxOperand = nullptr;
-    }
-  }
+  void cleanup() { _operand.reset(); }
 
   void destroy() {
     if (_cachedSeq.valueType == Seq) {
       chainblocks::arrayFree(_cachedSeq.payload.seqValue);
     }
-    destroyVar(_operand);
   }
 
   void setup() {
@@ -95,35 +88,44 @@ struct BinaryBase : public Base {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (_operand.valueType == ContextVar) {
-      for (uint32_t i = 0; i < data.shared.len; i++) {
-        if (strcmp(data.shared.elements[i].name,
-                   _operand.payload.stringValue) == 0) {
-          if (data.shared.elements[i].exposedType.basicType != Seq &&
-              data.inputType.basicType != Seq) {
-            _opType = Normal;
-          } else if (data.shared.elements[i].exposedType.basicType != Seq &&
-                     data.inputType.basicType == Seq) {
-            _opType = Seq1;
-          } else if (data.shared.elements[i].exposedType.basicType == Seq &&
-                     data.inputType.basicType == Seq) {
-            _opType = SeqSeq;
-          } else {
-            throw CBException(
-                "Math broadcasting not supported between given types!");
+    CBVar operandSpec = _operand;
+    if (operandSpec.valueType == ContextVar) {
+      if (operandSpec.payload.stringValue == nullptr) {
+        // pick from stack
+
+      } else {
+        for (uint32_t i = 0; i < data.shared.len; i++) {
+          // normal variable
+          if (strcmp(data.shared.elements[i].name,
+                     operandSpec.payload.stringValue) == 0) {
+            if (data.shared.elements[i].exposedType.basicType != Seq &&
+                data.inputType.basicType != Seq) {
+              _opType = Normal;
+            } else if (data.shared.elements[i].exposedType.basicType != Seq &&
+                       data.inputType.basicType == Seq) {
+              _opType = Seq1;
+            } else if (data.shared.elements[i].exposedType.basicType == Seq &&
+                       data.inputType.basicType == Seq) {
+              _opType = SeqSeq;
+            } else {
+              throw CBException(
+                  "Math broadcasting not supported between given types!");
+            }
           }
         }
       }
       if (_opType == Invalid) {
         throw CBException("Math operand variable not found: " +
-                          std::string(_operand.payload.stringValue));
+                          std::string(operandSpec.payload.stringValue));
       }
     } else {
-      if (_operand.valueType != Seq && data.inputType.basicType != Seq) {
+      if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         _opType = Normal;
-      } else if (_operand.valueType != Seq && data.inputType.basicType == Seq) {
+      } else if (operandSpec.valueType != Seq &&
+                 data.inputType.basicType == Seq) {
         _opType = Seq1;
-      } else if (_operand.valueType == Seq && data.inputType.basicType == Seq) {
+      } else if (operandSpec.valueType == Seq &&
+                 data.inputType.basicType == Seq) {
         _opType = SeqSeq;
       } else {
         throw CBException(
@@ -134,19 +136,17 @@ struct BinaryBase : public Base {
   }
 
   CBExposedTypesInfo requiredVariables() {
-    if (_operand.valueType == ContextVar) {
+    CBVar operandSpec = _operand;
+    if (operandSpec.valueType == ContextVar) {
       _requiredInfo = ExposedInfo(
-          ExposedInfo::Variable(_operand.payload.stringValue,
+          ExposedInfo::Variable(operandSpec.payload.stringValue,
                                 "The required operand.", CoreInfo::AnyType));
       return CBExposedTypesInfo(_requiredInfo);
     }
     return {};
   }
 
-  void setParam(int index, CBVar value) {
-    cloneVar(_operand, value);
-    cleanup();
-  }
+  void setParam(int index, CBVar value) { _operand = value; }
 
   CBVar getParam(int index) { return _operand; }
 };
@@ -283,11 +283,7 @@ struct BinaryBase : public Base {
     }                                                                          \
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand =                                                          \
-            referenceVariable(context, _operand.payload.stringValue);          \
-      }                                                                        \
-      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+      auto &operand = _operand(context);                                       \
       if (likely(_opType == Normal)) {                                         \
         operate(_output, input, operand);                                      \
         return _output;                                                        \
@@ -369,11 +365,7 @@ struct BinaryBase : public Base {
     }                                                                          \
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      if (_operand.valueType == ContextVar && _ctxOperand == nullptr) {        \
-        _ctxOperand =                                                          \
-            referenceVariable(context, _operand.payload.stringValue);          \
-      }                                                                        \
-      auto &operand = _ctxOperand ? *_ctxOperand : _operand;                   \
+      auto &operand = _operand(context);                                       \
       if (likely(_opType == Normal)) {                                         \
         operate(_output, input, operand);                                      \
         return _output;                                                        \
