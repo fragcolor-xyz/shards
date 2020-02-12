@@ -533,7 +533,7 @@
   (Get "text1")
   (ToJson)
   (Log)
-  (Assert.Is "{\"type\":20,\"value\":\"The result is: Hello world, this is a string\"}" true)
+  (Assert.Is "{\"type\":52,\"value\":\"The result is: Hello world, this is a string\"}" true)
   (FromJson)
   (ExpectString)
   (Assert.Is "The result is: Hello world, this is a string" true)
@@ -541,12 +541,12 @@
   (Get "unsortedList2Copy")
   (ToJson)
   (Log)
-  (Assert.Is "{\"type\":24,\"values\":[{\"type\":5,\"value\":0},{\"type\":5,\"value\":1},{\"type\":5,\"value\":1},{\"type\":5,\"value\":2}]}" true)
+  (Assert.Is "{\"type\":56,\"values\":[{\"type\":5,\"value\":0},{\"type\":5,\"value\":1},{\"type\":5,\"value\":1},{\"type\":5,\"value\":2}]}" true)
 
   (Get "tab1new")
   (ToJson)
   (Log)
-  (Assert.Is "{\"type\":25,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":24,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
+  (Assert.Is "{\"type\":57,\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":56,\"values\":[{\"type\":5,\"value\":12},{\"type\":5,\"value\":22},{\"type\":5,\"value\":32}]}}]}" true)
 
   (Float4 1 2 3 4)
   (Take 0)
@@ -668,11 +668,10 @@
   (Int4 111 112 101 100)
   (Update "int4-b")
   (Get "int4-a")
-  (IsMore (# "int4-b"))
+  (IsMore .int4-b)
   (Assert.Is true true)
 
   10
-  (Set "x")
   (Push)
   9
   (Math.Multiply .0)

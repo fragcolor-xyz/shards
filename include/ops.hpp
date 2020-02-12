@@ -77,6 +77,9 @@ inline std::string type2Name(CBType type) {
   case ContextVar:
     name = "ContextVar";
     break;
+  case StackIndex:
+    name = "StackIndex";
+    break;
   case CBType::Path:
     name = "Path";
     break;
@@ -180,6 +183,8 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case CBType::Any:
   case EndOfBlittableTypes:
     return true;
+  case StackIndex:
+    return a.payload.stackIndexValue == b.payload.stackIndexValue;
   case None:
     return a.payload.chainState == b.payload.chainState;
   case Object:
@@ -388,6 +393,8 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   switch (a.valueType) {
   case None:
     return a.payload.chainState < b.payload.chainState;
+  case StackIndex:
+    return a.payload.stackIndexValue < b.payload.stackIndexValue;
   case Enum:
     return a.payload.enumVendorId < b.payload.enumVendorId ||
            a.payload.enumTypeId < b.payload.enumTypeId ||
@@ -575,6 +582,8 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   switch (a.valueType) {
   case None:
     return a.payload.chainState <= b.payload.chainState;
+  case StackIndex:
+    return a.payload.stackIndexValue <= b.payload.stackIndexValue;
   case Enum:
     return a.payload.enumVendorId == b.payload.enumVendorId &&
            a.payload.enumTypeId == b.payload.enumTypeId &&

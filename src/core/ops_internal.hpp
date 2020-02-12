@@ -129,6 +129,9 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   case ContextVar:
     os << "ContextVariable: " << var.payload.stringValue;
     break;
+  case StackIndex:
+    os << "StackIndex: " << var.payload.stackIndexValue;
+    break;
   case CBType::Path:
     os << "Path: " << var.payload.stringValue;
     break;

@@ -39,28 +39,29 @@ struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
   static inline Types MathTypesOrVar{{
-      CoreInfo::IntType,       CoreInfo::IntSeqType,
-      CoreInfo::IntVarType,    CoreInfo::IntVarSeqType,
-      CoreInfo::Int2Type,      CoreInfo::Int2SeqType,
-      CoreInfo::Int2VarType,   CoreInfo::Int2VarSeqType,
-      CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
-      CoreInfo::Int3VarType,   CoreInfo::Int3VarSeqType,
-      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,
-      CoreInfo::Int4VarType,   CoreInfo::Int4VarSeqType,
-      CoreInfo::Int8Type,      CoreInfo::Int8SeqType,
-      CoreInfo::Int8VarType,   CoreInfo::Int8VarSeqType,
-      CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
-      CoreInfo::Int16VarType,  CoreInfo::Int16VarSeqType,
-      CoreInfo::FloatType,     CoreInfo::FloatSeqType,
-      CoreInfo::FloatVarType,  CoreInfo::FloatVarSeqType,
-      CoreInfo::Float2Type,    CoreInfo::Float2SeqType,
-      CoreInfo::Float2VarType, CoreInfo::Float2VarSeqType,
-      CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
-      CoreInfo::Float3VarType, CoreInfo::Float3VarSeqType,
-      CoreInfo::Float4Type,    CoreInfo::Float4SeqType,
-      CoreInfo::Float4VarType, CoreInfo::Float4VarSeqType,
-      CoreInfo::ColorType,     CoreInfo::ColorSeqType,
-      CoreInfo::ColorVarType,  CoreInfo::ColorVarSeqType,
+      CoreInfo::StackIndexType, CoreInfo::StackIndexSeqType,
+      CoreInfo::IntType,        CoreInfo::IntSeqType,
+      CoreInfo::IntVarType,     CoreInfo::IntVarSeqType,
+      CoreInfo::Int2Type,       CoreInfo::Int2SeqType,
+      CoreInfo::Int2VarType,    CoreInfo::Int2VarSeqType,
+      CoreInfo::Int3Type,       CoreInfo::Int3SeqType,
+      CoreInfo::Int3VarType,    CoreInfo::Int3VarSeqType,
+      CoreInfo::Int4Type,       CoreInfo::Int4SeqType,
+      CoreInfo::Int4VarType,    CoreInfo::Int4VarSeqType,
+      CoreInfo::Int8Type,       CoreInfo::Int8SeqType,
+      CoreInfo::Int8VarType,    CoreInfo::Int8VarSeqType,
+      CoreInfo::Int16Type,      CoreInfo::Int16SeqType,
+      CoreInfo::Int16VarType,   CoreInfo::Int16VarSeqType,
+      CoreInfo::FloatType,      CoreInfo::FloatSeqType,
+      CoreInfo::FloatVarType,   CoreInfo::FloatVarSeqType,
+      CoreInfo::Float2Type,     CoreInfo::Float2SeqType,
+      CoreInfo::Float2VarType,  CoreInfo::Float2VarSeqType,
+      CoreInfo::Float3Type,     CoreInfo::Float3SeqType,
+      CoreInfo::Float3VarType,  CoreInfo::Float3VarSeqType,
+      CoreInfo::Float4Type,     CoreInfo::Float4SeqType,
+      CoreInfo::Float4VarType,  CoreInfo::Float4VarSeqType,
+      CoreInfo::ColorType,      CoreInfo::ColorSeqType,
+      CoreInfo::ColorVarType,   CoreInfo::ColorVarSeqType,
   }};
 
   static inline ParamsInfo mathParamsInfo =
@@ -90,49 +91,47 @@ struct BinaryBase : public Base {
   CBTypeInfo compose(const CBInstanceData &data) {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
-      if (operandSpec.payload.stringValue == nullptr) {
-        // pick from stack
-        auto wanted = (int64_t(data.stack.len) - 1) -
-                      int64_t(operandSpec.payload.stackPosition);
-        if (wanted < 0)
-          throw CBException("Operand not found in the stack");
-        if (data.stack.elements[wanted].basicType != Seq &&
-            data.inputType.basicType != Seq) {
-          _opType = Normal;
-        } else if (data.stack.elements[wanted].basicType != Seq &&
-                   data.inputType.basicType == Seq) {
-          _opType = Seq1;
-        } else if (data.stack.elements[wanted].basicType == Seq &&
-                   data.inputType.basicType == Seq) {
-          _opType = SeqSeq;
-        } else {
-          throw CBException(
-              "Math broadcasting not supported between given types!");
-        }
-      } else {
-        for (uint32_t i = 0; i < data.shared.len; i++) {
-          // normal variable
-          if (strcmp(data.shared.elements[i].name,
-                     operandSpec.payload.stringValue) == 0) {
-            if (data.shared.elements[i].exposedType.basicType != Seq &&
-                data.inputType.basicType != Seq) {
-              _opType = Normal;
-            } else if (data.shared.elements[i].exposedType.basicType != Seq &&
-                       data.inputType.basicType == Seq) {
-              _opType = Seq1;
-            } else if (data.shared.elements[i].exposedType.basicType == Seq &&
-                       data.inputType.basicType == Seq) {
-              _opType = SeqSeq;
-            } else {
-              throw CBException(
-                  "Math broadcasting not supported between given types!");
-            }
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        // normal variable
+        if (strcmp(data.shared.elements[i].name,
+                   operandSpec.payload.stringValue) == 0) {
+          if (data.shared.elements[i].exposedType.basicType != Seq &&
+              data.inputType.basicType != Seq) {
+            _opType = Normal;
+          } else if (data.shared.elements[i].exposedType.basicType != Seq &&
+                     data.inputType.basicType == Seq) {
+            _opType = Seq1;
+          } else if (data.shared.elements[i].exposedType.basicType == Seq &&
+                     data.inputType.basicType == Seq) {
+            _opType = SeqSeq;
+          } else {
+            throw CBException(
+                "Math broadcasting not supported between given types!");
           }
         }
       }
       if (_opType == Invalid) {
         throw CBException("Math operand variable not found: " +
                           std::string(operandSpec.payload.stringValue));
+      }
+    } else if (operandSpec.valueType == StackIndex) {
+      // pick from stack
+      auto wanted =
+          (ptrdiff_t(data.stack.len) - 1) - operandSpec.payload.stackIndexValue;
+      if (wanted < 0)
+        throw CBException("Operand not found in the stack");
+      if (data.stack.elements[wanted].basicType != Seq &&
+          data.inputType.basicType != Seq) {
+        _opType = Normal;
+      } else if (data.stack.elements[wanted].basicType != Seq &&
+                 data.inputType.basicType == Seq) {
+        _opType = Seq1;
+      } else if (data.stack.elements[wanted].basicType == Seq &&
+                 data.inputType.basicType == Seq) {
+        _opType = SeqSeq;
+      } else {
+        throw CBException(
+            "Math broadcasting not supported between given types!");
       }
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
@@ -153,8 +152,7 @@ struct BinaryBase : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     CBVar operandSpec = _operand;
-    if (operandSpec.valueType == ContextVar &&
-        operandSpec.payload.stringValue) {
+    if (operandSpec.valueType == ContextVar) {
       _requiredInfo = ExposedInfo(
           ExposedInfo::Variable(operandSpec.payload.stringValue,
                                 "The required operand.", CoreInfo::AnyType));

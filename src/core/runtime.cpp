@@ -1656,27 +1656,21 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Path:
   case ContextVar:
   case String: {
-    if (src.payload.stringValue) {
-      auto srcSize = strlen(src.payload.stringValue) + 1;
-      if ((dst.valueType != String && dst.valueType != ContextVar) ||
-          dst.capacity < srcSize) {
-        destroyVar(dst);
-        dst.payload.stringValue = new char[srcSize];
-        dst.capacity = srcSize;
-      } else {
-        if (src.payload.stringValue == dst.payload.stringValue)
-          return;
-      }
-
-      dst.valueType = src.valueType;
-      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
-             srcSize - 1);
-      ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
-    } else {
+    auto srcSize = strlen(src.payload.stringValue) + 1;
+    if ((dst.valueType != String && dst.valueType != ContextVar) ||
+        dst.capacity < srcSize) {
       destroyVar(dst);
-      dst.valueType = src.valueType;
-      dst.payload.stackPosition = src.payload.stackPosition;
+      dst.payload.stringValue = new char[srcSize];
+      dst.capacity = srcSize;
+    } else {
+      if (src.payload.stringValue == dst.payload.stringValue)
+        return;
     }
+
+    dst.valueType = src.valueType;
+    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
+           srcSize - 1);
+    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
   } break;
   case Image: {
     size_t srcImgSize = src.payload.imageValue.height *

@@ -620,6 +620,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":String");
   case ContextVar:
     return mal::keyword(":ContextVar");
+  case StackIndex:
+    return mal::keyword(":StackIndex");
   case Path:
     return mal::keyword(":Path");
   case Image:
@@ -1394,8 +1396,8 @@ malValuePtr contextVar(const MalString &token, bool stack) {
   if (stack) {
     auto offset = std::stoul(token);
     CBVar v{};
-    v.valueType = CBType::ContextVar;
-    v.payload.stackPosition = offset;
+    v.valueType = CBType::StackIndex;
+    v.payload.stackIndexValue = offset;
     return malValuePtr(new malCBVar(v));
   } else {
     CBVar tmp{}, v{};

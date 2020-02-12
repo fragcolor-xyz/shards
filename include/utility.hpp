@@ -99,17 +99,16 @@ public:
 
   CBVar &operator()(CBContext *ctx) {
     if (_v.valueType == ContextVar) {
-      if (_v.payload.stringValue) {
-        if (unlikely(!_cp)) {
-          _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
-        }
-        return *_cp;
-      } else {
-        if (unlikely(!_stack)) {
-          _stack = CB_CORE::getStack(ctx);
-        }
-        return _stack->elements[(_stack->len - 1) - _v.payload.stackPosition];
+      if (unlikely(!_cp)) {
+        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
       }
+      return *_cp;
+    } else if (_v.valueType == StackIndex) {
+      if (unlikely(!_stack)) {
+        _stack = CB_CORE::getStack(ctx);
+      }
+      return _stack
+          ->elements[ptrdiff_t(_stack->len - 1) - _v.payload.stackIndexValue];
     } else {
       return _v;
     }

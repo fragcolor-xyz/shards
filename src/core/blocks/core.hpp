@@ -28,6 +28,7 @@ struct CoreInfo {
   }
 
   CB_CORE_TYPE_DEF(Any);
+  CB_CORE_TYPE_DEF(StackIndex);
   CB_CORE_TYPE_DEF(Bool);
   CB_CORE_TYPE_DEF(Int);
   CB_CORE_TYPE_DEF(Int2);

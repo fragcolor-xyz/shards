@@ -362,8 +362,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case CBType::Path:
   case CBType::String:
   case ContextVar:
-    if (var.payload.stringValue)
-      delete[] var.payload.stringValue;
+    delete[] var.payload.stringValue;
     break;
   case Image:
     delete[] var.payload.imageValue.data;
@@ -418,6 +417,7 @@ struct Serialization {
     case CBType::Float3:
     case CBType::Float4:
     case CBType::Color:
+    case CBType::StackIndex:
       break;
     case CBType::Bytes:
       delete[] output.payload.bytesValue;
@@ -485,6 +485,7 @@ struct Serialization {
     case CBType::Float3:
     case CBType::Float4:
     case CBType::Color:
+    case CBType::StackIndex:
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
@@ -637,6 +638,7 @@ struct Serialization {
     case CBType::Float3:
     case CBType::Float4:
     case CBType::Color:
+    case CBType::StackIndex:
       write((const uint8_t *)&input.payload, sizeof(input.payload));
       total += sizeof(input.payload);
       break;
