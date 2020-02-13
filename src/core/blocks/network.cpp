@@ -196,8 +196,10 @@ struct NetworkBase {
       _socketVar = referenceVariable(context, "Network.Socket");
     }
     auto rc = _socketVar->refcount;
+    auto rcflag = _socketVar->flags & CBVAR_FLAGS_REF_COUNTED;
     *_socketVar = Var::Object(&_socket, FragCC, SocketCC);
     _socketVar->refcount = rc;
+    _socketVar->flags |= rcflag;
   }
 };
 

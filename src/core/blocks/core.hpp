@@ -670,8 +670,10 @@ struct Ref : public SetBase {
     if (likely(_cell != nullptr)) {
       // must keep refcount!
       auto rc = _cell->refcount;
+      auto rcflag = _cell->flags & CBVAR_FLAGS_REF_COUNTED;
       memcpy(_cell, &input, sizeof(CBVar));
       _cell->refcount = rc;
+      _cell->flags |= rcflag;
       return input;
     }
 
@@ -702,8 +704,10 @@ struct Ref : public SetBase {
       // Notice, NO Cloning!
       // must keep refcount!
       auto rc = _cell->refcount;
+      auto rcflag = _cell->flags & CBVAR_FLAGS_REF_COUNTED;
       memcpy(_cell, &input, sizeof(CBVar));
       _cell->refcount = rc;
+      _cell->flags |= rcflag;
     }
 
     return input;

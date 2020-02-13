@@ -385,8 +385,9 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
-  // don't loose dst refcount!
+  // don't loose dst refcount and flag!
   auto rc = dst.refcount;
+  auto rcflag = dst.flags & CBVAR_FLAGS_REF_COUNTED;
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
     memcpy(&dst, &src, sizeof(CBVar));
@@ -397,6 +398,7 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
     _cloneVarSlow(dst, src);
   }
   dst.refcount = rc;
+  dst.flags |= rcflag;
 }
 
 struct Serialization {
@@ -451,7 +453,7 @@ struct Serialization {
                         type2Name(output.valueType));
     }
 
-    output = {};
+    memset(&output, 0x0, sizeof(CBVar));
   }
 
   template <class BinaryReader>
