@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright Â© 2019 Giovanni Petrantoni */
+/* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "rigtorp/SPSCQueue.h"
 #include "shared.hpp"

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2019 Giovanni Petrantoni */
+/* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #define WINVER 0x0602
 #include "desktop.capture.win.hpp"

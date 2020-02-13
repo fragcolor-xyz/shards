@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2019 Giovanni Petrantoni */
+/* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #ifndef CB_CHAINBLOCKS_HPP
 #define CB_CHAINBLOCKS_HPP
