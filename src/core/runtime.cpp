@@ -431,13 +431,13 @@ CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   assert(ctx->main->node);
   CBVar &v = ctx->main->node->variables[name];
   v.refcount++;
+  v.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &v;
 }
 
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
   assert(ctx->current);
   assert(ctx->main->node);
-
   // try find a chain variable
   CBVar &cv = ctx->current->variables[name];
   if (cv.refcount == 0) {
@@ -446,14 +446,18 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
     if (nv.refcount > 0) {
       // if node variable is also empty, return chain one instead!
       nv.refcount++;
+      nv.flags |= CBVAR_FLAGS_REF_COUNTED;
       return &nv;
     }
   }
   cv.refcount++;
+  cv.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &cv;
 }
 
 void releaseVariable(CBVar *variable) {
+  assert((variable->flags & CBVAR_FLAGS_REF_COUNTED) ==
+         CBVAR_FLAGS_REF_COUNTED);
   assert(variable->refcount > 0);
   variable->refcount--;
   if (variable->refcount == 0) {
@@ -1553,17 +1557,21 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
 #ifdef USE_RPMALLOC
   rpmalloc_initialize();
   arr.elements = (decltype(arr.elements))rpaligned_realloc(
-      arr.elements, 16, sizeof(*arr.elements) * min_cap,
-      sizeof(*arr.elements) * arr.len, 0);
+      arr.elements, 16, sizeof(arr.elements[0]) * min_cap,
+      sizeof(arr.elements[0]) * arr.len, 0);
 #else
   auto newbuf =
-      new (std::align_val_t{16}) uint8_t[sizeof(*arr.elements) * min_cap];
+      new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
-    memcpy(newbuf, arr.elements, sizeof(*arr.elements) * arr.len);
+    memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
     ::operator delete (arr.elements, std::align_val_t{16});
   }
   arr.elements = (decltype(arr.elements))newbuf;
 #endif
+
+  // also memset to 0 new memory in order to make cloneVars valid on new items
+  size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
+  memset(arr.elements + arr.len, 0x0, size);
 
   arr.cap = min_cap;
 }
@@ -1571,15 +1579,14 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
 template <typename T> NO_INLINE void arrayFree(T &arr) {
   if (arr.elements)
     ::operator delete (arr.elements, std::align_val_t{16});
-  arr = {};
+  memset(&arr, 0x0, sizeof(T));
 }
 
 NO_INLINE void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {
-    assert(var.payload.seqValue.cap >= var.capacity);
-    assert(var.payload.seqValue.len <= var.capacity);
-    for (size_t i = var.capacity; i > 0; i--) {
+    // notice we use .cap! because we make sure to 0 new empty elements
+    for (size_t i = var.payload.seqValue.cap; i > 0; i--) {
       destroyVar(var.payload.seqValue.elements[i - 1]);
     }
     chainblocks::arrayFree(var.payload.seqValue);
@@ -1624,9 +1631,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
         return;
 
-      size_t dstLen = dst.payload.seqValue.len;
-      assert(dst.capacity >= dstLen);
-      if (srcLen <= dst.capacity) {
+      if (srcLen <= dst.payload.seqValue.cap) {
         // clone on top of current values
         chainblocks::arrayResize(dst.payload.seqValue, srcLen);
         for (size_t i = 0; i < srcLen; i++) {
@@ -1634,6 +1639,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
           cloneVar(dst.payload.seqValue.elements[i], subsrc);
         }
       } else {
+        size_t dstLen = dst.payload.seqValue.len;
         // re-use avail ones
         for (size_t i = 0; i < dstLen; i++) {
           auto &subsrc = src.payload.seqValue.elements[i];
@@ -1649,19 +1655,16 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       }
     }
 #endif
-    // take note of 'Var' capacity
-    dst.capacity = std::max(dst.capacity,
-                            decltype(dst.capacity)(dst.payload.seqValue.len));
   } break;
   case Path:
   case ContextVar:
   case String: {
     auto srcSize = strlen(src.payload.stringValue) + 1;
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
-        dst.capacity < srcSize) {
+        dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
       dst.payload.stringValue = new char[srcSize];
-      dst.capacity = srcSize;
+      dst.payload.stringCapacity = srcSize;
     } else {
       if (src.payload.stringValue == dst.payload.stringValue)
         return;
@@ -1676,11 +1679,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     size_t srcImgSize = src.payload.imageValue.height *
                         src.payload.imageValue.width *
                         src.payload.imageValue.channels;
-    if (dst.valueType != Image || srcImgSize > dst.capacity) {
+    size_t dstCapacity = dst.payload.imageValue.height *
+                         dst.payload.imageValue.width *
+                         dst.payload.imageValue.channels;
+    if (dst.valueType != Image || srcImgSize > dstCapacity) {
       destroyVar(dst);
       dst.valueType = Image;
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
-      dst.capacity = srcImgSize;
     }
 
     dst.payload.imageValue.flags = dst.payload.imageValue.flags;
@@ -1721,11 +1726,12 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
         map);
   } break;
   case Bytes: {
-    if (dst.valueType != Bytes || dst.capacity < src.payload.bytesSize) {
+    if (dst.valueType != Bytes ||
+        dst.payload.bytesCapacity < src.payload.bytesSize) {
       destroyVar(dst);
       dst.valueType = Bytes;
       dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
-      dst.capacity = src.payload.bytesSize;
+      dst.payload.bytesCapacity = src.payload.bytesSize;
     }
 
     dst.payload.bytesSize = src.payload.bytesSize;

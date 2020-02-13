@@ -371,7 +371,8 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     delete[] var.payload.bytesValue;
     break;
   case Object:
-    if (var.objectInfo && var.objectInfo->destroy) {
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        var.objectInfo && var.objectInfo->destroy) {
       // in this case the custom object needs actual destruction
       var.objectInfo->destroy(var.payload.objectValue);
     }
@@ -429,7 +430,7 @@ struct Serialization {
       break;
     }
     case CBType::Seq: {
-      for (uint32_t i = 0; i < output.payload.seqValue.len; i++) {
+      for (uint32_t i = 0; i < output.payload.seqValue.cap; i++) {
         varFree(output.payload.seqValue.elements[i]);
       }
       chainblocks::arrayFree(output.payload.seqValue);
@@ -489,7 +490,7 @@ struct Serialization {
       read((uint8_t *)&output.payload, sizeof(output.payload));
       break;
     case CBType::Bytes: {
-      auto availBytes = recycle ? output.capacity : 0;
+      auto availBytes = recycle ? output.payload.bytesCapacity : 0;
       read((uint8_t *)&output.payload.bytesSize,
            sizeof(output.payload.bytesSize));
 
@@ -504,7 +505,8 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      output.capacity = std::max(availBytes, output.payload.bytesSize);
+      output.payload.bytesCapacity =
+          std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
@@ -512,9 +514,9 @@ struct Serialization {
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
-      auto availChars = recycle ? output.capacity : 0;
-      uint64_t len;
-      read((uint8_t *)&len, sizeof(uint64_t));
+      auto availChars = recycle ? output.payload.stringCapacity : 0;
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
 
       if (availChars > 0 && availChars < len) {
         // we need more chars then what we have, realloc
@@ -526,7 +528,7 @@ struct Serialization {
       } // else recycling
 
       // record actualSize
-      output.capacity = std::max(availChars, len);
+      output.payload.stringCapacity = std::max(availChars, len);
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
@@ -535,16 +537,8 @@ struct Serialization {
     case CBType::Seq: {
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
-
-      uint32_t currentUsed = recycle ? output.payload.seqValue.len : 0;
-      if (currentUsed > len) {
-        // in this case we need to destroy the excess items
-        // before resizing
-        for (uint32_t i = len; i < currentUsed; i++) {
-          varFree(output.payload.seqValue.elements[i]);
-        }
-      }
-
+      // notice we assume all elements up to capacity are memset to 0x0
+      // or are valid CBVars we can overwrite
       chainblocks::arrayResize(output.payload.seqValue, len);
       for (uint32_t i = 0; i < len; i++) {
         deserialize(read, output.payload.seqValue.elements[i]);
@@ -579,6 +573,13 @@ struct Serialization {
       break;
     }
     case CBType::Image: {
+      size_t currentSize = 0;
+      if (recycle) {
+        currentSize = output.payload.imageValue.channels *
+                      output.payload.imageValue.height *
+                      output.payload.imageValue.width;
+      }
+
       read((uint8_t *)&output.payload.imageValue.channels,
            sizeof(output.payload.imageValue.channels));
       read((uint8_t *)&output.payload.imageValue.flags,
@@ -592,7 +593,6 @@ struct Serialization {
                     output.payload.imageValue.height *
                     output.payload.imageValue.width;
 
-      size_t currentSize = recycle ? output.capacity : 0;
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.imageValue.data;
@@ -601,9 +601,6 @@ struct Serialization {
         // just alloc
         output.payload.imageValue.data = new uint8_t[size];
       }
-
-      // record actualSize
-      output.capacity = std::max(currentSize, (size_t)size);
 
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
@@ -652,9 +649,9 @@ struct Serialization {
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
-      uint64_t len = strlen(input.payload.stringValue);
-      write((const uint8_t *)&len, sizeof(uint64_t));
-      total += sizeof(uint64_t);
+      uint32_t len = strlen(input.payload.stringValue);
+      write((const uint8_t *)&len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
       write((const uint8_t *)input.payload.stringValue, len);
       total += len;
       break;

@@ -525,9 +525,6 @@ struct AppendTo : public XpendTo {
       CBVar tmp{};
       cloneVar(tmp, input);
       chainblocks::arrayPush(collection.payload.seqValue, tmp);
-      collection.capacity = std::max(
-          collection.capacity,
-          decltype(collection.capacity)(collection.payload.seqValue.len));
       break;
     }
     case String: {
@@ -556,9 +553,6 @@ struct PrependTo : public XpendTo {
       CBVar tmp{};
       cloneVar(tmp, input);
       chainblocks::arrayInsert(collection.payload.seqValue, 0, tmp);
-      collection.capacity = std::max(
-          collection.capacity,
-          decltype(collection.capacity)(collection.payload.seqValue.len));
       break;
     }
     case String: {

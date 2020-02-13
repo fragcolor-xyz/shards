@@ -292,6 +292,8 @@ struct CBTableInterface {
   CBTableFree tableFree;
 };
 
+struct CBAllocatorInterface {};
+
 #ifdef CB_NO_ANON
 #define CB_STRUCT(_name_) struct _name_
 #define CB_UNION(_name_) union _name_
@@ -475,7 +477,12 @@ struct CBVarPayload {
 
     struct CBTable tableValue;
 
-    CBString stringValue;
+    struct {
+      CBString stringValue;
+      // this is mostly used internal
+      // useful when serializing, recycling memory
+      uint32_t stringCapacity;
+    };
 
     ptrdiff_t stackIndexValue;
 
@@ -498,22 +505,33 @@ struct CBVarPayload {
 
     struct {
       uint8_t *bytesValue;
-      uint64_t bytesSize;
+      uint32_t bytesSize;
+      // this is mostly used internal
+      // useful when serializing, recycling memory
+      uint32_t bytesCapacity;
     };
   };
 } __attribute__((aligned(16)));
+
+// CBVar flags
+#define CBVAR_FLAGS_NONE (0)
+#define CBVAR_FLAGS_USES_ALLOCATOR (1 << 0)
+#define CBVAR_FLAGS_USES_OBJINFO (1 << 1)
+#define CBVAR_FLAGS_REF_COUNTED (1 << 2)
 
 struct CBVar {
   struct CBVarPayload payload;
   union {
     // currently used when dealing with Object type variables
     // if you need (serialization & destroy) you should populate this field
+    // when CBVAR_FLAGS_USES_OBJINFO
     struct CBObjectInfo *objectInfo;
-    // currently used internally when serializing
-    uint64_t capacity;
+    // when CBVAR_FLAGS_USES_ALLOCATOR, used for IPC and such
+    struct CBAllocatorInterface *allocator;
   };
   uint32_t refcount;
   enum CBType valueType;
+  uint16_t flags;
 } __attribute__((aligned(16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };

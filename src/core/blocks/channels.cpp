@@ -25,7 +25,6 @@ struct BroadcastChannel {
   std::atomic<Box> data;
 };
 
-// During validation let's be smart about memory efficient types
 using Channel = std::variant<MPMCChannel, BroadcastChannel>;
 
 class Globals {

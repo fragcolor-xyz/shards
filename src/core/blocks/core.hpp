@@ -1160,7 +1160,6 @@ struct Push : public VariableBase {
     CBVar tmp{};
     cloneVar(tmp, input);
     chainblocks::arrayPush(seq.payload.seqValue, tmp);
-    seq.capacity = std::max(seq.capacity, (uint64_t)(seq.payload.seqValue.len));
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1183,8 +1182,6 @@ struct Push : public VariableBase {
       CBVar tmp{};
       cloneVar(tmp, input);
       chainblocks::arrayPush(_target->payload.seqValue, tmp);
-      _target->capacity = std::max(_target->capacity,
-                                   (uint64_t)(_target->payload.seqValue.len));
     }
     return input;
   }
@@ -1240,7 +1237,7 @@ struct Count : SeqUser {
       return Var(int64_t(
           var->payload.tableValue.api->tableSize(var->payload.tableValue)));
     } else if (var->valueType == Bytes) {
-      return Var(var->payload.bytesSize);
+      return Var(int64_t(var->payload.bytesSize));
     } else if (var->valueType == String) {
       return Var(int64_t(strlen(var->payload.stringValue)));
     } else {
