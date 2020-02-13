@@ -183,6 +183,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -443,6 +444,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
