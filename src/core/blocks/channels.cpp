@@ -6,7 +6,6 @@
 #include <boost/lockfree/queue.hpp>
 #include <boost/lockfree/stack.hpp>
 #include <mutex>
-#include <shared_ptr>
 #include <variant>
 
 namespace chainblocks {
@@ -16,14 +15,18 @@ struct MPMCChannel {
   boost::lockfree::stack<CBVar> recycle;
 };
 
-template <typename T> struct BroadcastChannel {
-  std::atomic<T> data;
-  std::atomic<uint64_t> version;
+struct BroadcastChannel {
+  // like a water flow/pipe, no real ownership
+  // add water, drink water
+  struct Box {
+    CBVar *var;
+    uint64_t version;
+  };
+  std::atomic<Box> data;
 };
 
 // During validation let's be smart about memory efficient types
-using Channel = std::variant<MPMCChannel, BroadcastChannel<CBVar>,
-                             BroadcastChannel<std::shared_ptr<OwnedVar>>>;
+using Channel = std::variant<MPMCChannel, BroadcastChannel>;
 
 class Globals {
 private:
