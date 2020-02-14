@@ -14,8 +14,8 @@ struct DummyChannel {};
 
 struct MPMCChannel {
   // A single source to seal data from
-  boost::lockfree::queue<CBVar> data;
-  boost::lockfree::stack<CBVar> recycle;
+  boost::lockfree::queue<CBVar> data{16};
+  boost::lockfree::stack<CBVar> recycle{16};
 
   CBTypeInfo type;
 };
@@ -68,7 +68,7 @@ struct Produce : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
-    switch (_channel->index()) {
+    switch (vchannel.index()) {
     case 0: {
       vchannel.emplace<MPMCChannel>();
       auto &channel = std::get<MPMCChannel>(vchannel);
@@ -117,7 +117,7 @@ struct Consume : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
-    switch (_channel->index()) {
+    switch (vchannel.index()) {
     case 1: {
       auto &channel = std::get<MPMCChannel>(vchannel);
       _mpchannel = &channel;
