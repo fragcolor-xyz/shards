@@ -84,6 +84,10 @@ namespace Regex {
 extern void registerBlocks();
 }
 
+namespace channels {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -113,6 +117,7 @@ void registerCoreBlocks() {
   registerOSBlocks();
   Regex::registerBlocks();
   registerProcessBlocks();
+  channels::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
