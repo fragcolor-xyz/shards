@@ -19,6 +19,18 @@ struct ChannelShared {
 struct DummyChannel : public ChannelShared {};
 
 struct MPMCChannel : public ChannelShared {
+  // no real cleanups happens in Produce/Consume to keep things simple
+  // and without locks
+  ~MPMCChannel() {
+    CBVar tmp{};
+    while (data.pop(tmp)) {
+      destroyVar(tmp);
+    }
+    while (recycle.pop(tmp)) {
+      destroyVar(tmp);
+    }
+  }
+
   // A single source to steal data from
   boost::lockfree::queue<CBVar> data{16};
   boost::lockfree::stack<CBVar> recycle{16};
@@ -57,6 +69,20 @@ struct Base {
   Channel *_channel = nullptr;
   std::string _name;
 
+  static inline ParamsInfo prodParams = ParamsInfo(ParamsInfo::Param(
+      "Name", "The name of the channel.", CoreInfo::StringType));
+
+  static inline ParamsInfo consParams = ParamsInfo(
+      ParamsInfo::Param("Name", "The name of the channel.",
+                        CoreInfo::StringType),
+      ParamsInfo::Param(
+          "Buffer", "The amount of values to buffer before outputting them.",
+          CoreInfo::BoolType));
+
+  void setParam(int index, CBVar value) { _name = value.payload.stringValue; }
+
+  CBVar getParam(int index) { return Var(_name); }
+
   template <typename T>
   void verifyInputType(T &channel, const CBInstanceData &data) {
     if (channel.type.basicType != CBType::None &&
@@ -72,6 +98,8 @@ struct Produce : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(prodParams); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
@@ -121,6 +149,8 @@ struct Broadcast : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static CBParametersInfo parameters() { return CBParametersInfo(prodParams); }
+
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
@@ -145,8 +175,10 @@ struct Broadcast : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     assert(_mpchannel);
 
-    // notice we don't lock the channel because subscribe happens inside
-    // compose! and compose won't happen while activating ever!
+    // we need to support subscriptions during run-time
+    // so we need to lock this operation
+    // furthermore we allow multiple broadcasters so the erase needs this
+    std::unique_lock<std::mutex> lock(_mpchannel->submutex);
     for (auto it = _mpchannel->subscribers.begin();
          it != _mpchannel->subscribers.end();) {
       if (it->closed) {
@@ -181,6 +213,8 @@ struct Consume : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
@@ -227,6 +261,22 @@ struct Listen : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
+
+  void destroy() {
+    if (_mpchannel) {
+      _mpchannel->closed = true;
+      // also try clear here, to make broadcast removal faster
+      CBVar tmp{};
+      while (_mpchannel->data.pop(tmp)) {
+        destroyVar(tmp);
+      }
+      while (_mpchannel->recycle.pop(tmp)) {
+        destroyVar(tmp);
+      }
+    }
+  }
+
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
@@ -271,6 +321,8 @@ struct Complete : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);

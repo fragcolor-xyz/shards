@@ -1,29 +1,29 @@
 (def Root (Node))
 
-;; (def producer
-;;   (Chain
-;;    "Producer"
-;;    ;; :Looped
-;;    (Repeat
-;;     (-->
-;;      "A message"
-;;      (Produce)
-;;      (Log "Produced: ")
-;;      (Sleep 0.1))
-;;     10)
-;;    (Complete)
-;;    ))
+(def producer
+  (Chain
+   "Producer"
+   ;; :Looped
+   (Repeat
+    (-->
+     "A message"
+     (Produce "a")
+     (Log "Produced: ")
+     (Sleep 0.1))
+    10)
+   (Complete "a")
+   ))
 
-;; (def consumer
-;;   (Chain
-;;    "Consumer"
-;;    :Looped
-;;    (Consume) ; consumes 1
-;;    (Log "Consumed: ")))
+(def consumer
+  (Chain
+   "Consumer"
+   :Looped
+   (Consume "a") ; consumes 1
+   (Log "Consumed: ")))
 
-;; (schedule Root producer)
-;; (schedule Root consumer)
-;; (run Root 0.1)
+(schedule Root producer)
+(schedule Root consumer)
+(run Root 0.1)
 
 (def producer
   (Chain
@@ -32,18 +32,18 @@
    (Repeat
     (-->
      "A message"
-     (Broadcast)
+     (Broadcast "b")
      (Log "Broadcasted: ")
      (Sleep 0.1))
     10)
-   (Complete)
+   (Complete "b")
    ))
 
 (defn consumers [x]
   (Chain
    (str "Consumer" x)
    :Looped
-   (Listen)
+   (Listen "b")
    (Log (str x ": "))))
 
 (schedule Root producer)
