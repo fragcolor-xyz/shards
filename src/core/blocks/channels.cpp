@@ -19,19 +19,24 @@ struct ChannelShared {
 struct DummyChannel : public ChannelShared {};
 
 struct MPMCChannel : public ChannelShared {
-  // A single source to seal data from
+  // A single source to steal data from
   boost::lockfree::queue<CBVar> data{16};
   boost::lockfree::stack<CBVar> recycle{16};
 };
 
-struct BroadcastChannel : public ChannelShared {
-  // ideally like a water flow/pipe, no real ownership
-  // add water, drink water
-  struct Box {
-    CBVar *var;
-    uint64_t version;
-  };
-  std::atomic<Box> data;
+class Broadcast;
+class BroadcastChannel : public ChannelShared {
+public:
+  MPMCChannel &subscribe() {
+    // we automatically cleanup based on the closed flag of the inner channel
+    std::unique_lock<std::mutex> lock(submutex);
+    return subscribers.emplace_back();
+  }
+
+protected:
+  friend class Broadcast;
+  std::mutex submutex;
+  std::list<MPMCChannel> subscribers;
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
@@ -109,6 +114,65 @@ struct Produce : public Base {
   }
 };
 
+struct Broadcast : public Base {
+  BroadcastChannel *_mpchannel;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto &vchannel = Globals::get(_name);
+    switch (vchannel.index()) {
+    case 0: {
+      vchannel.emplace<BroadcastChannel>();
+      auto &channel = std::get<BroadcastChannel>(vchannel);
+      // no cloning here, this is potentially dangerous if the type is dynamic
+      channel.type = data.inputType;
+      _mpchannel = &channel;
+    } break;
+    case 2: {
+      auto &channel = std::get<BroadcastChannel>(vchannel);
+      verifyInputType(channel, data);
+      _mpchannel = &channel;
+    } break;
+    default:
+      throw CBException("Broadcast/Listen channel type expected.");
+    }
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_mpchannel);
+
+    // notice we don't lock the channel because subscribe happens inside
+    // compose! and compose won't happen while activating ever!
+    for (auto it = _mpchannel->subscribers.begin();
+         it != _mpchannel->subscribers.end();) {
+      if (it->closed) {
+        it = _mpchannel->subscribers.erase(it);
+      } else {
+        CBVar tmp{};
+
+        // try to get from recycle bin
+        // this might fail but we don't care//
+        // if it fails will just allocate a brand new
+        it->recycle.pop(tmp);
+
+        // this internally will reuse memory
+        cloneVar(tmp, input);
+
+        // enqueue for the stealing
+        it->data.push(tmp);
+
+        ++it;
+      }
+    }
+
+    return input;
+  }
+};
+
 struct Consume : public Base {
   MPMCChannel *_mpchannel;
   CBVar _output{};
@@ -142,6 +206,54 @@ struct Consume : public Base {
     while (!_mpchannel->data.pop(_output)) {
       // check also for channel completion
       if (_mpchannel->closed) {
+        return StopChain;
+      }
+      cbpause(0.0);
+    }
+
+    acquired = true;
+
+    return _output;
+  }
+};
+
+struct Listen : public Base {
+  BroadcastChannel *_bchannel;
+  MPMCChannel *_mpchannel;
+  CBVar _output{};
+  bool acquired = false;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto &vchannel = Globals::get(_name);
+    switch (vchannel.index()) {
+    case 2: {
+      auto &channel = std::get<BroadcastChannel>(vchannel);
+      auto &sub = channel.subscribe();
+      _bchannel = &channel;
+      _mpchannel = &sub;
+      return channel.type;
+    } break;
+    default:
+      throw CBException("Broadcast/Listen channel type expected.");
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_bchannel);
+    assert(_mpchannel);
+
+    // send previous value to recycler
+    if (acquired)
+      _mpchannel->recycle.push(_output);
+
+    // everytime we are scheduled we try to pop a value
+    while (!_mpchannel->data.pop(_output)) {
+      // check also for channel completion
+      if (_bchannel->closed) {
         return StopChain;
       }
       cbpause(0.0);
@@ -189,12 +301,16 @@ struct Complete : public Base {
 };
 
 typedef BlockWrapper<Produce> ProduceBlock;
+typedef BlockWrapper<Broadcast> BroadcastBlock;
 typedef BlockWrapper<Consume> ConsumeBlock;
+typedef BlockWrapper<Listen> ListenBlock;
 typedef BlockWrapper<Complete> CompleteBlock;
 
 void registerBlocks() {
   registerBlock("Produce", &ProduceBlock::create);
+  registerBlock("Broadcast", &BroadcastBlock::create);
   registerBlock("Consume", &ConsumeBlock::create);
+  registerBlock("Listen", &ListenBlock::create);
   registerBlock("Complete", &CompleteBlock::create);
 }
 } // namespace channels
