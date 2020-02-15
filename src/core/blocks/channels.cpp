@@ -10,17 +10,21 @@
 
 namespace chainblocks {
 namespace channels {
-struct DummyChannel {};
 
-struct MPMCChannel {
+struct ChannelShared {
+  CBTypeInfo type;
+  std::atomic_bool closed;
+};
+
+struct DummyChannel : public ChannelShared {};
+
+struct MPMCChannel : public ChannelShared {
   // A single source to seal data from
   boost::lockfree::queue<CBVar> data{16};
   boost::lockfree::stack<CBVar> recycle{16};
-
-  CBTypeInfo type;
 };
 
-struct BroadcastChannel {
+struct BroadcastChannel : public ChannelShared {
   // ideally like a water flow/pipe, no real ownership
   // add water, drink water
   struct Box {
@@ -28,8 +32,6 @@ struct BroadcastChannel {
     uint64_t version;
   };
   std::atomic<Box> data;
-
-  CBTypeInfo type;
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
@@ -110,6 +112,7 @@ struct Produce : public Base {
 struct Consume : public Base {
   MPMCChannel *_mpchannel;
   CBVar _output{};
+  bool acquired = false;
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -132,23 +135,67 @@ struct Consume : public Base {
     assert(_mpchannel);
 
     // send previous value to recycler
-    _mpchannel->recycle.push(_output);
+    if (acquired)
+      _mpchannel->recycle.push(_output);
 
     // everytime we are scheduled we try to pop a value
     while (!_mpchannel->data.pop(_output)) {
+      // check also for channel completion
+      if (_mpchannel->closed) {
+        return StopChain;
+      }
       cbpause(0.0);
     }
+
+    acquired = true;
 
     return _output;
   }
 };
 
+struct Complete : public Base {
+  ChannelShared *_mpchannel;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto &vchannel = Globals::get(_name);
+    switch (vchannel.index()) {
+    case 1: {
+      auto &channel = std::get<MPMCChannel>(vchannel);
+      _mpchannel = &channel;
+    } break;
+    case 2: {
+      auto &channel = std::get<BroadcastChannel>(vchannel);
+      _mpchannel = &channel;
+    } break;
+    default:
+      throw CBException("Expected a valid channel.");
+    }
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_mpchannel);
+
+    if (_mpchannel->closed.exchange(true)) {
+      LOG(INFO) << "Complete called on an already closed channel: " << _name;
+    }
+
+    return input;
+  }
+};
+
 typedef BlockWrapper<Produce> ProduceBlock;
 typedef BlockWrapper<Consume> ConsumeBlock;
+typedef BlockWrapper<Complete> CompleteBlock;
 
 void registerBlocks() {
   registerBlock("Produce", &ProduceBlock::create);
   registerBlock("Consume", &ConsumeBlock::create);
+  registerBlock("Complete", &CompleteBlock::create);
 }
 } // namespace channels
 } // namespace chainblocks

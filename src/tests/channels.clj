@@ -1,4 +1,5 @@
 (def Root (Node))
+(def Root (Node))
 
 (def producer
   (Chain
@@ -7,9 +8,11 @@
    (Repeat
     (-->
      "A message"
-     (Produce))
+     (Produce)
+     (Log "Produced: ")
+     (Sleep 0.1))
     10)
-   ;; (Complete "message")
+   (Complete)
    ))
 
 (def consumer
@@ -17,7 +20,7 @@
    "Consumer"
    :Looped
    (Consume) ; consumes 1
-   (Log "1: ")))
+   (Log "Consumed: ")))
 
 (schedule Root producer)
 (schedule Root consumer)

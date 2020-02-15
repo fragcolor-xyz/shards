@@ -41,3 +41,4 @@ ninja cbl
 ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/stack.clj
 ./cbl ../src/tests/kdtree.clj
+./cbl ../src/tests/channels.clj

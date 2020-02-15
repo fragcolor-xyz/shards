@@ -13,7 +13,7 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Debug .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
   
   ciLinuxRel:
     runs-on: ubuntu-latest
@@ -25,7 +25,7 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
 
   ciLinuxValgrind:
     runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind ./cbl ../src/tests/general.clj && valgrind ./cbl ../src/tests/variables.clj && valgrind ./cbl ../src/tests/linalg.clj"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind ./cbl ../src/tests/general.clj && valgrind ./cbl ../src/tests/variables.clj && valgrind ./cbl ../src/tests/linalg.clj && valgrind ./cbl ../src/tests/channels.clj"
   
   ciWindowsRel:
     runs-on: windows-latest
@@ -123,6 +123,7 @@ jobs:
         ./cbl ../src/tests/flows.clj
         ./cbl ../src/tests/stack.clj
         ./cbl ../src/tests/kdtree.clj
+        ./cbl ../src/tests/channels.clj
 
   ciMacRel:
     runs-on: macos-latest
@@ -152,3 +153,4 @@ jobs:
         ./cbl ../src/tests/flows.clj
         ./cbl ../src/tests/stack.clj
         ./cbl ../src/tests/kdtree.clj
+        ./cbl ../src/tests/channels.clj
