@@ -154,3 +154,6 @@ jobs:
         ./cbl ../src/tests/stack.clj
         ./cbl ../src/tests/kdtree.clj
         ./cbl ../src/tests/channels.clj
+    - name: Trigger other builds
+      run: |
+        curl -XPOST -u "${{ secrets.USERNAME}}:${{secrets.TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json"  -H "Content-Type: application/json" https://api.github.com/repos/sinkingsugar/chainblocks-rs/dispatches --data '{"event_type": "build_application"}'
