@@ -77,7 +77,7 @@ struct Base {
                         CoreInfo::StringType),
       ParamsInfo::Param(
           "Buffer", "The amount of values to buffer before outputting them.",
-          CoreInfo::BoolType));
+          CoreInfo::IntType));
 
   void setParam(int index, CBVar value) { _name = value.payload.stringValue; }
 
@@ -205,10 +205,45 @@ struct Broadcast : public Base {
   }
 };
 
-struct Consume : public Base {
+struct BufferedConsumer {
+  // utility to recycle memory and buffer
+  // recycling is only for non blittable types basically
+  std::vector<CBVar> buffer;
+
+  void recycle(MPMCChannel *channel) {
+    // send previous values to recycle
+    for (auto &var : buffer) {
+      channel->recycle.push(var);
+    }
+    buffer.clear();
+  }
+
+  void add(CBVar &var) { buffer.push_back(var); }
+
+  bool empty() { return buffer.size() == 0; }
+
+  operator CBVar() {
+    auto len = buffer.size();
+    assert(len > 0);
+    if (len > 1) {
+      CBVar res{};
+      res.valueType = Seq;
+      res.payload.seqValue.elements = &buffer[0];
+      res.payload.seqValue.len = buffer.size();
+      return res;
+    } else {
+      return buffer[0];
+    }
+  }
+};
+
+struct Consumers : public Base {
   MPMCChannel *_mpchannel;
-  CBVar _output{};
-  bool acquired = false;
+  BufferedConsumer _storage;
+  int64_t _bufferSize = 1;
+  int64_t _current = 1;
+  CBTypeInfo _outType{};
+  CBTypeInfo _seqType{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -216,13 +251,45 @@ struct Consume : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
 
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      Base::setParam(index, value);
+    else
+      _bufferSize = value.payload.intValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Base::getParam(index);
+    else
+      return Var(_bufferSize);
+  }
+
+  void cleanup() {
+    // reset buffer counter
+    _current = _bufferSize;
+    // cleanup storage
+    if (_mpchannel)
+      _storage.recycle(_mpchannel);
+  }
+};
+
+struct Consume : public Consumers {
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 1: {
       auto &channel = std::get<MPMCChannel>(vchannel);
       _mpchannel = &channel;
-      return channel.type;
+      _outType = channel.type;
+      if (_bufferSize == 1) {
+        return _outType;
+      } else {
+        _seqType.basicType = Seq;
+        _seqType.seqTypes.elements = &_outType;
+        _seqType.seqTypes.len = 1;
+        return _seqType;
+      }
     } break;
     default:
       throw CBException("Produce/Consume channel type expected.");
@@ -232,36 +299,37 @@ struct Consume : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     assert(_mpchannel);
 
-    // send previous value to recycler
-    if (acquired)
-      _mpchannel->recycle.push(_output);
+    // send previous values to recycle
+    _storage.recycle(_mpchannel);
+
+    // reset buffer
+    _current = _bufferSize;
 
     // everytime we are scheduled we try to pop a value
-    while (!_mpchannel->data.pop(_output)) {
-      // check also for channel completion
-      if (_mpchannel->closed) {
-        return StopChain;
+    while (_current--) {
+      CBVar output{};
+      while (!_mpchannel->data.pop(output)) {
+        // check also for channel completion
+        if (_mpchannel->closed) {
+          if (!_storage.empty()) {
+            return _storage;
+          } else {
+            return StopChain;
+          }
+        }
+        cbpause(0.0);
       }
-      cbpause(0.0);
+
+      // keep for recycling
+      _storage.add(output);
     }
 
-    acquired = true;
-
-    return _output;
+    return _storage;
   }
 };
 
-struct Listen : public Base {
+struct Listen : public Consumers {
   BroadcastChannel *_bchannel;
-  MPMCChannel *_mpchannel;
-  CBVar _output{};
-  bool acquired = false;
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
 
   void destroy() {
     if (_mpchannel) {
@@ -285,7 +353,15 @@ struct Listen : public Base {
       auto &sub = channel.subscribe();
       _bchannel = &channel;
       _mpchannel = &sub;
-      return channel.type;
+      _outType = channel.type;
+      if (_bufferSize == 1) {
+        return _outType;
+      } else {
+        _seqType.basicType = Seq;
+        _seqType.seqTypes.elements = &_outType;
+        _seqType.seqTypes.len = 1;
+        return _seqType;
+      }
     } break;
     default:
       throw CBException("Broadcast/Listen channel type expected.");
@@ -296,22 +372,32 @@ struct Listen : public Base {
     assert(_bchannel);
     assert(_mpchannel);
 
-    // send previous value to recycler
-    if (acquired)
-      _mpchannel->recycle.push(_output);
+    // send previous values to recycle
+    _storage.recycle(_mpchannel);
+
+    // reset buffer
+    _current = _bufferSize;
 
     // everytime we are scheduled we try to pop a value
-    while (!_mpchannel->data.pop(_output)) {
-      // check also for channel completion
-      if (_bchannel->closed) {
-        return StopChain;
+    while (_current--) {
+      CBVar output{};
+      while (!_mpchannel->data.pop(output)) {
+        // check also for channel completion
+        if (_bchannel->closed) {
+          if (!_storage.empty()) {
+            return _storage;
+          } else {
+            return StopChain;
+          }
+        }
+        cbpause(0.0);
       }
-      cbpause(0.0);
+
+      // keep for recycling
+      _storage.add(output);
     }
 
-    acquired = true;
-
-    return _output;
+    return _storage;
   }
 };
 

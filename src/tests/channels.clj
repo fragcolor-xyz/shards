@@ -8,21 +8,28 @@
     (-->
      "A message"
      (Produce "a")
-     (Log "Produced: ")
-     (Sleep 0.1))
+     (Log "Produced: "))
     10)
    (Complete "a")
    ))
 
-(def consumer
+(def consumer1
   (Chain
-   "Consumer"
+   "Consumer1"
    :Looped
    (Consume "a") ; consumes 1
-   (Log "Consumed: ")))
+   (Log "Consumed 1: ")))
+
+(def consumer2
+  (Chain
+   "Consumer2"
+   :Looped
+   (Consume "a" 5)
+   (Log "Consumed 2: ")))
 
 (schedule Root producer)
-(schedule Root consumer)
+(schedule Root consumer1)
+(schedule Root consumer2)
 (run Root 0.1)
 
 (def producer
@@ -46,8 +53,15 @@
    (Listen "b")
    (Log (str x ": "))))
 
+(def consumer33
+  (Chain
+   "Consumer33"
+   :Looped
+   (Listen "b" 3)
+   (Log "Consumed 33: ")))
 (schedule Root producer)
 (schedule Root (consumers 0))
 (schedule Root (consumers 1))
 (schedule Root (consumers 2))
+(schedule Root consumer33)
 (run Root 0.1)
