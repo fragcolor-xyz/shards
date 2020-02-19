@@ -93,6 +93,16 @@ extern void cbInitExtras();
 #endif
 
 void registerCoreBlocks() {
+  // at this point we might have some auto magical static linked block already
+  // keep them stored here and re-register them
+  // as we assume the observers were setup in this call caller so too late for
+  // them
+  std::vector<std::pair<std::string, CBBlockConstructor>> earlyblocks;
+  for (auto &pair : Globals::BlocksRegister) {
+    earlyblocks.push_back(pair);
+  }
+  Globals::BlocksRegister.clear();
+
 #ifdef USE_RPMALLOC
   rpmalloc_initialize();
 #endif
@@ -134,6 +144,11 @@ void registerCoreBlocks() {
 #ifdef CB_WITH_EXTRAS
   cbInitExtras();
 #endif
+
+  // re run early blocks registration!
+  for (auto &pair : earlyblocks) {
+    registerBlock(pair.first.c_str(), pair.second);
+  }
 
 #ifndef NDEBUG
   // TODO remove when we have better tests/samples
@@ -337,7 +352,7 @@ void registerBlock(const char *fullName, CBBlockConstructor constructor) {
   auto findIt = Globals::BlocksRegister.find(cname);
   if (findIt == Globals::BlocksRegister.end()) {
     Globals::BlocksRegister.insert(std::make_pair(cname, constructor));
-    // DLOG(INFO) << "added block: " << cname;
+    DLOG(INFO) << "added block: " << cname;
   } else {
     Globals::BlocksRegister[cname] = constructor;
     LOG(INFO) << "overridden block: " << cname;

@@ -75,6 +75,10 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
   set(BASE_TESTING 1)
 endif()
 
+if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
+  set(CHAINBLOCKS_EXTRA_LINKS "")
+endif()
+
 if(X86)
   add_compile_definitions(ELPP_FEATURE_PERFORMANCE_TRACKING ELPP_DEFAULT_LOG_FILE="chainblocks.log" BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
   add_compile_options(-Wall)
@@ -464,7 +468,7 @@ add_library(
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 add_dependencies(cb_shared format)
-target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
 ###
 
@@ -485,7 +489,7 @@ add_executable(
 add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
 
 ### our experimental edn eval
@@ -496,6 +500,6 @@ add_executable(
 add_dependencies(cbedn cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS})
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
 
