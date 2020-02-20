@@ -352,7 +352,7 @@ void registerBlock(const char *fullName, CBBlockConstructor constructor) {
   auto findIt = Globals::BlocksRegister.find(cname);
   if (findIt == Globals::BlocksRegister.end()) {
     Globals::BlocksRegister.insert(std::make_pair(cname, constructor));
-    DLOG(INFO) << "added block: " << cname;
+    // DLOG(INFO) << "added block: " << cname;
   } else {
     Globals::BlocksRegister[cname] = constructor;
     LOG(INFO) << "overridden block: " << cname;

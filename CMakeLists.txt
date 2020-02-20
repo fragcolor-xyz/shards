@@ -76,6 +76,8 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
 endif()
 
 if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
+  # like like: -Wl,--whole-archive -lhttp -Wl,--no-whole-archive
+  # so to trigger global init and such, of course this is not ideal when deplying (size bloat!)
   set(CHAINBLOCKS_EXTRA_LINKS "")
 endif()
 
