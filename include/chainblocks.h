@@ -583,6 +583,9 @@ typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
 
+// Generally when stop() is called
+typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
+
 struct CBlock {
   enum CBInlineBlocks inlineBlockId;
 
@@ -612,6 +615,7 @@ struct CBlock {
   CBGetParamProc getParam; // Gets a parameter, the block is the owner of any
                            // allocated stuff, DO NOT free them
 
+  CBWarmupProc warmup; // Called before running the chain
   CBActivateProc activate;
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes
                          // internally to clean up the block state

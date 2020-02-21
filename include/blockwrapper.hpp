@@ -21,6 +21,7 @@ CB_HAS_MEMBER_TEST(compose);
 CB_HAS_MEMBER_TEST(parameters);
 CB_HAS_MEMBER_TEST(setParam);
 CB_HAS_MEMBER_TEST(getParam);
+CB_HAS_MEMBER_TEST(warmup);
 CB_HAS_MEMBER_TEST(activate);
 CB_HAS_MEMBER_TEST(cleanup);
 
@@ -158,6 +159,16 @@ template <class T> struct BlockWrapper {
     } else {
       // infer is optional!
       result->compose = nullptr;
+    }
+
+    // warmup
+    if constexpr (has_warmup<T>::value) {
+      result->warmup = static_cast<CBWarmupProc>([](CBlock *b, CBContext *ctx) {
+        reinterpret_cast<BlockWrapper<T> *>(b)->block.warmup(ctx);
+      });
+    } else {
+      // warmup is optional!
+      result->cleanup = nullptr;
     }
 
     // activate

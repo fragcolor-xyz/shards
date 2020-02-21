@@ -1488,6 +1488,25 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   return {chain->previousOutput, Running};
 }
 
+bool warmup(CBChain *chain, CBContext *context) {
+  for (auto blk : chain->blocks) {
+    try {
+      if (blk->warmup)
+        blk->warmup(blk, context);
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Block warmup error, failed block: "
+                 << std::string(blk->name(blk));
+      LOG(ERROR) << e.what();
+      return false;
+    } catch (...) {
+      LOG(ERROR) << "Block warmup error, failed block: "
+                 << std::string(blk->name(blk));
+      return false;
+    }
+  }
+  return true;
+}
+
 boost::context::continuation run(CBChain *chain,
                                  boost::context::continuation &&sink) {
   auto running = true;
@@ -1505,6 +1524,13 @@ boost::context::continuation run(CBChain *chain,
 
   // We prerolled our coro, suspend here before actually starting.
   // This allows us to allocate the stack ahead of time.
+  // And call warmup on all the blocks!
+  if (!warmup(chain, &context)) {
+    chain->failed = true;
+    context.aborted = true;
+    goto endOfChain;
+  }
+
   context.continuation = context.continuation.resume();
   if (context.aborted) // We might have stopped before even starting!
     goto endOfChain;

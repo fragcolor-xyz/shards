@@ -34,6 +34,7 @@
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
+    result->warmup = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK(_name_)                                             \
@@ -66,6 +67,7 @@
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
+    result->warmup = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_BLOCK_TYPE(_namespace_, _name_)                                \
@@ -99,6 +101,7 @@
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
+    result->warmup = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK_TYPE(_name_)                                        \
@@ -132,6 +135,7 @@
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
+    result->warmup = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
@@ -196,6 +200,12 @@
   result->compose =                                                            \
       static_cast<CBComposeProc>([](CBlock *block, CBInstanceData data) {      \
         return reinterpret_cast<_name_##Runtime *>(block)->core.compose(data); \
+      });
+
+#define RUNTIME_BLOCK_warmup(_name_)                                           \
+  result->warmup =                                                             \
+      static_cast<CBWarmupProc>([](CBlock *block, CBContext *ctx) {            \
+        reinterpret_cast<_name_##Runtime *>(block)->core.warmup(ctx);          \
       });
 
 #define RUNTIME_BLOCK_activate(_name_)                                         \
