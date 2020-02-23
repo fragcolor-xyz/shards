@@ -5,6 +5,7 @@
 #define CB_CHAINBLOCKS_HPP
 
 #include "chainblocks.h"
+#include <cstring> // memcpy
 #include <string>
 #include <utility>
 #include <vector>
