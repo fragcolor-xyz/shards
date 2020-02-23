@@ -92,24 +92,32 @@ struct Cond {
           auto val = value.payload.seqValue.elements[i];
           if (i % 2) { // action
             if (val.valueType == Block) {
+              assert(!val.payload.blockValue->owned);
+              val.payload.blockValue->owned = true;
               _actions[idx].push_back(val.payload.blockValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == Block);
-                _actions[idx].push_back(
-                    val.payload.seqValue.elements[y].payload.blockValue);
+                auto blk = val.payload.seqValue.elements[y].payload.blockValue;
+                assert(!blk->owned);
+                blk->owned = true;
+                _actions[idx].push_back(blk);
               }
             }
 
             idx++;
           } else { // condition
             if (val.valueType == Block) {
+              assert(!val.payload.blockValue->owned);
+              val.payload.blockValue->owned = true;
               _conditions[idx].push_back(val.payload.blockValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == Block);
-                _conditions[idx].push_back(
-                    val.payload.seqValue.elements[y].payload.blockValue);
+                auto blk = val.payload.seqValue.elements[y].payload.blockValue;
+                assert(!blk->owned);
+                blk->owned = true;
+                _conditions[idx].push_back(blk);
               }
             }
           }

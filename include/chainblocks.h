@@ -267,15 +267,15 @@ struct CBAudio {
 };
 
 // return false to abort iteration
-typedef bool(__cdecl *CBTableForEachCallback)(const char *key,
-                                              struct CBVar *value,
-                                              void *userData);
+typedef CBBool(__cdecl *CBTableForEachCallback)(const char *key,
+                                                struct CBVar *value,
+                                                void *userData);
 // table interface
 typedef void(__cdecl *CBTableForEach)(struct CBTable table,
                                       CBTableForEachCallback cb,
                                       void *userData);
 typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
-typedef bool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
+typedef CBBool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
 typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
                                            const char *key);
 typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
@@ -340,11 +340,11 @@ struct CBTypeInfo {
       // if is File, the extension allowed
       CBStrings extensions;
       // expects a path to a file
-      bool isFile;
+      CBBool isFile;
       // expects an existing path
-      bool existing;
+      CBBool existing;
       // expects a relative path (relative to the CBCore.getRootPath)
-      bool relative;
+      CBBool relative;
     }
     path;
 
@@ -353,7 +353,7 @@ struct CBTypeInfo {
     CB_STRUCT(Integers) {
       int64_t min;
       int64_t max;
-      bool valid;
+      CBBool valid;
     }
     integers;
 
@@ -362,7 +362,7 @@ struct CBTypeInfo {
     CB_STRUCT(Real) {
       double min;
       double max;
-      bool valid;
+      CBBool valid;
     }
     real;
   }
@@ -591,6 +591,7 @@ typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 
 struct CBlock {
   enum CBInlineBlocks inlineBlockId;
+  CBBool owned; // flag to ensure blocks are unique when flows/chains
 
   // The interface to fill
   CBNameProc name; // Returns the name of the block, do not free the string,
@@ -633,12 +634,12 @@ struct CBChainProviderUpdate {
 
 typedef void(__cdecl *CBProviderReset)(struct CBChainProvider *provider);
 
-typedef bool(__cdecl *CBProviderReady)(struct CBChainProvider *provider);
+typedef CBBool(__cdecl *CBProviderReady)(struct CBChainProvider *provider);
 typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider *provider,
                                        const char *path,
                                        struct CBInstanceData data);
 
-typedef bool(__cdecl *CBProviderUpdated)(struct CBChainProvider *provider);
+typedef CBBool(__cdecl *CBProviderUpdated)(struct CBChainProvider *provider);
 typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(
     struct CBChainProvider *provider);
 

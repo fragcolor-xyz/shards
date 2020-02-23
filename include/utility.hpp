@@ -185,11 +185,15 @@ public:
 
     destroy();
     if (_blocks.valueType == Block) {
+      assert(!_blocks.payload.blockValue->owned);
+      _blocks.payload.blockValue->owned = true;
       _blocksArray.push_back(_blocks.payload.blockValue);
     } else {
       for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
-        _blocksArray.push_back(
-            _blocks.payload.seqValue.elements[i].payload.blockValue);
+        auto blk = _blocks.payload.seqValue.elements[i].payload.blockValue;
+        assert(!blk->owned);
+        blk->owned = true;
+        _blocksArray.push_back(blk);
       }
     }
 

@@ -13,7 +13,6 @@
 // C++ Mandatory from now!
 
 // Since we build the runtime we are free to use any std and lib
-#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <list>
@@ -24,40 +23,12 @@
 using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<double>;
 
-// Required external dependencies
-// For coroutines/context switches
-#include <boost/context/continuation.hpp>
-typedef boost::context::continuation CBCoro;
 // For sleep
 #if _WIN32
 #include <Windows.h>
 #else
 #include <time.h>
 #endif
-
-namespace chainblocks {
-CBlock *createBlock(const char *name);
-void registerCoreBlocks();
-void registerBlock(const char *fullName, CBBlockConstructor constructor);
-void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
-void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
-void registerRunLoopCallback(const char *eventName, CBCallback callback);
-void unregisterRunLoopCallback(const char *eventName);
-void registerExitCallback(const char *eventName, CBCallback callback);
-void unregisterExitCallback(const char *eventName);
-void callExitCallbacks();
-void registerChain(CBChain *chain);
-void unregisterChain(CBChain *chain);
-
-struct RuntimeObserver {
-  virtual void registerBlock(const char *fullName,
-                             CBBlockConstructor constructor) {}
-  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
-                                  CBObjectInfo info) {}
-  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
-                                CBEnumInfo info) {}
-};
-}; // namespace chainblocks
 
 void freeDerivedInfo(CBTypeInfo info);
 CBTypeInfo deriveTypeInfo(CBVar &value);
@@ -75,69 +46,6 @@ validateConnections(const CBChain *chain, CBValidationCallback callback,
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
-
-struct CBChain {
-  CBChain(const char *chain_name)
-      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
-        started(false), finished(false), returned(false), failed(false),
-        rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        context(nullptr), node(nullptr) {
-    chainblocks::registerChain(this);
-  }
-
-  ~CBChain() {
-    cleanup();
-    chainblocks::unregisterChain(this);
-    chainblocks::destroyVar(rootTickInput);
-  }
-
-  void cleanup();
-
-  // Also the chain takes ownership of the block!
-  void addBlock(CBlock *blk) { blocks.push_back(blk); }
-
-  // Also removes ownership of the block
-  void removeBlock(CBlock *blk) {
-    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
-    if (findIt != blocks.end()) {
-      blocks.erase(findIt);
-    }
-  }
-
-  // Attributes
-  bool looped;
-  bool unsafe;
-
-  std::string name;
-
-  CBCoro *coro;
-
-  // we could simply null check coro but actually some chains (sub chains), will
-  // run without a coro within the root coro so we need this too
-  bool started;
-
-  // this gets cleared before every runChain and set after every runChain
-  std::atomic_bool finished;
-
-  // when running as coro if actually the coro lambda exited
-  bool returned;
-  bool failed;
-
-  CBVar rootTickInput{};
-  CBVar previousOutput{};
-  CBVar finishedOutput{};
-  bool ownedOutput;
-
-  CBContext *context;
-  CBNode *node;
-  CBFlow *flow;
-  std::vector<CBlock *> blocks;
-  std::unordered_map<std::string, CBVar, std::hash<std::string>,
-                     std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<
-                         std::pair<const std::string, CBVar>, 16>>
-      variables;
-};
 
 struct CBContext {
   CBContext(CBCoro &&sink, CBChain *starter)

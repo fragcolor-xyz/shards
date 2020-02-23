@@ -191,6 +191,7 @@ public:
   virtual Value apply(const std::shared_ptr<Environment> &env,
                       std::vector<Value> &args, int line) {
     assert(false);
+    return args[0]; // fake value should not happen
   }
 };
 

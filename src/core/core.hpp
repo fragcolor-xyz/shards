@@ -12,6 +12,7 @@
 #include "nameof.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <list>
 #include <set>
@@ -22,11 +23,16 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+// For coroutines/context switches
+#include <boost/context/continuation.hpp>
+typedef boost::context::continuation CBCoro;
+
 #define TRACE_LINE DLOG(TRACE) << "#trace#"
 
 CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data);
+
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
@@ -42,6 +48,28 @@ void releaseVariable(CBVar *variable);
 CBVar suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
+CBlock *createBlock(const char *name);
+void registerCoreBlocks();
+void registerBlock(const char *fullName, CBBlockConstructor constructor);
+void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
+void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
+void registerRunLoopCallback(const char *eventName, CBCallback callback);
+void unregisterRunLoopCallback(const char *eventName);
+void registerExitCallback(const char *eventName, CBCallback callback);
+void unregisterExitCallback(const char *eventName);
+void callExitCallbacks();
+void registerChain(CBChain *chain);
+void unregisterChain(CBChain *chain);
+
+struct RuntimeObserver {
+  virtual void registerBlock(const char *fullName,
+                             CBBlockConstructor constructor) {}
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
+                                  CBObjectInfo info) {}
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
+                                CBEnumInfo info) {}
+};
+
 #define cbpause(_time_)                                                        \
   {                                                                            \
     auto chainState = chainblocks::suspend(context, _time_);                   \
@@ -49,8 +77,6 @@ void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
       return chainState;                                                       \
     }                                                                          \
   }
-
-struct RuntimeObserver;
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &src);
@@ -400,7 +426,79 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   dst.refcount = rc;
   dst.flags |= rcflag;
 }
+} // namespace chainblocks
 
+struct CBChain {
+  CBChain(const char *chain_name)
+      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
+        started(false), finished(false), returned(false), failed(false),
+        rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
+        context(nullptr), node(nullptr) {
+    chainblocks::registerChain(this);
+  }
+
+  ~CBChain() {
+    cleanup();
+    chainblocks::unregisterChain(this);
+    chainblocks::destroyVar(rootTickInput);
+  }
+
+  void cleanup();
+
+  // Also the chain takes ownership of the block!
+  void addBlock(CBlock *blk) {
+    assert(!blk->owned);
+    blk->owned = true;
+    blocks.push_back(blk);
+  }
+
+  // Also removes ownership of the block
+  void removeBlock(CBlock *blk) {
+    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
+    if (findIt != blocks.end()) {
+      blocks.erase(findIt);
+      blk->owned = false;
+    } else {
+      throw chainblocks::CBException("removeBlock: block not found!");
+    }
+  }
+
+  // Attributes
+  bool looped;
+  bool unsafe;
+
+  std::string name;
+
+  CBCoro *coro;
+
+  // we could simply null check coro but actually some chains (sub chains), will
+  // run without a coro within the root coro so we need this too
+  bool started;
+
+  // this gets cleared before every runChain and set after every runChain
+  std::atomic_bool finished;
+
+  // when running as coro if actually the coro lambda exited
+  bool returned;
+  bool failed;
+
+  CBVar rootTickInput{};
+  CBVar previousOutput{};
+  CBVar finishedOutput{};
+  bool ownedOutput;
+
+  CBContext *context;
+  CBNode *node;
+  CBFlow *flow;
+  std::vector<CBlock *> blocks;
+  std::unordered_map<std::string, CBVar, std::hash<std::string>,
+                     std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<
+                         std::pair<const std::string, CBVar>, 16>>
+      variables;
+};
+
+namespace chainblocks {
 struct Serialization {
   static inline void varFree(CBVar &output) {
     switch (output.valueType) {
@@ -446,9 +544,19 @@ struct Serialization {
       delete[] output.payload.imageValue.data;
       break;
     }
+    case CBType::Block: {
+      auto blk = output.payload.blockValue;
+      if (!blk->owned) {
+        // destroy only if not owned
+        blk->destroy(blk);
+      }
+      break;
+    }
+    case CBType::Chain: {
+      delete output.payload.chainValue;
+      break;
+    }
     case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
       throw CBException("Serialization not supported for the given type: " +
                         type2Name(output.valueType));
     }
@@ -607,9 +715,63 @@ struct Serialization {
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
     }
+    case CBType::Block: {
+      CBlock *blk;
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
+      std::vector<char> buf;
+      buf.resize(len + 1);
+      read((uint8_t *)&buf[0], len);
+      buf[len] = 0;
+      blk = createBlock(&buf[0]);
+      if (!blk) {
+        throw CBException("Block not found! name: " + std::string(&buf[0]));
+      }
+      blk->setup(blk);
+      // TODO we need some block hashing to validate maybe?
+      auto params = blk->parameters(blk);
+      for (uint32_t i; i < params.len; i++) {
+        CBVar tmp{};
+        deserialize(read, tmp);
+        blk->setParam(blk, int(i), tmp);
+        varFree(tmp);
+      }
+      break;
+    }
+    case CBType::Chain: {
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
+      std::vector<char> buf;
+      buf.resize(len + 1);
+      read((uint8_t *)&buf[0], len);
+      buf[len] = 0;
+      auto chain = new CBChain(&buf[0]);
+      read((uint8_t *)&chain->looped, 1);
+      read((uint8_t *)&chain->unsafe, 1);
+      // blocks len
+      read((uint8_t *)&len, sizeof(uint32_t));
+      // blocks
+      for (uint32_t i; i < len; i++) {
+        CBVar blockVar{};
+        deserialize(read, blockVar);
+        chain->addBlock(blockVar.payload.blockValue);
+        // blow's owner is the chain
+      }
+      // variables len
+      read((uint8_t *)&len, sizeof(uint32_t));
+      auto varsLen = len;
+      for (uint32_t i; i < varsLen; i++) {
+        read((uint8_t *)&len, sizeof(uint32_t));
+        buf.resize(len + 1);
+        read((uint8_t *)&buf[0], len);
+        buf[len] = 0;
+        CBVar tmp{};
+        deserialize(read, tmp);
+        chain->variables[&buf[0]] = tmp;
+      }
+      break;
+    }
     case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
       throw CBException("WriteFile: Type cannot be serialized (yet?). " +
                         type2Name(output.valueType));
     }
@@ -719,9 +881,71 @@ struct Serialization {
       total += size;
       break;
     }
+    case CBType::Block: {
+      auto blk = input.payload.blockValue;
+      { // Name
+        auto name = blk->name(blk);
+        uint32_t len = strlen(name);
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)name, len);
+        total += len;
+      }
+      { // Parameters
+        auto params = blk->parameters(blk);
+        for (uint32_t i; i < params.len; i++) {
+          auto pval = blk->getParam(blk, int(i));
+          total += serialize(pval, write);
+        }
+      }
+      break;
+    }
+    case CBType::Chain: {
+      auto chain = input.payload.chainValue;
+      { // Name
+        uint32_t len = uint32_t(chain->name.size());
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)chain->name.c_str(), len);
+        total += len;
+      }
+      { // Looped & Unsafe
+        write((const uint8_t *)&chain->looped, 1);
+        total += 1;
+        write((const uint8_t *)&chain->unsafe, 1);
+        total += 1;
+      }
+      { // Blocks len
+        uint32_t len = uint32_t(chain->blocks.size());
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+      }
+      // Blocks
+      for (auto block : chain->blocks) {
+        CBVar blockVar{};
+        blockVar.valueType = CBType::Block;
+        blockVar.payload.blockValue = block;
+        total += serialize(blockVar, write);
+      }
+      { // Variables len
+        uint32_t len = uint32_t(chain->variables.size());
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+      }
+      // Variables
+      for (auto &var : chain->variables) {
+        uint32_t len = uint32_t(var.first.size());
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)var.first.c_str(), len);
+        total += len;
+        // Serialization discards anything cept payload
+        // That is what we want anyway!
+        total += serialize(var.second, write);
+      }
+      break;
+    }
     case CBType::Object:
-    case CBType::Chain:
-    case CBType::Block:
       throw CBException("Type cannot be serialized. " +
                         type2Name(input.valueType));
     }
