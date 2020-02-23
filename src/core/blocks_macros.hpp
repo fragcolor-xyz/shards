@@ -35,6 +35,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK(_name_)                                             \
@@ -68,6 +69,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_BLOCK_TYPE(_namespace_, _name_)                                \
@@ -102,6 +104,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 #define RUNTIME_CORE_BLOCK_TYPE(_name_)                                        \
@@ -136,6 +139,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
@@ -219,6 +223,12 @@
   result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {             \
     reinterpret_cast<_name_##Runtime *>(block)->core.cleanup();                \
   });
+
+#define RUNTIME_BLOCK_mutate(_name_)                                           \
+  result->mutate =                                                             \
+      static_cast<CBMutateProc>([](CBlock *block, CBTable options) {           \
+        reinterpret_cast<_name_##Runtime *>(block)->core.mutate(options);      \
+      });
 
 #define RUNTIME_BLOCK_END(_name_)                                              \
   return result;                                                               \

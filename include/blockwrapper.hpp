@@ -24,6 +24,7 @@ CB_HAS_MEMBER_TEST(getParam);
 CB_HAS_MEMBER_TEST(warmup);
 CB_HAS_MEMBER_TEST(activate);
 CB_HAS_MEMBER_TEST(cleanup);
+CB_HAS_MEMBER_TEST(mutate);
 
 // Composition is preferred
 template <class T> struct BlockWrapper {
@@ -189,6 +190,17 @@ template <class T> struct BlockWrapper {
       });
     } else {
       result->cleanup = static_cast<CBCleanupProc>([](CBlock *b) {});
+    }
+
+    // mutate
+    if constexpr (has_mutate<T>::value) {
+      result->mutate =
+          static_cast<CBMutateProc>([](CBlock *b, CBTable options) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.mutate(options);
+          });
+    } else {
+      // mutate is optional!
+      result->cleanup = nullptr;
     }
 
     return result;
