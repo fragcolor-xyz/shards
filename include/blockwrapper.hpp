@@ -169,7 +169,7 @@ template <class T> struct BlockWrapper {
       });
     } else {
       // warmup is optional!
-      result->cleanup = nullptr;
+      result->warmup = nullptr;
     }
 
     // activate
@@ -200,7 +200,7 @@ template <class T> struct BlockWrapper {
           });
     } else {
       // mutate is optional!
-      result->cleanup = nullptr;
+      result->mutate = nullptr;
     }
 
     return result;
