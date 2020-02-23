@@ -113,20 +113,9 @@ struct CoreInfo {
 };
 
 struct Const {
-  static inline Types TypesInfo{{
-      CoreInfo::NoneType,      CoreInfo::BoolType,      CoreInfo::BoolSeqType,
-      CoreInfo::IntType,       CoreInfo::IntSeqType,    CoreInfo::Int2Type,
-      CoreInfo::Int2SeqType,   CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
-      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,   CoreInfo::Int8Type,
-      CoreInfo::Int8SeqType,   CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
-      CoreInfo::FloatType,     CoreInfo::FloatSeqType,  CoreInfo::Float2Type,
-      CoreInfo::Float2SeqType, CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
-      CoreInfo::Float4Type,    CoreInfo::Float4SeqType, CoreInfo::ColorType,
-      CoreInfo::ColorSeqType,  CoreInfo::StringType,    CoreInfo::StringSeqType,
-  }};
-
-  static inline ParamsInfo constParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Value", "The constant value to insert in the chain.", TypesInfo));
+  static inline ParamsInfo constParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Value", "The constant value to insert in the chain.",
+                        CoreInfo::AnyType));
 
   CBVar _value{};
   CBTypeInfo _innerInfo{};

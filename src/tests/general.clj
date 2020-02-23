@@ -678,6 +678,12 @@
 
   (Msg "All looking good!")))
 
+(schedule Root
+          (Chain
+           "SaveBinary"
+           (Const testChain)
+           (WriteFile "testChain.cbin")))
+
 (schedule Root testChain)
 (if (tick Root) nil (throw "Root tick failed"))
 

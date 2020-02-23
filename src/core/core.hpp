@@ -893,7 +893,7 @@ struct Serialization {
       }
       { // Parameters
         auto params = blk->parameters(blk);
-        for (uint32_t i; i < params.len; i++) {
+        for (uint32_t i = 0; i < params.len; i++) {
           auto pval = blk->getParam(blk, int(i));
           total += serialize(pval, write);
         }
