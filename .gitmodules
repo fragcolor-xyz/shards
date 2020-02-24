@@ -25,9 +25,6 @@
 [submodule "deps/imgui_club"]
 	path = deps/imgui_club
 	url = https://github.com/chainblocks/imgui_club.git
-[submodule "nameof"]
-	path = deps/nameof
-	url = https://github.com/chainblocks/nameof.git
 [submodule "kcp"]
 	path = deps/kcp
 	url = https://github.com/chainblocks/kcp.git
