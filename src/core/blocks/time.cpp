@@ -31,13 +31,10 @@ struct NowMs : public Now {
     return Var(dt.count());
   }
 };
-
-DECLARE_CBLOCK("Time.Now", Now);
-DECLARE_CBLOCK("Time.NowMs", NowMs);
-
 } // namespace Time
+
 void registerTimeBlocks() {
-  REGISTER_CBLOCK(Time::Now);
-  REGISTER_CBLOCK(Time::NowMs);
+  REGISTER_CBLOCK("Time.Now", Time::Now);
+  REGISTER_CBLOCK("Time.NowMs", Time::NowMs);
 }
 } // namespace chainblocks

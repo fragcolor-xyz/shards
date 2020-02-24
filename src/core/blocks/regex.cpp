@@ -126,14 +126,10 @@ struct Replace : public Common {
   }
 };
 
-DECLARE_CBLOCK("Regex.Replace", Replace);
-DECLARE_CBLOCK("Regex.Search", Search);
-DECLARE_CBLOCK("Regex.Match", Match);
-
 void registerBlocks() {
-  REGISTER_CBLOCK(Match);
-  REGISTER_CBLOCK(Search);
-  REGISTER_CBLOCK(Replace);
+  REGISTER_CBLOCK("Regex.Replace", Replace);
+  REGISTER_CBLOCK("Regex.Search", Search);
+  REGISTER_CBLOCK("Regex.Match", Match);
 }
 } // namespace Regex
 } // namespace chainblocks

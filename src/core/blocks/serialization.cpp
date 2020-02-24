@@ -234,11 +234,10 @@ struct LoadImage : public FileBase {
   }
 };
 
-DECLARE_CBLOCK("LoadImage", LoadImage);
-
 void registerSerializationBlocks() {
   REGISTER_CORE_BLOCK(WriteFile);
   REGISTER_CORE_BLOCK(ReadFile);
-  REGISTER_CBLOCK(LoadImage);
+  REGISTER_CBLOCK("LoadImage", LoadImage);
+  ;
 }
 }; // namespace chainblocks

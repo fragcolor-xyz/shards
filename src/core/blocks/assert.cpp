@@ -85,11 +85,9 @@ struct IsNot : public Base {
   }
 };
 
-DECLARE_CBLOCK("Assert.Is", Is);
-DECLARE_CBLOCK("Assert.IsNot", IsNot);
 void registerBlocks() {
-  REGISTER_CBLOCK(Is);
-  REGISTER_CBLOCK(IsNot);
+  REGISTER_CBLOCK("Assert.Is", Is);
+  REGISTER_CBLOCK("Assert.IsNot", IsNot);
 }
 }; // namespace Assert
 }; // namespace chainblocks

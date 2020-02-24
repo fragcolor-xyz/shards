@@ -559,15 +559,10 @@ struct ChainLoader : public ChainRunner {
   }
 };
 
-DECLARE_CBLOCK("Resume", Resume);
-DECLARE_CBLOCK("WaitChain", WaitChain);
-DECLARE_CBLOCK("RunChain", RunChain);
-DECLARE_CBLOCK("ChainLoader", ChainLoader);
-
 void registerChainsBlocks() {
-  REGISTER_CBLOCK(Resume);
-  REGISTER_CBLOCK(WaitChain);
-  REGISTER_CBLOCK(RunChain);
-  REGISTER_CBLOCK(ChainLoader);
+  REGISTER_CBLOCK("Resume", Resume);
+  REGISTER_CBLOCK("WaitChain", WaitChain);
+  REGISTER_CBLOCK("RunChain", RunChain);
+  REGISTER_CBLOCK("ChainLoader", ChainLoader);
 }
 }; // namespace chainblocks

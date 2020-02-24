@@ -44,12 +44,9 @@ struct Decompress {
   }
 };
 
-DECLARE_CBLOCK("Snappy.Compress", Compress);
-DECLARE_CBLOCK("Snappy.Decompress", Decompress);
-
 void registerBlocks() {
-  REGISTER_CBLOCK(Compress);
-  REGISTER_CBLOCK(Decompress);
+  REGISTER_CBLOCK("Snappy.Compress", Compress);
+  REGISTER_CBLOCK("Snappy.Decompress", Decompress);
 }
 } // namespace Snappy
 } // namespace chainblocks

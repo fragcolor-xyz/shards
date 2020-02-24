@@ -1008,16 +1008,12 @@ struct SameLine : public Base {
   }
 };
 
-DECLARE_CBLOCK("ImGui.SameLine", SameLine);
-
 struct Separator : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
     ::ImGui::Separator();
     return input;
   }
 };
-
-DECLARE_CBLOCK("ImGui.Separator", Separator);
 
 struct Indent : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
@@ -1026,16 +1022,12 @@ struct Indent : public Base {
   }
 };
 
-DECLARE_CBLOCK("ImGui.Indent", Indent);
-
 struct Unindent : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
     ::ImGui::Unindent();
     return input;
   }
 };
-
-DECLARE_CBLOCK("ImGui.Unindent", Unindent);
 
 struct TreeNode : public Base {
   std::string _label;
@@ -1110,8 +1102,6 @@ struct TreeNode : public Base {
   }
 };
 
-DECLARE_CBLOCK("ImGui.TreeNode", TreeNode);
-
 #define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                            \
   struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
     _T_ _tmp;                                                                  \
@@ -1140,12 +1130,7 @@ DECLARE_CBLOCK("ImGui.TreeNode", TreeNode);
         return Var(_tmp);                                                      \
       }                                                                        \
     }                                                                          \
-  };                                                                           \
-                                                                               \
-  DECLARE_CBLOCK("ImGui."                                                      \
-                 "_CBT_"                                                       \
-                 "Drag",                                                       \
-                 _CBT_##Drag);
+  }
 
 IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
 IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
@@ -1180,12 +1165,7 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
         return _tmp;                                                           \
       }                                                                        \
     }                                                                          \
-  };                                                                           \
-                                                                               \
-  DECLARE_CBLOCK("ImGui."                                                      \
-                 "_CBT_"                                                       \
-                 "Drag",                                                       \
-                 _CBT_##Drag);
+  }
 
 IMGUIDRAG2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, 2);
 IMGUIDRAG2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, 3);
@@ -1225,12 +1205,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
         return Var(_tmp);                                                      \
       }                                                                        \
     }                                                                          \
-  };                                                                           \
-                                                                               \
-  DECLARE_CBLOCK("ImGui."                                                      \
-                 "_CBT_"                                                       \
-                 "Input",                                                      \
-                 _CBT_##Input);
+  }
 
 IMGUIINPUT(Int, int64_t, IntType, ImGuiDataType_S64, intValue, "%lld");
 IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
@@ -1268,12 +1243,7 @@ IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
         return _tmp;                                                           \
       }                                                                        \
     }                                                                          \
-  };                                                                           \
-                                                                               \
-  DECLARE_CBLOCK("ImGui."                                                      \
-                 "_CBT_"                                                       \
-                 "Input",                                                      \
-                 _CBT_##Input);
+  }
 
 IMGUIINPUT2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, "%lld", 2);
 IMGUIINPUT2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, "%d", 3);
@@ -1340,8 +1310,6 @@ struct TextInput : public Variable<CBType::String> {
   }
 };
 
-DECLARE_CBLOCK("ImGui.TextInput", TextInput);
-
 struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
@@ -1399,8 +1367,6 @@ struct Image : public Base {
     return input;
   }
 };
-
-DECLARE_CBLOCK("ImGui.Image", Image);
 
 // Register
 RUNTIME_BLOCK(ImGui, Style);
@@ -1477,29 +1443,29 @@ void registerImGuiBlocks() {
   REGISTER_BLOCK(ImGui, Text);
   REGISTER_BLOCK(ImGui, Button);
   REGISTER_BLOCK(ImGui, HexViewer);
-  registerBlock("ImGui.SameLine", &SameLineBlock::create);
-  registerBlock("ImGui.Separator", &SeparatorBlock::create);
-  registerBlock("ImGui.Indent", &IndentBlock::create);
-  registerBlock("ImGui.Unindent", &UnindentBlock::create);
-  registerBlock("ImGui.TreeNode", &TreeNodeBlock::create);
-  registerBlock("ImGui.IntInput", &IntInputBlock::create);
-  registerBlock("ImGui.FloatInput", &FloatInputBlock::create);
-  registerBlock("ImGui.Int2Input", &Int2InputBlock::create);
-  registerBlock("ImGui.Int3Input", &Int3InputBlock::create);
-  registerBlock("ImGui.Int4Input", &Int4InputBlock::create);
-  registerBlock("ImGui.Float2Input", &Float2InputBlock::create);
-  registerBlock("ImGui.Float3Input", &Float3InputBlock::create);
-  registerBlock("ImGui.Float4Input", &Float4InputBlock::create);
-  registerBlock("ImGui.IntDrag", &IntDragBlock::create);
-  registerBlock("ImGui.FloatDrag", &FloatDragBlock::create);
-  registerBlock("ImGui.Int2Drag", &Int2DragBlock::create);
-  registerBlock("ImGui.Int3Drag", &Int3DragBlock::create);
-  registerBlock("ImGui.Int4Drag", &Int4DragBlock::create);
-  registerBlock("ImGui.Float2Drag", &Float2DragBlock::create);
-  registerBlock("ImGui.Float3Drag", &Float3DragBlock::create);
-  registerBlock("ImGui.Float4Drag", &Float4DragBlock::create);
-  registerBlock("ImGui.TextInput", &TextInputBlock::create);
-  registerBlock("ImGui.Image", &ImageBlock::create);
+  REGISTER_CBLOCK("ImGui.SameLine", SameLine);
+  REGISTER_CBLOCK("ImGui.Separator", Separator);
+  REGISTER_CBLOCK("ImGui.Indent", Indent);
+  REGISTER_CBLOCK("ImGui.Unindent", Unindent);
+  REGISTER_CBLOCK("ImGui.TreeNode", TreeNode);
+  REGISTER_CBLOCK("ImGui.IntInput", IntInput);
+  REGISTER_CBLOCK("ImGui.FloatInput", FloatInput);
+  REGISTER_CBLOCK("ImGui.Int2Input", Int2Input);
+  REGISTER_CBLOCK("ImGui.Int3Input", Int3Input);
+  REGISTER_CBLOCK("ImGui.Int4Input", Int4Input);
+  REGISTER_CBLOCK("ImGui.Float2Input", Float2Input);
+  REGISTER_CBLOCK("ImGui.Float3Input", Float3Input);
+  REGISTER_CBLOCK("ImGui.Float4Input", Float4Input);
+  REGISTER_CBLOCK("ImGui.IntDrag", IntDrag);
+  REGISTER_CBLOCK("ImGui.FloatDrag", FloatDrag);
+  REGISTER_CBLOCK("ImGui.Int2Drag", Int2Drag);
+  REGISTER_CBLOCK("ImGui.Int3Drag", Int3Drag);
+  REGISTER_CBLOCK("ImGui.Int4Drag", Int4Drag);
+  REGISTER_CBLOCK("ImGui.Float2Drag", Float2Drag);
+  REGISTER_CBLOCK("ImGui.Float3Drag", Float3Drag);
+  REGISTER_CBLOCK("ImGui.Float4Drag", Float4Drag);
+  REGISTER_CBLOCK("ImGui.TextInput", TextInput);
+  REGISTER_CBLOCK("ImGui.Image", Image);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

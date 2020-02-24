@@ -59,15 +59,12 @@ struct UnsetEnv {
   }
 };
 
-DECLARE_CBLOCK("OS.GetEnv", GetEnv);
-DECLARE_CBLOCK("OS.SetEnv", SetEnv);
-DECLARE_CBLOCK("OS.AddEnv", AddEnv);
-DECLARE_CBLOCK("OS.UnsetEnv", UnsetEnv);
 } // namespace OS
+
 void registerOSBlocks() {
-  REGISTER_CBLOCK(OS::GetEnv);
-  REGISTER_CBLOCK(OS::SetEnv);
-  REGISTER_CBLOCK(OS::AddEnv);
-  REGISTER_CBLOCK(OS::UnsetEnv);
+  REGISTER_CBLOCK("OS.GetEnv", OS::GetEnv);
+  REGISTER_CBLOCK("OS.SetEnv", OS::SetEnv);
+  REGISTER_CBLOCK("OS.AddEnv", OS::AddEnv);
+  REGISTER_CBLOCK("OS.UnsetEnv", OS::UnsetEnv);
 }
 } // namespace chainblocks

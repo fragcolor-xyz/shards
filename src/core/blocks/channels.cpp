@@ -438,18 +438,12 @@ struct Complete : public Base {
   }
 };
 
-DECLARE_CBLOCK("Produce", Produce);
-DECLARE_CBLOCK("Broadcast", Broadcast);
-DECLARE_CBLOCK("Consume", Consume);
-DECLARE_CBLOCK("Listen", Listen);
-DECLARE_CBLOCK("Complete", Complete);
-
 void registerBlocks() {
-  REGISTER_CBLOCK(Produce);
-  REGISTER_CBLOCK(Broadcast);
-  REGISTER_CBLOCK(Consume);
-  REGISTER_CBLOCK(Listen);
-  REGISTER_CBLOCK(Complete);
+  REGISTER_CBLOCK("Produce", Produce);
+  REGISTER_CBLOCK("Broadcast", Broadcast);
+  REGISTER_CBLOCK("Consume", Consume);
+  REGISTER_CBLOCK("Listen", Listen);
+  REGISTER_CBLOCK("Complete", Complete);
 }
 } // namespace channels
 } // namespace chainblocks

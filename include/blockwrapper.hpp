@@ -29,7 +29,7 @@ CB_HAS_MEMBER_TEST(mutate);
 template <class T> struct BlockWrapper {
   CBlock header;
   T block;
-  static const char *name;
+  static inline const char *name = "";
 
   static __cdecl CBlock *create() {
     CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16})
@@ -205,14 +205,10 @@ template <class T> struct BlockWrapper {
   }
 };
 
-#define DECLARE_CBLOCK(__name__, __type__)                                     \
-  typedef ::chainblocks::BlockWrapper<__type__> __type__##Block;               \
-  template <>                                                                  \
-  const char * ::chainblocks::BlockWrapper<__type__>::name = __name__
-
-#define REGISTER_CBLOCK(__type__)                                              \
-  chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,      \
-                             &::chainblocks::BlockWrapper<__type__>::create)
+#define REGISTER_CBLOCK(__name__, __type__)                                    \
+  ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
+  ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
+                               &::chainblocks::BlockWrapper<__type__>::create)
 }; // namespace chainblocks
 
 #endif
