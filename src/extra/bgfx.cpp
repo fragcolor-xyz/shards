@@ -508,7 +508,7 @@ struct Texture2D : public BaseConsumer {
   }
 };
 
-typedef BlockWrapper<Texture2D> Texture2DBlock;
+DECLARE_CBLOCK("BGFX.Texture2D", Texture2D);
 
 // Register
 RUNTIME_BLOCK(BGFX, MainWindow);
@@ -532,6 +532,6 @@ RUNTIME_BLOCK_END(Draw);
 void registerBGFXBlocks() {
   REGISTER_BLOCK(BGFX, MainWindow);
   REGISTER_BLOCK(BGFX, Draw);
-  registerBlock("BGFX.Texture2D", &Texture2DBlock::create);
+  REGISTER_CBLOCK(Texture2D);
 }
 }; // namespace BGFX

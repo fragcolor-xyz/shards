@@ -58,7 +58,6 @@ void operator delete(void *ptr, std::align_val_t align) noexcept {
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
-extern void registerAssertBlocks();
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
@@ -88,6 +87,10 @@ namespace channels {
 extern void registerBlocks();
 }
 
+namespace Assert {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -111,7 +114,7 @@ void registerCoreBlocks() {
   static_assert(sizeof(CBVar) == 32);
 
   registerBlocksCoreBlocks();
-  registerAssertBlocks();
+  Assert::registerBlocks();
   registerChainsBlocks();
   registerLoggingBlocks();
   registerFlowBlocks();

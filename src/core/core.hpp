@@ -9,7 +9,6 @@
 
 // Included 3rdparty
 #include "easylogging++.h"
-#include "nameof.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -730,12 +729,13 @@ struct Serialization {
       blk->setup(blk);
       // TODO we need some block hashing to validate maybe?
       auto params = blk->parameters(blk);
-      for (uint32_t i; i < params.len; i++) {
+      for (uint32_t i = 0; i < params.len; i++) {
         CBVar tmp{};
         deserialize(read, tmp);
         blk->setParam(blk, int(i), tmp);
         varFree(tmp);
       }
+      output.payload.blockValue = blk;
       break;
     }
     case CBType::Chain: {
@@ -751,7 +751,7 @@ struct Serialization {
       // blocks len
       read((uint8_t *)&len, sizeof(uint32_t));
       // blocks
-      for (uint32_t i; i < len; i++) {
+      for (uint32_t i = 0; i < len; i++) {
         CBVar blockVar{};
         deserialize(read, blockVar);
         chain->addBlock(blockVar.payload.blockValue);
@@ -760,7 +760,7 @@ struct Serialization {
       // variables len
       read((uint8_t *)&len, sizeof(uint32_t));
       auto varsLen = len;
-      for (uint32_t i; i < varsLen; i++) {
+      for (uint32_t i = 0; i < varsLen; i++) {
         read((uint8_t *)&len, sizeof(uint32_t));
         buf.resize(len + 1);
         read((uint8_t *)&buf[0], len);
@@ -769,6 +769,7 @@ struct Serialization {
         deserialize(read, tmp);
         chain->variables[&buf[0]] = tmp;
       }
+      output.payload.chainValue = chain;
       break;
     }
     case CBType::Object:

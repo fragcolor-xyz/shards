@@ -32,12 +32,12 @@ struct NowMs : public Now {
   }
 };
 
-typedef BlockWrapper<Now> NowBlock;
-typedef BlockWrapper<NowMs> NowMsBlock;
+DECLARE_CBLOCK("Time.Now", Now);
+DECLARE_CBLOCK("Time.NowMs", NowMs);
 
 } // namespace Time
 void registerTimeBlocks() {
-  registerBlock("Time.Now", &Time::NowBlock::create);
-  registerBlock("Time.NowMs", &Time::NowMsBlock::create);
+  REGISTER_CBLOCK(Time::Now);
+  REGISTER_CBLOCK(Time::NowMs);
 }
 } // namespace chainblocks

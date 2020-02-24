@@ -59,16 +59,15 @@ struct UnsetEnv {
   }
 };
 
-typedef BlockWrapper<GetEnv> GetEnvBlock;
-typedef BlockWrapper<SetEnv> SetEnvBlock;
-typedef BlockWrapper<AddEnv> AddEnvBlock;
-typedef BlockWrapper<UnsetEnv> UnsetEnvBlock;
+DECLARE_CBLOCK("OS.GetEnv", GetEnv);
+DECLARE_CBLOCK("OS.SetEnv", SetEnv);
+DECLARE_CBLOCK("OS.AddEnv", AddEnv);
+DECLARE_CBLOCK("OS.UnsetEnv", UnsetEnv);
 } // namespace OS
-
 void registerOSBlocks() {
-  registerBlock("OS.GetEnv", &OS::GetEnvBlock::create);
-  registerBlock("OS.SetEnv", &OS::SetEnvBlock::create);
-  registerBlock("OS.AddEnv", &OS::AddEnvBlock::create);
-  registerBlock("OS.UnsetEnv", &OS::UnsetEnvBlock::create);
+  REGISTER_CBLOCK(OS::GetEnv);
+  REGISTER_CBLOCK(OS::SetEnv);
+  REGISTER_CBLOCK(OS::AddEnv);
+  REGISTER_CBLOCK(OS::UnsetEnv);
 }
 } // namespace chainblocks

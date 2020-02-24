@@ -1008,7 +1008,7 @@ struct SameLine : public Base {
   }
 };
 
-typedef BlockWrapper<SameLine> SameLineBlock;
+DECLARE_CBLOCK("ImGui.SameLine", SameLine);
 
 struct Separator : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
@@ -1017,7 +1017,7 @@ struct Separator : public Base {
   }
 };
 
-typedef BlockWrapper<Separator> SeparatorBlock;
+DECLARE_CBLOCK("ImGui.Separator", Separator);
 
 struct Indent : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
@@ -1026,7 +1026,7 @@ struct Indent : public Base {
   }
 };
 
-typedef BlockWrapper<Indent> IndentBlock;
+DECLARE_CBLOCK("ImGui.Indent", Indent);
 
 struct Unindent : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
@@ -1035,7 +1035,7 @@ struct Unindent : public Base {
   }
 };
 
-typedef BlockWrapper<Unindent> UnindentBlock;
+DECLARE_CBLOCK("ImGui.Unindent", Unindent);
 
 struct TreeNode : public Base {
   std::string _label;
@@ -1110,7 +1110,7 @@ struct TreeNode : public Base {
   }
 };
 
-typedef BlockWrapper<TreeNode> TreeNodeBlock;
+DECLARE_CBLOCK("ImGui.TreeNode", TreeNode);
 
 #define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                            \
   struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
@@ -1142,7 +1142,10 @@ typedef BlockWrapper<TreeNode> TreeNodeBlock;
     }                                                                          \
   };                                                                           \
                                                                                \
-  typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
+  DECLARE_CBLOCK("ImGui."                                                      \
+                 "_CBT_"                                                       \
+                 "Drag",                                                       \
+                 _CBT_##Drag);
 
 IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
 IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
@@ -1179,7 +1182,10 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
     }                                                                          \
   };                                                                           \
                                                                                \
-  typedef BlockWrapper<_CBT_##Drag> _CBT_##DragBlock;
+  DECLARE_CBLOCK("ImGui."                                                      \
+                 "_CBT_"                                                       \
+                 "Drag",                                                       \
+                 _CBT_##Drag);
 
 IMGUIDRAG2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, 2);
 IMGUIDRAG2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, 3);
@@ -1221,7 +1227,10 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
     }                                                                          \
   };                                                                           \
                                                                                \
-  typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
+  DECLARE_CBLOCK("ImGui."                                                      \
+                 "_CBT_"                                                       \
+                 "Input",                                                      \
+                 _CBT_##Input);
 
 IMGUIINPUT(Int, int64_t, IntType, ImGuiDataType_S64, intValue, "%lld");
 IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
@@ -1261,7 +1270,10 @@ IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
     }                                                                          \
   };                                                                           \
                                                                                \
-  typedef BlockWrapper<_CBT_##Input> _CBT_##InputBlock;
+  DECLARE_CBLOCK("ImGui."                                                      \
+                 "_CBT_"                                                       \
+                 "Input",                                                      \
+                 _CBT_##Input);
 
 IMGUIINPUT2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, "%lld", 2);
 IMGUIINPUT2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, "%d", 3);
@@ -1328,7 +1340,7 @@ struct TextInput : public Variable<CBType::String> {
   }
 };
 
-typedef BlockWrapper<TextInput> TextInputBlock;
+DECLARE_CBLOCK("ImGui.TextInput", TextInput);
 
 struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
@@ -1388,7 +1400,7 @@ struct Image : public Base {
   }
 };
 
-typedef BlockWrapper<Image> ImageBlock;
+DECLARE_CBLOCK("ImGui.Image", Image);
 
 // Register
 RUNTIME_BLOCK(ImGui, Style);

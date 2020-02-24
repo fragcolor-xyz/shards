@@ -5,7 +5,6 @@
 #define CB_BLOCKWRAPPER_HPP
 
 #include "chainblocks.h"
-#include "nameof.hpp"
 #include "utility.hpp"
 
 namespace chainblocks {
@@ -30,7 +29,7 @@ CB_HAS_MEMBER_TEST(mutate);
 template <class T> struct BlockWrapper {
   CBlock header;
   T block;
-  constexpr static auto type_name = NAMEOF_TYPE(T);
+  static const char *name;
 
   static __cdecl CBlock *create() {
     CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16})
@@ -42,8 +41,7 @@ template <class T> struct BlockWrapper {
         return reinterpret_cast<BlockWrapper<T> *>(b)->block.name();
       });
     } else {
-      result->name =
-          static_cast<CBNameProc>([](CBlock *b) { return type_name.c_str(); });
+      result->name = static_cast<CBNameProc>([](CBlock *b) { return name; });
     }
 
     // help
@@ -206,6 +204,15 @@ template <class T> struct BlockWrapper {
     return result;
   }
 };
+
+#define DECLARE_CBLOCK(__name__, __type__)                                     \
+  typedef ::chainblocks::BlockWrapper<__type__> __type__##Block;               \
+  template <>                                                                  \
+  const char * ::chainblocks::BlockWrapper<__type__>::name = __name__
+
+#define REGISTER_CBLOCK(__type__)                                              \
+  chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,      \
+                             &::chainblocks::BlockWrapper<__type__>::create)
 }; // namespace chainblocks
 
 #endif

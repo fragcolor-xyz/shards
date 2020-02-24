@@ -6,7 +6,6 @@
 
 #include "chainblocks.h"
 #include <magic_enum.hpp>
-#include <nameof.hpp>
 #include <string>
 #include <vector>
 

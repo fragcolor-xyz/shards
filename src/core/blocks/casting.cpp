@@ -444,7 +444,7 @@ struct BytesToStringUnsafe {
   }
 };
 
-typedef BlockWrapper<BytesToStringUnsafe> BytesToStringBlock;
+DECLARE_CBLOCK("BytesToString!!", BytesToStringUnsafe);
 
 template <CBType ET> struct ExpectX {
   static inline Type outputType{{ET}};
@@ -729,6 +729,6 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectBool);
   REGISTER_CORE_BLOCK(ExpectSeq);
   REGISTER_CORE_BLOCK(ToBytes);
-  registerBlock("BytesToString!!", &BytesToStringBlock::create);
+  REGISTER_CBLOCK(BytesToStringUnsafe);
 }
 }; // namespace chainblocks

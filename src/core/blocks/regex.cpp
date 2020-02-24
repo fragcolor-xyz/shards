@@ -61,8 +61,6 @@ struct Match : public Common {
   }
 };
 
-typedef BlockWrapper<Match> MatchBlock;
-
 struct Search : public Common {
   IterableSeq _output;
   std::vector<std::string> _pool;
@@ -87,8 +85,6 @@ struct Search : public Common {
     return Var(_output);
   }
 };
-
-typedef BlockWrapper<Search> SearchBlock;
 
 struct Replace : public Common {
   std::string _replacement;
@@ -130,12 +126,14 @@ struct Replace : public Common {
   }
 };
 
-typedef BlockWrapper<Replace> ReplaceBlock;
+DECLARE_CBLOCK("Regex.Replace", Replace);
+DECLARE_CBLOCK("Regex.Search", Search);
+DECLARE_CBLOCK("Regex.Match", Match);
 
 void registerBlocks() {
-  registerBlock("Regex.Match", &MatchBlock::create);
-  registerBlock("Regex.Search", &SearchBlock::create);
-  registerBlock("Regex.Replace", &ReplaceBlock::create);
+  REGISTER_CBLOCK(Match);
+  REGISTER_CBLOCK(Search);
+  REGISTER_CBLOCK(Replace);
 }
 } // namespace Regex
 } // namespace chainblocks

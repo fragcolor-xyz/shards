@@ -682,7 +682,16 @@
           (Chain
            "SaveBinary"
            (Const testChain)
-           (WriteFile "testChain.cbin")))
+           (WriteFile "testChain.bin")))
+
+(schedule Root
+          (Chain
+           "LoadBinary"
+           (ReadFile "testChain.bin")
+           (Set .loadedChain)
+           (Log)
+           ;; TODO
+           ))
 
 (schedule Root testChain)
 (if (tick Root) nil (throw "Root tick failed"))

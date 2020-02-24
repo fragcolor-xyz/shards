@@ -44,12 +44,12 @@ struct Decompress {
   }
 };
 
-typedef BlockWrapper<Compress> CompressBlock;
-typedef BlockWrapper<Decompress> DecompressBlock;
+DECLARE_CBLOCK("Snappy.Compress", Compress);
+DECLARE_CBLOCK("Snappy.Decompress", Decompress);
 
 void registerBlocks() {
-  registerBlock("Snappy.Compress", &CompressBlock::create);
-  registerBlock("Snappy.Decompress", &DecompressBlock::create);
+  REGISTER_CBLOCK(Compress);
+  REGISTER_CBLOCK(Decompress);
 }
 } // namespace Snappy
 } // namespace chainblocks

@@ -438,18 +438,18 @@ struct Complete : public Base {
   }
 };
 
-typedef BlockWrapper<Produce> ProduceBlock;
-typedef BlockWrapper<Broadcast> BroadcastBlock;
-typedef BlockWrapper<Consume> ConsumeBlock;
-typedef BlockWrapper<Listen> ListenBlock;
-typedef BlockWrapper<Complete> CompleteBlock;
+DECLARE_CBLOCK("Produce", Produce);
+DECLARE_CBLOCK("Broadcast", Broadcast);
+DECLARE_CBLOCK("Consume", Consume);
+DECLARE_CBLOCK("Listen", Listen);
+DECLARE_CBLOCK("Complete", Complete);
 
 void registerBlocks() {
-  registerBlock("Produce", &ProduceBlock::create);
-  registerBlock("Broadcast", &BroadcastBlock::create);
-  registerBlock("Consume", &ConsumeBlock::create);
-  registerBlock("Listen", &ListenBlock::create);
-  registerBlock("Complete", &CompleteBlock::create);
+  REGISTER_CBLOCK(Produce);
+  REGISTER_CBLOCK(Broadcast);
+  REGISTER_CBLOCK(Consume);
+  REGISTER_CBLOCK(Listen);
+  REGISTER_CBLOCK(Complete);
 }
 } // namespace channels
 } // namespace chainblocks

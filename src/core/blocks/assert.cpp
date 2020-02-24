@@ -85,12 +85,11 @@ struct IsNot : public Base {
   }
 };
 
-typedef BlockWrapper<Is> IsBlock;
-typedef BlockWrapper<IsNot> IsNotBlock;
-}; // namespace Assert
-
-void registerAssertBlocks() {
-  registerBlock("Assert.Is", &Assert::IsBlock::create);
-  registerBlock("Assert.IsNot", &Assert::IsNotBlock::create);
+DECLARE_CBLOCK("Assert.Is", Is);
+DECLARE_CBLOCK("Assert.IsNot", IsNot);
+void registerBlocks() {
+  REGISTER_CBLOCK(Is);
+  REGISTER_CBLOCK(IsNot);
 }
+}; // namespace Assert
 }; // namespace chainblocks
