@@ -280,7 +280,7 @@ struct Resume : public ChainBase {
   }
 };
 
-struct ChainRunner : public ChainBase {
+struct BaseRunner : public ChainBase {
   CBFlow _steppedFlow;
 
   // Only chain runners should expose varaibles to the context
@@ -338,7 +338,7 @@ struct ChainRunner : public ChainBase {
   }
 };
 
-struct RunChain : public ChainRunner {
+struct RunChain : public BaseRunner {
   static CBParametersInfo parameters() {
     return CBParametersInfo(runChainParamsInfo);
   }
@@ -413,7 +413,81 @@ struct RunChain : public ChainRunner {
   }
 };
 
-struct ChainLoader : public ChainRunner {
+template <class T> struct BaseLoader : public BaseRunner {
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(T::paramsInfo);
+  }
+
+  CBTypeInfo _inputTypeCopy{};
+  IterableExposedInfo _sharedCopy;
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _inputTypeCopy = data.inputType;
+    const IterableExposedInfo sharedStb(data.shared);
+    // copy shared
+    _sharedCopy = sharedStb;
+    return data.inputType;
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 1:
+      once = value.payload.boolValue;
+      break;
+    case 2:
+      mode = RunChainMode(value.payload.enumValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 1:
+      return Var(once);
+    case 2:
+      return Var::Enum(mode, 'frag', 'runC');
+    default:
+      break;
+    }
+    return Var();
+  }
+
+  void cleanup() { BaseRunner::cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!chain))
+      return input;
+
+    if (!doneOnce) {
+      if (once)
+        doneOnce = true;
+
+      if (mode == RunChainMode::Detached) {
+        activateDetached(context, input);
+        return input;
+      } else if (mode == RunChainMode::Stepped) {
+        activateStepMode(context, input);
+        return input;
+      } else {
+        // Run within the root flow
+        chain->flow = context->main->flow;
+        chain->node = context->main->node;
+        auto runRes = runSubChain(chain, context, input);
+        if (unlikely(runRes.state == Failed || context->aborted)) {
+          return StopChain;
+        } else {
+          return input;
+        }
+      }
+    } else {
+      return input;
+    }
+  }
+};
+
+struct ChainLoader : public BaseLoader<ChainLoader> {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Provider", "The chainblocks chain provider.",
                         ChainProvider::ProviderOrNone),
@@ -447,61 +521,32 @@ struct ChainLoader : public ChainRunner {
     return data.inputType;
   }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
-
   void setParam(int index, CBVar value) {
-    switch (index) {
-    case 0:
+    if (index == 0) {
       cleanup(); // stop current
       if (value.valueType == Object) {
         _provider = (CBChainProvider *)value.payload.objectValue;
       } else {
         _provider = nullptr;
       }
-      break;
-    case 1:
-      once = value.payload.boolValue;
-      break;
-    case 2:
-      mode = RunChainMode(value.payload.enumValue);
-      break;
-    default:
-      break;
+    } else {
+      BaseLoader<ChainLoader>::setParam(index, value);
     }
   }
 
   CBVar getParam(int index) {
-    switch (index) {
-    case 0:
+    if (index == 0) {
       if (_provider) {
         return Var::Object(_provider, 'frag', 'chnp');
       } else {
         return Var();
       }
-      break;
-    case 1:
-      return Var(once);
-      break;
-    case 2:
-      return Var::Enum(mode, 'frag', 'runC');
-      break;
-    default:
-      break;
+    } else {
+      return BaseLoader<ChainLoader>::getParam(index);
     }
-    return Var();
   }
 
-  void cleanup() {
-    ChainRunner::cleanup();
-
-    if (_provider && chain) {
-      _provider->release(_provider, chain);
-      chain = nullptr;
-    }
-
-    if (_provider)
-      _provider->reset(_provider);
-  }
+  void cleanup() { BaseLoader<ChainLoader>::cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!_provider))
@@ -529,33 +574,7 @@ struct ChainLoader : public ChainRunner {
       }
     }
 
-    if (unlikely(!chain))
-      return input;
-
-    if (!doneOnce) {
-      if (once)
-        doneOnce = true;
-
-      if (mode == RunChainMode::Detached) {
-        activateDetached(context, input);
-        return input;
-      } else if (mode == RunChainMode::Stepped) {
-        activateStepMode(context, input);
-        return input;
-      } else {
-        // Run within the root flow
-        chain->flow = context->main->flow;
-        chain->node = context->main->node;
-        auto runRes = runSubChain(chain, context, input);
-        if (unlikely(runRes.state == Failed || context->aborted)) {
-          return StopChain;
-        } else {
-          return input;
-        }
-      }
-    } else {
-      return input;
-    }
+    return BaseLoader<ChainLoader>::activate(context, input);
   }
 };
 
