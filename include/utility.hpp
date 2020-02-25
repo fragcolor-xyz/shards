@@ -76,11 +76,23 @@ public:
   }
 
   ~TParamVar() {
-    reset();
+    cleanup();
     CB_CORE::destroyVar(_v);
   }
 
-  void reset() {
+  void warmup(CBContext *ctx) {
+    if (_v.valueType == ContextVar) {
+      if (!_cp) {
+        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
+      }
+    } else if (_v.valueType == StackIndex) {
+      if (!_stack) {
+        _stack = CB_CORE::getStack(ctx);
+      }
+    }
+  }
+
+  void cleanup() {
     if (_cp) {
       CB_CORE::releaseVariable(_cp);
       _cp = nullptr;
@@ -90,7 +102,7 @@ public:
 
   CBVar &operator=(const CBVar &value) {
     CB_CORE::cloneVar(_v, value);
-    reset();
+    cleanup();
     return _v;
   }
 
@@ -98,14 +110,8 @@ public:
 
   CBVar &operator()(CBContext *ctx) {
     if (_v.valueType == ContextVar) {
-      if (unlikely(!_cp)) {
-        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
-      }
       return *_cp;
     } else if (_v.valueType == StackIndex) {
-      if (unlikely(!_stack)) {
-        _stack = CB_CORE::getStack(ctx);
-      }
       return _stack
           ->elements[ptrdiff_t(_stack->len - 1) - _v.payload.stackIndexValue];
     } else {

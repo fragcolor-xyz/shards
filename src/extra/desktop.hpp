@@ -350,6 +350,7 @@ struct MousePosBase {
 
   CBVar getParam(int index) { return _window; }
 
-  void cleanup() { _window.reset(); }
+  void cleanup() { _window.cleanup(); }
+  void warmup(CBContext *context) { _window.warmup(context); }
 };
 }; // namespace Desktop

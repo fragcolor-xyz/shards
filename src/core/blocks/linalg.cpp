@@ -530,6 +530,7 @@ struct Orthographic : VectorUnaryBase {
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
   RUNTIME_BLOCK_destroy(_name_);                                               \
   RUNTIME_BLOCK_cleanup(_name_);                                               \
+  RUNTIME_BLOCK_warmup(_name_);                                                \
   RUNTIME_BLOCK_setup(_name_);                                                 \
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \

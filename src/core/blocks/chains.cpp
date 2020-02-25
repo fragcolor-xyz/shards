@@ -510,17 +510,6 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 
   CBChainProvider *_provider;
 
-  CBTypeInfo _inputTypeCopy{};
-  IterableExposedInfo _sharedCopy;
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _inputTypeCopy = data.inputType;
-    const IterableExposedInfo sharedStb(data.shared);
-    // copy shared
-    _sharedCopy = sharedStb;
-    return data.inputType;
-  }
-
   void setParam(int index, CBVar value) {
     if (index == 0) {
       cleanup(); // stop current

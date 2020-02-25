@@ -1331,6 +1331,7 @@ RUNTIME_BLOCK_END(SendKeyEvent);
 
 RUNTIME_BLOCK(Desktop, GetMousePos);
 RUNTIME_BLOCK_cleanup(GetMousePos);
+RUNTIME_BLOCK_warmup(GetMousePos);
 RUNTIME_BLOCK_inputTypes(GetMousePos);
 RUNTIME_BLOCK_outputTypes(GetMousePos);
 RUNTIME_BLOCK_parameters(GetMousePos);
@@ -1342,6 +1343,7 @@ RUNTIME_BLOCK_END(GetMousePos);
 
 RUNTIME_BLOCK(Desktop, SetMousePos);
 RUNTIME_BLOCK_cleanup(SetMousePos);
+RUNTIME_BLOCK_warmup(SetMousePos);
 RUNTIME_BLOCK_inputTypes(SetMousePos);
 RUNTIME_BLOCK_outputTypes(SetMousePos);
 RUNTIME_BLOCK_parameters(SetMousePos);
@@ -1354,6 +1356,7 @@ RUNTIME_BLOCK_END(SetMousePos);
 RUNTIME_BLOCK(Desktop, Tap);
 RUNTIME_BLOCK_setup(Tap);
 RUNTIME_BLOCK_cleanup(Tap);
+RUNTIME_BLOCK_warmup(Tap);
 RUNTIME_BLOCK_inputTypes(Tap);
 RUNTIME_BLOCK_outputTypes(Tap);
 RUNTIME_BLOCK_parameters(Tap);
@@ -1365,6 +1368,7 @@ RUNTIME_BLOCK_END(Tap);
 
 RUNTIME_BLOCK(Desktop, LeftClick);
 RUNTIME_BLOCK_cleanup(LeftClick);
+RUNTIME_BLOCK_warmup(LeftClick);
 RUNTIME_BLOCK_inputTypes(LeftClick);
 RUNTIME_BLOCK_outputTypes(LeftClick);
 RUNTIME_BLOCK_parameters(LeftClick);
@@ -1376,6 +1380,7 @@ RUNTIME_BLOCK_END(LeftClick);
 
 RUNTIME_BLOCK(Desktop, RightClick);
 RUNTIME_BLOCK_cleanup(RightClick);
+RUNTIME_BLOCK_warmup(RightClick);
 RUNTIME_BLOCK_inputTypes(RightClick);
 RUNTIME_BLOCK_outputTypes(RightClick);
 RUNTIME_BLOCK_parameters(RightClick);
@@ -1387,6 +1392,7 @@ RUNTIME_BLOCK_END(RightClick);
 
 RUNTIME_BLOCK(Desktop, MiddleClick);
 RUNTIME_BLOCK_cleanup(MiddleClick);
+RUNTIME_BLOCK_warmup(MiddleClick);
 RUNTIME_BLOCK_inputTypes(MiddleClick);
 RUNTIME_BLOCK_outputTypes(MiddleClick);
 RUNTIME_BLOCK_parameters(MiddleClick);

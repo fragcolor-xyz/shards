@@ -70,7 +70,7 @@ extern void registerJsonBlocks();
 extern void registerNetworkBlocks();
 extern void registerStructBlocks();
 extern void registerTimeBlocks();
-extern void registerOSBlocks();
+// extern void registerOSBlocks();
 extern void registerProcessBlocks();
 
 namespace Math {
@@ -127,7 +127,7 @@ void registerCoreBlocks() {
   registerNetworkBlocks();
   registerStructBlocks();
   registerTimeBlocks();
-  registerOSBlocks();
+  // registerOSBlocks();
   Regex::registerBlocks();
   registerProcessBlocks();
   channels::registerBlocks();

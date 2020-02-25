@@ -23,7 +23,8 @@ struct FileBase {
 
   ParamVar _filename{};
 
-  virtual void cleanup() { _filename.reset(); }
+  virtual void cleanup() { _filename.cleanup(); }
+  void warmup(CBContext *context) { _filename.warmup(context); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -122,6 +123,7 @@ RUNTIME_CORE_BLOCK(WriteFile);
 RUNTIME_BLOCK_inputTypes(WriteFile);
 RUNTIME_BLOCK_outputTypes(WriteFile);
 RUNTIME_BLOCK_cleanup(WriteFile);
+RUNTIME_BLOCK_warmup(WriteFile);
 RUNTIME_BLOCK_parameters(WriteFile);
 RUNTIME_BLOCK_setParam(WriteFile);
 RUNTIME_BLOCK_getParam(WriteFile);
@@ -172,6 +174,7 @@ RUNTIME_CORE_BLOCK(ReadFile);
 RUNTIME_BLOCK_inputTypes(ReadFile);
 RUNTIME_BLOCK_outputTypes(ReadFile);
 RUNTIME_BLOCK_cleanup(ReadFile);
+RUNTIME_BLOCK_warmup(ReadFile);
 RUNTIME_BLOCK_parameters(ReadFile);
 RUNTIME_BLOCK_setParam(ReadFile);
 RUNTIME_BLOCK_getParam(ReadFile);

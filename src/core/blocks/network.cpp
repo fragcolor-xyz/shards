@@ -111,8 +111,13 @@ struct NetworkBase {
 
     _blks.reset();
 
-    _addr.reset();
-    _port.reset();
+    _addr.cleanup();
+    _port.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _addr.warmup(context);
+    _port.warmup(context);
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -300,6 +305,7 @@ struct Server : public NetworkBase {
 RUNTIME_BLOCK(Network, Server);
 RUNTIME_BLOCK_setup(Server);
 RUNTIME_BLOCK_cleanup(Server);
+RUNTIME_BLOCK_warmup(Server);
 RUNTIME_BLOCK_destroy(Server);
 RUNTIME_BLOCK_inputTypes(Server);
 RUNTIME_BLOCK_outputTypes(Server);
@@ -416,6 +422,7 @@ struct Client : public NetworkBase {
 RUNTIME_BLOCK(Network, Client);
 RUNTIME_BLOCK_setup(Client);
 RUNTIME_BLOCK_cleanup(Client);
+RUNTIME_BLOCK_warmup(Client);
 RUNTIME_BLOCK_destroy(Client);
 RUNTIME_BLOCK_inputTypes(Client);
 RUNTIME_BLOCK_outputTypes(Client);

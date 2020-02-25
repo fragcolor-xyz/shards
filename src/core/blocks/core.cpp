@@ -514,7 +514,8 @@ struct XpendTo : public XPendBase {
     throw CBException("Parameter out of range.");
   }
 
-  void cleanup() { _collection.reset(); }
+  void cleanup() { _collection.cleanup(); }
+  void warmup(CBContext *context) { _collection.warmup(context); }
 };
 
 struct AppendTo : public XpendTo {
@@ -878,6 +879,7 @@ RUNTIME_BLOCK_END(Profile);
 // Register PrependTo
 RUNTIME_CORE_BLOCK(PrependTo);
 RUNTIME_BLOCK_cleanup(PrependTo);
+RUNTIME_BLOCK_warmup(PrependTo);
 RUNTIME_BLOCK_inputTypes(PrependTo);
 RUNTIME_BLOCK_outputTypes(PrependTo);
 RUNTIME_BLOCK_parameters(PrependTo);
@@ -890,6 +892,7 @@ RUNTIME_BLOCK_END(PrependTo);
 // Register AppendTo
 RUNTIME_CORE_BLOCK(AppendTo);
 RUNTIME_BLOCK_cleanup(AppendTo);
+RUNTIME_BLOCK_warmup(AppendTo);
 RUNTIME_BLOCK_inputTypes(AppendTo);
 RUNTIME_BLOCK_outputTypes(AppendTo);
 RUNTIME_BLOCK_parameters(AppendTo);

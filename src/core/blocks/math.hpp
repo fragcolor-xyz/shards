@@ -71,7 +71,9 @@ struct BinaryBase : public Base {
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() { _operand.reset(); }
+  void cleanup() { _operand.cleanup(); }
+
+  void warmup(CBContext *context) { _operand.warmup(context); }
 
   void destroy() {
     if (_cachedSeq.valueType == Seq) {
@@ -421,6 +423,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
   RUNTIME_BLOCK_destroy(NAME);                                                 \
   RUNTIME_BLOCK_cleanup(NAME);                                                 \
+  RUNTIME_BLOCK_warmup(NAME);                                                  \
   RUNTIME_BLOCK_setup(NAME);                                                   \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \

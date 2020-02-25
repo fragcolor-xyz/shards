@@ -207,7 +207,8 @@ struct IndexOf {
     }
   }
 
-  void cleanup() { _item.reset(); }
+  void cleanup() { _item.cleanup(); }
+  void warmup(CBContext *context) { _item.warmup(context); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   CBTypesInfo outputTypes() {
@@ -295,6 +296,7 @@ struct IndexOf {
 // Register
 RUNTIME_CORE_BLOCK(IndexOf);
 RUNTIME_BLOCK_cleanup(IndexOf);
+RUNTIME_BLOCK_warmup(IndexOf);
 RUNTIME_BLOCK_inputTypes(IndexOf);
 RUNTIME_BLOCK_outputTypes(IndexOf);
 RUNTIME_BLOCK_parameters(IndexOf);

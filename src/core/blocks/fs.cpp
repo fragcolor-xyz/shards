@@ -324,7 +324,8 @@ struct Write {
     }
   }
 
-  void cleanup() { _contents.reset(); }
+  void cleanup() { _contents.cleanup(); }
+  void warmup(CBContext *context) { _contents.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto contents = _contents(context);
@@ -358,6 +359,8 @@ RUNTIME_BLOCK_outputTypes(Write);
 RUNTIME_BLOCK_parameters(Write);
 RUNTIME_BLOCK_setParam(Write);
 RUNTIME_BLOCK_getParam(Write);
+RUNTIME_BLOCK_cleanup(Write);
+RUNTIME_BLOCK_warmup(Write);
 RUNTIME_BLOCK_activate(Write);
 RUNTIME_BLOCK_END(Write);
 }; // namespace FS
