@@ -762,6 +762,15 @@ typedef struct CBTable(__cdecl *CBTableNew)();
 typedef const char *(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(const char *);
 
+struct CBChainInfo {
+  const char *name;
+  bool looped;
+  bool unsafe;
+  const CBlocks blocks;
+};
+
+typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(struct CBChain *chain);
+
 struct CBCore {
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
@@ -824,6 +833,7 @@ struct CBCore {
   CBRunChain runChain;
   CBValidateBlocks validateBlocks;
   CBRunBlocks runBlocks;
+  CBGetChainInfo getChainInfo;
 
   // Logging
   CBLog log;

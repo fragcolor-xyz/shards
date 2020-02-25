@@ -718,6 +718,14 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return output;
   };
 
+  result.getChainInfo = [](CBChain *chain) {
+    CBChainInfo info{chain->name.c_str(),
+                     chain->looped,
+                     chain->unsafe,
+                     {&chain->blocks[0], uint32_t(chain->blocks.size()), 0}};
+    return info;
+  };
+
   result.log = [](const char *msg) { LOG(INFO) << msg; };
 
   result.createBlock = [](const char *name) {
@@ -839,6 +847,8 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
 }
 
 namespace std {
+// TODO put in its own header maybe
+
 template <> struct hash<CBTypeInfo> {
   std::size_t operator()(const CBTypeInfo &typeInfo) const {
     using std::hash;
@@ -880,6 +890,160 @@ template <> struct hash<CBExposedTypeInfo> {
     res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
     res = res ^ hash<int>()(typeInfo.isTableEntry);
+    return res;
+  }
+};
+
+#define MAGIC_HASH(__val__) res = res ^ hash<decltype(__val__)>()(__val__)
+#define MAGIC_HASH2(__val__)                                                   \
+  res = res ^ hash<std::remove_reference<decltype(__val__)>::type>()(__val__)
+template <> struct hash<CBVar> {
+  std::size_t operator()(const CBVar &var) const {
+    using std::hash;
+    using std::size_t;
+    using std::string;
+    const static CBCore core = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
+
+    auto res = hash<int>()(int(var.valueType));
+    switch (var.valueType) {
+    case None:
+      MAGIC_HASH(var.payload.chainState);
+      break;
+    case Any:
+      break;
+    case Object:
+      MAGIC_HASH(var.payload.objectVendorId);
+      MAGIC_HASH(var.payload.objectTypeId);
+      MAGIC_HASH(var.payload.objectValue);
+      break;
+    case Enum:
+      MAGIC_HASH(var.payload.enumVendorId);
+      MAGIC_HASH(var.payload.enumTypeId);
+      MAGIC_HASH(var.payload.enumValue);
+      break;
+    case Bool:
+      MAGIC_HASH(var.payload.boolValue);
+      break;
+    case Int:
+      MAGIC_HASH(var.payload.intValue);
+      break;
+    case Int2:
+      for (auto i = 0; i < 2; i++) {
+        MAGIC_HASH2(var.payload.int2Value[i]);
+      }
+      break;
+    case Int3:
+      for (auto i = 0; i < 3; i++) {
+        MAGIC_HASH2(var.payload.int3Value[i]);
+      }
+      break;
+    case Int4:
+      for (auto i = 0; i < 4; i++) {
+        MAGIC_HASH2(var.payload.int4Value[i]);
+      }
+      break;
+    case Int8:
+      for (auto i = 0; i < 8; i++) {
+        MAGIC_HASH2(var.payload.int8Value[i]);
+      }
+      break;
+    case Int16:
+      for (auto i = 0; i < 16; i++) {
+        MAGIC_HASH2(var.payload.int16Value[i]);
+      }
+      break;
+    case Float:
+      MAGIC_HASH(var.payload.floatValue);
+      break;
+    case Float2:
+      for (auto i = 0; i < 2; i++) {
+        MAGIC_HASH2(var.payload.float2Value[i]);
+      }
+      break;
+    case Float3:
+      for (auto i = 0; i < 3; i++) {
+        MAGIC_HASH2(var.payload.float3Value[i]);
+      }
+      break;
+    case Float4:
+      for (auto i = 0; i < 4; i++) {
+        MAGIC_HASH2(var.payload.float4Value[i]);
+      }
+      break;
+    case Color:
+      MAGIC_HASH(var.payload.colorValue.r);
+      MAGIC_HASH(var.payload.colorValue.g);
+      MAGIC_HASH(var.payload.colorValue.b);
+      MAGIC_HASH(var.payload.colorValue.a);
+      break;
+    case Chain: {
+      auto chainInfo = core.getChainInfo(var.payload.chainValue);
+      std::string_view buf(chainInfo.name);
+      res = res ^ hash<std::string_view>()(buf);
+      MAGIC_HASH(chainInfo.looped);
+      MAGIC_HASH(chainInfo.unsafe);
+      for (uint32_t i = 0; i < chainInfo.blocks.len; i++) {
+        CBVar blockVar{};
+        blockVar.valueType = CBType::Block;
+        blockVar.payload.blockValue = chainInfo.blocks.elements[i];
+        res = res ^ hash<CBVar>()(blockVar);
+      }
+    } break;
+    case Block: {
+      auto blk = var.payload.blockValue;
+      std::string_view buf(blk->name(blk));
+      res = res ^ hash<std::string_view>()(buf);
+      auto params = blk->parameters(blk);
+      for (uint32_t i = 0; i < params.len; i++) {
+        res = res ^ hash<CBVar>()(blk->getParam(blk, int(i)));
+      }
+    } break;
+    case StackIndex:
+      MAGIC_HASH(var.payload.stackIndexValue);
+      break;
+    case Bytes: {
+      std::string_view buf((char *)var.payload.bytesValue,
+                           var.payload.bytesSize);
+      res = res ^ hash<std::string_view>()(buf);
+    } break;
+    case String:
+    case Path:
+    case ContextVar: {
+      std::string_view buf(var.payload.stringValue);
+      res = res ^ hash<std::string_view>()(buf);
+    } break;
+    case Image: {
+      MAGIC_HASH(var.payload.imageValue.width);
+      MAGIC_HASH(var.payload.imageValue.height);
+      MAGIC_HASH(var.payload.imageValue.channels);
+      MAGIC_HASH(var.payload.imageValue.flags);
+      auto len = size_t(var.payload.imageValue.width) *
+                 size_t(var.payload.imageValue.height) *
+                 size_t(var.payload.imageValue.channels);
+      std::string_view buf((char *)var.payload.imageValue.data, len);
+      res = res ^ hash<std::string_view>()(buf);
+    } break;
+    case Seq:
+      for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+        res = res ^ hash<CBVar>()(var.payload.seqValue.elements[i]);
+      }
+      break;
+    case Table: {
+      auto table = var.payload.tableValue;
+      table.api->tableForEach(
+          table,
+          [](const char *key, CBVar *value, void *data) {
+            std::size_t *pres = (std::size_t *)data;
+            std::string_view buf(key);
+            *pres = *pres ^ hash<std::string_view>()(buf);
+            *pres = *pres ^ hash<CBVar>()(*value);
+            return true;
+          },
+          &res);
+    } break;
+    case EndOfBlittableTypes:
+      break;
+    }
     return res;
   }
 };
