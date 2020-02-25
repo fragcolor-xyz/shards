@@ -896,7 +896,9 @@ template <> struct hash<CBExposedTypeInfo> {
 
 #define MAGIC_HASH(__val__) res = res ^ hash<decltype(__val__)>()(__val__)
 #define MAGIC_HASH2(__val__)                                                   \
-  res = res ^ hash<std::remove_reference<decltype(__val__)>::type>()(__val__)
+  res = res ^                                                                  \
+        hash<std::remove_const<                                                \
+            std::remove_reference<decltype(__val__)>::type>::type>()(__val__)
 template <> struct hash<CBVar> {
   std::size_t operator()(const CBVar &var) const {
     using std::hash;
