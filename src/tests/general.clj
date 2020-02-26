@@ -469,9 +469,9 @@
   (ToHex) (Log)
 
   "Hello file append..."
-  (WriteFile "test.bin")
+  (WriteFile "test.bin" :Append true)
   "Hello file append..."
-  (WriteFile "test.bin")
+  (WriteFile "test.bin" :Append true)
 
   "Hello Pandas"
   (ToBytes)

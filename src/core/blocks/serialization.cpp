@@ -18,15 +18,16 @@ struct FileBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "File", "The file to read/write from.", CoreInfo::StringStringVarOrNone));
+  static inline Parameters params{{"File",
+                                   "The file to read/write from.",
+                                   {CoreInfo::StringStringVarOrNone}}};
 
   ParamVar _filename{};
 
   virtual void cleanup() { _filename.cleanup(); }
   void warmup(CBContext *context) { _filename.warmup(context); }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -85,6 +86,35 @@ struct FileBase {
 
 struct WriteFile : public FileBase {
   std::ofstream _fileStream;
+  bool _append = false;
+
+  static inline Parameters params{
+      FileBase::params,
+      {{"Append",
+        "If we should append to the file if existed already or truncate. "
+        "(default: false).",
+        {CoreInfo::BoolType}}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 1:
+      _append = value.payload.boolValue;
+      break;
+    default:
+      FileBase::setParam(index, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 1:
+      return Var(_append);
+    default:
+      return FileBase::getParam(index);
+    }
+  }
 
   void cleanup() override {
     if (_fileStream.good()) {
@@ -109,7 +139,11 @@ struct WriteFile : public FileBase {
         return input;
       }
 
-      _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
+      if (_append)
+        _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
+      else
+        _fileStream =
+            std::ofstream(filename, std::ios::trunc | std::ios::binary);
     }
 
     Writer s(_fileStream);
