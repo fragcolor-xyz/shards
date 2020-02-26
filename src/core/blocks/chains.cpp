@@ -382,8 +382,12 @@ struct RunChain : public BaseRunner {
   }
 
   void warmup(CBContext *context) {
-    if (mode == RunChainMode::Inline && chain)
+    auto current = context->current;
+    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
+      context->current = chain.get();
       chain->warmup(context);
+      context->current = current;
+    }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -457,6 +461,15 @@ template <class T> struct BaseLoader : public BaseRunner {
   }
 
   void cleanup() { BaseRunner::cleanup(); }
+
+  void doWarmup(CBContext *context) {
+    auto current = context->current;
+    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
+      context->current = chain.get();
+      chain->warmup(context);
+      context->current = current;
+    }
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
@@ -565,8 +578,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         }
         chain.reset(update.chain);
 
-        if (mode == RunChainMode::Inline && chain)
-          chain->warmup(context);
+        doWarmup(context);
       }
     }
 
@@ -682,8 +694,8 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
       asyncRes.get();
 
       _chainHash = chain->composedHash;
-      if (mode == RunChainMode::Inline)
-        chain->warmup(context);
+
+      doWarmup(context);
     }
 
     return BaseLoader<ChainLoader>::activate(context, input);
