@@ -6,8 +6,8 @@
 
 using json = nlohmann::json;
 
-void from_json(const json &j, CBChainPtr &chain);
-void to_json(json &j, const CBChainPtr &chain);
+void from_json(const json &j, CBChainRef &chain);
+void to_json(json &j, const CBChainRef &chain);
 
 void _releaseMemory(CBVar &var) {
   // Used by Block and Chain from_json
@@ -33,6 +33,9 @@ void _releaseMemory(CBVar &var) {
     auto map = (chainblocks::CBMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
+  case Chain: {
+    CBChain::deleteRef(var.payload.chainValue);
+  } break;
   default:
     break;
   }
@@ -44,7 +47,7 @@ void to_json(json &j, const CBVar &var) {
   case Any:
   case Object:
   case Chain: {
-    json jchain = (CBChainPtr)var.payload.chainValue;
+    json jchain = var.payload.chainValue;
     j = json{{"type", valType}, {"value", jchain}};
     break;
   }
@@ -222,7 +225,7 @@ void from_json(const json &j, CBVar &var) {
   case Object:
   case Chain: {
     var.valueType = Chain;
-    var.payload.chainValue = j.at("value").get<CBChainPtr>();
+    var.payload.chainValue = j.at("value").get<CBChainRef>();
     break;
   }
   case EndOfBlittableTypes: {
@@ -429,7 +432,8 @@ void from_json(const json &j, CBVar &var) {
   }
 }
 
-void to_json(json &j, const CBChainPtr &chain) {
+void to_json(json &j, const CBChainRef &chainref) {
+  auto chain = CBChain::sharedFromRef(chainref);
   std::vector<json> blocks;
   for (auto blk : chain->blocks) {
     std::vector<json> params;
@@ -455,15 +459,16 @@ void to_json(json &j, const CBChainPtr &chain) {
   };
 }
 
-void from_json(const json &j, CBChainPtr &chain) {
+void from_json(const json &j, CBChainRef &chainref) {
   auto chainName = j.at("name").get<std::string>();
   auto findIt = chainblocks::Globals::GlobalChains.find(chainName);
+  std::shared_ptr<CBChain> chain;
   if (findIt != chainblocks::Globals::GlobalChains.end()) {
     chain = findIt->second;
     // Need to clean it up for rewrite!
     chain->cleanup();
   } else {
-    chain = new CBChain(chainName.c_str());
+    chain.reset(new CBChain(chainName.c_str()));
     chainblocks::Globals::GlobalChains[chainName] = chain;
   }
 
@@ -505,6 +510,7 @@ void from_json(const json &j, CBChainPtr &chain) {
 
     // From now on this chain owns the block
     chain->addBlock(blk);
+    chainref = chain->newRef();
   }
 }
 

@@ -123,7 +123,7 @@ struct HookInstance {
 
 HookInstance gDesktopHook{};
 bool gDesktopHookLoaded = false;
-CBChain *gHookChain = nullptr;
+std::shared_ptr<CBChain> gHookChain;
 UINT_PTR gCurrentTimer = 0;
 
 extern "C" {
@@ -139,9 +139,9 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
     if (code.size() > 0) {
       CBVar res = gDesktopHook.leval(env, code.c_str());
       if (res.valueType == CBType::Chain) {
-        gHookChain = res.payload.chainValue;
+        gHookChain = CBChain::sharedFromRef(res.payload.chainValue);
         auto chainValidation = validateConnections(
-            res.payload.chainValue,
+            gHookChain.get(),
             [](const CBlock *errorBlock, const char *errorTxt,
                bool nonfatalWarning, void *userData) {
               if (!nonfatalWarning) {
@@ -153,18 +153,18 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
                           << errorTxt;
               }
             },
-            gHookChain); // detached don't share context!
+            nullptr); // detached don't share context!
         chainblocks::arrayFree(chainValidation.exposedInfo);
         if (gHookChain) {
-          chainblocks::prepare(gHookChain);
-          chainblocks::start(gHookChain);
+          chainblocks::prepare(gHookChain.get());
+          chainblocks::start(gHookChain.get());
           chainblocks::sleep(0);
         }
       }
     }
     gDesktopHookLoaded = true;
   } else if (gHookChain) {
-    chainblocks::tick(gHookChain);
+    chainblocks::tick(gHookChain.get());
     chainblocks::sleep(0);
   }
   return CallNextHookEx(0, nCode, wParam, lParam);

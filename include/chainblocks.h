@@ -26,7 +26,6 @@ enum CBType : uint8_t {
   Float3,     // A vector of 3 32bits floats
   Float4,     // A vector of 4 32bits floats
   Color,      // A vector of 4 uint8
-  Chain,      // sub chains, e.g. IF/ELSE
   Block,      // a block, useful for future introspection blocks!
   StackIndex, // an index in the stack, used as cheap ContextVar
 
@@ -40,6 +39,7 @@ enum CBType : uint8_t {
   Image,
   Seq,
   Table,
+  Chain
 };
 
 enum CBChainState : uint8_t {
@@ -156,7 +156,8 @@ struct CBTable {
 };
 
 struct CBChain;
-typedef struct CBChain *CBChainPtr;
+struct CBChainRefOpaque;
+typedef struct CBChainRefOpaque *CBChainRef;
 
 struct CBChainProvider;
 
@@ -493,7 +494,7 @@ struct CBVarPayload {
     // TODO
     struct CBAudio audioValue;
 
-    CBChainPtr chainValue;
+    CBChainRef chainValue;
 
     CBlockPtr blockValue;
 
@@ -766,10 +767,11 @@ struct CBChainInfo {
   const char *name;
   bool looped;
   bool unsafe;
+  const struct CBChain *chain;
   const CBlocks blocks;
 };
 
-typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(struct CBChain *chain);
+typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 
 struct CBCore {
   // Adds a block to the runtime database

@@ -79,6 +79,112 @@ struct RuntimeObserver {
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &src);
+} // namespace chainblocks
+
+struct CBChain {
+  CBChain(const char *chain_name)
+      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
+        started(false), finished(false), returned(false), failed(false),
+        rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
+        composedHash(0), context(nullptr), node(nullptr) {
+    LOG(TRACE) << "CBChain(): " << name;
+  }
+
+  ~CBChain() {
+    cleanup();
+    chainblocks::destroyVar(rootTickInput);
+    LOG(TRACE) << "~CBChain() " << name;
+  }
+
+  void cleanup();
+
+  void warmup(CBContext *context) {
+    for (auto &blk : blocks) {
+      if (blk->warmup)
+        blk->warmup(blk, context);
+    }
+  }
+
+  // Also the chain takes ownership of the block!
+  void addBlock(CBlock *blk) {
+    assert(!blk->owned);
+    blk->owned = true;
+    blocks.push_back(blk);
+  }
+
+  // Also removes ownership of the block
+  void removeBlock(CBlock *blk) {
+    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
+    if (findIt != blocks.end()) {
+      blocks.erase(findIt);
+      blk->owned = false;
+    } else {
+      throw chainblocks::CBException("removeBlock: block not found!");
+    }
+  }
+
+  // Attributes
+  bool looped;
+  bool unsafe;
+
+  std::string name;
+
+  CBCoro *coro;
+
+  // we could simply null check coro but actually some chains (sub chains), will
+  // run without a coro within the root coro so we need this too
+  bool started;
+
+  // this gets cleared before every runChain and set after every runChain
+  std::atomic_bool finished;
+
+  // when running as coro if actually the coro lambda exited
+  bool returned;
+  bool failed;
+
+  CBVar rootTickInput{};
+  CBVar previousOutput{};
+  CBVar finishedOutput{};
+  bool ownedOutput;
+
+  std::size_t composedHash;
+
+  CBContext *context;
+  CBNode *node;
+  CBFlow *flow;
+  std::vector<CBlock *> blocks;
+  std::unordered_map<std::string, CBVar, std::hash<std::string>,
+                     std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<
+                         std::pair<const std::string, CBVar>, 16>>
+      variables;
+
+  static std::shared_ptr<CBChain> sharedFromRef(CBChainRef ref) {
+    return *reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
+  }
+
+  static void deleteRef(CBChainRef ref) {
+    auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
+    delete pref;
+  }
+
+  CBChainRef newRef() {
+    return reinterpret_cast<CBChainRef>(new std::shared_ptr<CBChain>(this));
+  }
+
+  static CBChainRef weakRef(std::shared_ptr<CBChain> &shared) {
+    return reinterpret_cast<CBChainRef>(&shared);
+  }
+
+  static CBChainRef addRef(CBChainRef ref) {
+    auto cref = sharedFromRef(ref);
+    auto res = new std::shared_ptr<CBChain>();
+    *res = cref;
+    return reinterpret_cast<CBChainRef>(res);
+  }
+};
+
+namespace chainblocks {
 
 struct OwnedVar : public CBVar {
   OwnedVar() : CBVar() {}
@@ -109,7 +215,8 @@ struct Globals {
   static inline std::map<std::string, CBCallback> RunLoopHooks;
   static inline std::map<std::string, CBCallback> ExitHooks;
 
-  static inline std::unordered_map<std::string, CBChain *> GlobalChains;
+  static inline std::unordered_map<std::string, std::shared_ptr<CBChain>>
+      GlobalChains;
 
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
@@ -402,6 +509,9 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
       var.objectInfo->destroy(var.payload.objectValue);
     }
     break;
+  case CBType::Chain:
+    CBChain::deleteRef(var.payload.chainValue);
+    break;
   default:
     break;
   };
@@ -425,88 +535,7 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   dst.refcount = rc;
   dst.flags |= rcflag;
 }
-} // namespace chainblocks
 
-struct CBChain {
-  CBChain(const char *chain_name)
-      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
-        started(false), finished(false), returned(false), failed(false),
-        rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        composedHash(0), context(nullptr), node(nullptr) {
-    chainblocks::registerChain(this);
-  }
-
-  ~CBChain() {
-    cleanup();
-    chainblocks::unregisterChain(this);
-    chainblocks::destroyVar(rootTickInput);
-  }
-
-  void cleanup();
-
-  void warmup(CBContext *context) {
-    for (auto &blk : blocks) {
-      if (blk->warmup)
-        blk->warmup(blk, context);
-    }
-  }
-
-  // Also the chain takes ownership of the block!
-  void addBlock(CBlock *blk) {
-    assert(!blk->owned);
-    blk->owned = true;
-    blocks.push_back(blk);
-  }
-
-  // Also removes ownership of the block
-  void removeBlock(CBlock *blk) {
-    auto findIt = std::find(blocks.begin(), blocks.end(), blk);
-    if (findIt != blocks.end()) {
-      blocks.erase(findIt);
-      blk->owned = false;
-    } else {
-      throw chainblocks::CBException("removeBlock: block not found!");
-    }
-  }
-
-  // Attributes
-  bool looped;
-  bool unsafe;
-
-  std::string name;
-
-  CBCoro *coro;
-
-  // we could simply null check coro but actually some chains (sub chains), will
-  // run without a coro within the root coro so we need this too
-  bool started;
-
-  // this gets cleared before every runChain and set after every runChain
-  std::atomic_bool finished;
-
-  // when running as coro if actually the coro lambda exited
-  bool returned;
-  bool failed;
-
-  CBVar rootTickInput{};
-  CBVar previousOutput{};
-  CBVar finishedOutput{};
-  bool ownedOutput;
-
-  std::size_t composedHash;
-
-  CBContext *context;
-  CBNode *node;
-  CBFlow *flow;
-  std::vector<CBlock *> blocks;
-  std::unordered_map<std::string, CBVar, std::hash<std::string>,
-                     std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<
-                         std::pair<const std::string, CBVar>, 16>>
-      variables;
-};
-
-namespace chainblocks {
 struct Serialization {
   static inline void varFree(CBVar &output) {
     switch (output.valueType) {
@@ -561,7 +590,7 @@ struct Serialization {
       break;
     }
     case CBType::Chain: {
-      delete output.payload.chainValue;
+      CBChain::deleteRef(output.payload.chainValue);
       break;
     }
     case CBType::Object:
@@ -778,7 +807,7 @@ struct Serialization {
         deserialize(read, tmp);
         chain->variables[&buf[0]] = tmp;
       }
-      output.payload.chainValue = chain;
+      output.payload.chainValue = chain->newRef();
       break;
     }
     case CBType::Object:
@@ -911,7 +940,9 @@ struct Serialization {
       break;
     }
     case CBType::Chain: {
-      auto chain = input.payload.chainValue;
+      auto sc = reinterpret_cast<std::shared_ptr<CBChain> *>(
+          input.payload.chainValue);
+      auto chain = sc->get();
       { // Name
         uint32_t len = uint32_t(chain->name.size());
         write((const uint8_t *)&len, sizeof(uint32_t));

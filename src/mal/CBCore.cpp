@@ -198,29 +198,28 @@ private:
 
 class malCBChain : public malValue, public malRoot {
 public:
-  malCBChain(const MalString &name) : m_chain(new CBChain(name.c_str())) {
+  malCBChain(const MalString &name) {
     LOG(TRACE) << "Created a CBChain - " << name;
-  }
-
-  malCBChain(CBChain *chain) : m_chain(chain) {
-    LOG(TRACE) << "Aquired a CBChain - " << chain->name;
+    auto chain = new CBChain(name.c_str());
+    m_chain = chain->newRef();
   }
 
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
 
   ~malCBChain() {
-    LOG(TRACE) << "Deleting a CBChain - " << m_chain->name;
-    assert(m_chain);
-    delete m_chain;
+    auto cp = CBChain::sharedFromRef(m_chain);
+    LOG(TRACE) << "Deleting a CBChain - " << cp->name;
+    CBChain::deleteRef(m_chain);
   }
 
   virtual MalString print(bool readably) const {
     std::ostringstream stream;
-    stream << "CBChain: " << m_chain->name;
+    auto cp = CBChain::sharedFromRef(m_chain);
+    stream << "CBChain: " << cp->name;
     return stream.str();
   }
 
-  CBChain *value() const { return m_chain; }
+  CBChainRef value() const { return m_chain; }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
     return m_chain == static_cast<const malCBChain *>(rhs)->m_chain;
@@ -231,7 +230,7 @@ public:
   }
 
 private:
-  CBChain *m_chain;
+  CBChainRef m_chain;
 };
 
 class malCBlock : public malValue, public malRoot {
@@ -300,7 +299,8 @@ public:
   CBNode *value() const { return m_node; }
 
   void schedule(malCBChain *chain) {
-    m_node->schedule(chain->value());
+    auto cp = CBChain::sharedFromRef(chain->value());
+    m_node->schedule(cp.get());
     reference(chain);
   }
 
@@ -410,7 +410,8 @@ struct ChainFileWatcher {
               continue;
             }
 
-            auto chain = var->value().payload.chainValue;
+            auto chainref = var->value().payload.chainValue;
+            auto chain = CBChain::sharedFromRef(chainref);
 
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
@@ -418,7 +419,7 @@ struct ChainFileWatcher {
 
             // run validation to infertypes and specialize
             auto chainValidation = validateConnections(
-                chain,
+                chain.get(),
                 [](const CBlock *errorBlock, const char *errorTxt,
                    bool nonfatalWarning, void *userData) {
                   if (!nonfatalWarning) {
@@ -435,9 +436,9 @@ struct ChainFileWatcher {
                 nullptr, data);
             chainblocks::arrayFree(chainValidation.exposedInfo);
 
-            liveChains[chain] = std::make_tuple(env, res);
+            liveChains[chain.get()] = std::make_tuple(env, res);
 
-            ChainLoadResult result = {false, "", chain};
+            ChainLoadResult result = {false, "", chain.get()};
             results.push(result);
           }
 
@@ -992,7 +993,8 @@ BUILTIN("Chain") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malString, chainName);
   auto mchain = new malCBChain(chainName->value());
-  auto chain = mchain->value();
+  auto chainref = mchain->value();
+  auto chain = CBChain::sharedFromRef(chainref);
   while (argsBegin != argsEnd) {
     auto arg = *argsBegin++;
     if (const malKeyword *v = DYNAMIC_CAST(malKeyword, arg)) // Options!
@@ -1047,9 +1049,10 @@ thread_local CBNode TLSRootNode;
 
 BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
-  ARG(malCBChain, chain);
+  ARG(malCBChain, chainvar);
+  auto chain = CBChain::sharedFromRef(chainvar->value());
   auto chainValidation = validateConnections(
-      chain->value(),
+      chain.get(),
       [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
          void *userData) {
         if (!nonfatalWarning) {
@@ -1063,19 +1066,20 @@ BUILTIN("prepare") {
       },
       nullptr);
   chainblocks::arrayFree(chainValidation.exposedInfo);
-  chain->value()->node = &TLSRootNode;
-  chainblocks::prepare(chain->value());
+  chain->node = &TLSRootNode;
+  chainblocks::prepare(chain.get());
   return mal::nilValue();
 }
 
 BUILTIN("start") {
   CHECK_ARGS_AT_LEAST(1);
-  ARG(malCBChain, chain);
+  ARG(malCBChain, chainvar);
+  auto chain = CBChain::sharedFromRef(chainvar->value());
   if (argsBegin != argsEnd) {
     ARG(malCBVar, inputVar);
-    chainblocks::start(chain->value(), inputVar->value());
+    chainblocks::start(chain.get(), inputVar->value());
   } else {
-    chainblocks::start(chain->value());
+    chainblocks::start(chain.get());
   }
   return mal::nilValue();
 }
@@ -1084,7 +1088,8 @@ BUILTIN("tick") {
   CHECK_ARGS_IS(1);
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
-    auto ticked = chainblocks::tick(v->value());
+    auto chain = CBChain::sharedFromRef(v->value());
+    auto ticked = chainblocks::tick(chain.get());
     return mal::boolean(ticked);
   } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
     auto noErrors = v->value()->tick();
@@ -1097,9 +1102,10 @@ BUILTIN("tick") {
 
 BUILTIN("stop") {
   CHECK_ARGS_IS(1);
-  ARG(malCBChain, chain);
+  ARG(malCBChain, chainvar);
+  auto chain = CBChain::sharedFromRef(chainvar->value());
   CBVar res{};
-  chainblocks::stop(chain->value(), &res);
+  chainblocks::stop(chain.get(), &res);
   return malValuePtr(new malCBVar(res));
 }
 
@@ -1109,7 +1115,8 @@ BUILTIN("run") {
   CBChain *chain = nullptr;
   auto first = *argsBegin++;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
-    chain = v->value();
+    auto cs = CBChain::sharedFromRef(v->value());
+    chain = cs.get();
   } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
     node = v->value();
   } else {

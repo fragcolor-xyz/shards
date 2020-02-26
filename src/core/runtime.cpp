@@ -432,7 +432,8 @@ void unregisterExitCallback(const char *eventName) {
 }
 
 void registerChain(CBChain *chain) {
-  chainblocks::Globals::GlobalChains[chain->name] = chain;
+  std::shared_ptr<CBChain> sc(chain);
+  chainblocks::Globals::GlobalChains[chain->name] = sc;
 }
 
 void unregisterChain(CBChain *chain) {
@@ -718,10 +719,13 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return output;
   };
 
-  result.getChainInfo = [](CBChain *chain) {
+  result.getChainInfo = [](CBChainRef chainref) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    auto chain = sc.get();
     CBChainInfo info{chain->name.c_str(),
                      chain->looped,
                      chain->unsafe,
+                     chain,
                      {&chain->blocks[0], uint32_t(chain->blocks.size()), 0}};
     return info;
   };
@@ -1752,6 +1756,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
            src.payload.bytesSize);
   } break;
+  case CBType::Chain:
+    if (dst != src) {
+      destroyVar(dst);
+    }
+    dst.valueType = CBType::Chain;
+    dst.payload.chainValue = CBChain::addRef(src.payload.chainValue);
+    break;
   default:
     break;
   };

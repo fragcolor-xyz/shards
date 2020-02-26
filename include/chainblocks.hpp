@@ -317,9 +317,10 @@ struct Var : public CBVar {
     payload.seqValue = seq;
   }
 
-  explicit Var(CBChain *src) : CBVar() {
+  explicit Var(const std::shared_ptr<CBChain> &chain) : CBVar() {
     valueType = Chain;
-    payload.chainValue = src;
+    payload.chainValue = reinterpret_cast<CBChainRef>(
+        &const_cast<std::shared_ptr<CBChain> &>(chain));
   }
 
   explicit Var(CBImage img) : CBVar() {

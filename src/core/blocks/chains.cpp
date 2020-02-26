@@ -7,6 +7,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -85,8 +86,8 @@ struct ChainBase {
   static inline ParamsInfo chainOnlyParamsInfo =
       ParamsInfo(ParamsInfo::Param("Chain", "The chain to run.", ChainTypes));
 
-  CBChain *chain;
   CBVar chainref;
+  std::shared_ptr<CBChain> chain;
   bool once;
   bool doneOnce;
   bool passthrough;
@@ -103,12 +104,12 @@ struct ChainBase {
   void tryStopChain() {
     if (chain) {
       // avoid stackoverflow
-      if (visiting.count(chain))
+      if (visiting.count(chain.get()))
         return;
 
-      visiting.insert(chain);
-      chainblocks::stop(chain);
-      visiting.erase(chain);
+      visiting.insert(chain.get());
+      chainblocks::stop(chain.get());
+      visiting.erase(chain.get());
     }
   }
 
@@ -118,7 +119,7 @@ struct ChainBase {
 
     // Actualize the chain here...
     if (chainref.valueType == CBType::Chain) {
-      chain = chainref.payload.chainValue;
+      chain = CBChain::sharedFromRef(chainref.payload.chainValue);
     } else if (chainref.valueType == String) {
       chain = chainblocks::Globals::GlobalChains[chainref.payload.stringValue];
     } else {
@@ -130,14 +131,14 @@ struct ChainBase {
       return data.inputType;
 
     // avoid stackoverflow
-    if (visiting.count(chain))
+    if (visiting.count(chain.get()))
       return data.inputType; // we don't know yet...
 
-    visiting.insert(chain);
+    visiting.insert(chain.get());
 
     // We need to validate the sub chain to figure it out!
     chainValidation = validateConnections(
-        chain,
+        chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
@@ -151,7 +152,7 @@ struct ChainBase {
         },
         this, data);
 
-    visiting.erase(chain);
+    visiting.erase(chain.get());
 
     return passthrough || mode == RunChainMode::Detached
                ? data.inputType
@@ -253,21 +254,21 @@ struct Resume : public ChainBase {
     // if we have a node also make sure chain knows about it
     chain->node = context->main->node;
     // assign the new chain as current chain on the flow
-    chain->flow->chain = chain;
+    chain->flow->chain = chain.get();
 
     // Allow to re run chains
-    if (chainblocks::hasEnded(chain)) {
-      chainblocks::stop(chain);
+    if (chainblocks::hasEnded(chain.get())) {
+      chainblocks::stop(chain.get());
     }
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain);
+      chainblocks::prepare(chain.get());
     }
 
     // Start it if not started, this will tick it once!
-    if (!chainblocks::isRunning(chain)) {
-      chainblocks::start(chain, input);
+    if (!chainblocks::isRunning(chain.get())) {
+      chainblocks::start(chain.get(), input);
     }
 
     // And normally we just delegate the CBNode + CBFlow
@@ -298,39 +299,39 @@ struct BaseRunner : public ChainBase {
   }
 
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
-    if (!chainblocks::isRunning(chain)) {
+    if (!chainblocks::isRunning(chain.get())) {
       // validated during infer not here! (false)
-      context->main->node->schedule(chain, input, false);
+      context->main->node->schedule(chain.get(), input, false);
     }
   }
 
   ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
     // We want to allow a sub flow within the stepped chain
     if (!_steppedFlow.chain) {
-      _steppedFlow.chain = chain;
+      _steppedFlow.chain = chain.get();
       chain->flow = &_steppedFlow;
       chain->node = context->main->node;
     }
 
     // Allow to re run chains
-    if (chainblocks::hasEnded(chain)) {
+    if (chainblocks::hasEnded(chain.get())) {
       // stop the root
-      chainblocks::stop(chain);
+      chainblocks::stop(chain.get());
 
       // swap flow to the root chain
-      _steppedFlow.chain = chain;
+      _steppedFlow.chain = chain.get();
       chain->flow = &_steppedFlow;
       chain->node = context->main->node;
     }
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain);
+      chainblocks::prepare(chain.get());
     }
 
     // Ticking or starting
-    if (!chainblocks::isRunning(chain)) {
-      chainblocks::start(chain, input);
+    if (!chainblocks::isRunning(chain.get())) {
+      chainblocks::start(chain.get(), input);
     } else {
       // tick the flow one rather then directly chain!
       chainblocks::tick(_steppedFlow.chain, input);
@@ -403,7 +404,7 @@ struct RunChain : public BaseRunner {
         // Run within the root flow
         chain->flow = context->main->flow;
         chain->node = context->main->node;
-        auto runRes = runSubChain(chain, context, input);
+        auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;
         } else if (passthrough) {
@@ -475,7 +476,7 @@ template <class T> struct BaseLoader : public BaseRunner {
         // Run within the root flow
         chain->flow = context->main->flow;
         chain->node = context->main->node;
-        auto runRes = runSubChain(chain, context, input);
+        auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed || context->aborted)) {
           return StopChain;
         } else {
@@ -559,10 +560,10 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       } else {
         if (chain) {
           // stop and release previous version
-          chainblocks::stop(chain);
-          _provider->release(_provider, chain);
+          chainblocks::stop(chain.get());
+          _provider->release(_provider, chain.get());
         }
-        chain = update.chain;
+        chain.reset(update.chain);
 
         if (mode == RunChainMode::Inline && chain)
           chain->warmup(context);
@@ -628,14 +629,14 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     data.shared = _sharedCopy;
 
     // avoid stackoverflow
-    if (visiting.count(chain))
+    if (visiting.count(chain.get()))
       return; // we don't know yet...
 
-    visiting.insert(chain);
+    visiting.insert(chain.get());
 
     // We need to validate the sub chain to figure it out!
     auto res = validateConnections(
-        chain,
+        chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
@@ -649,18 +650,37 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
         },
         this, data);
 
-    visiting.erase(chain);
+    visiting.erase(chain.get());
     chainblocks::arrayFree(res.exposedInfo);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    chain = _chain(context).payload.chainValue;
+    auto chainVar = _chain(context);
+    chain = CBChain::sharedFromRef(chainVar.payload.chainValue);
     if (unlikely(!chain))
       return input;
 
     if (_chainHash == 0 || _chainHash != chain->composedHash) {
-      composeChain();
-      chain->composedHash = std::hash<CBVar>()(_chain(context));
+      // Compose and hash in a thread
+      auto asyncRes = std::async(std::launch::async, [this, chainVar]() {
+        composeChain();
+        chain->composedHash = std::hash<CBVar>()(chainVar);
+      });
+
+      // Wait suspending!
+      while (true) {
+        auto state = asyncRes.wait_for(std::chrono::seconds(0));
+        if (state == std::future_status::ready)
+          break;
+        auto chainState = chainblocks::suspend(context, 0);
+        if (chainState.payload.chainState != Continue) {
+          return chainState;
+        }
+      }
+
+      // This should throw if we had excetptions
+      asyncRes.get();
+
       _chainHash = chain->composedHash;
       if (mode == RunChainMode::Inline)
         chain->warmup(context);
