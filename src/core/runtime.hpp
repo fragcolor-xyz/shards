@@ -369,6 +369,7 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
   // store current chain to restore at end
   auto previous = context->current;
+  context->current = chain;
   // Reset finished flag (atomic), TODO take care of recursions!
   chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
