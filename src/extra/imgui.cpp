@@ -604,11 +604,13 @@ struct Window : public Base {
   }
 
   void cleanup() {
-    _blks.reset();
+    _blks.cleanup();
     _curX = -1;
     _curY = -1;
     _context = nullptr;
   }
+
+  void warmup(CBContext *context) { _blks.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -918,7 +920,9 @@ struct Button : public Base {
 
   CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
-  void cleanup() { _blks.reset(); }
+  void cleanup() { _blks.cleanup(); }
+
+  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
@@ -1050,7 +1054,9 @@ struct TreeNode : public Base {
     return data.inputType;
   }
 
-  void cleanup() { _blocks.reset(); }
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -1382,6 +1388,7 @@ RUNTIME_BLOCK_END(Style);
 
 RUNTIME_BLOCK(ImGui, Window);
 RUNTIME_BLOCK_cleanup(Window);
+RUNTIME_BLOCK_warmup(Window);
 RUNTIME_BLOCK_compose(Window);
 RUNTIME_BLOCK_requiredVariables(Window);
 RUNTIME_BLOCK_exposedVariables(Window);
@@ -1418,6 +1425,7 @@ RUNTIME_BLOCK_END(Text);
 
 RUNTIME_BLOCK(ImGui, Button);
 RUNTIME_BLOCK_cleanup(Button);
+RUNTIME_BLOCK_warmup(Button);
 RUNTIME_BLOCK_compose(Button);
 RUNTIME_BLOCK_requiredVariables(Button);
 RUNTIME_BLOCK_exposedVariables(Button);

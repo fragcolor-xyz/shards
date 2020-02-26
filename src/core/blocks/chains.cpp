@@ -380,6 +380,11 @@ struct RunChain : public BaseRunner {
     return Var();
   }
 
+  void warmup(CBContext *context) {
+    if (mode == RunChainMode::Inline && chain)
+      chain->warmup(context);
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
       return input;
@@ -414,10 +419,6 @@ struct RunChain : public BaseRunner {
 };
 
 template <class T> struct BaseLoader : public BaseRunner {
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(T::paramsInfo);
-  }
-
   CBTypeInfo _inputTypeCopy{};
   IterableExposedInfo _sharedCopy;
 
@@ -508,6 +509,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
           "block and so a child pause won't pause the root.",
           ModeType));
 
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
   CBChainProvider *_provider;
 
   void setParam(int index, CBVar value) {
@@ -560,7 +563,107 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
           _provider->release(_provider, chain);
         }
         chain = update.chain;
+
+        if (mode == RunChainMode::Inline && chain)
+          chain->warmup(context);
       }
+    }
+
+    return BaseLoader<ChainLoader>::activate(context, input);
+  }
+};
+
+struct ChainRunner : public BaseLoader<ChainLoader> {
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Chain", "The chain variable to compose and run.",
+                        CoreInfo::ChainVarType),
+      ParamsInfo::Param("Once",
+                        "Runs this sub-chain only once within the parent chain "
+                        "execution cycle.",
+                        CoreInfo::BoolType),
+      ParamsInfo::Param(
+          "Mode",
+          "The way to run the chain. Inline: will run the sub chain inline "
+          "within the root chain, a pause in the child chain will pause the "
+          "root "
+          "too; Detached: will run the chain separately in the same node, a "
+          "pause in this chain will not pause the root; Stepped: the chain "
+          "will "
+          "run as a child, the root will tick the chain every activation of "
+          "this "
+          "block and so a child pause won't pause the root.",
+          ModeType));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  ParamVar _chain{};
+  std::size_t _chainHash = 0;
+
+  void setParam(int index, CBVar value) {
+    if (index == 0) {
+      _chain = value;
+    } else {
+      BaseLoader<ChainLoader>::setParam(index, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0) {
+      return _chain;
+    } else {
+      return BaseLoader<ChainLoader>::getParam(index);
+    }
+  }
+
+  void cleanup() {
+    BaseLoader<ChainLoader>::cleanup();
+    _chain.cleanup();
+  }
+
+  void warmup(CBContext *context) { _chain.warmup(context); }
+
+  void composeChain() {
+    CBInstanceData data{};
+    data.inputType = _inputTypeCopy;
+    data.shared = _sharedCopy;
+
+    // avoid stackoverflow
+    if (visiting.count(chain))
+      return; // we don't know yet...
+
+    visiting.insert(chain);
+
+    // We need to validate the sub chain to figure it out!
+    auto res = validateConnections(
+        chain,
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
+                       << errorTxt;
+            throw CBException("RunChain: failed inner chain validation");
+          } else {
+            LOG(INFO) << "RunChain: warning during inner chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, data);
+
+    visiting.erase(chain);
+    chainblocks::arrayFree(res.exposedInfo);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    chain = _chain(context).payload.chainValue;
+    if (unlikely(!chain))
+      return input;
+
+    if (_chainHash == 0 || _chainHash != chain->composedHash) {
+      composeChain();
+      chain->composedHash = std::hash<CBVar>()(_chain(context));
+      _chainHash = chain->composedHash;
+      if (mode == RunChainMode::Inline)
+        chain->warmup(context);
     }
 
     return BaseLoader<ChainLoader>::activate(context, input);
@@ -572,5 +675,6 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("WaitChain", WaitChain);
   REGISTER_CBLOCK("RunChain", RunChain);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
+  REGISTER_CBLOCK("ChainRunner", ChainRunner);
 }
 }; // namespace chainblocks

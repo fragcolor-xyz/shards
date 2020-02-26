@@ -688,9 +688,10 @@
           (Chain
            "LoadBinary"
            (ReadFile "testChain.bin")
+           (ExpectChain)
            (Set .loadedChain)
            (Log)
-           ;; TODO
+           (ChainRunner .loadedChain)
            ))
 
 (schedule Root testChain)

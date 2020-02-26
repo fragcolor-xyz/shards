@@ -432,7 +432,7 @@ struct CBChain {
       : looped(false), unsafe(false), name(chain_name), coro(nullptr),
         started(false), finished(false), returned(false), failed(false),
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        context(nullptr), node(nullptr) {
+        composedHash(0), context(nullptr), node(nullptr) {
     chainblocks::registerChain(this);
   }
 
@@ -443,6 +443,13 @@ struct CBChain {
   }
 
   void cleanup();
+
+  void warmup(CBContext *context) {
+    for (auto &blk : blocks) {
+      if (blk->warmup)
+        blk->warmup(blk, context);
+    }
+  }
 
   // Also the chain takes ownership of the block!
   void addBlock(CBlock *blk) {
@@ -485,6 +492,8 @@ struct CBChain {
   CBVar previousOutput{};
   CBVar finishedOutput{};
   bool ownedOutput;
+
+  std::size_t composedHash;
 
   CBContext *context;
   CBNode *node;

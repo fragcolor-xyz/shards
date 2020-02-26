@@ -34,6 +34,21 @@ struct Cond {
     return CBParametersInfo(condParamsInfo);
   }
 
+  void warmup(CBContext *ctx) {
+    for (auto &blks : _conditions) {
+      for (auto &blk : blks) {
+        if (blk->warmup)
+          blk->warmup(blk, ctx);
+      }
+    }
+    for (auto &blks : _actions) {
+      for (auto &blk : blks) {
+        if (blk->warmup)
+          blk->warmup(blk, ctx);
+      }
+    }
+  }
+
   void cleanup() {
     for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
       auto blocks = *it;
@@ -299,6 +314,7 @@ RUNTIME_BLOCK_setParam(Cond);
 RUNTIME_BLOCK_getParam(Cond);
 RUNTIME_BLOCK_activate(Cond);
 RUNTIME_BLOCK_cleanup(Cond);
+RUNTIME_BLOCK_warmup(Cond);
 RUNTIME_BLOCK_destroy(Cond);
 RUNTIME_BLOCK_END(Cond);
 

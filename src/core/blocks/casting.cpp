@@ -478,6 +478,7 @@ EXPECT_BLOCK(Bytes, Bytes);
 EXPECT_BLOCK(String, String);
 EXPECT_BLOCK(Image, Image);
 EXPECT_BLOCK(Seq, Seq);
+EXPECT_BLOCK(Chain, CBType::Chain);
 
 struct ToBytes {
   struct StreamBuffer : std::streambuf {
@@ -726,6 +727,7 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectImage);
   REGISTER_CORE_BLOCK(ExpectBool);
   REGISTER_CORE_BLOCK(ExpectSeq);
+  REGISTER_CORE_BLOCK(ExpectChain);
   REGISTER_CORE_BLOCK(ToBytes);
   REGISTER_CBLOCK("BytesToString!!", BytesToStringUnsafe);
 }

@@ -1960,8 +1960,10 @@ struct Repeat {
       releaseVariable(_ctxTimes);
       _ctxTimes = nullptr;
     }
-    _blks.reset();
+    _blks.cleanup();
   }
+
+  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
   static inline ParamsInfo repeatParamsInfo = ParamsInfo(
       ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks),

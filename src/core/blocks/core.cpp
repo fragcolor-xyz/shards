@@ -129,9 +129,11 @@ struct Sort : public JointOp {
   void setup() { blocksKeyFn._bu = this; }
 
   void cleanup() {
-    _blks.reset();
+    _blks.cleanup();
     JointOp::cleanup();
   }
+
+  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
@@ -286,9 +288,11 @@ struct Remove : public JointOp {
   bool _fast = false;
 
   void cleanup() {
-    _blks.reset();
+    _blks.cleanup();
     JointOp::cleanup();
   }
+
+  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
@@ -409,7 +413,9 @@ struct Profile {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void cleanup() { _blocks.reset(); }
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blocks.validate(data);
@@ -834,6 +840,7 @@ RUNTIME_BLOCK_setParam(Repeat);
 RUNTIME_BLOCK_getParam(Repeat);
 RUNTIME_BLOCK_activate(Repeat);
 RUNTIME_BLOCK_cleanup(Repeat);
+RUNTIME_BLOCK_warmup(Repeat);
 RUNTIME_BLOCK_exposedVariables(Repeat);
 RUNTIME_BLOCK_requiredVariables(Repeat);
 RUNTIME_BLOCK_compose(Repeat);
@@ -850,6 +857,7 @@ RUNTIME_BLOCK_parameters(Sort);
 RUNTIME_BLOCK_setParam(Sort);
 RUNTIME_BLOCK_getParam(Sort);
 RUNTIME_BLOCK_cleanup(Sort);
+RUNTIME_BLOCK_warmup(Sort);
 RUNTIME_BLOCK_END(Sort);
 
 // Register
@@ -861,6 +869,7 @@ RUNTIME_BLOCK_setParam(Remove);
 RUNTIME_BLOCK_getParam(Remove);
 RUNTIME_BLOCK_activate(Remove);
 RUNTIME_BLOCK_cleanup(Remove);
+RUNTIME_BLOCK_warmup(Remove);
 RUNTIME_BLOCK_compose(Remove);
 RUNTIME_BLOCK_END(Remove);
 
@@ -873,6 +882,7 @@ RUNTIME_BLOCK_setParam(Profile);
 RUNTIME_BLOCK_getParam(Profile);
 RUNTIME_BLOCK_activate(Profile);
 RUNTIME_BLOCK_cleanup(Profile);
+RUNTIME_BLOCK_warmup(Profile);
 RUNTIME_BLOCK_compose(Profile);
 RUNTIME_BLOCK_END(Profile);
 

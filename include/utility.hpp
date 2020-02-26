@@ -166,13 +166,6 @@ private:
     _blocksArray.clear();
   }
 
-  void cleanup() {
-    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
-      auto blk = *it;
-      blk->cleanup(blk);
-    }
-  }
-
 public:
   ~TBlocksVar() {
     destroy();
@@ -180,7 +173,19 @@ public:
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
   }
 
-  void reset() { cleanup(); }
+  void cleanup() {
+    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
+      auto blk = *it;
+      blk->cleanup(blk);
+    }
+  }
+
+  void warmup(CBContext *context) {
+    for (auto &blk : _blocksArray) {
+      if (blk->warmup)
+        blk->warmup(blk, context);
+    }
+  }
 
   CBVar &operator=(const CBVar &value) {
     cbassert(value.valueType == None || value.valueType == Block ||

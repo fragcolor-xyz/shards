@@ -109,8 +109,7 @@ struct NetworkBase {
       _socketVar = nullptr;
     }
 
-    _blks.reset();
-
+    _blks.cleanup();
     _addr.cleanup();
     _port.cleanup();
   }
@@ -118,6 +117,7 @@ struct NetworkBase {
   void warmup(CBContext *context) {
     _addr.warmup(context);
     _port.warmup(context);
+    _blks.warmup(context);
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
