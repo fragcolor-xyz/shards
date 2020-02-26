@@ -69,15 +69,14 @@ struct Base {
   Channel *_channel = nullptr;
   std::string _name;
 
-  static inline ParamsInfo prodParams = ParamsInfo(ParamsInfo::Param(
-      "Name", "The name of the channel.", CoreInfo::StringType));
+  static inline Parameters producerParams{
+      {"Name", "The name of the channel.", {CoreInfo::StringType}}};
 
-  static inline ParamsInfo consParams = ParamsInfo(
-      ParamsInfo::Param("Name", "The name of the channel.",
-                        CoreInfo::StringType),
-      ParamsInfo::Param(
-          "Buffer", "The amount of values to buffer before outputting them.",
-          CoreInfo::IntType));
+  static inline Parameters consumerParams{
+      {"Name", "The name of the channel.", {CoreInfo::StringType}},
+      {"Buffer",
+       "The amount of values to buffer before outputting them.",
+       {CoreInfo::IntType}}};
 
   void setParam(int index, CBVar value) { _name = value.payload.stringValue; }
 
@@ -99,7 +98,7 @@ struct Produce : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(prodParams); }
+  static CBParametersInfo parameters() { return producerParams; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
@@ -149,7 +148,7 @@ struct Broadcast : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(prodParams); }
+  static CBParametersInfo parameters() { return producerParams; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
@@ -249,7 +248,7 @@ struct Consumers : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
+  static CBParametersInfo parameters() { return consumerParams; }
 
   void setParam(int index, CBVar value) {
     if (index == 0)
@@ -408,7 +407,7 @@ struct Complete : public Base {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(consParams); }
+  static CBParametersInfo parameters() { return consumerParams; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto &vchannel = Globals::get(_name);
