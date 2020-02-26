@@ -202,12 +202,18 @@ public:
     LOG(TRACE) << "Created a CBChain - " << name;
     auto chain = new CBChain(name.c_str());
     m_chain = chain->newRef();
+    chainblocks::Globals::GlobalChains[name] =
+        std::move(CBChain::sharedFromRef(m_chain));
   }
 
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
 
   ~malCBChain() {
     auto cp = CBChain::sharedFromRef(m_chain);
+    auto it = chainblocks::Globals::GlobalChains.find(cp.get()->name);
+    if (it != chainblocks::Globals::GlobalChains.end() && it->second == cp) {
+      chainblocks::Globals::GlobalChains.erase(it);
+    }
     LOG(TRACE) << "Deleting a CBChain - " << cp->name;
     CBChain::deleteRef(m_chain);
   }
