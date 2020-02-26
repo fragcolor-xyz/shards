@@ -6,6 +6,7 @@
 
 #include "chainblocks.h"
 #include <cstring> // memcpy
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
