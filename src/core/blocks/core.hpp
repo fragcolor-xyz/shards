@@ -540,17 +540,17 @@ struct SetBase : public VariableBase {
     }
   }
 
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
       return input;
-    }
-
-    if (!_target) {
-      if (_global)
-        _target = referenceGlobalVariable(context, _name.c_str());
-      else
-        _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -675,10 +675,6 @@ struct Ref : public SetBase {
       _cell->refcount = rc;
       _cell->flags |= rcflag;
       return input;
-    }
-
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
     }
 
     if (_isTable) {
@@ -1176,14 +1172,14 @@ struct Push : public VariableBase {
     chainblocks::arrayPush(seq.payload.seqValue, tmp);
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      if (_global)
-        _target = referenceGlobalVariable(context, _name.c_str());
-      else
-        _target = referenceVariable(context, _name.c_str());
-    }
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+  }
 
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(_isTable)) {
       activateTable(context, input);
     } else {

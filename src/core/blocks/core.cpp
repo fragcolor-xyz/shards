@@ -668,6 +668,7 @@ RUNTIME_BLOCK_END(IsValidNumber);
 // Register Set
 RUNTIME_CORE_BLOCK_FACTORY(Set);
 RUNTIME_BLOCK_cleanup(Set);
+RUNTIME_BLOCK_warmup(Set);
 RUNTIME_BLOCK_inputTypes(Set);
 RUNTIME_BLOCK_outputTypes(Set);
 RUNTIME_BLOCK_parameters(Set);
@@ -681,6 +682,7 @@ RUNTIME_BLOCK_END(Set);
 // Register Ref
 RUNTIME_CORE_BLOCK_FACTORY(Ref);
 RUNTIME_BLOCK_cleanup(Ref);
+RUNTIME_BLOCK_warmup(Ref);
 RUNTIME_BLOCK_inputTypes(Ref);
 RUNTIME_BLOCK_outputTypes(Ref);
 RUNTIME_BLOCK_parameters(Ref);
@@ -694,6 +696,7 @@ RUNTIME_BLOCK_END(Ref);
 // Register Update
 RUNTIME_CORE_BLOCK_FACTORY(Update);
 RUNTIME_BLOCK_cleanup(Update);
+RUNTIME_BLOCK_warmup(Update);
 RUNTIME_BLOCK_inputTypes(Update);
 RUNTIME_BLOCK_outputTypes(Update);
 RUNTIME_BLOCK_parameters(Update);
@@ -708,6 +711,7 @@ RUNTIME_BLOCK_END(Update);
 RUNTIME_CORE_BLOCK_FACTORY(Push);
 RUNTIME_BLOCK_destroy(Push);
 RUNTIME_BLOCK_cleanup(Push);
+RUNTIME_BLOCK_warmup(Push);
 RUNTIME_BLOCK_inputTypes(Push);
 RUNTIME_BLOCK_outputTypes(Push);
 RUNTIME_BLOCK_parameters(Push);
