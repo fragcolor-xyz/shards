@@ -2,10 +2,10 @@
 
 (defn mychain [] (Chain "mychain"
   "Hello chain"
-  (Set "var1")
+  (Set "var1" :Global true)
   (Cond [
-    (--> true) (--> 1 (Set "var2"))
-    (--> false) (--> 1 (Set "var2"))
+    (--> true) (--> 1 (Set "var2" :Global true))
+    (--> false) (--> 1 (Set "var2" :Global true))
   ])
   (Input) ; test Input
   (Log)
