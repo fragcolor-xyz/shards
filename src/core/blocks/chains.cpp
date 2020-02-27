@@ -298,6 +298,15 @@ struct BaseRunner : public ChainBase {
     doneOnce = false;
   }
 
+  void doWarmup(CBContext *context) {
+    auto current = context->chainStack.back();
+    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
+      context->chainStack.push_back(chain.get());
+      chain->warmup(context);
+      context->chainStack.pop_back();
+    }
+  }
+
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
     if (!chainblocks::isRunning(chain.get())) {
       // validated during infer not here! (false)
@@ -381,14 +390,7 @@ struct RunChain : public BaseRunner {
     return Var();
   }
 
-  void warmup(CBContext *context) {
-    auto current = context->current;
-    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
-      context->current = chain.get();
-      chain->warmup(context);
-      context->current = current;
-    }
-  }
+  void warmup(CBContext *context) { doWarmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
@@ -461,15 +463,6 @@ template <class T> struct BaseLoader : public BaseRunner {
   }
 
   void cleanup() { BaseRunner::cleanup(); }
-
-  void doWarmup(CBContext *context) {
-    auto current = context->current;
-    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
-      context->current = chain.get();
-      chain->warmup(context);
-      context->current = current;
-    }
-  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))

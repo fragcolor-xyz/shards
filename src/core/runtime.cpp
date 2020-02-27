@@ -460,20 +460,33 @@ CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
 }
 
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
-  assert(ctx->current);
   assert(ctx->main->node);
+
   // try find a chain variable
-  CBVar &cv = ctx->current->variables[name];
-  if (cv.refcount == 0) {
-    // if no chain variable try take from node
-    CBVar &nv = ctx->main->node->variables[name];
-    if (nv.refcount > 0) {
-      // if node variable is also empty, return chain one instead!
-      nv.refcount++;
-      nv.flags |= CBVAR_FLAGS_REF_COUNTED;
-      return &nv;
+  // from top to bottom of chain stack
+  auto rit = ctx->chainStack.rbegin();
+  for (; rit != ctx->chainStack.rend(); ++rit) {
+    auto it = (*rit)->variables.find(name);
+    if (it != (*rit)->variables.end()) {
+      // found, lets get out here
+      CBVar &cv = it->second;
+      cv.refcount++;
+      return &cv;
     }
   }
+
+  // Was not in chains.. find in global node,
+  // if fails create on top chain
+  auto it = ctx->main->node->variables.find(name);
+  if (it != ctx->main->node->variables.end()) {
+    // found, lets get out here
+    CBVar &cv = it->second;
+    cv.refcount++;
+    return &cv;
+  }
+
+  // worst case create in current top chain!
+  CBVar &cv = ctx->chainStack.back()->variables[name];
   cv.refcount++;
   cv.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &cv;

@@ -49,13 +49,15 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
 struct CBContext {
   CBContext(CBCoro &&sink, CBChain *starter)
-      : main(starter), current(starter), restarted(false), aborted(false),
-        continuation(std::move(sink)), iterationCount(0), stack({}) {}
+      : main(starter), restarted(false), aborted(false),
+        continuation(std::move(sink)), iterationCount(0), stack({}) {
+    chainStack.push_back(starter);
+  }
 
   ~CBContext() { chainblocks::arrayFree(stack); }
 
   const CBChain *main;
-  CBChain *current;
+  std::vector<CBChain *> chainStack;
 
   // Those 2 go together with CBVar chainstates restart and stop
   bool restarted;
@@ -367,9 +369,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 
 inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
-  // store current chain to restore at end
-  auto previous = context->current;
-  context->current = chain;
+  // push to chain stack
+  context->chainStack.push_back(chain);
   // Reset finished flag (atomic), TODO take care of recursions!
   chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
@@ -377,8 +378,8 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
   chain->finishedOutput = runRes.output;
   // Set finished flag (atomic), recursion??
   chain->finished = true;
-  // restore previous as current
-  context->current = previous;
+  // restore stack chain
+  context->chainStack.pop_back();
   return runRes;
 }
 
