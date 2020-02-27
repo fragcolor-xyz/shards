@@ -8,6 +8,8 @@
 - Warning: Work in progress
 ```
 
+![CI](https://github.com/sinkingsugar/chainblocks/workflows/CI/badge.svg)
+
 ## Vision
 Building a programming tool for the future. 
 
