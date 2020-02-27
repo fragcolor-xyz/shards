@@ -1098,7 +1098,8 @@ void validateConnection(ValidationContext &ctx) {
 
 CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
                                        CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+                                       void *userData, CBInstanceData data,
+                                       bool globalsOnly) {
   auto ctx = ValidationContext();
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1197,7 +1198,8 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   CBValidationResult result = {ctx.previousOutputType};
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
-      chainblocks::arrayPush(result.exposedInfo, type);
+      if (!globalsOnly || type.global)
+        chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
   return result;
@@ -1206,7 +1208,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
 CBValidationResult validateConnections(const CBChain *chain,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
-  return validateConnections(chain->blocks, callback, userData, data);
+  return validateConnections(chain->blocks, callback, userData, data, true);
 }
 
 CBValidationResult validateConnections(const CBlocks chain,
@@ -1216,7 +1218,7 @@ CBValidationResult validateConnections(const CBlocks chain,
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
   }
-  return validateConnections(blocks, callback, userData, data);
+  return validateConnections(blocks, callback, userData, data, false);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {

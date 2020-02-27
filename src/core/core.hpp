@@ -1177,7 +1177,15 @@ struct ExposedInfo {
   static CBExposedTypeInfo Variable(const char *name, const char *help,
                                     CBTypeInfo type, bool isMutable = false,
                                     bool isTableField = false) {
-    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField};
+    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField, false};
+    return res;
+  }
+
+  static CBExposedTypeInfo GlobalVariable(const char *name, const char *help,
+                                          CBTypeInfo type,
+                                          bool isMutable = false,
+                                          bool isTableField = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField, true};
     return res;
   }
 

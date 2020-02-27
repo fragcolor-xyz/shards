@@ -8,166 +8,166 @@
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")
   
-  ;; true
-  ;; (Cond [
-  ;;   (--> (Is true)) (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
-  ;; (Assert.Is false true)
+  true
+  (Cond [
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+  (Assert.Is false true)
 
-  ;; true
-  ;; (Cond [
-  ;;   (--> (Is false) (Or) (Is true)) (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
-  ;; (Assert.Is false true)
+  true
+  (Cond [
+    (--> (Is false) (Or) (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+  (Assert.Is false true)
 
-  ;; true
-  ;; (Cond [
-  ;;   (--> (Is false) (And) (Is true)) (--> (Assert.Is nil true))
-  ;;   (--> (Is true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
-  ;; (Assert.Is true true)
+  true
+  (Cond [
+    (--> (Is false) (And) (Is true)) (--> (Assert.Is nil true))
+    (--> (Is true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+  (Assert.Is true true)
 
-  ;; false
-  ;; (Cond [
-  ;;   (--> (Is true)) (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
-  ;; (Assert.Is true true)
+  false
+  (Cond [
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+  (Assert.Is true true)
 
-  ;; false
-  ;; (Cond [
-  ;;   (--> (Is true)) (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
-  ;; (Assert.Is true true)
+  false
+  (Cond [
+    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+  (Assert.Is true true)
 
-  ;; false
-  ;; (Cond [
-  ;;   (--> (Is false) (And) (IsNot false)) (--> (Assert.Is nil true))
-  ;;   (--> (Is false)) (--> (Msg "Cond was true!!") false)] :Passthrough false)
-  ;; (Assert.Is false true)
+  false
+  (Cond [
+    (--> (Is false) (And) (IsNot false)) (--> (Assert.Is nil true))
+    (--> (Is false)) (--> (Msg "Cond was true!!") false)] :Passthrough false)
+  (Assert.Is false true)
 
-  ;; 10
-  ;; (Cond [
-  ;;   (--> true)    (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is 10)) (--> (Msg "Cond was false!") true)
-  ;; ] :Threading true :Passthrough false)
-  ;; (Assert.Is true true)
+  10
+  (Cond [
+    (--> true)    (--> (Msg "Cond was true!!") false)
+    (--> (Is 10)) (--> (Msg "Cond was false!") true)
+  ] :Threading true :Passthrough false)
+  (Assert.Is true true)
 
-  ;; 10
-  ;; (Cond [
-  ;;   (--> true)    (--> (Msg "Cond was true!!") false)
-  ;;   (--> (Is 10)) (--> (Msg "Cond was false!") true)
-  ;; ] :Threading false :Passthrough false)
-  ;; (Assert.Is false true)
+  10
+  (Cond [
+    (--> true)    (--> (Msg "Cond was true!!") false)
+    (--> (Is 10)) (--> (Msg "Cond was false!") true)
+  ] :Threading false :Passthrough false)
+  (Assert.Is false true)
 
-  ;; "Hello"
-  ;; (Assert.Is "Hello" true)
-  ;; (Log)
+  "Hello"
+  (Assert.Is "Hello" true)
+  (Log)
 
-  ;; 77
-  ;; (Assert.Is 77 true)
-  ;; (Log)
+  77
+  (Assert.Is 77 true)
+  (Log)
 
-  ;; 10
-  ;; (Math.Add 10)
-  ;; (Assert.Is (+ 10 10) true)
-  ;; (Log)
+  10
+  (Math.Add 10)
+  (Assert.Is (+ 10 10) true)
+  (Log)
 
-  ;; 11
-  ;; (Math.Subtract 10)
-  ;; (Assert.Is (- 11 10) true)
-  ;; (Log)
+  11
+  (Math.Subtract 10)
+  (Assert.Is (- 11 10) true)
+  (Log)
 
-  ;; (Float4 10.3 3.6 2.1 1.1)
-  ;; (Math.Multiply (Float4 2 2 2 2))
-  ;; (Assert.Is (Float4 (* 10.3 2) (* 3.6 2) (* 2.1 2) (* 1.1 2)) true)
-  ;; (Log)
+  (Float4 10.3 3.6 2.1 1.1)
+  (Math.Multiply (Float4 2 2 2 2))
+  (Assert.Is (Float4 (* 10.3 2) (* 3.6 2) (* 2.1 2) (* 1.1 2)) true)
+  (Log)
 
-  ;; (Float3 10.3 2.1 1.1)
-  ;; (Math.Multiply (Float3 2 2 2))
-  ;; (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
-  ;; (Log)
+  (Float3 10.3 2.1 1.1)
+  (Math.Multiply (Float3 2 2 2))
+  (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
+  (Log)
 
-  ;; 10
-  ;; (Push "list1")
-  ;; 20
-  ;; (Push "list1")
-  ;; 30
-  ;; (Push "list1")
-  ;; (Get "list1")
-  ;; (Log)
-  ;; (Take 0)
-  ;; (Assert.Is 10 true)
-  ;; (Get "list1")
-  ;; (Take 1)
-  ;; (Assert.Is 20 true)
-  ;; (Get "list1")
-  ;; (Take 2)
-  ;; (Assert.Is 30 true)
-  ;; (Log)
+  10
+  (Push "list1")
+  20
+  (Push "list1")
+  30
+  (Push "list1")
+  (Get "list1")
+  (Log)
+  (Take 0)
+  (Assert.Is 10 true)
+  (Get "list1")
+  (Take 1)
+  (Assert.Is 20 true)
+  (Get "list1")
+  (Take 2)
+  (Assert.Is 30 true)
+  (Log)
 
-  ;; (Repeat (-->
-  ;;   10 (Push "list1")
-  ;;   20 (Push "list1")
-  ;;   30 (Push "list1")
-  ;;   (Get "list1")
-  ;;   (Log)
-  ;;   (Take 0)
-  ;;   (Assert.Is 10 true)
-  ;;   (Get "list1")
-  ;;   (Take 1)
-  ;;   (Assert.Is 20 true)
-  ;;   (Get "list1")
-  ;;   (Take 2)
-  ;;   (Assert.Is 30 true)
-  ;;   (Log)
-  ;; ) :Times 5)
+  (Repeat (-->
+    10 (Push "list1")
+    20 (Push "list1")
+    30 (Push "list1")
+    (Get "list1")
+    (Log)
+    (Take 0)
+    (Assert.Is 10 true)
+    (Get "list1")
+    (Take 1)
+    (Assert.Is 20 true)
+    (Get "list1")
+    (Take 2)
+    (Assert.Is 30 true)
+    (Log)
+  ) :Times 5)
 
-  ;; 0
-  ;; (Set "counter")
-  ;; (Repeat (-->
-  ;;   (Get "counter")
-  ;;   (Math.Add 1)
-  ;;   (Update "counter")
-  ;;  ) :Times 5)
-  ;; (Get "counter")
-  ;; (Assert.Is 5 true)
-  ;; (Log)
+  0
+  (Set "counter")
+  (Repeat (-->
+    (Get "counter")
+    (Math.Add 1)
+    (Update "counter")
+   ) :Times 5)
+  (Get "counter")
+  (Assert.Is 5 true)
+  (Log)
 
-  ;; 20
-  ;; (Set "a")
-  ;; 30
-  ;; (Set "b")
-  ;; (Swap "a" "b")
-  ;; (Get "a")
-  ;; (Assert.Is 30)
-  ;; (Get "b")
-  ;; (Assert.Is 20)
-  ;; (Log)
+  20
+  (Set "a")
+  30
+  (Set "b")
+  (Swap "a" "b")
+  (Get "a")
+  (Assert.Is 30)
+  (Get "b")
+  (Assert.Is 20)
+  (Log)
 
-  ;; "Value1" (Set "tab1" "v1")
-  ;; "Value2" (Set "tab1" "v2")
-  ;; (Get "tab1" "v1")
-  ;; (Assert.Is "Value1" true)
-  ;; (Log)
-  ;; (Get "tab1" "v2")
-  ;; (Assert.IsNot "Value1" true)
-  ;; (Log)
+  "Value1" (Set "tab1" "v1")
+  "Value2" (Set "tab1" "v2")
+  (Get "tab1" "v1")
+  (Assert.Is "Value1" true)
+  (Log)
+  (Get "tab1" "v2")
+  (Assert.IsNot "Value1" true)
+  (Log)
 
-  ;; (Count "tab1")
-  ;; (Assert.Is 2 true)
+  (Count "tab1")
+  (Assert.Is 2 true)
 
-  ;; (Clear "tab1")
-  ;; (Count "tab1")
-  ;; (Assert.Is 0 true)
+  (Clear "tab1")
+  (Count "tab1")
+  (Assert.Is 0 true)
   
-  ;; "My input"
-  ;; (Dispatch inner1)
-  ;; (Assert.Is "My input" true)
-  ;; (Log)
+  "My input"
+  (Dispatch inner1)
+  (Assert.Is "My input" true)
+  (Log)
 
-  ;; "My input"
-  ;; (Do inner1)
-  ;; (Assert.Is "My input 2" true)
-  ;; (Log)
+  "My input"
+  (Do inner1)
+  (Assert.Is "My input 2" true)
+  (Log)
 
   ; b0r
   0

@@ -597,13 +597,24 @@ struct Set : public SetBase {
           CBTypeInfo{CBType::Table,
                      {.table = {.keys = {&_tableContentKey, 1, 0},
                                 .types = {&_tableContentInfo, 1, 0}}}};
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+      }
     } else {
       // just a variable!
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
-                                CBTypeInfo(data.inputType), true));
+      if (_global) {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::GlobalVariable(_name.c_str(), "The exposed variable.",
+                                        CBTypeInfo(data.inputType), true));
+      } else {
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
+                                  CBTypeInfo(data.inputType), true));
+      }
     }
     return data.inputType;
   }
@@ -1065,8 +1076,13 @@ struct Push : public VariableBase {
       _seqInfo.basicType = Seq;
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed sequence.", _seqInfo, true));
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed sequence.", _seqInfo, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed sequence.", _seqInfo, true));
+      }
     };
 
     const auto updateTableInfo = [this, &data] {
@@ -1082,8 +1098,13 @@ struct Push : public VariableBase {
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
       chainblocks::arrayPush(_tableInfo.table.types, _seqInfo);
       chainblocks::arrayPush(_tableInfo.table.keys, _key.c_str());
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      }
     };
 
     if (_isTable) {
@@ -1156,8 +1177,11 @@ struct Push : public VariableBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_target)) {
-      _target = referenceVariable(context, _name.c_str());
+    if (!_target) {
+      if (_global)
+        _target = referenceGlobalVariable(context, _name.c_str());
+      else
+        _target = referenceVariable(context, _name.c_str());
     }
 
     if (unlikely(_isTable)) {

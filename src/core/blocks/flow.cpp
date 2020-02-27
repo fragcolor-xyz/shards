@@ -185,7 +185,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, data);
+          this, data, false);
       chainblocks::arrayFree(validation.exposedInfo);
     }
 
@@ -208,7 +208,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, data);
+          this, data, false);
 
       if (first) {
         // A first valid exposedInfo array is our gold

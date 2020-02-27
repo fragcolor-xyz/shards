@@ -36,7 +36,7 @@ CBTypeInfo deriveTypeInfo(CBVar &value);
 [[nodiscard]] CBValidationResult
 validateConnections(const std::vector<CBlock *> &chain,
                     CBValidationCallback callback, void *userData,
-                    CBInstanceData data = CBInstanceData());
+                    CBInstanceData data, bool globalsOnly);
 [[nodiscard]] CBValidationResult
 validateConnections(const CBlocks chain, CBValidationCallback callback,
                     void *userData, CBInstanceData data = CBInstanceData());
@@ -549,7 +549,7 @@ struct CBNode {
                         << " input block: " << blk->name(blk);
             }
           },
-          this);
+          this, CBInstanceData(), true);
       chainblocks::arrayFree(validation.exposedInfo);
     }
 
