@@ -466,7 +466,7 @@ void from_json(const json &j, CBChainRef &chainref) {
   if (findIt != chainblocks::Globals::GlobalChains.end()) {
     chain = findIt->second;
     // Need to clean it up for rewrite!
-    chain->cleanup();
+    chain->clear();
   } else {
     chain.reset(new CBChain(chainName.c_str()));
     chainblocks::Globals::GlobalChains[chainName] = chain;

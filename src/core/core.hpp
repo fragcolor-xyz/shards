@@ -91,12 +91,12 @@ struct CBChain {
   }
 
   ~CBChain() {
-    cleanup();
+    clear();
     chainblocks::destroyVar(rootTickInput);
     LOG(TRACE) << "~CBChain() " << name;
   }
 
-  void cleanup();
+  void clear();
 
   void warmup(CBContext *context) {
     for (auto &blk : blocks) {

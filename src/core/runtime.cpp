@@ -1338,7 +1338,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   return false;
 }
 
-void CBChain::cleanup() {
+void CBChain::clear() {
   if (node) {
     node->remove(this);
     node = nullptr;
@@ -1351,6 +1351,15 @@ void CBChain::cleanup() {
     // strategy they wish!
   }
   blocks.clear();
+
+  // find dangling variables, notice but do not destroy
+  for (auto var : variables) {
+    if (var.second.refcount > 0) {
+      LOG(ERROR) << "Found a dangling variable: " << var.first
+                 << " in chain: " << name;
+    }
+  }
+  variables.clear();
 
   if (ownedOutput) {
     chainblocks::destroyVar(finishedOutput);

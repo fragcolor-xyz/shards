@@ -401,6 +401,14 @@ inline void cleanup(CBChain *chain) {
                  << std::string(blk->name(blk));
     }
   }
+  // Also clear all variables reporting dangling ones
+  for (auto var : chain->variables) {
+    if (var.second.refcount > 0) {
+      LOG(ERROR) << "Found a dangling variable: " << var.first
+                 << " in chain: " << chain->name;
+    }
+  }
+  chain->variables.clear();
 }
 
 boost::context::continuation run(CBChain *chain,
