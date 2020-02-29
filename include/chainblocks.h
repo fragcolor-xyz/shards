@@ -9,6 +9,7 @@
 #include <stdint.h>  // ints
 
 // All the available types
+#ifdef __cplusplus
 enum CBType : uint8_t {
   None,
   Any,
@@ -130,6 +131,11 @@ enum CBInlineBlocks : uint8_t {
   MathTrunc,
   MathRound,
 };
+#else
+typedef uint8_t CBType;
+typedef uint8_t CBChainState;
+typedef uint8_t CBInlineBlocks;
+#endif
 
 typedef void *CBArray;
 
@@ -306,7 +312,11 @@ struct CBAllocatorInterface {};
 #endif
 
 struct CBTypeInfo {
+#ifdef __cplusplus
   enum CBType basicType;
+#else
+  CBType basicType;
+#endif
 
   CB_UNION(Details) {
     CB_STRUCT(Object) {
@@ -449,7 +459,11 @@ struct CBFlow {
 
 struct CBVarPayload {
   union {
+#ifdef __cplusplus
     enum CBChainState chainState;
+#else
+    CBChainState chainState;
+#endif
 
     struct {
       CBPointer objectValue;
@@ -531,7 +545,11 @@ struct CBVar {
     struct CBAllocatorInterface *allocator;
   };
   uint32_t refcount;
+#ifdef __cplusplus
   enum CBType valueType;
+#else
+  CBType valueType;
+#endif
   uint16_t flags;
 } __attribute__((aligned(16)));
 
@@ -591,7 +609,11 @@ typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 
 struct CBlock {
+#ifdef __cplusplus
   enum CBInlineBlocks inlineBlockId;
+#else
+  CBInlineBlocks inlineBlockId;
+#endif
   CBBool owned; // flag to ensure blocks are unique when flows/chains
 
   // The interface to fill
