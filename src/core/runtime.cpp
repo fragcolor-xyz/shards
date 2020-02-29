@@ -674,7 +674,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 #define CB_ARRAY_IMPL(_arr_, _val_, _name_)                                    \
   result._name_##Free = [](_arr_ *seq) { chainblocks::arrayFree(*seq); };      \
                                                                                \
-  result._name_##Resize = [](_arr_ *seq, uint64_t size) {                      \
+  result._name_##Resize = [](_arr_ *seq, uint32_t size) {                      \
     chainblocks::arrayResize(*seq, size);                                      \
   };                                                                           \
                                                                                \
@@ -682,7 +682,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     chainblocks::arrayPush(*seq, *value);                                      \
   };                                                                           \
                                                                                \
-  result._name_##Insert = [](_arr_ *seq, uint64_t index, const _val_ *value) { \
+  result._name_##Insert = [](_arr_ *seq, uint32_t index, const _val_ *value) { \
     chainblocks::arrayInsert(*seq, index, *value);                             \
   };                                                                           \
                                                                                \
@@ -690,11 +690,11 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return chainblocks::arrayPop<_arr_, _val_>(*seq);                          \
   };                                                                           \
                                                                                \
-  result._name_##FastDelete = [](_arr_ *seq, uint64_t index) {                 \
+  result._name_##FastDelete = [](_arr_ *seq, uint32_t index) {                 \
     chainblocks::arrayDelFast(*seq, index);                                    \
   };                                                                           \
                                                                                \
-  result._name_##SlowDelete = [](_arr_ *seq, uint64_t index) {                 \
+  result._name_##SlowDelete = [](_arr_ *seq, uint32_t index) {                 \
     chainblocks::arrayDel(*seq, index);                                        \
   }
 

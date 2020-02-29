@@ -757,12 +757,12 @@ typedef void(__cdecl *CBSleep)(double seconds, bool runCallbacks);
 #define CB_ARRAY_TYPE(_array_, _value_)                                        \
   typedef void(__cdecl * _array_##Free)(_array_ *);                            \
   typedef void(__cdecl * _array_##Push)(_array_ *, const _value_ *);           \
-  typedef void(__cdecl * _array_##Insert)(_array_ *, uint64_t,                 \
+  typedef void(__cdecl * _array_##Insert)(_array_ *, uint32_t,                 \
                                           const _value_ *);                    \
   typedef _value_(__cdecl *_array_##Pop)(_array_ *);                           \
-  typedef void(__cdecl * _array_##Resize)(_array_ *, uint64_t);                \
-  typedef void(__cdecl * _array_##FastDelete)(_array_ *, uint64_t);            \
-  typedef void(__cdecl * _array_##SlowDelete)(_array_ *, uint64_t)
+  typedef void(__cdecl * _array_##Resize)(_array_ *, uint32_t);                \
+  typedef void(__cdecl * _array_##FastDelete)(_array_ *, uint32_t);            \
+  typedef void(__cdecl * _array_##SlowDelete)(_array_ *, uint32_t)
 
 CB_ARRAY_TYPE(CBSeq, struct CBVar);
 CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
