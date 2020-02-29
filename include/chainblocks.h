@@ -9,7 +9,7 @@
 #include <stdint.h>  // ints
 
 // All the available types
-#ifdef __cplusplus
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
 enum CBType : uint8_t {
   None,
   Any,
@@ -312,7 +312,7 @@ struct CBAllocatorInterface {};
 #endif
 
 struct CBTypeInfo {
-#ifdef __cplusplus
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType basicType;
 #else
   CBType basicType;
@@ -459,7 +459,7 @@ struct CBFlow {
 
 struct CBVarPayload {
   union {
-#ifdef __cplusplus
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
     enum CBChainState chainState;
 #else
     CBChainState chainState;
@@ -545,7 +545,7 @@ struct CBVar {
     struct CBAllocatorInterface *allocator;
   };
   uint32_t refcount;
-#ifdef __cplusplus
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
 #else
   CBType valueType;
@@ -609,7 +609,7 @@ typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 
 struct CBlock {
-#ifdef __cplusplus
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBInlineBlocks inlineBlockId;
 #else
   CBInlineBlocks inlineBlockId;
@@ -900,11 +900,11 @@ typedef struct CBCore(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 
 #define CHAINBLOCKS_CURRENT_ABI 0x20200101
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version);
-#ifdef __cplusplus
+#if defined(__cplusplus)
 };
 #endif
 
