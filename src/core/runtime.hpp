@@ -66,7 +66,7 @@ struct CBContext {
 
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
-  Duration next;
+  Duration next{};
 
   // Iteration counter
   uint64_t iterationCount;
