@@ -30,3 +30,5 @@
            (Pop)
            (Assert.Is 6 true)
            ))
+
+(tick Root)

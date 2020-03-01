@@ -65,3 +65,5 @@
 (schedule Root (consumers 2))
 (schedule Root consumer33)
 (run Root 0.1)
+
+(prn "Done")

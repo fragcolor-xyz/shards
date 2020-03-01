@@ -371,13 +371,9 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
                                     const CBVar &input) {
   // push to chain stack
   context->chainStack.push_back(chain);
-  // Reset finished flag (atomic), TODO take care of recursions!
-  chain->finished = false;
   auto runRes = chainblocks::runChain(chain, context, input);
   // Write result before setting flag, TODO mutex inter-locked?
   chain->finishedOutput = runRes.output;
-  // Set finished flag (atomic), recursion??
-  chain->finished = true;
   // restore stack chain
   context->chainStack.pop_back();
   return runRes;
@@ -425,11 +421,16 @@ inline void prepare(CBChain *chain) {
 }
 
 inline void start(CBChain *chain, CBVar input = {}) {
-  if (!chain->coro || !(*chain->coro) || chain->started)
+  if (chain->state != CBChain::State::Prepared) {
+    LOG(ERROR) << "Attempted to start a chain not ready for running!";
+    return;
+  }
+
+  if (!chain->coro || !(*chain->coro))
     return; // check if not null and bool operator also to see if alive!
 
   chainblocks::cloneVar(chain->rootTickInput, input);
-  *chain->coro = chain->coro->resume();
+  chain->state = CBChain::State::Starting;
 }
 
 inline bool stop(CBChain *chain, CBVar *result = nullptr) {
@@ -439,7 +440,8 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
-    if ((*chain->coro) && !chain->returned) {
+    if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
+        chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
       chain->context->aborted = true;
 
@@ -456,18 +458,21 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     cleanup(chain);
   }
 
-  chain->started = false;
+  // return true if we ended, as in we did our job
+  auto res = chain->state == CBChain::State::Ended;
 
-  if (chain->failed) {
-    return false;
-  }
+  chain->state = CBChain::State::Stopped;
 
-  return true;
+  return res;
+}
+
+inline bool isRunning(CBChain *chain) {
+  return chain->state >= CBChain::State::Starting &&
+         chain->state <= CBChain::State::IterationEnded;
 }
 
 inline bool tick(CBChain *chain, CBVar rootInput = {}) {
-  if (!chain->context || !chain->coro || !(*chain->coro) || chain->returned ||
-      !chain->started)
+  if (!chain->context || !chain->coro || !(*chain->coro) || !(isRunning(chain)))
     return false; // check if not null and bool operator also to see if alive!
 
   Duration now = Clock::now().time_since_epoch();
@@ -480,12 +485,8 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
   return true;
 }
 
-inline bool isRunning(CBChain *chain) {
-  return chain->started && !chain->returned;
-}
-
 inline bool hasEnded(CBChain *chain) {
-  return chain->started && chain->returned;
+  return chain->state > CBChain::State::IterationEnded;
 }
 
 inline bool isCanceled(CBContext *context) { return context->aborted; }

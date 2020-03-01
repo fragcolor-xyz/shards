@@ -18,3 +18,5 @@
   (Snappy.Decompress)
   (BytesToString)
   (Log)))
+
+(tick Root)

@@ -685,6 +685,7 @@
            "SaveBinary"
            (Const testChain)
            (WriteFile "testChain.bin")))
+(if (tick Root) nil (throw "Root tick failed"))
 
 (schedule Root
           (Chain
@@ -695,6 +696,7 @@
            (Log)
            (ChainRunner .loadedChain)
            ))
+(if (tick Root) nil (throw "Root tick failed"))
 
 (schedule Root testChain)
 (if (tick Root) nil (throw "Root tick failed"))
@@ -719,11 +721,14 @@
 (start loopedChain)
 (tick loopedChain)
 (tick loopedChain)
+(tick loopedChain)
 
 (prepare loopedChain2)
 (start loopedChain2)
 (tick loopedChain2)
 (tick loopedChain2)
+(tick loopedChain2)
+
 (if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
 
 (def fileReader (Chain "readFile"

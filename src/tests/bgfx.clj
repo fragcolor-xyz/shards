@@ -7,7 +7,7 @@
     "init"
     (LoadImage "../../assets/drawing.png")
     (BGFX.Texture2D)
-    (Set "image1")
+    (Set "image1" :Global true)
     false (Set "checkBoxie")))
   (ImGui.Window :Title "My ImGui" :Width 450 :Height 720 :PosX 0 :PosY 0 :Contents (--> 
     "Hello world"   (ImGui.Text)

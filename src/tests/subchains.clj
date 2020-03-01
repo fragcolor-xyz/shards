@@ -45,7 +45,16 @@
   (Msg "message 4")
   4
   (Sleep (Float 0))
-))
+  ))
+
+(def startButNotResumed
+  (Chain
+   "started"
+   (Msg "From top!")
+   (Resume "root")
+   ;; Should not enter here!
+   false ; fail on purpose here
+   (Assert.Is true true)))
 
 (schedule root otherChain)
 
@@ -87,5 +96,12 @@
   (Assert.Is 1 true)
   (Msg "next step")
 
+  (Start startButNotResumed)
+  (Msg "root resumed")
+  (Start startButNotResumed)
+  (Msg "root resumed")
+
   (Msg "done")
 ))
+
+(run root 0.1)

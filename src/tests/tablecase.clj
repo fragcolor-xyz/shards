@@ -1,3 +1,6 @@
+;; TODO FIXME this is failing but I think that should be OK
+;; We store tab1 as just table var but we know nothing of the keys probably
+
 (def! Root (Node))
 
 (def! testChain (Chain "namedChain"  
@@ -16,3 +19,5 @@
   (Assert.Is "Value1" true)))
 
 (schedule Root testChain)
+
+(tick Root)

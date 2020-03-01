@@ -209,7 +209,7 @@ struct WaitChain : public ChainBase {
       if (once)
         doneOnce = true;
 
-      while (!(chain->finished && chain->returned)) {
+      while (isRunning(chain.get())) {
         cbpause(0.0);
       }
 
@@ -266,7 +266,7 @@ struct Resume : public ChainBase {
       chainblocks::prepare(chain.get());
     }
 
-    // Start it if not started, this will tick it once!
+    // Start it if not started
     if (!chainblocks::isRunning(chain.get())) {
       chainblocks::start(chain.get(), input);
     }
@@ -275,7 +275,45 @@ struct Resume : public ChainBase {
     // the following will suspend this current chain
     // and in node tick when re-evaluated tick will
     // resume with the chain we just set above!
-    chainblocks::suspend(context, 0);
+    auto state = chainblocks::suspend(context, 0);
+    // Must take care of state!
+    if (state.payload.chainState != Continue) {
+      // TODO should we ignore Restart?
+      return state;
+    }
+
+    return input;
+  }
+};
+
+struct Start : public Resume {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // assign current flow to the chain we are going to
+    chain->flow = context->main->flow;
+    // if we have a node also make sure chain knows about it
+    chain->node = context->main->node;
+    // assign the new chain as current chain on the flow
+    chain->flow->chain = chain.get();
+
+    // ensure chain is not running, we start from top
+    chainblocks::stop(chain.get());
+
+    // Prepare
+    chainblocks::prepare(chain.get());
+
+    // Start
+    chainblocks::start(chain.get(), input);
+
+    // And normally we just delegate the CBNode + CBFlow
+    // the following will suspend this current chain
+    // and in node tick when re-evaluated tick will
+    // resume with the chain we just set above!
+    auto state = chainblocks::suspend(context, 0);
+    // Must take care of state!
+    if (state.payload.chainState != Continue) {
+      // TODO should we ignore Restart?
+      return state;
+    }
 
     return input;
   }
@@ -338,13 +376,13 @@ struct BaseRunner : public ChainBase {
       chainblocks::prepare(chain.get());
     }
 
-    // Ticking or starting
+    // Starting
     if (!chainblocks::isRunning(chain.get())) {
       chainblocks::start(chain.get(), input);
-    } else {
-      // tick the flow one rather then directly chain!
-      chainblocks::tick(_steppedFlow.chain, input);
     }
+
+    // tick the flow one rather then directly the chain!
+    chainblocks::tick(_steppedFlow.chain, input);
   }
 };
 
@@ -697,6 +735,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
 
 void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
+  REGISTER_CBLOCK("Start", Start);
   REGISTER_CBLOCK("WaitChain", WaitChain);
   REGISTER_CBLOCK("RunChain", RunChain);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);

@@ -1426,8 +1426,9 @@ Chain::operator CBChain *() {
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
+  // TODO refactor this mess
   chain->previousOutput = CBVar();
-  chain->started = true;
+  chain->state = CBChain::State::Iterating;
   chain->context = context;
 
   // store stack index
@@ -1441,15 +1442,18 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
           context->stack.len = sidx;
+          chain->state = CBChain::State::IterationEnded;
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
           context->stack.len = sidx;
+          chain->state = CBChain::State::IterationEnded;
           return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
           context->stack.len = sidx;
           // Use input as output, return previous block result
+          chain->state = CBChain::State::IterationEnded;
           return {input, Restarted};
         }
         case CBChainState::Rebase:
@@ -1467,16 +1471,19 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
       context->stack.len = sidx;
+      chain->state = CBChain::State::IterationEnded;
       return {chain->previousOutput, Failed};
     } catch (...) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       context->stack.len = sidx;
+      chain->state = CBChain::State::IterationEnded;
       return {chain->previousOutput, Failed};
     }
   }
 
   context->stack.len = sidx;
+  chain->state = CBChain::State::IterationEnded;
   return {chain->previousOutput, Running};
 }
 
@@ -1502,23 +1509,26 @@ bool warmup(CBChain *chain, CBContext *context) {
 boost::context::continuation run(CBChain *chain,
                                  boost::context::continuation &&sink) {
   auto running = true;
-  // Reset return state
-  chain->returned = false;
+
+  // Reset state
+  chain->state = CBChain::State::Prepared;
+
   // Clean previous output if we had one
   if (chain->ownedOutput) {
     destroyVar(chain->finishedOutput);
     chain->ownedOutput = false;
   }
-  // Reset error
-  chain->failed = false;
+
   // Create a new context and copy the sink in
   CBContext context(std::move(sink), chain);
+  // also pupulate context in chain
+  chain->context = &context;
 
   // We prerolled our coro, suspend here before actually starting.
   // This allows us to allocate the stack ahead of time.
   // And call warmup on all the blocks!
   if (!warmup(chain, &context)) {
-    chain->failed = true;
+    chain->state = CBChain::State::Failed;
     context.aborted = true;
     goto endOfChain;
   }
@@ -1531,14 +1541,12 @@ boost::context::continuation run(CBChain *chain,
     running = chain->looped;
     context.restarted = false; // Remove restarted flag
 
-    chain->finished = false; // Reset finished flag (atomic)
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     chain->finishedOutput = runRes.output; // Write result before setting flag
-    chain->finished = true;                // Set finished flag (atomic)
     context.iterationCount++;              // increatse iteration counter
     context.stack.len = 0;
     if (unlikely(runRes.state == Failed)) {
-      chain->failed = true;
+      chain->state = CBChain::State::Failed;
       context.aborted = true;
       break;
     } else if (unlikely(runRes.state == Stopped)) {
@@ -1569,7 +1577,8 @@ endOfChain:
 
   // Need to take care that we might have stopped the chain very early due to
   // errors and the next eventual stop() should avoid resuming
-  chain->returned = true;
+  if (chain->state != CBChain::State::Failed)
+    chain->state = CBChain::State::Ended;
   return std::move(context.continuation);
 }
 

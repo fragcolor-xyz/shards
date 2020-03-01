@@ -91,6 +91,8 @@
   (Push "d" "k1")
   (Get "d" "k1")
   (Assert.Is ["a" "b" "c"] true)
+
+  (Msg "Done!")
 ))
 
 (tick node)

@@ -29,3 +29,5 @@
   (Log)
   ;; (Assert.Is "Hello structured data" true)
   ))
+
+(tick Root)

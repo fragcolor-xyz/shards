@@ -82,9 +82,18 @@ ALWAYS_INLINE inline void destroyVar(CBVar &src);
 } // namespace chainblocks
 
 struct CBChain {
+  enum State {
+    Stopped,
+    Prepared,
+    Starting,
+    Iterating,
+    IterationEnded,
+    Failed,
+    Ended
+  };
+
   CBChain(const char *chain_name)
       : looped(false), unsafe(false), name(chain_name), coro(nullptr),
-        started(false), finished(false), returned(false), failed(false),
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
         composedHash(0), context(nullptr), node(nullptr) {
     LOG(TRACE) << "CBChain(): " << name;
@@ -131,16 +140,7 @@ struct CBChain {
 
   CBCoro *coro;
 
-  // we could simply null check coro but actually some chains (sub chains), will
-  // run without a coro within the root coro so we need this too
-  bool started;
-
-  // this gets cleared before every runChain and set after every runChain
-  std::atomic_bool finished;
-
-  // when running as coro if actually the coro lambda exited
-  bool returned;
-  bool failed;
+  std::atomic<State> state{Stopped};
 
   CBVar rootTickInput{};
   CBVar previousOutput{};
