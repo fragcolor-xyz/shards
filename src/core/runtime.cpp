@@ -1793,8 +1793,28 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     if (dst != src) {
       destroyVar(dst);
     }
+
     dst.valueType = CBType::Chain;
     dst.payload.chainValue = CBChain::addRef(src.payload.chainValue);
+    break;
+  case CBType::Object:
+    if (dst != src) {
+      destroyVar(dst);
+    }
+
+    dst.valueType = CBType::Object;
+    dst.payload.objectValue = src.payload.objectValue;
+    dst.payload.objectTypeId = src.payload.objectTypeId;
+    dst.payload.objectVendorId = src.payload.objectVendorId;
+
+    // Custom objects might need some inc ref
+    if ((src.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        src.objectInfo && src.objectInfo->reference) {
+      dst.flags &= CBVAR_FLAGS_USES_OBJINFO;
+      dst.objectInfo = src.objectInfo;
+      dst.objectInfo->reference(dst.payload.objectValue);
+    }
+
     break;
   default:
     break;

@@ -3,6 +3,7 @@
 
 #include "nlohmann/json.hpp"
 #include "shared.hpp"
+#include <magic_enum.hpp>
 
 using json = nlohmann::json;
 
@@ -42,7 +43,7 @@ void _releaseMemory(CBVar &var) {
 }
 
 void to_json(json &j, const CBVar &var) {
-  auto valType = int(var.valueType);
+  auto valType = magic_enum::enum_name(var.valueType);
   switch (var.valueType) {
   case Any:
   case Object:
@@ -219,8 +220,12 @@ void to_json(json &j, const CBVar &var) {
 }
 
 void from_json(const json &j, CBVar &var) {
-  auto valType = CBType(j.at("type").get<int>());
-  switch (valType) {
+  auto valName = j.at("type").get<std::string>();
+  auto valType = magic_enum::enum_cast<CBType>(valName);
+  if (!valType.has_value()) {
+    throw chainblocks::CBException("Failed to parse CBVar value type.");
+  }
+  switch (valType.value()) {
   case Any:
   case Object:
   case Chain: {
