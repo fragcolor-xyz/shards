@@ -13,6 +13,7 @@
 enum CBType : uint8_t {
   None,
   Any,
+  Object,
   Enum,
   Bool,
   Int,        // A 64bits int
@@ -39,8 +40,7 @@ enum CBType : uint8_t {
   Image,
   Seq,
   Table,
-  Chain,
-  Object
+  Chain
 };
 
 enum CBChainState : uint8_t {
@@ -382,15 +382,13 @@ struct CBTypeInfo {
 
 typedef const char *(__cdecl *CBObjectSerializer)(CBPointer);
 typedef CBPointer(__cdecl *CBObjectDeserializer)(const char *);
-typedef void(__cdecl *CBObjectReference)(CBPointer);
-typedef void(__cdecl *CBObjectRelease)(CBPointer);
+typedef CBPointer(__cdecl *CBObjectDestroy)(CBPointer);
 
 struct CBObjectInfo {
   const char *name;
   CBObjectSerializer serialize;
   CBObjectDeserializer deserialize;
-  CBObjectReference reference;
-  CBObjectRelease release;
+  CBObjectDestroy destroy;
 };
 
 struct CBEnumInfo {

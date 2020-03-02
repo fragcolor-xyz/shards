@@ -504,9 +504,9 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   case Object:
     if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        var.objectInfo && var.objectInfo->release) {
+        var.objectInfo && var.objectInfo->destroy) {
       // in this case the custom object needs actual destruction
-      var.objectInfo->release(var.payload.objectValue);
+      var.objectInfo->destroy(var.payload.objectValue);
     }
     break;
   case CBType::Chain:
