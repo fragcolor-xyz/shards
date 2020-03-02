@@ -1796,6 +1796,29 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     dst.valueType = CBType::Chain;
     dst.payload.chainValue = CBChain::addRef(src.payload.chainValue);
     break;
+  case CBType::Object:
+    if (dst.valueType == CBType::Object) {
+      // in this case destroy the previous instance!
+      // unless we are the same object, in that case
+      // just return
+      if (dst.payload.objectValue == src.payload.objectValue) {
+        return;
+      }
+      destroyVar(dst);
+    }
+
+    dst.valueType = CBType::Object;
+    dst.payload.objectValue = src.payload.objectValue;
+    dst.payload.objectVendorId = src.payload.objectVendorId;
+    dst.payload.objectTypeId = src.payload.objectTypeId;
+
+    if ((src.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        src.objectInfo && src.objectInfo->reference) {
+      // in this case the custom object needs actual destruction
+      dst.flags &= CBVAR_FLAGS_USES_OBJINFO;
+      dst.objectInfo = src.objectInfo;
+      dst.objectInfo->reference(dst.payload.objectValue);
+    }
   default:
     break;
   };
