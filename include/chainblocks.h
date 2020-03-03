@@ -379,15 +379,20 @@ struct CBTypeInfo {
   CB_UNION_NAME(details);
 };
 
-typedef const char *(__cdecl *CBObjectSerializer)(CBPointer);
-typedef CBPointer(__cdecl *CBObjectDeserializer)(const char *);
+// if outData is NULL will just give you a valid outLen
+// still must check result is true!
+typedef CBBool(__cdecl *CBObjectSerializer)(CBPointer, uint8_t *outData,
+                                            size_t *outLen);
+typedef CBPointer(__cdecl *CBObjectDeserializer)(uint8_t *data, size_t len);
 typedef void(__cdecl *CBObjectReference)(CBPointer);
 typedef void(__cdecl *CBObjectRelease)(CBPointer);
 
 struct CBObjectInfo {
   const char *name;
+
   CBObjectSerializer serialize;
   CBObjectDeserializer deserialize;
+
   CBObjectReference reference;
   CBObjectRelease release;
 };

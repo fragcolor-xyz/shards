@@ -222,13 +222,13 @@ struct Globals {
 
   static inline std::string RootPath;
 
-  static inline Var True = Var(true);
-  static inline Var False = Var(false);
-  static inline Var StopChain = Var::Stop();
-  static inline Var RestartChain = Var::Restart();
-  static inline Var ReturnPrevious = Var::Return();
-  static inline Var RebaseChain = Var::Rebase();
-  static inline Var Empty = Var();
+  const static inline Var True = Var(true);
+  const static inline Var False = Var(false);
+  const static inline Var StopChain = Var::Stop();
+  const static inline Var RestartChain = Var::Restart();
+  const static inline Var ReturnPrevious = Var::Return();
+  const static inline Var RebaseChain = Var::Rebase();
+  const static inline Var Empty = Var();
 
   static inline CBTableInterface TableInterface{
       .tableForEach =
@@ -595,9 +595,14 @@ struct Serialization {
       CBChain::deleteRef(output.payload.chainValue);
       break;
     }
-    case CBType::Object:
-      throw CBException("Serialization not supported for the given type: " +
-                        type2Name(output.valueType));
+    case CBType::Object: {
+      if ((output.flags & CBVAR_FLAGS_USES_OBJINFO) ==
+              CBVAR_FLAGS_USES_OBJINFO &&
+          output.objectInfo && output.objectInfo->release) {
+        output.objectInfo->release(output.payload.objectValue);
+      }
+      break;
+    }
     }
 
     memset(&output, 0x0, sizeof(CBVar));
@@ -812,9 +817,34 @@ struct Serialization {
       output.payload.chainValue = chain->newRef();
       break;
     }
-    case CBType::Object:
-      throw CBException("WriteFile: Type cannot be serialized (yet?). " +
-                        type2Name(output.valueType));
+    case CBType::Object: {
+      int64_t id;
+      read((uint8_t *)&id, sizeof(int64_t));
+      uint64_t len;
+      read((uint8_t *)&len, sizeof(uint64_t));
+      if (len > 0) {
+        auto it = Globals::ObjectTypesRegister.find(id);
+        if (it != Globals::ObjectTypesRegister.end()) {
+          auto &info = it->second;
+          auto size = size_t(len);
+          std::vector<uint8_t> data;
+          data.resize(size);
+          read((uint8_t *)&data[0], size);
+          output.payload.objectValue = info.deserialize(&data[0], size);
+          int32_t vendorId = (int32_t)((id & 0xFFFFFFFF00000000) >> 32);
+          int32_t typeId = (int32_t)(id & 0x00000000FFFFFFFF);
+          output.payload.objectVendorId = vendorId;
+          output.payload.objectTypeId = typeId;
+          output.flags |= CBVAR_FLAGS_USES_OBJINFO;
+          output.objectInfo = &info;
+          // up ref count also, not included in deserialize op!
+          if (info.reference) {
+            info.reference(output.payload.objectValue);
+          }
+        }
+      }
+      break;
+    }
     }
   }
 
@@ -988,9 +1018,39 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Object:
-      throw CBException("Type cannot be serialized. " +
-                        type2Name(input.valueType));
+    case CBType::Object: {
+      int64_t id = (int64_t)input.payload.objectVendorId << 32 |
+                   input.payload.objectTypeId;
+      write((const uint8_t *)&id, sizeof(int64_t));
+      total += sizeof(int64_t);
+      if ((input.flags & CBVAR_FLAGS_USES_OBJINFO) ==
+              CBVAR_FLAGS_USES_OBJINFO &&
+          input.objectInfo && input.objectInfo->serialize) {
+        size_t len;
+        if (!input.objectInfo->serialize(input.payload.objectValue, nullptr,
+                                         &len)) {
+          throw chainblocks::CBException(
+              "Failed to serialize custom object variable!");
+        }
+        std::vector<uint8_t> data;
+        data.resize(len);
+        if (!input.objectInfo->serialize(input.payload.objectValue, &data[0],
+                                         &len)) {
+          throw chainblocks::CBException(
+              "Failed to serialize custom object variable!");
+        }
+        uint64_t ulen = uint64_t(len);
+        write((const uint8_t *)&ulen, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+        write((const uint8_t *)&data[0], len);
+        total += len;
+      } else {
+        uint64_t empty = 0;
+        write((const uint8_t *)&empty, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+      }
+      break;
+    }
     }
     return total;
   }

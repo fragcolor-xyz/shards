@@ -1815,7 +1815,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     if ((src.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
         src.objectInfo && src.objectInfo->reference) {
       // in this case the custom object needs actual destruction
-      dst.flags &= CBVAR_FLAGS_USES_OBJINFO;
+      dst.flags |= CBVAR_FLAGS_USES_OBJINFO;
       dst.objectInfo = src.objectInfo;
       dst.objectInfo->reference(dst.payload.objectValue);
     }
