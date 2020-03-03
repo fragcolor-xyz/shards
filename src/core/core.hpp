@@ -1026,16 +1026,11 @@ struct Serialization {
       if ((input.flags & CBVAR_FLAGS_USES_OBJINFO) ==
               CBVAR_FLAGS_USES_OBJINFO &&
           input.objectInfo && input.objectInfo->serialize) {
-        size_t len;
-        if (!input.objectInfo->serialize(input.payload.objectValue, nullptr,
-                                         &len)) {
-          throw chainblocks::CBException(
-              "Failed to serialize custom object variable!");
-        }
-        std::vector<uint8_t> data;
-        data.resize(len);
-        if (!input.objectInfo->serialize(input.payload.objectValue, &data[0],
-                                         &len)) {
+        size_t len = 0;
+        uint8_t *data = nullptr;
+        CBPointer handle = nullptr;
+        if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len,
+                                         &handle)) {
           throw chainblocks::CBException(
               "Failed to serialize custom object variable!");
         }
@@ -1044,6 +1039,7 @@ struct Serialization {
         total += sizeof(uint64_t);
         write((const uint8_t *)&data[0], len);
         total += len;
+        input.objectInfo->free(handle);
       } else {
         uint64_t empty = 0;
         write((const uint8_t *)&empty, sizeof(uint64_t));

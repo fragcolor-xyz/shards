@@ -381,8 +381,10 @@ struct CBTypeInfo {
 
 // if outData is NULL will just give you a valid outLen
 // still must check result is true!
-typedef CBBool(__cdecl *CBObjectSerializer)(CBPointer, uint8_t *outData,
-                                            size_t *outLen);
+typedef CBBool(__cdecl *CBObjectSerializer)(CBPointer, uint8_t **outData,
+                                            size_t *outLen,
+                                            CBPointer *customHandle);
+typedef void(__cdecl *CBObjectSerializerFree)(CBPointer customHandle);
 typedef CBPointer(__cdecl *CBObjectDeserializer)(uint8_t *data, size_t len);
 typedef void(__cdecl *CBObjectReference)(CBPointer);
 typedef void(__cdecl *CBObjectRelease)(CBPointer);
@@ -391,6 +393,7 @@ struct CBObjectInfo {
   const char *name;
 
   CBObjectSerializer serialize;
+  CBObjectSerializerFree free;
   CBObjectDeserializer deserialize;
 
   CBObjectReference reference;
