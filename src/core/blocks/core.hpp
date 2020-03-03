@@ -49,6 +49,8 @@ struct CoreInfo {
 
   static inline Types IntOrFloat{{IntType, FloatType}};
 
+  static inline Types NoneIntOrFloat{{NoneType, IntType, FloatType}};
+
   static inline Types Indexables{
       {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
        Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
@@ -352,10 +354,10 @@ struct SetInput {
   }
 };
 
-struct Sleep {
+struct Pause {
   static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Time", "The amount of time in seconds (float) to pause this chain.",
-      CoreInfo::FloatType));
+      CoreInfo::NoneIntOrFloat));
 
   double time{};
 
@@ -367,9 +369,21 @@ struct Sleep {
     return CBParametersInfo(sleepParamsInfo);
   }
 
-  void setParam(int index, CBVar value) { time = value.payload.floatValue; }
+  void setParam(int index, CBVar value) {
+    if (value.valueType == CBType::Float)
+      time = value.payload.floatValue;
+    else if (value.valueType == CBType::Int)
+      time = double(value.payload.intValue);
+    else
+      time = 0.0;
+  }
 
-  CBVar getParam(int index) { return Var(time); }
+  CBVar getParam(int index) {
+    if (time == 0.0)
+      return Empty;
+    else
+      return Var(time);
+  }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     cbpause(time);
@@ -2092,7 +2106,7 @@ struct Repeat {
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Input);
 RUNTIME_CORE_BLOCK_TYPE(SetInput);
-RUNTIME_CORE_BLOCK_TYPE(Sleep);
+RUNTIME_CORE_BLOCK_TYPE(Pause);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);

@@ -41,7 +41,7 @@
      "A message"
      (Broadcast "b")
      (Log "Broadcasted: ")
-     (Sleep 0.1))
+     (Pause 0.1))
     10)
    (Complete "b")
    ))

@@ -1,5 +1,5 @@
 (def action (Chain "buttonAction"
-  (Sleep 2.0)
+  (Pause 2)
 	(Msg "This happened 2 seconds later")))
 
 (def Root (Node))

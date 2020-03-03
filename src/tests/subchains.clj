@@ -31,20 +31,20 @@
 (def tickedChain (Chain "ticked"
   (Msg "message 1")
   1
-  (Sleep (Float 0))
+  (Pause))
   
   (Msg "message 2")
   (Resume "jumphere!")
   2
-  (Sleep (Float 0))
+  (Pause))
   
   (Msg "message 3")
   3
-  (Sleep (Float 0))
+  (Pause))
   
   (Msg "message 4")
   4
-  (Sleep (Float 0))
+  (Pause))
   ))
 
 (def startButNotResumed

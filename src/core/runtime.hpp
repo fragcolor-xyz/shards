@@ -148,7 +148,7 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     return cblock->core.activate(context, input);
   }
   case CoreSleep: {
-    auto cblock = reinterpret_cast<chainblocks::SleepRuntime *>(blk);
+    auto cblock = reinterpret_cast<chainblocks::PauseRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
   case CoreInput: {

@@ -23,7 +23,7 @@
   "chain-1" :Looped
   (Get "x" :Default 0)
   (Log)
-  (Sleep 0)
+  (Pause)
   (Inc "x")))
 
 (schedule
