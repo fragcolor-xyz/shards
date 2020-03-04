@@ -95,7 +95,12 @@ extern void registerBlocks();
 extern void cbInitExtras();
 #endif
 
+static bool globalRegisterDone = false;
+
 void registerCoreBlocks() {
+  if (globalRegisterDone)
+    return;
+  globalRegisterDone = true;
   // at this point we might have some auto magical static linked block already
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for
@@ -608,6 +613,9 @@ void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
 
 extern "C" {
 EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
+  // Load everything we know if we did not yet!
+  chainblocks::registerCoreBlocks();
+
   CBCore result{};
 
   if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
@@ -726,6 +734,11 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return validateConnections(blocks, callback, userData, data);
   };
 
+  result.validateSetParam = [](CBlock *block, int index, CBVar param,
+                               CBValidationCallback callback, void *userData) {
+    return validateSetParam(block, index, param, callback, userData);
+  };
+
   result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input) {
     CBVar output{};
     chainblocks::activateBlocks(blocks, context, input, output);
@@ -768,7 +781,13 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.schedule = [](CBNode *node, CBChain *chain) { node->schedule(chain); };
 
-  result.tick = [](CBNode *node) { node->tick(); };
+  result.tick = [](CBNode *node) {
+    node->tick();
+    if (node->empty())
+      return false;
+    else
+      return true;
+  };
 
   result.sleep = [](double seconds, bool runCallbacks) {
     chainblocks::sleep(seconds, runCallbacks);

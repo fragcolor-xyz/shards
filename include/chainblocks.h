@@ -420,17 +420,17 @@ struct CBExposedTypeInfo {
 
   // generally those are from internal blocks like Set, means they can change in
   // place
-  bool isMutable;
+  CBBool isMutable;
 
   // if isTableEntry is true:
   // `name` will be the name of the table variable
   // `exposedType` will be of `Table` type
   // and `tableKeys` will contain the record's key name
   // while `tableTypes` the record's type
-  bool isTableEntry;
+  CBBool isTableEntry;
 
   // If the exposed variable should be available to all chains in the node
-  bool global;
+  CBBool global;
 };
 
 struct CBValidationResult {
@@ -694,7 +694,7 @@ struct CBChainProvider {
 
 typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock,
                                             const char *errorTxt,
-                                            bool nonfatalWarning,
+                                            CBBool nonfatalWarning,
                                             void *userData);
 
 typedef void(__cdecl *CBRegisterBlock)(const char *fullName,
@@ -740,6 +740,11 @@ typedef struct CBRunChainOutput(__cdecl *CBRunChain)(struct CBChain *chain,
                                                      struct CBContext *context,
                                                      struct CBVar input);
 
+typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index,
+                                            struct CBVar param,
+                                            CBValidationCallback callback,
+                                            void *userData);
+
 typedef struct CBValidationResult(__cdecl *CBValidateBlocks)(
     CBlocks blocks, CBValidationCallback callback, void *userData,
     struct CBInstanceData data);
@@ -753,15 +758,15 @@ typedef void(__cdecl *CBLog)(const char *msg);
 typedef struct CBlock *(__cdecl *CBCreateBlock)(const char *name);
 
 typedef struct CBChain *(__cdecl *CBCreateChain)(const char *name,
-                                                 CBlocks blocks, bool looped,
-                                                 bool unsafe);
+                                                 CBlocks blocks, CBBool looped,
+                                                 CBBool unsafe);
 typedef void(__cdecl *CBDestroyChain)(struct CBChain *chain);
 
 typedef struct CBNode *(__cdecl *CBCreateNode)();
 typedef void(__cdecl *CBDestroyNode)(struct CBNode *chain);
 typedef void(__cdecl *CBSchedule)(struct CBNode *node, struct CBChain *chain);
-typedef void(__cdecl *CBTick)(struct CBNode *node);
-typedef void(__cdecl *CBSleep)(double seconds, bool runCallbacks);
+typedef CBBool(__cdecl *CBTick)(struct CBNode *node);
+typedef void(__cdecl *CBSleep)(double seconds, CBBool runCallbacks);
 
 #define CB_ARRAY_TYPE(_array_, _value_)                                        \
   typedef void(__cdecl * _array_##Free)(_array_ *);                            \
@@ -873,6 +878,7 @@ struct CBCore {
 
   // Chain creation
   CBCreateBlock createBlock;
+  CBValidateSetParam validateSetParam;
 
   CBCreateChain createChain;
   CBDestroyChain destroyChain;
@@ -881,7 +887,7 @@ struct CBCore {
   CBCreateNode createNode;
   CBDestroyNode destroyNode;
   CBSchedule schedule;
-  CBTick tick;
+  CBTick tick; // returns false if all chains are done!
   CBSleep sleep;
 
   // Environment utilities
