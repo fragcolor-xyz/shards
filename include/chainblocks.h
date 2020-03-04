@@ -508,7 +508,7 @@ struct CBVarPayload {
       uint32_t stringCapacity;
     };
 
-    ptrdiff_t stackIndexValue;
+    int64_t stackIndexValue;
 
     struct CBColor colorValue;
 
