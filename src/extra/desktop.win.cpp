@@ -817,7 +817,7 @@ struct GetMousePos : public MousePosBase {
       throw CBException("GetPhysicalCursorPos failed.");
     }
 
-    auto wnd = AsHWND(_window(context));
+    auto wnd = AsHWND(_window.get());
     if (wnd) {
       // both return bool but checking might be not necessary
       // if we fail hopefully the struct is unchanged
@@ -837,7 +837,7 @@ struct SetMousePos : public MousePosBase {
     p.x = input.payload.int2Value[0];
     p.y = input.payload.int2Value[1];
 
-    auto wnd = AsHWND(_window(context));
+    auto wnd = AsHWND(_window.get());
     if (wnd) {
       // both return bool but checking might be not necessary
       // if we fail hopefully the struct is unchanged
@@ -938,7 +938,7 @@ struct Tap : public MousePosBase {
     pinfo.orientation = 90; // 0~359 afaik
     pinfo.pressure = 1024;  // 0~1024 afaik
 
-    auto wnd = AsHWND(_window(context));
+    auto wnd = AsHWND(_window.get());
     if (wnd) {
       POINT p;
       p.x = input.payload.int2Value[0];
@@ -1038,7 +1038,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     event.ki.dwExtraInfo = GetMessageExtraInfo();
     event.mi.dwFlags = MOUSEEVENTF_ABSOLUTE;
 
-    auto wnd = AsHWND(_window(context));
+    auto wnd = AsHWND(_window.get());
     if (wnd) {
       POINT p;
       p.x = input.payload.int2Value[0];

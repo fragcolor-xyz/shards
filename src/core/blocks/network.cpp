@@ -271,8 +271,7 @@ struct Server : public NetworkBase {
     if (!_socket.socket) {
       // first activation, let's init
       _socket.socket = new udp::socket(
-          _io_context,
-          udp::endpoint(udp::v4(), _port(context).payload.intValue));
+          _io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
       boost::asio::post(_io_context, [this]() { do_receive(); });
@@ -375,8 +374,8 @@ struct Client : public NetworkBase {
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
-      auto sport = std::to_string(_port(context).payload.intValue);
-      udp::resolver::query query(udp::v4(), _addr(context).payload.stringValue,
+      auto sport = std::to_string(_port.get().payload.intValue);
+      udp::resolver::query query(udp::v4(), _addr.get().payload.stringValue,
                                  sport);
       _server = *resolver.resolve(query);
 

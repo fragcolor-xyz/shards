@@ -300,7 +300,7 @@ struct BinaryBase : public Base {
     }                                                                          \
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      auto &operand = _operand(context);                                       \
+      auto &operand = _operand.get();                                          \
       if (likely(_opType == Normal)) {                                         \
         operate(_output, input, operand);                                      \
         return _output;                                                        \
@@ -382,7 +382,7 @@ struct BinaryBase : public Base {
     }                                                                          \
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      auto &operand = _operand(context);                                       \
+      auto &operand = _operand.get();                                          \
       if (likely(_opType == Normal)) {                                         \
         operate(_output, input, operand);                                      \
         return _output;                                                        \

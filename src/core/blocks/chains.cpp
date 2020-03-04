@@ -698,7 +698,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto chainVar = _chain(context);
+    auto chainVar = _chain.get();
     chain = CBChain::sharedFromRef(chainVar.payload.chainValue);
     if (unlikely(!chain))
       return input;

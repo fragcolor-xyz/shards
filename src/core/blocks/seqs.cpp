@@ -248,7 +248,7 @@ struct IndexOf {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto inputLen = input.payload.seqValue.len;
     auto itemLen = 0;
-    auto item = _item(context);
+    auto item = _item.get();
     chainblocks::arrayResize(_results, 0);
     if (item.valueType == Seq) {
       itemLen = item.payload.seqValue.len;

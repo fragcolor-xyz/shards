@@ -53,7 +53,7 @@ struct FileBase {
 
   bool getFilename(CBContext *context, std::string &filename,
                    bool checkExists = true) {
-    auto &ctxFile = _filename(context);
+    auto &ctxFile = _filename.get();
     if (ctxFile.valueType != String)
       return false;
 

@@ -108,7 +108,7 @@ public:
 
   operator CBVar() const { return _v; }
 
-  CBVar &operator()(CBContext *ctx) {
+  CBVar &get() {
     if (_v.valueType == ContextVar) {
       return *_cp;
     } else if (_v.valueType == StackIndex) {

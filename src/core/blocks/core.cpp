@@ -526,7 +526,7 @@ struct XpendTo : public XPendBase {
 
 struct AppendTo : public XpendTo {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto &collection = _collection(context);
+    auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
       CBVar tmp{};
@@ -554,7 +554,7 @@ struct AppendTo : public XpendTo {
 
 struct PrependTo : public XpendTo {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto &collection = _collection(context);
+    auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
       CBVar tmp{};

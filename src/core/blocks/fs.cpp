@@ -328,7 +328,7 @@ struct Write {
   void warmup(CBContext *context) { _contents.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto contents = _contents(context);
+    auto contents = _contents.get();
     if (contents.valueType != None) {
       fs::path p(input.payload.stringValue);
       if (!_overwrite && !_append && fs::exists(p)) {
