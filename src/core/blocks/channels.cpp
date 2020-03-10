@@ -36,7 +36,7 @@ struct MPMCChannel : public ChannelShared {
   boost::lockfree::stack<CBVar> recycle{16};
 };
 
-class Broadcast;
+struct Broadcast;
 class BroadcastChannel : public ChannelShared {
 public:
   MPMCChannel &subscribe() {

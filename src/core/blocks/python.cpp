@@ -35,7 +35,7 @@ inline bool hasLib(const char *lib_name) {
 #endif
 }
 
-inline void *dlsym(const char *lib_name, const char *sym_name) {
+inline void *dynLoad(const char *lib_name, const char *sym_name) {
 #if _WIN32
   HMODULE mod = GetModuleHandleA(lib_name);
   if (mod == 0) {
@@ -140,37 +140,37 @@ struct Env {
       auto idx = std::distance(std::begin(lib_names), pos);
       auto dll = lib_names[idx];
 
-      auto init = (Py_Initialize)dlsym(dll, "Py_Initialize");
+      auto init = (Py_Initialize)dynLoad(dll, "Py_Initialize");
       if (!ensure((void *)init))
         return;
       init();
 
       _makeStr =
-          (PyUnicode_DecodeFSDefault)dlsym(dll, "PyUnicode_DecodeFSDefault");
+          (PyUnicode_DecodeFSDefault)dynLoad(dll, "PyUnicode_DecodeFSDefault");
       if (!ensure((void *)_makeStr))
         return;
 
-      _import = (PyImport_Import)dlsym(dll, "PyImport_Import");
+      _import = (PyImport_Import)dynLoad(dll, "PyImport_Import");
       if (!ensure((void *)_import))
         return;
 
-      _getAttr = (PyObject_GetAttrString)dlsym(dll, "PyObject_GetAttrString");
+      _getAttr = (PyObject_GetAttrString)dynLoad(dll, "PyObject_GetAttrString");
       if (!ensure((void *)_getAttr))
         return;
 
-      _callable = (PyCallable_Check)dlsym(dll, "PyCallable_Check");
+      _callable = (PyCallable_Check)dynLoad(dll, "PyCallable_Check");
       if (!ensure((void *)_callable))
         return;
 
-      _call = (PyObject_CallObject)dlsym(dll, "PyObject_CallObject");
+      _call = (PyObject_CallObject)dynLoad(dll, "PyObject_CallObject");
       if (!ensure((void *)_call))
         return;
 
-      _tupleNew = (PyTuple_New)dlsym(dll, "PyTuple_New");
+      _tupleNew = (PyTuple_New)dynLoad(dll, "PyTuple_New");
       if (!ensure((void *)_tupleNew))
         return;
 
-      _tupleSetItem = (PyTuple_SetItem)dlsym(dll, "PyTuple_SetItem");
+      _tupleSetItem = (PyTuple_SetItem)dynLoad(dll, "PyTuple_SetItem");
       if (!ensure((void *)_tupleSetItem))
         return;
 
