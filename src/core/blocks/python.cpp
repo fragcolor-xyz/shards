@@ -3,6 +3,10 @@
 
 #include "shared.hpp"
 
+#if defined(__linux__) || defined(__APPLE__)
+#include <dlfcn.h>
+#endif
+
 /*
  * This block will always work.. even if no python is present
  * We always try to dyn link and we provide always interface here
