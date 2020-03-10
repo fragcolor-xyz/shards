@@ -91,6 +91,10 @@ namespace Assert {
 extern void registerBlocks();
 }
 
+namespace Python {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -136,6 +140,7 @@ void registerCoreBlocks() {
   Regex::registerBlocks();
   registerProcessBlocks();
   channels::registerBlocks();
+  Python::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
