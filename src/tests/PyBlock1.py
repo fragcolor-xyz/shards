@@ -19,4 +19,8 @@ def outputTypes(self):
   return ("Int")
 
 def activate(self, inputs):
-  return inputs + 10
+  print(self)
+  sys.stdout.flush()
+  to_add = 10
+  self.pause()
+  return inputs + to_add

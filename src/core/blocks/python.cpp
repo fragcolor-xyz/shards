@@ -80,6 +80,15 @@ struct PyTypeObject : public PyObjectVarHead {
   PyDealloc dealloc;
 };
 
+typedef PyObject *(__cdecl *PyCFunc)(PyObject *, PyObject *);
+
+struct PyMethodDef {
+  const char *name;
+  PyCFunc func;
+  int flags;
+  const char *doc;
+};
+
 using PyObj = std::shared_ptr<PyObject>;
 
 struct Env {
@@ -121,11 +130,22 @@ struct Env {
   typedef PyObject *(__cdecl *Py_BuildValue)(const char *format, ...);
   typedef double(__cdecl *PyFloat_AsDouble)(PyObject *floatObj);
   typedef long long(__cdecl *PyLong_AsLongLong)(PyObject *longObj);
+  typedef PyObject *(__cdecl *PyCFunction_NewEx)(PyMethodDef *mdef,
+                                                 PyObject *self, PyObject *mod);
+  typedef void(__cdecl *PyCapsuleDtor)(PyObject *p);
+  typedef PyObject *(__cdecl *PyCapsule_New)(void *ptr, const char *name,
+                                             PyCapsuleDtor dtor);
+  typedef void *(__cdecl *PyCapsule_GetPointer)(PyObject *cap,
+                                                const char *name);
+  typedef int(__cdecl *PyObject_SetAttrString)(PyObject *obj,
+                                               const char *attrName,
+                                               PyObject *item);
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
   typedef PyTypeObject *PyUnicode_Type;
   typedef PyTypeObject *PyFloat_Type;
+  typedef PyTypeObject *PyCapsule_Type;
   typedef PyObject *_Py_NoneStruct;
 
   static inline PyUnicode_DecodeFSDefault _makeStr;
@@ -147,15 +167,45 @@ struct Env {
   static inline Py_BuildValue _buildValue;
   static inline PyFloat_AsDouble _asDouble;
   static inline PyLong_AsLongLong _asLong;
+  static inline PyCapsule_New _newCapsule;
+  static inline PyCapsule_GetPointer _capsuleGet;
+  static inline PyObject_SetAttrString _setAttr;
+  static inline PyCFunction_NewEx _newFunc;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
   static inline PyFloat_Type _float_type;
   static inline PyLong_Type _long_type;
+  static inline PyCapsule_Type _capsule_type;
 
   static inline _Py_NoneStruct _py_none;
 
-  static PyObj make_pyshared(PyObject *p) {
+  static PyObject __cdecl *methodPause(PyObject *self, PyObject *args) {
+    auto ctxObj = make_pyshared(_getAttr(self, "__cbcontext__"));
+    if (!isCapsule(ctxObj)) {
+      LOG(ERROR) << "internal error, __cbcontext__ is not a capsule!";
+      throw CBException("pause from python failed!");
+    }
+
+    auto ctx = getPtr(ctxObj);
+    if (!ctx) {
+      LOG(ERROR) << "internal error, __cbcontext__ was null!";
+      throw CBException("pause from python failed!");
+    }
+
+    // FIXME TODO handle chain state
+    suspend((CBContext *)ctx, 0.0);
+
+    return _py_none;
+  }
+
+  static inline PyMethodDef pauseMethod{"pause", &methodPause, (1 << 0),
+                                        nullptr};
+
+  static PyObj make_pyshared(PyObject *p, bool inc_refcount = false) {
+    if (inc_refcount)
+      p->refcount++;
+
     std::shared_ptr<PyObject> res(p, [](auto p) {
       if (!p)
         return;
@@ -217,11 +267,16 @@ struct Env {
       DLIMPORT(_buildValue, Py_BuildValue);
       DLIMPORT(_asDouble, PyFloat_AsDouble);
       DLIMPORT(_asLong, PyLong_AsLongLong);
+      DLIMPORT(_newCapsule, PyCapsule_New);
+      DLIMPORT(_capsuleGet, PyCapsule_GetPointer);
+      DLIMPORT(_setAttr, PyObject_SetAttrString);
+      DLIMPORT(_newFunc, PyCFunction_NewEx);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
       DLIMPORT(_float_type, PyFloat_Type);
       DLIMPORT(_long_type, PyLong_Type);
+      DLIMPORT(_capsule_type, PyCapsule_Type);
 
       DLIMPORT(_py_none, _Py_NoneStruct);
 
@@ -256,6 +311,14 @@ struct Env {
     return make_pyshared(_getAttr(obj.get(), attr_name));
   }
 
+  static void setAttr(const PyObj &obj, const char *attr_name,
+                      const PyObj &item) {
+    if (_setAttr(obj.get(), attr_name, item.get()) == -1) {
+      printErrors();
+      throw CBException("Failed to set attribute (Py)");
+    }
+  }
+
   static bool isCallable(const PyObj &obj) {
     return obj.get() && _callable(obj.get());
   }
@@ -268,11 +331,11 @@ struct Env {
     for (size_t i = 0; i < n; i++) {
       _tupleSetItem(tuple, ssize_t(i), args[i].get());
     }
-    return make_pyshared(_call(obj.get(), tuple));
+    return make_pyshared(_call(obj.get(), tuple), true);
   }
 
   static PyObj call(const PyObj &obj) {
-    return make_pyshared(_call(obj.get(), nullptr));
+    return make_pyshared(_call(obj.get(), nullptr), true);
   }
 
   static PyObj dict() { return make_pyshared(_dictNew()); }
@@ -341,6 +404,15 @@ struct Env {
     return obj.get() && isFloat(obj.get());
   }
 
+  static bool isCapsule(const PyObject *obj) {
+    return obj->type == _capsule_type ||
+           _typeIsSubType(obj->type, _capsule_type);
+  }
+
+  static bool isCapsule(const PyObj &obj) {
+    return obj.get() && isCapsule(obj.get());
+  }
+
   static ssize_t tupleSize(const PyObj &obj) { return _tupleSize(obj.get()); }
 
   static PyObject *tupleGetItem(const PyObj &tup, ssize_t idx) {
@@ -363,12 +435,24 @@ struct Env {
     return toStringView(obj.get());
   }
 
-  static PyObject *none() { return _py_none; }
-
   static CBType toCBType(const std::string_view &str) {
     if (str == "Int") {
       return CBType::Int;
     }
+  }
+
+  static PyObj capsule(void *ptr) {
+    return make_pyshared(_newCapsule(ptr, nullptr, nullptr));
+  }
+
+  static void *getPtr(const PyObj &obj) {
+    return _capsuleGet(obj.get(), nullptr);
+  }
+
+  static PyObj none() { return PyObj(_py_none); }
+
+  static PyObj func(PyMethodDef &def, const PyObj &self) {
+    return make_pyshared(_newFunc(&def, self.get(), nullptr));
   }
 
 private:
@@ -447,6 +531,10 @@ struct Py {
     auto setup = Env::getAttr(_module, "setup");
     if (Env::isCallable(setup)) {
       _self = Env::call(setup);
+      auto pause1 = Env::func(Env::pauseMethod, _self);
+      Env::setAttr(_self, "pause", pause1);
+    } else {
+      _self = Env::none();
     }
   }
 
@@ -511,6 +599,8 @@ struct Py {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    auto pyctx = Env::capsule(context);
+    Env::setAttr(_self, "__cbcontext__", pyctx);
     auto pyres = Env::call(_activate, _self, Env::var2Py(input));
     return Env::py2Var(pyres);
   }
