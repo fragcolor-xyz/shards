@@ -2,6 +2,7 @@
 #define CB_PYTHON_HPP
 
 #include "shared.hpp"
+#include <filesystem>
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
@@ -11,6 +12,7 @@
  * This block will always work.. even if no python is present
  * We always try to dyn link and we provide always interface here
  * no headers required, no linking required
+ * Python 3++ only, tested and developed with python 3.8
  */
 
 namespace chainblocks {
@@ -99,12 +101,32 @@ struct Env {
   typedef PyObject *(__cdecl *PyImport_Import)(PyObject *name);
   typedef PyObject *(__cdecl *PyObject_GetAttrString)(PyObject *obj,
                                                       const char *str);
-  typedef int *(__cdecl *PyCallable_Check)(PyObject *obj);
+  typedef int(__cdecl *PyCallable_Check)(PyObject *obj);
   typedef PyObject *(__cdecl *PyObject_CallObject)(PyObject *obj,
                                                    PyObject *args);
   typedef PyObject *(__cdecl *PyTuple_New)(ssize_t n);
   typedef void *(__cdecl *PyTuple_SetItem)(PyObject *tuple, ssize_t idx,
                                            PyObject *item);
+  typedef PyObject *(__cdecl *PyDict_New)();
+  typedef int(__cdecl *PyErr_Occurred)();
+  typedef void(__cdecl *PyErr_Print)();
+  typedef PyObject *(__cdecl *PySys_GetObject)(const char *name);
+  typedef void(__cdecl *PyList_Append)(PyObject *obj, PyObject *item);
+  typedef ssize_t(__cdecl *PyTuple_Size)(PyObject *tup);
+  typedef PyObject *(__cdecl *PyTuple_GetItem)(PyObject *tup, ssize_t pos);
+  typedef int(__cdecl *PyType_IsSubtype)(PyTypeObject *a, PyTypeObject *b);
+  typedef PyObject *(__cdecl *PyUnicode_AsUTF8String)(PyObject *unicode);
+  typedef int(__cdecl *PyBytes_AsStringAndSize)(PyObject *obj, char **buffer,
+                                                ssize_t *len);
+  typedef PyObject *(__cdecl *Py_BuildValue)(const char *format, ...);
+  typedef double(__cdecl *PyFloat_AsDouble)(PyObject *floatObj);
+  typedef long long(__cdecl *PyLong_AsLongLong)(PyObject *longObj);
+
+  typedef PyTypeObject *PyTuple_Type;
+  typedef PyTypeObject *PyLong_Type;
+  typedef PyTypeObject *PyUnicode_Type;
+  typedef PyTypeObject *PyFloat_Type;
+  typedef PyObject *_Py_NoneStruct;
 
   static inline PyUnicode_DecodeFSDefault _makeStr;
   static inline PyImport_Import _import;
@@ -113,27 +135,53 @@ struct Env {
   static inline PyObject_CallObject _call;
   static inline PyTuple_New _tupleNew;
   static inline PyTuple_SetItem _tupleSetItem;
+  static inline PyDict_New _dictNew;
+  static inline PyErr_Occurred _errOccurred;
+  static inline PyErr_Print _errPrint;
+  static inline PyList_Append _listAppend;
+  static inline PyTuple_Size _tupleSize;
+  static inline PyTuple_GetItem _borrow_tupleGetItem;
+  static inline PyType_IsSubtype _typeIsSubType;
+  static inline PyUnicode_AsUTF8String _unicodeToString;
+  static inline PyBytes_AsStringAndSize _bytesAsStringAndSize;
+  static inline Py_BuildValue _buildValue;
+  static inline PyFloat_AsDouble _asDouble;
+  static inline PyLong_AsLongLong _asLong;
+
+  static inline PyUnicode_Type _unicode_type;
+  static inline PyTuple_Type _tuple_type;
+  static inline PyFloat_Type _float_type;
+  static inline PyLong_Type _long_type;
+
+  static inline _Py_NoneStruct _py_none;
 
   static PyObj make_pyshared(PyObject *p) {
     std::shared_ptr<PyObject> res(p, [](auto p) {
+      if (!p)
+        return;
+
       p->refcount--;
+
       if (p->refcount == 0) {
         LOG(TRACE) << "PyObj::Dealloc";
-        p->type->dealloc(p);
+        if (p->type)
+          p->type->dealloc(p);
       }
     });
     return res;
   }
 
-  static bool ensure(void *ptr) {
+  static bool ensure(void *ptr, const char *name) {
     if (!ptr) {
-      LOG(ERROR) << "Failed to initialize python environment!";
+      LOG(ERROR) << "Failed to initialize python environment, could not find "
+                    "procedure: "
+                 << name;
       return false;
     }
     return true;
   }
 
-  static void Init() {
+  static void init() {
     auto pos = std::find_if(std::begin(lib_names), std::end(lib_names),
                             [](auto &&str) { return hasLib(str); });
     if (pos != std::end(lib_names)) {
@@ -141,38 +189,53 @@ struct Env {
       auto dll = lib_names[idx];
 
       auto init = (Py_Initialize)dynLoad(dll, "Py_Initialize");
-      if (!ensure((void *)init))
+      if (!ensure((void *)init, "Py_Initialize"))
         return;
       init();
 
-      _makeStr =
-          (PyUnicode_DecodeFSDefault)dynLoad(dll, "PyUnicode_DecodeFSDefault");
-      if (!ensure((void *)_makeStr))
-        return;
+#define DLIMPORT(_proc_, _name_)                                               \
+  _proc_ = (_name_)dynLoad(dll, #_name_);                                      \
+  if (!ensure((void *)_proc_, #_name_))                                        \
+  return
 
-      _import = (PyImport_Import)dynLoad(dll, "PyImport_Import");
-      if (!ensure((void *)_import))
-        return;
+      DLIMPORT(_makeStr, PyUnicode_DecodeFSDefault);
+      DLIMPORT(_import, PyImport_Import);
+      DLIMPORT(_getAttr, PyObject_GetAttrString);
+      DLIMPORT(_callable, PyCallable_Check);
+      DLIMPORT(_call, PyObject_CallObject);
+      DLIMPORT(_tupleNew, PyTuple_New);
+      DLIMPORT(_tupleSetItem, PyTuple_SetItem);
+      DLIMPORT(_dictNew, PyDict_New);
+      DLIMPORT(_errOccurred, PyErr_Occurred);
+      DLIMPORT(_errPrint, PyErr_Print);
+      DLIMPORT(_listAppend, PyList_Append);
+      DLIMPORT(_tupleSize, PyTuple_Size);
+      DLIMPORT(_borrow_tupleGetItem, PyTuple_GetItem);
+      DLIMPORT(_typeIsSubType, PyType_IsSubtype);
+      DLIMPORT(_unicodeToString, PyUnicode_AsUTF8String);
+      DLIMPORT(_bytesAsStringAndSize, PyBytes_AsStringAndSize);
+      DLIMPORT(_buildValue, Py_BuildValue);
+      DLIMPORT(_asDouble, PyFloat_AsDouble);
+      DLIMPORT(_asLong, PyLong_AsLongLong);
 
-      _getAttr = (PyObject_GetAttrString)dynLoad(dll, "PyObject_GetAttrString");
-      if (!ensure((void *)_getAttr))
-        return;
+      DLIMPORT(_unicode_type, PyUnicode_Type);
+      DLIMPORT(_tuple_type, PyTuple_Type);
+      DLIMPORT(_float_type, PyFloat_Type);
+      DLIMPORT(_long_type, PyLong_Type);
 
-      _callable = (PyCallable_Check)dynLoad(dll, "PyCallable_Check");
-      if (!ensure((void *)_callable))
-        return;
+      DLIMPORT(_py_none, _Py_NoneStruct);
 
-      _call = (PyObject_CallObject)dynLoad(dll, "PyObject_CallObject");
-      if (!ensure((void *)_call))
+      // Also add local path to "path"
+      // TODO Add more paths?
+      auto borrow_sysGetObj = (PySys_GetObject)dynLoad(dll, "PySys_GetObject");
+      if (!ensure((void *)borrow_sysGetObj, "PySys_GetObject"))
         return;
+      auto absRoot = std::filesystem::absolute(Globals::RootPath);
+      auto pyAbsRoot = string(absRoot.string().c_str());
+      auto path = borrow_sysGetObj("path");
+      _listAppend(path, pyAbsRoot.get());
 
-      _tupleNew = (PyTuple_New)dynLoad(dll, "PyTuple_New");
-      if (!ensure((void *)_tupleNew))
-        return;
-
-      _tupleSetItem = (PyTuple_SetItem)dynLoad(dll, "PyTuple_SetItem");
-      if (!ensure((void *)_tupleSetItem))
-        return;
+      _ok = true;
 
       LOG(INFO) << "Python found, Py blocks will work!";
     } else {
@@ -212,17 +275,138 @@ struct Env {
     return make_pyshared(_call(obj.get(), nullptr));
   }
 
+  static PyObj dict() { return make_pyshared(_dictNew()); }
+
   static bool ok() { return _ok; }
 
-  static PyObj var2Py(const CBVar &var) {}
+  static PyObj var2Py(const CBVar &var) {
+    switch (var.valueType) {
+    case Int: {
+      return make_pyshared(_buildValue("L", var.payload.intValue));
+    } break;
+    case Float: {
+      return make_pyshared(_buildValue("d", var.payload.floatValue));
+    } break;
+    default:
+      LOG(ERROR) << "Unsupported type " << type2Name(var.valueType);
+      throw CBException(
+          "Failed to convert CBVar into PyObject, type not supported!");
+    }
+  }
 
-  static CBVar py2Var(const PyObj &obj) {}
+  static CBVar py2Var(const PyObj &obj) {
+    CBVar res{};
+    if (isLong(obj)) {
+      res.valueType = Int;
+      res.payload.intValue = _asLong(obj.get());
+    } else if (isFloat(obj)) {
+      res.valueType = Float;
+      res.payload.floatValue = _asDouble(obj.get());
+    }
+    return res;
+  }
+
+  static void printErrors() {
+    if (_errOccurred())
+      _errPrint();
+  }
+
+  static bool isTuple(const PyObj &obj) {
+    return obj.get() && (obj.get()->type == _tuple_type ||
+                         _typeIsSubType(obj.get()->type, _tuple_type));
+  }
+
+  static bool isString(const PyObject *obj) {
+    return obj->type == _unicode_type ||
+           _typeIsSubType(obj->type, _unicode_type);
+  }
+
+  static bool isString(const PyObj &obj) {
+    return obj.get() && isString(obj.get());
+  }
+
+  static bool isLong(const PyObject *obj) {
+    return obj->type == _long_type || _typeIsSubType(obj->type, _long_type);
+  }
+
+  static bool isLong(const PyObj &obj) {
+    return obj.get() && isLong(obj.get());
+  }
+
+  static bool isFloat(const PyObject *obj) {
+    return obj->type == _float_type || _typeIsSubType(obj->type, _float_type);
+  }
+
+  static bool isFloat(const PyObj &obj) {
+    return obj.get() && isFloat(obj.get());
+  }
+
+  static ssize_t tupleSize(const PyObj &obj) { return _tupleSize(obj.get()); }
+
+  static PyObject *tupleGetItem(const PyObj &tup, ssize_t idx) {
+    return _borrow_tupleGetItem(tup.get(), idx);
+  }
+
+  static std::string_view toStringView(PyObject *obj) {
+    char *str;
+    ssize_t len;
+    auto utf = make_pyshared(_unicodeToString(obj));
+    auto res = _bytesAsStringAndSize(utf.get(), &str, &len);
+    if (res == -1) {
+      printErrors();
+      throw CBException("String conversion failed!");
+    }
+    return std::string_view(str, len);
+  }
+
+  static std::string_view toStringView(const PyObj &obj) {
+    return toStringView(obj.get());
+  }
+
+  static PyObject *none() { return _py_none; }
+
+  static CBType toCBType(const std::string_view &str) {
+    if (str == "Int") {
+      return CBType::Int;
+    }
+  }
 
 private:
   static inline bool _ok{false};
 };
 
 struct Py {
+  void setup() {
+    if (!Env::ok()) {
+      Env::init();
+    }
+  }
+
+  Parameters params{{"Module",
+                     "The module name to load (must be in the script path, .py "
+                     "extension added internally!)",
+                     {CoreInfo::StringType}}};
+
+  CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0) {
+      // Handle here
+      _scriptName = value.payload.stringValue;
+      reloadScript();
+    } else {
+      // To the script
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0) {
+      return Var(_scriptName);
+    } else {
+      // To the script
+    }
+  }
+
   void reloadScript() {
     if (!Env::ok()) {
       LOG(ERROR) << "Script: " << _scriptName
@@ -231,6 +415,11 @@ struct Py {
     }
 
     _module = Env::import(_scriptName.c_str());
+    if (!_module.get()) {
+      LOG(ERROR) << "Script: " << _scriptName << " failed to load!.";
+      Env::printErrors();
+      throw CBException("Failed to load python script!");
+    }
 
     _inputTypes = Env::getAttr(_module, "inputTypes");
     if (!Env::isCallable(_inputTypes)) {
@@ -251,34 +440,103 @@ struct Py {
       throw CBException("Failed to reload python script!");
     }
 
+    _parameters = Env::getAttr(_module, "parameters");
+    _setParam = Env::getAttr(_module, "setParam");
+    _getParam = Env::getAttr(_module, "getParam");
+
     auto setup = Env::getAttr(_module, "setup");
     if (Env::isCallable(setup)) {
-      Env::call(setup);
+      _self = Env::call(setup);
     }
   }
 
-  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  CBVar activate(CBContext *context, const CBVar &input) { return CBVar(); }
+  CBTypesInfo inputTypes() {
+    std::vector<CBTypeInfo> types;
+    auto pytype = Env::call(_inputTypes, _self);
+    if (Env::isTuple(pytype)) {
+      auto size = Env::tupleSize(pytype);
+      for (ssize_t i = 0; i < size; i++) {
+        auto item = Env::tupleGetItem(pytype, i);
+        if (Env::isString(item)) {
+          auto str = Env::toStringView(item);
+          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+        } else {
+          LOG(ERROR) << "Script: " << _scriptName
+                     << " inputTypes method should return a tuple of strings "
+                        "or a string.";
+          throw CBException("Failed call inputTypes on python script!");
+        }
+      }
+    } else if (Env::isString(pytype)) {
+      auto str = Env::toStringView(pytype);
+      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+    } else {
+      LOG(ERROR) << "Script: " << _scriptName
+                 << " inputTypes method should return a tuple of strings or a "
+                    "string.";
+      throw CBException("Failed call inputTypes on python script!");
+    }
+    _inputTypesStorage = types;
+    return _inputTypesStorage;
+  }
+
+  CBTypesInfo outputTypes() {
+    std::vector<CBTypeInfo> types;
+    auto pytype = Env::call(_outputTypes, _self);
+    if (Env::isTuple(pytype)) {
+      auto size = Env::tupleSize(pytype);
+      for (ssize_t i = 0; i < size; i++) {
+        auto item = Env::tupleGetItem(pytype, i);
+        if (Env::isString(item)) {
+          auto str = Env::toStringView(item);
+          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+        } else {
+          LOG(ERROR) << "Script: " << _scriptName
+                     << " outputTypes method should return a tuple of strings "
+                        "or a string.";
+          throw CBException("Failed call outputTypes on python script!");
+        }
+      }
+    } else if (Env::isString(pytype)) {
+      auto str = Env::toStringView(pytype);
+      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+    } else {
+      LOG(ERROR) << "Script: " << _scriptName
+                 << " outputTypes method should return a tuple of strings or a "
+                    "string.";
+      throw CBException("Failed call outputTypes on python script!");
+    }
+    _outputTypesStorage = types;
+    return _outputTypesStorage;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto pyres = Env::call(_activate, _self, Env::var2Py(input));
+    return Env::py2Var(pyres);
+  }
 
 private:
+  Types _inputTypesStorage;
+  Types _outputTypesStorage;
+
+  PyObj _self;
+
   PyObj _module;
+
+  // Needed defs
   PyObj _inputTypes;
   PyObj _outputTypes;
   PyObj _activate;
+
+  // Optional defs
+  PyObj _parameters;
+  PyObj _setParam;
+  PyObj _getParam;
+
   std::string _scriptName;
 };
 
-void registerBlocks() {
-  Env::Init();
-#ifndef NDEBUG
-  if (Env::ok()) {
-    auto pystr =
-        Env::string("Hello Pythons...as much as I dislike this... hello..");
-  }
-#endif
-  REGISTER_CBLOCK("Py", Py);
-}
+void registerBlocks() { REGISTER_CBLOCK("Py", Py); }
 } // namespace Python
 } // namespace chainblocks
 

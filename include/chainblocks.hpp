@@ -55,6 +55,8 @@ struct Type {
 struct Types {
   std::vector<CBTypeInfo> _types;
 
+  Types() {}
+
   Types(std::initializer_list<CBTypeInfo> types) : _types(types) {}
 
   Types(const Types &others, std::initializer_list<CBTypeInfo> types) {
@@ -64,6 +66,11 @@ struct Types {
     for (auto &type : types) {
       _types.push_back(type);
     }
+  }
+
+  Types &operator=(const std::vector<CBTypeInfo> &types) {
+    _types = types;
+    return *this;
   }
 
   operator CBTypesInfo() {
