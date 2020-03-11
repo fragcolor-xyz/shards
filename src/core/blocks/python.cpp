@@ -140,12 +140,15 @@ struct Env {
   typedef int(__cdecl *PyObject_SetAttrString)(PyObject *obj,
                                                const char *attrName,
                                                PyObject *item);
+  typedef int(__cdecl *PyArg_ParseTuple)(PyObject *args, const char *fmt, ...);
+  typedef void(__cdecl *PyErr_Clear)();
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
   typedef PyTypeObject *PyUnicode_Type;
   typedef PyTypeObject *PyFloat_Type;
   typedef PyTypeObject *PyCapsule_Type;
+  typedef PyTypeObject *PyObject_Type;
   typedef PyObject *_Py_NoneStruct;
 
   static inline PyUnicode_DecodeFSDefault _makeStr;
@@ -171,6 +174,8 @@ struct Env {
   static inline PyCapsule_GetPointer _capsuleGet;
   static inline PyObject_SetAttrString _setAttr;
   static inline PyCFunction_NewEx _newFunc;
+  static inline PyArg_ParseTuple _argsParse;
+  static inline PyErr_Clear _errClear;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
@@ -193,8 +198,17 @@ struct Env {
       throw CBException("pause from python failed!");
     }
 
+    // find a double arg
+    double time = 0.0;
+    if (_argsParse(args, "d", &time) == -1) {
+      CBInt longtime = 0;
+      if (_argsParse(args, "L", &longtime) != -1) {
+        time = double(longtime);
+      }
+    }
+
     // FIXME TODO handle chain state
-    suspend((CBContext *)ctx, 0.0);
+    suspend((CBContext *)ctx, time);
 
     return _py_none;
   }
@@ -203,9 +217,8 @@ struct Env {
                                         nullptr};
 
   static PyObj make_pyshared(PyObject *p, bool inc_refcount = false) {
-    if (inc_refcount)
+    if (inc_refcount && p)
       p->refcount++;
-
     std::shared_ptr<PyObject> res(p, [](auto p) {
       if (!p)
         return;
@@ -271,6 +284,8 @@ struct Env {
       DLIMPORT(_capsuleGet, PyCapsule_GetPointer);
       DLIMPORT(_setAttr, PyObject_SetAttrString);
       DLIMPORT(_newFunc, PyCFunction_NewEx);
+      DLIMPORT(_argsParse, PyArg_ParseTuple);
+      DLIMPORT(_errClear, PyErr_Clear);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
@@ -370,9 +385,13 @@ struct Env {
   }
 
   static void printErrors() {
-    if (_errOccurred())
+    if (_errOccurred()) {
       _errPrint();
+      _errClear();
+    }
   }
+
+  static void clearError() { _errClear(); }
 
   static bool isTuple(const PyObj &obj) {
     return obj.get() && (obj.get()->type == _tuple_type ||
@@ -411,6 +430,12 @@ struct Env {
 
   static bool isCapsule(const PyObj &obj) {
     return obj.get() && isCapsule(obj.get());
+  }
+
+  static bool isNone(const PyObject *obj) { return obj == _py_none; }
+
+  static bool isNone(const PyObj &obj) {
+    return obj.get() && isNone(obj.get());
   }
 
   static ssize_t tupleSize(const PyObj &obj) { return _tupleSize(obj.get()); }
@@ -524,23 +549,35 @@ struct Py {
       throw CBException("Failed to reload python script!");
     }
 
+    // Optional stuff
     _parameters = Env::getAttr(_module, "parameters");
     _setParam = Env::getAttr(_module, "setParam");
     _getParam = Env::getAttr(_module, "getParam");
 
     auto setup = Env::getAttr(_module, "setup");
+
     if (Env::isCallable(setup)) {
       _self = Env::call(setup);
+      if (Env::isNone(_self)) {
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " setup must return a valid object.";
+        throw CBException("Failed to reload python script!");
+      }
+
       auto pause1 = Env::func(Env::pauseMethod, _self);
       Env::setAttr(_self, "pause", pause1);
-    } else {
-      _self = Env::none();
     }
+
+    Env::clearError();
   }
 
   CBTypesInfo inputTypes() {
     std::vector<CBTypeInfo> types;
-    auto pytype = Env::call(_inputTypes, _self);
+    PyObj pytype;
+    if (_self.get())
+      pytype = Env::call(_inputTypes, _self);
+    else
+      pytype = Env::call(_inputTypes);
     if (Env::isTuple(pytype)) {
       auto size = Env::tupleSize(pytype);
       for (ssize_t i = 0; i < size; i++) {
@@ -559,6 +596,7 @@ struct Py {
       auto str = Env::toStringView(pytype);
       types.emplace_back(CBTypeInfo{Env::toCBType(str)});
     } else {
+      Env::printErrors();
       LOG(ERROR) << "Script: " << _scriptName
                  << " inputTypes method should return a tuple of strings or a "
                     "string.";
@@ -570,7 +608,11 @@ struct Py {
 
   CBTypesInfo outputTypes() {
     std::vector<CBTypeInfo> types;
-    auto pytype = Env::call(_outputTypes, _self);
+    PyObj pytype;
+    if (_self.get())
+      pytype = Env::call(_inputTypes, _self);
+    else
+      pytype = Env::call(_inputTypes);
     if (Env::isTuple(pytype)) {
       auto size = Env::tupleSize(pytype);
       for (ssize_t i = 0; i < size; i++) {
@@ -599,9 +641,18 @@ struct Py {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto pyctx = Env::capsule(context);
-    Env::setAttr(_self, "__cbcontext__", pyctx);
-    auto pyres = Env::call(_activate, _self, Env::var2Py(input));
+    PyObj pyres;
+    if (_self.get()) {
+      auto pyctx = Env::capsule(context);
+      Env::setAttr(_self, "__cbcontext__", pyctx);
+      pyres = Env::call(_activate, _self, Env::var2Py(input));
+    } else {
+      pyres = Env::call(_activate, Env::var2Py(input));
+    }
+    if (!pyres.get()) {
+      Env::printErrors();
+      throw CBException("Python script activation failed.");
+    }
     return Env::py2Var(pyres);
   }
 
