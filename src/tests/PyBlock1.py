@@ -5,12 +5,12 @@ import sys
 # def inputTypes():
 #   print("inputTypes")
 #   sys.stdout.flush()
-#   return ("Int")
+#   return ["Int"]
 
 # def outputTypes():
 #   print("outputTypes")
 #   sys.stdout.flush()
-#   return ("Int")
+#   return ["Int"]
 
 # def activate(inputs):
 #   to_add = 10
@@ -31,12 +31,12 @@ def setup():
 def inputTypes(self):
   print("inputTypes")
   sys.stdout.flush()
-  return ("Int")
+  return ["Int"]
 
 def outputTypes(self):
   print("outputTypes")
   sys.stdout.flush()
-  return ("Int")
+  return ["Int"]
 
 def activate(self, inputs):
   print(self)
@@ -45,12 +45,17 @@ def activate(self, inputs):
   self.pause(1.0)
   return inputs + to_add
 
-## optional parameters
+## optional stuff
+
+def compose(self, inputType):
+  print("compose")
+  sys.stdout.flush()
+  return "Int"
 
 def parameters(self):
   print("parameters")
   sys.stdout.flush()
-  return (("Param1", "Text to print", ("String")))
+  return [("Param1", "Text to print", ["String", "Int"])]
 
 def setParam(self, index, value):
   pass

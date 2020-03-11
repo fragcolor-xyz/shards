@@ -100,16 +100,25 @@ struct Env {
   typedef int(__cdecl *PyCallable_Check)(PyObject *obj);
   typedef PyObject *(__cdecl *PyObject_CallObject)(PyObject *obj,
                                                    PyObject *args);
-  typedef PyObject *(__cdecl *PyTuple_New)(ssize_t n);
-  typedef void *(__cdecl *PyTuple_SetItem)(PyObject *tuple, ssize_t idx,
-                                           PyObject *item);
+
   typedef PyObject *(__cdecl *PyDict_New)();
+
   typedef int(__cdecl *PyErr_Occurred)();
   typedef void(__cdecl *PyErr_Print)();
   typedef PyObject *(__cdecl *PySys_GetObject)(const char *name);
-  typedef void(__cdecl *PyList_Append)(PyObject *obj, PyObject *item);
+
+  typedef void(__cdecl *PyList_Append)(PyObject *list, PyObject *item);
+  typedef ssize_t(__cdecl *PyList_Size)(PyObject *list);
+  typedef void *(__cdecl *PyList_SetItem)(PyObject *list, ssize_t idx,
+                                          PyObject *item);
+  typedef PyObject *(__cdecl *PyList_GetItem)(PyObject *list, ssize_t pos);
+
+  typedef PyObject *(__cdecl *PyTuple_New)(ssize_t n);
   typedef ssize_t(__cdecl *PyTuple_Size)(PyObject *tup);
+  typedef void *(__cdecl *PyTuple_SetItem)(PyObject *tuple, ssize_t idx,
+                                           PyObject *item);
   typedef PyObject *(__cdecl *PyTuple_GetItem)(PyObject *tup, ssize_t pos);
+
   typedef int(__cdecl *PyType_IsSubtype)(PyTypeObject *a, PyTypeObject *b);
   typedef PyObject *(__cdecl *PyUnicode_AsUTF8String)(PyObject *unicode);
   typedef int(__cdecl *PyBytes_AsStringAndSize)(PyObject *obj, char **buffer,
@@ -138,6 +147,8 @@ struct Env {
   typedef PyTypeObject *PyFloat_Type;
   typedef PyTypeObject *PyCapsule_Type;
   typedef PyTypeObject *PyObject_Type;
+  typedef PyTypeObject *PyBool_Type;
+  typedef PyTypeObject *PyList_Type;
   typedef PyObject *_Py_NoneStruct;
 
   static inline PyUnicode_DecodeFSDefault _makeStr;
@@ -167,12 +178,17 @@ struct Env {
   static inline PyErr_Clear _errClear;
   static inline PyObject_IsTrue _isTrue;
   static inline PyBool_FromLong _bool;
+  static inline PyList_Size _listSize;
+  static inline PyList_GetItem _borrow_listGetItem;
+  static inline PyList_SetItem _listSetItem;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
   static inline PyFloat_Type _float_type;
   static inline PyLong_Type _long_type;
   static inline PyCapsule_Type _capsule_type;
+  static inline PyBool_Type _bool_type;
+  static inline PyList_Type _list_type;
 
   static inline _Py_NoneStruct _py_none;
 
@@ -222,6 +238,11 @@ struct Env {
           p->type->dealloc(p);
       }
     });
+    return res;
+  }
+
+  static PyObj make_pyborrow(PyObject *p) {
+    std::shared_ptr<PyObject> res(p, [](auto p) {});
     return res;
   }
 
@@ -311,12 +332,16 @@ struct Env {
       DLIMPORT(_errClear, PyErr_Clear);
       DLIMPORT(_isTrue, PyObject_IsTrue);
       DLIMPORT(_bool, PyBool_FromLong);
+      DLIMPORT(_listSize, PyList_Size);
+      DLIMPORT(_listSetItem, PyList_SetItem);
+      DLIMPORT(_borrow_listGetItem, PyList_GetItem);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
       DLIMPORT(_float_type, PyFloat_Type);
       DLIMPORT(_long_type, PyLong_Type);
       DLIMPORT(_capsule_type, PyCapsule_Type);
+      DLIMPORT(_list_type, PyList_Type);
 
       DLIMPORT(_py_none, _Py_NoneStruct);
 
@@ -454,9 +479,20 @@ struct Env {
 
   static void clearError() { _errClear(); }
 
+  static bool isTuple(const PyObject *obj) {
+    return obj->type == _tuple_type || _typeIsSubType(obj->type, _tuple_type);
+  }
+
   static bool isTuple(const PyObj &obj) {
-    return obj.get() && (obj.get()->type == _tuple_type ||
-                         _typeIsSubType(obj.get()->type, _tuple_type));
+    return obj.get() && isTuple(obj.get());
+  }
+
+  static bool isList(const PyObject *obj) {
+    return obj->type == _list_type || _typeIsSubType(obj->type, _list_type);
+  }
+
+  static bool isList(const PyObj &obj) {
+    return obj.get() && isList(obj.get());
   }
 
   static bool isString(const PyObject *obj) {
@@ -501,8 +537,14 @@ struct Env {
 
   static ssize_t tupleSize(const PyObj &obj) { return _tupleSize(obj.get()); }
 
-  static PyObject *tupleGetItem(const PyObj &tup, ssize_t idx) {
-    return _borrow_tupleGetItem(tup.get(), idx);
+  static PyObj tupleGetItem(const PyObj &tup, ssize_t idx) {
+    return make_pyborrow(_borrow_tupleGetItem(tup.get(), idx));
+  }
+
+  static ssize_t listSize(const PyObj &obj) { return _listSize(obj.get()); }
+
+  static PyObj listGetItem(const PyObj &l, ssize_t idx) {
+    return make_pyborrow(_borrow_listGetItem(l.get(), idx));
   }
 
   static std::string_view toStringView(PyObject *obj) {
@@ -529,7 +571,7 @@ struct Env {
     return _capsuleGet(obj.get(), nullptr);
   }
 
-  static PyObj none() { return PyObj(_py_none); }
+  static PyObj none() { return make_pyborrow(_py_none); }
 
   static PyObj func(PyMethodDef &def, const PyObj &self) {
     return make_pyshared(_newFunc(&def, self.get(), nullptr));
@@ -569,30 +611,34 @@ struct Env {
     }
   }
 
-  static Types toTypes(const PyObj &obj) {
+  static void extractTypes(const PyObj &obj, Types &out_types,
+                           std::list<CBTypeInfo> &innerInfos) {
+    innerInfos.clear();
     std::vector<CBTypeInfo> types;
-    if (Env::isTuple(obj)) {
-      // multiple types
-      auto size = Env::tupleSize(obj);
+    if (Env::isList(obj)) {
+      auto size = Env::listSize(obj);
       for (ssize_t i = 0; i < size; i++) {
-        auto item = Env::tupleGetItem(obj, i);
+        auto item = Env::listGetItem(obj, i);
         if (Env::isString(item)) {
           auto str = Env::toStringView(item);
-          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+          if (str.size() > 3 && str.substr(str.size() - 3, 3) == "Seq") {
+            auto &inner = innerInfos.emplace_back(
+                CBTypeInfo{Env::toCBType(str.substr(0, str.size() - 3))});
+            auto seqType = types.emplace_back(CBTypeInfo{Seq});
+            seqType.seqTypes = {&inner, 1, 0};
+          } else {
+            types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+          }
         } else {
           throw ToTypesFailed(
               "Failed to transform python object to Types within tuple.");
         }
       }
-    } else if (Env::isString(obj)) {
-      // single type will just be string
-      auto str = Env::toStringView(obj);
-      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
     } else {
-      printErrors();
-      throw ToTypesFailed("Failed to transform python object to Types.");
+      throw ToTypesFailed(
+          "Failed to transform python object to Types, object is not a list!");
     }
-    return Types(types);
+    out_types = types;
   }
 
 private:
@@ -612,21 +658,58 @@ struct Py {
                      {CoreInfo::StringType}}};
 
   CBParametersInfo parameters() {
+    // clear cache first
+    _paramNames.clear();
+    _paramHelps.clear();
+
     if (Env::isCallable(_parameters)) {
+      std::vector<ParameterInfo> otherParams;
       auto pyparams = Env::call(_parameters, _self.get());
-      if (Env::isTuple(pyparams)) {
-        // this in turn could be either already string (string) type or more
-        // tuples
+      if (Env::isList(pyparams)) {
+        auto psize = Env::listSize(pyparams);
+        for (ssize_t i = 0; i < psize; i++) {
+          auto pyparam = Env::listGetItem(pyparams, i);
+          if (!Env::isTuple(pyparam)) {
+            throw CBException(
+                "Malformed python block parameters, list of tuple expected");
+          }
+          auto tupSize = Env::tupleSize(pyparam);
+          if (tupSize == 2) {
+            // has no help
+            auto pyname = Env::tupleGetItem(pyparam, 0);
+            auto nameview = Env::toStringView(pyname);
+            auto &name = _paramNames.emplace_back(nameview);
+            auto pytypes = Env::tupleGetItem(pyparam, 1);
+            Types types;
+            Env::extractTypes(pytypes, types, _paramsInners);
+            otherParams.emplace_back(name.c_str(), types);
+          } else if (tupSize == 3) {
+            // has help
+            auto pyname = Env::tupleGetItem(pyparam, 0);
+            auto nameview = Env::toStringView(pyname);
+            auto &name = _paramNames.emplace_back(nameview);
+            auto pyhelp = Env::tupleGetItem(pyparam, 0);
+            auto helpview = Env::toStringView(pyhelp);
+            auto &help = _paramHelps.emplace_back(helpview);
+            auto pytypes = Env::tupleGetItem(pyparam, 2);
+            Types types;
+            Env::extractTypes(pytypes, types, _paramsInners);
+            otherParams.emplace_back(name.c_str(), help.c_str(), types);
+          } else {
+            throw CBException(
+                "Malformed python block parameters, list of tuple (name, help, "
+                "types) or (name, types) expected");
+          }
+        }
       } else {
         Env::printErrors();
         throw CBException("Failed to fetch python block parameters");
       }
-      std::vector<ParameterInfo> otherParams;
       _params = Parameters(params, otherParams);
     } else {
       _params = Parameters(params);
     }
-    return params;
+    return _params;
   }
 
   void setParam(int index, CBVar value) {
@@ -689,6 +772,7 @@ struct Py {
     _parameters = Env::getAttr(_module, "parameters");
     _setParam = Env::getAttr(_module, "setParam");
     _getParam = Env::getAttr(_module, "getParam");
+    _compose = Env::getAttr(_module, "compose");
 
     auto setup = Env::getAttr(_module, "setup");
 
@@ -714,7 +798,7 @@ struct Py {
     else
       pytype = Env::call(_inputTypes);
     try {
-      _inputTypesStorage = Env::toTypes(pytype);
+      Env::extractTypes(pytype, _inputTypesStorage, _inputInners);
     } catch (Env::ToTypesFailed &ex) {
       LOG(ERROR) << ex.what();
       LOG(ERROR) << "Script: " << _scriptName
@@ -732,7 +816,7 @@ struct Py {
     else
       pytype = Env::call(_outputTypes);
     try {
-      _outputTypesStorage = Env::toTypes(pytype);
+      Env::extractTypes(pytype, _outputTypesStorage, _outputInners);
     } catch (Env::ToTypesFailed &ex) {
       LOG(ERROR) << ex.what();
       LOG(ERROR) << "Script: " << _scriptName
@@ -744,25 +828,29 @@ struct Py {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    PyObj pyres;
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
-      pyres = Env::call(_activate, _self.get(), Env::var2Py(input));
+      _currentResult = Env::call(_activate, _self.get(), Env::var2Py(input));
     } else {
-      pyres = Env::call(_activate, Env::var2Py(input));
+      _currentResult = Env::call(_activate, Env::var2Py(input));
     }
-    if (!pyres.get()) {
+    if (!_currentResult.get()) {
       Env::printErrors();
       throw CBException("Python script activation failed.");
     }
-    return Env::py2Var(pyres);
+    return Env::py2Var(_currentResult);
   }
 
 private:
   Types _inputTypesStorage;
+  std::list<CBTypeInfo> _inputInners;
   Types _outputTypesStorage;
+  std::list<CBTypeInfo> _outputInners;
   Parameters _params;
+  std::list<CBTypeInfo> _paramsInners;
+  std::list<std::string> _paramNames;
+  std::list<std::string> _paramHelps;
 
   PyObj _self;
 
@@ -777,6 +865,9 @@ private:
   PyObj _parameters;
   PyObj _setParam;
   PyObj _getParam;
+  PyObj _compose; // TODO
+
+  PyObj _currentResult;
 
   std::string _scriptName;
 };
