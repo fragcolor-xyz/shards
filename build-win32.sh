@@ -3,7 +3,7 @@
 # fail on errors
 set -e
 
-pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
+pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget mingw-w64-i686-python
 
 # bimg
 cd deps/bimg/
@@ -45,3 +45,4 @@ ninja cbl
 ./cbl ../src/tests/stack.clj
 ./cbl ../src/tests/kdtree.clj
 ./cbl ../src/tests/channels.clj
+./cbl ../src/tests/pytest.clj

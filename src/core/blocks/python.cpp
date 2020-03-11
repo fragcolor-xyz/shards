@@ -92,19 +92,6 @@ struct PyMethodDef {
 using PyObj = std::shared_ptr<PyObject>;
 
 struct Env {
-  static inline std::vector<const char *> lib_names = {
-      "python38.dll",       "python37.dll",      "python3.dll",
-      "python.dll",         "libpython38.so.1",  "libpython38.so",
-      "libpython38m.so.1",  "libpython38m.so",   "libpython37.so.1",
-      "libpython37.so",     "libpython37m.so.1", "libpython37m.so",
-      "libpython3.so.1",    "libpython3.so",     "libpython3m.so.1",
-      "libpython3m.so",     "libpython.so",      "libpython.so.1",
-      "libpythonm.so",      "libpythonm.so.1",   "libpython38.dylib",
-      "libpython38m.dylib", "libpython37.dylib", "libpython37m.dylib",
-      "libpython3.dylib",   "libpython3m.dylib", "libpython.dylib",
-      "libpythonm.dylib",
-  };
-
   typedef void(__cdecl *Py_Initialize)();
   typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault)(const char *str);
   typedef PyObject *(__cdecl *PyImport_Import)(PyObject *name);
@@ -249,11 +236,43 @@ struct Env {
   }
 
   static void init() {
-    auto pos = std::find_if(std::begin(lib_names), std::end(lib_names),
-                            [](auto &&str) { return hasLib(str); });
-    if (pos != std::end(lib_names)) {
-      auto idx = std::distance(std::begin(lib_names), pos);
-      auto dll = lib_names[idx];
+    static const auto version_patterns = {"3.9", "39", "3.8", "38",
+                                          "3.7", "37", "3"};
+    std::vector<std::string> candidates;
+    // prefer this order
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("python") + pattern + ".dll");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".dll");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".so");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".so.1");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".dylib");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + "m.dll");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + "m.so");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + "m.so.1");
+    }
+    for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + "m.dylib");
+    }
+
+    auto pos = std::find_if(std::begin(candidates), std::end(candidates),
+                            [](auto &&str) { return hasLib(str.c_str()); });
+    if (pos != std::end(candidates)) {
+      auto idx = std::distance(std::begin(candidates), pos);
+      auto dll = candidates[idx].c_str();
 
       auto init = (Py_Initialize)dynLoad(dll, "Py_Initialize");
       if (!ensure((void *)init, "Py_Initialize"))
