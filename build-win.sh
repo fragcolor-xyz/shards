@@ -42,3 +42,4 @@ ninja cbl
 ./cbl ../src/tests/stack.clj
 ./cbl ../src/tests/kdtree.clj
 ./cbl ../src/tests/channels.clj
+./cbl ../src/tests/pytest.clj
