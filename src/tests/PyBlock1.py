@@ -50,7 +50,7 @@ def activate(self, inputs):
 def parameters(self):
   print("parameters")
   sys.stdout.flush()
-  return (("Param1", "Help text", ("Int")))
+  return (("Param1", "Text to print", ("String")))
 
 def setParam(self, index, value):
   pass

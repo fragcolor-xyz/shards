@@ -68,6 +68,8 @@ struct Types {
     }
   }
 
+  Types(const std::vector<CBTypeInfo> &types) { _types = types; }
+
   Types &operator=(const std::vector<CBTypeInfo> &types) {
     _types = types;
     return *this;
@@ -99,6 +101,8 @@ struct Parameters {
   std::vector<ParameterInfo> _infos;
   std::vector<CBParameterInfo> _pinfos;
 
+  Parameters() {}
+
   Parameters(std::initializer_list<ParameterInfo> infos) : _infos(infos) {
     for (auto &info : _infos) {
       _pinfos.push_back(info);
@@ -107,6 +111,18 @@ struct Parameters {
 
   Parameters(const Parameters &others,
              std::initializer_list<ParameterInfo> infos) {
+    for (auto &info : others._infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : _infos) {
+      _pinfos.push_back(info);
+    }
+  }
+
+  Parameters(const Parameters &others, std::vector<ParameterInfo> infos) {
     for (auto &info : others._infos) {
       _infos.push_back(info);
     }

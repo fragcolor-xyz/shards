@@ -142,6 +142,8 @@ struct Env {
                                                PyObject *item);
   typedef int(__cdecl *PyArg_ParseTuple)(PyObject *args, const char *fmt, ...);
   typedef void(__cdecl *PyErr_Clear)();
+  typedef int(__cdecl *PyObject_IsTrue)(PyObject *obj);
+  typedef PyObject *(__cdecl *PyBool_FromLong)(long b);
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
@@ -176,6 +178,8 @@ struct Env {
   static inline PyCFunction_NewEx _newFunc;
   static inline PyArg_ParseTuple _argsParse;
   static inline PyErr_Clear _errClear;
+  static inline PyObject_IsTrue _isTrue;
+  static inline PyBool_FromLong _bool;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
@@ -286,6 +290,8 @@ struct Env {
       DLIMPORT(_newFunc, PyCFunction_NewEx);
       DLIMPORT(_argsParse, PyArg_ParseTuple);
       DLIMPORT(_errClear, PyErr_Clear);
+      DLIMPORT(_isTrue, PyObject_IsTrue);
+      DLIMPORT(_bool, PyBool_FromLong);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
@@ -341,10 +347,10 @@ struct Env {
   template <typename... Ts> static PyObj call(const PyObj &obj, Ts... vargs) {
     // this trick should allocate a shared single tuple for n kind of call
     constexpr std::size_t n = sizeof...(Ts);
-    std::array<PyObj, n> args{vargs...};
+    std::array<PyObject *, n> args{vargs...};
     const static auto tuple = _tupleNew(n);
     for (size_t i = 0; i < n; i++) {
-      _tupleSetItem(tuple, ssize_t(i), args[i].get());
+      _tupleSetItem(tuple, ssize_t(i), args[i]);
     }
     return make_pyshared(_call(obj.get(), tuple), true);
   }
@@ -357,13 +363,49 @@ struct Env {
 
   static bool ok() { return _ok; }
 
-  static PyObj var2Py(const CBVar &var) {
+  static PyObject *var2Py(const CBVar &var) {
     switch (var.valueType) {
     case Int: {
-      return make_pyshared(_buildValue("L", var.payload.intValue));
+      return _buildValue("L", var.payload.intValue);
+    } break;
+    case Int2: {
+      return _buildValue("(LL)", var.payload.int2Value[0],
+                         var.payload.int2Value[1]);
+    } break;
+    case Int3: {
+      return _buildValue("(lll)", var.payload.int3Value[0],
+                         var.payload.int3Value[1], var.payload.int3Value[2]);
+    } break;
+    case Int4: {
+      return _buildValue("(llll)", var.payload.int4Value[0],
+                         var.payload.int4Value[1], var.payload.int4Value[2],
+                         var.payload.int4Value[3]);
     } break;
     case Float: {
-      return make_pyshared(_buildValue("d", var.payload.floatValue));
+      return _buildValue("d", var.payload.floatValue);
+    } break;
+    case Float2: {
+      return _buildValue("(dd)", var.payload.float2Value[0],
+                         var.payload.float2Value[1]);
+    } break;
+    case Float3: {
+      return _buildValue("(fff)", var.payload.float3Value[0],
+                         var.payload.float3Value[1],
+                         var.payload.float3Value[2]);
+    } break;
+    case Float4: {
+      return _buildValue("(dddd)", var.payload.float4Value[0],
+                         var.payload.float4Value[1], var.payload.float4Value[2],
+                         var.payload.float4Value[3]);
+    } break;
+    case String: {
+      return _buildValue("u", var.payload.stringValue);
+    } break;
+    case Bool: {
+      return _bool(long(var.payload.boolValue));
+    } break;
+    case None: {
+      return _py_none;
     } break;
     default:
       LOG(ERROR) << "Unsupported type " << type2Name(var.valueType);
@@ -460,12 +502,6 @@ struct Env {
     return toStringView(obj.get());
   }
 
-  static CBType toCBType(const std::string_view &str) {
-    if (str == "Int") {
-      return CBType::Int;
-    }
-  }
-
   static PyObj capsule(void *ptr) {
     return make_pyshared(_newCapsule(ptr, nullptr, nullptr));
   }
@@ -478,6 +514,66 @@ struct Env {
 
   static PyObj func(PyMethodDef &def, const PyObj &self) {
     return make_pyshared(_newFunc(&def, self.get(), nullptr));
+  }
+
+  static PyObject *intVal(int i) { return _buildValue("i", i); }
+
+  using ToTypesFailed = CBException;
+
+  static CBType toCBType(const std::string_view &str) {
+    if (str == "Int") {
+      return CBType::Int;
+    } else if (str == "Int2") {
+      return CBType::Int2;
+    } else if (str == "Int3") {
+      return CBType::Int3;
+    } else if (str == "Int4") {
+      return CBType::Int4;
+    } else if (str == "Float") {
+      return CBType::Float;
+    } else if (str == "Float2") {
+      return CBType::Float2;
+    } else if (str == "Float3") {
+      return CBType::Float3;
+    } else if (str == "Float4") {
+      return CBType::Float4;
+    } else if (str == "String") {
+      return CBType::String;
+    } else if (str == "Any") {
+      return CBType::Any;
+    } else if (str == "None") {
+      return CBType::None;
+    } else if (str == "Bool") {
+      return CBType::Bool;
+    } else {
+      throw ToTypesFailed("Unsupported toCBType type.");
+    }
+  }
+
+  static Types toTypes(const PyObj &obj) {
+    std::vector<CBTypeInfo> types;
+    if (Env::isTuple(obj)) {
+      // multiple types
+      auto size = Env::tupleSize(obj);
+      for (ssize_t i = 0; i < size; i++) {
+        auto item = Env::tupleGetItem(obj, i);
+        if (Env::isString(item)) {
+          auto str = Env::toStringView(item);
+          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+        } else {
+          throw ToTypesFailed(
+              "Failed to transform python object to Types within tuple.");
+        }
+      }
+    } else if (Env::isString(obj)) {
+      // single type will just be string
+      auto str = Env::toStringView(obj);
+      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
+    } else {
+      printErrors();
+      throw ToTypesFailed("Failed to transform python object to Types.");
+    }
+    return Types(types);
   }
 
 private:
@@ -496,7 +592,23 @@ struct Py {
                      "extension added internally!)",
                      {CoreInfo::StringType}}};
 
-  CBParametersInfo parameters() { return params; }
+  CBParametersInfo parameters() {
+    if (Env::isCallable(_parameters)) {
+      auto pyparams = Env::call(_parameters, _self.get());
+      if (Env::isTuple(pyparams)) {
+        // this in turn could be either already string (string) type or more
+        // tuples
+      } else {
+        Env::printErrors();
+        throw CBException("Failed to fetch python block parameters");
+      }
+      std::vector<ParameterInfo> otherParams;
+      _params = Parameters(params, otherParams);
+    } else {
+      _params = Parameters(params);
+    }
+    return params;
+  }
 
   void setParam(int index, CBVar value) {
     if (index == 0) {
@@ -504,7 +616,12 @@ struct Py {
       _scriptName = value.payload.stringValue;
       reloadScript();
     } else {
-      // To the script
+      if (!Env::isCallable(_setParam)) {
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " cannot call setParam, is it missing?";
+        throw CBException("Python block setParam is not callable!");
+      }
+      Env::call(_setParam, _self.get(), Env::intVal(index), Env::var2Py(value));
     }
   }
 
@@ -572,71 +689,38 @@ struct Py {
   }
 
   CBTypesInfo inputTypes() {
-    std::vector<CBTypeInfo> types;
     PyObj pytype;
     if (_self.get())
-      pytype = Env::call(_inputTypes, _self);
+      pytype = Env::call(_inputTypes, _self.get());
     else
       pytype = Env::call(_inputTypes);
-    if (Env::isTuple(pytype)) {
-      auto size = Env::tupleSize(pytype);
-      for (ssize_t i = 0; i < size; i++) {
-        auto item = Env::tupleGetItem(pytype, i);
-        if (Env::isString(item)) {
-          auto str = Env::toStringView(item);
-          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
-        } else {
-          LOG(ERROR) << "Script: " << _scriptName
-                     << " inputTypes method should return a tuple of strings "
-                        "or a string.";
-          throw CBException("Failed call inputTypes on python script!");
-        }
-      }
-    } else if (Env::isString(pytype)) {
-      auto str = Env::toStringView(pytype);
-      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
-    } else {
-      Env::printErrors();
+    try {
+      _inputTypesStorage = Env::toTypes(pytype);
+    } catch (Env::ToTypesFailed &ex) {
+      LOG(ERROR) << ex.what();
       LOG(ERROR) << "Script: " << _scriptName
-                 << " inputTypes method should return a tuple of strings or a "
-                    "string.";
+                 << " inputTypes method should return a tuple of strings "
+                    "or a string.";
       throw CBException("Failed call inputTypes on python script!");
     }
-    _inputTypesStorage = types;
     return _inputTypesStorage;
   }
 
   CBTypesInfo outputTypes() {
-    std::vector<CBTypeInfo> types;
     PyObj pytype;
     if (_self.get())
-      pytype = Env::call(_inputTypes, _self);
+      pytype = Env::call(_outputTypes, _self.get());
     else
-      pytype = Env::call(_inputTypes);
-    if (Env::isTuple(pytype)) {
-      auto size = Env::tupleSize(pytype);
-      for (ssize_t i = 0; i < size; i++) {
-        auto item = Env::tupleGetItem(pytype, i);
-        if (Env::isString(item)) {
-          auto str = Env::toStringView(item);
-          types.emplace_back(CBTypeInfo{Env::toCBType(str)});
-        } else {
-          LOG(ERROR) << "Script: " << _scriptName
-                     << " outputTypes method should return a tuple of strings "
-                        "or a string.";
-          throw CBException("Failed call outputTypes on python script!");
-        }
-      }
-    } else if (Env::isString(pytype)) {
-      auto str = Env::toStringView(pytype);
-      types.emplace_back(CBTypeInfo{Env::toCBType(str)});
-    } else {
+      pytype = Env::call(_outputTypes);
+    try {
+      _outputTypesStorage = Env::toTypes(pytype);
+    } catch (Env::ToTypesFailed &ex) {
+      LOG(ERROR) << ex.what();
       LOG(ERROR) << "Script: " << _scriptName
-                 << " outputTypes method should return a tuple of strings or a "
-                    "string.";
+                 << " outputTypes method should return a tuple of strings "
+                    "or a string.";
       throw CBException("Failed call outputTypes on python script!");
     }
-    _outputTypesStorage = types;
     return _outputTypesStorage;
   }
 
@@ -645,7 +729,7 @@ struct Py {
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
-      pyres = Env::call(_activate, _self, Env::var2Py(input));
+      pyres = Env::call(_activate, _self.get(), Env::var2Py(input));
     } else {
       pyres = Env::call(_activate, Env::var2Py(input));
     }
@@ -659,6 +743,7 @@ struct Py {
 private:
   Types _inputTypesStorage;
   Types _outputTypesStorage;
+  Parameters _params;
 
   PyObj _self;
 
