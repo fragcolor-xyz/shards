@@ -27,10 +27,9 @@ inline bool hasLib(const char *lib_name) {
   }
   return true;
 #elif defined(__linux__) || defined(__APPLE__)
-  void *mod = dlopen(lib_name, RTLD_LOCAL | RTLD_NODELETE);
+  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
   if (mod == 0)
     return false;
-  dlclose(mod);
   return true;
 #else
   return false;
@@ -48,11 +47,10 @@ inline void *dynLoad(const char *lib_name, const char *sym_name) {
 
   return (void *)GetProcAddress(mod, sym_name);
 #elif defined(__linux__) || defined(__APPLE__)
-  void *mod = dlopen(lib_name, RTLD_LOCAL | RTLD_NODELETE);
+  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
   if (mod == 0)
     return 0;
   void *sym = dlsym(mod, sym_name);
-  dlclose(mod);
   return sym;
 #else
   return nullptr;
@@ -91,8 +89,16 @@ struct PyMethodDef {
 
 using PyObj = std::shared_ptr<PyObject>;
 
+struct PyThreadState {
+  void *a;
+  void *b;
+  void *c;
+  void *frame;
+  //...
+};
+
 struct Env {
-  typedef void(__cdecl *Py_Initialize)();
+  typedef void(__cdecl *Py_InitializeEx)(int handlers);
   typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault)(const char *str);
   typedef PyObject *(__cdecl *PyImport_Import)(PyObject *name);
   typedef PyObject *(__cdecl *PyObject_GetAttrString)(PyObject *obj,
@@ -140,6 +146,12 @@ struct Env {
   typedef void(__cdecl *PyErr_Clear)();
   typedef int(__cdecl *PyObject_IsTrue)(PyObject *obj);
   typedef PyObject *(__cdecl *PyBool_FromLong)(long b);
+  typedef void(__cdecl *PySys_SetArgvEx)(int, void *, int);
+  typedef PyThreadState *(__cdecl *PyThreadState_Get)();
+  typedef PyObject *(__cdecl *PyImport_AddModule)(const char *);
+  typedef PyObject *(__cdecl *PyModule_GetDict)(PyObject *);
+  typedef PyObject *(__cdecl *PyCode_NewEmpty)(const char *, const char *, int);
+  typedef void *(__cdecl *PyFrame_New)(void *, void *, void *, void *);
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
@@ -181,6 +193,11 @@ struct Env {
   static inline PyList_Size _listSize;
   static inline PyList_GetItem _borrow_listGetItem;
   static inline PyList_SetItem _listSetItem;
+  static inline PyThreadState_Get _tsGet;
+  static inline PyImport_AddModule _borrow_addModule;
+  static inline PyModule_GetDict _borrow_modGetDict;
+  static inline PyCode_NewEmpty _pyCodeNew;
+  static inline PyFrame_New _frameNew;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
@@ -256,9 +273,32 @@ struct Env {
     return true;
   }
 
+  static void initFrame() {
+    auto ts = _tsGet();
+    if (!ts) {
+      LOG(DEBUG) << "Python thread state was NULL!";
+      return;
+    }
+
+    if (ts->frame)
+      return; // set already, quit
+
+    auto mod = _borrow_addModule("__main__");
+    auto dict = _borrow_modGetDict(mod);
+    auto code = make_pyshared(_pyCodeNew("nothing.py", "f", 0));
+    auto frame = _frameNew(ts, code.get(), dict, dict);
+    ts->frame = frame;
+
+    LOG(TRACE) << "Py frame initialized";
+  }
+
   static void init() {
+    // On mac you might need
+    // LD_LIBRARY_PATH=/usr/local/Frameworks/Python.framework/Versions/3.7/lib
+    // lldb = settings set target.env-vars
+
     static const auto version_patterns = {"3.9", "39", "3.8", "38",
-                                          "3.7", "37", "3"};
+                                          "3.7", "37", "3",   ""};
     std::vector<std::string> candidates;
     // prefer this order
     for (auto &pattern : version_patterns) {
@@ -266,26 +306,16 @@ struct Env {
     }
     for (auto &pattern : version_patterns) {
       candidates.emplace_back(std::string("libpython") + pattern + ".dll");
-    }
-    for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".so");
-    }
-    for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".so.1");
-    }
-    for (auto &pattern : version_patterns) {
-      candidates.emplace_back(std::string("libpython") + pattern + ".dylib");
-    }
-    for (auto &pattern : version_patterns) {
       candidates.emplace_back(std::string("libpython") + pattern + "m.dll");
     }
     for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".so");
+      candidates.emplace_back(std::string("libpython") + pattern + ".so.1");
       candidates.emplace_back(std::string("libpython") + pattern + "m.so");
-    }
-    for (auto &pattern : version_patterns) {
       candidates.emplace_back(std::string("libpython") + pattern + "m.so.1");
     }
     for (auto &pattern : version_patterns) {
+      candidates.emplace_back(std::string("libpython") + pattern + ".dylib");
       candidates.emplace_back(std::string("libpython") + pattern + "m.dylib");
     }
 
@@ -295,10 +325,12 @@ struct Env {
       auto idx = std::distance(std::begin(candidates), pos);
       auto dll = candidates[idx].c_str();
 
-      auto init = (Py_Initialize)dynLoad(dll, "Py_Initialize");
-      if (!ensure((void *)init, "Py_Initialize"))
+      auto init = (Py_InitializeEx)dynLoad(dll, "Py_InitializeEx");
+      if (!ensure((void *)init, "Py_InitializeEx"))
         return;
-      init();
+      init(0);
+
+      LOG(TRACE) << "PyInit called fine!";
 
 #define DLIMPORT(_proc_, _name_)                                               \
   _proc_ = (_name_)dynLoad(dll, #_name_);                                      \
@@ -335,6 +367,11 @@ struct Env {
       DLIMPORT(_listSize, PyList_Size);
       DLIMPORT(_listSetItem, PyList_SetItem);
       DLIMPORT(_borrow_listGetItem, PyList_GetItem);
+      DLIMPORT(_tsGet, PyThreadState_Get);
+      DLIMPORT(_borrow_addModule, PyImport_AddModule);
+      DLIMPORT(_borrow_modGetDict, PyModule_GetDict);
+      DLIMPORT(_pyCodeNew, PyCode_NewEmpty);
+      DLIMPORT(_frameNew, PyFrame_New);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
@@ -350,10 +387,17 @@ struct Env {
       auto borrow_sysGetObj = (PySys_GetObject)dynLoad(dll, "PySys_GetObject");
       if (!ensure((void *)borrow_sysGetObj, "PySys_GetObject"))
         return;
+
+      LOG(TRACE) << "Python symbols loaded";
+
+      initFrame();
+
       auto absRoot = std::filesystem::absolute(Globals::RootPath);
       auto pyAbsRoot = string(absRoot.string().c_str());
       auto path = borrow_sysGetObj("path");
       _listAppend(path, pyAbsRoot.get());
+
+      LOG(TRACE) << "Injected cb root to python path: " << absRoot;
 
       _ok = true;
 
@@ -723,7 +767,8 @@ struct Py {
                    << " cannot call setParam, is it missing?";
         throw CBException("Python block setParam is not callable!");
       }
-      Env::call(_setParam, _self.get(), Env::intVal(index), Env::var2Py(value));
+      Env::call(_setParam, _self.get(), Env::intVal(index - 1),
+                Env::var2Py(value));
     }
   }
 
