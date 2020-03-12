@@ -848,7 +848,17 @@ struct Py {
     if (index == 0) {
       return Var(_scriptName);
     } else {
-      // To the script
+      _pyParamResult = Env::none();
+
+      if (!Env::isCallable(_getParam)) {
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " cannot call getParam, is it missing?";
+        throw CBException("Python block getParam is not callable!");
+      }
+
+      _pyParamResult =
+          Env::call(_getParam, Env::incRefGet(_self), Env::intVal(index - 1));
+      return Env::py2Var(_pyParamResult);
     }
   }
 
@@ -1001,6 +1011,7 @@ private:
   PyObj _compose; // TODO
 
   PyObj _currentResult;
+  PyObj _pyParamResult;
 
   std::string _scriptName;
 };
