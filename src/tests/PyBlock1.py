@@ -21,7 +21,10 @@ import sys
 ## OPTIONAL STUFF
 
 class MyBlock1:
-  pass
+  def __init__(self):
+    print("MyBlock1 created!")
+    sys.stdout.flush()
+    self.p1 = ""
 
 def setup():
   print("setup")
@@ -58,7 +61,11 @@ def parameters(self):
   return [("Param1", "Text to print", ["String", "Int"])]
 
 def setParam(self, index, value):
-  pass
+  if index == 0:
+    self.p1 = value
+    print(self.p1)
+    sys.stdout.flush()
 
 def getParam(self, index):
-  return None
+  if index == 0:
+    return self.p1

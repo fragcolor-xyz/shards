@@ -97,6 +97,8 @@ struct PyThreadState {
   //...
 };
 
+struct PyInterpreterState;
+
 struct Env {
   typedef void(__cdecl *Py_InitializeEx)(int handlers);
   typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault)(const char *str);
@@ -142,6 +144,9 @@ struct Env {
   typedef int(__cdecl *PyObject_SetAttrString)(PyObject *obj,
                                                const char *attrName,
                                                PyObject *item);
+  typedef int(__cdecl *PyDict_SetItemString)(PyObject *obj,
+                                             const char *attrName,
+                                             PyObject *item);
   typedef int(__cdecl *PyArg_ParseTuple)(PyObject *args, const char *fmt, ...);
   typedef void(__cdecl *PyErr_Clear)();
   typedef int(__cdecl *PyObject_IsTrue)(PyObject *obj);
@@ -152,6 +157,11 @@ struct Env {
   typedef PyObject *(__cdecl *PyModule_GetDict)(PyObject *);
   typedef PyObject *(__cdecl *PyCode_NewEmpty)(const char *, const char *, int);
   typedef void *(__cdecl *PyFrame_New)(void *, void *, void *, void *);
+  typedef PyThreadState *(__cdecl *PyThreadState_New)(
+      PyInterpreterState *state);
+  typedef PyThreadState *(__cdecl *PyThreadState_Swap)(PyThreadState *state);
+  typedef PyThreadState *(__cdecl *Py_NewInterpreter)();
+  typedef void(__cdecl *Py_EndInterpreter)(PyThreadState *state);
 
   typedef PyTypeObject *PyTuple_Type;
   typedef PyTypeObject *PyLong_Type;
@@ -198,6 +208,11 @@ struct Env {
   static inline PyModule_GetDict _borrow_modGetDict;
   static inline PyCode_NewEmpty _pyCodeNew;
   static inline PyFrame_New _frameNew;
+  static inline PyDict_SetItemString _setDictItem;
+  static inline PyThreadState_Swap _swapState;
+  static inline Py_NewInterpreter _newInterpreter;
+  static inline PySys_GetObject _sysGetObj;
+  static inline Py_EndInterpreter _endInterpreter;
 
   static inline PyUnicode_Type _unicode_type;
   static inline PyTuple_Type _tuple_type;
@@ -209,7 +224,7 @@ struct Env {
 
   static inline _Py_NoneStruct _py_none;
 
-  static PyObject __cdecl *methodPause(PyObject *self, PyObject *args) {
+  static PyObject *__cdecl methodPause(PyObject *self, PyObject *args) {
     auto ctxObj = make_pyshared(_getAttr(self, "__cbcontext__"));
     if (!isCapsule(ctxObj)) {
       LOG(ERROR) << "internal error, __cbcontext__ is not a capsule!";
@@ -231,18 +246,23 @@ struct Env {
       }
     }
 
+    // store ts
+    auto ts = _tsGet();
+
     // FIXME TODO handle chain state
     suspend((CBContext *)ctx, time);
 
+    // restore previos ts
+    _swapState(ts);
+
+    _py_none->refcount++;
     return _py_none;
   }
 
   static inline PyMethodDef pauseMethod{"pause", &methodPause, (1 << 0),
                                         nullptr};
 
-  static PyObj make_pyshared(PyObject *p, bool inc_refcount = false) {
-    if (inc_refcount && p)
-      p->refcount++;
+  static PyObj make_pyshared(PyObject *p) {
     std::shared_ptr<PyObject> res(p, [](auto p) {
       if (!p)
         return;
@@ -372,6 +392,11 @@ struct Env {
       DLIMPORT(_borrow_modGetDict, PyModule_GetDict);
       DLIMPORT(_pyCodeNew, PyCode_NewEmpty);
       DLIMPORT(_frameNew, PyFrame_New);
+      DLIMPORT(_setDictItem, PyDict_SetItemString);
+      DLIMPORT(_swapState, PyThreadState_Swap);
+      DLIMPORT(_newInterpreter, Py_NewInterpreter);
+      DLIMPORT(_sysGetObj, PySys_GetObject);
+      DLIMPORT(_endInterpreter, Py_EndInterpreter);
 
       DLIMPORT(_unicode_type, PyUnicode_Type);
       DLIMPORT(_tuple_type, PyTuple_Type);
@@ -382,22 +407,7 @@ struct Env {
 
       DLIMPORT(_py_none, _Py_NoneStruct);
 
-      // Also add local path to "path"
-      // TODO Add more paths?
-      auto borrow_sysGetObj = (PySys_GetObject)dynLoad(dll, "PySys_GetObject");
-      if (!ensure((void *)borrow_sysGetObj, "PySys_GetObject"))
-        return;
-
       LOG(TRACE) << "Python symbols loaded";
-
-      initFrame();
-
-      auto absRoot = std::filesystem::absolute(Globals::RootPath);
-      auto pyAbsRoot = string(absRoot.string().c_str());
-      auto path = borrow_sysGetObj("path");
-      _listAppend(path, pyAbsRoot.get());
-
-      LOG(TRACE) << "Injected cb root to python path: " << absRoot;
 
       _ok = true;
 
@@ -433,18 +443,17 @@ struct Env {
   }
 
   template <typename... Ts> static PyObj call(const PyObj &obj, Ts... vargs) {
-    // this trick should allocate a shared single tuple for n kind of call
     constexpr std::size_t n = sizeof...(Ts);
     std::array<PyObject *, n> args{vargs...};
-    const static auto tuple = _tupleNew(n);
+    auto tuple = make_pyshared(_tupleNew(n));
     for (size_t i = 0; i < n; i++) {
-      _tupleSetItem(tuple, ssize_t(i), args[i]);
+      _tupleSetItem(tuple.get(), ssize_t(i), args[i]);
     }
-    return make_pyshared(_call(obj.get(), tuple), true);
+    return make_pyshared(_call(obj.get(), tuple.get()));
   }
 
   static PyObj call(const PyObj &obj) {
-    return make_pyshared(_call(obj.get(), nullptr), true);
+    return make_pyshared(_call(obj.get(), nullptr));
   }
 
   static PyObj dict() { return make_pyshared(_dictNew()); }
@@ -487,12 +496,13 @@ struct Env {
                          var.payload.float4Value[3]);
     } break;
     case String: {
-      return _buildValue("u", var.payload.stringValue);
+      return _buildValue("s", var.payload.stringValue);
     } break;
     case Bool: {
       return _bool(long(var.payload.boolValue));
     } break;
     case None: {
+      _py_none->refcount++;
       return _py_none;
     } break;
     default:
@@ -615,10 +625,18 @@ struct Env {
     return _capsuleGet(obj.get(), nullptr);
   }
 
-  static PyObj none() { return make_pyborrow(_py_none); }
+  static PyObj none() {
+    _py_none->refcount++;
+    return make_pyborrow(_py_none);
+  }
 
   static PyObj func(PyMethodDef &def, const PyObj &self) {
     return make_pyshared(_newFunc(&def, self.get(), nullptr));
+  }
+
+  static void setDictItem(const PyObj &dict, const char *name,
+                          const PyObj &item) {
+    _setDictItem(dict.get(), name, item.get());
   }
 
   static PyObject *intVal(int i) { return _buildValue("i", i); }
@@ -674,27 +692,75 @@ struct Env {
             types.emplace_back(CBTypeInfo{Env::toCBType(str)});
           }
         } else {
+          printErrors();
           throw ToTypesFailed(
               "Failed to transform python object to Types within tuple.");
         }
       }
     } else {
+      printErrors();
       throw ToTypesFailed(
           "Failed to transform python object to Types, object is not a list!");
     }
     out_types = types;
   }
 
+  static PyObject *incRefGet(const PyObj &obj) {
+    auto res = obj.get();
+    res->refcount++;
+    return res;
+  }
+
 private:
   static inline bool _ok{false};
 };
 
-struct Py {
-  void setup() {
+struct Interpreter {
+  Interpreter() {}
+
+  void init() {
+    // Try lazy init
     if (!Env::ok()) {
       Env::init();
     }
+
+    if (Env::ok()) {
+      ts = Env::_newInterpreter();
+
+      Env::initFrame();
+
+      auto absRoot = std::filesystem::absolute(Globals::RootPath);
+      auto pyAbsRoot = Env::string(absRoot.string().c_str());
+      auto path = Env::_sysGetObj("path");
+      Env::_listAppend(path, pyAbsRoot.get());
+    }
   }
+
+  ~Interpreter() {
+    if (ts)
+      Env::_endInterpreter(ts);
+  }
+
+  PyThreadState *ts{nullptr};
+};
+
+struct Context {
+  Context(const Interpreter &inter) {
+    if (inter.ts)
+      old = Env::_swapState(inter.ts);
+  }
+
+  ~Context() {
+    if (old)
+      Env::_swapState(old);
+  }
+
+private:
+  PyThreadState *old{nullptr};
+};
+
+struct Py {
+  void setup() { _ts.init(); }
 
   Parameters params{{"Module",
                      "The module name to load (must be in the script path, .py "
@@ -702,13 +768,15 @@ struct Py {
                      {CoreInfo::StringType}}};
 
   CBParametersInfo parameters() {
+    Context ctx(_ts);
+
     // clear cache first
     _paramNames.clear();
     _paramHelps.clear();
 
     if (Env::isCallable(_parameters)) {
       std::vector<ParameterInfo> otherParams;
-      auto pyparams = Env::call(_parameters, _self.get());
+      auto pyparams = Env::call(_parameters, Env::incRefGet(_self));
       if (Env::isList(pyparams)) {
         auto psize = Env::listSize(pyparams);
         for (ssize_t i = 0; i < psize; i++) {
@@ -757,6 +825,8 @@ struct Py {
   }
 
   void setParam(int index, CBVar value) {
+    Context ctx(_ts);
+
     if (index == 0) {
       // Handle here
       _scriptName = value.payload.stringValue;
@@ -767,12 +837,14 @@ struct Py {
                    << " cannot call setParam, is it missing?";
         throw CBException("Python block setParam is not callable!");
       }
-      Env::call(_setParam, _self.get(), Env::intVal(index - 1),
+      Env::call(_setParam, Env::incRefGet(_self), Env::intVal(index - 1),
                 Env::var2Py(value));
     }
   }
 
   CBVar getParam(int index) {
+    Context ctx(_ts);
+
     if (index == 0) {
       return Var(_scriptName);
     } else {
@@ -786,6 +858,8 @@ struct Py {
                  << " cannot be loaded, no python support.";
       throw CBException("Failed to load python script!");
     }
+
+    Context ctx(_ts);
 
     _module = Env::import(_scriptName.c_str());
     if (!_module.get()) {
@@ -837,9 +911,11 @@ struct Py {
   }
 
   CBTypesInfo inputTypes() {
+    Context ctx(_ts);
+
     PyObj pytype;
     if (_self.get())
-      pytype = Env::call(_inputTypes, _self.get());
+      pytype = Env::call(_inputTypes, Env::incRefGet(_self));
     else
       pytype = Env::call(_inputTypes);
     try {
@@ -855,9 +931,11 @@ struct Py {
   }
 
   CBTypesInfo outputTypes() {
+    Context ctx(_ts);
+
     PyObj pytype;
     if (_self.get())
-      pytype = Env::call(_outputTypes, _self.get());
+      pytype = Env::call(_outputTypes, Env::incRefGet(_self));
     else
       pytype = Env::call(_outputTypes);
     try {
@@ -873,10 +951,17 @@ struct Py {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    Context ctx(_ts);
+
+    _currentResult = Env::none();
+
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
-      _currentResult = Env::call(_activate, _self.get(), Env::var2Py(input));
+      LOG(TRACE) << "Self refcount: " << int(_self->refcount);
+
+      _currentResult =
+          Env::call(_activate, Env::incRefGet(_self), Env::var2Py(input));
     } else {
       _currentResult = Env::call(_activate, Env::var2Py(input));
     }
@@ -884,10 +969,13 @@ struct Py {
       Env::printErrors();
       throw CBException("Python script activation failed.");
     }
+
     return Env::py2Var(_currentResult);
   }
 
 private:
+  Interpreter _ts;
+
   Types _inputTypesStorage;
   std::list<CBTypeInfo> _inputInners;
   Types _outputTypesStorage;
