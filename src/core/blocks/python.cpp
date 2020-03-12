@@ -512,16 +512,25 @@ struct Env {
     }
   }
 
-  static CBVar py2Var(const PyObj &obj) {
+  static std::tuple<CBVar, PyObj> py2Var(const PyObj &obj) {
     CBVar res{};
     if (isLong(obj)) {
       res.valueType = Int;
       res.payload.intValue = _asLong(obj.get());
+      return {res, PyObj()};
     } else if (isFloat(obj)) {
       res.valueType = Float;
       res.payload.floatValue = _asDouble(obj.get());
+      return {res, PyObj()};
+    } else if (isString(obj)) {
+      res.valueType = String;
+      auto tstr = toStringView(obj);
+      auto &str = std::get<0>(tstr);
+      res.payload.stringValue = str.data();
+      return {res, std::get<1>(tstr)};
+    } else {
+      throw CBException("Failed to convert python value to CB value!");
     }
-    return res;
   }
 
   static void printErrors() {
@@ -601,7 +610,7 @@ struct Env {
     return make_pyborrow(_borrow_listGetItem(l.get(), idx));
   }
 
-  static std::string_view toStringView(PyObject *obj) {
+  static std::tuple<std::string_view, PyObj> toStringView(PyObject *obj) {
     char *str;
     ssize_t len;
     auto utf = make_pyshared(_unicodeToString(obj));
@@ -610,10 +619,10 @@ struct Env {
       printErrors();
       throw CBException("String conversion failed!");
     }
-    return std::string_view(str, len);
+    return {std::string_view(str, len), utf};
   }
 
-  static std::string_view toStringView(const PyObj &obj) {
+  static std::tuple<std::string_view, PyObj> toStringView(const PyObj &obj) {
     return toStringView(obj.get());
   }
 
@@ -682,7 +691,8 @@ struct Env {
       for (ssize_t i = 0; i < size; i++) {
         auto item = Env::listGetItem(obj, i);
         if (Env::isString(item)) {
-          auto str = Env::toStringView(item);
+          auto tstr = Env::toStringView(item);
+          auto &str = std::get<0>(tstr);
           if (str.size() > 3 && str.substr(str.size() - 3, 3) == "Seq") {
             auto &inner = innerInfos.emplace_back(
                 CBTypeInfo{Env::toCBType(str.substr(0, str.size() - 3))});
@@ -789,7 +799,8 @@ struct Py {
           if (tupSize == 2) {
             // has no help
             auto pyname = Env::tupleGetItem(pyparam, 0);
-            auto nameview = Env::toStringView(pyname);
+            auto tnameview = Env::toStringView(pyname);
+            auto nameview = std::get<0>(tnameview);
             auto &name = _paramNames.emplace_back(nameview);
             auto pytypes = Env::tupleGetItem(pyparam, 1);
             Types types;
@@ -798,10 +809,12 @@ struct Py {
           } else if (tupSize == 3) {
             // has help
             auto pyname = Env::tupleGetItem(pyparam, 0);
-            auto nameview = Env::toStringView(pyname);
+            auto tnameview = Env::toStringView(pyname);
+            auto nameview = std::get<0>(tnameview);
             auto &name = _paramNames.emplace_back(nameview);
             auto pyhelp = Env::tupleGetItem(pyparam, 0);
-            auto helpview = Env::toStringView(pyhelp);
+            auto thelpview = Env::toStringView(pyhelp);
+            auto helpview = std::get<0>(thelpview);
             auto &help = _paramHelps.emplace_back(helpview);
             auto pytypes = Env::tupleGetItem(pyparam, 2);
             Types types;
@@ -856,9 +869,12 @@ struct Py {
         throw CBException("Python block getParam is not callable!");
       }
 
-      _pyParamResult =
+      auto res =
           Env::call(_getParam, Env::incRefGet(_self), Env::intVal(index - 1));
-      return Env::py2Var(_pyParamResult);
+
+      auto cbres = Env::py2Var(res);
+      _pyParamResult = std::get<1>(cbres);
+      return std::get<0>(cbres);
     }
   }
 
@@ -965,22 +981,26 @@ struct Py {
 
     _currentResult = Env::none();
 
+    PyObj res;
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
       LOG(TRACE) << "Self refcount: " << int(_self->refcount);
 
-      _currentResult =
-          Env::call(_activate, Env::incRefGet(_self), Env::var2Py(input));
+      res = Env::call(_activate, Env::incRefGet(_self), Env::var2Py(input));
     } else {
-      _currentResult = Env::call(_activate, Env::var2Py(input));
+      res = Env::call(_activate, Env::var2Py(input));
     }
-    if (!_currentResult.get()) {
+
+    if (!res.get()) {
       Env::printErrors();
       throw CBException("Python script activation failed.");
     }
 
-    return Env::py2Var(_currentResult);
+    auto cbres = Env::py2Var(res);
+    _currentResult = std::get<1>(cbres);
+
+    return std::get<0>(cbres);
   }
 
 private:

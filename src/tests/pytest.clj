@@ -1,7 +1,7 @@
 (def Root (Node))
 (schedule Root (Chain
                 "py1"
-                ;; :Looped
+                :Looped
                 10
                 (Py "PyBlock1" "Hello")
                 (Assert.Is 20 true)
@@ -11,11 +11,11 @@
 
 (schedule Root (Chain
                 "py2"
-                ;; :Looped
+                :Looped
                 20
                 (Py "PyBlock1")
                 (Assert.Is 30 true)
                 (Math.Add 20)
                 (Assert.Is 50 true)
                 (Log)))
-(run Root 0.1)
+(run Root 1.0 5)
