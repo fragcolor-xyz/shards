@@ -1135,16 +1135,28 @@ BUILTIN("run") {
     sleepTime = argSleepTime->value();
   }
 
+  int times = 1;
+  bool dec = false;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argTimes);
+    times = argTimes->value();
+    dec = true;
+  }
+
   if (node) {
-    while (!node->empty()) {
+    while (!node->empty() && times > 0) {
       auto noErrors = node->tick();
       if (!noErrors)
         return mal::boolean(false);
       chainblocks::sleep(sleepTime);
+      if (dec)
+        times--;
     }
   } else {
-    while (!chainblocks::tick(chain)) {
+    while (!chainblocks::tick(chain) && times > 0) {
       chainblocks::sleep(sleepTime);
+      if (dec)
+        times--;
     }
   }
 
