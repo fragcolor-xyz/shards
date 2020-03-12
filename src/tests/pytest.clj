@@ -18,4 +18,12 @@
                 (Math.Add 20)
                 (Assert.Is 50 true)
                 (Log)))
+
+(schedule Root (Chain
+                "py3"
+                :Looped
+                (Py "PyBlock2")
+                (Assert.Is "Hello" true)
+                (Log)))
+
 (run Root 1.0 5)

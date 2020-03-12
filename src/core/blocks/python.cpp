@@ -528,6 +528,10 @@ struct Env {
       auto &str = std::get<0>(tstr);
       res.payload.stringValue = str.data();
       return {res, std::get<1>(tstr)};
+    } else if(isTuple(obj)) {
+      // deal with all vectors
+    } else if(isList(obj)) {
+      // deal with seqs
     } else {
       throw CBException("Failed to convert python value to CB value!");
     }
