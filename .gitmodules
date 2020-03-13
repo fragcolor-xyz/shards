@@ -40,3 +40,6 @@
 [submodule "cpp-taskflow"]
 	path = deps/cpp-taskflow
 	url = https://github.com/chainblocks/cpp-taskflow.git
+[submodule "lmdb"]
+	path = deps/lmdb
+	url = https://github.com/chainblocks/lmdb.git

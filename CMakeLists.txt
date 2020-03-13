@@ -228,6 +228,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/nameof/include
   -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
+  -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/src/core/3rdparty
   )
@@ -431,6 +432,8 @@ endif()
 
 set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
+  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/mdb.c
+  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/midl.c
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
