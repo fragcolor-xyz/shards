@@ -740,13 +740,7 @@ struct Interpreter {
 
     if (Env::ok()) {
       ts = Env::_newInterpreter();
-
       Env::initFrame();
-
-      auto absRoot = std::filesystem::absolute(Globals::RootPath);
-      auto pyAbsRoot = Env::string(absRoot.string().c_str());
-      auto path = Env::_sysGetObj("path");
-      Env::_listAppend(path, pyAbsRoot.get());
     }
   }
 
@@ -891,9 +885,35 @@ struct Py {
 
     Context ctx(_ts);
 
-    _module = Env::import(_scriptName.c_str());
+    auto scriptName = _scriptName;
+    std::replace(scriptName.begin(), scriptName.end(), '.', '/');
+    std::filesystem::path scriptPath(scriptName);
+
+    if (Globals::RootPath.size() > 0) {
+      std::filesystem::path cbpath(Globals::RootPath);
+      auto absRoot =
+          std::filesystem::absolute(cbpath / scriptPath.parent_path());
+      if (std::filesystem::exists(absRoot)) {
+        absRoot.make_preferred();
+        auto pyAbsRoot = Env::string(absRoot.string().c_str());
+        auto path = Env::_sysGetObj("path");
+        Env::_listAppend(path, pyAbsRoot.get());
+      }
+    }
+
+    auto absRoot = std::filesystem::absolute(std::filesystem::current_path() /
+                                             scriptPath.parent_path());
+    if (std::filesystem::exists(absRoot)) {
+      absRoot.make_preferred();
+      auto pyAbsRoot = Env::string(absRoot.string().c_str());
+      auto path = Env::_sysGetObj("path");
+      Env::_listAppend(path, pyAbsRoot.get());
+    }
+
+    auto moduleName = scriptPath.stem().string();
+    _module = Env::import(moduleName.c_str());
     if (!_module.get()) {
-      LOG(ERROR) << "Script: " << _scriptName << " failed to load!.";
+      LOG(ERROR) << "Script: " << _scriptName << " failed to load!";
       Env::printErrors();
       throw CBException("Failed to load python script!");
     }
