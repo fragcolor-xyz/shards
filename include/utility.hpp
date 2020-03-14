@@ -62,6 +62,8 @@ private:
   static inline std::vector<T **> _ptrs;
 };
 
+template <typename T> struct Singleton { static inline T value{}; };
+
 template <class CB_CORE> class TParamVar {
 private:
   CBVar _v{};
