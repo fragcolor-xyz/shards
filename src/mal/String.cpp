@@ -2,7 +2,9 @@
 #include "String.h"
 
 #include <stdarg.h>
+#ifndef __MINGW32__
 #include <stdio.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,11 +16,7 @@ String stringPrintf(const char* fmt, ...) {
     while (1) {
         str.resize(size);
         va_start(ap, fmt);
-#ifndef __MINGW32__
         int n = vsnprintf((char *)str.data(), size, fmt, ap);
-#else
-        int n = __mingw_vsnprintf((char *)str.data(), size, fmt, ap);
-#endif
         va_end(ap);
         if (n > -1 && n < size) {  // Everything worked
             str.resize(n);

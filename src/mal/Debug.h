@@ -1,7 +1,9 @@
 #ifndef INCLUDE_DEBUG_H
 #define INCLUDE_DEBUG_H
 
+#ifndef __MINGW32__
 #include <stdio.h>
+#endif
 #include <stdlib.h>
 
 #define DEBUG_TRACE                    1

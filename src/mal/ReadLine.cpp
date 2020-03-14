@@ -2,7 +2,9 @@
 #include "String.h"
 
 #include <stdlib.h>
+#ifndef __MINGW32__
 #include <stdio.h>
+#endif
 #include <unistd.h>
 
 #include <readline/readline.h>
