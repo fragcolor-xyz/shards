@@ -36,12 +36,12 @@ struct Env {
       std::filesystem::path cbpath(Globals::RootPath);
       auto abspath = std::filesystem::absolute(cbpath / dbPath);
       abspath.make_preferred();
-      CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 664));
+      CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 0664));
     } else {
       auto abspath =
           std::filesystem::absolute(std::filesystem::current_path() / dbPath);
       abspath.make_preferred();
-      CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 664));
+      CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 0664));
     }
 
     // we sync every global "sleep" only!

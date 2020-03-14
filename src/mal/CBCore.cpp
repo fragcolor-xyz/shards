@@ -202,8 +202,7 @@ public:
     LOG(TRACE) << "Created a CBChain - " << name;
     auto chain = new CBChain(name.c_str());
     m_chain = chain->newRef();
-    chainblocks::Globals::GlobalChains[name] =
-        std::move(CBChain::sharedFromRef(m_chain));
+    chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(m_chain);
   }
 
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;

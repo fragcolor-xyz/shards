@@ -46,7 +46,7 @@ public:
   }
 
 protected:
-  friend class Broadcast;
+  friend struct Broadcast;
   std::mutex submutex;
   std::list<MPMCChannel> subscribers;
 };
