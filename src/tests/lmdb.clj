@@ -2,6 +2,7 @@
 
 (schedule Root (Chain
                 "test1"
+                :Looped
                 "Hello DataBase world!"
                 (DB.Update "MyKey")
                 (DB.Get "MyKey")

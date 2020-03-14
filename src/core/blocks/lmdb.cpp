@@ -106,9 +106,7 @@ struct Get : public Base {
     // at the cost of a read lock which should be cheap!
     if (_txn) {
       mdb_txn_reset(_txn);
-      mdb_txn_renew(_txn);
-      _keyCache.clear();
-      _keyExCache.clear();
+      CHECKED(mdb_txn_renew(_txn));
     } else {
       CHECKED(mdb_txn_begin(env, nullptr, MDB_RDONLY, &_txn));
       _keyCache = _key.get().payload.stringValue;
