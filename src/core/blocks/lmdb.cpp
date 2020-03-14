@@ -124,7 +124,8 @@ struct Get : public Base {
     CHECKED(mdb_get(_txn, dbi, &key, &val));
 
     assert(val.mv_size == sizeof(CBVar));
-    CBVar res = *reinterpret_cast<CBVar *>(val.mv_data);
+    CBVar res;
+    memcpy(&res, val.mv_data, sizeof(CBVar));
 
     // Fix non blittable types
     if (res.valueType > CBType::EndOfBlittableTypes) {
@@ -145,7 +146,7 @@ struct Get : public Base {
   }
 
 private:
-  MDB_txn *_txn;
+  MDB_txn *_txn = nullptr;
 };
 
 template <unsigned int PUT_FLAGS> struct PutBase : public Base {
