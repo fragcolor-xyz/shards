@@ -191,6 +191,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -226,7 +227,6 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/kcp
   -I${CHAINBLOCKS_DIR}/deps/xxHash
   -I${CHAINBLOCKS_DIR}/deps/json/include
-  -I${CHAINBLOCKS_DIR}/deps/nameof/include
   -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
   -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/src/core
@@ -301,9 +301,9 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/stb
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
-  ${CHAINBLOCKS_DIR}/deps/nameof/include
   ${CHAINBLOCKS_DIR}/deps/magic_enum/include
   ${CHAINBLOCKS_DIR}/deps/kcp
+  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/src/core/3rdparty
@@ -454,6 +454,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
