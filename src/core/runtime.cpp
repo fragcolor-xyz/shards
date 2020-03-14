@@ -95,6 +95,10 @@ namespace Python {
 extern void registerBlocks();
 }
 
+namespace LMDB {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -141,6 +145,7 @@ void registerCoreBlocks() {
   registerProcessBlocks();
   channels::registerBlocks();
   Python::registerBlocks();
+  LMDB::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
