@@ -493,7 +493,32 @@ inline bool isCanceled(CBContext *context) { return context->aborted; }
 
 inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // negative = no sleep, just run callbacks
-  if (seconds >= 0) {
+
+  // Run callbacks first if needed
+  // Take note of how long it took and subtract from sleep time! if some time is
+  // left sleep
+  if (runCallbacks) {
+    Duration sleepTime(seconds);
+    auto pre = Clock::now();
+    for (auto &cbinfo : Globals::RunLoopHooks) {
+      if (cbinfo.second) {
+        cbinfo.second();
+      }
+    }
+    auto post = Clock::now();
+
+    Duration cbsTime = post - pre;
+    Duration realSleepTime = sleepTime - cbsTime;
+    if (realSleepTime.count() > 0.0) {
+      // Sleep actual time minus stuff we did in cbs
+      seconds = realSleepTime.count();
+    } else {
+      // Don't yield to kernel at all in this case!
+      seconds = 1.0;
+    }
+  }
+
+  if (seconds >= 0.0) {
 #ifdef _WIN32
     HANDLE timer;
     LARGE_INTEGER ft;
@@ -510,15 +535,6 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
     while (nanosleep(&delay, &delay))
       (void)0;
 #endif
-  }
-
-  if (runCallbacks) {
-    // Run loop callbacks after sleeping
-    for (auto &cbinfo : Globals::RunLoopHooks) {
-      if (cbinfo.second) {
-        cbinfo.second();
-      }
-    }
   }
 }
 
