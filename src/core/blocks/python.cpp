@@ -893,22 +893,18 @@ struct Py {
       std::filesystem::path cbpath(Globals::RootPath);
       auto absRoot =
           std::filesystem::absolute(cbpath / scriptPath.parent_path());
-      if (std::filesystem::exists(absRoot)) {
-        absRoot.make_preferred();
-        auto pyAbsRoot = Env::string(absRoot.string().c_str());
-        auto path = Env::_sysGetObj("path");
-        Env::_listAppend(path, pyAbsRoot.get());
-      }
-    }
-
-    auto absRoot = std::filesystem::absolute(std::filesystem::current_path() /
-                                             scriptPath.parent_path());
-    if (std::filesystem::exists(absRoot)) {
       absRoot.make_preferred();
       auto pyAbsRoot = Env::string(absRoot.string().c_str());
       auto path = Env::_sysGetObj("path");
       Env::_listAppend(path, pyAbsRoot.get());
     }
+
+    auto absRoot = std::filesystem::absolute(std::filesystem::current_path() /
+                                             scriptPath.parent_path());
+    absRoot.make_preferred();
+    auto pyAbsRoot = Env::string(absRoot.string().c_str());
+    auto path = Env::_sysGetObj("path");
+    Env::_listAppend(path, pyAbsRoot.get());
 
     auto moduleName = scriptPath.stem().string();
     _module = Env::import(moduleName.c_str());
