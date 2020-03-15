@@ -7,6 +7,12 @@
                 (DB.Update "MyKey")
                 (DB.Get "MyKey")
                 (Assert.Is "Hello DataBase world!" true)
-                (Log)))
+                (Log)
+                (Const [1 2 3 4])
+                (DB.Update "MySeq")
+                (DB.Get "MySeq")
+                (Assert.Is [1 2 3 4] true)
+                (Log)
+                ))
 
 (run Root 0.1 10)

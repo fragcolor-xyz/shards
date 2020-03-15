@@ -132,6 +132,10 @@ struct Get : public Base {
         res.payload.stringValue =
             (CBString)((uint8_t *)val.mv_data + sizeof(CBVar));
       } break;
+      case CBType::Seq: {
+        res.payload.seqValue.elements =
+            (CBVar *)((uint8_t *)val.mv_data + sizeof(CBVar));
+      } break;
       default: {
         throw CBException("Case not handled and variable is not blittable!");
       }
@@ -146,7 +150,8 @@ private:
 };
 
 template <unsigned int PUT_FLAGS> struct PutBase : public Base {
-
+  // TODO compose: avoid non flat sequences, figure what to do with tables
+  // etc
   CBVar activate(CBContext *context, const CBVar &input) {
     const CBVar &cbkey = _key.get();
 
@@ -180,6 +185,15 @@ template <unsigned int PUT_FLAGS> struct PutBase : public Base {
         memcpy((uint8_t *)extraVal.mv_data + sizeof(CBVar),
                (void *)input.payload.stringValue, len);
         ((uint8_t *)extraVal.mv_data + sizeof(CBVar))[len] = 0;
+      } break;
+      case CBType::Seq: {
+        size_t arraySize = input.payload.seqValue.len * sizeof(CBVar);
+        size_t size = sizeof(CBVar) + arraySize;
+        MDB_val extraVal{size, NULL};
+        CHECKED(mdb_put(txn, dbi, &key, &extraVal, PUT_FLAGS | MDB_RESERVE));
+        memcpy((uint8_t *)extraVal.mv_data, &input, sizeof(CBVar));
+        memcpy((uint8_t *)extraVal.mv_data + sizeof(CBVar),
+               (void *)&input.payload.seqValue.elements[0], arraySize);
       } break;
       default: {
         throw CBException("Case not handled and variable is not blittable!");
