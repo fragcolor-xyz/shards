@@ -1266,7 +1266,9 @@ struct Count : SeqUser {
     } else if (var->valueType == Bytes) {
       return Var(int64_t(var->payload.bytesSize));
     } else if (var->valueType == String) {
-      return Var(int64_t(strlen(var->payload.stringValue)));
+      return Var(int64_t(var->payload.stringLen > 0
+                             ? var->payload.stringLen
+                             : strlen(var->payload.stringValue)));
     } else {
       return Var(0);
     }

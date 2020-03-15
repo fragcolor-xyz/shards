@@ -79,8 +79,6 @@ struct Base {
 
 protected:
   ParamVar _key;
-  std::string _keyCache;
-  std::string _keyExCache;
   static inline Parameters _params{
       {"Key",
        "The key to get from the database.",
@@ -94,13 +92,14 @@ struct Get : public Base {
     if (_txn) {
       mdb_txn_abort(_txn);
       _txn = nullptr;
-      _keyCache.clear();
-      _keyExCache.clear();
+      ;
     }
-    _key.cleanup();
+    Base::cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    const CBVar &cbkey = _key.get();
+
     // We open a transaction and keep it open until we get called again
     // this allows us to have no need at all for a copy
     // at the cost of a read lock which should be cheap!
@@ -109,19 +108,20 @@ struct Get : public Base {
       CHECKED(mdb_txn_renew(_txn));
     } else {
       CHECKED(mdb_txn_begin(env, nullptr, MDB_RDONLY, &_txn));
-      _keyCache = _key.get().payload.stringValue;
-      _keyExCache = _key.get().payload.stringValue;
-      _keyExCache.append("-extra-data");
     }
 
     MDB_dbi dbi;
     CHECKED(mdb_dbi_open(_txn, nullptr, 0, &dbi));
 
-    MDB_val key{_keyCache.size(), _keyCache.data()};
+    MDB_val key{cbkey.payload.stringLen > 0 ? cbkey.payload.stringLen
+                                            : strlen(cbkey.payload.stringValue),
+                (void *)cbkey.payload.stringValue};
+
     MDB_val val;
     CHECKED(mdb_get(_txn, dbi, &key, &val));
 
-    assert(val.mv_size == sizeof(CBVar));
+    assert(val.mv_size >= sizeof(CBVar));
+
     CBVar res;
     memcpy(&res, val.mv_data, sizeof(CBVar));
 
@@ -129,10 +129,8 @@ struct Get : public Base {
     if (res.valueType > CBType::EndOfBlittableTypes) {
       switch (res.valueType) {
       case CBType::String: {
-        key = {_keyExCache.size(), _keyExCache.data()};
-        MDB_val extraVal;
-        CHECKED(mdb_get(_txn, dbi, &key, &extraVal));
-        res.payload.stringValue = (CBString)extraVal.mv_data;
+        res.payload.stringValue =
+            (CBString)((uint8_t *)val.mv_data + sizeof(CBVar));
       } break;
       default: {
         throw CBException("Case not handled and variable is not blittable!");
@@ -148,18 +146,9 @@ private:
 };
 
 template <unsigned int PUT_FLAGS> struct PutBase : public Base {
-  void cleanup() {
-    _keyCache.clear();
-    _keyExCache.clear();
-    _key.cleanup();
-  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_keyCache.size() == 0) {
-      _keyCache = _key.get().payload.stringValue;
-      _keyExCache = _key.get().payload.stringValue;
-      _keyExCache.append("-extra-data");
-    }
+    const CBVar &cbkey = _key.get();
 
     MDB_txn *txn;
     CHECKED(mdb_txn_begin(env, nullptr, 0, &txn));
@@ -167,18 +156,28 @@ template <unsigned int PUT_FLAGS> struct PutBase : public Base {
     MDB_dbi dbi;
     CHECKED(mdb_dbi_open(txn, nullptr, 0, &dbi));
 
-    MDB_val key{_keyCache.size(), _keyCache.data()};
-    MDB_val val{sizeof(CBVar), (void *)&input};
-    CHECKED(mdb_put(txn, dbi, &key, &val, PUT_FLAGS));
+    MDB_val key{cbkey.payload.stringLen > 0 ? cbkey.payload.stringLen
+                                            : strlen(cbkey.payload.stringValue),
+                (void *)cbkey.payload.stringValue};
 
-    // Fix non blittable types
-    if (input.valueType > CBType::EndOfBlittableTypes) {
+    if (input.valueType < CBType::EndOfBlittableTypes) {
+      // just a regular 32 bytes push
+      MDB_val val{sizeof(CBVar), (void *)&input};
+      CHECKED(mdb_put(txn, dbi, &key, &val, PUT_FLAGS));
+    } else {
+      // use MDD_RESERVE to get 32 + data len allocated
+      // and directly write to it
       switch (input.valueType) {
       case CBType::String: {
-        key = {_keyExCache.size(), _keyExCache.data()};
-        std::string_view sv(input.payload.stringValue);
-        MDB_val extraVal{sv.size(), (void *)sv.data()};
-        CHECKED(mdb_put(txn, dbi, &key, &extraVal, PUT_FLAGS));
+        size_t len = input.payload.stringLen > 0
+                         ? input.payload.stringLen
+                         : strlen(input.payload.stringValue);
+        size_t size = sizeof(CBVar) + len;
+        MDB_val extraVal{size, NULL};
+        CHECKED(mdb_put(txn, dbi, &key, &extraVal, PUT_FLAGS | MDB_RESERVE));
+        memcpy((uint8_t *)extraVal.mv_data, &input, sizeof(CBVar));
+        memcpy((uint8_t *)extraVal.mv_data + sizeof(CBVar),
+               (void *)input.payload.stringValue, len);
       } break;
       default: {
         throw CBException("Case not handled and variable is not blittable!");

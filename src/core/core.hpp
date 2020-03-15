@@ -686,6 +686,7 @@ struct Serialization {
 
       read((uint8_t *)output.payload.stringValue, len);
       const_cast<char *>(output.payload.stringValue)[len] = 0;
+      output.payload.stringLen = len;
       break;
     }
     case CBType::Seq: {
@@ -884,7 +885,9 @@ struct Serialization {
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
-      uint32_t len = strlen(input.payload.stringValue);
+      uint32_t len = input.payload.stringLen > 0
+                         ? input.payload.stringLen
+                         : strlen(input.payload.stringValue);
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
       write((const uint8_t *)input.payload.stringValue, len);

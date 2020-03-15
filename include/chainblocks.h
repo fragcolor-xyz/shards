@@ -503,6 +503,10 @@ struct CBVarPayload {
 
     struct {
       CBString stringValue;
+      // this field is an optional optimization
+      // if 0 strlen should be called to find the string length
+      // if not 0 should be assumed valid
+      uint32_t stringLen;
       // this is mostly used internal
       // useful when serializing, recycling memory
       uint32_t stringCapacity;

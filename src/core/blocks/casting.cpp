@@ -639,7 +639,9 @@ struct ToBytes {
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
-      auto len = strlen(input.payload.stringValue);
+      auto len = input.payload.stringLen > 0
+                     ? input.payload.stringLen
+                     : strlen(input.payload.stringValue);
       _buffer.resize(len + 1);
       memcpy(&_buffer.front(), input.payload.stringValue, len + 1);
       break;

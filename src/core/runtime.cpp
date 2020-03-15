@@ -1735,7 +1735,9 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Path:
   case ContextVar:
   case String: {
-    auto srcSize = strlen(src.payload.stringValue) + 1;
+    auto srcSize = src.payload.stringLen > 0
+                       ? src.payload.stringLen
+                       : strlen(src.payload.stringValue) + 1;
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
@@ -1750,6 +1752,8 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
            srcSize - 1);
     ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
+    // fill the optional len field
+    dst.payload.stringLen = uint32_t(srcSize);
   } break;
   case Image: {
     size_t srcImgSize = src.payload.imageValue.height *
