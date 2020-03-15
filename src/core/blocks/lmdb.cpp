@@ -172,12 +172,14 @@ template <unsigned int PUT_FLAGS> struct PutBase : public Base {
         size_t len = input.payload.stringLen > 0
                          ? input.payload.stringLen
                          : strlen(input.payload.stringValue);
-        size_t size = sizeof(CBVar) + len;
+        // make sure to add a 0 terminator!
+        size_t size = sizeof(CBVar) + len + 1;
         MDB_val extraVal{size, NULL};
         CHECKED(mdb_put(txn, dbi, &key, &extraVal, PUT_FLAGS | MDB_RESERVE));
         memcpy((uint8_t *)extraVal.mv_data, &input, sizeof(CBVar));
         memcpy((uint8_t *)extraVal.mv_data + sizeof(CBVar),
                (void *)input.payload.stringValue, len);
+        ((uint8_t *)extraVal.mv_data + sizeof(CBVar))[len] = 0;
       } break;
       default: {
         throw CBException("Case not handled and variable is not blittable!");
