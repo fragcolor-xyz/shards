@@ -642,6 +642,7 @@ struct ToBytes {
       auto len = input.payload.stringLen > 0
                      ? input.payload.stringLen
                      : strlen(input.payload.stringValue);
+      // adding on purpose a 0 terminator
       _buffer.resize(len + 1);
       memcpy(&_buffer.front(), input.payload.stringValue, len + 1);
       break;

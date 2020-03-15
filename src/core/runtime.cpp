@@ -1735,13 +1735,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Path:
   case ContextVar:
   case String: {
-    auto srcSize = src.payload.stringLen > 0
-                       ? src.payload.stringLen
-                       : strlen(src.payload.stringValue) + 1;
+    auto srcSize = src.payload.stringLen > 0 ? src.payload.stringLen
+                                             : strlen(src.payload.stringValue);
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
-      dst.payload.stringValue = new char[srcSize];
+      // allocate a 0 terminator too
+      dst.payload.stringValue = new char[srcSize + 1];
       dst.payload.stringCapacity = srcSize;
     } else {
       if (src.payload.stringValue == dst.payload.stringValue)
@@ -1750,8 +1750,8 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 
     dst.valueType = src.valueType;
     memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue,
-           srcSize - 1);
-    ((char *)dst.payload.stringValue)[srcSize - 1] = 0;
+           srcSize);
+    ((char *)dst.payload.stringValue)[srcSize] = 0;
     // fill the optional len field
     dst.payload.stringLen = uint32_t(srcSize);
   } break;
