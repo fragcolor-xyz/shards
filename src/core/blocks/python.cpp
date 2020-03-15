@@ -404,6 +404,7 @@ struct Env {
       DLIMPORT(_long_type, PyLong_Type);
       DLIMPORT(_capsule_type, PyCapsule_Type);
       DLIMPORT(_list_type, PyList_Type);
+      DLIMPORT(_bool_type, PyBool_Type);
 
       DLIMPORT(_py_none, _Py_NoneStruct);
 
@@ -522,6 +523,10 @@ struct Env {
       res.valueType = Float;
       res.payload.floatValue = _asDouble(obj.get());
       return {res, PyObj()};
+    } else if (isBool(obj)) {
+      res.valueType = Bool;
+      res.payload.boolValue = _isTrue(obj.get()) == 1;
+      return {res, PyObj()};
     } else if (isString(obj)) {
       res.valueType = String;
       auto tstr = toStringView(obj);
@@ -529,9 +534,88 @@ struct Env {
       res.payload.stringValue = str.data();
       return {res, std::get<1>(tstr)};
     } else if (isTuple(obj)) {
-      // deal with all vectors
-    } else if (isList(obj)) {
-      // deal with seqs
+      auto tupSize = _tupleSize(obj.get());
+      if (tupSize == 0) {
+        // None
+        return {res, PyObj()};
+      } else {
+        auto first = _borrow_tupleGetItem(obj.get(), 0);
+        assert(first);
+        if (isLong(first)) {
+          switch (tupSize) {
+          case 1:
+            res.valueType = Int;
+            res.payload.intValue = _asLong(obj.get());
+            return {res, PyObj()};
+          case 2: {
+            res.valueType = Int2;
+            res.payload.int2Value[0] = _asLong(first);
+            auto second = _borrow_tupleGetItem(obj.get(), 1);
+            res.payload.int2Value[1] = _asLong(second);
+            return {res, PyObj()};
+          }
+          case 3: {
+            res.valueType = Int3;
+            res.payload.int3Value[0] = _asLong(first);
+            for (int i = 1; i < 3; i++) {
+              auto next = _borrow_tupleGetItem(obj.get(), i);
+              res.payload.int3Value[i] = _asLong(next);
+            }
+            return {res, PyObj()};
+          }
+          case 4: {
+            res.valueType = Int4;
+            res.payload.int4Value[0] = _asLong(first);
+            for (int i = 1; i < 4; i++) {
+              auto next = _borrow_tupleGetItem(obj.get(), i);
+              res.payload.int4Value[i] = _asLong(next);
+            }
+            return {res, PyObj()};
+          }
+          default:
+            throw CBException("Failed to convert python value to CB value, "
+                              "invalid tuple size!");
+          }
+        } else if (isFloat(first)) {
+          switch (tupSize) {
+          case 1:
+            res.valueType = Float;
+            res.payload.floatValue = _asDouble(obj.get());
+            return {res, PyObj()};
+          case 2: {
+            res.valueType = Float2;
+            res.payload.float2Value[0] = _asDouble(first);
+            auto second = _borrow_tupleGetItem(obj.get(), 1);
+            res.payload.float2Value[1] = _asDouble(second);
+            return {res, PyObj()};
+          }
+          case 3: {
+            res.valueType = Float3;
+            res.payload.float3Value[0] = _asDouble(first);
+            for (int i = 1; i < 3; i++) {
+              auto next = _borrow_tupleGetItem(obj.get(), i);
+              res.payload.float3Value[i] = _asDouble(next);
+            }
+            return {res, PyObj()};
+          }
+          case 4: {
+            res.valueType = Float4;
+            res.payload.float4Value[0] = _asDouble(first);
+            for (int i = 1; i < 4; i++) {
+              auto next = _borrow_tupleGetItem(obj.get(), i);
+              res.payload.float4Value[i] = _asDouble(next);
+            }
+            return {res, PyObj()};
+          }
+          default:
+            throw CBException("Failed to convert python value to CB value, "
+                              "invalid tuple size!");
+          }
+        } else {
+          throw CBException(
+              "Failed to convert python value to CB value, invalid tuple!");
+        }
+      }
     } else {
       throw CBException("Failed to convert python value to CB value!");
     }
@@ -585,6 +669,14 @@ struct Env {
 
   static bool isFloat(const PyObj &obj) {
     return obj.get() && isFloat(obj.get());
+  }
+
+  static bool isBool(const PyObject *obj) {
+    return obj->type == _bool_type || _typeIsSubType(obj->type, _bool_type);
+  }
+
+  static bool isBool(const PyObj &obj) {
+    return obj.get() && isBool(obj.get());
   }
 
   static bool isCapsule(const PyObject *obj) {
