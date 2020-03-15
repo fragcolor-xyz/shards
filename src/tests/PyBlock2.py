@@ -28,11 +28,11 @@ def inputTypes():
     return ["None"]
 
 def outputTypes():
-    return ["String"]
+    return ["StringSeq"]
 
 def activate(inputs):
     # we tick the async task here
     run_once()
     print(task.done())
     sys.stdout.flush()
-    return "Hello"
+    return ["Hello", "World"]

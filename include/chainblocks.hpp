@@ -381,6 +381,12 @@ struct Var : public CBVar {
     valueType = Color;
     payload.colorValue = color;
   }
+
+  explicit Var(std::vector<CBVar> &vectorRef) {
+    valueType = Seq;
+    payload.seqValue.elements = &vectorRef[0];
+    payload.seqValue.len = vectorRef.size();
+  }
 };
 
 class ChainProvider {

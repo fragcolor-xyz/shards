@@ -1088,17 +1088,20 @@ struct Py {
     return _outputTypesStorage;
   }
 
+  void cleanup() {
+    _seqCache.clear();
+    _seqCacheObjs.clear();
+    _currentResult = Env::none();
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     Context ctx(_ts);
-
-    _currentResult = Env::none();
 
     PyObj res;
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
       LOG(TRACE) << "Self refcount: " << int(_self->refcount);
-
       res = Env::call(_activate, Env::incRefGet(_self), Env::var2Py(input));
     } else {
       res = Env::call(_activate, Env::var2Py(input));
@@ -1109,10 +1112,22 @@ struct Py {
       throw CBException("Python script activation failed.");
     }
 
-    auto cbres = Env::py2Var(res);
-    _currentResult = std::get<1>(cbres);
-
-    return std::get<0>(cbres);
+    if (Env::isList(res)) {
+      _currentResult = res;
+      ssize_t size = Env::listSize(res);
+      _seqCache.resize(size);
+      _seqCacheObjs.resize(size);
+      for (ssize_t i = 0; i < size; i++) {
+        auto cbres = Env::py2Var(Env::listGetItem(res, i));
+        _seqCache[i] = std::get<0>(cbres);
+        _seqCacheObjs[i] = std::get<1>(cbres);
+      }
+      return Var(_seqCache);
+    } else {
+      auto cbres = Env::py2Var(res);
+      _currentResult = std::get<1>(cbres);
+      return std::get<0>(cbres);
+    }
   }
 
 private:
@@ -1128,7 +1143,6 @@ private:
   std::list<std::string> _paramHelps;
 
   PyObj _self;
-
   PyObj _module;
 
   // Needed defs
@@ -1144,6 +1158,8 @@ private:
 
   PyObj _currentResult;
   PyObj _pyParamResult;
+  std::vector<CBVar> _seqCache;
+  std::vector<PyObj> _seqCacheObjs;
 
   std::string _scriptName;
 };

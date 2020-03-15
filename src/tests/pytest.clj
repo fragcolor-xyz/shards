@@ -23,7 +23,7 @@
                 "py3"
                 :Looped
                 (Py "PyBlock2")
-                (Assert.Is "Hello" true)
+                (Assert.Is ["Hello" "World"] true)
                 (Log)))
 
 (run Root 1.0 5)
