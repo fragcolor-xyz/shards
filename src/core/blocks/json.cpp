@@ -573,8 +573,13 @@ struct ToJson {
 
 struct FromJson {
   CBVar _output;
+
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void cleanup() { _releaseMemory(_output); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);
@@ -583,23 +588,8 @@ struct FromJson {
   }
 };
 
-RUNTIME_CORE_BLOCK(ToJson);
-RUNTIME_BLOCK_parameters(ToJson);
-RUNTIME_BLOCK_setParam(ToJson);
-RUNTIME_BLOCK_getParam(ToJson);
-RUNTIME_BLOCK_inputTypes(ToJson);
-RUNTIME_BLOCK_outputTypes(ToJson);
-RUNTIME_BLOCK_activate(ToJson);
-RUNTIME_BLOCK_END(ToJson);
-
-RUNTIME_CORE_BLOCK(FromJson);
-RUNTIME_BLOCK_inputTypes(FromJson);
-RUNTIME_BLOCK_outputTypes(FromJson);
-RUNTIME_BLOCK_activate(FromJson);
-RUNTIME_BLOCK_END(FromJson);
-
 void registerJsonBlocks() {
-  REGISTER_CORE_BLOCK(ToJson);
-  REGISTER_CORE_BLOCK(FromJson);
+  REGISTER_CBLOCK("FromJson", FromJson);
+  REGISTER_CBLOCK("ToJson", ToJson);
 }
 }; // namespace chainblocks
