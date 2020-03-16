@@ -638,6 +638,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":Seq");
   case Table:
     return mal::keyword(":Table");
+  case Array:
+    return mal::keyword(":Array");
   };
   return mal::keyword(":None");
 }

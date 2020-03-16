@@ -41,6 +41,7 @@ struct Flatten {
     case Int:
     case Float:
     case Bytes:
+    case Array:
     case StackIndex:
     case Bool: {
       currentType = info;
@@ -104,6 +105,7 @@ struct Flatten {
     case Int:
     case Float:
     case Bytes:
+    case Array:
     case Bool:
       chainblocks::arrayPush(outputCache.payload.seqValue, input);
       break;

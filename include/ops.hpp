@@ -92,6 +92,9 @@ inline std::string type2Name(CBType type) {
   case Table:
     name = "Table";
     break;
+  case Array:
+    name = "Array";
+    break;
   }
   return name;
 }
@@ -302,6 +305,12 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
            (a.payload.bytesValue == b.payload.bytesValue ||
             memcmp(a.payload.bytesValue, b.payload.bytesValue,
                    a.payload.bytesSize) == 0);
+  case CBType::Array:
+    return a.payload.arrayLen == b.payload.arrayLen &&
+           a.innerType == b.innerType &&
+           (a.payload.arrayValue == b.payload.arrayValue ||
+            memcmp(a.payload.arrayValue, b.payload.arrayValue,
+                   a.payload.arrayLen * sizeof(CBVarPayload)) == 0);
   }
 
   return false;
@@ -485,6 +494,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return a.payload.bytesSize == b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) < 0;
+  case Array:
+    return a.payload.arrayLen == b.payload.arrayLen &&
+           a.innerType == b.innerType &&
+           memcmp(a.payload.arrayValue, b.payload.arrayValue,
+                  a.payload.arrayLen * sizeof(CBVarPayload)) < 0;
   case Chain:
   case Block:
   case Object:
@@ -674,6 +688,11 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return a.payload.bytesSize == b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) <= 0;
+  case Array:
+    return a.payload.arrayLen == b.payload.arrayLen &&
+           a.innerType == b.innerType &&
+           memcmp(a.payload.arrayValue, b.payload.arrayValue,
+                  a.payload.arrayLen * sizeof(CBVarPayload)) <= 0;
   case Chain:
   case Block:
   case Object:
@@ -948,6 +967,12 @@ template <> struct hash<CBVar> {
     case Bytes: {
       std::string_view buf((char *)var.payload.bytesValue,
                            var.payload.bytesSize);
+      res = res ^ hash<std::string_view>()(buf);
+    } break;
+    case Array: {
+      res = res ^ hash<int>()(int(var.innerType));
+      std::string_view buf((char *)var.payload.arrayValue,
+                           var.payload.arrayLen * sizeof(CBVarPayload));
       res = res ^ hash<std::string_view>()(buf);
     } break;
     case String:

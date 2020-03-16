@@ -165,8 +165,19 @@ void to_json(json &j, const CBVar &var) {
     std::vector<uint8_t> buffer;
     buffer.resize(var.payload.bytesSize);
     if (var.payload.bytesSize > 0)
-      memcpy(&buffer[0], var.payload.imageValue.data, var.payload.bytesSize);
+      memcpy(&buffer[0], var.payload.bytesValue, var.payload.bytesSize);
     j = json{{"type", valType}, {"data", buffer}};
+    break;
+  }
+  case Array: {
+    std::vector<uint8_t> buffer;
+    buffer.resize(var.payload.arrayLen * sizeof(CBVarPayload));
+    if (var.payload.arrayLen > 0)
+      memcpy(&buffer[0], var.payload.arrayValue,
+             var.payload.arrayLen * sizeof(CBVarPayload));
+    j = json{{"type", valType},
+             {"inner", magic_enum::enum_name(var.innerType)},
+             {"data", buffer}};
     break;
   }
   case Enum: {
@@ -368,6 +379,20 @@ void from_json(const json &j, CBVar &var) {
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     var.payload.bytesValue = new uint8_t[buffer.size()];
     memcpy(var.payload.bytesValue, &buffer[0], buffer.size());
+    break;
+  }
+  case Array: {
+    auto innerName = j.at("inner").get<std::string>();
+    auto innerType = magic_enum::enum_cast<CBType>(innerName);
+    if (!innerType.has_value()) {
+      throw chainblocks::CBException("Failed to parse CBVar inner type.");
+    }
+    var.valueType = Array;
+    var.innerType = innerType.value();
+    auto buffer = j.at("data").get<std::vector<uint8_t>>();
+    var.payload.arrayValue =
+        new CBVarPayload[buffer.size() / sizeof(CBVarPayload)];
+    memcpy(var.payload.arrayValue, &buffer[0], buffer.size());
     break;
   }
   case Enum: {

@@ -40,6 +40,7 @@ enum CBType : uint8_t {
   Table,
   Chain,
   Object,
+  Array // Notice: of just bilttable types!
 };
 
 enum CBChainState : uint8_t {
@@ -150,6 +151,7 @@ typedef void *CBArray;
   } _seq_
 
 // Forward declarations
+
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
@@ -538,6 +540,14 @@ struct CBVarPayload {
       // useful when serializing, recycling memory
       uint32_t bytesCapacity;
     };
+
+    struct {
+      CBVarPayload *arrayValue;
+      uint32_t arrayLen;
+      // this is mostly used internal
+      // useful when serializing, recycling memory
+      uint32_t arrayCapacity;
+    };
   };
 } __attribute__((aligned(16)));
 
@@ -560,10 +570,12 @@ struct CBVar {
   uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
+  enum CBType innerType;
 #else
   CBType valueType;
+  CBType innerType;
 #endif
-  uint16_t flags;
+  uint8_t flags;
 } __attribute__((aligned(16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };

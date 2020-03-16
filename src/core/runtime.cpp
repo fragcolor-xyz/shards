@@ -1780,11 +1780,10 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
            srcImgSize);
   } break;
   case Table: {
-    if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
-      return;
-
     CBMap *map;
     if (dst.valueType == Table) {
+      if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
+        return;
       map = (CBMap *)dst.payload.tableValue.opaque;
       map->clear();
     } else {
@@ -1821,6 +1820,24 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 
     memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue,
            src.payload.bytesSize);
+  } break;
+  case CBType::Array: {
+    if (dst.valueType != Array ||
+        dst.payload.arrayCapacity < src.payload.arrayLen) {
+      destroyVar(dst);
+      dst.valueType = CBType::Array;
+      dst.payload.arrayValue = new CBVarPayload[src.payload.arrayLen];
+      dst.payload.arrayCapacity = src.payload.arrayLen;
+    }
+
+    dst.payload.arrayLen = src.payload.arrayLen;
+    dst.innerType = src.innerType;
+
+    if (dst.payload.arrayValue == src.payload.arrayValue)
+      return;
+
+    memcpy((void *)dst.payload.arrayValue, (void *)src.payload.arrayValue,
+           src.payload.arrayLen * sizeof(CBVarPayload));
   } break;
   case CBType::Chain:
     if (dst != src) {

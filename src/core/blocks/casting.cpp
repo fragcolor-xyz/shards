@@ -549,6 +549,7 @@ struct ToBytes {
     case CBType::Block:
     case CBType::Table:
     case CBType::Seq:
+    case CBType::Array:
     case CBType::Bytes: {
       return 0; // unsupported for now
     }
@@ -634,6 +635,12 @@ struct ToBytes {
       _buffer.resize(input.payload.bytesSize);
       memcpy(&_buffer.front(), input.payload.bytesValue,
              input.payload.bytesSize);
+      break;
+    }
+    case CBType::Array: {
+      _buffer.resize(input.payload.arrayLen * sizeof(CBVarPayload));
+      memcpy(&_buffer.front(), input.payload.arrayValue,
+             input.payload.arrayLen * sizeof(CBVarPayload));
       break;
     }
     case CBType::Path:
