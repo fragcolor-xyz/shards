@@ -40,6 +40,7 @@ void _releaseMemory(CBVar &var) {
   default:
     break;
   }
+  var = {};
 }
 
 void to_json(json &j, const CBVar &var) {
@@ -333,24 +334,24 @@ void from_json(const json &j, CBVar &var) {
     var.valueType = ContextVar;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
-    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
     memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    ((char *)var.payload.stringValue)[strVal.length()] = 0;
     break;
   }
   case String: {
     var.valueType = String;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
-    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
     memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    ((char *)var.payload.stringValue)[strVal.length()] = 0;
     break;
   }
   case Path: {
     var.valueType = Path;
     auto strVal = j.at("value").get<std::string>();
     var.payload.stringValue = new char[strVal.length() + 1];
-    memset((void *)var.payload.stringValue, 0x0, strVal.length() + 1);
     memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
+    ((char *)var.payload.stringValue)[strVal.length()] = 0;
     break;
   }
   case Color: {
@@ -580,10 +581,53 @@ struct FromJson {
 
   void cleanup() { _releaseMemory(_output); }
 
+  void anyParse(json &j, CBVar &storage) {
+    if (j.is_array()) {
+      storage.valueType = Seq;
+      for (json::iterator it = j.begin(); it != j.end(); ++it) {
+        CBVar tmp{};
+        anyParse(*it, tmp);
+        arrayPush(storage.payload.seqValue, tmp);
+      }
+    } else if (j.is_number_integer()) {
+      storage.valueType = Int;
+      storage.payload.intValue = j.get<int64_t>();
+    } else if (j.is_number_float()) {
+      storage.valueType = Float;
+      storage.payload.floatValue = j.get<double>();
+    } else if (j.is_string()) {
+      storage.valueType = String;
+      auto strVal = j.get<std::string>();
+      storage.payload.stringValue = new char[strVal.length() + 1];
+      memcpy((void *)storage.payload.stringValue, strVal.c_str(),
+             strVal.length());
+      ((char *)storage.payload.stringValue)[strVal.length()] = 0;
+    } else if (j.is_boolean()) {
+      storage.valueType = Bool;
+      storage.payload.boolValue = j.get<bool>();
+    } else if (j.is_object()) {
+      storage.valueType = Table;
+      auto map = new chainblocks::CBMap();
+      storage.payload.tableValue.api = &chainblocks::Globals::TableInterface;
+      storage.payload.tableValue.opaque = map;
+      for (auto &[key, value] : j.items()) {
+        CBVar tmp{};
+        anyParse(value, tmp);
+        (*map)[key] = tmp;
+      }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);
-    _output = j.get<CBVar>();
+    try {
+      _output = j.get<CBVar>();
+    } catch (json::exception &ex) {
+      // Parsing as CBVar failed, try some generic value parsing
+      // Filling Seq + Tables
+      anyParse(j, _output);
+    }
     return _output;
   }
 };
