@@ -152,6 +152,7 @@ typedef void *CBArray;
 
 // Forward declarations
 
+struct CBVarPayload;
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
