@@ -405,27 +405,39 @@ struct Remove : public JointOp {
 
 struct Profile {
   BlocksVar _blocks{};
+  CBExposedTypesInfo _exposed{};
+  std::string _label;
+
+  static inline Parameters _params{
+      {"Action", "The action blocks to profile.", {CoreInfo::Blocks}},
+      {"Label",
+       "The label to print when outputting time data.",
+       {CoreInfo::StringType}}};
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Action", "The action to profile.", CoreInfo::Blocks));
-
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return _params; }
 
   void cleanup() { _blocks.cleanup(); }
 
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.validate(data);
-    return data.inputType;
+    auto res = _blocks.validate(data);
+    _exposed = res.exposedInfo;
+    return res.outputType;
   }
+
+  CBExposedTypesInfo exposedVariables() { return _exposed; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
       _blocks = value;
+      break;
+    case 1:
+      _label = value.payload.stringValue;
       break;
     default:
       break;
@@ -436,6 +448,8 @@ struct Profile {
     switch (index) {
     case 0:
       return _blocks;
+    case 1:
+      return Var(_label);
     default:
       break;
     }
@@ -443,13 +457,14 @@ struct Profile {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    LOG(INFO) << "Profiling: " << _label;
     TIMED_FUNC(timerObj);
     CBVar output{};
     if (unlikely(!activateBlocks(CBVar(_blocks).payload.seqValue, context,
                                  input, output))) {
       return StopChain;
     }
-    return input;
+    return output;
   }
 };
 
@@ -877,19 +892,6 @@ RUNTIME_BLOCK_warmup(Remove);
 RUNTIME_BLOCK_compose(Remove);
 RUNTIME_BLOCK_END(Remove);
 
-// Register
-RUNTIME_CORE_BLOCK(Profile);
-RUNTIME_BLOCK_inputTypes(Profile);
-RUNTIME_BLOCK_outputTypes(Profile);
-RUNTIME_BLOCK_parameters(Profile);
-RUNTIME_BLOCK_setParam(Profile);
-RUNTIME_BLOCK_getParam(Profile);
-RUNTIME_BLOCK_activate(Profile);
-RUNTIME_BLOCK_cleanup(Profile);
-RUNTIME_BLOCK_warmup(Profile);
-RUNTIME_BLOCK_compose(Profile);
-RUNTIME_BLOCK_END(Profile);
-
 // Register PrependTo
 RUNTIME_CORE_BLOCK(PrependTo);
 RUNTIME_BLOCK_cleanup(PrependTo);
@@ -1017,7 +1019,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);
   REGISTER_CORE_BLOCK(Remove);
-  REGISTER_CORE_BLOCK(Profile);
   REGISTER_CORE_BLOCK(PrependTo);
   REGISTER_CORE_BLOCK(AppendTo);
   REGISTER_CORE_BLOCK(Is);
@@ -1085,5 +1086,7 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_BLOCK(Math, Inc);
   REGISTER_BLOCK(Math, Dec);
+
+  REGISTER_CBLOCK("Profile", Profile);
 }
 }; // namespace chainblocks
