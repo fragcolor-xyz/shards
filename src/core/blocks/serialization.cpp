@@ -235,8 +235,8 @@ struct LoadImage : public FileBase {
       throw CBException("File not found!");
     }
 
-    auto asyncRes = std::async(
-        std::launch::async,
+    AsyncOp<InternalCore> asyncOp(context);
+    return asyncOp(
         [](std::string filename) {
           CBVar res{};
           res.valueType = Image;
@@ -252,22 +252,6 @@ struct LoadImage : public FileBase {
           return res;
         },
         filename);
-
-    // Wait suspending!
-    while (true) {
-      auto state = asyncRes.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
-        break;
-      auto chainState = chainblocks::suspend(context, 0);
-      if (chainState.payload.chainState != Continue) {
-        // Here communicate to the thread.. but hmm should be fine without
-        // anything in this case, cannot send cancelation anyway
-        return chainState;
-      }
-    }
-
-    // This should also throw if we had exceptions
-    return asyncRes.get();
   }
 };
 

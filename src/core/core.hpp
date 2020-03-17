@@ -1143,6 +1143,10 @@ struct InternalCore {
     chainblocks::activateBlocks(blocks, context, input, output);
     return output;
   }
+
+  static CBVar suspend(CBContext *ctx, double seconds) {
+    return chainblocks::suspend(ctx, seconds);
+  }
 };
 
 typedef TParamVar<InternalCore> ParamVar;
