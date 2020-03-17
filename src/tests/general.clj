@@ -693,6 +693,10 @@
     }
   }"
   (FromJson)
+  (ExpectTable)
+  (Log)
+  (Take "pi")
+  (Assert.Is 3.141 true)
   (Log)
 
   (Msg "All looking good!")))
