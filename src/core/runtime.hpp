@@ -31,7 +31,20 @@ using Duration = std::chrono::duration<double>;
 #endif
 
 void freeDerivedInfo(CBTypeInfo info);
-CBTypeInfo deriveTypeInfo(CBVar &value);
+CBTypeInfo deriveTypeInfo(const CBVar &value);
+
+struct ToTypeInfo {
+  ToTypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
+
+  ~ToTypeInfo() { freeDerivedInfo(_info); }
+
+  operator const CBTypeInfo &() { return _info; }
+
+  const CBTypeInfo *operator->() const { return &_info; }
+
+private:
+  CBTypeInfo _info;
+};
 
 [[nodiscard]] CBValidationResult
 validateConnections(const std::vector<CBlock *> &chain,

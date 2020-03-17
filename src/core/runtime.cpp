@@ -1271,7 +1271,7 @@ void freeDerivedInfo(CBTypeInfo info) {
   };
 }
 
-CBTypeInfo deriveTypeInfo(CBVar &value) {
+CBTypeInfo deriveTypeInfo(const CBVar &value) {
   // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
   auto varType = CBTypeInfo();

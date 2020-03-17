@@ -99,12 +99,23 @@ struct BinaryBase : public Base {
                    operandSpec.payload.stringValue) == 0) {
           if (data.shared.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
+            if (data.shared.elements[i].exposedType != data.inputType)
+              throw CBException(
+                  "Operation not supported between different types");
             _opType = Normal;
           } else if (data.shared.elements[i].exposedType.basicType != Seq &&
                      data.inputType.basicType == Seq) {
+            if (data.inputType.seqTypes.len != 1 ||
+                data.shared.elements[i].exposedType !=
+                    data.inputType.seqTypes.elements[0])
+              throw CBException(
+                  "Operation not supported between different types");
             _opType = Seq1;
           } else if (data.shared.elements[i].exposedType.basicType == Seq &&
                      data.inputType.basicType == Seq) {
+            if (data.shared.elements[i].exposedType != data.inputType)
+              throw CBException(
+                  "Operation not supported between different types");
             _opType = SeqSeq;
           } else {
             throw CBException(
@@ -124,12 +135,21 @@ struct BinaryBase : public Base {
         throw CBException("Operand not found in the stack");
       if (data.stack.elements[wanted].basicType != Seq &&
           data.inputType.basicType != Seq) {
+        if (data.stack.elements[wanted] != data.inputType)
+          throw CBException("Operation not supported between different types");
         _opType = Normal;
       } else if (data.stack.elements[wanted].basicType != Seq &&
                  data.inputType.basicType == Seq) {
+        if (data.inputType.seqTypes.len != 1 ||
+            data.stack.elements[wanted] != data.inputType.seqTypes.elements[0])
+          throw CBException("Operation not supported between different types");
         _opType = Seq1;
       } else if (data.stack.elements[wanted].basicType == Seq &&
                  data.inputType.basicType == Seq) {
+        if (data.stack.elements[wanted] != data.inputType) {
+          // this internally compares seq types!
+          throw CBException("Operation not supported between different types");
+        }
         _opType = SeqSeq;
       } else {
         throw CBException(
@@ -137,12 +157,22 @@ struct BinaryBase : public Base {
       }
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
+        if (operandSpec.valueType != data.inputType.basicType)
+          throw CBException("Operation not supported between different types");
         _opType = Normal;
       } else if (operandSpec.valueType != Seq &&
                  data.inputType.basicType == Seq) {
+        if (data.inputType.seqTypes.len != 1 ||
+            operandSpec.valueType !=
+                data.inputType.seqTypes.elements[0].basicType)
+          throw CBException("Operation not supported between different types");
         _opType = Seq1;
       } else if (operandSpec.valueType == Seq &&
                  data.inputType.basicType == Seq) {
+        ToTypeInfo info(operandSpec);
+        if (info != data.inputType) {
+          throw CBException("Operation not supported between different types");
+        }
         _opType = SeqSeq;
       } else {
         throw CBException(
@@ -168,13 +198,10 @@ struct BinaryBase : public Base {
   CBVar getParam(int index) { return _operand; }
 };
 
-#define MATH_BINARY_OPERATION(NAME, OPERATOR, OPERATOR_STR, DIV_BY_ZERO)       \
+#define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
   struct NAME : public BinaryBase {                                            \
     ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
                                const CBVar &operand) {                         \
-      if (input.valueType != operand.valueType)                                \
-        throw CBException("Operation not supported between different "         \
-                          "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
@@ -294,7 +321,7 @@ struct BinaryBase : public Base {
             input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(OPERATOR_STR                                         \
+        throw CBException(#NAME                                                \
                           " operation not supported between given types!");    \
       }                                                                        \
     }                                                                          \
@@ -326,13 +353,10 @@ struct BinaryBase : public Base {
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
-#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR, OPERATOR_STR)                \
+#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
   struct NAME : public BinaryBase {                                            \
     ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
                                const CBVar &operand) {                         \
-      if (input.valueType != operand.valueType)                                \
-        throw CBException("Operation not supported between different "         \
-                          "types.");                                           \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -376,7 +400,7 @@ struct BinaryBase : public Base {
             input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(OPERATOR_STR                                         \
+        throw CBException(#NAME                                                \
                           " operation not supported between given types!");    \
       }                                                                        \
     }                                                                          \
@@ -408,16 +432,16 @@ struct BinaryBase : public Base {
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
-MATH_BINARY_OPERATION(Add, +, "Add", 0);
-MATH_BINARY_OPERATION(Subtract, -, "Subtract", 0);
-MATH_BINARY_OPERATION(Multiply, *, "Multiply", 0);
-MATH_BINARY_OPERATION(Divide, /, "Divide", 1);
-MATH_BINARY_INT_OPERATION(Xor, ^, "Xor");
-MATH_BINARY_INT_OPERATION(And, &, "And");
-MATH_BINARY_INT_OPERATION(Or, |, "Or");
-MATH_BINARY_INT_OPERATION(Mod, %, "Mod");
-MATH_BINARY_INT_OPERATION(LShift, <<, "LShift");
-MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
+MATH_BINARY_OPERATION(Add, +, 0);
+MATH_BINARY_OPERATION(Subtract, -, 0);
+MATH_BINARY_OPERATION(Multiply, *, 0);
+MATH_BINARY_OPERATION(Divide, /, 1);
+MATH_BINARY_INT_OPERATION(Xor, ^);
+MATH_BINARY_INT_OPERATION(And, &);
+MATH_BINARY_INT_OPERATION(Or, |);
+MATH_BINARY_INT_OPERATION(Mod, %);
+MATH_BINARY_INT_OPERATION(LShift, <<);
+MATH_BINARY_INT_OPERATION(RShift, >>);
 
 #define MATH_BINARY_BLOCK(NAME)                                                \
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
@@ -435,7 +459,74 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
   RUNTIME_BLOCK_activate(NAME);                                                \
   RUNTIME_BLOCK_END(NAME);
 
-#define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF, FUNC_STR)                      \
+// Not used for now...
+#define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
+  struct NAME##UnaryFuncD {                                                    \
+    ALWAYS_INLINE double operator()(double x) { return FUNCD(x); }             \
+  };                                                                           \
+  struct NAME##UnaryFuncF {                                                    \
+    ALWAYS_INLINE float operator()(float x) { return FUNCF(x); }               \
+  };
+
+MATH_UNARY_FUNCTOR(Abs, __builtin_fabs, __builtin_fabsf);
+MATH_UNARY_FUNCTOR(Exp, __builtin_exp, __builtin_expf);
+MATH_UNARY_FUNCTOR(Exp2, __builtin_exp2, __builtin_exp2f);
+MATH_UNARY_FUNCTOR(Expm1, __builtin_expm1, __builtin_expm1f);
+MATH_UNARY_FUNCTOR(Log, __builtin_log, __builtin_logf);
+MATH_UNARY_FUNCTOR(Log10, __builtin_log10, __builtin_log10f);
+MATH_UNARY_FUNCTOR(Log2, __builtin_log2, __builtin_log2f);
+MATH_UNARY_FUNCTOR(Log1p, __builtin_log1p, __builtin_log1pf);
+MATH_UNARY_FUNCTOR(Sqrt, __builtin_sqrt, __builtin_sqrtf);
+MATH_UNARY_FUNCTOR(Cbrt, __builtin_cbrt, __builtin_cbrt);
+MATH_UNARY_FUNCTOR(Sin, __builtin_sin, __builtin_sinf);
+MATH_UNARY_FUNCTOR(Cos, __builtin_cos, __builtin_cosf);
+MATH_UNARY_FUNCTOR(Tan, __builtin_tan, __builtin_tanf);
+MATH_UNARY_FUNCTOR(Asin, __builtin_asin, __builtin_asinf);
+MATH_UNARY_FUNCTOR(Acos, __builtin_acos, __builtin_acosf);
+MATH_UNARY_FUNCTOR(Atan, __builtin_atan, __builtin_atanf);
+MATH_UNARY_FUNCTOR(Sinh, __builtin_sinh, __builtin_sinhf);
+MATH_UNARY_FUNCTOR(Cosh, __builtin_cosh, __builtin_coshf);
+MATH_UNARY_FUNCTOR(Tanh, __builtin_tanh, __builtin_tanhf);
+MATH_UNARY_FUNCTOR(Asinh, __builtin_asinh, __builtin_asinhf);
+MATH_UNARY_FUNCTOR(Acosh, __builtin_acosh, __builtin_acoshf);
+MATH_UNARY_FUNCTOR(Atanh, __builtin_atanh, __builtin_atanhf);
+MATH_UNARY_FUNCTOR(Erf, __builtin_erf, __builtin_erff);
+MATH_UNARY_FUNCTOR(Erfc, __builtin_erfc, __builtin_erfcf);
+MATH_UNARY_FUNCTOR(TGamma, __builtin_tgamma, __builtin_tgammaf);
+MATH_UNARY_FUNCTOR(LGamma, __builtin_lgamma, __builtin_lgammaf);
+MATH_UNARY_FUNCTOR(Ceil, __builtin_ceil, __builtin_ceilf);
+MATH_UNARY_FUNCTOR(Floor, __builtin_floor, __builtin_floorf);
+MATH_UNARY_FUNCTOR(Trunc, __builtin_trunc, __builtin_truncf);
+MATH_UNARY_FUNCTOR(Round, __builtin_round, __builtin_roundf);
+
+template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
+  ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {
+    FuncD fd;
+    FuncF ff;
+    if constexpr (CBT == CBType::Float) {
+      output.valueType = Float;
+      output.payload.floatValue = fd(input.payload.floatValue);
+    } else if constexpr (CBT == CBType::Float2) {
+      output.valueType = Float2;
+      output.payload.float2Value[0] = fd(input.payload.float2Value[0]);
+      output.payload.float2Value[1] = fd(input.payload.float2Value[1]);
+    } else if constexpr (CBT == CBType::Float3) {
+      output.valueType = Float3;
+      output.payload.float3Value[0] = ff(input.payload.float3Value[0]);
+      output.payload.float3Value[1] = ff(input.payload.float3Value[1]);
+      output.payload.float3Value[2] = ff(input.payload.float3Value[2]);
+    } else if constexpr (CBT == CBType::Float4) {
+      output.valueType = Float4;
+      output.payload.float4Value[0] = ff(input.payload.float4Value[0]);
+      output.payload.float4Value[1] = ff(input.payload.float4Value[1]);
+      output.payload.float4Value[2] = ff(input.payload.float4Value[2]);
+      output.payload.float4Value[3] = ff(input.payload.float4Value[3]);
+    }
+  }
+};
+// End of not used for now
+
+#define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
   struct NAME : public UnaryBase {                                             \
     ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
       switch (input.valueType) {                                               \
@@ -462,7 +553,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
         output.payload.float4Value[3] = FUNCF(input.payload.float4Value[3]);   \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(FUNC_STR                                             \
+        throw CBException(#NAME                                                \
                           " operation not supported between given types!");    \
       }                                                                        \
     }                                                                          \
@@ -483,36 +574,36 @@ MATH_BINARY_INT_OPERATION(RShift, >>, "RShift");
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
-MATH_UNARY_OPERATION(Abs, __builtin_fabs, __builtin_fabsf, "Abs");
-MATH_UNARY_OPERATION(Exp, __builtin_exp, __builtin_expf, "Exp");
-MATH_UNARY_OPERATION(Exp2, __builtin_exp2, __builtin_exp2f, "Exp2");
-MATH_UNARY_OPERATION(Expm1, __builtin_expm1, __builtin_expm1f, "Expm1");
-MATH_UNARY_OPERATION(Log, __builtin_log, __builtin_logf, "Log");
-MATH_UNARY_OPERATION(Log10, __builtin_log10, __builtin_log10f, "Log10");
-MATH_UNARY_OPERATION(Log2, __builtin_log2, __builtin_log2f, "Log2");
-MATH_UNARY_OPERATION(Log1p, __builtin_log1p, __builtin_log1pf, "Log1p");
-MATH_UNARY_OPERATION(Sqrt, __builtin_sqrt, __builtin_sqrtf, "Sqrt");
-MATH_UNARY_OPERATION(Cbrt, __builtin_cbrt, __builtin_cbrt, "Cbrt");
-MATH_UNARY_OPERATION(Sin, __builtin_sin, __builtin_sinf, "Sin");
-MATH_UNARY_OPERATION(Cos, __builtin_cos, __builtin_cosf, "Cos");
-MATH_UNARY_OPERATION(Tan, __builtin_tan, __builtin_tanf, "Tan");
-MATH_UNARY_OPERATION(Asin, __builtin_asin, __builtin_asinf, "Asin");
-MATH_UNARY_OPERATION(Acos, __builtin_acos, __builtin_acosf, "Acos");
-MATH_UNARY_OPERATION(Atan, __builtin_atan, __builtin_atanf, "Atan");
-MATH_UNARY_OPERATION(Sinh, __builtin_sinh, __builtin_sinhf, "Sinh");
-MATH_UNARY_OPERATION(Cosh, __builtin_cosh, __builtin_coshf, "Cosh");
-MATH_UNARY_OPERATION(Tanh, __builtin_tanh, __builtin_tanhf, "Tanh");
-MATH_UNARY_OPERATION(Asinh, __builtin_asinh, __builtin_asinhf, "Asinh");
-MATH_UNARY_OPERATION(Acosh, __builtin_acosh, __builtin_acoshf, "Acosh");
-MATH_UNARY_OPERATION(Atanh, __builtin_atanh, __builtin_atanhf, "Atanh");
-MATH_UNARY_OPERATION(Erf, __builtin_erf, __builtin_erff, "Erf");
-MATH_UNARY_OPERATION(Erfc, __builtin_erfc, __builtin_erfcf, "Erfc");
-MATH_UNARY_OPERATION(TGamma, __builtin_tgamma, __builtin_tgammaf, "TGamma");
-MATH_UNARY_OPERATION(LGamma, __builtin_lgamma, __builtin_lgammaf, "LGamma");
-MATH_UNARY_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf, "Ceil");
-MATH_UNARY_OPERATION(Floor, __builtin_floor, __builtin_floorf, "Floor");
-MATH_UNARY_OPERATION(Trunc, __builtin_trunc, __builtin_truncf, "Trunc");
-MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf, "Round");
+MATH_UNARY_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
+MATH_UNARY_OPERATION(Exp, __builtin_exp, __builtin_expf);
+MATH_UNARY_OPERATION(Exp2, __builtin_exp2, __builtin_exp2f);
+MATH_UNARY_OPERATION(Expm1, __builtin_expm1, __builtin_expm1f);
+MATH_UNARY_OPERATION(Log, __builtin_log, __builtin_logf);
+MATH_UNARY_OPERATION(Log10, __builtin_log10, __builtin_log10f);
+MATH_UNARY_OPERATION(Log2, __builtin_log2, __builtin_log2f);
+MATH_UNARY_OPERATION(Log1p, __builtin_log1p, __builtin_log1pf);
+MATH_UNARY_OPERATION(Sqrt, __builtin_sqrt, __builtin_sqrtf);
+MATH_UNARY_OPERATION(Cbrt, __builtin_cbrt, __builtin_cbrt);
+MATH_UNARY_OPERATION(Sin, __builtin_sin, __builtin_sinf);
+MATH_UNARY_OPERATION(Cos, __builtin_cos, __builtin_cosf);
+MATH_UNARY_OPERATION(Tan, __builtin_tan, __builtin_tanf);
+MATH_UNARY_OPERATION(Asin, __builtin_asin, __builtin_asinf);
+MATH_UNARY_OPERATION(Acos, __builtin_acos, __builtin_acosf);
+MATH_UNARY_OPERATION(Atan, __builtin_atan, __builtin_atanf);
+MATH_UNARY_OPERATION(Sinh, __builtin_sinh, __builtin_sinhf);
+MATH_UNARY_OPERATION(Cosh, __builtin_cosh, __builtin_coshf);
+MATH_UNARY_OPERATION(Tanh, __builtin_tanh, __builtin_tanhf);
+MATH_UNARY_OPERATION(Asinh, __builtin_asinh, __builtin_asinhf);
+MATH_UNARY_OPERATION(Acosh, __builtin_acosh, __builtin_acoshf);
+MATH_UNARY_OPERATION(Atanh, __builtin_atanh, __builtin_atanhf);
+MATH_UNARY_OPERATION(Erf, __builtin_erf, __builtin_erff);
+MATH_UNARY_OPERATION(Erfc, __builtin_erfc, __builtin_erfcf);
+MATH_UNARY_OPERATION(TGamma, __builtin_tgamma, __builtin_tgammaf);
+MATH_UNARY_OPERATION(LGamma, __builtin_lgamma, __builtin_lgammaf);
+MATH_UNARY_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
+MATH_UNARY_OPERATION(Floor, __builtin_floor, __builtin_floorf);
+MATH_UNARY_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
+MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf);
 
 #define MATH_UNARY_BLOCK(NAME)                                                 \
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \

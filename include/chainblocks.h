@@ -54,7 +54,7 @@ enum CBChainState : uint8_t {
 };
 
 // These blocks run fully inline in the runchain threaded execution engine
-enum CBInlineBlocks : uint8_t {
+enum CBInlineBlocks : uint32_t {
   NotInline,
 
   StackPush,
@@ -135,7 +135,7 @@ enum CBInlineBlocks : uint8_t {
 #else
 typedef uint8_t CBType;
 typedef uint8_t CBChainState;
-typedef uint8_t CBInlineBlocks;
+typedef uint32_t CBInlineBlocks;
 #endif
 
 typedef void *CBArray;
