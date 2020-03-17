@@ -78,6 +78,7 @@ enum CBInlineBlocks : uint8_t {
   CoreTakeColor,
   CoreTakeBytes,
   CoreTakeString,
+  CoreTakeTable,
   CorePush,
   CoreIs,
   CoreIsNot,

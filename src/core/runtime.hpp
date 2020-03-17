@@ -171,6 +171,10 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
     return cblock->core.activateFloats(context, input);
   }
+  case CoreTakeTable: {
+    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
+    return cblock->core.activateTable(context, input);
+  }
   case CorePush: {
     auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
     return cblock->core.activate(context, input);

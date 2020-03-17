@@ -51,9 +51,10 @@ struct CoreInfo {
 
   static inline Types NoneIntOrFloat{{NoneType, IntType, FloatType}};
 
-  static inline Types Indexables{
-      {Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type,
-       Float3Type, Float4Type, BytesType, ColorType, StringType, AnySeqType}};
+  static inline Types Indexables{{Int2Type, Int3Type, Int4Type, Int8Type,
+                                  Int16Type, Float2Type, Float3Type, Float4Type,
+                                  BytesType, ColorType, StringType, AnySeqType,
+                                  AnyTableType}};
 
   static inline Types FloatVectors{{
       Float2Type,
@@ -76,6 +77,10 @@ struct CoreInfo {
   static inline Types IntOrNone{{IntType, NoneType}};
 
   static inline Types IntsVar{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
+
+  static inline Types TakeTypes{{IntType, IntSeqType, IntVarType, IntVarSeqType,
+                                 StringType, StringSeqType, StringVarType,
+                                 StringVarSeqType}};
 
   static inline Types IntsVarOrNone{IntsVar, {NoneType}};
 
@@ -1435,7 +1440,7 @@ struct Pop : SeqUser {
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices", "One or multiple indices to filter from a sequence.",
-      CoreInfo::IntsVar));
+      CoreInfo::TakeTypes));
 
   CBSeq _cachedSeq{};
   CBVar _output{};
@@ -1475,11 +1480,20 @@ struct Take {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     bool valid = false;
+    bool isTable = data.inputType.basicType == Table;
     // Figure if we output a sequence or not
     if (_indices.valueType == Seq) {
-      _seqOutput = true;
-      valid = true;
-    } else if (_indices.valueType == Int) {
+      if (_indices.payload.seqValue.len > 0) {
+        if ((_indices.payload.seqValue.elements[0].valueType == Int &&
+             !isTable) ||
+            (_indices.payload.seqValue.elements[0].valueType == String &&
+             isTable)) {
+          _seqOutput = true;
+          valid = true;
+        }
+      }
+    } else if ((!isTable && _indices.valueType == Int) ||
+               (isTable && _indices.valueType == String)) {
       _seqOutput = false;
       valid = true;
     } else { // ContextVar
@@ -1488,17 +1502,24 @@ struct Take {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq &&
               info.exposedType.seqTypes.len == 1 &&
-              info.exposedType.seqTypes.elements[0].basicType == Int) {
+              ((info.exposedType.seqTypes.elements[0].basicType == Int &&
+                !isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == String &&
+                isTable))) {
             _seqOutput = true;
             valid = true;
             break;
-          } else if (info.exposedType.basicType == Int) {
+          } else if (info.exposedType.basicType == Int && !isTable) {
+            _seqOutput = false;
+            valid = true;
+            break;
+          } else if (info.exposedType.basicType == String && isTable) {
             _seqOutput = false;
             valid = true;
             break;
           } else {
             auto msg = "Take indices variable " + std::string(info.name) +
-                       " expected to be either a Seq or a Int";
+                       " expected to be either Seq, Int or String";
             throw CBException(msg);
           }
         }
@@ -1566,6 +1587,17 @@ struct Take {
       // todo
     } else if (data.inputType.basicType == String) {
       // todo
+    } else if (data.inputType.basicType == Table) {
+      if (_seqOutput) {
+        // multiple values, leave Seq
+        return CoreInfo::AnySeqType;
+      } else if (data.inputType.table.types.len == 1) {
+        // single unique seq type
+        return data.inputType.table.types.elements[0];
+      } else {
+        // value from seq but not unique
+        return CoreInfo::AnyType;
+      }
     }
 
     throw CBException("Take, invalid input type or not implemented.");
@@ -1615,11 +1647,13 @@ struct Take {
     }
   };
 
-  ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
+  void warmup(CBContext *context) {
     if (_indices.valueType == ContextVar && !_indicesVar) {
       _indicesVar = referenceVariable(context, _indices.payload.stringValue);
     }
+  }
 
+  ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
     const auto inputLen = input.payload.seqValue.len;
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
 
@@ -1631,16 +1665,39 @@ struct Take {
       cloneVar(_output, input.payload.seqValue.elements[index]);
       return _output;
     } else {
-      const uint64_t nindices = indices.payload.seqValue.len;
+      const uint32_t nindices = indices.payload.seqValue.len;
       chainblocks::arrayResize(_cachedSeq, nindices);
-      for (uint64_t i = 0; nindices > i; i++) {
+      for (uint32_t i = 0; nindices > i; i++) {
         const auto index =
             indices.payload.seqValue.elements[i].payload.intValue;
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        cloneVar(_output, input.payload.seqValue.elements[index]);
-        _cachedSeq.elements[i] = _output;
+        cloneVar(_cachedSeq.elements[i],
+                 input.payload.seqValue.elements[index]);
+      }
+      return Var(_cachedSeq);
+    }
+  }
+
+  ALWAYS_INLINE CBVar activateTable(CBContext *context, const CBVar &input) {
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;
+
+    if (!_seqOutput) {
+      const auto key = indices.payload.stringValue;
+      const auto val =
+          input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
+      cloneVar(_output, *val);
+      return _output;
+    } else {
+      const uint32_t nkeys = indices.payload.seqValue.len;
+      chainblocks::arrayResize(_cachedSeq, nkeys);
+      for (uint32_t i = 0; nkeys > i; i++) {
+        const auto key =
+            indices.payload.seqValue.elements[i].payload.stringValue;
+        const auto val = input.payload.tableValue.api->tableAt(
+            input.payload.tableValue, key);
+        cloneVar(_cachedSeq.elements[i], *val);
       }
       return Var(_cachedSeq);
     }
@@ -1738,7 +1795,7 @@ struct Take {
     // If we hit this, maybe that type of input is not yet implemented
     throw CBException("Take path not implemented for this type.");
   }
-};
+}; // namespace chainblocks
 
 struct Slice {
   static inline ParamsInfo indicesParamsInfo =

@@ -1026,6 +1026,8 @@ void validateConnection(ValidationContext &ctx) {
   if (strcmp(ctx.bottom->name(ctx.bottom), "Take") == 0) {
     if (previousOutput.basicType == Seq) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;
+    } else if (previousOutput.basicType == Table) {
+      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeTable;
     } else if (previousOutput.basicType >= Int2 &&
                previousOutput.basicType <= Int16) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeInts;

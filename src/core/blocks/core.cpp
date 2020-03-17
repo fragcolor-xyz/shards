@@ -821,6 +821,7 @@ RUNTIME_BLOCK_parameters(Take);
 RUNTIME_BLOCK_compose(Take);
 RUNTIME_BLOCK_setParam(Take);
 RUNTIME_BLOCK_getParam(Take);
+RUNTIME_BLOCK_warmup(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
