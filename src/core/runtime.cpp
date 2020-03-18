@@ -508,6 +508,9 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
 }
 
 void releaseVariable(CBVar *variable) {
+  if (!variable)
+    return;
+
   assert((variable->flags & CBVAR_FLAGS_REF_COUNTED) ==
          CBVAR_FLAGS_REF_COUNTED);
   assert(variable->refcount > 0);

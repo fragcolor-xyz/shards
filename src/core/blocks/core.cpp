@@ -201,7 +201,7 @@ struct Sort : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    _blks.validate(data);
+    _blks.compose(data);
     return inputType;
   }
 
@@ -360,7 +360,7 @@ struct Remove : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    _blks.validate(data);
+    _blks.compose(data);
     return inputType;
   }
 
@@ -424,7 +424,7 @@ struct Profile {
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    auto res = _blocks.validate(data);
+    auto res = _blocks.compose(data);
     _exposed = res.exposedInfo;
     return res.outputType;
   }
@@ -593,6 +593,133 @@ struct PrependTo : public XpendTo {
     }
     return input;
   }
+};
+
+struct Map {
+  CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+
+  CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  void destroy() { destroyVar(_output); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.seqTypes.len != 1) {
+      throw CBException(
+          "Map: Invalid sequence inner type, must be a single defined type.");
+    }
+    CBInstanceData dataCopy = data;
+    dataCopy.inputType = data.inputType.seqTypes.elements[0];
+    auto innerRes = _blocks.compose(dataCopy);
+    _outputSingleType = innerRes.outputType;
+    _outputType = {CBType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
+    return _outputType;
+  }
+
+  void warmup(CBContext *ctx) {
+    _output.valueType = Seq;
+    _blocks.warmup(ctx);
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IterableSeq in(input);
+    arrayResize(_output.payload.seqValue, 0);
+    for (auto &item : in) {
+      auto res = _blocks.activate(context, item);
+      arrayPush(_output.payload.seqValue, res);
+    }
+    return _output;
+  }
+
+private:
+  static inline Parameters _params{
+      {"Apply",
+       "The function to apply to each item of the sequence.",
+       {CoreInfo::Blocks}}};
+
+  CBVar _output{};
+  BlocksVar _blocks{};
+  CBTypeInfo _outputSingleType{};
+  Type _outputType{};
+};
+
+struct Reduce {
+  CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+
+  CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  void destroy() { destroyVar(_output); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.seqTypes.len != 1) {
+      throw CBException("Reduce: Invalid sequence inner type, must be a single "
+                        "defined type.");
+    }
+    CBInstanceData dataCopy = data;
+    dataCopy.inputType = data.inputType.seqTypes.elements[0];
+    // replace or add $0
+    for (uint32_t i = dataCopy.shared.len; i > 0; i--) {
+      auto idx = i - 1;
+      auto &item = dataCopy.shared.elements[idx];
+      if (strcmp(item.name, "$0") == 0) {
+        arrayDelFast(dataCopy.shared, idx);
+      }
+    }
+    _tmpInfo.exposedType = dataCopy.inputType;
+    arrayPush(dataCopy.shared, _tmpInfo);
+    auto innerRes = _blocks.compose(dataCopy);
+    _outputSingleType = innerRes.outputType;
+    return _outputSingleType;
+  }
+
+  void warmup(CBContext *ctx) {
+    _tmp = referenceVariable(ctx, "$0");
+    _blocks.warmup(ctx);
+  }
+
+  void cleanup() {
+    _blocks.cleanup();
+    releaseVariable(_tmp);
+    _tmp = nullptr;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.seqValue.len == 0) {
+      throw CBException("Reduce: Input sequence was empty!");
+    }
+    cloneVar(*_tmp, input.payload.seqValue.elements[0]);
+    for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
+      auto res = _blocks.activate(context, input.payload.seqValue.elements[i]);
+      cloneVar(*_tmp, res);
+    }
+    cloneVar(_output, *_tmp);
+    return _output;
+  }
+
+private:
+  static inline Parameters _params{
+      {"Apply",
+       "The function to apply to each item of the sequence.",
+       {CoreInfo::Blocks}}};
+
+  CBVar *_tmp = nullptr;
+  CBVar _output{};
+  BlocksVar _blocks{};
+  CBTypeInfo _outputSingleType{};
+  CBExposedTypeInfo _tmpInfo{"$0"};
 };
 
 // Register Const
@@ -1089,5 +1216,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_BLOCK(Math, Dec);
 
   REGISTER_CBLOCK("Profile", Profile);
+
+  REGISTER_CBLOCK("Map", Map);
+  REGISTER_CBLOCK("Reduce", Reduce);
 }
 }; // namespace chainblocks

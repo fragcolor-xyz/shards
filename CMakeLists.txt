@@ -162,7 +162,6 @@ set(
   ${MY_PROJECT_SOURCE_FILES}
   ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/include/dllblock.hpp
-  ${CHAINBLOCKS_DIR}/include/stbpp.hpp
   ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp

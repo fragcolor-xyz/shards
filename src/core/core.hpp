@@ -392,10 +392,10 @@ public:
   IterableArray() : _seq({}), _owned(true) {}
 
   // Not OWNING!
-  IterableArray(seq_type seq) : _seq(seq), _owned(false) {}
+  IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(CBVar v) : _seq(v.payload.seqValue), _owned(false) {
+  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) {
     assert(v.valueType == Seq);
   }
 

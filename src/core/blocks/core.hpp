@@ -2116,7 +2116,7 @@ struct Repeat {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _validation = _blks.validate(data);
+    _validation = _blks.compose(data);
     return data.inputType;
   }
 

@@ -129,7 +129,7 @@ struct NetworkBase {
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
     chainblocks::arrayPush(data.shared, endpointInfo);
-    _validation = _blks.validate(data);
+    _validation = _blks.compose(data);
     return _validation.outputType;
   }
 

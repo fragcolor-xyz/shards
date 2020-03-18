@@ -215,7 +215,7 @@ public:
 
   operator CBVar() const { return _blocks; }
 
-  CBValidationResult validate(const CBInstanceData &data) {
+  CBValidationResult compose(const CBInstanceData &data) {
     // Free any previous result!
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
 

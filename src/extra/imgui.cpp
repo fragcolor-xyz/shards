@@ -553,7 +553,7 @@ struct Window : public Base {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blks.validate(data);
+    _blks.compose(data);
     return data.inputType;
   }
 
@@ -914,7 +914,7 @@ struct Button : public Base {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blks.validate(data);
+    _blks.compose(data);
     return data.inputType;
   }
 
@@ -1050,7 +1050,7 @@ struct TreeNode : public Base {
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.validate(data);
+    _blocks.compose(data);
     return data.inputType;
   }
 

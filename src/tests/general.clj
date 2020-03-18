@@ -699,6 +699,20 @@
   (Assert.Is 3.141 true)
   (Log)
 
+  (Get .seq-a)
+  (Map (-->
+        (Log)))
+
+  (Get .seq-a)
+  (Map (-->
+        (Math.Add 1)))
+  (Log)
+
+  (Get .seq-a)
+  (Reduce (-->
+           (Math.Add .$0)))
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root
