@@ -549,21 +549,19 @@ FlowState activateBlocks(CBlocks blocks, CBContext *context,
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
+  DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output = activateBlock(blocks.elements[i], context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -576,7 +574,6 @@ FlowState activateBlocks(CBlocks blocks, CBContext *context,
     }
     input = output;
   }
-  context->stack.len = sidx;
   return Continuing;
 }
 
@@ -585,22 +582,20 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
+  DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output =
         activateBlock(blocks.elements[i].payload.blockValue, context, input);
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        context->stack.len = sidx;
         return Continuing;
       }
       case CBChainState::Stop: {
-        context->stack.len = sidx;
         return Stopping;
       }
       case CBChainState::Return: {
         output = input; // Invert them, we return previous output (input)
-        context->stack.len = sidx;
         return Returning;
       }
       case CBChainState::Rebase: {
@@ -613,7 +608,7 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-  context->stack.len = sidx;
+
   return Continuing;
 }
 
