@@ -156,8 +156,9 @@ public:
 
 template <class CB_CORE> class TBlocksVar {
 private:
-  CBVar _blocks{};
-  std::vector<CBlockPtr> _blocksArray;
+  CBVar _blocksParam{}; // param cache
+  CBlocks _blocks{};    // var wrapper we pass to validate and activate
+  std::vector<CBlockPtr> _blocksArray; // blocks actual storage
   CBValidationResult _chainValidation{};
 
   void destroy() {
@@ -172,7 +173,7 @@ private:
 public:
   ~TBlocksVar() {
     destroy();
-    CB_CORE::destroyVar(_blocks);
+    CB_CORE::destroyVar(_blocksParam);
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
   }
 
@@ -194,36 +195,38 @@ public:
     cbassert(value.valueType == None || value.valueType == Block ||
              value.valueType == Seq);
 
-    CB_CORE::cloneVar(_blocks, value);
+    CB_CORE::cloneVar(_blocksParam, value);
 
     destroy();
-    if (_blocks.valueType == Block) {
-      assert(!_blocks.payload.blockValue->owned);
-      _blocks.payload.blockValue->owned = true;
-      _blocksArray.push_back(_blocks.payload.blockValue);
+    if (_blocksParam.valueType == Block) {
+      assert(!_blocksParam.payload.blockValue->owned);
+      _blocksParam.payload.blockValue->owned = true;
+      _blocksArray.push_back(_blocksParam.payload.blockValue);
     } else {
-      for (uint32_t i = 0; i < _blocks.payload.seqValue.len; i++) {
-        auto blk = _blocks.payload.seqValue.elements[i].payload.blockValue;
+      for (uint32_t i = 0; i < _blocksParam.payload.seqValue.len; i++) {
+        auto blk = _blocksParam.payload.seqValue.elements[i].payload.blockValue;
         assert(!blk->owned);
         blk->owned = true;
         _blocksArray.push_back(blk);
       }
     }
 
-    return _blocks;
+    // We want to avoid copies in hot paths
+    // So we write here the var we pass to CORE
+    _blocks.elements = &_blocksArray[0];
+    _blocks.len = _blocksArray.size();
+
+    return _blocksParam;
   }
 
-  operator CBVar() const { return _blocks; }
+  operator CBVar() const { return _blocksParam; }
 
   CBValidationResult validate(const CBInstanceData &data) {
     // Free any previous result!
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
 
-    CBlocks blocks{};
-    blocks.elements = &_blocksArray[0];
-    blocks.len = _blocksArray.size();
     _chainValidation = CB_CORE::validateBlocks(
-        blocks,
+        _blocks,
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
@@ -242,10 +245,7 @@ public:
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBlocks blocks{};
-    blocks.elements = &_blocksArray[0];
-    blocks.len = _blocksArray.size();
-    return CB_CORE::runBlocks(blocks, context, input);
+    return CB_CORE::runBlocks(_blocks, context, input);
   }
 
   operator bool() const { return _blocksArray.size() > 0; }
@@ -276,6 +276,15 @@ template <class CB_CORE> struct AsyncOp {
 private:
   CBContext *_context;
 };
+
+// https://godbolt.org/z/I72ctd
+template <class Function> struct Defer {
+  Function _f;
+  Defer(Function &&f) : _f(f) {}
+  ~Defer() { _f(); }
+};
+
+#define DEFER(_body_) ::chainblocks::Defer _([&]() _body_)
 }; // namespace chainblocks
 
 #endif
