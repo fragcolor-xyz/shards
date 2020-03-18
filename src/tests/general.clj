@@ -707,11 +707,13 @@
   (Map (-->
         (Math.Add 1)))
   (Log)
+  (Assert.Is [112, 113, 102, 115, 98, 100] true)
 
   (Get .seq-a)
   (Reduce (-->
            (Math.Add .$0)))
   (Log)
+  (Assert.Is 634 true)
 
   (Msg "All looking good!")))
 
