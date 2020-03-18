@@ -362,9 +362,17 @@ public:
     ++ptr;
     return *this;
   }
-
   PtrIterator operator++(int s) {
     ptr += s;
+    return *this;
+  }
+
+  PtrIterator operator--() {
+    --ptr;
+    return *this;
+  }
+  PtrIterator operator--(int s) {
+    ptr -= s;
     return *this;
   }
 
@@ -372,8 +380,14 @@ public:
     return ptr - other.ptr;
   }
 
-  bool operator!=(const PtrIterator &other) const { return ptr != other.ptr; }
-  const T &operator*() const { return *ptr; }
+  T &operator*() const { return *ptr; }
+
+  bool operator==(const PtrIterator &rhs) const { return ptr == rhs.ptr; }
+  bool operator!=(const PtrIterator &rhs) const { return ptr != rhs.ptr; }
+  bool operator>(const PtrIterator &rhs) const { return ptr > rhs.ptr; }
+  bool operator<(const PtrIterator &rhs) const { return ptr < rhs.ptr; }
+  bool operator>=(const PtrIterator &rhs) const { return ptr >= rhs.ptr; }
+  bool operator<=(const PtrIterator &rhs) const { return ptr <= rhs.ptr; }
 
 private:
   T *ptr;
@@ -481,7 +495,28 @@ public:
 using IterableSeq = IterableArray<CBSeq, CBVar>;
 using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
+} // namespace chainblocks
 
+// needed by some c++ library
+namespace std {
+template <typename T> class iterator_traits<chainblocks::PtrIterator<T>> {
+public:
+  using difference_type = ptrdiff_t;
+  using size_type = size_t;
+  using value_type = T;
+  using pointer = T *;
+  using reference = T &;
+  using iterator_category = random_access_iterator_tag;
+};
+
+inline void swap(CBVar &v1, CBVar &v2) {
+  auto t = v1;
+  v1 = v2;
+  v2 = t;
+}
+} // namespace std
+
+namespace chainblocks {
 NO_INLINE void _destroyVarSlow(CBVar &var);
 NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 

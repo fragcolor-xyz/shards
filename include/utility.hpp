@@ -110,6 +110,7 @@ public:
   }
 
   operator CBVar() const { return _v; }
+  const CBVar *operator->() const { return &_v; }
 
   CBVar &get() {
     if (_v.valueType == ContextVar) {

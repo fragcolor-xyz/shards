@@ -122,6 +122,19 @@ struct Parameters {
     }
   }
 
+  Parameters(std::initializer_list<ParameterInfo> infos,
+             const Parameters &others) {
+    for (auto &info : infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : _infos) {
+      _pinfos.push_back(info);
+    }
+    for (auto &info : others._infos) {
+      _infos.push_back(info);
+    }
+  }
+
   Parameters(const Parameters &others, std::vector<ParameterInfo> infos) {
     for (auto &info : others._infos) {
       _infos.push_back(info);

@@ -722,6 +722,143 @@ private:
   CBExposedTypeInfo _tmpInfo{"$0"};
 };
 
+struct Erase : SeqUser {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void warmup(CBContext *ctx) {
+    if (!_target) {
+      _target = referenceVariable(ctx, _name.c_str());
+    }
+    _indices.warmup(ctx);
+  }
+
+  void cleanup() {
+    _indices.cleanup();
+    SeqUser::cleanup();
+  }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0) {
+      _indices = value;
+    } else {
+      index--;
+      SeqUser::setParam(index, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0) {
+      return _indices;
+    } else {
+      index--;
+      return SeqUser::getParam(index);
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    bool valid = false;
+    _isTable = data.inputType.basicType == Table;
+    // Figure if we output a sequence or not
+    if (_indices->valueType == Seq) {
+      if (_indices->payload.seqValue.len > 0) {
+        if ((_indices->payload.seqValue.elements[0].valueType == Int &&
+             !_isTable) ||
+            (_indices->payload.seqValue.elements[0].valueType == String &&
+             _isTable)) {
+          valid = true;
+        }
+      }
+    } else if ((!_isTable && _indices->valueType == Int) ||
+               (_isTable && _indices->valueType == String)) {
+      valid = true;
+    } else { // ContextVar
+      IterableExposedInfo infos(data.shared);
+      for (auto &info : infos) {
+        if (strcmp(info.name, _indices->payload.stringValue) == 0) {
+          if (info.exposedType.basicType == Seq &&
+              info.exposedType.seqTypes.len == 1 &&
+              ((info.exposedType.seqTypes.elements[0].basicType == Int &&
+                !_isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == String &&
+                _isTable))) {
+            valid = true;
+            break;
+          } else if (info.exposedType.basicType == Int && !_isTable) {
+            valid = true;
+            break;
+          } else if (info.exposedType.basicType == String && _isTable) {
+            valid = true;
+            break;
+          } else {
+            auto msg = "Take indices variable " + std::string(info.name) +
+                       " expected to be either Seq, Int or String";
+            throw CBException(msg);
+          }
+        }
+      }
+    }
+
+    if (!valid)
+      throw CBException("Erase, invalid indices or malformed input.");
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto &indices = _indices.get();
+    if (unlikely(_isTable && _target->valueType == Table)) {
+      if (indices.valueType == String) {
+        // single key
+        const auto key = indices.payload.stringValue;
+        _target->payload.tableValue.api->tableRemove(
+            _target->payload.tableValue, key);
+      } else {
+        // multiple keys
+        const uint32_t nkeys = indices.payload.seqValue.len;
+        for (uint32_t i = 0; nkeys > i; i++) {
+          const auto key =
+              indices.payload.seqValue.elements[i].payload.stringValue;
+          _target->payload.tableValue.api->tableRemove(
+              _target->payload.tableValue, key);
+        }
+      }
+    } else {
+      if (indices.valueType == Int) {
+        const auto index = indices.payload.intValue;
+        arrayDel(_target->payload.seqValue, index);
+      } else {
+        IterableSeq sindices(indices);
+        std::sort(sindices.begin(), sindices.end(),
+                  [](CBVar a, CBVar b) { return a > b; });
+        for (auto &idx : sindices) {
+          const auto index = idx.payload.intValue;
+          arrayDel(_target->payload.seqValue, index);
+        }
+      }
+    }
+    return input;
+  }
+
+private:
+  ParamVar _indices{};
+  static inline Parameters _params = {
+      {"Indices", "One or multiple indices to filter from a sequence.",
+       CoreInfo::TakeTypes},
+      {"Name", "The name of the variable.", CoreInfo::StringOrAnyVar},
+      {"Key",
+       "The key of the value to read/write from/in the table "
+       "(this variable will become a table).",
+       {CoreInfo::StringType}},
+      {"Global",
+       "If the variable is or should be available to all "
+       "of the chains in the same node.",
+       {CoreInfo::BoolType}}};
+  bool _isTable;
+};
+
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
 RUNTIME_BLOCK_destroy(Const);
@@ -1219,5 +1356,6 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Map", Map);
   REGISTER_CBLOCK("Reduce", Reduce);
+  REGISTER_CBLOCK("Erase", Erase);
 }
 }; // namespace chainblocks

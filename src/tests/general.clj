@@ -715,6 +715,11 @@
   (Log)
   (Assert.Is 634 true)
 
+  (Erase [2 0] .seq-a)
+  (Get .seq-a)
+  (Log)
+  (Assert.Is [112 114 97 99] true)
+
   (Msg "All looking good!")))
 
 (schedule Root
