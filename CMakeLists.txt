@@ -191,6 +191,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -220,7 +221,6 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/rpmalloc
   -I${CHAINBLOCKS_DIR}/deps/snappy
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
-  -I${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   -I${CHAINBLOCKS_DIR}/deps/stb
   -I${CHAINBLOCKS_DIR}/deps/kcp
@@ -228,8 +228,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
   -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
-  -I${CHAINBLOCKS_DIR}/src/core
-  -I${CHAINBLOCKS_DIR}/src/core/3rdparty
+  -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   )
 
 ### setup clang format
@@ -295,7 +294,6 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
   ${CHAINBLOCKS_DIR}/deps/snappy
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
-  ${CHAINBLOCKS_DIR}/deps/parallel-hashmap
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   ${CHAINBLOCKS_DIR}/deps/stb
   ${CHAINBLOCKS_DIR}/deps/xxHash
@@ -303,9 +301,9 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/magic_enum/include
   ${CHAINBLOCKS_DIR}/deps/kcp
   ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
+  ${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
-  ${CHAINBLOCKS_DIR}/src/core/3rdparty
   )
 
 if(NOT BUILD_CORE_ONLY)
@@ -454,6 +452,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )

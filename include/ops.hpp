@@ -8,6 +8,7 @@
 #include <cfloat>
 #include <chainblocks.hpp>
 #include <string>
+#include <string_view>
 
 inline std::string type2Name(CBType type) {
   std::string name = "";
