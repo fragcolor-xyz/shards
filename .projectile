@@ -1,5 +1,6 @@
 - deps
 - build*
+- build-*
 - external
 - *.log
 - markdeep.*

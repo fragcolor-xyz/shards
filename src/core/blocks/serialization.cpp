@@ -133,26 +133,25 @@ struct WriteFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op([&]() {
-      if (!_fileStream.is_open()) {
-        std::string filename;
-        if (!getFilename(context, filename, false)) {
-          return input;
-        }
-
-        if (_append)
-          _fileStream =
-              std::ofstream(filename, std::ios::app | std::ios::binary);
-        else
-          _fileStream =
-              std::ofstream(filename, std::ios::trunc | std::ios::binary);
+    // AsyncOp<InternalCore> op(context);
+    // return op([&]() {
+    if (!_fileStream.is_open()) {
+      std::string filename;
+      if (!getFilename(context, filename, false)) {
+        return input;
       }
 
-      Writer s(_fileStream);
-      Serialization::serialize(input, s);
-      return input;
-    });
+      if (_append)
+        _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
+      else
+        _fileStream =
+            std::ofstream(filename, std::ios::trunc | std::ios::binary);
+    }
+
+    Writer s(_fileStream);
+    Serialization::serialize(input, s);
+    return input;
+    // });
   }
 };
 
@@ -188,25 +187,25 @@ struct ReadFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op([&]() {
-      if (!_fileStream.is_open()) {
-        std::string filename;
-        if (!getFilename(context, filename)) {
-          return CBVar();
-        }
-
-        _fileStream = std::ifstream(filename, std::ios::binary);
-      }
-
-      if (_fileStream.eof()) {
+    // AsyncOp<InternalCore> op(context);
+    // return op([&]() {
+    if (!_fileStream.is_open()) {
+      std::string filename;
+      if (!getFilename(context, filename)) {
         return CBVar();
       }
 
-      Reader r(_fileStream);
-      Serialization::deserialize(r, _output);
-      return _output;
-    });
+      _fileStream = std::ifstream(filename, std::ios::binary);
+    }
+
+    if (_fileStream.eof()) {
+      return CBVar();
+    }
+
+    Reader r(_fileStream);
+    Serialization::deserialize(r, _output);
+    return _output;
+    // });
   }
 };
 

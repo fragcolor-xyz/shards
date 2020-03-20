@@ -1,11 +1,7 @@
 #ifndef GENETIC_H
 #define GENETIC_H
 
-#include "blockwrapper.hpp"
-#include "chainblocks.hpp"
 #include "shared.hpp"
-#include "taskflow/core/executor.hpp"
-#include "taskflow/core/taskflow.hpp"
 #include <sstream>
 #include <taskflow/taskflow.hpp>
 

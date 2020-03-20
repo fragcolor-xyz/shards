@@ -626,6 +626,30 @@ struct CBNode {
     return noErrors;
   }
 
+  template <class Observer> bool tick(Observer observer, CBVar input = Empty) {
+    auto noErrors = true;
+    _runningFlows = flows;
+    for (auto &flow : _runningFlows) {
+      // make sure flow is actually the current one
+      // since this chain might be moved into another flow!
+      if (flow.get() != flow->chain->flow)
+        continue;
+
+      observer.before_tick(flow->chain);
+      chainblocks::tick(flow->chain, input);
+      if (!chainblocks::isRunning(flow->chain)) {
+        observer.before_stop(flow->chain);
+        if (!chainblocks::stop(flow->chain)) {
+          noErrors = false;
+        }
+        flows.remove(flow);
+        flow->chain->node = nullptr;
+        flow->chain->flow = nullptr;
+      }
+    }
+    return noErrors;
+  }
+
   void terminate() {
     for (auto &flow : flows) {
       chainblocks::stop(flow->chain);
