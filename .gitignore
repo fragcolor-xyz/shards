@@ -21,3 +21,4 @@ src/.DS_Store
 external
 *#
 *~
+/compile_flags.txt
