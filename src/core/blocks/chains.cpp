@@ -709,7 +709,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
         chainblocks::suspend(context, 0);
       }
 
-      // This should throw if we had excetptions
+      // This should throw if we had exceptions
       asyncRes.get();
 
       _chainHash = chain->composedHash;

@@ -1457,7 +1457,7 @@ Chain::operator CBChain *() {
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
-  chain->previousOutput = CBVar();
+  memset(&chain->previousOutput, 0x0, sizeof(CBVar));
   chain->state = CBChain::State::Iterating;
   chain->context = context;
 
@@ -1473,14 +1473,14 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   auto input = chainInput;
   for (auto blk : chain->blocks) {
     try {
-      input = chain->previousOutput = activateBlock(blk, context, input);
+      chain->previousOutput = activateBlock(blk, context, input);
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
-          return {chain->previousOutput, Restarted};
+          return {input, Restarted};
         }
         case CBChainState::Stop: {
-          return {chain->previousOutput, Stopped};
+          return {input, Stopped};
         }
         case CBChainState::Return: {
           // Use input as output, return previous block result
@@ -1489,7 +1489,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
-          break;
+          continue;
         case CBChainState::Continue:
           break;
         }
@@ -1501,14 +1501,14 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         LOG(ERROR) << "Block activation error, failed block: "
                    << std::string(blk->name(blk));
         LOG(ERROR) << e.what();
-        return {chain->previousOutput, Failed};
+        return {input, Failed};
       } else {
         switch (e.requestedAction()) {
         case CBChainState::Restart: {
-          return {chain->previousOutput, Restarted};
+          return {input, Restarted};
         }
         case CBChainState::Stop: {
-          return {chain->previousOutput, Stopped};
+          return {input, Stopped};
         }
         case CBChainState::Return: {
           // Use input as output, return previous block result
@@ -1517,7 +1517,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
-          break;
+          continue;
         case CBChainState::Continue:
           break;
         }
@@ -1532,6 +1532,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                  << std::string(blk->name(blk));
       return {chain->previousOutput, Failed};
     }
+    input = chain->previousOutput;
   }
 
   return {chain->previousOutput, Running};
