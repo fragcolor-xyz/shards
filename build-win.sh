@@ -44,4 +44,4 @@ ninja cbl
 ./cbl ../src/tests/channels.clj
 PYTHONHOME=/d/a/_temp/msys/msys64/mingw64 ./cbl ../src/tests/pytest.clj
 ./cbl ../src/tests/lmdb.clj
-./cbl ../src/tests/genetics.clj
+./cbl ../src/tests/genetic.clj
