@@ -1,6 +1,8 @@
 #ifndef GENETIC_H
 #define GENETIC_H
 
+#include "blockwrapper.hpp"
+#include "chainblocks.hpp"
 #include "shared.hpp"
 #include "taskflow/core/executor.hpp"
 #include "taskflow/core/taskflow.hpp"
@@ -79,7 +81,10 @@ struct Evolve {
       });
       Tasks.run(cleanupFlow).get();
     }
+    _baseChain.cleanup();
   }
+
+  void warmup(CBContext *ctx) { _baseChain.warmup(ctx); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
@@ -106,7 +111,10 @@ struct Evolve {
         CBNode node;
         auto chain = CBChain::sharedFromRef(var.payload.chainValue);
         node.schedule(chain.get());
-        while (node.tick()) {
+        while (!node.empty()) {
+          if (!node.tick()) {
+            // Are we ignoring errors?
+          }
         }
       });
       Tasks.run(runFlow).get();
@@ -129,13 +137,15 @@ private:
       {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}}};
   ParamVar _baseChain{};
   std::vector<CBVar> _chains;
-  int64_t _population = 256;
+  int64_t _population = 64;
   double _mutation = 0.2;
   double _extinction = 0.1;
   double _elitism = 0.1;
 };
 
 struct Mutant {};
+
+void registerBlocks() { REGISTER_CBLOCK("Evolve", Evolve); }
 } // namespace Genetic
 } // namespace chainblocks
 

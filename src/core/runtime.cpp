@@ -99,6 +99,10 @@ namespace LMDB {
 extern void registerBlocks();
 }
 
+namespace Genetic {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -146,6 +150,7 @@ void registerCoreBlocks() {
   channels::registerBlocks();
   Python::registerBlocks();
   LMDB::registerBlocks();
+  Genetic::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
