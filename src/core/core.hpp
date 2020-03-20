@@ -44,7 +44,7 @@ FlowState activateBlocks(CBlocks blocks, CBContext *context,
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
-CBVar suspend(CBContext *context, double seconds);
+void suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 CBlock *createBlock(const char *name);
@@ -68,14 +68,6 @@ struct RuntimeObserver {
   virtual void registerEnumType(int32_t vendorId, int32_t typeId,
                                 CBEnumInfo info) {}
 };
-
-#define cbpause(_time_)                                                        \
-  {                                                                            \
-    auto chainState = chainblocks::suspend(context, _time_);                   \
-    if (chainState.payload.chainState != Continue) {                           \
-      return chainState;                                                       \
-    }                                                                          \
-  }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &src);
@@ -1181,7 +1173,14 @@ struct InternalCore {
   }
 
   static CBVar suspend(CBContext *ctx, double seconds) {
-    return chainblocks::suspend(ctx, seconds);
+    try {
+      chainblocks::suspend(ctx, seconds);
+    } catch (const ChainRestarting &) {
+      return CBVar{CBChainState::Restart};
+    } catch (const ChainCancelation &) {
+      return CBVar{CBChainState::Stop};
+    }
+    return CBVar{CBChainState::Continue};
   }
 };
 

@@ -46,10 +46,10 @@ struct Exec {
     }
 
     while (cmd.running()) {
-      auto chainState = chainblocks::suspend(ctx, 0);
-      if (chainState.payload.chainState != Continue) {
+      try {
+        chainblocks::suspend(ctx, 0);
+      } catch (...) {
         cmd.terminate();
-        return chainState;
       }
     }
 

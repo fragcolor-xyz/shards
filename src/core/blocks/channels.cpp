@@ -316,7 +316,7 @@ struct Consume : public Consumers {
             return StopChain;
           }
         }
-        cbpause(0.0);
+        suspend(context, 0);
       }
 
       // keep for recycling
@@ -389,7 +389,7 @@ struct Listen : public Consumers {
             return StopChain;
           }
         }
-        cbpause(0.0);
+        suspend(context, 0);
       }
 
       // keep for recycling

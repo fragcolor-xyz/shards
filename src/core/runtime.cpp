@@ -525,7 +525,7 @@ void releaseVariable(CBVar *variable) {
   }
 }
 
-CBVar suspend(CBContext *context, double seconds) {
+void suspend(CBContext *context, double seconds) {
   if (seconds <= 0) {
     context->next = Duration(0);
   } else {
@@ -533,20 +533,10 @@ CBVar suspend(CBContext *context, double seconds) {
   }
   context->continuation = context->continuation.resume();
   if (context->restarted) {
-    CBVar restart = {};
-    restart.valueType = None;
-    restart.payload.chainState = CBChainState::Restart;
-    return restart;
+    throw ChainRestarting();
   } else if (context->aborted) {
-    CBVar stop = {};
-    stop.valueType = None;
-    stop.payload.chainState = CBChainState::Stop;
-    return stop;
+    throw ChainCancelation();
   }
-  CBVar cont = {};
-  cont.valueType = None;
-  cont.payload.chainState = Continue;
-  return cont;
 }
 
 FlowState activateBlocks(CBlocks blocks, CBContext *context,
@@ -683,7 +673,14 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result.suspend = [](CBContext *context, double seconds) {
-    return chainblocks::suspend(context, seconds);
+    try {
+      chainblocks::suspend(context, seconds);
+    } catch (const chainblocks::ChainRestarting &) {
+      return CBVar{CBChainState::Restart};
+    } catch (const chainblocks::ChainCancelation &) {
+      return CBVar{CBChainState::Stop};
+    }
+    return CBVar{CBChainState::Continue};
   };
 
   result.cloneVar = [](CBVar *dst, const CBVar *src) {
@@ -1460,13 +1457,18 @@ Chain::operator CBChain *() {
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
-  // TODO refactor this mess
   chain->previousOutput = CBVar();
   chain->state = CBChain::State::Iterating;
   chain->context = context;
 
   // store stack index
   auto sidx = context->stack.len;
+
+  // Todo on exit
+  DEFER({
+    context->stack.len = sidx;
+    chain->state = CBChain::State::IterationEnded;
+  });
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {
@@ -1475,19 +1477,13 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       if (chain->previousOutput.valueType == None) {
         switch (chain->previousOutput.payload.chainState) {
         case CBChainState::Restart: {
-          context->stack.len = sidx;
-          chain->state = CBChain::State::IterationEnded;
           return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          context->stack.len = sidx;
-          chain->state = CBChain::State::IterationEnded;
           return {chain->previousOutput, Stopped};
         }
         case CBChainState::Return: {
-          context->stack.len = sidx;
           // Use input as output, return previous block result
-          chain->state = CBChain::State::IterationEnded;
           return {input, Restarted};
         }
         case CBChainState::Rebase:
@@ -1500,24 +1496,44 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       }
     } catch (boost::context::detail::forced_unwind const &e) {
       throw; // required for Boost Coroutine!
+    } catch (const ActivationError &e) {
+      if (unlikely(e.triggerFailure())) {
+        LOG(ERROR) << "Block activation error, failed block: "
+                   << std::string(blk->name(blk));
+        LOG(ERROR) << e.what();
+        return {chain->previousOutput, Failed};
+      } else {
+        switch (e.requestedAction()) {
+        case CBChainState::Restart: {
+          return {chain->previousOutput, Restarted};
+        }
+        case CBChainState::Stop: {
+          return {chain->previousOutput, Stopped};
+        }
+        case CBChainState::Return: {
+          // Use input as output, return previous block result
+          return {input, Restarted};
+        }
+        case CBChainState::Rebase:
+          // Rebase means we need to put back main input
+          input = chainInput;
+          break;
+        case CBChainState::Continue:
+          break;
+        }
+      }
     } catch (const std::exception &e) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
-      context->stack.len = sidx;
-      chain->state = CBChain::State::IterationEnded;
       return {chain->previousOutput, Failed};
     } catch (...) {
-      LOG(ERROR) << "Block activation error, failed block: "
+      LOG(ERROR) << "Block activation error (...), failed block: "
                  << std::string(blk->name(blk));
-      context->stack.len = sidx;
-      chain->state = CBChain::State::IterationEnded;
       return {chain->previousOutput, Failed};
     }
   }
 
-  context->stack.len = sidx;
-  chain->state = CBChain::State::IterationEnded;
   return {chain->previousOutput, Running};
 }
 

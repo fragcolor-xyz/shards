@@ -14,15 +14,43 @@
 namespace chainblocks {
 class CBException : public std::exception {
 public:
-  explicit CBException(const char *errmsg) : errorMessage(errmsg) {}
-  explicit CBException(std::string errmsg) : errorMessage(std::move(errmsg)) {}
+  explicit CBException(std::string_view msg) : errorMessage(msg) {}
 
   [[nodiscard]] const char *what() const noexcept override {
-    return errorMessage.c_str();
+    return errorMessage.data();
   }
 
 private:
-  std::string errorMessage;
+  std::string_view errorMessage;
+};
+
+class ActivationError : public CBException {
+public:
+  explicit ActivationError(std::string_view msg,
+                           CBChainState action = CBChainState::Stop,
+                           bool fatal = true)
+      : CBException(msg), action(action), fatal(fatal) {}
+
+  CBChainState requestedAction() const { return action; }
+  bool triggerFailure() const { return fatal; }
+
+private:
+  CBChainState action;
+  bool fatal;
+};
+
+class ChainCancelation : public ActivationError {
+public:
+  ChainCancelation()
+      : ActivationError("Chain execution has been canceled.",
+                        CBChainState::Stop, false) {}
+};
+
+class ChainRestarting : public ActivationError {
+public:
+  ChainRestarting()
+      : ActivationError("Chain has been restarted.", CBChainState::Restart,
+                        false) {}
 };
 
 CBlock *createBlock(const char *name);

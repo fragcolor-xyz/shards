@@ -391,7 +391,7 @@ struct Pause {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    cbpause(time);
+    suspend(context, time);
     return input;
   }
 };

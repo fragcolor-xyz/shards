@@ -81,7 +81,7 @@ public:
       }
 
       if (!_window) {
-        cbpause(0.1);
+        suspend(context, 0.1);
       }
     }
 
@@ -757,7 +757,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 
     while (events.empty()) {
       // Wait for events
-      cbpause(0.0);
+      suspend(context, 0);
     }
 
     auto event = events.front();
@@ -967,7 +967,7 @@ struct Tap : public MousePosBase {
     }
 
     if (_delays) {
-      cbpause(0.05);
+      suspend(context, 0.05);
     }
 
     if (_longTap) {
@@ -980,7 +980,7 @@ struct Tap : public MousePosBase {
                      << GetLastError() << std::dec;
           throw CBException("InjectTouchInput failed.");
         }
-        cbpause(0.1);
+        suspend(context, 0.1);
       }
     }
 
@@ -993,7 +993,7 @@ struct Tap : public MousePosBase {
     }
 
     if (_delays) {
-      cbpause(0.05);
+      suspend(context, 0.05);
     }
 
     return input;
@@ -1064,7 +1064,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     }
 
     if (_delays) {
-      cbpause(0.05);
+      suspend(context, 0.05);
     }
 
     // up
@@ -1076,7 +1076,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     }
 
     if (_delays) {
-      cbpause(0.05);
+      suspend(context, 0.05);
     }
 
     return input;

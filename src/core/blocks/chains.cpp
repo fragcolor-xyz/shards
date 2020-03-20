@@ -210,7 +210,7 @@ struct WaitChain : public ChainBase {
         doneOnce = true;
 
       while (isRunning(chain.get())) {
-        cbpause(0.0);
+        suspend(context, 0);
       }
 
       if (passthrough) {
@@ -275,12 +275,7 @@ struct Resume : public ChainBase {
     // the following will suspend this current chain
     // and in node tick when re-evaluated tick will
     // resume with the chain we just set above!
-    auto state = chainblocks::suspend(context, 0);
-    // Must take care of state!
-    if (state.payload.chainState != Continue) {
-      // TODO should we ignore Restart?
-      return state;
-    }
+    chainblocks::suspend(context, 0);
 
     return input;
   }
@@ -308,12 +303,7 @@ struct Start : public Resume {
     // the following will suspend this current chain
     // and in node tick when re-evaluated tick will
     // resume with the chain we just set above!
-    auto state = chainblocks::suspend(context, 0);
-    // Must take care of state!
-    if (state.payload.chainState != Continue) {
-      // TODO should we ignore Restart?
-      return state;
-    }
+    chainblocks::suspend(context, 0);
 
     return input;
   }
@@ -715,10 +705,8 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
         auto state = asyncRes.wait_for(std::chrono::seconds(0));
         if (state == std::future_status::ready)
           break;
-        auto chainState = chainblocks::suspend(context, 0);
-        if (chainState.payload.chainState != Continue) {
-          return chainState;
-        }
+
+        chainblocks::suspend(context, 0);
       }
 
       // This should throw if we had excetptions
