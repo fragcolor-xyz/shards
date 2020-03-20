@@ -82,10 +82,25 @@ struct Evolve {
 
   void warmup(CBContext *ctx) { _baseChain.warmup(ctx); }
 
+  struct TickObserver {
+    void before_tick(CBChain *chain) {}
+    void before_prepare(CBChain *chain) {}
+
+    void before_stop(CBChain *chain) {
+      // Collect DNA variables values
+    }
+
+    void before_start(CBChain *chain) {
+      // Do mutations
+    }
+  };
+
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
     return op([&]() {
       // Init on the first run!
+      // We reuse those chains for every era
+      // Only the DNA changes
       if (_chains.size() == 0) {
         std::stringstream chainStream;
         Writer w(chainStream);
@@ -101,14 +116,15 @@ struct Evolve {
         Tasks.run(initFlow).get();
       }
       // We run chains up to completion
-      // From validation to end, every iteration
+      // From validation to end, every iteration/era
       tf::Taskflow runFlow;
       runFlow.parallel_for(_chains.begin(), _chains.end(), [&](CBVar &var) {
         CBNode node;
+        TickObserver obs;
         auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-        node.schedule(chain.get());
+        node.schedule(obs, chain.get());
         while (!node.empty()) {
-          if (!node.tick()) {
+          if (!node.tick(obs)) {
             // Are we ignoring errors?
           }
         }
@@ -130,7 +146,10 @@ private:
       {"Extinction",
        "The rate of extinction, 0.1 = 10%.",
        {CoreInfo::FloatType}},
-      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}}};
+      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
+      {"DNA",
+       "A list of variable names that represent the DNA of the subject.",
+       {CoreInfo::StringSeqType}}};
   ParamVar _baseChain{};
   std::vector<CBVar> _chains;
   int64_t _population = 64;

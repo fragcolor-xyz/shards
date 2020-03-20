@@ -569,7 +569,16 @@ struct RuntimeCallbacks {
 struct CBNode {
   ~CBNode() { terminate(); }
 
-  void schedule(CBChain *chain, CBVar input = {}, bool validate = true) {
+  struct EmptyObserver {
+    void before_tick(CBChain *chain) {}
+    void before_stop(CBChain *chain) {}
+    void before_prepare(CBChain *chain) {}
+    void before_start(CBChain *chain) {}
+  };
+
+  template <class Observer>
+  void schedule(Observer observer, CBChain *chain, CBVar input = {},
+                bool validate = true) {
     if (chain->node)
       throw chainblocks::CBException(
           "schedule failed, chain was already scheduled!");
@@ -600,30 +609,15 @@ struct CBNode {
     flows.push_back(flow);
     chain->node = this;
     chain->flow = flow.get();
+    observer.before_prepare(chain);
     chainblocks::prepare(chain);
+    observer.before_start(chain);
     chainblocks::start(chain, input);
   }
 
-  bool tick(CBVar input = Empty) {
-    auto noErrors = true;
-    _runningFlows = flows;
-    for (auto &flow : _runningFlows) {
-      // make sure flow is actually the current one
-      // since this chain might be moved into another flow!
-      if (flow.get() != flow->chain->flow)
-        continue;
-
-      chainblocks::tick(flow->chain, input);
-      if (!chainblocks::isRunning(flow->chain)) {
-        if (!chainblocks::stop(flow->chain)) {
-          noErrors = false;
-        }
-        flows.remove(flow);
-        flow->chain->node = nullptr;
-        flow->chain->flow = nullptr;
-      }
-    }
-    return noErrors;
+  void schedule(CBChain *chain, CBVar input = {}, bool validate = true) {
+    EmptyObserver obs;
+    schedule(obs, chain, input, validate);
   }
 
   template <class Observer> bool tick(Observer observer, CBVar input = Empty) {
@@ -648,6 +642,11 @@ struct CBNode {
       }
     }
     return noErrors;
+  }
+
+  bool tick(CBVar input = Empty) {
+    EmptyObserver obs;
+    return tick(obs, input);
   }
 
   void terminate() {
