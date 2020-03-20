@@ -232,3 +232,46 @@ jobs:
         token: ${{ secrets.TELEGRAM_TOKEN }}
         message: |
           The ${{ github.event_name }} event failed.
+
+  ciMacAsan:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Deps
+      run: |
+        sudo xcode-select --switch /Applications/Xcode_11.app
+        brew install boost cmake ninja clang-format
+    - name: Build
+      run: |
+        git submodule update --init --recursive
+        mkdir build
+        cd build
+        cmake -G Ninja -DFORCE_CORE2=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=asan ..
+        ninja cbl
+    - name: Test
+      run: |
+        cd build
+        ./cbl ../src/tests/general.clj
+        ./cbl ../src/tests/variables.clj
+        ./cbl ../src/tests/subchains.clj
+        ./cbl ../src/tests/linalg.clj
+        ./cbl ../src/tests/loader.clj
+        ./cbl ../src/tests/network.clj
+        ./cbl ../src/tests/struct.clj
+        ./cbl ../src/tests/flows.clj
+        ./cbl ../src/tests/stack.clj
+        ./cbl ../src/tests/kdtree.clj
+        ./cbl ../src/tests/channels.clj
+        ./cbl ../src/tests/lmdb.clj
+    - name: Trigger other builds
+      run: |
+        curl -XPOST -u "${{ secrets.USERNAME}}:${{secrets.TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json"  -H "Content-Type: application/json" https://api.github.com/repos/sinkingsugar/chainblocks-rs/dispatches --data '{"event_type": "build_application"}'
+        curl -XPOST -u "${{ secrets.USERNAME}}:${{secrets.TOKEN}}" -H "Accept: application/vnd.github.everest-preview+json"  -H "Content-Type: application/json" https://api.github.com/repos/sinkingsugar/chainblocks-nim/dispatches --data '{"event_type": "build_application"}'
+    - name: Notify failure
+      if: failure()
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_TO }}
+        token: ${{ secrets.TELEGRAM_TOKEN }}
+        message: |
+          The ${{ github.event_name }} event failed.
