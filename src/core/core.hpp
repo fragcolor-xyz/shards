@@ -4,6 +4,7 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
+#include "chainblocks.h"
 #include "ops_internal.hpp"
 #include <chainblocks.hpp>
 
@@ -16,6 +17,7 @@
 #include <list>
 #include <set>
 #include <type_traits>
+#include <variant>
 
 #include "blockwrapper.hpp"
 
@@ -177,7 +179,6 @@ struct CBChain {
 };
 
 namespace chainblocks {
-
 struct OwnedVar : public CBVar {
   OwnedVar() : CBVar() {}
   OwnedVar(const CBVar &source) { cloneVar(*this, source); }
@@ -1176,11 +1177,11 @@ struct InternalCore {
     try {
       chainblocks::suspend(ctx, seconds);
     } catch (const ChainRestarting &) {
-      return CBVar{CBChainState::Restart};
+      return CBVar{{CBChainState::Restart}};
     } catch (const ChainCancelation &) {
-      return CBVar{CBChainState::Stop};
+      return CBVar{{CBChainState::Stop}};
     }
-    return CBVar{CBChainState::Continue};
+    return CBVar{{CBChainState::Continue}};
   }
 };
 
@@ -1386,6 +1387,17 @@ struct VarStringStream {
 
   const char *str() { return cache.str(); }
 };
+
+using BlocksCollection = std::variant<CBChain *, CBlockPtr, CBlocks, CBVar>;
+
+struct CBlockInfo {
+  CBlockInfo(const std::string_view &name, const CBlock *block)
+      : name(name), block(block) {}
+  const std::string_view name;
+  const CBlock *block;
+};
+
+void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> out);
 }; // namespace chainblocks
 
 #endif

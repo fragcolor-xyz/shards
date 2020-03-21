@@ -90,10 +90,14 @@ struct Evolve {
       _sortedPopulation.clear();
       _population.clear();
     }
+    _dnaNames.cleanup();
     _baseChain.cleanup();
   }
 
-  void warmup(CBContext *ctx) { _baseChain.warmup(ctx); }
+  void warmup(CBContext *ctx) {
+    _baseChain.warmup(ctx);
+    _dnaNames.warmup(ctx);
+  }
 
   inline void mutateChain(CBChain *chain);
 
@@ -105,11 +109,19 @@ struct Evolve {
 
     void before_stop(CBChain *chain) {
       // Collect DNA variables values
-      const auto individualIt = self._chain2Individual.find(chain);
-      if (individualIt == self._chain2Individual.end()) {
-        assert(false);
+      auto names = self._dnaNames.get();
+      if (names.valueType == Seq) {
+        const auto individualIt = self._chain2Individual.find(chain);
+        if (individualIt == self._chain2Individual.end()) {
+          assert(false);
+        }
+        auto &individual = individualIt->second.get();
+        IterableSeq snames(names.payload.seqValue);
+        for (const auto &name : snames) {
+          auto cname = name.payload.stringValue;
+          individual.variables[cname] = chain->variables[cname];
+        }
       }
-      auto &individual = individualIt->second.get();
     }
 
     void before_start(CBChain *chain) {
@@ -167,9 +179,7 @@ struct Evolve {
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
             node.schedule(obs, chain.get());
             while (!node.empty()) {
-              if (!node.tick(obs)) {
-                // Are we ignoring errors?
-              }
+              node.tick(obs);
             }
           });
       Tasks.run(runFlow).get();

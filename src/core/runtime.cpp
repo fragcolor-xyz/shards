@@ -676,11 +676,11 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     try {
       chainblocks::suspend(context, seconds);
     } catch (const chainblocks::ChainRestarting &) {
-      return CBVar{CBChainState::Restart};
+      return CBVar{{CBChainState::Restart}};
     } catch (const chainblocks::ChainCancelation &) {
-      return CBVar{CBChainState::Stop};
+      return CBVar{{CBChainState::Stop}};
     }
-    return CBVar{CBChainState::Continue};
+    return CBVar{{CBChainState::Continue}};
   };
 
   result.cloneVar = [](CBVar *dst, const CBVar *src) {
@@ -1894,6 +1894,70 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   default:
     break;
   };
+}
+
+void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> out) {
+  switch (coll.index()) {
+  case 0: {
+    // chain
+    auto chain = std::get<CBChain *>(coll);
+    for (auto blk : chain->blocks) {
+      gatherBlocks(blk, out);
+    }
+  } break;
+  case 1: {
+    // Single block
+    auto blk = std::get<CBlockPtr>(coll);
+    std::string_view name(blk->name(blk));
+    out.emplace_back(name, blk);
+    // Also find nested blocks
+    const auto params = blk->parameters(blk);
+    for (uint32_t i = 0; i < params.len; i++) {
+      const auto &param = params.elements[i];
+      const auto &types = param.valueTypes;
+      for (uint32_t j = 0; j < types.len; j++) {
+        const auto &type = types.elements[j];
+        if (type.basicType == Block) {
+          gatherBlocks(blk->getParam(blk, i), out);
+          break;
+        } else if (type.basicType == Seq) {
+          const auto &stypes = type.seqTypes;
+          for (uint32_t k = 0; k < stypes.len; k++) {
+            if (stypes.elements[k].basicType == Block) {
+              gatherBlocks(blk->getParam(blk, i), out);
+              break;
+            }
+          }
+          break;
+        }
+      }
+    }
+  } break;
+  case 2: {
+    // Blocks seq
+    auto bs = std::get<CBlocks>(coll);
+    for (uint32_t i = 0; i < bs.len; i++) {
+      gatherBlocks(bs.elements[i], out);
+    }
+  } break;
+  case 3: {
+    // Var
+    auto var = std::get<CBVar>(coll);
+    if (var.valueType == Block) {
+      gatherBlocks(var.payload.blockValue, out);
+    } else if (var.valueType == CBType::Chain) {
+      auto chain = CBChain::sharedFromRef(var.payload.chainValue);
+      gatherBlocks(chain.get(), out);
+    } else if (var.valueType == Seq) {
+      auto bs = var.payload.seqValue;
+      for (uint32_t i = 0; i < bs.len; i++) {
+        gatherBlocks(bs.elements[i], out);
+      }
+    }
+  } break;
+  default:
+    assert(false);
+  }
 }
 }; // namespace chainblocks
 
