@@ -1393,7 +1393,7 @@ using BlocksCollection = std::variant<CBChain *, CBlockPtr, CBlocks, CBVar>;
 struct CBlockInfo {
   CBlockInfo(const std::string_view &name, const CBlock *block)
       : name(name), block(block) {}
-  const std::string_view name;
+  std::string_view name;
   const CBlock *block;
 };
 

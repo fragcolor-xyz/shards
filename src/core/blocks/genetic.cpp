@@ -1,6 +1,9 @@
 #ifndef GENETIC_H
 #define GENETIC_H
 
+#include "blockwrapper.hpp"
+#include "chainblocks.h"
+#include "chainblocks.hpp"
 #include "shared.hpp"
 #include <limits>
 #include <sstream>
@@ -231,17 +234,105 @@ private:
   double _elitism = 0.1;
 };
 
-struct Mutant {};
+struct Mutant {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBParametersInfo parameters() { return _params; }
 
-void registerBlocks() { REGISTER_CBLOCK("Evolve", Evolve); }
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _block = value;
+      break;
+    case 1:
+      _options = value;
+      break;
+    default:
+      break;
+    }
+  }
 
-inline void mutateBlock(CBlock *blk) {
-  // must find a mutant root or inner
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _block;
+    case 1:
+      return _options;
+    default:
+      return CBVar();
+    }
+  }
+
+  void cleanup() {
+    _block.cleanup();
+    _options.cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    _block.warmup(ctx);
+    _options.warmup(ctx);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    return _block.compose(data).outputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (!_block)
+      return {};
+
+    auto blks = _block.blocks();
+    return blks.elements[0]->exposedVariables(blks.elements[0]);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (!_block)
+      return {};
+
+    auto blks = _block.blocks();
+    return blks.elements[0]->exposedVariables(blks.elements[0]);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return _block.activate(context, input);
+  }
+
+private:
+  friend class Evolve;
+  BlocksVar _block{};
+  ParamVar _options{};
+  static inline Parameters _params{
+      {"Block", "The block to mutate.", {CoreInfo::BlockType}},
+      {"Mutations",
+       "Mutation table - a table with mutation options.",
+       {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("Evolve", Evolve);
+  REGISTER_CBLOCK("Mutant", Mutant);
 }
 
 inline void Evolve::mutateChain(CBChain *chain) {
-  for (auto &blk : chain->blocks) {
-    mutateBlock(blk);
+  std::vector<CBlockInfo> blocks;
+  gatherBlocks(chain, blocks);
+  auto pos =
+      std::remove_if(std::begin(blocks), std::end(blocks),
+                     [](CBlockInfo &info) { return info.name != "Mutant"; });
+  if (pos != std::end(blocks)) {
+    std::for_each(std::begin(blocks), pos, [](CBlockInfo &info) {
+      auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
+      if (mutator->block._block) {
+        auto mutant = mutator->block._block.blocks().elements[0];
+        if (mutant->mutate) {
+          auto options = mutator->block._options;
+          auto table = options.get().valueType == Table
+                           ? options.get().payload.tableValue
+                           : CBTable();
+          mutant->mutate(mutant, table);
+        }
+      }
+    });
   }
 }
 } // namespace Genetic

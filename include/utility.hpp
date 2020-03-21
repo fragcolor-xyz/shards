@@ -250,6 +250,8 @@ public:
   }
 
   operator bool() const { return _blocksArray.size() > 0; }
+
+  const CBlocks &blocks() const { return _blocks; }
 };
 
 template <class CB_CORE> struct AsyncOp {
