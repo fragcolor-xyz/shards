@@ -6,26 +6,6 @@
 
 namespace chainblocks {
 namespace Random {
-struct Base {
-  static double frand() {
-    return double(_gen()) * (1.0 / double(xorshift::max()));
-  }
-
-  static double frand(double max) { return frand() * max; }
-
-  static int64_t rand() { return int64_t(_gen()); }
-
-  static int64_t rand(int64_t max) { return rand() % max; }
-
-private:
-#ifdef NDEBUG
-  static inline thread_local std::random_device _rd{};
-  static inline thread_local xorshift _gen{_rd};
-#else
-  static inline thread_local xorshift _gen{};
-#endif
-};
-
 template <Type &OUTTYPE, CBType CBTYPE> struct Rand {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return OUTTYPE; }
@@ -40,14 +20,14 @@ template <Type &OUTTYPE, CBType CBTYPE> struct Rand {
     res.valueType = CBTYPE;
     if constexpr (CBTYPE == CBType::Int) {
       if (_max.valueType == None)
-        res.payload.intValue = Base::rand();
+        res.payload.intValue = Rng::rand();
       else
-        res.payload.intValue = Base::rand(_max.payload.intValue);
+        res.payload.intValue = Rng::rand(_max.payload.intValue);
     } else if constexpr (CBTYPE == CBType::Float) {
       if (_max.valueType == None)
-        res.payload.floatValue = Base::frand();
+        res.payload.floatValue = Rng::frand();
       else
-        res.payload.floatValue = Base::frand(_max.payload.floatValue);
+        res.payload.floatValue = Rng::frand(_max.payload.floatValue);
     }
     return res;
   }

@@ -3,6 +3,7 @@
 #ifndef AG_RANDOM_H
 #define AG_RANDOM_H
 
+#include <cmath>
 #include <random>
 
 class splitmix {
@@ -131,5 +132,37 @@ inline bool operator==(pcg const &lhs, pcg const &rhs) {
 inline bool operator!=(pcg const &lhs, pcg const &rhs) {
   return lhs.m_state != rhs.m_state || lhs.m_inc != rhs.m_inc;
 }
+
+struct Rng {
+  static double frand() {
+    return double(_gen()) * (1.0 / double(xorshift::max()));
+  }
+
+  static double frand(double max) { return frand() * max; }
+
+  static double fnormal(double mean, double stdDeviation) {
+    double u1 = 0.0;
+    while (u1 == 0.0) {
+      u1 = frand();
+    }
+
+    auto u2 = frand();
+    auto rstdNorm = std::sqrt(-2.0 * std::log(u1)) * std::sin(2.0 * M_PI * u2);
+
+    return mean + stdDeviation * rstdNorm;
+  }
+
+  static int64_t rand() { return int64_t(_gen()); }
+
+  static int64_t rand(int64_t max) { return rand() % max; }
+
+private:
+#ifdef NDEBUG
+  static inline thread_local std::random_device _rd{};
+  static inline thread_local xorshift _gen{_rd};
+#else
+  static inline thread_local xorshift _gen{};
+#endif
+};
 
 #endif /* AG_RANDOM_H */

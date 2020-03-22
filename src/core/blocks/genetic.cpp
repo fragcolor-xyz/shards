@@ -214,18 +214,7 @@ struct Evolve {
     });
   }
 
-  static double rand() {
-    return double(_gen()) * (1.0 / double(xorshift::max()));
-  }
-
 private:
-#ifdef NDEBUG
-  static inline thread_local std::random_device _rd{};
-  static inline thread_local xorshift _gen{_rd};
-#else
-  static inline thread_local xorshift _gen{};
-#endif
-
   struct MutantInfo {
     MutantInfo(const Mutant &block, std::vector<int> &&indices)
         : block(block), indices(std::move(indices)) {}
@@ -400,6 +389,16 @@ void registerBlocks() {
   REGISTER_CBLOCK("Mutant", Mutant);
 }
 
+inline void mutateVar(CBVar &var) {
+  switch (var.valueType) {
+  case CBType::Int: {
+    auto add = Rng::fnormal(0.0, 0.1) * double(var.payload.intValue);
+    LOG(DEBUG) << add;
+    var.payload.intValue += int64_t(add);
+  } break;
+  }
+}
+
 inline void Evolve::gatherMutants(CBChain *chain,
                                   std::vector<MutantInfo> &out) {
   std::vector<CBlockInfo> blocks;
@@ -419,7 +418,7 @@ inline void Evolve::gatherMutants(CBChain *chain,
 inline void Evolve::mutate(Evolve::Individual &individual) {
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
                 [this](MutantInfo &info) {
-                  if (rand() > _mutation) {
+                  if (Rng::frand() > _mutation) {
                     LOG(TRACE) << "Skipping a block mutation...";
                     return;
                   }
@@ -437,6 +436,12 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
                       mutant->mutate(mutant, table);
                     } else if (indices > 0) {
                       // do stuff on the param
+                      // select a random one
+                      auto rparam = Rng::rand(indices);
+                      auto current =
+                          mutant->getParam(mutant, info.indices[rparam]);
+                      mutateVar(current);
+                      mutant->setParam(mutant, info.indices[rparam], current);
                     }
                   } else {
                     LOG(TRACE) << "No block found to mutate...";
@@ -462,7 +467,7 @@ inline void Evolve::saveState(Evolve::Individual &individual) {
 }
 
 inline void Evolve::restoreState(Evolve::Individual &individual) {
-  // Store params and state
+  // Load params and state
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
                 [](MutantInfo &info) {
                   auto mutant = info.block.get().mutant();
@@ -482,7 +487,7 @@ inline void Evolve::restoreState(Evolve::Individual &individual) {
 }
 
 inline void Evolve::resetState(Evolve::Individual &individual) {
-  // Store params and state
+  // Reset params and state
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
                 [](MutantInfo &info) {
                   auto mutant = info.block.get().mutant();
