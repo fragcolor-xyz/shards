@@ -133,7 +133,9 @@ inline bool operator!=(pcg const &lhs, pcg const &rhs) {
   return lhs.m_state != rhs.m_state || lhs.m_inc != rhs.m_inc;
 }
 
-struct Rng {
+// Because of TLS, some compilers might need this in the compilation unit...
+// namely mingw windows, and so this template tries to fix it
+template <typename FOO> struct Rng {
   static double frand() {
     return double(_gen()) * (1.0 / double(xorshift::max()));
   }

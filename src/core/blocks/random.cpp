@@ -6,6 +6,7 @@
 
 namespace chainblocks {
 namespace Random {
+using Rng = Rng<void>;
 template <Type &OUTTYPE, CBType CBTYPE> struct Rand {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return OUTTYPE; }
