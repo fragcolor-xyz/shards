@@ -1429,8 +1429,6 @@ void error_handler(int err_sig) {
   }
 
   if (printTrace) {
-    std::signal(SIGABRT, SIG_DFL); // also make sure to remove this due to
-                                   // logger double report on FATAL
     LOG(ERROR) << boost::stacktrace::stacktrace();
   }
 
@@ -1896,7 +1894,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> out) {
+void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   switch (coll.index()) {
   case 0: {
     // chain
@@ -1960,13 +1958,3 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> out) {
   }
 }
 }; // namespace chainblocks
-
-#ifdef TESTING
-static CBChain mainChain("MainChain");
-
-int main() {
-  auto blk = chainblocks::createBlock("SetTableValue");
-  LOG(INFO) << blk->name(blk);
-  LOG(INFO) << blk->exposedVariables(blk);
-}
-#endif

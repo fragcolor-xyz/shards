@@ -4,6 +4,7 @@
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
 #include "chainblocks.hpp"
+#include "random.hpp"
 #include "shared.hpp"
 #include <limits>
 #include <sstream>
@@ -119,6 +120,7 @@ struct Evolve {
           assert(false);
         }
         auto &individual = individualIt->second.get();
+        // Store the marked variables
         IterableSeq snames(names.payload.seqValue);
         for (const auto &name : snames) {
           auto cname = name.payload.stringValue;
@@ -134,13 +136,21 @@ struct Evolve {
         assert(false);
       }
       auto &individual = individualIt->second.get();
-      // Load variables if we have them
-      for (auto &var : individual.variables) {
-        auto &slot = chain->variables[var.first];
-        cloneVar(slot, var.second);
+      // Load variables if we have them and not extinct
+      // Else reset the individual
+      if (!individual.extinct) {
+        for (auto &var : individual.variables) {
+          auto &slot = chain->variables[var.first];
+          cloneVar(slot, var.second);
+        }
       }
-      // Call mutate
-      self.mutateChain(chain);
+      // Call mutate if not elite
+      if (!individual.elite) {
+        self.mutateChain(chain);
+      }
+      // Keep in mind that individuals might not reach chain termination
+      // they might "crash", so fitness should be set to minimum before any run
+      individual.fitness = std::numeric_limits<double>::min();
     }
   };
 
@@ -156,6 +166,8 @@ struct Evolve {
         Serialization::serialize(_baseChain, w);
         auto chainStr = chainStream.str();
         _population.resize(_popsize);
+        _nkills = size_t(double(_popsize) * _extinction);
+        _nelites = size_t(double(_popsize) * _elitism);
         tf::Taskflow initFlow;
         initFlow.parallel_for(_population.begin(), _population.end(),
                               [&](Individual &i) {
@@ -190,14 +202,44 @@ struct Evolve {
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
                    std::reference_wrapper<Individual> b) {
+                  // TODO this might be reversed
+                  // did not test yet :P
                   return a.get().fitness > b.get().fitness;
                 });
 
-      return Var(_sortedPopulation.back().get().fitness);
+      // reset flags
+      std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
+                    [](auto &i) {
+                      auto &id = i.get();
+                      id.elite = false;
+                      id.extinct = false;
+                    });
+
+      // mark elites
+      std::for_each(_sortedPopulation.begin(),
+                    _sortedPopulation.begin() + _nelites,
+                    [](auto &i) { i.get().elite = true; });
+
+      // mark extinct
+      std::for_each(_sortedPopulation.end() - _nkills, _sortedPopulation.end(),
+                    [](auto &i) { i.get().extinct = true; });
+
+      return Var(_sortedPopulation.front().get().fitness);
     });
   }
 
+  static double rand() {
+    return double(_gen()) * (1.0 / double(xorshift::max()));
+  }
+
 private:
+#ifdef NDEBUG
+  static inline thread_local std::random_device _rd{};
+  static inline thread_local xorshift _gen{_rd};
+#else
+  static inline thread_local xorshift _gen{};
+#endif
+
   struct Individual {
     CBVar chain{};
     std::unordered_map<std::string, OwnedVar, std::hash<std::string>,
@@ -206,6 +248,8 @@ private:
                            std::pair<const std::string, OwnedVar>, 16>>
         variables;
     double fitness{std::numeric_limits<double>::min()};
+    bool elite = false;
+    bool extinct = false;
   };
 
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
@@ -231,12 +275,30 @@ private:
   int64_t _popsize = 64;
   double _mutation = 0.2;
   double _extinction = 0.1;
+  size_t _nkills = 0;
   double _elitism = 0.1;
+  size_t _nelites = 0;
 };
 
 struct Mutant {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  CBTypesInfo inputTypes() {
+    if (_block) {
+      auto blks = _block.blocks();
+      return blks.elements[0]->inputTypes(blks.elements[0]);
+    } else {
+      return CoreInfo::AnyType;
+    }
+  }
+
+  CBTypesInfo outputTypes() {
+    if (_block) {
+      auto blks = _block.blocks();
+      return blks.elements[0]->outputTypes(blks.elements[0]);
+    } else {
+      return CoreInfo::AnyType;
+    }
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, CBVar value) {
@@ -298,7 +360,7 @@ struct Mutant {
   }
 
 private:
-  friend class Evolve;
+  friend struct Evolve;
   BlocksVar _block{};
   ParamVar _options{};
   static inline Parameters _params{
@@ -320,17 +382,34 @@ inline void Evolve::mutateChain(CBChain *chain) {
       std::remove_if(std::begin(blocks), std::end(blocks),
                      [](CBlockInfo &info) { return info.name != "Mutant"; });
   if (pos != std::end(blocks)) {
-    std::for_each(std::begin(blocks), pos, [](CBlockInfo &info) {
+    std::for_each(std::begin(blocks), pos, [this](CBlockInfo &info) {
+      if (rand() > _mutation) {
+        LOG(TRACE) << "Skipping a block mutation...";
+        return;
+      }
+
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
+      auto options = mutator->block._options;
       if (mutator->block._block) {
         auto mutant = mutator->block._block.blocks().elements[0];
+        LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
         if (mutant->mutate) {
-          auto options = mutator->block._options;
+          // In the case the block has `mutate`
+
           auto table = options.get().valueType == Table
                            ? options.get().payload.tableValue
                            : CBTable();
           mutant->mutate(mutant, table);
+        } else {
+          // No mutate, do something based on params
+          if (options.get().valueType == Table) {
+            // If we have a table consult it
+          } else {
+            // Cook up something
+          }
         }
+      } else {
+        LOG(TRACE) << "No block found to mutate...";
       }
     });
   }

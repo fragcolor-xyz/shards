@@ -1397,7 +1397,7 @@ struct CBlockInfo {
   const CBlock *block;
 };
 
-void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> out);
+void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out);
 }; // namespace chainblocks
 
 #endif
