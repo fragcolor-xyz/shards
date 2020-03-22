@@ -570,6 +570,7 @@ struct CBNode {
   ~CBNode() { terminate(); }
 
   struct EmptyObserver {
+    void before_compose(CBChain *chain) {}
     void before_tick(CBChain *chain) {}
     void before_stop(CBChain *chain) {}
     void before_prepare(CBChain *chain) {}
@@ -583,6 +584,7 @@ struct CBNode {
       throw chainblocks::CBException(
           "schedule failed, chain was already scheduled!");
 
+    observer.before_compose(chain);
     // Validate the chain
     if (validate) {
       auto validation = validateConnections(
@@ -609,8 +611,10 @@ struct CBNode {
     flows.push_back(flow);
     chain->node = this;
     chain->flow = flow.get();
+
     observer.before_prepare(chain);
     chainblocks::prepare(chain);
+
     observer.before_start(chain);
     chainblocks::start(chain, input);
   }

@@ -12,6 +12,7 @@
 
 namespace chainblocks {
 namespace Genetic {
+struct Mutant;
 struct Evolve {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
@@ -103,12 +104,11 @@ struct Evolve {
     _dnaNames.warmup(ctx);
   }
 
-  inline void mutateChain(CBChain *chain);
-
   struct TickObserver {
     Evolve &self;
 
     void before_tick(CBChain *chain) {}
+    void before_start(CBChain *chain) {}
     void before_prepare(CBChain *chain) {}
 
     void before_stop(CBChain *chain) {
@@ -117,7 +117,6 @@ struct Evolve {
         assert(false);
       }
       auto &individual = individualIt->second.get();
-
       // Collect fitness last result
       auto fitnessVar = chain->previousOutput;
       if (fitnessVar.valueType == Float) {
@@ -135,7 +134,7 @@ struct Evolve {
       }
     }
 
-    void before_start(CBChain *chain) {
+    void before_compose(CBChain *chain) {
       // Do mutations
       const auto individualIt = self._chain2Individual.find(chain);
       if (individualIt == self._chain2Individual.end()) {
@@ -152,7 +151,7 @@ struct Evolve {
       }
       // Call mutate if not elite
       if (!individual.elite) {
-        self.mutateChain(chain);
+        self.mutate(individual);
       }
       // Keep in mind that individuals might not reach chain termination
       // they might "crash", so fitness should be set to minimum before any run
@@ -175,12 +174,14 @@ struct Evolve {
         _nkills = size_t(double(_popsize) * _extinction);
         _nelites = size_t(double(_popsize) * _elitism);
         tf::Taskflow initFlow;
-        initFlow.parallel_for(_population.begin(), _population.end(),
-                              [&](Individual &i) {
-                                std::stringstream inputStream(chainStr);
-                                Reader r(inputStream);
-                                Serialization::deserialize(r, i.chain);
-                              });
+        initFlow.parallel_for(
+            _population.begin(), _population.end(), [&](Individual &i) {
+              std::stringstream inputStream(chainStr);
+              Reader r(inputStream);
+              Serialization::deserialize(r, i.chain);
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              gatherMutants(chain.get(), i.mutants);
+            });
         Tasks.run(initFlow).get();
 
         // Also populate chain2Indi
@@ -208,8 +209,6 @@ struct Evolve {
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
                    std::reference_wrapper<Individual> b) {
-                  // TODO this might be reversed
-                  // did not test yet :P
                   return a.get().fitness > b.get().fitness;
                 });
 
@@ -246,17 +245,32 @@ private:
   static inline thread_local xorshift _gen{};
 #endif
 
+  struct MutantInfo {
+    std::reference_wrapper<const Mutant> block;
+    // add params? block var if whole block mutation?
+  };
+
+  static inline void gatherMutants(CBChain *chain,
+                                   std::vector<MutantInfo> &out);
+
   struct Individual {
+    // Chains are recycled
     CBVar chain{};
+    // This is to keep and restore relevant chain state
     std::unordered_map<std::string, OwnedVar, std::hash<std::string>,
                        std::equal_to<std::string>,
                        boost::alignment::aligned_allocator<
                            std::pair<const std::string, OwnedVar>, 16>>
         variables;
+    // Keep track of mutants and push/pop mutations on chain
+    std::vector<MutantInfo> mutants;
+
     double fitness{std::numeric_limits<double>::min()};
     bool elite = false;
     bool extinct = false;
   };
+
+  inline void mutate(Individual &individual);
 
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
   static inline Parameters _params{
@@ -381,44 +395,53 @@ void registerBlocks() {
   REGISTER_CBLOCK("Mutant", Mutant);
 }
 
-inline void Evolve::mutateChain(CBChain *chain) {
+inline void Evolve::gatherMutants(CBChain *chain,
+                                  std::vector<MutantInfo> &out) {
   std::vector<CBlockInfo> blocks;
   gatherBlocks(chain, blocks);
   auto pos =
       std::remove_if(std::begin(blocks), std::end(blocks),
                      [](CBlockInfo &info) { return info.name != "Mutant"; });
   if (pos != std::end(blocks)) {
-    std::for_each(std::begin(blocks), pos, [this](CBlockInfo &info) {
-      if (rand() > _mutation) {
-        LOG(TRACE) << "Skipping a block mutation...";
-        return;
-      }
-
+    std::for_each(std::begin(blocks), pos, [&](CBlockInfo &info) {
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
-      auto options = mutator->block._options;
-      if (mutator->block._block) {
-        auto mutant = mutator->block._block.blocks().elements[0];
-        LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
-        if (mutant->mutate) {
-          // In the case the block has `mutate`
-
-          auto table = options.get().valueType == Table
-                           ? options.get().payload.tableValue
-                           : CBTable();
-          mutant->mutate(mutant, table);
-        } else {
-          // No mutate, do something based on params
-          if (options.get().valueType == Table) {
-            // If we have a table consult it
-          } else {
-            // Cook up something
-          }
-        }
-      } else {
-        LOG(TRACE) << "No block found to mutate...";
-      }
+      out.push_back({{mutator->block}});
     });
   }
+}
+
+inline void Evolve::mutate(Evolve::Individual &individual) {
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
+                [this](auto &mutator) {
+                  if (rand() > _mutation) {
+                    LOG(TRACE) << "Skipping a block mutation...";
+                    return;
+                  }
+
+                  auto options = mutator.block.get()._options;
+                  if (mutator.block.get()._block) {
+                    auto mutant =
+                        mutator.block.get()._block.blocks().elements[0];
+                    LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
+                    if (mutant->mutate) {
+                      // In the case the block has `mutate`
+
+                      auto table = options.get().valueType == Table
+                                       ? options.get().payload.tableValue
+                                       : CBTable();
+                      mutant->mutate(mutant, table);
+                    } else {
+                      // No mutate, do something based on params
+                      if (options.get().valueType == Table) {
+                        // If we have a table consult it
+                      } else {
+                        // Cook up something
+                      }
+                    }
+                  } else {
+                    LOG(TRACE) << "No block found to mutate...";
+                  }
+                });
 }
 } // namespace Genetic
 } // namespace chainblocks
