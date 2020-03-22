@@ -11,7 +11,9 @@
       "evolveme"
       (Mutant (Const 10))
       (Log)
-      (Msg "evolution happens here...")))
+      (RandomFloat 100.0)
+      (Log "evolution happens here... fitness:")
+      ))
     (Log))
    4)
   ))

@@ -112,14 +112,20 @@ struct Evolve {
     void before_prepare(CBChain *chain) {}
 
     void before_stop(CBChain *chain) {
+      const auto individualIt = self._chain2Individual.find(chain);
+      if (individualIt == self._chain2Individual.end()) {
+        assert(false);
+      }
+      auto &individual = individualIt->second.get();
+
+      // Collect fitness last result
+      auto fitnessVar = chain->previousOutput;
+      if (fitnessVar.valueType == Float) {
+        individual.fitness = fitnessVar.payload.floatValue;
+      }
       // Collect DNA variables values
       auto names = self._dnaNames.get();
       if (names.valueType == Seq) {
-        const auto individualIt = self._chain2Individual.find(chain);
-        if (individualIt == self._chain2Individual.end()) {
-          assert(false);
-        }
-        auto &individual = individualIt->second.get();
         // Store the marked variables
         IterableSeq snames(names.payload.seqValue);
         for (const auto &name : snames) {

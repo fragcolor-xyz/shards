@@ -103,6 +103,10 @@ namespace Genetic {
 extern void registerBlocks();
 }
 
+namespace Random {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -151,6 +155,7 @@ void registerCoreBlocks() {
   Python::registerBlocks();
   LMDB::registerBlocks();
   Genetic::registerBlocks();
+  Random::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
