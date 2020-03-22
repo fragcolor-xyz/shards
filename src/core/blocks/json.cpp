@@ -219,13 +219,17 @@ void to_json(json &j, const CBVar &var) {
     for (uint32_t i = 0; i < paramsDesc.len; i++) {
       auto &desc = paramsDesc.elements[i];
       auto value = blk->getParam(blk, i);
-
       json param_obj = {{"name", desc.name}, {"value", value}};
-
       params.push_back(param_obj);
     }
-
-    j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
+    if (blk->getState) {
+      j = json{{"type", valType},
+               {"name", blk->name(blk)},
+               {"params", params},
+               {"state", blk->getState(blk)}};
+    } else {
+      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
+    }
     break;
   }
   };
@@ -444,7 +448,6 @@ void from_json(const json &j, CBVar &var) {
     for (auto jparam : jparams) {
       auto paramName = jparam.at("name").get<std::string>();
       auto value = jparam.at("value").get<CBVar>();
-
       if (value.valueType != None) {
         for (uint32_t i = 0; blkParams.len > i; i++) {
           auto &paramInfo = blkParams.elements[i];
@@ -454,9 +457,14 @@ void from_json(const json &j, CBVar &var) {
           }
         }
       }
-
       // Assume block copied memory internally so we can clean up here!!!
       _releaseMemory(value);
+    }
+
+    if (blk->setState) {
+      auto state = j.at("state").get<CBVar>();
+      blk->setState(blk, state);
+      _releaseMemory(state);
     }
     break;
   }

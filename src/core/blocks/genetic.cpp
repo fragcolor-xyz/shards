@@ -392,10 +392,61 @@ void registerBlocks() {
 inline void mutateVar(CBVar &var) {
   switch (var.valueType) {
   case CBType::Int: {
-    auto add = Rng::fnormal(0.0, 0.1) * double(var.payload.intValue);
-    LOG(DEBUG) << add;
+    const auto add = Rng::fnormal(0.0, 0.1) * double(var.payload.intValue);
     var.payload.intValue += int64_t(add);
   } break;
+  case CBType::Int2: {
+    for (auto i = 0; i < 2; i++) {
+      const auto add =
+          Rng::fnormal(0.0, 0.1) * double(var.payload.int2Value[i]);
+      var.payload.int2Value[i] += int64_t(add);
+    }
+  } break;
+  case CBType::Int3: {
+    for (auto i = 0; i < 3; i++) {
+      const auto add =
+          Rng::fnormal(0.0, 0.1) * double(var.payload.int3Value[i]);
+      var.payload.int3Value[i] += int32_t(add);
+    }
+  } break;
+  case CBType::Int4: {
+    for (auto i = 0; i < 4; i++) {
+      const auto add =
+          Rng::fnormal(0.0, 0.1) * double(var.payload.int4Value[i]);
+      var.payload.int4Value[i] += int32_t(add);
+    }
+  } break;
+  case CBType::Int8: {
+    for (auto i = 0; i < 8; i++) {
+      const auto add =
+          Rng::fnormal(0.0, 0.1) * double(var.payload.int8Value[i]);
+      var.payload.int8Value[i] += int16_t(add);
+    }
+  } break;
+  case CBType::Int16: {
+    for (auto i = 0; i < 16; i++) {
+      const auto add =
+          Rng::fnormal(0.0, 0.1) * double(var.payload.int16Value[i]);
+      var.payload.int16Value[i] += int8_t(add);
+    }
+  } break;
+  case CBType::Float: {
+    var.payload.floatValue += Rng::fnormal(0.0, 0.1);
+  } break;
+  case CBType::Float2: {
+    for (auto i = 0; i < 2; i++)
+      var.payload.float2Value[i] += Rng::fnormal(0.0, 0.1);
+  } break;
+  case CBType::Float3: {
+    for (auto i = 0; i < 3; i++)
+      var.payload.float3Value[i] += float(Rng::fnormal(0.0, 0.1));
+  } break;
+  case CBType::Float4: {
+    for (auto i = 0; i < 4; i++)
+      var.payload.float4Value[i] += float(Rng::fnormal(0.0, 0.1));
+  } break;
+  default:
+    break;
   }
 }
 

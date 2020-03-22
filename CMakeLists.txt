@@ -164,6 +164,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/dllblock.hpp
   ${CHAINBLOCKS_DIR}/include/utility.hpp
   ${CHAINBLOCKS_DIR}/include/asiotools.hpp
+  ${CHAINBLOCKS_DIR}/include/random.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.h
   ${CHAINBLOCKS_DIR}/include/ops.hpp
