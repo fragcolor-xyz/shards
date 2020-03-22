@@ -4,13 +4,16 @@
  Root
  (Chain
   "test"
-  :Looped
-  (Evolve
-   (Chain
-    "evolveme"
-    (Mutant (Const 10))
-    (Log)
-    (Msg "evolution happens here...")))
-  (Log)))
+  (Repeat
+   (-->
+    (Evolve
+     (Chain
+      "evolveme"
+      (Mutant (Const 10))
+      (Log)
+      (Msg "evolution happens here...")))
+    (Log))
+   4)
+  ))
 
-(run Root 0.1 2)
+(run Root 0.1)
