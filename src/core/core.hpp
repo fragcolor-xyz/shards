@@ -840,6 +840,12 @@ struct Serialization {
         blk->setParam(blk, int(i), tmp);
         varFree(tmp);
       }
+      if (blk->setState) {
+        CBVar state{};
+        deserialize(read, state);
+        blk->setState(blk, state);
+        varFree(state);
+      }
       output.payload.blockValue = blk;
       break;
     }
@@ -1027,20 +1033,23 @@ struct Serialization {
     }
     case CBType::Block: {
       auto blk = input.payload.blockValue;
-      { // Name
-        auto name = blk->name(blk);
-        uint32_t len = strlen(name);
-        write((const uint8_t *)&len, sizeof(uint32_t));
-        total += sizeof(uint32_t);
-        write((const uint8_t *)name, len);
-        total += len;
+      // name
+      auto name = blk->name(blk);
+      uint32_t len = strlen(name);
+      write((const uint8_t *)&len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      write((const uint8_t *)name, len);
+      total += len;
+      // params
+      auto params = blk->parameters(blk);
+      for (uint32_t i = 0; i < params.len; i++) {
+        auto pval = blk->getParam(blk, int(i));
+        total += serialize(pval, write);
       }
-      { // Parameters
-        auto params = blk->parameters(blk);
-        for (uint32_t i = 0; i < params.len; i++) {
-          auto pval = blk->getParam(blk, int(i));
-          total += serialize(pval, write);
-        }
+      // optional state
+      if (blk->getState) {
+        auto state = blk->getState(blk);
+        total += serialize(state, write);
       }
       break;
     }

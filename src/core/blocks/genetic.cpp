@@ -35,8 +35,6 @@ struct Evolve {
     case 4:
       _elitism = value.payload.floatValue;
       break;
-    case 5:
-      _dnaNames = value;
     default:
       break;
     }
@@ -54,8 +52,6 @@ struct Evolve {
       return Var(_extinction);
     case 4:
       return Var(_elitism);
-    case 5:
-      return _dnaNames;
     default:
       return CBVar();
     }
@@ -86,8 +82,6 @@ struct Evolve {
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
             stop(chain.get());
             Serialization::varFree(i.chain);
-            // Cleanup variables too
-            i.variables.clear();
           });
       Tasks.run(cleanupFlow).get();
 
@@ -95,14 +89,10 @@ struct Evolve {
       _sortedPopulation.clear();
       _population.clear();
     }
-    _dnaNames.cleanup();
     _baseChain.cleanup();
   }
 
-  void warmup(CBContext *ctx) {
-    _baseChain.warmup(ctx);
-    _dnaNames.warmup(ctx);
-  }
+  void warmup(CBContext *ctx) { _baseChain.warmup(ctx); }
 
   struct TickObserver {
     Evolve &self;
@@ -122,16 +112,8 @@ struct Evolve {
       if (fitnessVar.valueType == Float) {
         individual.fitness = fitnessVar.payload.floatValue;
       }
-      // Collect DNA variables values
-      auto names = self._dnaNames.get();
-      if (names.valueType == Seq) {
-        // Store the marked variables
-        IterableSeq snames(names.payload.seqValue);
-        for (const auto &name : snames) {
-          auto cname = name.payload.stringValue;
-          individual.variables[cname] = chain->variables[cname];
-        }
-      }
+
+      self.saveState(individual);
     }
 
     void before_compose(CBChain *chain) {
@@ -141,13 +123,12 @@ struct Evolve {
         assert(false);
       }
       auto &individual = individualIt->second.get();
-      // Load variables if we have them and not extinct
+      // Restore state if not killed
       // Else reset the individual
       if (!individual.extinct) {
-        for (auto &var : individual.variables) {
-          auto &slot = chain->variables[var.first];
-          cloneVar(slot, var.second);
-        }
+        self.restoreState(individual);
+      } else {
+        self.resetState(individual);
       }
       // Call mutate if not elite
       if (!individual.elite) {
@@ -246,8 +227,15 @@ private:
 #endif
 
   struct MutantInfo {
+    MutantInfo(const Mutant &block, std::vector<int> &&indices)
+        : block(block), indices(std::move(indices)) {}
+
     std::reference_wrapper<const Mutant> block;
-    // add params? block var if whole block mutation?
+
+    OwnedVar state;
+
+    const std::vector<int> indices;
+    std::vector<OwnedVar> parameters;
   };
 
   static inline void gatherMutants(CBChain *chain,
@@ -256,12 +244,7 @@ private:
   struct Individual {
     // Chains are recycled
     CBVar chain{};
-    // This is to keep and restore relevant chain state
-    std::unordered_map<std::string, OwnedVar, std::hash<std::string>,
-                       std::equal_to<std::string>,
-                       boost::alignment::aligned_allocator<
-                           std::pair<const std::string, OwnedVar>, 16>>
-        variables;
+
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;
 
@@ -271,6 +254,9 @@ private:
   };
 
   inline void mutate(Individual &individual);
+  inline void saveState(Individual &individual);
+  inline void restoreState(Individual &individual);
+  inline void resetState(Individual &individual);
 
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
   static inline Parameters _params{
@@ -282,12 +268,8 @@ private:
       {"Extinction",
        "The rate of extinction, 0.1 = 10%.",
        {CoreInfo::FloatType}},
-      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"DNA",
-       "A list of variable names that represent the DNA of the subject.",
-       {CoreInfo::StringSeqType}}};
+      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}}};
   ParamVar _baseChain{};
-  ParamVar _dnaNames{};
   std::vector<Individual> _population;
   std::vector<std::reference_wrapper<Individual>> _sortedPopulation;
   std::unordered_map<CBChain *, std::reference_wrapper<Individual>>
@@ -327,6 +309,9 @@ struct Mutant {
       _block = value;
       break;
     case 1:
+      _indices = value;
+      break;
+    case 2:
       _options = value;
       break;
     default:
@@ -339,21 +324,17 @@ struct Mutant {
     case 0:
       return _block;
     case 1:
+      return _indices;
+    case 2:
       return _options;
     default:
       return CBVar();
     }
   }
 
-  void cleanup() {
-    _block.cleanup();
-    _options.cleanup();
-  }
+  void cleanup() { _block.cleanup(); }
 
-  void warmup(CBContext *ctx) {
-    _block.warmup(ctx);
-    _options.warmup(ctx);
-  }
+  void warmup(CBContext *ctx) { _block.warmup(ctx); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     return _block.compose(data).outputType;
@@ -379,12 +360,36 @@ struct Mutant {
     return _block.activate(context, input);
   }
 
+  CBlock *mutant() const {
+    if (!_block)
+      return nullptr;
+
+    auto blks = _block.blocks();
+    return blks.elements[0];
+  }
+
+  std::vector<int> mutatingIndices() const {
+    if (_indices.valueType == None)
+      return {};
+
+    IterableSeq s(_indices);
+    std::vector<int> res;
+    for (auto &idx : s) {
+      res.emplace_back(int(idx.payload.intValue));
+    }
+    return res;
+  }
+
 private:
   friend struct Evolve;
   BlocksVar _block{};
-  ParamVar _options{};
+  OwnedVar _options{};
+  OwnedVar _indices{};
   static inline Parameters _params{
       {"Block", "The block to mutate.", {CoreInfo::BlockType}},
+      {"Indices",
+       "The parameter indices to mutate of the inner block.",
+       {CoreInfo::IntSeqType}},
       {"Mutations",
        "Mutation table - a table with mutation options.",
        {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
@@ -405,42 +410,90 @@ inline void Evolve::gatherMutants(CBChain *chain,
   if (pos != std::end(blocks)) {
     std::for_each(std::begin(blocks), pos, [&](CBlockInfo &info) {
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
-      out.push_back({{mutator->block}});
+      auto minfo =
+          out.emplace_back(mutator->block, mutator->block.mutatingIndices());
     });
   }
 }
 
 inline void Evolve::mutate(Evolve::Individual &individual) {
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
-                [this](auto &mutator) {
+                [this](MutantInfo &info) {
                   if (rand() > _mutation) {
                     LOG(TRACE) << "Skipping a block mutation...";
                     return;
                   }
 
-                  auto options = mutator.block.get()._options;
-                  if (mutator.block.get()._block) {
-                    auto mutant =
-                        mutator.block.get()._block.blocks().elements[0];
+                  auto options = info.block.get()._options;
+                  if (info.block.get().mutant()) {
+                    auto mutant = info.block.get().mutant();
                     LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
-                    if (mutant->mutate) {
+                    const auto indices = info.indices.size();
+                    if (mutant->mutate && (indices == 0 || rand() < 0.5)) {
                       // In the case the block has `mutate`
-
-                      auto table = options.get().valueType == Table
-                                       ? options.get().payload.tableValue
+                      auto table = options.valueType == Table
+                                       ? options.payload.tableValue
                                        : CBTable();
                       mutant->mutate(mutant, table);
-                    } else {
-                      // No mutate, do something based on params
-                      if (options.get().valueType == Table) {
-                        // If we have a table consult it
-                      } else {
-                        // Cook up something
-                      }
+                    } else if (indices > 0) {
+                      // do stuff on the param
                     }
                   } else {
                     LOG(TRACE) << "No block found to mutate...";
                   }
+                });
+}
+
+inline void Evolve::saveState(Evolve::Individual &individual) {
+  // Store params and state
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
+                [](MutantInfo &info) {
+                  auto mutant = info.block.get().mutant();
+                  if (!mutant)
+                    return;
+
+                  if (mutant->getState)
+                    info.state = mutant->getState(mutant);
+
+                  for (auto idx : info.indices) {
+                    info.parameters.push_back(mutant->getParam(mutant, idx));
+                  }
+                });
+}
+
+inline void Evolve::restoreState(Evolve::Individual &individual) {
+  // Store params and state
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
+                [](MutantInfo &info) {
+                  auto mutant = info.block.get().mutant();
+                  if (!mutant)
+                    return;
+
+                  if (mutant->setState && info.state.valueType != None)
+                    mutant->setState(mutant, info.state);
+
+                  if (info.parameters.size() == info.indices.size()) {
+                    int i = 0;
+                    for (auto idx : info.indices) {
+                      mutant->setParam(mutant, idx, info.parameters[i]);
+                    }
+                  }
+                });
+}
+
+inline void Evolve::resetState(Evolve::Individual &individual) {
+  // Store params and state
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
+                [](MutantInfo &info) {
+                  auto mutant = info.block.get().mutant();
+                  if (!mutant)
+                    return;
+
+                  if (mutant->resetState)
+                    mutant->resetState(mutant);
+
+                  info.state = CBVar();
+                  info.parameters.resize(0);
                 });
 }
 } // namespace Genetic

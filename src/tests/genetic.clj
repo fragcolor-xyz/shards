@@ -9,7 +9,7 @@
     (Evolve
      (Chain
       "evolveme"
-      (Mutant (Const 10))
+      (Mutant (Const 10) [0])
       (Log)
       (RandomFloat 100.0)
       (Log "evolution happens here... fitness:")

@@ -635,6 +635,11 @@ typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 
+// Used for serialization, to deep serialize internal block state
+typedef struct CBVar(__cdecl *CBGetStateProc)(struct CBlock *);
+typedef void(__cdecl *CBSetStateProc)(struct CBlock *, struct CBVar state);
+typedef void(__cdecl *CBResetStateProc)(struct CBlock *);
+
 struct CBlock {
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBInlineBlocks inlineBlockId;
@@ -674,7 +679,12 @@ struct CBlock {
   CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes
                          // internally to clean up the block
 
+  // Optional genetic programming helpers
+  // getState/setState are also used during serialization
   CBMutateProc mutate;
+  CBGetStateProc getState;
+  CBSetStateProc setState;
+  CBResetStateProc resetState;
 };
 
 struct CBChainProviderUpdate {

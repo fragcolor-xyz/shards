@@ -24,6 +24,9 @@ CB_HAS_MEMBER_TEST(warmup);
 CB_HAS_MEMBER_TEST(activate);
 CB_HAS_MEMBER_TEST(cleanup);
 CB_HAS_MEMBER_TEST(mutate);
+CB_HAS_MEMBER_TEST(getState);
+CB_HAS_MEMBER_TEST(setState);
+CB_HAS_MEMBER_TEST(resetState);
 
 // Composition is preferred
 template <class T> struct BlockWrapper {
@@ -199,6 +202,37 @@ template <class T> struct BlockWrapper {
     } else {
       // mutate is optional!
       result->mutate = nullptr;
+    }
+
+    // getState
+    if constexpr (has_getState<T>::value) {
+      result->getState = static_cast<CBGetStateProc>([](CBlock *b) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.getState();
+      });
+    } else {
+      // getState is optional!
+      result->getState = nullptr;
+    }
+
+    // setState
+    if constexpr (has_setState<T>::value) {
+      result->setState =
+          static_cast<CBSetStateProc>([](CBlock *b, CBVar state) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState();
+          });
+    } else {
+      // setState is optional!
+      result->setState = nullptr;
+    }
+
+    // resetState
+    if constexpr (has_resetState<T>::value) {
+      result->resetState = static_cast<CBResetStateProc>([](CBlock *b) {
+        reinterpret_cast<BlockWrapper<T> *>(b)->block.resetState();
+      });
+    } else {
+      // resetState is optional!
+      result->resetState = nullptr;
     }
 
     return result;
