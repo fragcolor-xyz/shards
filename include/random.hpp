@@ -135,6 +135,7 @@ inline bool operator!=(pcg const &lhs, pcg const &rhs) {
 
 // Because of TLS, some compilers might need this in the compilation unit...
 // namely mingw windows, and so this template tries to fix it
+// https://sourceforge.net/p/mingw-w64/bugs/816/
 template <typename FOO> struct Rng {
   static double frand() {
     return double(_gen()) * (1.0 / double(xorshift::max()));

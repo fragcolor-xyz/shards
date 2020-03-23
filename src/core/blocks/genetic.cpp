@@ -12,7 +12,8 @@
 
 namespace chainblocks {
 namespace Genetic {
-using Rng = Rng<void>;
+struct GeneticRng;
+using Rng = Rng<GeneticRng>;
 struct Mutant;
 struct Evolve {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
