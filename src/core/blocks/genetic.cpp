@@ -216,6 +216,10 @@ private:
     MutantInfo(const Mutant &block) : block(block) {}
 
     std::reference_wrapper<const Mutant> block;
+
+    // For reset... hmm we copy them due to multi thread
+    // ideally they are all the same tho..
+    std::vector<std::tuple<int, OwnedVar>> originalParams;
   };
 
   static inline void gatherMutants(CBChain *chain,
@@ -437,7 +441,15 @@ inline void Evolve::gatherMutants(CBChain *chain,
   if (pos != std::end(blocks)) {
     std::for_each(std::begin(blocks), pos, [&](CBlockInfo &info) {
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
-      out.emplace_back(mutator->block);
+      auto &minfo = out.emplace_back(mutator->block);
+      auto mutant = mutator->block.mutant();
+      if (mutator->block._indices.valueType == Seq) {
+        IterableSeq indices(mutator->block._indices);
+        for (auto &idx : indices) {
+          auto i = int(idx.payload.intValue);
+          minfo.originalParams.emplace_back(i, mutant->getParam(mutant, i));
+        }
+      }
     });
   }
 }
@@ -488,6 +500,10 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
 
                   if (mutant->resetState)
                     mutant->resetState(mutant);
+
+                  for (auto [idx, val] : info.originalParams) {
+                    mutant->setParam(mutant, idx, val);
+                  }
                 });
 }
 } // namespace Genetic
