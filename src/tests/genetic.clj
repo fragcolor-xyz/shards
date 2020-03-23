@@ -18,10 +18,11 @@
      (Chain
       "evolveme"
       (Mutant (Const 10) [0])
+      (Log "Const")
       (Mutant (Math.Multiply 2) [0])
       (Log)
       (Do fitness)
-      (Log "evolution happens here... fitness:")
+      (Log "evolution happens here... fitness")
       ))
     (Log))
    5)
