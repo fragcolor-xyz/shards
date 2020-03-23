@@ -197,7 +197,7 @@ struct Evolve {
                 parent1.get().parent0Idx != currentIdx &&
                 parent1.get().parent1Idx != currentIdx) {
               ind.get().crossoverTask = crossoverFlow.emplace(
-                  [&]() { crossover(ind, parent0, parent1); });
+                  [=]() { crossover(ind, parent0, parent1); });
               _crossingOver.emplace_back(ind, parent0, parent1);
             }
           } else {
