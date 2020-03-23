@@ -24,6 +24,7 @@ CB_HAS_MEMBER_TEST(warmup);
 CB_HAS_MEMBER_TEST(activate);
 CB_HAS_MEMBER_TEST(cleanup);
 CB_HAS_MEMBER_TEST(mutate);
+CB_HAS_MEMBER_TEST(crossover);
 CB_HAS_MEMBER_TEST(getState);
 CB_HAS_MEMBER_TEST(setState);
 CB_HAS_MEMBER_TEST(resetState);
@@ -202,6 +203,18 @@ template <class T> struct BlockWrapper {
     } else {
       // mutate is optional!
       result->mutate = nullptr;
+    }
+
+    // crossover
+    if constexpr (has_crossover<T>::value) {
+      result->crossover = static_cast<CBCrossoverProc>(
+          [](CBlock *b, CBVar state0, CBVar state1) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.crossover(state0,
+                                                                    state1);
+          });
+    } else {
+      // crossover is optional!
+      result->crossover = nullptr;
     }
 
     // getState

@@ -634,6 +634,9 @@ typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
+// Genetic programming optional crossover (inplace/3way) procedure
+typedef void(__cdecl *CBCrossoverProc)(struct CBlock *, struct CBVar state0,
+                                       struct CBVar state1);
 
 // Used for serialization, to deep serialize internal block state
 typedef struct CBVar(__cdecl *CBGetStateProc)(struct CBlock *);
@@ -682,6 +685,7 @@ struct CBlock {
   // Optional genetic programming helpers
   // getState/setState are also used during serialization
   CBMutateProc mutate;
+  CBCrossoverProc crossover;
   CBGetStateProc getState;
   CBSetStateProc setState;
   CBResetStateProc resetState;

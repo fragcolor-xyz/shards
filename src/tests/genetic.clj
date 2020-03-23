@@ -25,7 +25,10 @@
       (Log "evolution happens here... fitness")
       ))
     (Log))
-   5)
+   10)
+  (Take 1)
+  (ToJson)
+  (Log)
   ))
 
 (run Root 0.1)
