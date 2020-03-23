@@ -2117,7 +2117,7 @@ struct Repeat {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _validation = _blks.compose(data);
-    return _validation.outputType;
+    return data.inputType;
   }
 
   CBExposedTypesInfo requiredVariables() {
@@ -2142,8 +2142,8 @@ struct Repeat {
       repeats = _ctxTimes->payload.intValue;
     }
 
-    CBVar repeatOutput{};
     while (repeats) {
+      CBVar repeatOutput{};
       repeatOutput.valueType = None;
       repeatOutput.payload.chainState = CBChainState::Continue;
       CBVar blks = _blks;
@@ -2158,7 +2158,7 @@ struct Repeat {
       if (!_forever)
         repeats--;
     }
-    return repeatOutput;
+    return input;
   }
 };
 
