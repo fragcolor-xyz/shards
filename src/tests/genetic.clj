@@ -1,5 +1,13 @@
 (def Root (Node))
 
+(def fitness
+  (Chain
+   "fitness"
+   (Math.Subtract 36)
+   (ToFloat)
+   (Math.Abs)
+   (Math.Multiply -1.0)))
+
 (schedule
  Root
  (Chain
@@ -10,12 +18,13 @@
      (Chain
       "evolveme"
       (Mutant (Const 10) [0])
+      (Mutant (Math.Multiply 2) [0])
       (Log)
-      (RandomFloat 100.0)
+      (Do fitness)
       (Log "evolution happens here... fitness:")
       ))
     (Log))
-   4)
+   5)
   ))
 
 (run Root 0.1)

@@ -114,8 +114,6 @@ struct Evolve {
       if (fitnessVar.valueType == Float) {
         individual.fitness = fitnessVar.payload.floatValue;
       }
-
-      self.saveState(individual);
     }
 
     void before_compose(CBChain *chain) {
@@ -125,11 +123,8 @@ struct Evolve {
         assert(false);
       }
       auto &individual = individualIt->second.get();
-      // Restore state if not killed
-      // Else reset the individual
-      if (!individual.extinct) {
-        self.restoreState(individual);
-      } else {
+      // reset the individual if extinct
+      if (individual.extinct) {
         self.resetState(individual);
       }
       // Call mutate if not elite
@@ -218,15 +213,9 @@ struct Evolve {
 
 private:
   struct MutantInfo {
-    MutantInfo(const Mutant &block, std::vector<int> &&indices)
-        : block(block), indices(std::move(indices)) {}
+    MutantInfo(const Mutant &block) : block(block) {}
 
     std::reference_wrapper<const Mutant> block;
-
-    OwnedVar state;
-
-    const std::vector<int> indices;
-    std::vector<OwnedVar> parameters;
   };
 
   static inline void gatherMutants(CBChain *chain,
@@ -245,8 +234,6 @@ private:
   };
 
   inline void mutate(Individual &individual);
-  inline void saveState(Individual &individual);
-  inline void restoreState(Individual &individual);
   inline void resetState(Individual &individual);
 
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
@@ -359,18 +346,6 @@ struct Mutant {
     return blks.elements[0];
   }
 
-  std::vector<int> mutatingIndices() const {
-    if (_indices.valueType == None)
-      return {};
-
-    IterableSeq s(_indices);
-    std::vector<int> res;
-    for (auto &idx : s) {
-      res.emplace_back(int(idx.payload.intValue));
-    }
-    return res;
-  }
-
 private:
   friend struct Evolve;
   BlocksVar _block{};
@@ -462,81 +437,45 @@ inline void Evolve::gatherMutants(CBChain *chain,
   if (pos != std::end(blocks)) {
     std::for_each(std::begin(blocks), pos, [&](CBlockInfo &info) {
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
-      auto minfo =
-          out.emplace_back(mutator->block, mutator->block.mutatingIndices());
+      out.emplace_back(mutator->block);
     });
   }
 }
 
 inline void Evolve::mutate(Evolve::Individual &individual) {
-  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
-                [this](MutantInfo &info) {
-                  if (Rng::frand() > _mutation) {
-                    LOG(TRACE) << "Skipping a block mutation...";
-                    return;
-                  }
+  std::for_each(
+      std::begin(individual.mutants), std::end(individual.mutants),
+      [this](MutantInfo &info) {
+        if (Rng::frand() > _mutation) {
+          LOG(TRACE) << "Skipping a block mutation...";
+          return;
+        }
 
-                  auto options = info.block.get()._options;
-                  if (info.block.get().mutant()) {
-                    auto mutant = info.block.get().mutant();
-                    LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
-                    const auto indices = info.indices.size();
-                    if (mutant->mutate && (indices == 0 || rand() < 0.5)) {
-                      // In the case the block has `mutate`
-                      auto table = options.valueType == Table
-                                       ? options.payload.tableValue
-                                       : CBTable();
-                      mutant->mutate(mutant, table);
-                    } else if (indices > 0) {
-                      // do stuff on the param
-                      // select a random one
-                      auto rparam = Rng::rand(indices);
-                      auto current =
-                          mutant->getParam(mutant, info.indices[rparam]);
-                      mutateVar(current);
-                      mutant->setParam(mutant, info.indices[rparam], current);
-                    }
-                  } else {
-                    LOG(TRACE) << "No block found to mutate...";
-                  }
-                });
-}
-
-inline void Evolve::saveState(Evolve::Individual &individual) {
-  // Store params and state
-  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
-                [](MutantInfo &info) {
-                  auto mutant = info.block.get().mutant();
-                  if (!mutant)
-                    return;
-
-                  if (mutant->getState)
-                    info.state = mutant->getState(mutant);
-
-                  for (auto idx : info.indices) {
-                    info.parameters.push_back(mutant->getParam(mutant, idx));
-                  }
-                });
-}
-
-inline void Evolve::restoreState(Evolve::Individual &individual) {
-  // Load params and state
-  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
-                [](MutantInfo &info) {
-                  auto mutant = info.block.get().mutant();
-                  if (!mutant)
-                    return;
-
-                  if (mutant->setState && info.state.valueType != None)
-                    mutant->setState(mutant, info.state);
-
-                  if (info.parameters.size() == info.indices.size()) {
-                    int i = 0;
-                    for (auto idx : info.indices) {
-                      mutant->setParam(mutant, idx, info.parameters[i]);
-                    }
-                  }
-                });
+        auto options = info.block.get()._options;
+        if (info.block.get().mutant()) {
+          auto mutant = info.block.get().mutant();
+          LOG(TRACE) << "Mutating a block: " << mutant->name(mutant);
+          auto &indices = info.block.get()._indices;
+          if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
+            // In the case the block has `mutate`
+            auto table = options.valueType == Table ? options.payload.tableValue
+                                                    : CBTable();
+            mutant->mutate(mutant, table);
+          } else if (indices.valueType == Seq) {
+            auto iseq = indices.payload.seqValue;
+            // do stuff on the param
+            // select a random one
+            auto rparam = Rng::rand(iseq.len);
+            auto current = mutant->getParam(
+                mutant, int(iseq.elements[rparam].payload.intValue));
+            mutateVar(current);
+            mutant->setParam(
+                mutant, int(iseq.elements[rparam].payload.intValue), current);
+          }
+        } else {
+          LOG(TRACE) << "No block found to mutate...";
+        }
+      });
 }
 
 inline void Evolve::resetState(Evolve::Individual &individual) {
@@ -549,9 +488,6 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
 
                   if (mutant->resetState)
                     mutant->resetState(mutant);
-
-                  info.state = CBVar();
-                  info.parameters.resize(0);
                 });
 }
 } // namespace Genetic
