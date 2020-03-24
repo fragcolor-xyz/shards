@@ -239,7 +239,7 @@ void from_json(const json &j, CBVar &var) {
   auto valName = j.at("type").get<std::string>();
   auto valType = magic_enum::enum_cast<CBType>(valName);
   if (!valType.has_value()) {
-    throw chainblocks::CBException("Failed to parse CBVar value type.");
+    throw chainblocks::ActivationError("Failed to parse CBVar value type.");
   }
   switch (valType.value()) {
   case Any:
@@ -390,7 +390,7 @@ void from_json(const json &j, CBVar &var) {
     auto innerName = j.at("inner").get<std::string>();
     auto innerType = magic_enum::enum_cast<CBType>(innerName);
     if (!innerType.has_value()) {
-      throw chainblocks::CBException("Failed to parse CBVar inner type.");
+      throw chainblocks::ActivationError("Failed to parse CBVar inner type.");
     }
     var.valueType = Array;
     var.innerType = innerType.value();
@@ -435,7 +435,7 @@ void from_json(const json &j, CBVar &var) {
     auto blk = chainblocks::createBlock(blkname.c_str());
     if (!blk) {
       auto errmsg = "Failed to create block of type: " + std::string("blkname");
-      throw chainblocks::CBException(errmsg.c_str());
+      throw chainblocks::ActivationError(errmsg.c_str());
     }
     var.payload.blockValue = blk;
 
@@ -520,7 +520,7 @@ void from_json(const json &j, CBChainRef &chainref) {
     auto blk = chainblocks::createBlock(blkname.c_str());
     if (!blk) {
       auto errmsg = "Failed to create block of type: " + std::string(blkname);
-      throw chainblocks::CBException(errmsg.c_str());
+      throw chainblocks::ActivationError(errmsg.c_str());
     }
 
     // Setup

@@ -505,7 +505,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Object:
   case CBType::Any:
   case EndOfBlittableTypes:
-    throw chainblocks::CBException(
+    throw chainblocks::InvalidVarTypeError(
         "Comparison operator < not supported for the given type: " +
         type2Name(a.valueType));
   }
@@ -699,7 +699,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Object:
   case CBType::Any:
   case EndOfBlittableTypes:
-    throw chainblocks::CBException(
+    throw chainblocks::InvalidVarTypeError(
         "Comparison operator <= not supported for the given type: " +
         type2Name(a.valueType));
   }

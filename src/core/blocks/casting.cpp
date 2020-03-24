@@ -140,7 +140,7 @@ namespace chainblocks {
           return true;                                                         \
         break;                                                                 \
       default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
+        throw ActivationError("Cannot cast given input type.");                \
       }                                                                        \
       return false;                                                            \
     }                                                                          \
@@ -171,7 +171,7 @@ namespace chainblocks {
           return output;                                                       \
         break;                                                                 \
       default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
+        throw ActivationError("Cannot cast given input type.");                \
       }                                                                        \
       return output;                                                           \
     }                                                                          \
@@ -227,7 +227,7 @@ namespace chainblocks {
         dst.payload._payload_ = static_cast<_type_>(src.payload.int4Value[0]); \
         break;                                                                 \
       default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
+        throw ActivationError("Cannot cast given input type.");                \
       }                                                                        \
       return false;                                                            \
     }                                                                          \
@@ -256,7 +256,7 @@ namespace chainblocks {
           return output;                                                       \
         break;                                                                 \
       default:                                                                 \
-        throw CBException("Cannot cast given input type.");                    \
+        throw ActivationError("Cannot cast given input type.");                \
       }                                                                        \
       return output;                                                           \
     }                                                                          \
@@ -395,8 +395,8 @@ template <Type(&OT), typename AT> struct BytesToX {
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto tsize = sizeof(AT);
     if (unlikely(input.payload.bytesSize < tsize)) {
-      throw CBException("BytesToX, Not enough bytes to convert to " +
-                        type2Name(CBTypeInfo(OT).basicType));
+      throw ActivationError("BytesToX, Not enough bytes to convert to " +
+                            type2Name(CBTypeInfo(OT).basicType));
     } else if constexpr (std::is_same<AT, char *>::value) {
       CBVar output{};
       convert(output, input.payload.bytesValue);
@@ -450,8 +450,8 @@ template <CBType ET> struct ExpectX {
   CBTypesInfo outputTypes() { return outputType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != ET)) {
-      throw CBException("Expected type " + type2Name(ET) + " got instead " +
-                        type2Name(input.valueType));
+      throw ActivationError("Expected type " + type2Name(ET) + " got instead " +
+                            type2Name(input.valueType));
     }
     return input;
   }
@@ -670,8 +670,8 @@ struct ToBytes {
       if (len > 0) {
         auto itemSize = getSize(input.payload.seqValue.elements[0]);
         if (itemSize == 0) {
-          throw CBException("ToBytes, unsupported Seq type, use Flatten to "
-                            "make a flat sequence.");
+          throw ActivationError("ToBytes, unsupported Seq type, use Flatten to "
+                                "make a flat sequence.");
         }
         _buffer.resize(itemSize * len);
         for (uint32_t i = 0; i < len; i++) {
@@ -687,7 +687,7 @@ struct ToBytes {
     case CBType::Chain:
     case CBType::Block:
     case CBType::Table: {
-      throw CBException("ToBytes, unsupported type, likely TODO.");
+      throw ActivationError("ToBytes, unsupported type, likely TODO.");
     }
     }
   }

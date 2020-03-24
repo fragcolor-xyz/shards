@@ -237,7 +237,7 @@ LOGIC_OP(IsLessEqual, <=);
         auto vlen = value.payload.seqValue.len;                                \
         auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
-          throw CBException("Failed to compare, input len > value len.");      \
+          throw ActivationError("Failed to compare, input len > value len.");  \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue     \
                   .elements[i]) {                                              \
@@ -283,7 +283,7 @@ LOGIC_OP(IsLessEqual, <=);
         auto vlen = value.payload.seqValue.len;                                \
         auto ilen = input.payload.seqValue.len;                                \
         if (ilen > vlen)                                                       \
-          throw CBException("Failed to compare, input len > value len.");      \
+          throw ActivationError("Failed to compare, input len > value len.");  \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue   \
                     .elements[i])) {                                           \
@@ -927,10 +927,11 @@ struct Get : public VariableBase {
       // sanity check that the variable is not pristine...
       // the setter chain might have stopped actually!
       if (_defaultValue.valueType == None && _target->refcount == 1) {
-        throw CBException("Variable: " + _name +
-                          " did not exist in the context and no default value "
-                          "was given, likely "
-                          "the Set block was in chain that already ended.");
+        throw ActivationError(
+            "Variable: " + _name +
+            " did not exist in the context and no default value "
+            "was given, likely "
+            "the Set block was in chain that already ended.");
       }
     }
 
@@ -955,14 +956,14 @@ struct Get : public VariableBase {
           if (_defaultType.basicType != None) {
             return _defaultValue;
           } else {
-            throw CBException("Get - Key not found in table.");
+            throw ActivationError("Get - Key not found in table.");
           }
         }
       } else {
         if (_defaultType.basicType != None) {
           return _defaultValue;
         } else {
-          throw CBException("Get - Table is empty or does not exist yet.");
+          throw ActivationError("Get - Table is empty or does not exist yet.");
         }
       }
     } else {
@@ -1255,7 +1256,7 @@ struct Count : SeqUser {
 
     if (unlikely(_isTable)) {
       if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Count.");
+        throw ActivationError("Variable is not a table, failed to Count.");
       }
 
       if (unlikely(_cell == nullptr)) {
@@ -1294,7 +1295,7 @@ struct Clear : SeqUser {
 
     if (_isTable) {
       if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Clear.");
+        throw ActivationError("Variable is not a table, failed to Clear.");
       }
 
       if (unlikely(_cell == nullptr)) {
@@ -1326,7 +1327,7 @@ struct Drop : SeqUser {
 
     if (_isTable) {
       if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Clear.");
+        throw ActivationError("Variable is not a table, failed to Clear.");
       }
 
       if (unlikely(_cell == nullptr)) {
@@ -1341,7 +1342,7 @@ struct Drop : SeqUser {
       if (len > 0)
         chainblocks::arrayResize(var->payload.seqValue, len - 1);
     } else {
-      throw CBException("Variable is not a sequence, failed to Drop.");
+      throw ActivationError("Variable is not a sequence, failed to Drop.");
     }
 
     return input;
@@ -1399,7 +1400,7 @@ struct Pop : SeqUser {
     }
     if (_isTable) {
       if (_target->valueType != Table) {
-        throw CBException("Variable is not a table, failed to Pop.");
+        throw ActivationError("Variable is not a table, failed to Pop.");
       }
 
       if (unlikely(_cell == nullptr)) {
@@ -1409,12 +1410,12 @@ struct Pop : SeqUser {
       auto &seq = *_cell;
 
       if (seq.valueType != Seq) {
-        throw CBException(
+        throw ActivationError(
             "Variable (in table) is not a sequence, failed to Pop.");
       }
 
       if (seq.payload.seqValue.len == 0) {
-        throw CBException("Pop: sequence was empty.");
+        throw ActivationError("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
@@ -1423,11 +1424,11 @@ struct Pop : SeqUser {
       return _output;
     } else {
       if (_target->valueType != Seq) {
-        throw CBException("Variable is not a sequence, failed to Pop.");
+        throw ActivationError("Variable is not a sequence, failed to Pop.");
       }
 
       if (_target->payload.seqValue.len == 0) {
-        throw CBException("Pop: sequence was empty.");
+        throw ActivationError("Pop: sequence was empty.");
       }
 
       // Clone and make the var ours
@@ -1642,9 +1643,9 @@ struct Take {
     return Empty;
   }
 
-  struct OutOfRangeEx : public CBException {
+  struct OutOfRangeEx : public ActivationError {
     OutOfRangeEx(int64_t len, int64_t index)
-        : CBException("Take out of range!") {
+        : ActivationError("Take out of range!") {
       LOG(ERROR) << "Out of range! len:" << len << " wanted index: " << index;
     }
   };
@@ -1795,7 +1796,7 @@ struct Take {
   CBVar activate(CBContext *context, const CBVar &input) {
     // Take branches during validation into different inlined blocks
     // If we hit this, maybe that type of input is not yet implemented
-    throw CBException("Take path not implemented for this type.");
+    throw ActivationError("Take path not implemented for this type.");
   }
 }; // namespace chainblocks
 
@@ -1934,9 +1935,9 @@ struct Slice {
     return Empty;
   }
 
-  struct OutOfRangeEx : public CBException {
+  struct OutOfRangeEx : public ActivationError {
     OutOfRangeEx(int64_t len, int64_t from, int64_t to)
-        : CBException("Slice out of range!") {
+        : ActivationError("Slice out of range!") {
       LOG(ERROR) << "Out of range! from: " << from << " to: " << to
                  << " len: " << len;
     }
@@ -2026,7 +2027,7 @@ struct Limit {
       if (index >= inputLen) {
         LOG(ERROR) << "Limit out of range! len:" << inputLen
                    << " wanted index: " << index;
-        throw CBException("Limit out of range!");
+        throw ActivationError("Limit out of range!");
       }
       return input.payload.seqValue.elements[index];
     } else {

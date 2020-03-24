@@ -16,7 +16,7 @@ struct Env {
     auto err = __call__;                                                       \
     if (err != 0) {                                                            \
       LOG(ERROR) << "LMDB error: " << mdb_strerror(err);                       \
-      throw CBException("LMDB error detected.");                               \
+      throw ActivationError("LMDB error detected.");                           \
     }                                                                          \
   }
 
@@ -137,7 +137,8 @@ struct Get : public Base {
             (CBVar *)((uint8_t *)val.mv_data + sizeof(CBVar));
       } break;
       default: {
-        throw CBException("Case not handled and variable is not blittable!");
+        throw ActivationError(
+            "Case not handled and variable is not blittable!");
       }
       }
     }
@@ -196,7 +197,8 @@ template <unsigned int PUT_FLAGS> struct PutBase : public Base {
                (void *)&input.payload.seqValue.elements[0], arraySize);
       } break;
       default: {
-        throw CBException("Case not handled and variable is not blittable!");
+        throw ActivationError(
+            "Case not handled and variable is not blittable!");
       }
       }
     }

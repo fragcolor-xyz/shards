@@ -253,7 +253,7 @@ struct Read {
     _buffer.clear();
     fs::path p(input.payload.stringValue);
     if (!fs::exists(p)) {
-      throw CBException("FS.Read, file does not exist.");
+      throw ActivationError("FS.Read, file does not exist.");
     }
 
     AsyncOp<InternalCore> asyncRead(context);
@@ -335,7 +335,7 @@ struct Write {
     if (contents.valueType != None) {
       fs::path p(input.payload.stringValue);
       if (!_overwrite && !_append && fs::exists(p)) {
-        throw CBException(
+        throw ActivationError(
             "FS.Write, file already exists and overwrite flag is not on!.");
       }
 

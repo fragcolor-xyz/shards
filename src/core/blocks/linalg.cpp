@@ -75,7 +75,7 @@ struct Cross : public VectorBinaryBase {
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
       if (operand.valueType != Float3)
-        throw CBException("LinAlg.Cross works only with Float3 types.");
+        throw ActivationError("LinAlg.Cross works only with Float3 types.");
 
       switch (input.valueType) {
       case Float3: {
@@ -89,7 +89,7 @@ struct Cross : public VectorBinaryBase {
         output.payload.float3Value = a1 * b2 - a2 * b1;
       } break;
       default:
-        throw CBException("LinAlg.Cross works only with Float3 types.");
+        throw ActivationError("LinAlg.Cross works only with Float3 types.");
       }
     }
   };
@@ -106,7 +106,7 @@ struct Dot : public VectorBinaryBase {
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
       if (operand.valueType != input.valueType)
-        throw CBException(
+        throw ActivationError(
             "LinAlg.Dot works only with same input and operand types.");
 
       switch (input.valueType) {
@@ -257,7 +257,7 @@ struct MatMul : public VectorBinaryBase {
       const auto &x = a.payload.seqValue.elements[i];
       if (x.valueType != b.valueType) {
         // tbh this should be supported tho...
-        throw CBException("MatMul expected same Float vector types");
+        throw ActivationError("MatMul expected same Float vector types");
       }
 
       switch (x.valueType) {
@@ -296,7 +296,7 @@ struct MatMul : public VectorBinaryBase {
     size_t dima = a.payload.seqValue.len;
     size_t dimb = a.payload.seqValue.len;
     if (dima != dimb) {
-      throw CBException(
+      throw ActivationError(
           "MatMul expected 2 arrays with the same number of columns");
     }
 
@@ -317,8 +317,9 @@ struct MatMul : public VectorBinaryBase {
     } else if (_opType == Seq1) {
       return mvmul(input, operand);
     } else {
-      throw CBException("MatMul expects either Mat (Seq of FloatX) @ Mat or "
-                        "Mat @ Vec (FloatX)");
+      throw ActivationError(
+          "MatMul expects either Mat (Seq of FloatX) @ Mat or "
+          "Mat @ Vec (FloatX)");
     }
   }
 };
@@ -335,7 +336,7 @@ struct Transpose : public VectorUnaryBase {
     size_t height = input.payload.seqValue.len;
     if (height < 2 || height > 4) {
       // todo 2x1 should be go too
-      throw CBException("Transpose expects a 2x2 to 4x4 matrix array.");
+      throw ActivationError("Transpose expects a 2x2 to 4x4 matrix array.");
     }
 
     size_t width = 0;

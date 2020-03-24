@@ -172,7 +172,7 @@ struct NetworkBase {
     void operator()(uint8_t *buf, size_t size) {
       auto newOffset = offset + size;
       if (newOffset > max) {
-        throw CBException("Overflow requested");
+        throw ActivationError("Overflow requested");
       }
       memcpy(buf, buffer + offset, size);
       offset = newOffset;
@@ -189,7 +189,7 @@ struct NetworkBase {
     void operator()(const uint8_t *buf, size_t size) {
       auto newOffset = offset + size;
       if (newOffset > max) {
-        throw CBException("Overflow requested");
+        throw ActivationError("Overflow requested");
       }
       memcpy(buffer + offset, buf, size);
       offset = newOffset;

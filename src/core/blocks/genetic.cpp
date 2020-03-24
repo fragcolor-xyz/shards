@@ -211,18 +211,20 @@ struct Evolve {
 
       // We run chains up to completion
       // From validation to end, every iteration/era
-      tf::Taskflow runFlow;
-      runFlow.parallel_for(
-          _population.begin(), _population.end(), [&](Individual &i) {
-            CBNode node;
-            TickObserver obs{*this};
-            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-            node.schedule(obs, chain.get());
-            while (!node.empty()) {
-              node.tick(obs);
-            }
-          });
-      Tasks.run(runFlow).get();
+      {
+        tf::Taskflow runFlow;
+        runFlow.parallel_for(
+            _population.begin(), _population.end(), [&](Individual &i) {
+              CBNode node;
+              TickObserver obs{*this};
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              node.schedule(obs, chain.get());
+              while (!node.empty()) {
+                node.tick(obs);
+              }
+            });
+        Tasks.run(runFlow).get();
+      }
 
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
@@ -248,17 +250,19 @@ struct Evolve {
 
       // Do mutations at end, yet when contexts are still valid!
       // since we might need them
-      tf::Taskflow mutFlow;
-      mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
-                           _sortedPopulation.end(), [&](auto &i) {
-                             // reset the individual if extinct
-                             auto &individual = i.get();
-                             if (individual.extinct) {
-                               resetState(individual);
-                             }
-                             mutate(individual);
-                           });
-      Tasks.run(mutFlow).get();
+      {
+        tf::Taskflow mutFlow;
+        mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
+                             _sortedPopulation.end(), [&](auto &i) {
+                               // reset the individual if extinct
+                               auto &individual = i.get();
+                               if (individual.extinct) {
+                                 resetState(individual);
+                               }
+                               mutate(individual);
+                             });
+        Tasks.run(mutFlow).get();
+      }
 
       _result.clear();
       _result.emplace_back(Var(_sortedPopulation.front().get().fitness));

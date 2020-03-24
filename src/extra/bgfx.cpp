@@ -171,7 +171,7 @@ struct MainWindow : public BaseWindow {
       auto initErr = SDL_Init(SDL_INIT_EVENTS);
       if (initErr != 0) {
         LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
-        throw CBException("Failed to initialize SDL");
+        throw ActivationError("Failed to initialize SDL");
       }
 
       registerRunLoopCallback("fragcolor.bgfx.ospump", [] {
@@ -191,7 +191,7 @@ struct MainWindow : public BaseWindow {
       SDL_VERSION(&sdlVer);
       winInfo.version = sdlVer;
       if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-        throw CBException("Failed to call SDL_GetWindowWMInfo");
+        throw ActivationError("Failed to call SDL_GetWindowWMInfo");
       }
 
       bgfx::Init initInfo{};
@@ -208,7 +208,7 @@ struct MainWindow : public BaseWindow {
       initInfo.resolution.height = _height;
       initInfo.resolution.reset = BGFX_RESET_VSYNC;
       if (!bgfx::init(initInfo)) {
-        throw CBException("Failed to initialize BGFX");
+        throw ActivationError("Failed to initialize BGFX");
       }
 
       _imgui_context.Reset();
@@ -362,7 +362,7 @@ CBVar activate(CBContext *context, const CBVar &input) {
     SDL_VERSION(&sdlVer);
     winInfo.version = sdlVer;
     if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-      throw CBException("Failed to call SDL_GetWindowWMInfo");
+      throw ActivationError("Failed to call SDL_GetWindowWMInfo");
     }
 
 #ifdef __APPLE__

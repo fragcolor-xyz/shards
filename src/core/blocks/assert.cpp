@@ -63,7 +63,7 @@ struct Is : public Base {
       if (aborting)
         abort();
       else
-        throw CBException("Assert failed - Is");
+        throw ActivationError("Assert failed - Is");
     }
 
     return input;
@@ -78,7 +78,7 @@ struct IsNot : public Base {
       if (aborting)
         abort();
       else
-        throw CBException("Assert failed - IsNot");
+        throw ActivationError("Assert failed - IsNot");
     }
 
     return input;

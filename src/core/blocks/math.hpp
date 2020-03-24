@@ -206,7 +206,7 @@ struct BinaryBase : public Base {
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
           if (operand.payload.intValue == 0)                                   \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
         output.valueType = Int;                                                \
         output.payload.intValue =                                              \
             input.payload.intValue OPERATOR operand.payload.intValue;          \
@@ -215,7 +215,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 2; i++)                                         \
             if (operand.payload.int2Value[i] == 0)                             \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Int2;                                               \
         output.payload.int2Value =                                             \
@@ -225,7 +225,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 3; i++)                                         \
             if (operand.payload.int3Value[i] == 0)                             \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Int3;                                               \
         output.payload.int3Value =                                             \
@@ -235,7 +235,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 4; i++)                                         \
             if (operand.payload.int4Value[i] == 0)                             \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Int4;                                               \
         output.payload.int4Value =                                             \
@@ -245,7 +245,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 8; i++)                                         \
             if (operand.payload.int2Value[i] == 0)                             \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Int8;                                               \
         output.payload.int8Value =                                             \
@@ -255,7 +255,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 16; i++)                                        \
             if (operand.payload.int2Value[i] == 0)                             \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Int16;                                              \
         output.payload.int16Value =                                            \
@@ -264,7 +264,7 @@ struct BinaryBase : public Base {
       case Float:                                                              \
         if constexpr (DIV_BY_ZERO)                                             \
           if (operand.payload.floatValue == 0)                                 \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
         output.valueType = Float;                                              \
         output.payload.floatValue =                                            \
             input.payload.floatValue OPERATOR operand.payload.floatValue;      \
@@ -273,7 +273,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 2; i++)                                         \
             if (operand.payload.float2Value[i] == 0)                           \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Float2;                                             \
         output.payload.float2Value =                                           \
@@ -283,7 +283,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 3; i++)                                         \
             if (operand.payload.float3Value[i] == 0)                           \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Float3;                                             \
         output.payload.float3Value =                                           \
@@ -293,7 +293,7 @@ struct BinaryBase : public Base {
         if constexpr (DIV_BY_ZERO) {                                           \
           for (auto i = 0; i < 4; i++)                                         \
             if (operand.payload.float4Value[i] == 0)                           \
-              throw CBException("Error, division by 0!");                      \
+              throw ActivationError("Error, division by 0!");                  \
         }                                                                      \
         output.valueType = Float4;                                             \
         output.payload.float4Value =                                           \
@@ -302,13 +302,13 @@ struct BinaryBase : public Base {
       case Color:                                                              \
         if constexpr (DIV_BY_ZERO) {                                           \
           if (operand.payload.colorValue.r == 0)                               \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
           if (operand.payload.colorValue.g == 0)                               \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
           if (operand.payload.colorValue.b == 0)                               \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
           if (operand.payload.colorValue.a == 0)                               \
-            throw CBException("Error, division by 0!");                        \
+            throw ActivationError("Error, division by 0!");                    \
         }                                                                      \
         output.valueType = Color;                                              \
         output.payload.colorValue.r =                                          \
@@ -321,8 +321,8 @@ struct BinaryBase : public Base {
             input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(#NAME                                                \
-                          " operation not supported between given types!");    \
+        throw ActivationError(                                                 \
+            #NAME " operation not supported between given types!");            \
       }                                                                        \
     }                                                                          \
                                                                                \
@@ -400,8 +400,8 @@ struct BinaryBase : public Base {
             input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(#NAME                                                \
-                          " operation not supported between given types!");    \
+        throw ActivationError(                                                 \
+            #NAME " operation not supported between given types!");            \
       }                                                                        \
     }                                                                          \
                                                                                \
@@ -553,8 +553,8 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
         output.payload.float4Value[3] = FUNCF(input.payload.float4Value[3]);   \
         break;                                                                 \
       default:                                                                 \
-        throw CBException(#NAME                                                \
-                          " operation not supported between given types!");    \
+        throw ActivationError(                                                 \
+            #NAME " operation not supported between given types!");            \
       }                                                                        \
     }                                                                          \
                                                                                \
@@ -658,7 +658,7 @@ template <class T> struct UnaryBin : public T {
       T::_operand = Var(1.0, 1.0, 1.0, 1.0);
       break;
     default:
-      throw CBException("Type not supported for unary math operation");
+      throw ActivationError("Type not supported for unary math operation");
     }
   }
 

@@ -42,7 +42,7 @@ struct Exec {
                               boost::process::std_out > opipe,
                               boost::process::std_err > epipe);
     if (!opipe || !epipe) {
-      throw CBException("Failed to open streams for child process.");
+      throw ActivationError("Failed to open streams for child process.");
     }
 
     while (cmd.running()) {

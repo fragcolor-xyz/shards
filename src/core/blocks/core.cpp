@@ -67,12 +67,12 @@ struct JointOp {
   void ensureJoinSetup(CBContext *context) {
     if (!_input) {
       if (_inputVar.valueType != ContextVar)
-        throw CBException("From sequence variable invalid.");
+        throw ActivationError("From sequence variable invalid.");
 
       _input = referenceVariable(context, _inputVar.payload.stringValue);
 
       if (_input->valueType != Seq)
-        throw CBException("From sequence variable is not a Seq.");
+        throw ActivationError("From sequence variable is not a Seq.");
     }
 
     if (_columns.valueType != None) {
@@ -85,7 +85,7 @@ struct JointOp {
             if (target && target->valueType == Seq) {
               auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
-                throw CBException(
+                throw ActivationError(
                     "JointOp: All the sequences to be processed must have "
                     "the same length as the input sequence.");
               }
@@ -99,7 +99,7 @@ struct JointOp {
           if (target && target->valueType == Seq) {
             auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
-              throw CBException(
+              throw ActivationError(
                   "JointOp: All the sequences to be processed must have "
                   "the same length as the input sequence.");
             }
@@ -111,7 +111,7 @@ struct JointOp {
           const auto &seq = seqVar->payload.seqValue;
           auto mseqLen = seq.len;
           if (len != mseqLen) {
-            throw CBException(
+            throw ActivationError(
                 "JointOp: All the sequences to be processed must have "
                 "the same length as the input sequence.");
           }
@@ -698,7 +698,7 @@ struct Reduce {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.seqValue.len == 0) {
-      throw CBException("Reduce: Input sequence was empty!");
+      throw ActivationError("Reduce: Input sequence was empty!");
     }
     cloneVar(*_tmp, input.payload.seqValue.elements[0]);
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {

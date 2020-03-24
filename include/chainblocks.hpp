@@ -21,7 +21,7 @@ public:
   }
 
 private:
-  std::string_view errorMessage;
+  std::string errorMessage;
 };
 
 class ActivationError : public CBException {
@@ -51,6 +51,22 @@ public:
   ChainRestarting()
       : ActivationError("Chain has been restarted.", CBChainState::Restart,
                         false) {}
+};
+
+class ComposeError : public CBException {
+public:
+  explicit ComposeError(std::string_view msg, bool fatal = true)
+      : CBException(msg), fatal(fatal) {}
+
+  bool triggerFailure() const { return fatal; }
+
+private:
+  bool fatal;
+};
+
+class InvalidVarTypeError : public CBException {
+public:
+  explicit InvalidVarTypeError(std::string_view msg) : CBException(msg) {}
 };
 
 CBlock *createBlock(const char *name);
@@ -193,42 +209,42 @@ struct Var : public CBVar {
 
   explicit operator bool() const {
     if (valueType != Bool) {
-      throw CBException("Invalid variable casting! expected Bool");
+      throw InvalidVarTypeError("Invalid variable casting! expected Bool");
     }
     return payload.boolValue;
   }
 
   explicit operator int() const {
     if (valueType != Int) {
-      throw CBException("Invalid variable casting! expected Int");
+      throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<int>(payload.intValue);
   }
 
   explicit operator uintptr_t() const {
     if (valueType != Int) {
-      throw CBException("Invalid variable casting! expected Int");
+      throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<uintptr_t>(payload.intValue);
   }
 
   explicit operator int16_t() const {
     if (valueType != Int) {
-      throw CBException("Invalid variable casting! expected Int");
+      throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<int16_t>(payload.intValue);
   }
 
   explicit operator uint8_t() const {
     if (valueType != Int) {
-      throw CBException("Invalid variable casting! expected Int");
+      throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<uint8_t>(payload.intValue);
   }
 
   explicit operator int64_t() const {
     if (valueType != Int) {
-      throw CBException("Invalid variable casting! expected Int");
+      throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return payload.intValue;
   }
@@ -239,7 +255,7 @@ struct Var : public CBVar {
     } else if (valueType == Int) {
       return static_cast<float>(payload.intValue);
     } else {
-      throw CBException("Invalid variable casting! expected Float");
+      throw InvalidVarTypeError("Invalid variable casting! expected Float");
     }
   }
 
@@ -249,7 +265,7 @@ struct Var : public CBVar {
     } else if (valueType == Int) {
       return static_cast<double>(payload.intValue);
     } else {
-      throw CBException("Invalid variable casting! expected Float");
+      throw InvalidVarTypeError("Invalid variable casting! expected Float");
     }
   }
 

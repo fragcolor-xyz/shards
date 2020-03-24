@@ -219,12 +219,12 @@ struct InjectHook : public InjectHookBase {
         _hook = SetWindowsHookEx(WH_CALLWNDPROC, gDesktopHook.hookProc,
                                  gDesktopHook.dll, threadId);
         if (!_hook) {
-          throw CBException("Failed to hook window process!");
+          throw ActivationError("Failed to hook window process!");
         }
       }
       return input;
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -237,7 +237,7 @@ struct PID : public PIDBase {
       GetWindowThreadProcessId(hwnd, &pid);
       return Var(int64_t(pid));
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -249,7 +249,7 @@ struct IsForeground : public ActiveBase {
       auto currentForeground = GetForegroundWindow();
       return hwnd == currentForeground ? True : False;
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -274,7 +274,7 @@ struct SetForeground : public WinOpBase {
       }
       return input;
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -286,7 +286,7 @@ struct NotForeground : public ActiveBase {
       auto currentForeground = GetForegroundWindow();
       return hwnd != currentForeground ? True : False;
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -299,7 +299,7 @@ struct Resize : public ResizeWindowBase {
       DBG_CHECK(GetWindowRect(hwnd, &rect));
       DBG_CHECK(::MoveWindow(hwnd, rect.left, rect.top, _width, _height, TRUE));
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
 
     return input;
@@ -316,7 +316,7 @@ struct Move : public MoveWindowBase {
       auto height = rect.bottom - rect.top;
       DBG_CHECK(::MoveWindow(hwnd, _x, _y, width, height, TRUE));
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
 
     return input;
@@ -334,7 +334,7 @@ struct Bounds : public SizeBase {
       int64_t height = r.bottom - r.top;
       return Var(width, height);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -350,7 +350,7 @@ struct Size : public SizeBase {
       int64_t height = r.bottom - r.top;
       return Var(width, height);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
   };
 };
@@ -367,7 +367,7 @@ struct SetBorderless : public WinOpBase {
       lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
       SetWindowLong(hwnd, GWL_EXSTYLE, lExStyle);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
     return input;
   };
@@ -387,7 +387,7 @@ struct SetClickthrough : public WinOpBase {
       lStyle |= WS_EX_TRANSPARENT;
       SetWindowLong(hwnd, GWL_EXSTYLE, lStyle);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
     return input;
   };
@@ -403,7 +403,7 @@ struct UnsetClickthrough : public WinOpBase {
       }
       SetWindowLong(hwnd, GWL_EXSTYLE, lStyle);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
     return input;
   };
@@ -416,7 +416,7 @@ struct SetTopmost : public WinOpBase {
       SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
     return input;
   };
@@ -429,7 +429,7 @@ struct UnsetTopmost : public WinOpBase {
       SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
     return input;
   };
@@ -451,7 +451,7 @@ struct SetTitle : public SetTitleBase {
     if (hwnd) {
       SetWindowTextW(hwnd, &_wTitle[0]);
     } else {
-      throw CBException("Input object was not a Desktop's window!");
+      throw ActivationError("Input object was not a Desktop's window!");
     }
 
     return input;
@@ -572,7 +572,7 @@ struct PixelBase {
     if (windowVar) {
       auto wnd = AsHWND(*windowVar);
       if (!wnd) {
-        throw CBException("Input object was not a Desktop's window!");
+        throw ActivationError("Input object was not a Desktop's window!");
       }
       POINT po;
       po.x = x;
@@ -684,7 +684,7 @@ struct Pixels : public PixelBase {
 
       return _output;
     } else {
-      throw CBException("Failed to grab screen.");
+      throw ActivationError("Failed to grab screen.");
     }
   }
 };
@@ -787,7 +787,7 @@ struct SendKeyEvent : public SendKeyEventBase {
     if (_windowVarName.size() > 0) {
       auto window = AsHWND(*_window);
       if (!window) {
-        throw CBException("Input object was not a Desktop's window!");
+        throw ActivationError("Input object was not a Desktop's window!");
       }
 
       auto lparam = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC) << 16;
@@ -814,7 +814,7 @@ struct GetMousePos : public MousePosBase {
     POINT p;
 
     if (!GetPhysicalCursorPos(&p)) {
-      throw CBException("GetPhysicalCursorPos failed.");
+      throw ActivationError("GetPhysicalCursorPos failed.");
     }
 
     auto wnd = AsHWND(_window.get());
@@ -846,7 +846,7 @@ struct SetMousePos : public MousePosBase {
     }
 
     if (!SetPhysicalCursorPos(p.x, p.y)) {
-      throw CBException("SetPhysicalCursorPos failed.");
+      throw ActivationError("SetPhysicalCursorPos failed.");
     }
 
     return input;
@@ -963,7 +963,7 @@ struct Tap : public MousePosBase {
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
       LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
                  << GetLastError() << std::dec;
-      throw CBException("InjectTouchInput failed.");
+      throw ActivationError("InjectTouchInput failed.");
     }
 
     if (_delays) {
@@ -978,7 +978,7 @@ struct Tap : public MousePosBase {
         if (!GlobalInjector::InjectTouch(1, &pinfo)) {
           LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
                      << GetLastError() << std::dec;
-          throw CBException("InjectTouchInput failed.");
+          throw ActivationError("InjectTouchInput failed.");
         }
         suspend(context, 0.1);
       }
@@ -989,7 +989,7 @@ struct Tap : public MousePosBase {
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
       LOG(ERROR) << "InjectTouchInput (up) error: 0x" << std::hex
                  << GetLastError() << std::dec;
-      throw CBException("InjectTouchInput failed.");
+      throw ActivationError("InjectTouchInput failed.");
     }
 
     if (_delays) {
@@ -1060,7 +1060,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     if (!SendInput(1, &event, sizeof(INPUT))) {
       LOG(ERROR) << "SendInput (down) error: 0x" << std::hex << GetLastError()
                  << std::dec;
-      throw CBException("LeftClick failed.");
+      throw ActivationError("LeftClick failed.");
     }
 
     if (_delays) {
@@ -1072,7 +1072,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     if (!SendInput(1, &event, sizeof(INPUT))) {
       LOG(ERROR) << "SendInput (up) error: 0x" << std::hex << GetLastError()
                  << std::dec;
-      throw CBException("LeftClick failed.");
+      throw ActivationError("LeftClick failed.");
     }
 
     if (_delays) {
@@ -1155,7 +1155,7 @@ struct SetTimerResolution {
     ULONG tmp;
 
     if (NtSetTimerResolution(res, TRUE, &tmp)) {
-      throw CBException("Failed to call NtSetTimerResolution - TRUE");
+      throw ActivationError("Failed to call NtSetTimerResolution - TRUE");
     }
 
     return Var((int64_t)tmp);

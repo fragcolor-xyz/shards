@@ -216,8 +216,8 @@ struct Pack : public StructBase {
 
   void ensureType(const CBVar &input, CBType wantedType) {
     if (input.valueType != wantedType) {
-      throw CBException("Expected " + type2Name(wantedType) +
-                        " instead was: " + type2Name(input.valueType));
+      throw ActivationError("Expected " + type2Name(wantedType) +
+                            " instead was: " + type2Name(input.valueType));
     }
   }
 
@@ -230,8 +230,8 @@ struct Pack : public StructBase {
   void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset,
                  size_t len) {
     if (len != (size_t)input.len) {
-      throw CBException("Expected " + std::to_string(len) +
-                        " size sequence as value");
+      throw ActivationError("Expected " + std::to_string(len) +
+                            " size sequence as value");
     }
 
     for (size_t i = 0; i < len; i++) {
@@ -244,8 +244,8 @@ struct Pack : public StructBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (_members.size() != (size_t)input.payload.seqValue.len) {
-      throw CBException("Expected " + std::to_string(_members.size()) +
-                        " members as input.");
+      throw ActivationError("Expected " + std::to_string(_members.size()) +
+                            " members as input.");
     }
 
     auto idx = 0;

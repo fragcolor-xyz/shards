@@ -238,7 +238,7 @@ struct LoadImage : public FileBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     std::string filename;
     if (!getFilename(context, filename)) {
-      throw CBException("File not found!");
+      throw ActivationError("File not found!");
     }
 
     AsyncOp<InternalCore> asyncOp(context);
@@ -250,7 +250,7 @@ struct LoadImage : public FileBase {
           res.payload.imageValue.data =
               stbi_load(filename.c_str(), &x, &y, &n, 0);
           if (!res.payload.imageValue.data) {
-            throw CBException("Failed to load image file");
+            throw ActivationError("Failed to load image file");
           }
           res.payload.imageValue.width = uint16_t(x);
           res.payload.imageValue.height = uint16_t(y);
