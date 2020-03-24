@@ -26,18 +26,21 @@ struct Evolve {
       _baseChain = value;
       break;
     case 1:
-      _popsize = value.payload.intValue;
+      _fitnessChain = value;
       break;
     case 2:
-      _mutation = value.payload.floatValue;
+      _popsize = value.payload.intValue;
       break;
     case 3:
-      _crossover = value.payload.floatValue;
+      _mutation = value.payload.floatValue;
       break;
     case 4:
-      _extinction = value.payload.floatValue;
+      _crossover = value.payload.floatValue;
       break;
     case 5:
+      _extinction = value.payload.floatValue;
+      break;
+    case 6:
       _elitism = value.payload.floatValue;
       break;
     default:
@@ -50,14 +53,16 @@ struct Evolve {
     case 0:
       return _baseChain;
     case 1:
-      return Var(_popsize);
+      return _fitnessChain;
     case 2:
-      return Var(_mutation);
+      return Var(_popsize);
     case 3:
-      return Var(_crossover);
+      return Var(_mutation);
     case 4:
-      return Var(_extinction);
+      return Var(_crossover);
     case 5:
+      return Var(_extinction);
+    case 6:
       return Var(_elitism);
     default:
       return CBVar();
@@ -142,27 +147,39 @@ struct Evolve {
       // Only the DNA changes
       if (_population.size() == 0) {
         std::stringstream chainStream;
-        Writer w(chainStream);
-        Serialization::serialize(_baseChain, w);
+        Writer w1(chainStream);
+        Serialization::serialize(_baseChain, w1);
         auto chainStr = chainStream.str();
+
+        std::stringstream fitnessStream;
+        Writer w2(fitnessStream);
+        Serialization::serialize(_fitnessChain, w2);
+        auto fitnessStr = fitnessStream.str();
+
         _population.resize(_popsize);
         _nkills = size_t(double(_popsize) * _extinction);
         _nelites = size_t(double(_popsize) * _elitism);
+
         tf::Taskflow initFlow;
         initFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
-              std::stringstream inputStream(chainStr);
-              Reader r(inputStream);
-              Serialization::deserialize(r, i.chain);
+              std::stringstream i1Stream(chainStr);
+              Reader r1(i1Stream);
+              Serialization::deserialize(r1, i.chain);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               gatherMutants(chain.get(), i.mutants);
+
+              std::stringstream i2Stream(fitnessStr);
+              Reader r2(i2Stream);
+              Serialization::deserialize(r2, i.fitnessChain);
             });
         Tasks.run(initFlow).get();
 
         // Also populate chain2Indi
         for (auto &i : _population) {
-          auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-          _chain2Individual.emplace(chain.get(), i);
+          auto fitchain =
+              CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+          _chain2Individual.emplace(fitchain.get(), i);
           _sortedPopulation.emplace_back(i);
         }
       } else {
@@ -217,8 +234,18 @@ struct Evolve {
             _population.begin(), _population.end(), [&](Individual &i) {
               CBNode node;
               TickObserver obs{*this};
+
+              // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              node.schedule(obs, chain.get());
+              node.schedule(chain.get());
+              while (!node.empty()) {
+                node.tick();
+              }
+
+              // compute the fitness
+              auto fitchain =
+                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              node.schedule(obs, fitchain.get(), chain->previousOutput);
               while (!node.empty()) {
                 node.tick(obs);
               }
@@ -288,6 +315,8 @@ private:
   struct Individual {
     // Chains are recycled
     CBVar chain{};
+    // We need many of them cos we use threads
+    CBVar fitnessChain{};
 
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;
@@ -307,9 +336,14 @@ private:
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
+      {"Chain",
+       "The chain to optimize and evolve.",
+       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
       {"Fitness",
-       "The fitness chain, should output a Float fitness value.",
-       {CoreInfo::NoneType, CoreInfo::ChainType, CoreInfo::ChainVarType}},
+       "The fitness chain to run at the end of the main chain evaluation and "
+       "using "
+       "its last output; should output a Float fitness value.",
+       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
       {"Population", "The population size.", {CoreInfo::IntType}},
       {"Mutation", "The rate of mutation, 0.1 = 10%.", {CoreInfo::FloatType}},
       {"Crossover", "The rate of crossover, 0.1 = 10%.", {CoreInfo::FloatType}},
@@ -323,6 +357,7 @@ private:
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
 
   ParamVar _baseChain{};
+  ParamVar _fitnessChain{};
   std::vector<CBVar> _result;
   std::vector<Individual> _population;
   std::vector<std::reference_wrapper<Individual>> _sortedPopulation;

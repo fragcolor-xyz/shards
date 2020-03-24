@@ -588,8 +588,10 @@ struct CBNode {
           "schedule failed, chain was already scheduled!");
 
     observer.before_compose(chain);
-    // Validate the chain
     if (validate) {
+      // Validate the chain
+      CBInstanceData data{};
+      data.inputType = deriveTypeInfo(input);
       auto validation = validateConnections(
           chain->blocks,
           [](const CBlock *errorBlock, const char *errorTxt,
@@ -605,8 +607,9 @@ struct CBNode {
                         << " input block: " << blk->name(blk);
             }
           },
-          this, CBInstanceData(), true);
+          this, data, true);
       chainblocks::arrayFree(validation.exposedInfo);
+      freeDerivedInfo(data.inputType);
     }
 
     auto flow = std::make_shared<CBFlow>();
