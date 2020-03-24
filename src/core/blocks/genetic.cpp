@@ -101,10 +101,7 @@ struct Evolve {
       _sortedPopulation.clear();
       _population.clear();
     }
-    _baseChain.cleanup();
   }
-
-  void warmup(CBContext *ctx) { _baseChain.warmup(ctx); }
 
   struct TickObserver {
     Evolve &self;
@@ -313,6 +310,11 @@ private:
                                    std::vector<MutantInfo> &out);
 
   struct Individual {
+    ~Individual() {
+      Serialization::varFree(chain);
+      Serialization::varFree(fitnessChain);
+    }
+
     // Chains are recycled
     CBVar chain{};
     // We need many of them cos we use threads
