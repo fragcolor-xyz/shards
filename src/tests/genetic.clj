@@ -19,7 +19,9 @@
       "evolveme"
       (Mutant (Const 10) [0])
       (Log "Const")
-      (Mutant (Math.Multiply 2) [0])
+      (Mutant (Math.Multiply 2) [0] [(-->
+                                      (RandomInt 10)
+                                      (Math.Add 1))])
       (Log)
       (Do fitness)
       (Log "evolution happens here... fitness")

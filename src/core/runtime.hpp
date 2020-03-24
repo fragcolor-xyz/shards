@@ -54,6 +54,9 @@ validateConnections(const std::vector<CBlock *> &chain,
 validateConnections(const CBlocks chain, CBValidationCallback callback,
                     void *userData, CBInstanceData data = CBInstanceData());
 [[nodiscard]] CBValidationResult
+validateConnections(const CBSeq chain, CBValidationCallback callback,
+                    void *userData, CBInstanceData data = CBInstanceData());
+[[nodiscard]] CBValidationResult
 validateConnections(const CBChain *chain, CBValidationCallback callback,
                     void *userData, CBInstanceData data = CBInstanceData());
 

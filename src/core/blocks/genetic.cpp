@@ -128,14 +128,6 @@ struct Evolve {
         assert(false);
       }
       auto &individual = individualIt->second.get();
-      // reset the individual if extinct
-      if (individual.extinct) {
-        self.resetState(individual);
-      }
-      // Call mutate if not elite
-      if (!individual.elite) {
-        self.mutate(individual);
-      }
       // Keep in mind that individuals might not reach chain termination
       // they might "crash", so fitness should be set to minimum before any run
       individual.fitness = std::numeric_limits<double>::min();
@@ -239,23 +231,34 @@ struct Evolve {
                 });
 
       // reset flags
-      std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
-                    [](auto &i) {
+      std::for_each(_sortedPopulation.begin(),
+                    _sortedPopulation.end() - _nkills, [](auto &i) {
                       auto &id = i.get();
-                      id.elite = false;
                       id.extinct = false;
                       id.parent0Idx = -1;
                       id.parent1Idx = -1;
                     });
-
-      // mark elites
-      std::for_each(_sortedPopulation.begin(),
-                    _sortedPopulation.begin() + _nelites,
-                    [](auto &i) { i.get().elite = true; });
-
-      // mark extinct
       std::for_each(_sortedPopulation.end() - _nkills, _sortedPopulation.end(),
-                    [](auto &i) { i.get().extinct = true; });
+                    [](auto &i) {
+                      auto &id = i.get();
+                      id.extinct = true;
+                      id.parent0Idx = -1;
+                      id.parent1Idx = -1;
+                    });
+
+      // Do mutations at end, yet when contexts are still valid!
+      // since we might need them
+      tf::Taskflow mutFlow;
+      mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
+                           _sortedPopulation.end(), [&](auto &i) {
+                             // reset the individual if extinct
+                             auto &individual = i.get();
+                             if (individual.extinct) {
+                               resetState(individual);
+                             }
+                             mutate(individual);
+                           });
+      Tasks.run(mutFlow).get();
 
       _result.clear();
       _result.emplace_back(Var(_sortedPopulation.front().get().fitness));
@@ -287,7 +290,6 @@ private:
 
     double fitness{std::numeric_limits<double>::min()};
 
-    bool elite = false;
     bool extinct = false;
 
     tf::Task crossoverTask;
@@ -364,7 +366,26 @@ struct Mutant {
     case 1:
       _indices = value;
       break;
-    case 2:
+    case 2: {
+      destroyBlocks();
+      _mutations = value;
+      if (_mutations.valueType == Seq) {
+        IterableSeq muts(_mutations);
+        for (auto &mut : muts) {
+          if (mut.valueType == Block) {
+            auto blk = mut.payload.blockValue;
+            blk->owned = true;
+          } else if (mut.valueType == Seq) {
+            IterableSeq blks(mut);
+            for (auto &bv : blks) {
+              auto blk = bv.payload.blockValue;
+              blk->owned = true;
+            }
+          }
+        }
+      }
+    } break;
+    case 3:
       _options = value;
       break;
     default:
@@ -379,17 +400,118 @@ struct Mutant {
     case 1:
       return _indices;
     case 2:
+      return _mutations;
+    case 3:
       return _options;
     default:
       return CBVar();
     }
   }
 
-  void cleanup() { _block.cleanup(); }
+  void cleanupMutations() {
+    if (_mutations.valueType == Seq) {
+      IterableSeq muts(_mutations);
+      for (auto &mut : muts) {
+        if (mut.valueType == Block) {
+          auto blk = mut.payload.blockValue;
+          blk->cleanup(blk);
+        } else if (mut.valueType == Seq) {
+          IterableSeq blks(mut);
+          for (auto &bv : blks) {
+            auto blk = bv.payload.blockValue;
+            blk->cleanup(blk);
+          }
+        }
+      }
+    }
+  }
 
-  void warmup(CBContext *ctx) { _block.warmup(ctx); }
+  void cleanup() {
+    _block.cleanup();
+    cleanupMutations();
+  }
+
+  void destroyBlocks() {
+    if (_mutations.valueType == Seq) {
+      IterableSeq muts(_mutations);
+      for (auto &mut : muts) {
+        if (mut.valueType == Block) {
+          auto blk = mut.payload.blockValue;
+          blk->cleanup(blk);
+          blk->destroy(blk);
+        } else if (mut.valueType == Seq) {
+          IterableSeq blks(mut);
+          for (auto &bv : blks) {
+            auto blk = bv.payload.blockValue;
+            blk->cleanup(blk);
+            blk->destroy(blk);
+          }
+        }
+      }
+    }
+  }
+
+  void destroy() { destroyBlocks(); }
+
+  void warmup(CBContext *ctx) {
+    _block.warmup(ctx);
+
+    if (_mutations.valueType == Seq) {
+      IterableSeq muts(_mutations);
+      for (auto &mut : muts) {
+        if (mut.valueType == Block) {
+          auto blk = mut.payload.blockValue;
+          if (blk->warmup)
+            blk->warmup(blk, ctx);
+        } else if (mut.valueType == Seq) {
+          IterableSeq blks(mut);
+          for (auto &bv : blks) {
+            auto blk = bv.payload.blockValue;
+            if (blk->warmup)
+              blk->warmup(blk, ctx);
+          }
+        }
+      }
+    }
+  }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    auto inner = mutant();
+    if (_mutations.valueType == Seq && inner) {
+      auto dataCopy = data;
+      IterableSeq muts(_mutations);
+      int idx = 0;
+      auto innerParams = inner->parameters(inner);
+      for (auto &mut : muts) {
+        if (idx >= int(innerParams.len))
+          break;
+        ToTypeInfo ptype(inner->getParam(inner, idx));
+        dataCopy.inputType = ptype;
+        if (mut.valueType == Block) {
+          auto blk = mut.payload.blockValue;
+          if (blk->compose) {
+            auto res = blk->compose(blk, dataCopy);
+            if (res != ptype) {
+              throw CBException("Expected same type as input in parameter "
+                                "mutation chain's output.");
+            }
+          }
+        } else if (mut.valueType == Seq) {
+          auto res = validateConnections(
+              mut.payload.seqValue,
+              [](const CBlock *errorBlock, const char *errorTxt,
+                 bool nonfatalWarning, void *userData) {},
+              nullptr, dataCopy);
+          if (res.outputType != ptype) {
+            throw CBException("Expected same type as input in parameter "
+                              "mutation chain's output.");
+          }
+          arrayFree(res.exposedInfo);
+        }
+        idx++;
+      }
+    }
+
     return _block.compose(data).outputType;
   }
 
@@ -424,15 +546,20 @@ struct Mutant {
 private:
   friend struct Evolve;
   BlocksVar _block{};
-  OwnedVar _options{};
   OwnedVar _indices{};
+  OwnedVar _mutations{};
+  OwnedVar _options{};
   static inline Parameters _params{
       {"Block", "The block to mutate.", {CoreInfo::BlockType}},
       {"Indices",
        "The parameter indices to mutate of the inner block.",
        {CoreInfo::IntSeqType}},
       {"Mutations",
-       "Mutation table - a table with mutation options.",
+       "Optional chains of blocks (or Nones) to call when mutating one of the "
+       "parameters, if empty a default operator will be used.",
+       {CoreInfo::BlocksOrNoneSeq}},
+      {"Options",
+       "Mutation options table - a table with mutation options.",
        {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
 };
 
@@ -566,30 +693,55 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0,
 }
 
 inline void Evolve::mutate(Evolve::Individual &individual) {
+  auto chain = CBChain::sharedFromRef(individual.chain.payload.chainValue);
+  // we need to hack this in as we run out of context
+  CBCoro foo{};
+  CBContext ctx(std::move(foo), chain.get());
+  ctx.chainStack.push_back(chain.get());
   std::for_each(
       std::begin(individual.mutants), std::end(individual.mutants),
-      [this](MutantInfo &info) {
+      [&](MutantInfo &info) {
         if (Rng::frand() > _mutation) {
           return;
         }
 
-        auto options = info.block.get()._options;
+        auto &mutator = info.block.get();
+        auto &options = mutator._options;
         if (info.block.get().mutant()) {
           auto mutant = info.block.get().mutant();
-          auto &indices = info.block.get()._indices;
+          auto &indices = mutator._indices;
           if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
             // In the case the block has `mutate`
             auto table = options.valueType == Table ? options.payload.tableValue
                                                     : CBTable();
             mutant->mutate(mutant, table);
           } else if (indices.valueType == Seq) {
-            auto iseq = indices.payload.seqValue;
+            auto &iseq = indices.payload.seqValue;
             // do stuff on the param
             // select a random one
             auto rparam = Rng::rand(iseq.len);
             auto current = mutant->getParam(
                 mutant, int(iseq.elements[rparam].payload.intValue));
-            mutateVar(current);
+            // if we have mutation blocks use them
+            // if not use default operation
+            if (mutator._mutations.valueType == Seq &&
+                uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
+              auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
+              if (mblks.valueType == Block) {
+                auto blk = mblks.payload.blockValue;
+                current = blk->activate(blk, &ctx, &current);
+              } else if (mblks.valueType == Seq) {
+                auto blks = mblks.payload.seqValue;
+                CBVar out{};
+                activateBlocks(blks, &ctx, current, out);
+                current = out;
+              } else {
+                // Was likely None, so use default op
+                mutateVar(current);
+              }
+            } else {
+              mutateVar(current);
+            }
             mutant->setParam(
                 mutant, int(iseq.elements[rparam].payload.intValue), current);
           }

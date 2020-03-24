@@ -534,6 +534,10 @@ void releaseVariable(CBVar *variable) {
 }
 
 void suspend(CBContext *context, double seconds) {
+  if (!context->continuation)
+    throw ActivationError("Trying to suspend a context without coroutine!",
+                          CBChainState::Stop, true);
+
   if (seconds <= 0) {
     context->next = Duration(0);
   } else {
@@ -1256,6 +1260,16 @@ CBValidationResult validateConnections(const CBlocks chain,
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
+  }
+  return validateConnections(blocks, callback, userData, data, false);
+}
+
+CBValidationResult validateConnections(const CBSeq chain,
+                                       CBValidationCallback callback,
+                                       void *userData, CBInstanceData data) {
+  std::vector<CBlock *> blocks;
+  for (uint32_t i = 0; chain.len > i; i++) {
+    blocks.push_back(chain.elements[i].payload.blockValue);
   }
   return validateConnections(blocks, callback, userData, data, false);
 }

@@ -92,6 +92,8 @@ struct CoreInfo {
 
   static inline Types BlocksOrNone{Blocks, {NoneType}};
 
+  static inline Type BlocksOrNoneSeq{{CBType::Seq, .seqTypes = BlocksOrNone}};
+
   static inline Types StringOrBytes{{StringType, BytesType}};
 
   static inline Types StringOrNone{{StringType, NoneType}};
