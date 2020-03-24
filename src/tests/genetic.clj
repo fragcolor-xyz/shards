@@ -6,7 +6,8 @@
    (Math.Subtract 36)
    (ToFloat)
    (Math.Abs)
-   (Math.Multiply -1.0)))
+   (Math.Multiply -1.0)
+   (Log "evolution happens here... fitness")))
 
 (schedule
  Root
@@ -18,12 +19,9 @@
      (Chain
       "evolveme"
       (Mutant (Const 10) [0])
-      (Log "Const")
       (Mutant (Math.Multiply 2) [0] [(-->
                                       (RandomInt 10)
-                                      (Math.Add 1))])
-      (Log)
-      (Log "evolution happens here... fitness"))
+                                      (Math.Add 1))]))
      fitness)
     (Log)
     (Ref "best"))
