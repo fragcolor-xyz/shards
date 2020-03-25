@@ -97,44 +97,10 @@ struct Evolve {
           });
       Tasks.run(cleanupFlow).get();
 
-      _chain2Individual.clear();
       _sortedPopulation.clear();
       _population.clear();
     }
   }
-
-  struct TickObserver {
-    Evolve &self;
-
-    void before_tick(CBChain *chain) {}
-    void before_start(CBChain *chain) {}
-    void before_prepare(CBChain *chain) {}
-
-    void before_stop(CBChain *chain) {
-      const auto individualIt = self._chain2Individual.find(chain);
-      if (individualIt == self._chain2Individual.end()) {
-        assert(false);
-      }
-      auto &individual = individualIt->second.get();
-      // Collect fitness last result
-      auto fitnessVar = chain->previousOutput;
-      if (fitnessVar.valueType == Float) {
-        individual.fitness = fitnessVar.payload.floatValue;
-      }
-    }
-
-    void before_compose(CBChain *chain) {
-      // Do mutations
-      const auto individualIt = self._chain2Individual.find(chain);
-      if (individualIt == self._chain2Individual.end()) {
-        assert(false);
-      }
-      auto &individual = individualIt->second.get();
-      // Keep in mind that individuals might not reach chain termination
-      // they might "crash", so fitness should be set to minimum before any run
-      individual.fitness = std::numeric_limits<double>::min();
-    }
-  };
 
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
@@ -176,7 +142,6 @@ struct Evolve {
         for (auto &i : _population) {
           auto fitchain =
               CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-          _chain2Individual.emplace(fitchain.get(), i);
           _sortedPopulation.emplace_back(i);
         }
       } else {
@@ -225,28 +190,47 @@ struct Evolve {
 
       // We run chains up to completion
       // From validation to end, every iteration/era
+      // We run in such a way to allow coroutines + threads properly
       {
         tf::Taskflow runFlow;
-        runFlow.parallel_for(
-            _population.begin(), _population.end(), [&](Individual &i) {
-              CBNode node;
-              TickObserver obs{*this};
+        for (auto &i : _population) {
+          auto evalInit = runFlow.emplace([&i]() {
+            // Make sure to reset any remains, should be noop
+            i.node.terminate();
+            // Evaluate our brain chain
+            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+            i.node.schedule(chain.get());
+          });
 
-              // Evaluate our brain chain
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              node.schedule(chain.get());
-              while (!node.empty()) {
-                node.tick();
-              }
+          auto evalTick = runFlow.emplace([&i]() {
+            i.node.tick();
+            return i.node.empty();
+          });
 
-              // compute the fitness
-              auto fitchain =
-                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              node.schedule(obs, fitchain.get(), chain->previousOutput);
-              while (!node.empty()) {
-                node.tick(obs);
-              }
-            });
+          auto fitInit = runFlow.emplace([&i]() {
+            // Make sure to reset any remains, should be noop
+            i.node.terminate();
+            // compute the fitness
+            TickObserver obs{i};
+            auto fitchain =
+                CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+            i.node.schedule(obs, fitchain.get(), chain->previousOutput);
+          });
+
+          auto fitTick = runFlow.emplace([&i]() {
+            TickObserver obs{i};
+            i.node.tick(obs);
+            return i.node.empty();
+          });
+
+          auto stop = runFlow.emplace([]() {});
+
+          evalInit.precede(evalTick);
+          evalTick.precede(evalTick, fitInit);
+          fitInit.precede(fitTick);
+          fitTick.precede(fitTick, stop);
+        }
         Tasks.run(runFlow).get();
       }
 
@@ -319,6 +303,8 @@ private:
     CBVar chain{};
     // We need many of them cos we use threads
     CBVar fitnessChain{};
+    // The node we run on
+    CBNode node{};
 
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;
@@ -330,6 +316,28 @@ private:
     tf::Task crossoverTask;
     int parent0Idx = -1;
     int parent1Idx = -1;
+  };
+
+  struct TickObserver {
+    Individual &self;
+
+    void before_tick(CBChain *chain) {}
+    void before_start(CBChain *chain) {}
+    void before_prepare(CBChain *chain) {}
+
+    void before_stop(CBChain *chain) {
+      // Collect fitness last result
+      auto fitnessVar = chain->previousOutput;
+      if (fitnessVar.valueType == Float) {
+        self.fitness = fitnessVar.payload.floatValue;
+      }
+    }
+
+    void before_compose(CBChain *chain) {
+      // Keep in mind that individuals might not reach chain termination
+      // they might "crash", so fitness should be set to minimum before any run
+      self.fitness = std::numeric_limits<double>::min();
+    }
   };
 
   inline void crossover(Individual &child, const Individual &parent0,
@@ -367,8 +375,6 @@ private:
                          std::reference_wrapper<Individual>,
                          std::reference_wrapper<Individual>>>
       _crossingOver;
-  std::unordered_map<CBChain *, std::reference_wrapper<Individual>>
-      _chain2Individual;
   int64_t _popsize = 64;
   double _mutation = 0.2;
   double _crossover = 0.2;

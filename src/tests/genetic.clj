@@ -25,7 +25,7 @@
      fitness)
     (Log)
     (Ref "best"))
-   10)
+   15)
   (Get "best")
   (Take 1)
   (ToJson)
