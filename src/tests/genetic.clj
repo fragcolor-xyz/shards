@@ -19,6 +19,7 @@
      (Chain
       "evolveme"
       (Mutant (Const 10) [0])
+      (Pause)
       (Mutant (Math.Multiply 2) [0] [(-->
                                       (RandomInt 10)
                                       (Math.Add 1))]))

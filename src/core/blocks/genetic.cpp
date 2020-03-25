@@ -43,6 +43,9 @@ struct Evolve {
     case 6:
       _elitism = value.payload.floatValue;
       break;
+    case 7:
+      _coros = value.payload.intValue;
+      break;
     default:
       break;
     }
@@ -64,6 +67,8 @@ struct Evolve {
       return Var(_extinction);
     case 6:
       return Var(_elitism);
+    case 7:
+      return Var(_coros);
     default:
       return CBVar();
     }
@@ -139,11 +144,16 @@ struct Evolve {
         Tasks.run(initFlow).get();
 
         // Also populate chain2Indi
+        size_t idx = 0;
         for (auto &i : _population) {
+          i.idx = idx;
           auto fitchain =
               CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
           _sortedPopulation.emplace_back(i);
+          idx++;
         }
+
+        _era = 0;
       } else {
         // do crossover here, populating tasks properly
         tf::Taskflow crossoverFlow;
@@ -186,6 +196,8 @@ struct Evolve {
             ctask.precede(atask);
         }
         Tasks.run(crossoverFlow).get();
+
+        _era++;
       }
 
       // We run chains up to completion
@@ -193,44 +205,86 @@ struct Evolve {
       // We run in such a way to allow coroutines + threads properly
       {
         tf::Taskflow runFlow;
-        for (auto &i : _population) {
-          auto evalInit = runFlow.emplace([&i]() {
-            // Make sure to reset any remains, should be noop
-            i.node.terminate();
-            // Evaluate our brain chain
-            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-            i.node.schedule(chain.get());
-          });
 
-          auto evalTick = runFlow.emplace([&i]() {
-            i.node.tick();
-            return i.node.empty();
-          });
+        auto [_ei, evalInit] = runFlow.parallel_for(
+            _era == 0 ? _sortedPopulation.begin()
+                      : _sortedPopulation.begin() + _nelites,
+            _sortedPopulation.end(),
+            [](auto &&iref) {
+              Individual &i = iref.get();
+              // Make sure to reset any remains, should be noop
+              i.node.terminate();
+              // Evaluate our brain chain
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              i.node.schedule(chain.get());
+            },
+            _coros);
 
-          auto fitInit = runFlow.emplace([&i]() {
-            // Make sure to reset any remains, should be noop
-            i.node.terminate();
-            // compute the fitness
-            TickObserver obs{i};
-            auto fitchain =
-                CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-            i.node.schedule(obs, fitchain.get(), chain->previousOutput);
-          });
+        auto [evalStart, evalEnd] = runFlow.parallel_for(
+            _era == 0 ? _sortedPopulation.begin()
+                      : _sortedPopulation.begin() + _nelites,
+            _sortedPopulation.end(),
+            [](auto &&iref) {
+              Individual &i = iref.get();
+              i.node.tick();
+            },
+            _coros);
 
-          auto fitTick = runFlow.emplace([&i]() {
-            TickObserver obs{i};
-            i.node.tick(obs);
-            return i.node.empty();
-          });
+        auto evalEndCheck = runFlow.emplace([&]() {
+          size_t ended = 0;
+          for (auto &p : _population) {
+            if (p.node.empty())
+              ended++;
+          }
+          return ended == _population.size();
+        });
 
-          auto stop = runFlow.emplace([]() {});
+        auto [fitInitStart, fitInitEnd] = runFlow.parallel_for(
+            _era == 0 ? _sortedPopulation.begin()
+                      : _sortedPopulation.begin() + _nelites,
+            _sortedPopulation.end(),
+            [](auto &&iref) {
+              Individual &i = iref.get();
+              // Make sure to reset any remains, should be noop
+              i.node.terminate();
+              // compute the fitness
+              TickObserver obs{i};
+              auto fitchain =
+                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              i.node.schedule(obs, fitchain.get(), chain->previousOutput);
+            },
+            _coros);
 
-          evalInit.precede(evalTick);
-          evalTick.precede(evalTick, fitInit);
-          fitInit.precede(fitTick);
-          fitTick.precede(fitTick, stop);
-        }
+        auto [fitStart, fitEnd] = runFlow.parallel_for(
+            _era == 0 ? _sortedPopulation.begin()
+                      : _sortedPopulation.begin() + _nelites,
+            _sortedPopulation.end(),
+            [](auto &&iref) {
+              Individual &i = iref.get();
+              TickObserver obs{i};
+              i.node.tick(obs);
+            },
+            _coros);
+
+        auto fitEndCheck = runFlow.emplace([&]() {
+          size_t ended = 0;
+          for (auto &p : _population) {
+            if (p.node.empty())
+              ended++;
+          }
+          return ended == _population.size();
+        });
+
+        auto stop = runFlow.emplace([]() {});
+
+        evalInit.precede(evalStart);
+        evalEnd.precede(evalEndCheck);
+        evalEndCheck.precede(evalStart, fitInitStart);
+        fitInitEnd.precede(fitStart);
+        fitEnd.precede(fitEndCheck);
+        fitEndCheck.precede(fitStart, stop);
+
         Tasks.run(runFlow).get();
       }
 
@@ -299,6 +353,8 @@ private:
       Serialization::varFree(fitnessChain);
     }
 
+    size_t idx = 0;
+
     // Chains are recycled
     CBVar chain{};
     // We need many of them cos we use threads
@@ -360,7 +416,10 @@ private:
       {"Extinction",
        "The rate of extinction, 0.1 = 10%.",
        {CoreInfo::FloatType}},
-      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}}};
+      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
+      {"Coroutines",
+       "The number of coroutines to run on each thread.",
+       {CoreInfo::IntType}}};
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
 
@@ -376,12 +435,14 @@ private:
                          std::reference_wrapper<Individual>>>
       _crossingOver;
   int64_t _popsize = 64;
+  int64_t _coros = 8;
   double _mutation = 0.2;
   double _crossover = 0.2;
   double _extinction = 0.1;
   size_t _nkills = 0;
   double _elitism = 0.1;
   size_t _nelites = 0;
+  size_t _era = 0;
 };
 
 struct Mutant {
