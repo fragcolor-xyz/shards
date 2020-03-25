@@ -643,7 +643,7 @@ struct Serialization {
   }
 
   template <class BinaryReader>
-  static inline void deserialize(BinaryReader read, CBVar &output) {
+  static inline void deserialize(BinaryReader &read, CBVar &output) {
     // we try to recycle memory so pass a empty None as first timer!
     CBType nextType;
     read((uint8_t *)&nextType, sizeof(output.valueType));
@@ -916,7 +916,7 @@ struct Serialization {
   }
 
   template <class BinaryWriter>
-  static inline size_t serialize(const CBVar &input, BinaryWriter write) {
+  static inline size_t serialize(const CBVar &input, BinaryWriter &write) {
     size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
     total += sizeof(input.valueType);
