@@ -299,6 +299,36 @@ struct Evolve {
             .get();
       }
 
+// The following is for reference and for full TSAN runs
+#if 0
+      // We run chains up to completion
+      // From validation to end, every iteration/era
+      {
+        tf::Taskflow runFlow;
+        runFlow.parallel_for(
+            _population.begin(), _population.end(), [&](Individual &i) {
+              CBNode node;
+              TickObserver obs{*this};
+
+              // Evaluate our brain chain
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              node.schedule(chain.get());
+              while (!node.empty()) {
+                node.tick();
+              }
+
+              // compute the fitness
+              auto fitchain =
+                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              node.schedule(obs, fitchain.get(), chain->previousOutput);
+              while (!node.empty()) {
+                node.tick(obs);
+              }
+            });
+        Tasks.run(runFlow).get();
+      }
+#endif
+
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
                    std::reference_wrapper<Individual> b) {
