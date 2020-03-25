@@ -23,7 +23,9 @@
       (Mutant (Math.Multiply 2) [0] [(-->
                                       (RandomInt 10)
                                       (Math.Add 1))]))
-     fitness)
+     fitness
+     :Population 256
+     :Coroutines 32)
     (Log)
     (Ref "best"))
    15)

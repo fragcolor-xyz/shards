@@ -204,13 +204,13 @@ struct Evolve {
       // From validation to end, every iteration/era
       // We run in such a way to allow coroutines + threads properly
       {
-        tf::Taskflow runFlow;
+        tf::Taskflow flow;
 
-        auto [_ei, evalInit] = runFlow.parallel_for(
+        flow.parallel_for(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &&iref) {
+            [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
               i.node.terminate();
@@ -220,30 +220,43 @@ struct Evolve {
             },
             _coros);
 
-        auto [evalStart, evalEnd] = runFlow.parallel_for(
+        Tasks.run(flow).get();
+      }
+
+      {
+        tf::Taskflow flow;
+
+        flow.parallel_for(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &&iref) {
+            [](auto &iref) {
               Individual &i = iref.get();
               i.node.tick();
             },
             _coros);
 
-        auto evalEndCheck = runFlow.emplace([&]() {
-          size_t ended = 0;
-          for (auto &p : _population) {
-            if (p.node.empty())
-              ended++;
-          }
-          return ended == _population.size();
-        });
+        Tasks
+            .run_until(flow,
+                       [&]() {
+                         size_t ended = 0;
+                         for (auto &p : _population) {
+                           if (p.node.empty())
+                             ended++;
+                         }
+                         return ended == _population.size();
+                       })
+            .get();
+      }
 
-        auto [fitInitStart, fitInitEnd] = runFlow.parallel_for(
+      {
+        tf::Taskflow flow;
+
+        flow.parallel_for(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &&iref) {
+            [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
               i.node.terminate();
@@ -256,36 +269,34 @@ struct Evolve {
             },
             _coros);
 
-        auto [fitStart, fitEnd] = runFlow.parallel_for(
+        Tasks.run(flow).get();
+      }
+
+      {
+        tf::Taskflow flow;
+
+        flow.parallel_for(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &&iref) {
+            [](auto &iref) {
               Individual &i = iref.get();
               TickObserver obs{i};
               i.node.tick(obs);
             },
             _coros);
 
-        auto fitEndCheck = runFlow.emplace([&]() {
-          size_t ended = 0;
-          for (auto &p : _population) {
-            if (p.node.empty())
-              ended++;
-          }
-          return ended == _population.size();
-        });
-
-        auto stop = runFlow.emplace([]() {});
-
-        evalInit.precede(evalStart);
-        evalEnd.precede(evalEndCheck);
-        evalEndCheck.precede(evalStart, fitInitStart);
-        fitInitEnd.precede(fitStart);
-        fitEnd.precede(fitEndCheck);
-        fitEndCheck.precede(fitStart, stop);
-
-        Tasks.run(runFlow).get();
+        Tasks
+            .run_until(flow,
+                       [&]() {
+                         size_t ended = 0;
+                         for (auto &p : _population) {
+                           if (p.node.empty())
+                             ended++;
+                         }
+                         return ended == _population.size();
+                       })
+            .get();
       }
 
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
