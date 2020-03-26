@@ -200,6 +200,7 @@ struct Evolve {
         _era++;
       }
 
+#if 1
       // We run chains up to completion
       // From validation to end, every iteration/era
       // We run in such a way to allow coroutines + threads properly
@@ -232,7 +233,8 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              i.node.tick();
+              if (!i.node.empty())
+                i.node.tick();
             },
             _coros);
 
@@ -281,8 +283,10 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              TickObserver obs{i};
-              i.node.tick(obs);
+              if (!i.node.empty()) {
+                TickObserver obs{i};
+                i.node.tick(obs);
+              }
             },
             _coros);
 
@@ -298,9 +302,9 @@ struct Evolve {
                        })
             .get();
       }
+#else
+      // The following is for reference and for full TSAN runs
 
-// The following is for reference and for full TSAN runs
-#if 0
       // We run chains up to completion
       // From validation to end, every iteration/era
       {
@@ -308,7 +312,7 @@ struct Evolve {
         runFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
               CBNode node;
-              TickObserver obs{*this};
+              TickObserver obs{i};
 
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
