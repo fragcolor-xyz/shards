@@ -3,6 +3,17 @@
 
 #define STB_DS_IMPLEMENTATION 1
 
+#ifdef CB_USE_TSAN
+extern "C" {
+void *__tsan_get_current_fiber(void);
+void *__tsan_create_fiber(unsigned flags);
+void __tsan_destroy_fiber(void *fiber);
+void __tsan_switch_to_fiber(void *fiber, unsigned flags);
+void __tsan_set_fiber_name(void *fiber, const char *name);
+const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
+}
+#endif
+
 #include "runtime.hpp"
 #include "blocks/shared.hpp"
 #include <boost/stacktrace.hpp>
@@ -543,7 +554,14 @@ void suspend(CBContext *context, double seconds) {
   } else {
     context->next = Clock::now().time_since_epoch() + Duration(seconds);
   }
+#ifdef CB_USE_TSAN
+  auto curr = __tsan_get_current_fiber();
+  __tsan_switch_to_fiber(context->tsan_handle, 0);
+#endif
   context->continuation = context->continuation.resume();
+#ifdef CB_USE_TSAN
+  __tsan_switch_to_fiber(curr, 0);
+#endif
   if (context->restarted) {
     throw ChainRestarting();
   } else if (context->aborted) {
@@ -1592,6 +1610,9 @@ boost::context::continuation run(CBChain *chain,
 
   // Create a new context and copy the sink in
   CBContext context(std::move(sink), chain);
+#ifdef CB_USE_TSAN
+  context.tsan_handle = chain->tsan_coro;
+#endif
   // also pupulate context in chain
   chain->context = &context;
 

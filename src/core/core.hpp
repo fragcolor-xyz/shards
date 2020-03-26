@@ -133,6 +133,9 @@ struct CBChain {
   std::string name;
 
   CBCoro *coro;
+#ifdef CB_USE_TSAN
+  void *tsan_coro;
+#endif
 
   std::atomic<State> state{Stopped};
 

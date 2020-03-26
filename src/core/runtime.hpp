@@ -83,6 +83,9 @@ struct CBContext {
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
   Duration next{};
+#ifdef CB_USE_TSAN
+  void *tsan_handle;
+#endif
 
   // Iteration counter
   uint64_t iterationCount;
@@ -434,10 +437,18 @@ inline void prepare(CBChain *chain) {
   if (chain->coro)
     return;
 
+#ifdef CB_USE_TSAN
+  auto curr = __tsan_get_current_fiber();
+  chain->tsan_coro = __tsan_create_fiber(0);
+  __tsan_switch_to_fiber(chain->tsan_coro);
+#endif
   chain->coro = new CBCoro(
       boost::context::callcc([&chain](boost::context::continuation &&sink) {
         return run(chain, std::move(sink));
       }));
+#ifdef CB_USE_TSAN
+  __tsan_switch_to_fiber(curr);
+#endif
 }
 
 inline void start(CBChain *chain, CBVar input = {}) {
@@ -467,7 +478,14 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 
       // BIG Warning: chain->context existed in the coro stack!!!
       // after this resume chain->context is trash!
+#ifdef CB_USE_TSAN
+      auto curr = __tsan_get_current_fiber();
+      __tsan_switch_to_fiber(chain->tsan_coro, 0);
+#endif
       chain->coro->resume();
+#ifdef CB_USE_TSAN
+      __tsan_switch_to_fiber(curr, 0);
+#endif
     }
 
     // delete also the coro ptr
@@ -500,7 +518,14 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
     if (rootInput != Empty) {
       cloneVar(chain->rootTickInput, rootInput);
     }
+#ifdef CB_USE_TSAN
+    auto curr = __tsan_get_current_fiber();
+    __tsan_switch_to_fiber(chain->tsan_coro, 0);
+#endif
     *chain->coro = chain->coro->resume();
+#ifdef CB_USE_TSAN
+    __tsan_switch_to_fiber(curr, 0);
+#endif
   }
   return true;
 }
