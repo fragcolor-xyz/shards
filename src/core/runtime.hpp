@@ -439,6 +439,8 @@ inline void prepare(CBChain *chain) {
 
 #ifdef CB_USE_TSAN
   auto curr = __tsan_get_current_fiber();
+  if (chain->tsan_coro)
+    __tsan_destroy_fiber(chain->tsan_coro);
   chain->tsan_coro = __tsan_create_fiber(0);
   __tsan_switch_to_fiber(chain->tsan_coro);
 #endif

@@ -91,12 +91,21 @@ struct CBChain {
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
         composedHash(0), context(nullptr), node(nullptr) {
     LOG(TRACE) << "CBChain(): " << name;
+#ifdef CB_USE_TSAN
+    tsan_coro = nullptr;
+#endif
   }
 
   ~CBChain() {
     clear();
     chainblocks::destroyVar(rootTickInput);
     LOG(TRACE) << "~CBChain() " << name;
+
+#ifdef CB_USE_TSAN
+    if (tsan_coro) {
+      __tsan_destroy_fiber(tsan_coro);
+    }
+#endif
   }
 
   void clear();
