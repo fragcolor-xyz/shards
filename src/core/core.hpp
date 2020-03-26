@@ -4,6 +4,17 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
+#ifdef CB_USE_TSAN
+extern "C" {
+void *__tsan_get_current_fiber(void);
+void *__tsan_create_fiber(unsigned flags);
+void __tsan_destroy_fiber(void *fiber);
+void __tsan_switch_to_fiber(void *fiber, unsigned flags);
+void __tsan_set_fiber_name(void *fiber, const char *name);
+const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
+}
+#endif
+
 #include "chainblocks.h"
 #include "ops_internal.hpp"
 #include <chainblocks.hpp>

@@ -442,14 +442,14 @@ inline void prepare(CBChain *chain) {
   if (chain->tsan_coro)
     __tsan_destroy_fiber(chain->tsan_coro);
   chain->tsan_coro = __tsan_create_fiber(0);
-  __tsan_switch_to_fiber(chain->tsan_coro);
+  __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
   chain->coro = new CBCoro(
       boost::context::callcc([&chain](boost::context::continuation &&sink) {
         return run(chain, std::move(sink));
       }));
 #ifdef CB_USE_TSAN
-  __tsan_switch_to_fiber(curr);
+  __tsan_switch_to_fiber(curr, 0);
 #endif
 }
 
