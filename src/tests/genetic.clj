@@ -24,8 +24,8 @@
                                       (RandomInt 10)
                                       (Math.Add 1))]))
      fitness
-     :Population 256
-     :Coroutines 32)
+     :Population 64
+     :Coroutines 8)
     (Log)
     (Ref "best"))
    15)
