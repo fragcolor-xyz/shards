@@ -204,7 +204,7 @@ struct CBChain {
 namespace chainblocks {
 struct OwnedVar : public CBVar {
   OwnedVar() : CBVar() {}
-  OwnedVar(const CBVar &source) { cloneVar(*this, source); }
+  OwnedVar(const CBVar &source) : CBVar() { cloneVar(*this, source); }
   OwnedVar &operator=(const CBVar &other) {
     cloneVar(*this, other);
     return *this;
