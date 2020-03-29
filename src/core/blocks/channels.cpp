@@ -19,36 +19,46 @@ struct ChannelShared {
 struct DummyChannel : public ChannelShared {};
 
 struct MPMCChannel : public ChannelShared {
+  MPMCChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
+
   // no real cleanups happens in Produce/Consume to keep things simple
   // and without locks
   ~MPMCChannel() {
-    CBVar tmp{};
-    while (data.pop(tmp)) {
-      destroyVar(tmp);
-    }
-    while (recycle.pop(tmp)) {
-      destroyVar(tmp);
+    if (!_noCopy) {
+      CBVar tmp{};
+      while (data.pop(tmp)) {
+        destroyVar(tmp);
+      }
+      while (recycle.pop(tmp)) {
+        destroyVar(tmp);
+      }
     }
   }
 
   // A single source to steal data from
   boost::lockfree::queue<CBVar> data{16};
   boost::lockfree::stack<CBVar> recycle{16};
+
+private:
+  bool _noCopy;
 };
 
 struct Broadcast;
 class BroadcastChannel : public ChannelShared {
 public:
+  BroadcastChannel(bool noCopy) : ChannelShared(), _noCopy(noCopy) {}
+
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
     std::unique_lock<std::mutex> lock(submutex);
-    return subscribers.emplace_back();
+    return subscribers.emplace_back(_noCopy);
   }
 
 protected:
   friend struct Broadcast;
   std::mutex submutex;
   std::list<MPMCChannel> subscribers;
+  bool _noCopy = false;
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
@@ -68,9 +78,14 @@ public:
 struct Base {
   Channel *_channel = nullptr;
   std::string _name;
+  bool _noCopy = false;
 
   static inline Parameters producerParams{
-      {"Name", "The name of the channel.", {CoreInfo::StringType}}};
+      {"Name", "The name of the channel.", {CoreInfo::StringType}},
+      {"NoCopy!!",
+       "Unsafe flag that will improve performance by not copying values when "
+       "sending them thru the channel.",
+       {CoreInfo::BoolType}}};
 
   static inline Parameters consumerParams{
       {"Name", "The name of the channel.", {CoreInfo::StringType}},
@@ -78,9 +93,28 @@ struct Base {
        "The amount of values to buffer before outputting them.",
        {CoreInfo::IntType}}};
 
-  void setParam(int index, CBVar value) { _name = value.payload.stringValue; }
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0: {
+      _name = value.payload.stringValue;
+    } break;
+    case 1: {
+      _noCopy = value.payload.boolValue;
+    } break;
+    default:
+      break;
+    }
+  }
 
-  CBVar getParam(int index) { return Var(_name); }
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+    case 1:
+      return Var(_noCopy);
+    }
+    return CBVar();
+  }
 
   template <typename T>
   void verifyInputType(T &channel, const CBInstanceData &data) {
@@ -104,7 +138,7 @@ struct Produce : public Base {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 0: {
-      vchannel.emplace<MPMCChannel>();
+      vchannel.emplace<MPMCChannel>(_noCopy);
       auto &channel = std::get<MPMCChannel>(vchannel);
       // no cloning here, this is potentially dangerous if the type is dynamic
       channel.type = data.inputType;
@@ -131,8 +165,13 @@ struct Produce : public Base {
     // if it fails will just allocate a brand new
     _mpchannel->recycle.pop(tmp);
 
-    // this internally will reuse memory
-    cloneVar(tmp, input);
+    if (_noCopy) {
+      tmp = input;
+    } else {
+      // this internally will reuse memory
+      // yet it can be still slow for big vars
+      cloneVar(tmp, input);
+    }
 
     // enqueue for the stealing
     _mpchannel->data.push(tmp);
@@ -154,7 +193,7 @@ struct Broadcast : public Base {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 0: {
-      vchannel.emplace<BroadcastChannel>();
+      vchannel.emplace<BroadcastChannel>(_noCopy);
       auto &channel = std::get<BroadcastChannel>(vchannel);
       // no cloning here, this is potentially dangerous if the type is dynamic
       channel.type = data.inputType;
@@ -190,8 +229,12 @@ struct Broadcast : public Base {
         // if it fails will just allocate a brand new
         it->recycle.pop(tmp);
 
-        // this internally will reuse memory
-        cloneVar(tmp, input);
+        if (_noCopy) {
+          tmp = input;
+        } else {
+          // this internally will reuse memory
+          cloneVar(tmp, input);
+        }
 
         // enqueue for the stealing
         it->data.push(tmp);

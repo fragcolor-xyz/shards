@@ -39,7 +39,7 @@
    (Repeat
     (-->
      "A message"
-     (Broadcast "b")
+     (Broadcast "b" :NoCopy!! true)
      (Log "Broadcasted: ")
      (Pause 0.1))
     10)
