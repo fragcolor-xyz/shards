@@ -280,6 +280,10 @@ endforeach()
 add_custom_target(tidy DEPENDS ${tidyfied})
 ###
 
+if(UNIX)
+  add_compile_options(-fvisibility=hidden)
+endif()
+
 if(UNIX AND NOT APPLE)
   set(LINUX TRUE)
 endif()

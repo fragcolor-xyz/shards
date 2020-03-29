@@ -1344,6 +1344,7 @@ BUILTIN("import") {
   auto lib_name_str = filepath.string();
   auto lib_name = lib_name_str.c_str();
 
+  // FIXME we are leaking libs
 #if _WIN32
   LOG(INFO) << "Importing DLL: " << lib_name;
   auto handle = LoadLibraryA(lib_name);
@@ -1352,7 +1353,7 @@ BUILTIN("import") {
   }
 #elif defined(__linux__) || defined(__APPLE__)
   LOG(INFO) << "Importing Shared Library: " << lib_name;
-  auto handle = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
+  auto handle = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
     LOG(ERROR) << "dlerror: " << dlerror();
   }
