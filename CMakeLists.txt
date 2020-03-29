@@ -347,17 +347,17 @@ if(NOT BUILD_CORE_ONLY)
       set(CBLP_PLATFORM_LIBS
         ${CHAINBLOCKS_DIR}/deps/bimg/.build/win64_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
-	${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
+	      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
-	)
+	      )
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
       # 32 bits
       set(CBLP_PLATFORM_LIBS
         ${CHAINBLOCKS_DIR}/deps/bimg/.build/win32_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
-	${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
+	      ${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
-	)
+	      )
     endif()
   elseif(APPLE)
     add_compile_definitions(BGFX_CONFIG_RENDERER_METAL)
