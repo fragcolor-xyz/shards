@@ -84,6 +84,8 @@ struct RuntimeObserver {
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &src);
+
+class InternalCore;
 } // namespace chainblocks
 
 struct CBChain {
@@ -202,15 +204,7 @@ struct CBChain {
 };
 
 namespace chainblocks {
-struct OwnedVar : public CBVar {
-  OwnedVar() : CBVar() {}
-  OwnedVar(const CBVar &source) : CBVar() { cloneVar(*this, source); }
-  OwnedVar &operator=(const CBVar &other) {
-    cloneVar(*this, other);
-    return *this;
-  }
-  ~OwnedVar() { destroyVar(*this); }
-};
+using OwnedVar = TOwnedVar<InternalCore>;
 
 using CBMap = std::unordered_map<
     std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,

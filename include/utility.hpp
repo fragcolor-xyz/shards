@@ -254,6 +254,16 @@ public:
   const CBlocks &blocks() const { return _blocks; }
 };
 
+template <class CB_CORE> struct TOwnedVar : public CBVar {
+  TOwnedVar() : CBVar() {}
+  TOwnedVar(const CBVar &source) : CBVar() { CB_CORE::cloneVar(*this, source); }
+  TOwnedVar &operator=(const CBVar &other) {
+    CB_CORE::cloneVar(*this, other);
+    return *this;
+  }
+  ~TOwnedVar() { CB_CORE::destroyVar(*this); }
+};
+
 template <class CB_CORE> struct AsyncOp {
   AsyncOp(CBContext *context) : _context(context) {}
 

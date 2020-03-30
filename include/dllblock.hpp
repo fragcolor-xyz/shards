@@ -16,9 +16,9 @@ At runtime just dlopen the dll, that's it!
 #include <dlfcn.h>
 #endif
 #include <cassert>
+#include <functional>
 
 #include "blockwrapper.hpp"
-#include "chainblocks.h"
 
 namespace chainblocks {
 // this must be defined in the external
@@ -182,8 +182,176 @@ private:
   static inline CoreLoader sCore{};
 };
 
-typedef TParamVar<Core> ParamVar;
-typedef TBlocksVar<Core> BlocksVar;
+using ParamVar = TParamVar<Core>;
+using BlocksVar = TBlocksVar<Core>;
+using OwnedVar = TOwnedVar<Core>;
+
+template <typename T> class PtrIterator {
+public:
+  typedef T value_type;
+
+  PtrIterator(T *ptr) : ptr(ptr) {}
+
+  PtrIterator &operator+=(std::ptrdiff_t s) {
+    ptr += s;
+    return *this;
+  }
+  PtrIterator &operator-=(std::ptrdiff_t s) {
+    ptr -= s;
+    return *this;
+  }
+
+  PtrIterator operator+(std::ptrdiff_t s) {
+    PtrIterator it(ptr);
+    return it += s;
+  }
+  PtrIterator operator-(std::ptrdiff_t s) {
+    PtrIterator it(ptr);
+    return it -= s;
+  }
+
+  PtrIterator operator++() {
+    ++ptr;
+    return *this;
+  }
+  PtrIterator operator++(int s) {
+    ptr += s;
+    return *this;
+  }
+
+  PtrIterator operator--() {
+    --ptr;
+    return *this;
+  }
+  PtrIterator operator--(int s) {
+    ptr -= s;
+    return *this;
+  }
+
+  std::ptrdiff_t operator-(PtrIterator const &other) const {
+    return ptr - other.ptr;
+  }
+
+  T &operator*() const { return *ptr; }
+
+  bool operator==(const PtrIterator &rhs) const { return ptr == rhs.ptr; }
+  bool operator!=(const PtrIterator &rhs) const { return ptr != rhs.ptr; }
+  bool operator>(const PtrIterator &rhs) const { return ptr > rhs.ptr; }
+  bool operator<(const PtrIterator &rhs) const { return ptr < rhs.ptr; }
+  bool operator>=(const PtrIterator &rhs) const { return ptr >= rhs.ptr; }
+  bool operator<=(const PtrIterator &rhs) const { return ptr <= rhs.ptr; }
+
+private:
+  T *ptr;
+};
+
+template <typename S, typename T, void (*arrayResize)(S &, uint64_t),
+          void (*arrayFree)(S &), typename Allocator = std::allocator<T>>
+class IterableArray {
+public:
+  typedef S seq_type;
+  typedef T value_type;
+  typedef size_t size_type;
+
+  typedef PtrIterator<T> iterator;
+  typedef PtrIterator<const T> const_iterator;
+
+  IterableArray() : _seq({}), _owned(true) {}
+
+  // Not OWNING!
+  IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
+
+  // implicit converter
+  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) {
+    assert(v.valueType == Seq);
+  }
+
+  IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
+
+  IterableArray(size_t s, T v) : _seq({}), _owned(true) {
+    arrayResize(_seq, s);
+    for (size_t i = 0; i < s; i++) {
+      _seq[i] = v;
+    }
+  }
+
+  IterableArray(const_iterator first, const_iterator last)
+      : _seq({}), _owned(true) {
+    size_t size = last - first;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq[i] = *first++;
+    }
+  }
+
+  IterableArray(const IterableArray &other) : _seq(nullptr), _owned(true) {
+    size_t size = other._seq.len;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq[i] = other._seq[i];
+    }
+  }
+
+  IterableArray &operator=(IterableArray &other) {
+    std::swap(_seq, other._seq);
+    std::swap(_owned, other._owned);
+    return *this;
+  }
+
+  IterableArray &operator=(const IterableArray &other) {
+    _seq = {};
+    _owned = true;
+    size_t size = other._seq.len;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq.elements[i] = other._seq.elements[i];
+    }
+    return *this;
+  }
+
+  ~IterableArray() {
+    if (_owned) {
+      arrayFree(_seq);
+    }
+  }
+
+private:
+  seq_type _seq;
+  bool _owned;
+
+public:
+  iterator begin() { return iterator(&_seq.elements[0]); }
+  const_iterator begin() const { return const_iterator(&_seq.elements[0]); }
+  const_iterator cbegin() const { return const_iterator(&_seq.elements[0]); }
+  iterator end() { return iterator(&_seq.elements[0] + size()); }
+  const_iterator end() const {
+    return const_iterator(&_seq.elements[0] + size());
+  }
+  const_iterator cend() const {
+    return const_iterator(&_seq.elements[0] + size());
+  }
+  // those (T&) casts are a bit unsafe
+  // but needed when overriding CBVar with utility classes
+  T &operator[](int index) { return (T &)_seq.elements[index]; }
+  const T &operator[](int index) const { return (T &)_seq.elements[index]; }
+  T &front() { return (T &)_seq.elements[0]; }
+  const T &front() const { return (T &)_seq.elements[0]; }
+  T &back() { return (T &)_seq.elements[size() - 1]; }
+  const T &back() const { return (T &)_seq.elements[size() - 1]; }
+  T *data() { return (T *)_seq; }
+  size_t size() const { return _seq.len; }
+  bool empty() const { return _seq.elements == nullptr || size() == 0; }
+  void resize(size_t nsize) { arrayResize(_seq, nsize); }
+  void push_back(const T &value) { arrayPush(_seq, value); }
+  void clear() { arrayResize(_seq, 0); }
+  operator seq_type() const { return _seq; }
+};
+
+using IterableSeq =
+    IterableArray<CBSeq, CBVar, &Core::seqResize, &Core::seqFree>;
+using IterableExposedInfo =
+    IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
+                  &Core::expTypesFree>;
 }; // namespace chainblocks
 
 #endif
