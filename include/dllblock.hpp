@@ -352,6 +352,11 @@ using IterableSeq =
 using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
                   &Core::expTypesFree>;
+
+inline void registerBlock(const char *fullName,
+                          CBBlockConstructor constructor) {
+  Core::registerBlock(fullName, constructor);
+}
 }; // namespace chainblocks
 
 #endif
