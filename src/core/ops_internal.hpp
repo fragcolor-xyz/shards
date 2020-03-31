@@ -150,8 +150,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   case Seq:
     os << "[";
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      // ubsan, might be misaligned, hint copy
-      const auto v = var.payload.seqValue.elements[i];
+      const auto &v = var.payload.seqValue.elements[i];
       if (i == 0)
         os << v;
       else

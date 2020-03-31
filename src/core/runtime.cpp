@@ -1750,8 +1750,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 
     chainblocks::arrayResize(dst.payload.seqValue, srcLen);
     for (size_t i = 0; i < srcLen; i++) {
-      // hint a copy due to possible uncertain align
-      const auto subsrc = src.payload.seqValue.elements[i];
+      const auto &subsrc = src.payload.seqValue.elements[i];
       cloneVar(dst.payload.seqValue.elements[i], subsrc);
     }
   } break;

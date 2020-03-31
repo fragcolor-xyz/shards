@@ -127,9 +127,8 @@ inline bool _seqEq(const CBVar &a, const CBVar &b) {
     return false;
 
   for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    // ubsan we need to hint copies as might be unaligned (lmdb, extern)
-    const auto suba = a.payload.seqValue.elements[i];
-    const auto subb = b.payload.seqValue.elements[i];
+    const auto &suba = a.payload.seqValue.elements[i];
+    const auto &subb = b.payload.seqValue.elements[i];
     if (suba != subb)
       return false;
   }

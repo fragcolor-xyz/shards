@@ -86,6 +86,8 @@ protected:
 };
 
 struct Get : public Base {
+  OwnedVar _output{};
+
   CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   void cleanup() {
@@ -132,8 +134,18 @@ struct Get : public Base {
             (CBString)((uint8_t *)val.mv_data + sizeof(CBVar));
       } break;
       case CBType::Seq: {
-        res.payload.seqValue.elements =
-            (CBVar *)((uint8_t *)val.mv_data + sizeof(CBVar));
+        if (_output.valueType != Seq) {
+          destroyVar(_output);
+        }
+        // likely unaligned so we gotta copy
+        arrayResize(_output.payload.seqValue, res.payload.seqValue.len);
+        for (uint32_t i = 0; i < res.payload.seqValue.len; i++) {
+          const ptrdiff_t offset = sizeof(CBVar) * i;
+          memcpy(&_output.payload.seqValue.elements[i],
+                 ((uint8_t *)val.mv_data + sizeof(CBVar) + offset),
+                 sizeof(CBVar));
+        }
+        res.payload.seqValue = _output.payload.seqValue;
       } break;
       default: {
         throw ActivationError(
