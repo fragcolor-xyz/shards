@@ -1153,12 +1153,14 @@ BUILTIN("run") {
       if (dec)
         times--;
     }
+    node->terminate();
   } else {
     while (!chainblocks::tick(chain) && times > 0) {
       chainblocks::sleep(sleepTime);
       if (dec)
         times--;
     }
+    chainblocks::stop(chain);
   }
 
   return mal::boolean(true);
