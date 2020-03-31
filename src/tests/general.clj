@@ -727,7 +727,7 @@
            "SaveBinary"
            (Const testChain)
            (WriteFile "testChain.bin")))
-(if (tick Root) nil (throw "Root tick failed"))
+(if (run Root 0.001 100) nil (throw "Root tick failed"))
 
 (schedule Root
           (Chain
@@ -738,10 +738,10 @@
            (Log)
            (ChainRunner .loadedChain)
            ))
-(if (tick Root) nil (throw "Root tick failed"))
+(if (run Root 0.001 100) nil (throw "Root tick failed"))
 
 (schedule Root testChain)
-(if (tick Root) nil (throw "Root tick failed"))
+(if (run Root 0.001 100) nil (throw "Root tick failed"))
 
 (def Root (Node))
 (def testChain nil)
@@ -783,5 +783,4 @@
 ))
 
 (schedule Root fileReader)
-(if (tick Root) nil (throw "Root tick failed"))
-
+(if (run Root 0.001 100) nil (throw "Root tick failed"))
