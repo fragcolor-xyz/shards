@@ -1145,22 +1145,37 @@ BUILTIN("run") {
   }
 
   if (node) {
-    while (!node->empty() && times > 0) {
+    while (!node->empty()) {
       auto noErrors = node->tick();
-      if (!noErrors)
+
+      if (!noErrors) {
         return mal::boolean(false);
-      chainblocks::sleep(sleepTime);
-      if (dec)
+      }
+
+      if (dec) {
         times--;
+        if (times == 0) {
+          node->terminate();
+          break;
+        }
+      }
+      // We on purpose run terminate (evenutally)
+      // before sleep
+      // cos during sleep some blocks (lmdb)
+      // swap states and invalidate stuff
+      chainblocks::sleep(sleepTime);
     }
-    node->terminate();
   } else {
-    while (!chainblocks::tick(chain) && times > 0) {
-      chainblocks::sleep(sleepTime);
-      if (dec)
+    while (!chainblocks::tick(chain)) {
+      if (dec) {
         times--;
+        if (times == 0) {
+          chainblocks::stop(chain);
+          break;
+        }
+      }
+      chainblocks::sleep(sleepTime);
     }
-    chainblocks::stop(chain);
   }
 
   return mal::boolean(true);

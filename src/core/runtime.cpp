@@ -1738,55 +1738,22 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   switch (src.valueType) {
   case Seq: {
     size_t srcLen = src.payload.seqValue.len;
-#if 0
-    destroyVar(dst);
-    dst.valueType = Seq;
-    dst.payload.seqValue = {};
-    for (size_t i = 0; i < srcLen; i++) {
-      auto &subsrc = src.payload.seqValue.elements[i];
-      CBVar tmp{};
-      cloneVar(tmp, subsrc);
-      chainblocks::arrayPush(dst.payload.seqValue, tmp);
-    }
-#else
+
     // try our best to re-use memory
     if (dst.valueType != Seq) {
       destroyVar(dst);
       dst.valueType = Seq;
-      for (size_t i = 0; i < srcLen; i++) {
-        auto &subsrc = src.payload.seqValue.elements[i];
-        CBVar tmp{};
-        cloneVar(tmp, subsrc);
-        chainblocks::arrayPush(dst.payload.seqValue, tmp);
-      }
-    } else {
-      if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
-        return;
-
-      if (srcLen <= dst.payload.seqValue.cap) {
-        // clone on top of current values
-        chainblocks::arrayResize(dst.payload.seqValue, srcLen);
-        for (size_t i = 0; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          cloneVar(dst.payload.seqValue.elements[i], subsrc);
-        }
-      } else {
-        size_t dstLen = dst.payload.seqValue.len;
-        // re-use avail ones
-        for (size_t i = 0; i < dstLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          cloneVar(dst.payload.seqValue.elements[i], subsrc);
-        }
-        // append new values
-        for (size_t i = dstLen; i < srcLen; i++) {
-          auto &subsrc = src.payload.seqValue.elements[i];
-          CBVar tmp{};
-          cloneVar(tmp, subsrc);
-          chainblocks::arrayPush(dst.payload.seqValue, subsrc);
-        }
-      }
     }
-#endif
+
+    if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
+      return;
+
+    chainblocks::arrayResize(dst.payload.seqValue, srcLen);
+    for (size_t i = 0; i < srcLen; i++) {
+      // hint a copy due to possible uncertain align
+      const auto subsrc = src.payload.seqValue.elements[i];
+      cloneVar(dst.payload.seqValue.elements[i], subsrc);
+    }
   } break;
   case Path:
   case ContextVar:
