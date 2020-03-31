@@ -1627,10 +1627,12 @@ boost::context::continuation run(CBChain *chain,
     context.iterationCount++;              // increatse iteration counter
     context.stack.len = 0;
     if (unlikely(runRes.state == Failed)) {
+      LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
       context.aborted = true;
       break;
     } else if (unlikely(runRes.state == Stopped)) {
+      LOG(DEBUG) << "chain " << chain->name << " stopped.";
       context.aborted = true;
       break;
     }
@@ -1640,8 +1642,10 @@ boost::context::continuation run(CBChain *chain,
       context.next = Duration(0);
       context.continuation = context.continuation.resume();
       // This is delayed upon continuation!!
-      if (context.aborted)
+      if (context.aborted) {
+        LOG(DEBUG) << "chain " << chain->name << " aborted on resume.";
         break;
+      }
     }
   }
 
@@ -1649,7 +1653,7 @@ endOfChain:
   // Copy the output variable since the next call might wipe it
   auto tmp = chain->finishedOutput;
   // Reset it, we are not sure on the internal state
-  chain->finishedOutput = {};
+  memset(&chain->finishedOutput, 0x0, sizeof(CBVar));
   chain->ownedOutput = true;
   cloneVar(chain->finishedOutput, tmp);
 

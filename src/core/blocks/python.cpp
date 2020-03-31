@@ -249,7 +249,6 @@ struct Env {
     // store ts
     auto ts = _tsGet();
 
-    // FIXME TODO handle chain state
     suspend((CBContext *)ctx, time);
 
     // restore previos ts
