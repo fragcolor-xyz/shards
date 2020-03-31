@@ -92,7 +92,6 @@ struct Get : public Base {
     if (_txn) {
       mdb_txn_abort(_txn);
       _txn = nullptr;
-      ;
     }
     Base::cleanup();
   }
