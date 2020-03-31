@@ -85,7 +85,7 @@ struct RuntimeObserver {
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &src);
 
-class InternalCore;
+struct InternalCore;
 } // namespace chainblocks
 
 struct CBChain {
