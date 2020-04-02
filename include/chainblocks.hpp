@@ -164,7 +164,7 @@ struct Parameters {
   // static inline is nice but it's likely unordered!
   // won't likely work with some compilers
   // and if linking dlls!
- 
+
   Parameters(const Parameters &others,
              std::initializer_list<ParameterInfo> infos) {
     for (auto &info : others._infos) {

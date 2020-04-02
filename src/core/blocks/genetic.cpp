@@ -180,6 +180,8 @@ struct Evolve {
               ind.get().crossoverTask = crossoverFlow.emplace(
                   [=]() { crossover(ind, parent0, parent1); });
               _crossingOver.emplace_back(ind, parent0, parent1);
+              ind.get().parent0Idx = parent0Idx;
+              ind.get().parent1Idx = parent1Idx;
             }
           } else {
             ind.get().crossoverTask.reset();
