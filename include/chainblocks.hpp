@@ -145,14 +145,26 @@ struct Parameters {
   std::vector<ParameterInfo> _infos;
   std::vector<CBParameterInfo> _pinfos;
 
-  Parameters() {}
+  Parameters() = default;
 
-  Parameters(std::initializer_list<ParameterInfo> infos) : _infos(infos) {
+  Parameters(const Parameters &others, std::vector<ParameterInfo> infos) {
+    for (auto &info : others._infos) {
+      _infos.push_back(info);
+    }
+    for (auto &info : infos) {
+      _infos.push_back(info);
+    }
+    // update the C type cache
     for (auto &info : _infos) {
       _pinfos.push_back(info);
     }
   }
 
+  // THE CONSTRUCTORS UNDER ARE UNSAFE
+  // static inline is nice but it's likely unordered!
+  // won't likely work with some compilers
+  // and if linking dlls!
+ 
   Parameters(const Parameters &others,
              std::initializer_list<ParameterInfo> infos) {
     for (auto &info : others._infos) {
@@ -161,6 +173,7 @@ struct Parameters {
     for (auto &info : infos) {
       _infos.push_back(info);
     }
+    // update the C type cache
     for (auto &info : _infos) {
       _pinfos.push_back(info);
     }
@@ -171,21 +184,16 @@ struct Parameters {
     for (auto &info : infos) {
       _infos.push_back(info);
     }
+    for (auto &info : others._infos) {
+      _infos.push_back(info);
+    }
+    // update the C type cache
     for (auto &info : _infos) {
       _pinfos.push_back(info);
     }
-    for (auto &info : others._infos) {
-      _infos.push_back(info);
-    }
   }
 
-  Parameters(const Parameters &others, std::vector<ParameterInfo> infos) {
-    for (auto &info : others._infos) {
-      _infos.push_back(info);
-    }
-    for (auto &info : infos) {
-      _infos.push_back(info);
-    }
+  Parameters(std::initializer_list<ParameterInfo> infos) : _infos(infos) {
     for (auto &info : _infos) {
       _pinfos.push_back(info);
     }

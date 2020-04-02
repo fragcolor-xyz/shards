@@ -679,11 +679,15 @@ struct CBlock {
 
   CBWarmupProc warmup; // Called before running the chain
   CBActivateProc activate;
-  CBCleanupProc cleanup; // Called every time you stop a coroutine or sometimes
-                         // internally to clean up the block
+  // Called every time you stop a coroutine or sometimes
+  // internally to clean up the block
+  CBCleanupProc cleanup;
 
   // Optional genetic programming helpers
   // getState/setState are also used during serialization
+  // assume all the following to be called out of chain
+  // likely the chain will be stopped after cleanup() called
+  // so any state (in fact) should be kept
   CBMutateProc mutate;
   CBCrossoverProc crossover;
   CBGetStateProc getState;

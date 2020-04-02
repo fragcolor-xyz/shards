@@ -231,7 +231,7 @@ template <class T> struct BlockWrapper {
     if constexpr (has_setState<T>::value) {
       result->setState =
           static_cast<CBSetStateProc>([](CBlock *b, CBVar state) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState();
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState(state);
           });
     } else {
       // setState is optional!
