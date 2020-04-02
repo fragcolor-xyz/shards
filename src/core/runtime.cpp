@@ -116,7 +116,15 @@ static bool globalRegisterDone = false;
 void registerCoreBlocks() {
   if (globalRegisterDone)
     return;
+
   globalRegisterDone = true;
+
+  el::Configurations defaultConf;
+  defaultConf.setToDefault();
+  defaultConf.setGlobally(el::ConfigurationType::Format,
+                          "[%datetime %level %thread] %msg");
+  el::Loggers::reconfigureLogger("default", defaultConf);
+
   // at this point we might have some auto magical static linked block already
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for

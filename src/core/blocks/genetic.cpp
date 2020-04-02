@@ -470,7 +470,11 @@ private:
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
 
+#if 1
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
+#else
+  static inline tf::Executor Tasks{1};
+#endif
 
   ParamVar _baseChain{};
   ParamVar _fitnessChain{};
