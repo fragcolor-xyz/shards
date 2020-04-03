@@ -160,6 +160,7 @@ struct Evolve {
         _crossingOver.clear();
         int currentIdx = 0;
         for (auto &ind : _sortedPopulation) {
+          ind.get().crossoverTask.reset();
           if (Rng::frand() < _crossover) {
             // In this case this individual
             // becomes the child between two other individuals
@@ -169,25 +170,32 @@ struct Evolve {
             const auto parent0Idx =
                 int(std::pow(Rng::frand(), 4) * double(_popsize));
             auto parent0 = _sortedPopulation[parent0Idx];
+
             const auto parent1Idx =
                 int(std::pow(Rng::frand(), 4) * double(_popsize));
             auto parent1 = _sortedPopulation[parent1Idx];
+
             if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
+                parent0Idx != parent1Idx &&
                 parent0.get().parent0Idx != currentIdx &&
                 parent0.get().parent1Idx != currentIdx &&
                 parent1.get().parent0Idx != currentIdx &&
                 parent1.get().parent1Idx != currentIdx) {
               ind.get().crossoverTask = crossoverFlow.emplace(
                   [=]() { crossover(ind, parent0, parent1); });
+#if 0
+              ind.get().crossoverTask.name(std::to_string(currentIdx) + " = " +
+                                           std::to_string(parent0Idx) + " + " +
+                                           std::to_string(parent1Idx));
+#endif
               _crossingOver.emplace_back(ind, parent0, parent1);
               ind.get().parent0Idx = parent0Idx;
               ind.get().parent1Idx = parent1Idx;
             }
-          } else {
-            ind.get().crossoverTask.reset();
           }
           currentIdx++;
         }
+
         for (auto [a, b, c] : _crossingOver) {
           auto &atask = a.get().crossoverTask;
           auto &btask = b.get().crossoverTask;
@@ -197,6 +205,9 @@ struct Evolve {
           if (!ctask.empty())
             ctask.precede(atask);
         }
+#if 0
+        crossoverFlow.dump(std::cout);
+#endif
         Tasks.run(crossoverFlow).get();
 
         _era++;
