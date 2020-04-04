@@ -35,12 +35,14 @@ struct FromSeq {
   void toImage(std::vector<uint8_t> &buffer, int w, int h, int c,
                const CBVar &input) {
     // TODO SIMD this
-    // buffer is already resized and cleared
     if (input.payload.seqValue.len == 0)
       throw ActivationError("Input sequence was empty.");
+
+    const int flatsize = std::min(w * h * c, int(input.payload.seqValue.len));
+    buffer.resize(flatsize);
+
     if constexpr (OF == CBType::Float) {
       // assuming it's scaled 0-1
-      const int flatsize = std::min(w * h * c, int(input.payload.seqValue.len));
       for (int i = 0; i < flatsize; i++) {
         buffer[i] = uint8_t(
             input.payload.seqValue.elements[i].payload.floatValue * 255.0);
@@ -114,10 +116,9 @@ template <CBType FROMTYPE> struct ToImage {
     }
   }
 
-  void warmup(CBContext *_) { _buffer.resize(_width * _height * _channels); }
+  void warmup(CBContext *_) {}
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _buffer.clear();
     FromSeq c;
     c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels),
                         input);
