@@ -174,8 +174,7 @@ jobs:
 
   ciMacAsan:
     runs-on: macos-latest
-
-    ./cbl ../src/tests/imaging.cljsteps:
+    steps:
     - uses: actions/checkout@v1
     - name: Deps
       run: |
