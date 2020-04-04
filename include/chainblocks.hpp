@@ -463,6 +463,12 @@ struct Var : public CBVar {
     payload.seqValue.elements = &vectorRef[0];
     payload.seqValue.len = vectorRef.size();
   }
+
+  explicit Var(std::vector<Var> &vectorRef) {
+    valueType = Seq;
+    payload.seqValue.elements = &vectorRef[0];
+    payload.seqValue.len = vectorRef.size();
+  }
 };
 
 class ChainProvider {

@@ -94,7 +94,44 @@ private:
   int32_t _yindex{0};
 };
 
-void registerBlocks() { REGISTER_CBLOCK("Convolve", Convolve); }
+struct StripAlpha {
+  static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.imageValue.channels < 4)
+      return input; // nothing to do
+
+    int32_t w = int32_t(input.payload.imageValue.width);
+    int32_t h = int32_t(input.payload.imageValue.height);
+
+    _bytes.resize(w * h * 3);
+
+    for (auto y = 0; y < h; y++) {
+      for (auto x = 0; x < w; x++) {
+        const auto faddr = ((w * y) + x) * 4;
+        const auto taddr = ((w * y) + x) * 3;
+        for (auto z = 0; z < 3; z++) {
+          _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
+        }
+      }
+    }
+
+    return Var(&_bytes.front(), w, h, 3, input.payload.imageValue.flags);
+  }
+
+private:
+  std::vector<uint8_t> _bytes;
+  int32_t _radius{1};
+  uint32_t _kernel{1};
+  int32_t _xindex{0};
+  int32_t _yindex{0};
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("Convolve", Convolve);
+  REGISTER_CBLOCK("StripAlpha", StripAlpha);
+}
 } // namespace Imaging
 } // namespace chainblocks
 

@@ -2,8 +2,135 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
+#include <type_traits>
 
 namespace chainblocks {
+struct FromImage {
+  // TODO SIMD this
+  template <CBType OF>
+  void toSeq(std::vector<Var> &output, const CBVar &input) {
+    if constexpr (OF == CBType::Float) {
+      // assume we want 0-1 normalized values
+      if (input.valueType != CBType::Image)
+        throw ActivationError("Expected Image type.");
+
+      const int w = int(input.payload.imageValue.width);
+      const int h = int(input.payload.imageValue.height);
+      const int c = int(input.payload.imageValue.channels);
+      const int flatsize = w * h * c;
+
+      output.resize(flatsize, Var(0.0));
+      for (int i = 0; i < flatsize; i++) {
+        const auto fval = double(input.payload.imageValue.data[i]) / 255.0;
+        output[i].payload.floatValue = fval;
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
+};
+
+struct FromSeq {
+  template <CBType OF>
+  void toImage(std::vector<uint8_t> &buffer, int w, int h, int c,
+               const CBVar &input) {
+    // TODO SIMD this
+    // buffer is already resized and cleared
+    if (input.payload.seqValue.len == 0)
+      throw ActivationError("Input sequence was empty.");
+    if constexpr (OF == CBType::Float) {
+      // assuming it's scaled 0-1
+      const int flatsize = std::min(w * h * c, int(input.payload.seqValue.len));
+      for (int i = 0; i < flatsize; i++) {
+        buffer[i] = uint8_t(
+            input.payload.seqValue.elements[i].payload.floatValue * 255.0);
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
+};
+
+template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
+  static inline Type _outputElemType{{CBTYPE}};
+  static inline Type _outputType{{CBType::Seq, .seqTypes = _outputElemType}};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return _outputType; }
+
+  std::vector<Var> _output;
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // do not .clear here, for speed, let From manage that
+    if constexpr (CBTYPE == CBType::Image) {
+      FromImage c;
+      c.toSeq<CBOTHER>(_output, input);
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+    return Var(_output);
+  }
+};
+
+template <CBType FROMTYPE> struct ToImage {
+  static inline Type _inputElemType{{FROMTYPE}};
+  static inline Type _inputType{{CBType::Seq, .seqTypes = _inputElemType}};
+
+  static CBTypesInfo inputTypes() { return _inputType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  static inline Parameters _params{
+      {"Width", "The width of the output image.", {CoreInfo::IntType}},
+      {"Height", "The height of the output image.", {CoreInfo::IntType}},
+      {"Channels", "The channels of the output image.", {CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return _params; }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(int(_width));
+    case 1:
+      return Var(int(_height));
+    case 2:
+      return Var(int(_channels));
+    default:
+      return {};
+    }
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _width = uint16_t(value.payload.intValue);
+      break;
+    case 1:
+      _height = uint16_t(value.payload.intValue);
+      break;
+    case 2:
+      _channels = uint8_t(
+          std::min(CBInt(4), std::max(CBInt(1), value.payload.intValue)));
+      break;
+    }
+  }
+
+  void warmup(CBContext *_) { _buffer.resize(_width * _height * _channels); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _buffer.clear();
+    FromSeq c;
+    c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels),
+                        input);
+    return Var(&_buffer.front(), _width, _height, _channels, 0);
+  }
+
+private:
+  uint8_t _channels = 1;
+  uint16_t _width = 16;
+  uint16_t _height = 16;
+  std::vector<uint8_t> _buffer;
+};
+
 // TODO Write proper inputTypes Info
 #define TO_SOMETHING(_varName_, _width_, _type_, _payload_, _strOp_, _info_)   \
   struct To##_varName_##_width_ {                                              \
@@ -742,5 +869,9 @@ void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ExpectTable);
   REGISTER_CORE_BLOCK(ToBytes);
   REGISTER_CBLOCK("BytesToString!!", BytesToStringUnsafe);
+  using ImageToFloats = ToSeq<CBType::Image, CBType::Float>;
+  using FloatsToImage = ToImage<CBType::Float>;
+  REGISTER_CBLOCK("ImageToFloats", ImageToFloats);
+  REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
 }
 }; // namespace chainblocks
