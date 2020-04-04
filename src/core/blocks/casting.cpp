@@ -53,7 +53,7 @@ struct FromSeq {
 
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
   static inline Type _outputElemType{{CBTYPE}};
-  static inline Type _outputType{{CBType::Seq, .seqTypes = _outputElemType}};
+  static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputElemType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return _outputType; }
@@ -74,7 +74,7 @@ template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
 
 template <CBType FROMTYPE> struct ToImage {
   static inline Type _inputElemType{{FROMTYPE}};
-  static inline Type _inputType{{CBType::Seq, .seqTypes = _inputElemType}};
+  static inline Type _inputType{{CBType::Seq, {.seqTypes = _inputElemType}}};
 
   static CBTypesInfo inputTypes() { return _inputType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
