@@ -5,13 +5,15 @@
  (Chain
   "test"
   (LoadImage "../../assets/simple1.png")
+  (WritePNG "testbase.png")
   (Ref .img)
   (Repeat (-->
            (Get .img)
-           (Convolve 2)
+           (Convolve 20)
            (Log)
+           (WritePNG "test.png")
            )
-          10)
+          30)
   (Log)))
 
 (run Root 0.1)

@@ -170,10 +170,12 @@ jobs:
         ./cbl ../src/tests/channels.clj
         ./cbl ../src/tests/lmdb.clj
         ./cbl ../src/tests/genetic.clj
+        ./cbl ../src/tests/imaging.clj
 
   ciMacAsan:
     runs-on: macos-latest
-    steps:
+
+    ./cbl ../src/tests/imaging.cljsteps:
     - uses: actions/checkout@v1
     - name: Deps
       run: |
@@ -202,3 +204,4 @@ jobs:
         ./cbl ../src/tests/channels.clj
         ./cbl ../src/tests/lmdb.clj
         ./cbl ../src/tests/genetic.clj
+        ./cbl ../src/tests/imaging.clj

@@ -2,11 +2,13 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "shared.hpp"
 #include <filesystem>
 #include <future>
 #include <stb_image.h>
+#include <stb_image_write.h>
 #include <string>
 
 // TODO, make ReadFile and WriteFile use maybe ASIO async to do syscalls in a
@@ -261,10 +263,33 @@ struct LoadImage : public FileBase {
   }
 };
 
+struct WritePNG : public FileBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    std::string filename;
+    if (!getFilename(context, filename, false)) {
+      throw ActivationError("Path does not exist!");
+    }
+
+    AsyncOp<InternalCore> asyncOp(context);
+    return asyncOp([&]() {
+      int w = int(input.payload.imageValue.width);
+      int h = int(input.payload.imageValue.height);
+      int c = int(input.payload.imageValue.channels);
+      if (0 == stbi_write_png(filename.c_str(), w, h, c,
+                              input.payload.imageValue.data, w * c))
+        throw ActivationError("Failed to write PNG file.");
+      return input;
+    });
+  }
+};
+
 void registerSerializationBlocks() {
   REGISTER_CORE_BLOCK(WriteFile);
   REGISTER_CORE_BLOCK(ReadFile);
   REGISTER_CBLOCK("LoadImage", LoadImage);
-  ;
+  REGISTER_CBLOCK("WritePNG", WritePNG);
 }
 }; // namespace chainblocks

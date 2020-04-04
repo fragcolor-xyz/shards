@@ -53,9 +53,10 @@ struct Convolve {
     const int high = _radius - 1;
     const int low = high * -1;
     int index = 0;
-    for (int x = high; x >= low; x--) {
-      for (int y = high; y >= low; y--) {
+    for (int y = low; y <= high; y++) {
+      for (int x = low; x <= high; x++) {
         int idxx = _xindex + x;
+
         // pad shifting to nearest
         while (idxx < 0)
           idxx++;
@@ -63,6 +64,7 @@ struct Convolve {
           idxx--;
 
         int idxy = _yindex + y;
+
         // pad shifting to nearest
         while (idxy < 0)
           idxy++;
