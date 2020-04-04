@@ -12,17 +12,31 @@ struct Convolve {
   static inline Parameters _params{
       {"Radius",
        "The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on.",
+       {CoreInfo::IntType}},
+      {"Step",
+       "How many pixels to advance each activation.",
        {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
-  CBVar getParam(int index) { return Var(int64_t(_radius)); }
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Var(int64_t(_radius));
+    else
+      return Var(int64_t(_step));
+  }
 
   void setParam(int index, CBVar value) {
-    _radius = int32_t(value.payload.intValue);
-    if (_radius <= 0)
-      _radius = 1;
-    _kernel = (_radius - 1) * 2 + 1;
+    if (index == 0) {
+      _radius = int32_t(value.payload.intValue);
+      if (_radius <= 0)
+        _radius = 1;
+      _kernel = (_radius - 1) * 2 + 1;
+    } else {
+      _step = int32_t(value.payload.intValue);
+      if (_step <= 0)
+        _step = 1;
+    }
   }
 
   void warmup(CBContext *context) {
@@ -79,7 +93,7 @@ struct Convolve {
     }
 
     // advance the scan
-    _xindex++;
+    _xindex += _step;
 
     return Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel),
                input.payload.imageValue.channels,
@@ -89,6 +103,7 @@ struct Convolve {
 private:
   std::vector<uint8_t> _bytes;
   int32_t _radius{1};
+  int32_t _step{1};
   uint32_t _kernel{1};
   int32_t _xindex{0};
   int32_t _yindex{0};
