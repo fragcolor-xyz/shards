@@ -326,10 +326,21 @@ struct Var : public CBVar {
     return res;
   }
 
-  Var(uint8_t *ptr, int64_t size) : CBVar() {
+  Var(uint8_t *ptr, uint32_t size) : CBVar() {
     valueType = Bytes;
     payload.bytesSize = size;
     payload.bytesValue = ptr;
+  }
+
+  Var(uint8_t *data, uint16_t width, uint16_t height, uint8_t channels,
+      uint8_t flags = 0)
+      : CBVar() {
+    valueType = CBType::Image;
+    payload.imageValue.width = width;
+    payload.imageValue.height = height;
+    payload.imageValue.channels = channels;
+    payload.imageValue.flags = flags;
+    payload.imageValue.data = data;
   }
 
   explicit Var(int src) : CBVar() {

@@ -107,6 +107,10 @@ namespace Random {
 extern void registerBlocks();
 }
 
+namespace Imaging {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -164,6 +168,7 @@ void registerCoreBlocks() {
   LMDB::registerBlocks();
   Genetic::registerBlocks();
   Random::registerBlocks();
+  Imaging::registerBlocks();
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {

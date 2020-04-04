@@ -204,6 +204,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -470,6 +471,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
