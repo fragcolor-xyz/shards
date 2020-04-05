@@ -54,7 +54,7 @@ struct FromSeq {
 };
 
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
-  static inline Type _outputElemType{{CBTYPE}};
+  static inline Type _outputElemType{{CBOTHER}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputElemType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
