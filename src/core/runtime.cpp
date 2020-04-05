@@ -877,7 +877,7 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
         // all input types must be in receiver, receiver can have more ofc
         for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
-          for (uint32_t j = 0; i < receiverType.seqTypes.len; j++) {
+          for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
             if (receiverType.seqTypes.elements[j].basicType == Any ||
                 inputType.seqTypes.elements[i] ==
                     receiverType.seqTypes.elements[j])
@@ -948,7 +948,7 @@ void validateConnection(ValidationContext &ctx) {
   // validate our generic input
   for (uint32_t i = 0; inputInfos.len > i; i++) {
     auto &inputInfo = inputInfos.elements[i];
-    if (matchTypes(previousOutput, inputInfo, false, false)) {
+    if (matchTypes(previousOutput, inputInfo, false, true)) {
       inputMatches = true;
       break;
     }

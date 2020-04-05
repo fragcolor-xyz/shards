@@ -1090,6 +1090,7 @@ struct Push : public VariableBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    // TODO Add more types if inputs are of diff types
     const auto updateSeqInfo = [this, &data] {
       _seqInfo.basicType = Seq;
       _seqInnerInfo = data.inputType;

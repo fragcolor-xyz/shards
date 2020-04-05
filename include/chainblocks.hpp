@@ -469,6 +469,18 @@ struct Var : public CBVar {
     payload.seqValue.elements = &vectorRef[0];
     payload.seqValue.len = vectorRef.size();
   }
+
+  template <size_t N> explicit Var(std::array<CBVar, N> &arrRef) {
+    valueType = Seq;
+    payload.seqValue.elements = &arrRef[0];
+    payload.seqValue.len = N;
+  }
+
+  template <size_t N> explicit Var(std::array<Var, N> &arrRef) {
+    valueType = Seq;
+    payload.seqValue.elements = &arrRef[0];
+    payload.seqValue.len = N;
+  }
 };
 
 class ChainProvider {
