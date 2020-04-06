@@ -568,6 +568,10 @@
   (Is (# "s2"))
   (Assert.Is true true)
 
+  (Get "s1")
+  (DBlock "Is" [(# "s2")])
+  (Assert.Is true true)
+
   4 (Push "s1")
   5 (Push "s1")
   

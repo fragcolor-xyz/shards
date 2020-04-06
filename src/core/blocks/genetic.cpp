@@ -1,6 +1,3 @@
-#ifndef GENETIC_H
-#define GENETIC_H
-
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
 #include "chainblocks.hpp"
@@ -647,6 +644,7 @@ struct Mutant {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto inner = mutant();
+    // validate parameters
     if (_mutations.valueType == Seq && inner) {
       auto dataCopy = data;
       IterableSeq muts(_mutations);
@@ -732,11 +730,6 @@ private:
        "Mutation options table - a table with mutation options.",
        {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
 };
-
-void registerBlocks() {
-  REGISTER_CBLOCK("Evolve", Evolve);
-  REGISTER_CBLOCK("Mutant", Mutant);
-}
 
 inline void mutateVar(CBVar &var) {
   switch (var.valueType) {
@@ -935,7 +928,181 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
                   }
                 });
 }
+
+struct DBlock {
+  static const char *help() { return "A dynamic block."; }
+
+  static inline Parameters _params{
+      {"Name", "The name of the block to wrap.", {CoreInfo::StringType}},
+      {"Parameters",
+       "The parameters to pass to the wrapped block.",
+       {CoreInfo::AnySeqType}}};
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0: {
+      _name = value.payload.stringValue;
+
+      // destroy if we had a block already
+      if (_wrapped)
+        _wrapped->destroy(_wrapped);
+      // create the block directly here
+      _wrapped = createBlock(_name.c_str());
+      // and setup if successful
+      if (_wrapped) {
+        _wrapped->setup(_wrapped);
+      }
+    } break;
+    case 1: {
+      IterableSeq s(value);
+      _wrappedParams.clear();
+      for (auto &v : s) {
+        _wrappedParams.emplace_back(v);
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+    case 1: {
+      CBVar res{};
+      res.valueType = Seq;
+      res.payload.seqValue.elements = &_wrappedParams.front();
+      res.payload.seqValue.len = _wrappedParams.size();
+      res.payload.seqValue.cap = 0;
+      return res;
+    }
+    default:
+      return {};
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (!_wrapped)
+      return {};
+
+    // set the wrapped params here
+    auto params = _wrapped->parameters(_wrapped);
+    for (uint32_t i = 0; i < params.len; i++) {
+      if (!validateSetParam(
+              _wrapped, i, _wrappedParams[i],
+              [](const CBlock *errorBlock, const char *errorTxt,
+                 bool nonfatalWarning, void *userData) {},
+              nullptr))
+        throw CBException(
+            "Failed to validate a parameter within a wrapped DBlock.");
+      _wrapped->setParam(_wrapped, int(i), _wrappedParams[i]);
+    }
+    // and compose finally
+    if (_wrapped->compose) {
+      return _wrapped->compose(_wrapped, data);
+    } else {
+      // need to return something valid following runtime validation
+      auto outputTypes = _wrapped->outputTypes(_wrapped);
+      if (outputTypes.len == 1 &&
+          outputTypes.elements[0].basicType != CBType::Any) {
+        return outputTypes.elements[0];
+      } else {
+        return {};
+      }
+    }
+  }
+
+  void destroy() {
+    if (_wrapped)
+      _wrapped->destroy(_wrapped);
+  }
+
+  CBTypesInfo inputTypes() {
+    if (_wrapped)
+      return _wrapped->inputTypes(_wrapped);
+    else
+      return CoreInfo::NoneType;
+  }
+
+  CBTypesInfo outputTypes() {
+    if (_wrapped)
+      return _wrapped->outputTypes(_wrapped);
+    else
+      return CoreInfo::NoneType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (_wrapped)
+      return _wrapped->exposedVariables(_wrapped);
+    else
+      return {};
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_wrapped)
+      return _wrapped->requiredVariables(_wrapped);
+    else
+      return {};
+  }
+
+  void warmup(CBContext *context) {
+    if (_wrapped && _wrapped->warmup) // it's optional!
+      _wrapped->warmup(_wrapped, context);
+  }
+
+  void cleanup() {
+    if (_wrapped)
+      _wrapped->cleanup(_wrapped);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_wrapped) {
+      throw ActivationError("Wrapped block was null!");
+    }
+
+    return _wrapped->activate(_wrapped, context, &input);
+  }
+
+  void mutate(CBTable options) {
+    if (_wrapped && _wrapped->mutate)
+      _wrapped->mutate(_wrapped, options);
+  }
+
+  void crossover(CBVar state0, CBVar state1) {
+    if (_wrapped && _wrapped->crossover)
+      _wrapped->crossover(_wrapped, state0, state1);
+  }
+
+  CBVar getState() {
+    if (_wrapped && _wrapped->getState)
+      return _wrapped->getState(_wrapped);
+    else
+      return {};
+  }
+
+  void setState(CBVar state) {
+    if (_wrapped && _wrapped->setState)
+      _wrapped->setState(_wrapped, state);
+  }
+
+  void resetState() {
+    if (_wrapped && _wrapped->resetState)
+      _wrapped->resetState(_wrapped);
+  }
+
+private:
+  CBlock *_wrapped = nullptr;
+  std::string _name;
+  std::vector<OwnedVar> _wrappedParams;
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("Evolve", Evolve);
+  REGISTER_CBLOCK("Mutant", Mutant);
+  REGISTER_CBLOCK("DBlock", DBlock);
+}
 } // namespace Genetic
 } // namespace chainblocks
-
-#endif /* GENETIC_H */

@@ -1383,10 +1383,10 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
   // Build a CBTypeInfo for the var
   auto varType = deriveTypeInfo(value);
+  DEFER({ freeDerivedInfo(varType); });
 
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
     if (matchTypes(varType, param.valueTypes.elements[i], true, true)) {
-      freeDerivedInfo(varType);
       return true; // we are good just exit
     }
   }
@@ -1397,7 +1397,6 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
     for (uint32_t i = 0; value.payload.seqValue.len > i; i++) {
       if (validateSetParam(block, index, value.payload.seqValue.elements[i],
                            callback, userData)) {
-        freeDerivedInfo(varType);
         return true;
       }
     }
@@ -1405,8 +1404,6 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
   std::string err("Parameter not accepting this kind of variable");
   callback(block, err.c_str(), false, userData);
-
-  freeDerivedInfo(varType);
 
   return false;
 }
