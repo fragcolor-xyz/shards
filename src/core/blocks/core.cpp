@@ -1089,6 +1089,21 @@ RUNTIME_BLOCK_warmup(Take);
 RUNTIME_BLOCK_activate(Take);
 RUNTIME_BLOCK_END(Take);
 
+// Register RTake
+RUNTIME_CORE_BLOCK_FACTORY(RTake);
+RUNTIME_BLOCK_destroy(RTake);
+RUNTIME_BLOCK_cleanup(RTake);
+RUNTIME_BLOCK_requiredVariables(RTake);
+RUNTIME_BLOCK_inputTypes(RTake);
+RUNTIME_BLOCK_outputTypes(RTake);
+RUNTIME_BLOCK_parameters(RTake);
+RUNTIME_BLOCK_compose(RTake);
+RUNTIME_BLOCK_setParam(RTake);
+RUNTIME_BLOCK_getParam(RTake);
+RUNTIME_BLOCK_warmup(RTake);
+RUNTIME_BLOCK_activate(RTake);
+RUNTIME_BLOCK_END(RTake);
+
 // Register Slice
 RUNTIME_CORE_BLOCK_FACTORY(Slice);
 RUNTIME_BLOCK_destroy(Slice);
@@ -1279,6 +1294,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Not);
   REGISTER_CORE_BLOCK(IsValidNumber);
   REGISTER_CORE_BLOCK(Take);
+  REGISTER_CORE_BLOCK(RTake);
   REGISTER_CORE_BLOCK(Slice);
   REGISTER_CORE_BLOCK(Limit);
   REGISTER_CORE_BLOCK(Repeat);

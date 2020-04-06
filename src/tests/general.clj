@@ -711,7 +711,9 @@
   (Map (-->
         (Math.Add 1)))
   (Log)
-  (Assert.Is [112, 113, 102, 115, 98, 100] true)
+  (Assert.Is [112 113 102 115 98 100] true)
+  (RTake [0 1 3 4])
+  (Assert.Is [100 98 102 113] true)
 
   (Get .seq-a)
   (Reduce (-->

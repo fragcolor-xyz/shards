@@ -56,6 +56,8 @@ struct CoreInfo {
                                   BytesType, ColorType, StringType, AnySeqType,
                                   AnyTableType}};
 
+  static inline Types RIndexables{{BytesType, StringType, AnySeqType}};
+
   static inline Types FloatVectors{{
       Float2Type,
       Float2SeqType,
@@ -81,6 +83,9 @@ struct CoreInfo {
   static inline Types TakeTypes{{IntType, IntSeqType, IntVarType, IntVarSeqType,
                                  StringType, StringSeqType, StringVarType,
                                  StringVarSeqType}};
+
+  static inline Types RTakeTypes{
+      {IntType, IntSeqType, IntVarType, IntVarSeqType}};
 
   static inline Types IntsVarOrNone{IntsVar, {NoneType}};
 
@@ -1443,7 +1448,8 @@ struct Pop : SeqUser {
 
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Indices", "One or multiple indices to filter from a sequence.",
+      "Indices",
+      "One or multiple indices/keys to extract from a sequence/table.",
       CoreInfo::TakeTypes));
 
   CBSeq _cachedSeq{};
@@ -1799,7 +1805,48 @@ struct Take {
     // If we hit this, maybe that type of input is not yet implemented
     throw ActivationError("Take path not implemented for this type.");
   }
-}; // namespace chainblocks
+};
+
+struct RTake : public Take {
+  // works only for seqs tho
+  // TODO need to add string and bytes
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices", "One or multiple indices to extract from a sequence.",
+      CoreInfo::RTakeTypes));
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(indicesParamsInfo);
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::RIndexables; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    const auto inputLen = input.payload.seqValue.len;
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;
+
+    if (!_seqOutput) {
+      const auto index = indices.payload.intValue;
+      if (index >= inputLen || index < 0) {
+        throw OutOfRangeEx(inputLen, index);
+      }
+      cloneVar(_output, input.payload.seqValue.elements[inputLen - 1 - index]);
+      return _output;
+    } else {
+      const uint32_t nindices = indices.payload.seqValue.len;
+      chainblocks::arrayResize(_cachedSeq, nindices);
+      for (uint32_t i = 0; nindices > i; i++) {
+        const auto index =
+            indices.payload.seqValue.elements[i].payload.intValue;
+        if (index >= inputLen || index < 0) {
+          throw OutOfRangeEx(inputLen, index);
+        }
+        cloneVar(_cachedSeq.elements[i],
+                 input.payload.seqValue.elements[inputLen - 1 - index]);
+      }
+      return Var(_cachedSeq);
+    }
+  }
+};
 
 struct Slice {
   static inline ParamsInfo indicesParamsInfo =
@@ -2183,6 +2230,7 @@ RUNTIME_CORE_BLOCK_TYPE(Update);
 RUNTIME_CORE_BLOCK_TYPE(Get);
 RUNTIME_CORE_BLOCK_TYPE(Swap);
 RUNTIME_CORE_BLOCK_TYPE(Take);
+RUNTIME_CORE_BLOCK_TYPE(RTake);
 RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
