@@ -628,19 +628,16 @@ struct FromJson {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> asyncParse(context);
-    // FIXME reading chains and blocks might not be thread safe!
-    return asyncParse([&]() {
-      _releaseMemory(_output); // release previous
-      json j = json::parse(input.payload.stringValue);
-      try {
-        _output = j.get<CBVar>();
-      } catch (json::exception &ex) {
-        // Parsing as CBVar failed, try some generic value parsing
-        // Filling Seq + Tables
-        anyParse(j, _output);
-      }
-      return _output;
-    });
+    _releaseMemory(_output); // release previous
+    json j = json::parse(input.payload.stringValue);
+    try {
+      _output = j.get<CBVar>();
+    } catch (json::exception &ex) {
+      // Parsing as CBVar failed, try some generic value parsing
+      // Filling Seq + Tables
+      anyParse(j, _output);
+    }
+    return _output;
   }
 };
 
