@@ -137,10 +137,6 @@ struct StripAlpha {
 
 private:
   std::vector<uint8_t> _bytes;
-  int32_t _radius{1};
-  uint32_t _kernel{1};
-  int32_t _xindex{0};
-  int32_t _yindex{0};
 };
 
 void registerBlocks() {
