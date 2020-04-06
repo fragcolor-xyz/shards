@@ -9,7 +9,7 @@
 #include <string.h> // memset
 
 #include "blocks_macros.hpp"
-#include "core.hpp"
+#include "foundation.hpp"
 // C++ Mandatory from now!
 
 // Since we build the runtime we are free to use any std and lib

@@ -5,7 +5,7 @@
 
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
-#include "../core.hpp"
+#include "../foundation.hpp"
 #include <cassert>
 #include <cmath>
 

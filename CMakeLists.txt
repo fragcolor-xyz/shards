@@ -180,7 +180,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
-  ${CHAINBLOCKS_DIR}/src/core/core.hpp
+  ${CHAINBLOCKS_DIR}/src/core/foundation.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "core.hpp"
+#include "foundation.hpp"
 #include "imgui.h"
 
 namespace ImGuiExtra {
