@@ -147,16 +147,16 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
   set(EXTRA_LIBS -lws2_32)
 elseif(APPLE)
   if(NOT IOS)
-    set(BOOST_LIBS -lboost_context-mt)
+    set(BOOST_LIBS -lboost_context-mt -lssl -lcrypto)
   endif()
   include_directories(/usr/local/include /usr/local/opt/readline/include)
   link_directories(/usr/local/lib /usr/local/opt/readline/lib)
 else()
-  set(BOOST_LIBS -lboost_context)
+  set(BOOST_LIBS -lboost_context -lssl -lcrypto)
   set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
 
@@ -205,6 +205,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -472,6 +473,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
