@@ -1,5 +1,3 @@
-#include "chainblocks.hpp"
-#include <exception>
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -9,23 +7,53 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
-#include <cstdlib>
-#include <iostream>
-#include <string>
-#include <taskflow/taskflow.hpp>
 
 #include "blockwrapper.hpp"
+#include "chainblocks.hpp"
 #include "shared.hpp"
+#include <exception>
+#include <taskflow/taskflow.hpp>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
 namespace ssl = net::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+                                //
+#include <cctype>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+using namespace std;
+
+inline std::string url_encode(const std::string &value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << hex;
+
+  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n;
+       ++i) {
+    std::string::value_type c = (*i);
+
+    // Keep alphanumeric and other accepted characters intact
+    if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << std::uppercase;
+    escaped << '%' << std::setw(2) << int((unsigned char)c);
+    escaped << std::nouppercase;
+  }
+
+  return escaped.str();
+}
 
 namespace chainblocks {
 namespace Http {
-struct Get {
+struct Client {
   constexpr static int version = 11;
 
   static CBTypesInfo inputTypes() {
@@ -123,52 +151,8 @@ struct Get {
     }
   }
 
-  void request(CBContext *context, AsyncOp<InternalCore> &op,
-               const CBVar &input) {
-    try {
-      op.sidechain<tf::Taskflow>(Tasks, [&]() {
-        vars.clear();
-        vars.append(target.get().payload.stringValue);
-        if (input.valueType == Table) {
-          vars.append("?");
-          ForEach(input.payload.tableValue, [&](auto key, auto &value) {
-            vars.append(key);
-            vars.append("=");
-            vars.append(value.payload.stringValue);
-          });
-        }
-
-        buffer.clear();
-        res.clear();
-        res.body().clear();
-
-        // Set up an HTTP GET request message
-        http::request<http::string_body> req{http::verb::get, vars, version};
-        req.set(http::field::host, host.get().payload.stringValue);
-        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-
-        // Send the HTTP request to the remote host
-        http::write(stream, req);
-
-        // Receive the HTTP response
-        http::read(stream, buffer, res);
-      });
-    } catch (ChainCancellation &) {
-      throw;
-    } catch (std::exception &ex) {
-      // TODO some exceptions could be left unhandled
-      // or anyway should be fatal
-      LOG(ERROR) << "Http request failed, pausing chain half a second "
-                    "before restart, exception: "
-                 << ex.what();
-
-      resetStream();
-
-      suspend(context, 0.5);
-      throw ActivationError("Http request failed, restarting chain.",
-                            CBChainState::Restart, false);
-    }
-  }
+  virtual void request(CBContext *context, AsyncOp<InternalCore> &op,
+                       const CBVar &input) = 0;
 
   void resetStream() {
     beast::error_code ec;
@@ -190,7 +174,7 @@ struct Get {
     return Var(res.body());
   }
 
-private:
+protected:
 #if 1
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
 #else
@@ -224,6 +208,113 @@ private:
   http::response<http::string_body> res;
 };
 
-void registerBlocks() { REGISTER_CBLOCK("Http.Get", Get); }
+struct Get final : public Client {
+  void request(CBContext *context, AsyncOp<InternalCore> &op,
+               const CBVar &input) override {
+    try {
+      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+        vars.clear();
+        vars.append(target.get().payload.stringValue);
+        if (input.valueType == Table) {
+          vars.append("?");
+          ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+            vars.append(url_encode(key));
+            vars.append("=");
+            vars.append(url_encode(value.payload.stringValue));
+            vars.append("&");
+          });
+          vars.resize(vars.size() - 1);
+        }
+
+        buffer.clear();
+        res.clear();
+        res.body().clear();
+
+        // Set up an HTTP GET request message
+        http::request<http::string_body> req{http::verb::get, vars, version};
+        req.set(http::field::host, host.get().payload.stringValue);
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        // Send the HTTP request to the remote host
+        http::write(stream, req);
+
+        // Receive the HTTP response
+        http::read(stream, buffer, res);
+      });
+    } catch (ChainCancellation &) {
+      throw;
+    } catch (std::exception &ex) {
+      // TODO some exceptions could be left unhandled
+      // or anyway should be fatal
+      LOG(ERROR) << "Http request failed, pausing chain half a second "
+                    "before restart, exception: "
+                 << ex.what();
+
+      resetStream();
+
+      suspend(context, 0.5);
+      throw ActivationError("Http request failed, restarting chain.",
+                            CBChainState::Restart, false);
+    }
+  }
+};
+
+struct Post final : public Client {
+  void request(CBContext *context, AsyncOp<InternalCore> &op,
+               const CBVar &input) override {
+    try {
+      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+        vars.clear();
+        if (input.valueType == Table) {
+          ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+            vars.append(url_encode(key));
+            vars.append("=");
+            vars.append(url_encode(value.payload.stringValue));
+            vars.append("&");
+          });
+          if (vars.size() > 0)
+            vars.resize(vars.size() - 1);
+        }
+
+        buffer.clear();
+        res.clear();
+        res.body().clear();
+
+        // Set up an HTTP GET request message
+        http::request<http::string_body> req{
+            http::verb::post, target.get().payload.stringValue, version};
+        req.set(http::field::host, host.get().payload.stringValue);
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        req.set(http::field::content_type, "application/x-www-form-urlencoded");
+        req.body() = vars;
+
+        // Send the HTTP request to the remote host
+        http::write(stream, req);
+
+        // Receive the HTTP response
+        http::read(stream, buffer, res);
+      });
+    } catch (ChainCancellation &) {
+      throw;
+    } catch (std::exception &ex) {
+      // TODO some exceptions could be left unhandled
+      // or anyway should be fatal
+      LOG(ERROR) << "Http request failed, pausing chain half a second "
+                    "before restart, exception: "
+                 << ex.what();
+
+      resetStream();
+
+      suspend(context, 0.5);
+      throw ActivationError("Http request failed, restarting chain.",
+                            CBChainState::Restart, false);
+    }
+  }
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("Http.Get", Get);
+  REGISTER_CBLOCK("Http.Post", Post);
+}
 } // namespace Http
 } // namespace chainblocks
