@@ -896,6 +896,13 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
         matched:
           continue;
         }
+      } else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0) {
+        // find Any
+        for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
+          if (receiverType.seqTypes.elements[j].basicType == Any)
+            return true;
+        }
+        return false;
       } else if (inputType.seqTypes.len == 0 ||
                  receiverType.seqTypes.len == 0) {
         return false;

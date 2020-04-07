@@ -6,6 +6,7 @@
 
 #include "chainblocks.h"
 #include <cstring> // memcpy
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -482,6 +483,20 @@ struct Var : public CBVar {
     payload.seqValue.len = N;
   }
 };
+
+inline void ForEach(const CBTable &table,
+                    std::function<void(const char *, CBVar &)> &&f) {
+  table.api->tableForEach(
+      table,
+      [](const char *key, struct CBVar *value, void *userData) {
+        auto pf =
+            reinterpret_cast<std::function<bool(const char *, CBVar &)> *>(
+                userData);
+        (*pf)(key, *value);
+        return true;
+      },
+      &f);
+}
 
 class ChainProvider {
   // used specially for live editing chains, from host languages

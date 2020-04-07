@@ -4,8 +4,19 @@
   (Chain
    "test"
    :Looped
-   (Http.Get "api.binance.com" "/api/v3/klines?symbol=BNBBTC&interval=15m")
+
+   1 (ToString)
+   (Set .params "postId")
+   (Get .params)
+   (Http.Get "jsonplaceholder.typicode.com" "/comments")
+   (FromJson)
+   (ExpectSeq)
+   (Take 0)
+   (ExpectTable)
+   (Take "name")
+   (Assert.Is "id labore ex et quam laborum" true)
    (Log)
+
    ))
 
 (schedule Root test)

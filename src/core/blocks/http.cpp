@@ -1,3 +1,4 @@
+#include "chainblocks.hpp"
 #include <exception>
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
@@ -27,29 +28,31 @@ namespace Http {
 struct Get {
   constexpr static int version = 11;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo inputTypes() {
+    static Types t{CoreInfo::NoneType, CoreInfo::StringTableType};
+    return t;
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline Parameters params{
-      {"Host",
-       "The remote host address or IP.",
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Target",
-       "The remote host target path to open.",
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Port",
-       "The remote host port.",
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}}};
-
-  CBParametersInfo parameters() { return params; }
+  static CBParametersInfo parameters() {
+    static Parameters params{{"Host",
+                              "The remote host address or IP.",
+                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                             {"Port",
+                              "The remote host port.",
+                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                             {"Secure",
+                              "If the connection should be secured.",
+                              {CoreInfo::BoolType}}};
+    return params;
+  }
 
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
       host = value;
       break;
-
     case 1:
       target = value;
       break;
@@ -106,6 +109,8 @@ struct Get {
 
         connected = true;
       });
+    } catch (ChainCancellation &) {
+      throw;
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -118,12 +123,27 @@ struct Get {
     }
   }
 
-  void request(CBContext *context, AsyncOp<InternalCore> &op) {
+  void request(CBContext *context, AsyncOp<InternalCore> &op,
+               const CBVar &input) {
     try {
       op.sidechain<tf::Taskflow>(Tasks, [&]() {
+        vars.clear();
+        vars.append(target.get().payload.stringValue);
+        if (input.valueType == Table) {
+          vars.append("?");
+          ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+            vars.append(key);
+            vars.append("=");
+            vars.append(value.payload.stringValue);
+          });
+        }
+
+        buffer.clear();
+        res.clear();
+        res.body().clear();
+
         // Set up an HTTP GET request message
-        http::request<http::string_body> req{
-            http::verb::get, target.get().payload.stringValue, version};
+        http::request<http::string_body> req{http::verb::get, vars, version};
         req.set(http::field::host, host.get().payload.stringValue);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
@@ -133,6 +153,8 @@ struct Get {
         // Receive the HTTP response
         http::read(stream, buffer, res);
       });
+    } catch (ChainCancellation &) {
+      throw;
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -163,10 +185,7 @@ struct Get {
     if (!connected)
       connect(context, op);
 
-    buffer.clear();
-    res.clear();
-
-    request(context, op);
+    request(context, op, input);
 
     return Var(res.body());
   }
@@ -181,6 +200,7 @@ private:
   ParamVar port{Var("443")};
   ParamVar host{Var("www.example.com")};
   ParamVar target{Var("/")};
+  std::string vars;
   bool ssl = true;
 
   bool connected = false;
