@@ -3,6 +3,7 @@
 #include "chainblocks.hpp"
 #include "random.hpp"
 #include "shared.hpp"
+#include "taskflow/core/executor.hpp"
 #include <limits>
 #include <sstream>
 #include <taskflow/taskflow.hpp>
@@ -479,7 +480,8 @@ private:
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
 
 #if 1
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
+  using GeneticPool = tf::Executor;
+  tf::Executor &Tasks{Singleton<GeneticPool>::value};
 #else
   static inline tf::Executor Tasks{1};
 #endif

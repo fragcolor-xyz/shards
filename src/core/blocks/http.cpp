@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <taskflow/taskflow.hpp>
 
 #include "blockwrapper.hpp"
 #include "shared.hpp"
@@ -26,6 +27,8 @@ struct Get {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
+    AsyncOp<InternalCore> op(context);
+
     constexpr int version = 11;
     constexpr auto host = "www.example.com";
     constexpr auto port = "443";
@@ -48,11 +51,11 @@ struct Get {
       throw beast::system_error{ec};
     }
 
-    // Look up the domain name
-    auto const results = resolver.resolve(host, port);
+    decltype(resolver.resolve(host, port)) resolved;
+    TFOp(Tasks, op, [&]() { resolved = resolver.resolve(host, port); });
 
     // Make the connection on the IP address we get from a lookup
-    beast::get_lowest_layer(stream).connect(results);
+    beast::get_lowest_layer(stream).connect(resolved);
 
     // Perform the SSL handshake
     stream.handshake(ssl::stream_base::client);
@@ -90,6 +93,14 @@ struct Get {
 
     return {};
   }
+
+private:
+#if 1
+  using HttpPool = tf::Executor;
+  tf::Executor &Tasks{Singleton<HttpPool>::value};
+#else
+  static inline tf::Executor Tasks{1};
+#endif
 };
 
 void registerBlocks() { REGISTER_CBLOCK("Http.Get", Get); }

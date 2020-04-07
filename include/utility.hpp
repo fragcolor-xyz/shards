@@ -318,6 +318,14 @@ template <class CB_CORE> struct AsyncOp {
     fut.get();
   }
 
+#define TFOp(__exe__, __op__, __call__)                                        \
+  {                                                                            \
+    tf::Taskflow f;                                                            \
+    f.emplace(__call__);                                                       \
+    auto fut = __exe__.run(f);                                                 \
+    __op__(fut);                                                               \
+  }
+
 private:
   CBContext *_context;
 };
