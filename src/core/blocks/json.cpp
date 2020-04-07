@@ -627,7 +627,6 @@ struct FromJson {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> asyncParse(context);
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);
     try {

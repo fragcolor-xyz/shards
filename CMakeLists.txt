@@ -153,8 +153,16 @@ elseif(APPLE)
   if(NOT IOS)
     set(BOOST_LIBS -lboost_context-mt -lssl -lcrypto)
   endif()
-  include_directories(/usr/local/include /usr/local/opt/readline/include)
-  link_directories(/usr/local/lib /usr/local/opt/readline/lib)
+  include_directories(
+    /usr/local/include
+    /usr/local/opt/readline/include
+    /usr/local/opt/openssl/include
+    )
+  link_directories(
+    /usr/local/lib
+    /usr/local/opt/readline/lib
+    /usr/local/opt/openssl/lib
+    )
 else()
   set(BOOST_LIBS -lboost_context -lssl -lcrypto)
   set(EXTRA_LIBS -pthread -ldl -lrt)

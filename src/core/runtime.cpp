@@ -570,9 +570,9 @@ void suspend(CBContext *context, double seconds) {
   __tsan_switch_to_fiber(curr, 0);
 #endif
   if (context->restarted) {
-    throw ChainRestarting();
+    throw ChainRestart();
   } else if (context->aborted) {
-    throw ChainCancelation();
+    throw ChainCancellation();
   }
 }
 
@@ -709,12 +709,16 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     throw chainblocks::CBException(errorText);
   };
 
+  result.throwCancellation = []() { throw chainblocks::ChainCancellation(); };
+
+  result.throwRestart = []() { throw chainblocks::ChainRestart(); };
+
   result.suspend = [](CBContext *context, double seconds) {
     try {
       chainblocks::suspend(context, seconds);
-    } catch (const chainblocks::ChainRestarting &) {
+    } catch (const chainblocks::ChainRestart &) {
       return CBVar{{CBChainState::Restart}};
-    } catch (const chainblocks::ChainCancelation &) {
+    } catch (const chainblocks::ChainCancellation &) {
       return CBVar{{CBChainState::Stop}};
     }
     return CBVar{{CBChainState::Continue}};

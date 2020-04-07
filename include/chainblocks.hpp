@@ -39,16 +39,16 @@ private:
   bool fatal;
 };
 
-class ChainCancelation : public ActivationError {
+class ChainCancellation : public ActivationError {
 public:
-  ChainCancelation()
+  ChainCancellation()
       : ActivationError("Chain execution has been canceled.",
                         CBChainState::Stop, false) {}
 };
 
-class ChainRestarting : public ActivationError {
+class ChainRestart : public ActivationError {
 public:
-  ChainRestarting()
+  ChainRestart()
       : ActivationError("Chain has been restarted.", CBChainState::Restart,
                         false) {}
 };

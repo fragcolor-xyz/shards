@@ -1175,9 +1175,15 @@ struct InternalCore {
 
   static void expTypesFree(CBExposedTypesInfo &arr) { arrayFree(arr); }
 
-  static void throwException(const char *msg) {
+  [[noreturn]] static void throwException(const char *msg) {
     throw chainblocks::CBException(msg);
   }
+
+  [[noreturn]] static void throwCancellation() {
+    throw chainblocks::ChainCancellation();
+  }
+
+  [[noreturn]] static void throwRestart() { throw chainblocks::ChainRestart(); }
 
   static void log(const char *msg) { LOG(INFO) << msg; }
 
@@ -1202,9 +1208,9 @@ struct InternalCore {
   static CBVar suspend(CBContext *ctx, double seconds) {
     try {
       chainblocks::suspend(ctx, seconds);
-    } catch (const ChainRestarting &) {
+    } catch (const ChainRestart &) {
       return CBVar{{CBChainState::Restart}};
-    } catch (const ChainCancelation &) {
+    } catch (const ChainCancellation &) {
       return CBVar{{CBChainState::Stop}};
     }
     return CBVar{{CBChainState::Continue}};

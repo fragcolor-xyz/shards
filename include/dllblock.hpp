@@ -105,8 +105,16 @@ public:
     return sCore._core.getStack(context);
   }
 
-  static void throwException(const char *errorText) {
+  [[noreturn]] static void throwException(const char *errorText) {
     sCore._core.throwException(errorText);
+  }
+
+  [[noreturn]] static void throwCancellation(const char *errorText) {
+    sCore._core.throwCancellation();
+  }
+
+  [[noreturn]] static void throwRestart(const char *errorText) {
+    sCore._core.throwRestart();
   }
 
   static CBVar suspend(CBContext *context, double seconds) {

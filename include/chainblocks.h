@@ -761,6 +761,8 @@ typedef CBSeq *(__cdecl *CBGetStack)(struct CBContext *context);
 
 typedef void(__cdecl *CBThrowException)(const char *errorText);
 
+typedef void(__cdecl *CBThrowExceptionSimple)();
+
 typedef struct CBVar(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
 
@@ -873,7 +875,12 @@ struct CBCore {
   CBGetStack getStack;
 
   // Can be used to propagate block errors
+  // assume [[noreturn]]
+  // before calling any of those make sure to release
+  // and call destructors manually!
   CBThrowException throwException;
+  CBThrowExceptionSimple throwCancellation;
+  CBThrowExceptionSimple throwRestart;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
 

@@ -276,14 +276,46 @@ template <class CB_CORE> struct AsyncOp {
       if (state == std::future_status::ready)
         break;
       auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState != Continue) {
-        // Here communicate to the thread.. but hmm should be fine without
-        // anything in this case, cannot send cancelation anyway yet
-        return chainState;
+      if (chainState.payload.chainState == Restart) {
+        CB_CORE::throwRestart();
+      } else if (chainState.payload.chainState != Continue) {
+        CB_CORE::throwCancellation();
       }
     }
     // This should also throw if we had exceptions
     return asyncRes.get();
+  }
+
+  CBVar operator()(std::future<CBVar> &fut) {
+    while (true) {
+      auto state = fut.wait_for(std::chrono::seconds(0));
+      if (state == std::future_status::ready)
+        break;
+      auto chainState = CB_CORE::suspend(_context, 0);
+      if (chainState.payload.chainState == Restart) {
+        CB_CORE::throwRestart();
+      } else if (chainState.payload.chainState != Continue) {
+        CB_CORE::throwCancellation();
+      }
+    }
+    // This should also throw if we had exceptions
+    return fut.get();
+  }
+
+  void operator()(std::future<void> &fut) {
+    while (true) {
+      auto state = fut.wait_for(std::chrono::seconds(0));
+      if (state == std::future_status::ready)
+        break;
+      auto chainState = CB_CORE::suspend(_context, 0);
+      if (chainState.payload.chainState == Restart) {
+        CB_CORE::throwRestart();
+      } else if (chainState.payload.chainState != Continue) {
+        CB_CORE::throwCancellation();
+      }
+    }
+    // This should also throw if we had exceptions
+    fut.get();
   }
 
 private:
