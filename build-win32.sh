@@ -48,3 +48,4 @@ ninja cbl
 # PYTHONHOME=/d/a/_temp/msys/msys64/mingw32 ./cbl ../src/tests/pytest.clj
 ./cbl ../src/tests/lmdb.clj
 ./cbl ../src/tests/genetic.clj
+./cbl ../src/tests/http.clj
