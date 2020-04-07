@@ -1,3 +1,4 @@
+#include <exception>
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -24,83 +25,183 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace chainblocks {
 namespace Http {
 struct Get {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  constexpr static int version = 11;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static inline Parameters params{
+      {"Host",
+       "The remote host address or IP.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Target",
+       "The remote host target path to open.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Port",
+       "The remote host port.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}}};
+
+  CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      host = value;
+      break;
+
+    case 1:
+      target = value;
+      break;
+    case 2:
+      port = value;
+      break;
+    case 3:
+      ssl = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return host;
+    case 1:
+      return target;
+    case 2:
+      return port;
+    case 3:
+      return Var(ssl);
+    default:
+      return {};
+    }
+  }
+
+  void connect(CBContext *context, AsyncOp<InternalCore> &op) {
+    try {
+      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+        if (ssl) {
+          // Set SNI Hostname (many hosts need this to handshake
+          // successfully)
+          if (!SSL_set_tlsext_host_name(stream.native_handle(),
+                                        host.get().payload.stringValue)) {
+            beast::error_code ec{static_cast<int>(::ERR_get_error()),
+                                 net::error::get_ssl_category()};
+            throw beast::system_error{ec};
+          }
+        }
+
+        resolved = resolver.resolve(host.get().payload.stringValue,
+                                    port.get().payload.stringValue);
+
+        // Make the connection on the IP address we get from a lookup
+        beast::get_lowest_layer(stream).connect(resolved);
+
+        if (ssl) {
+          // Perform the SSL handshake
+          stream.handshake(ssl::stream_base::client);
+        }
+
+        connected = true;
+      });
+    } catch (std::exception &ex) {
+      // TODO some exceptions could be left unhandled
+      // or anyway should be fatal
+      LOG(ERROR) << "Http connection failed, pausing chain half a second "
+                    "before restart, exception: "
+                 << ex.what();
+      suspend(context, 0.5);
+      throw ActivationError("Http connection failed, restarting chain.",
+                            CBChainState::Restart, false);
+    }
+  }
+
+  void request(CBContext *context, AsyncOp<InternalCore> &op) {
+    try {
+      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+        // Set up an HTTP GET request message
+        http::request<http::string_body> req{
+            http::verb::get, target.get().payload.stringValue, version};
+        req.set(http::field::host, host.get().payload.stringValue);
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        // Send the HTTP request to the remote host
+        http::write(stream, req);
+
+        // Receive the HTTP response
+        http::read(stream, buffer, res);
+      });
+    } catch (std::exception &ex) {
+      // TODO some exceptions could be left unhandled
+      // or anyway should be fatal
+      LOG(ERROR) << "Http request failed, pausing chain half a second "
+                    "before restart, exception: "
+                 << ex.what();
+
+      resetStream();
+
+      suspend(context, 0.5);
+      throw ActivationError("Http request failed, restarting chain.",
+                            CBChainState::Restart, false);
+    }
+  }
+
+  void resetStream() {
+    beast::error_code ec;
+    stream.shutdown(ec);
+    stream = beast::ssl_stream<beast::tcp_stream>(ioc, ctx);
+    connected = false;
+  }
+
+  void cleanup() { resetStream(); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
 
-    constexpr int version = 11;
-    constexpr auto host = "www.example.com";
-    constexpr auto port = "443";
-    constexpr auto target = "/";
+    if (!connected)
+      connect(context, op);
 
-    // The io_context is required for all I/O
-    net::io_context ioc;
+    buffer.clear();
+    res.clear();
 
-    // The SSL context is required, and holds certificates
-    ssl::context ctx(ssl::context::tlsv12_client);
+    request(context, op);
 
-    // These objects perform our I/O
-    tcp::resolver resolver(ioc);
-    beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
-
-    // Set SNI Hostname (many hosts need this to handshake successfully)
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host)) {
-      beast::error_code ec{static_cast<int>(::ERR_get_error()),
-                           net::error::get_ssl_category()};
-      throw beast::system_error{ec};
-    }
-
-    decltype(resolver.resolve(host, port)) resolved;
-    TFOp(Tasks, op, [&]() { resolved = resolver.resolve(host, port); });
-
-    // Make the connection on the IP address we get from a lookup
-    beast::get_lowest_layer(stream).connect(resolved);
-
-    // Perform the SSL handshake
-    stream.handshake(ssl::stream_base::client);
-
-    // Set up an HTTP GET request message
-    http::request<http::string_body> req{http::verb::get, target, version};
-    req.set(http::field::host, host);
-    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-
-    // Send the HTTP request to the remote host
-    http::write(stream, req);
-
-    // This buffer is used for reading and must be persisted
-    beast::flat_buffer buffer;
-
-    // Declare a container to hold the response
-    http::response<http::dynamic_body> res;
-
-    // Receive the HTTP response
-    http::read(stream, buffer, res);
-
-    // Write the message to standard out
-    std::cout << res << std::endl;
-
-    // Gracefully close the stream
-    beast::error_code ec;
-    stream.shutdown(ec);
-    if (ec == net::error::eof) {
-      // Rationale:
-      // http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
-      ec = {};
-    }
-    if (ec)
-      throw beast::system_error{ec};
-
-    return {};
+    return Var(res.body());
   }
 
 private:
 #if 1
-  using HttpPool = tf::Executor;
-  tf::Executor &Tasks{Singleton<HttpPool>::value};
+  tf::Executor &Tasks{Singleton<tf::Executor>::value};
 #else
   static inline tf::Executor Tasks{1};
 #endif
+
+  ParamVar port{Var("443")};
+  ParamVar host{Var("www.example.com")};
+  ParamVar target{Var("/")};
+  bool ssl = true;
+
+  bool connected = false;
+
+  // The io_context is required for all I/O
+  net::io_context ioc;
+
+  // The SSL context is required, and holds certificates
+  ssl::context ctx{ssl::context::tlsv12_client};
+
+  // These objects perform our I/O
+  tcp::resolver resolver{ioc};
+  beast::ssl_stream<beast::tcp_stream> stream{ioc, ctx};
+
+  tcp::resolver::results_type resolved;
+
+  // This buffer is used for reading and must be persisted
+  beast::flat_buffer buffer;
+
+  // Declare a container to hold the response
+  http::response<http::string_body> res;
 };
 
 void registerBlocks() { REGISTER_CBLOCK("Http.Get", Get); }

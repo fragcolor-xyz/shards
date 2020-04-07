@@ -3,9 +3,10 @@
 (def test
   (Chain
    "test"
-   (Http.Get)
+   :Looped
+   (Http.Get "api.binance.com" "/api/v3/klines?symbol=BNBBTC&interval=15m")
+   (Log)
    ))
 
 (schedule Root test)
-
 (run Root 0.1 10)

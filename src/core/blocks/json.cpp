@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "shared.hpp"
 #include <magic_enum.hpp>
+#include <taskflow/taskflow.hpp>
 
 using json = nlohmann::json;
 
@@ -555,6 +556,8 @@ void from_json(const json &j, CBChainRef &chainref) {
 
 namespace chainblocks {
 struct ToJson {
+  tf::Executor &Tasks{Singleton<tf::Executor>::value};
+
   int64_t _indent = 0;
   std::string _output;
 
@@ -571,16 +574,21 @@ struct ToJson {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
-    json j = input;
-    if (_indent == 0)
-      _output = j.dump();
-    else
-      _output = j.dump(_indent);
-    return Var(_output);
+    AsyncOp<InternalCore> op(context);
+    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
+      json j = input;
+      if (_indent == 0)
+        _output = j.dump();
+      else
+        _output = j.dump(_indent);
+      return Var(_output);
+    });
   }
 };
 
 struct FromJson {
+  tf::Executor &Tasks{Singleton<tf::Executor>::value};
+
   CBVar _output;
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -627,16 +635,19 @@ struct FromJson {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _releaseMemory(_output); // release previous
-    json j = json::parse(input.payload.stringValue);
-    try {
-      _output = j.get<CBVar>();
-    } catch (json::exception &ex) {
-      // Parsing as CBVar failed, try some generic value parsing
-      // Filling Seq + Tables
-      anyParse(j, _output);
-    }
-    return _output;
+    AsyncOp<InternalCore> op(context);
+    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
+      _releaseMemory(_output); // release previous
+      json j = json::parse(input.payload.stringValue);
+      try {
+        _output = j.get<CBVar>();
+      } catch (json::exception &ex) {
+        // Parsing as CBVar failed, try some generic value parsing
+        // Filling Seq + Tables
+        anyParse(j, _output);
+      }
+      return _output;
+    });
   }
 };
 

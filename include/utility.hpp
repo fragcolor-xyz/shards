@@ -264,6 +264,15 @@ template <class CB_CORE> struct TOwnedVar : public CBVar {
   ~TOwnedVar() { CB_CORE::destroyVar(*this); }
 };
 
+// https://godbolt.org/z/I72ctd
+template <class Function> struct Defer {
+  Function _f;
+  Defer(Function &&f) : _f(f) {}
+  ~Defer() { _f(); }
+};
+
+#define DEFER(_body_) ::chainblocks::Defer _([&]() _body_)
+
 template <class CB_CORE> struct AsyncOp {
   AsyncOp(CBContext *context) : _context(context) {}
 
@@ -318,26 +327,108 @@ template <class CB_CORE> struct AsyncOp {
     fut.get();
   }
 
-#define TFOp(__exe__, __op__, __call__)                                        \
-  {                                                                            \
-    tf::Taskflow f;                                                            \
-    f.emplace(__call__);                                                       \
-    auto fut = __exe__.run(f);                                                 \
-    __op__(fut);                                                               \
+  template <typename TFFlow, typename TFExe, class Function>
+  void sidechain(TFExe &exec, Function &&f) {
+    TFFlow flow;
+    std::exception_ptr p = nullptr;
+
+    // wrap into a call to catch exceptions
+    auto call = [&]() {
+      try {
+        f();
+      } catch (...) {
+        p = std::current_exception();
+      }
+    };
+
+    flow.emplace(call);
+    auto fut = exec.run(flow);
+
+    while (true) {
+      auto state = fut.wait_for(std::chrono::seconds(0));
+      if (state == std::future_status::ready)
+        break;
+      auto chainState = CB_CORE::suspend(_context, 0);
+      if (chainState.payload.chainState == Restart) {
+        // flow might assert false if we never started the task...
+        // TODO this might become a issue cos we stall execution?
+        // It is a very edge case tho
+        if (fut.valid())
+          fut.wait();
+        CB_CORE::throwRestart();
+      } else if (chainState.payload.chainState != Continue) {
+        // flow might assert false if we never started the task...
+        // TODO this might become a issue cos we stall execution?
+        // It is a very edge case tho
+        if (fut.valid())
+          fut.wait();
+        CB_CORE::throwCancellation();
+      }
+    }
+
+    // This should also throw if we had exceptions
+    // but it won't in this case cos taskflow won't handle
+    if (fut.valid())
+      fut.get();
+
+    if (p)
+      std::rethrow_exception(p);
+  }
+
+  template <typename Result, typename TFFlow, typename TFExe, class Function>
+  Result sidechain(TFExe &exec, Function &&f) {
+    TFFlow flow;
+    std::exception_ptr p = nullptr;
+    Result res;
+
+    // wrap into a call to catch exceptions
+    auto call = [&]() {
+      try {
+        res = f();
+      } catch (...) {
+        p = std::current_exception();
+      }
+    };
+
+    flow.emplace(call);
+    auto fut = exec.run(flow);
+
+    while (true) {
+      auto state = fut.wait_for(std::chrono::seconds(0));
+      if (state == std::future_status::ready)
+        break;
+      auto chainState = CB_CORE::suspend(_context, 0);
+      if (chainState.payload.chainState == Restart) {
+        // flow might assert false if we never started the task...
+        // TODO this might become a issue cos we stall execution?
+        // It is a very edge case tho
+        if (fut.valid())
+          fut.wait();
+        CB_CORE::throwRestart();
+      } else if (chainState.payload.chainState != Continue) {
+        // flow might assert false if we never started the task...
+        // TODO this might become a issue cos we stall execution?
+        // It is a very edge case tho
+        if (fut.valid())
+          fut.wait();
+        CB_CORE::throwCancellation();
+      }
+    }
+
+    // This should also throw if we had exceptions
+    // but it won't in this case cos taskflow won't handle
+    if (fut.valid())
+      fut.get();
+
+    if (p)
+      std::rethrow_exception(p);
+
+    return res;
   }
 
 private:
   CBContext *_context;
 };
-
-// https://godbolt.org/z/I72ctd
-template <class Function> struct Defer {
-  Function _f;
-  Defer(Function &&f) : _f(f) {}
-  ~Defer() { _f(); }
-};
-
-#define DEFER(_body_) ::chainblocks::Defer _([&]() _body_)
 }; // namespace chainblocks
 
 #endif
