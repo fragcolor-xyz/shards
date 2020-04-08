@@ -1195,9 +1195,9 @@ struct Push : public VariableBase {
       chainblocks::arrayResize(seq.payload.seqValue, 0);
     }
 
-    CBVar tmp{};
-    cloneVar(tmp, input);
-    chainblocks::arrayPush(seq.payload.seqValue, tmp);
+    const auto len = seq.payload.seqValue.len;
+    chainblocks::arrayResize(seq.payload.seqValue, len + 1);
+    cloneVar(seq.payload.seqValue.elements[len], input);
   }
 
   void warmup(CBContext *context) {
@@ -1220,9 +1220,9 @@ struct Push : public VariableBase {
         chainblocks::arrayResize(_target->payload.seqValue, 0);
       }
 
-      CBVar tmp{};
-      cloneVar(tmp, input);
-      chainblocks::arrayPush(_target->payload.seqValue, tmp);
+      const auto len = _target->payload.seqValue.len;
+      chainblocks::arrayResize(_target->payload.seqValue, len + 1);
+      cloneVar(_target->payload.seqValue.elements[len], input);
     }
     return input;
   }
@@ -1345,8 +1345,9 @@ struct Drop : SeqUser {
 
     if (likely(var->valueType == Seq)) {
       auto len = var->payload.seqValue.len;
-      if (len > 0)
+      if (len > 0) {
         chainblocks::arrayResize(var->payload.seqValue, len - 1);
+      }
     } else {
       throw ActivationError("Variable is not a sequence, failed to Drop.");
     }
@@ -2012,11 +2013,13 @@ struct Slice {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    chainblocks::arrayResize(_cachedSeq, 0);
+    const auto len = to - from;
+    const auto actualLen = len / _step + (len % _step != 0);
+    chainblocks::arrayResize(_cachedSeq, actualLen);
+    auto idx = 0;
     for (auto i = from; i < to; i += _step) {
-      CBVar tmp{};
-      cloneVar(tmp, input.payload.seqValue.elements[i]);
-      chainblocks::arrayPush(_cachedSeq, tmp);
+      cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
+      idx++;
     }
 
     return Var(_cachedSeq);
