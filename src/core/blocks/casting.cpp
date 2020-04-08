@@ -578,6 +578,7 @@ template <CBType ET> struct ExpectX {
   CBTypesInfo outputTypes() { return outputType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != ET)) {
+      LOG(ERROR) << "Unexpected value: " << input;
       throw ActivationError("Expected type " + type2Name(ET) + " got instead " +
                             type2Name(input.valueType));
     }

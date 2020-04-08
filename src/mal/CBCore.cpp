@@ -1148,7 +1148,9 @@ BUILTIN("run") {
     while (!node->empty()) {
       auto noErrors = node->tick();
 
-      if (!noErrors) {
+      // other chains might be not in error tho...
+      // so return only if empty
+      if (!noErrors && node->empty()) {
         return mal::boolean(false);
       }
 

@@ -280,6 +280,8 @@ CBlock *createBlock(const char *name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
   } else if (strcmp(name, "Repeat") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
+  } else if (strcmp(name, "Once") == 0) {
+    blkp->inlineBlockId = CBInlineBlocks::CoreOnce;
   } else if (strcmp(name, "Get") == 0) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (strcmp(name, "Set") == 0) {

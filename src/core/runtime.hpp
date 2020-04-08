@@ -202,6 +202,10 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::RepeatRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
+  case CoreOnce: {
+    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Once> *>(blk);
+    return cblock->block.activate(context, input);
+  }
   case CoreGet: {
     auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
     return cblock->core.activate(context, input);

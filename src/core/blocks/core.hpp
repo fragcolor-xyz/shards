@@ -2213,6 +2213,70 @@ struct Repeat {
   }
 };
 
+struct Once {
+  BlocksVar _blks;
+  ExposedInfo _requiredInfo{};
+  CBValidationResult _validation{};
+  bool done = false;
+
+  void cleanup() {
+    _blks.cleanup();
+    done = false;
+  }
+
+  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks));
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _blks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blks;
+    default:
+      break;
+    }
+    throw CBException("Parameter out of range.");
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _validation = _blks.compose(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!done)) {
+      done = true;
+      CBVar repeatOutput{};
+      CBVar blks = _blks;
+      auto state =
+          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
+      if (unlikely(state == FlowState::Stopping)) {
+        return StopChain;
+      }
+    }
+    return input;
+  }
+};
+
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Input);
 RUNTIME_CORE_BLOCK_TYPE(SetInput);

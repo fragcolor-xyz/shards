@@ -1373,5 +1373,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Map", Map);
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);
+  REGISTER_CBLOCK("Once", Once);
 }
 }; // namespace chainblocks
