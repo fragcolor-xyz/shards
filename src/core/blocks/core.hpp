@@ -2198,14 +2198,8 @@ struct Repeat {
       repeatOutput.valueType = None;
       repeatOutput.payload.chainState = CBChainState::Continue;
       CBVar blks = _blks;
-      auto state =
-          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
-      if (unlikely(state == FlowState::Stopping)) {
-        return StopChain;
-      } else if (unlikely(state == FlowState::Returning)) {
-        break;
-      }
-
+      if (!activateBlocks(blks.payload.seqValue, context, input, repeatOutput))
+        break; // this is a Return signal
       if (!_forever)
         repeats--;
     }
@@ -2267,11 +2261,7 @@ struct Once {
       done = true;
       CBVar repeatOutput{};
       CBVar blks = _blks;
-      auto state =
-          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
-      if (unlikely(state == FlowState::Stopping)) {
-        return StopChain;
-      }
+      activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
     }
     return input;
   }

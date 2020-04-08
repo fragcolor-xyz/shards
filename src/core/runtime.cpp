@@ -578,8 +578,8 @@ void suspend(CBContext *context, double seconds) {
   }
 }
 
-FlowState activateBlocks(CBlocks blocks, CBContext *context,
-                         const CBVar &chainInput, CBVar &output) {
+bool activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput,
+                    CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
@@ -589,14 +589,16 @@ FlowState activateBlocks(CBlocks blocks, CBContext *context,
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        return Continuing;
+        throw ChainRestart();
       }
       case CBChainState::Stop: {
-        return Stopping;
+        throw ChainStop();
       }
       case CBChainState::Return: {
-        output = input; // Invert them, we return previous output (input)
-        return Returning;
+        // Invert them, we return previous output (input)
+        output = input;
+        // falso on partial run!
+        return false;
       }
       case CBChainState::Rebase: {
         input = chainInput;
@@ -608,11 +610,12 @@ FlowState activateBlocks(CBlocks blocks, CBContext *context,
     }
     input = output;
   }
-  return Continuing;
+  // true on full run!
+  return true;
 }
 
-FlowState activateBlocks(CBSeq blocks, CBContext *context,
-                         const CBVar &chainInput, CBVar &output) {
+bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
+                    CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
@@ -623,14 +626,16 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     if (output.valueType == None) {
       switch (output.payload.chainState) {
       case CBChainState::Restart: {
-        return Continuing;
+        throw ChainRestart();
       }
       case CBChainState::Stop: {
-        return Stopping;
+        throw ChainStop();
       }
       case CBChainState::Return: {
-        output = input; // Invert them, we return previous output (input)
-        return Returning;
+        // Invert them, we return previous output (input)
+        output = input;
+        // falso on partial run!
+        return false;
       }
       case CBChainState::Rebase: {
         input = chainInput;
@@ -642,8 +647,8 @@ FlowState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-
-  return Continuing;
+  // true on full run!
+  return true;
 }
 
 CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }

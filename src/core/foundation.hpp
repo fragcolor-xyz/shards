@@ -48,12 +48,10 @@ CBValidationResult validateConnections(const CBlocks chain,
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
-enum FlowState { Stopping, Continuing, Returning };
-
-FlowState activateBlocks(CBSeq blocks, CBContext *context,
-                         const CBVar &chainInput, CBVar &output);
-FlowState activateBlocks(CBlocks blocks, CBContext *context,
-                         const CBVar &chainInput, CBVar &output);
+bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
+                    CBVar &output);
+bool activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput,
+                    CBVar &output);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);

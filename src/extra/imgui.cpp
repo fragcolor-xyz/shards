@@ -643,14 +643,11 @@ struct Window : public Base {
     }
 
     ::ImGui::Begin(_title.c_str(), nullptr, flags);
+    DEFER({ ::ImGui::End(); });
 
-    CBVar output = Empty;
-    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context, input,
-                                 output))) {
-      ::ImGui::End();
-      return StopChain;
-    }
-    ::ImGui::End();
+    CBVar output{};
+    // this one throws that's why we use defer above!
+    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
     return input;
   }
 };
@@ -927,10 +924,7 @@ struct Button : public Base {
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
     CBVar output = Empty;                                                      \
-    if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context,       \
-                                 input, output))) {                            \
-      return StopChain;                                                        \
-    }                                                                          \
+    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);     \
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {

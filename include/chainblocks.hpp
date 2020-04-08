@@ -42,16 +42,14 @@ private:
 
 class ChainCancellation : public ActivationError {
 public:
-  ChainCancellation()
-      : ActivationError("Chain execution has been canceled.",
-                        CBChainState::Stop, false) {}
+  ChainCancellation() : ActivationError("", CBChainState::Stop, false) {}
 };
+
+using ChainStop = ChainCancellation;
 
 class ChainRestart : public ActivationError {
 public:
-  ChainRestart()
-      : ActivationError("Chain has been restarted.", CBChainState::Restart,
-                        false) {}
+  ChainRestart() : ActivationError("", CBChainState::Restart, false) {}
 };
 
 class ComposeError : public CBException {

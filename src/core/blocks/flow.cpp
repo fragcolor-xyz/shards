@@ -266,7 +266,7 @@ struct Cond {
       if (_passthrough)
         return input;
       else
-        return CBVar(); // None
+        return {}; // None
     }
 
     auto idx = 0;
@@ -275,19 +275,16 @@ struct Cond {
     for (auto &cond : _conditions) {
       CBVar output{};
       CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
-      if (unlikely(!activateBlocks(blocks, context, input, output))) {
-        return StopChain;
-      } else if (output == True) {
+      activateBlocks(blocks, context, input, output);
+      if (output == True) {
         // Do the action if true!
         // And stop here
-        output = Empty;
+        output = {};
         CBlocks action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
-        auto state = activateBlocks(action, context, actionInput, output);
-        if (unlikely(state == FlowState::Stopping)) {
-          return StopChain;
-        } else if (unlikely(state == FlowState::Returning)) {
-          return Var::Return();
-        } else if (_threading) {
+        if (!activateBlocks(action, context, actionInput, output))
+          return Var::Return(); // we need to propagate Return!
+
+        if (_threading) {
           // set the output as the next action input (not cond tho!)
           finalOutput = output;
           actionInput = finalOutput;

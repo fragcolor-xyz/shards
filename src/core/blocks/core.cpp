@@ -460,10 +460,7 @@ struct Profile {
     LOG(INFO) << "Profiling: " << _label;
     TIMED_FUNC(timerObj);
     CBVar output{};
-    if (unlikely(!activateBlocks(CBVar(_blocks).payload.seqValue, context,
-                                 input, output))) {
-      return StopChain;
-    }
+    activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
     return output;
   }
 };
@@ -593,6 +590,46 @@ struct PrependTo : public XpendTo {
     }
     return input;
   }
+};
+
+struct ForEachBlock {
+  CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+
+  CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _validation = _blocks.compose(data);
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IterableSeq in(input);
+    for (auto &item : in) {
+      _blocks.activate(context, item);
+    }
+    return input;
+  }
+
+private:
+  static inline Parameters _params{
+      {"Apply",
+       "The function to apply to each item of the sequence.",
+       {CoreInfo::Blocks}}};
+
+  BlocksVar _blocks{};
+  CBValidationResult _validation{};
 };
 
 struct Map {
@@ -1370,6 +1407,7 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Profile", Profile);
 
+  REGISTER_CBLOCK("ForEach", ForEachBlock);
   REGISTER_CBLOCK("Map", Map);
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);

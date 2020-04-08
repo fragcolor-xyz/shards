@@ -283,13 +283,11 @@ struct Server : public NetworkBase {
     while (!_queue.empty()) {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
-        CBVar output = Empty;
+        CBVar output{};
         // update remote as pops in context variable
         _socket.endpoint = pkt.remote;
-        if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context,
-                                     pkt.payload, output))) {
-          LOG(ERROR) << "A Receiver chain had errors!.";
-        }
+        activateBlocks(CBVar(_blks).payload.seqValue, context, pkt.payload,
+                       output);
         // release the var once done
         // will recycle internal buffers
         _empty_queue.push(pkt);
@@ -391,11 +389,8 @@ struct Client : public NetworkBase {
     while (!_queue.empty()) {
       CBVar v;
       if (_queue.pop(v)) {
-        CBVar output = Empty;
-        if (unlikely(!activateBlocks(CBVar(_blks).payload.seqValue, context, v,
-                                     output))) {
-          LOG(ERROR) << "A Receiver chain had errors!.";
-        }
+        CBVar output{};
+        activateBlocks(CBVar(_blks).payload.seqValue, context, v, output);
         // release the var once done
         // will recycle internal buffers
         _empty_queue.push(v);
@@ -410,7 +405,6 @@ struct Client : public NetworkBase {
         ExposedInfo(NetworkBase::exposedVariables()),
         ExposedInfo::Variable("Network.Socket", "The current client socket.",
                               CBTypeInfo(SocketInfo)));
-
     return CBExposedTypesInfo(_exposedInfo);
   }
 
