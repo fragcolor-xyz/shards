@@ -138,6 +138,8 @@ jobs:
         ./cbl ../src/tests/channels.clj
         ./cbl ../src/tests/lmdb.clj
         ./cbl ../src/tests/genetic.clj
+        ./cbl ../src/tests/imaging.clj
+        ./cbl ../src/tests/http.clj
 
   ciMacRel:
     runs-on: macos-latest
@@ -171,6 +173,7 @@ jobs:
         ./cbl ../src/tests/lmdb.clj
         ./cbl ../src/tests/genetic.clj
         ./cbl ../src/tests/imaging.clj
+        ./cbl ../src/tests/http.clj
 
   ciMacAsan:
     runs-on: macos-latest
@@ -204,3 +207,4 @@ jobs:
         ./cbl ../src/tests/lmdb.clj
         ./cbl ../src/tests/genetic.clj
         ./cbl ../src/tests/imaging.clj
+        ./cbl ../src/tests/http.clj
