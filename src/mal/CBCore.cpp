@@ -179,6 +179,7 @@ void installCBCore(const malEnvPtr &env) {
   rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
       "to))))",
       env);
+  rep("(def || Await)", env);
 #ifdef _WIN32
   rep("(def platform \"windows\")", env);
 #elif __linux__

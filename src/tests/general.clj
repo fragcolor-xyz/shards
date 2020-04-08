@@ -715,9 +715,12 @@
   (RTake [0 1 3 4])
   (Assert.Is [100 98 102 113] true)
 
-  (Get .seq-a)
-  (Reduce (-->
-           (Math.Add .$0)))
+  (Await
+   (-->
+    (Get .seq-a)
+    (Reduce (-->
+             (Math.Add .$0)
+             (Log)))))
   (Log)
   (Assert.Is 634 true)
 
@@ -725,6 +728,7 @@
   (Get .seq-a)
   (Log)
   (Assert.Is [112 114 97 99] true)
+
 
   (Msg "All looking good!")))
 

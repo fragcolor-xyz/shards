@@ -134,26 +134,22 @@ struct WriteFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      if (!_fileStream.is_open()) {
-        std::string filename;
-        if (!getFilename(context, filename, false)) {
-          return input;
-        }
-
-        if (_append)
-          _fileStream =
-              std::ofstream(filename, std::ios::app | std::ios::binary);
-        else
-          _fileStream =
-              std::ofstream(filename, std::ios::trunc | std::ios::binary);
+    if (!_fileStream.is_open()) {
+      std::string filename;
+      if (!getFilename(context, filename, false)) {
+        return input;
       }
 
-      Writer s(_fileStream);
-      Serialization::serialize(input, s);
-      return input;
-    });
+      if (_append)
+        _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
+      else
+        _fileStream =
+            std::ofstream(filename, std::ios::trunc | std::ios::binary);
+    }
+
+    Writer s(_fileStream);
+    Serialization::serialize(input, s);
+    return input;
   }
 };
 
@@ -191,25 +187,22 @@ struct ReadFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      if (!_fileStream.is_open()) {
-        std::string filename;
-        if (!getFilename(context, filename)) {
-          return CBVar();
-        }
-
-        _fileStream = std::ifstream(filename, std::ios::binary);
-      }
-
-      if (_fileStream.eof()) {
+    if (!_fileStream.is_open()) {
+      std::string filename;
+      if (!getFilename(context, filename)) {
         return CBVar();
       }
 
-      Reader r(_fileStream);
-      Serialization::deserialize(r, _output);
-      return _output;
-    });
+      _fileStream = std::ifstream(filename, std::ios::binary);
+    }
+
+    if (_fileStream.eof()) {
+      return CBVar();
+    }
+
+    Reader r(_fileStream);
+    Serialization::deserialize(r, _output);
+    return _output;
   }
 };
 
@@ -242,25 +235,22 @@ struct LoadImage : public FileBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      std::string filename;
-      if (!getFilename(context, filename)) {
-        throw ActivationError("File not found!");
-      }
+    std::string filename;
+    if (!getFilename(context, filename)) {
+      throw ActivationError("File not found!");
+    }
 
-      CBVar res{};
-      res.valueType = Image;
-      int x, y, n;
-      res.payload.imageValue.data = stbi_load(filename.c_str(), &x, &y, &n, 0);
-      if (!res.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-      res.payload.imageValue.width = uint16_t(x);
-      res.payload.imageValue.height = uint16_t(y);
-      res.payload.imageValue.channels = uint16_t(n);
-      return res;
-    });
+    CBVar res{};
+    res.valueType = Image;
+    int x, y, n;
+    res.payload.imageValue.data = stbi_load(filename.c_str(), &x, &y, &n, 0);
+    if (!res.payload.imageValue.data) {
+      throw ActivationError("Failed to load image file");
+    }
+    res.payload.imageValue.width = uint16_t(x);
+    res.payload.imageValue.height = uint16_t(y);
+    res.payload.imageValue.channels = uint16_t(n);
+    return res;
   }
 };
 
@@ -271,21 +261,18 @@ struct WritePNG : public FileBase {
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      std::string filename;
-      if (!getFilename(context, filename, false)) {
-        throw ActivationError("Path does not exist!");
-      }
+    std::string filename;
+    if (!getFilename(context, filename, false)) {
+      throw ActivationError("Path does not exist!");
+    }
 
-      int w = int(input.payload.imageValue.width);
-      int h = int(input.payload.imageValue.height);
-      int c = int(input.payload.imageValue.channels);
-      if (0 == stbi_write_png(filename.c_str(), w, h, c,
-                              input.payload.imageValue.data, w * c))
-        throw ActivationError("Failed to write PNG file.");
-      return input;
-    });
+    int w = int(input.payload.imageValue.width);
+    int h = int(input.payload.imageValue.height);
+    int c = int(input.payload.imageValue.channels);
+    if (0 == stbi_write_png(filename.c_str(), w, h, c,
+                            input.payload.imageValue.data, w * c))
+      throw ActivationError("Failed to write PNG file.");
+    return input;
   }
 };
 

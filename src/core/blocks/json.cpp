@@ -574,15 +574,12 @@ struct ToJson {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      json j = input;
-      if (_indent == 0)
-        _output = j.dump();
-      else
-        _output = j.dump(_indent);
-      return Var(_output);
-    });
+    json j = input;
+    if (_indent == 0)
+      _output = j.dump();
+    else
+      _output = j.dump(_indent);
+    return Var(_output);
   }
 };
 
@@ -635,19 +632,16 @@ struct FromJson {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar, tf::Taskflow>(Tasks, [&]() {
-      _releaseMemory(_output); // release previous
-      json j = json::parse(input.payload.stringValue);
-      try {
-        _output = j.get<CBVar>();
-      } catch (json::exception &ex) {
-        // Parsing as CBVar failed, try some generic value parsing
-        // Filling Seq + Tables
-        anyParse(j, _output);
-      }
-      return _output;
-    });
+    _releaseMemory(_output); // release previous
+    json j = json::parse(input.payload.stringValue);
+    try {
+      _output = j.get<CBVar>();
+    } catch (json::exception &ex) {
+      // Parsing as CBVar failed, try some generic value parsing
+      // Filling Seq + Tables
+      anyParse(j, _output);
+    }
+    return _output;
   }
 };
 

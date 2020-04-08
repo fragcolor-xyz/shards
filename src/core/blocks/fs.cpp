@@ -256,19 +256,16 @@ struct Read {
       throw ActivationError("FS.Read, file does not exist.");
     }
 
-    AsyncOp<InternalCore> asyncRead(context);
-    return asyncRead([&]() {
-      if (_binary) {
-        std::ifstream file(p.string(), std::ios::binary);
-        _buffer.assign(std::istreambuf_iterator<char>(file), {});
-        return Var(&_buffer.front(), _buffer.size());
-      } else {
-        std::ifstream file(p.string(), std::ios::binary);
-        _buffer.assign(std::istreambuf_iterator<char>(file), {});
-        _buffer.push_back(0);
-        return Var((const char *)&_buffer.front());
-      }
-    });
+    if (_binary) {
+      std::ifstream file(p.string(), std::ios::binary);
+      _buffer.assign(std::istreambuf_iterator<char>(file), {});
+      return Var(&_buffer.front(), _buffer.size());
+    } else {
+      std::ifstream file(p.string(), std::ios::binary);
+      _buffer.assign(std::istreambuf_iterator<char>(file), {});
+      _buffer.push_back(0);
+      return Var((const char *)&_buffer.front());
+    }
   }
 };
 
