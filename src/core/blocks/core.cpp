@@ -541,9 +541,10 @@ struct AppendTo : public XpendTo {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
-      CBVar tmp{};
-      cloneVar(tmp, input);
-      chainblocks::arrayPush(collection.payload.seqValue, tmp);
+      auto &arr = collection.payload.seqValue;
+      const auto len = arr.len;
+      chainblocks::arrayResize(arr, len + 1);
+      cloneVar(arr.elements[len], input);
       break;
     }
     case String: {
@@ -569,9 +570,11 @@ struct PrependTo : public XpendTo {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
-      CBVar tmp{};
-      cloneVar(tmp, input);
-      chainblocks::arrayInsert(collection.payload.seqValue, 0, tmp);
+      auto &arr = collection.payload.seqValue;
+      const auto len = arr.len;
+      chainblocks::arrayResize(arr, len + 1);
+      memmove(&arr.elements[1], &arr.elements[0], sizeof(*arr.elements) * len);
+      cloneVar(arr.elements[0], input);
       break;
     }
     case String: {
