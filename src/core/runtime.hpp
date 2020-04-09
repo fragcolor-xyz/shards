@@ -560,12 +560,12 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
 
     Duration cbsTime = post - pre;
     Duration realSleepTime = sleepTime - cbsTime;
-    if (realSleepTime.count() > 0.0) {
+    if (seconds != -1.0 && realSleepTime.count() > 0.0) {
       // Sleep actual time minus stuff we did in cbs
       seconds = realSleepTime.count();
     } else {
       // Don't yield to kernel at all in this case!
-      seconds = 1.0;
+      seconds = -1.0;
     }
   }
 

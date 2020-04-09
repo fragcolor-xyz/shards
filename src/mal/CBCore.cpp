@@ -1131,7 +1131,7 @@ BUILTIN("run") {
     throw chainblocks::CBException("tick Expected Node or Chain");
   }
 
-  auto sleepTime = 0.0;
+  auto sleepTime = -1.0;
   if (argsBegin != argsEnd) {
     ARG(malNumber, argSleepTime);
     sleepTime = argSleepTime->value();
