@@ -545,7 +545,7 @@ struct CBVarPayload {
     };
 
     struct {
-      CBVarPayload *arrayValue;
+      struct CBVarPayload *arrayValue;
       uint32_t arrayLen;
       // this is mostly used internal
       // useful when serializing, recycling memory
