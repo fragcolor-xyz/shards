@@ -84,8 +84,6 @@ struct FileBase {
 };
 
 struct WriteFile : public FileBase {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
   std::ofstream _fileStream;
   bool _append = false;
 
@@ -166,8 +164,6 @@ RUNTIME_BLOCK_activate(WriteFile);
 RUNTIME_BLOCK_END(WriteFile);
 
 struct ReadFile : public FileBase {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   std::ifstream _fileStream;
@@ -219,8 +215,6 @@ RUNTIME_BLOCK_activate(ReadFile);
 RUNTIME_BLOCK_END(ReadFile);
 
 struct LoadImage : public FileBase {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
@@ -255,8 +249,6 @@ struct LoadImage : public FileBase {
 };
 
 struct WritePNG : public FileBase {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 

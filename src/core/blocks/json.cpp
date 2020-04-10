@@ -556,8 +556,6 @@ void from_json(const json &j, CBChainRef &chainref) {
 
 namespace chainblocks {
 struct ToJson {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
   int64_t _indent = 0;
   std::string _output;
 
@@ -584,9 +582,7 @@ struct ToJson {
 };
 
 struct FromJson {
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
-  CBVar _output;
+  CBVar _output{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
@@ -598,9 +594,9 @@ struct FromJson {
     if (j.is_array()) {
       storage.valueType = Seq;
       for (json::iterator it = j.begin(); it != j.end(); ++it) {
-        CBVar tmp{};
-        anyParse(*it, tmp);
-        arrayPush(storage.payload.seqValue, tmp);
+        const auto len = storage.payload.seqValue.len;
+        arrayResize(storage.payload.seqValue, len + 1);
+        anyParse(*it, storage.payload.seqValue.elements[len]);
       }
     } else if (j.is_number_integer()) {
       storage.valueType = Int;
@@ -624,9 +620,7 @@ struct FromJson {
       storage.payload.tableValue.api = &chainblocks::Globals::TableInterface;
       storage.payload.tableValue.opaque = map;
       for (auto &[key, value] : j.items()) {
-        CBVar tmp{};
-        anyParse(value, tmp);
-        (*map)[key] = tmp;
+        anyParse(value, (*map)[key]);
       }
     }
   }
