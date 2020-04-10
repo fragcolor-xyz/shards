@@ -266,12 +266,16 @@ else()
 endif()
 
 #### Format target
-if(CLANG_FORMAT_EXE)
-  add_custom_target(
-    format
-    COMMAND ${CLANG_FORMAT_EXE} -i -style=LLVM ${MY_PROJECT_SOURCE_FILES}
-    )
-endif()
+foreach(_file ${MY_PROJECT_SOURCE_FILES})
+  if(CLANG_FORMAT_EXE)
+    add_custom_command(
+      OUTPUT ${_file}.formatted
+      COMMAND ${CLANG_FORMAT_EXE} -i -style=LLVM ${_file}
+      )
+    list(APPEND formatfied ${_file}.formatted)
+  endif()
+endforeach()
+add_custom_target(format DEPENDS ${formatfied})
 ###
 
 ### setup clang tidy
@@ -291,10 +295,10 @@ set(tidyfied)
 foreach(_file ${MY_PROJECT_SOURCE_FILES})
   if(CLANG_TIDY_EXE)
     add_custom_command(
-      OUTPUT ${_file}.noop
+      OUTPUT ${_file}.tidyfied
       COMMAND ${CLANG_TIDY_EXE} -checks=-*,clang-analyzer-*,performance-*,bugprone-* -fix ${_file} -- -std=c++17 -DDEBUG ${MY_PROJECT_HEADER_PATHS}
       )
-    list(APPEND tidyfied ${_file}.noop)
+    list(APPEND tidyfied ${_file}.tidyfied)
   endif()
 endforeach()
 add_custom_target(tidy DEPENDS ${tidyfied})
@@ -491,7 +495,6 @@ add_library(
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_static PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-add_dependencies(cb_static format)
 
 set(CB_RUNTIME_LIBS cb_static)
 
