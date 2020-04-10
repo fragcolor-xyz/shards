@@ -610,6 +610,21 @@ EXPECT_BLOCK(Seq, Seq);
 EXPECT_BLOCK(Table, Table);
 EXPECT_BLOCK(Chain, CBType::Chain);
 
+template <Type &ET> struct ExpectXComplex {
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  CBTypesInfo outputTypes() { return ET; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // TODO make this check stricter?
+    const static CBTypeInfo info = ET;
+    if (unlikely(input.valueType != info.basicType)) {
+      LOG(ERROR) << "Unexpected value: " << input;
+      throw ActivationError("Expected type " + type2Name(info.basicType) +
+                            " got instead " + type2Name(input.valueType));
+    }
+    return input;
+  }
+};
+
 struct ToBytes {
   struct StreamBuffer : std::streambuf {
     std::vector<uint8_t> &data;
@@ -875,5 +890,8 @@ void registerCastingBlocks() {
   using FloatsToImage = ToImage<CBType::Float>;
   REGISTER_CBLOCK("ImageToFloats", ImageToFloats);
   REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
+
+  using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
+  REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
 }
 }; // namespace chainblocks
