@@ -1312,7 +1312,15 @@ struct Clear : SeqUser {
     }
 
     if (likely(var->valueType == Seq)) {
+      // notice this is fine because destroyVar will destroy .cap later
+      // so we make sure we are not leaking Vars
       chainblocks::arrayResize(var->payload.seqValue, 0);
+
+      // sometimes we might have as input the same var!
+      // this is kind of a hack but helps UX
+      // we in that case output the same var with adjusted len!
+      if (input.payload.seqValue.elements == var->payload.seqValue.elements)
+        const_cast<CBVar &>(input).payload.seqValue.len = 0;
     } else if (var->valueType == Table) {
       var->payload.tableValue.api->tableClear(var->payload.tableValue);
     }
@@ -1345,11 +1353,70 @@ struct Drop : SeqUser {
 
     if (likely(var->valueType == Seq)) {
       auto len = var->payload.seqValue.len;
+      // notice this is fine because destroyVar will destroy .cap later
+      // so we make sure we are not leaking Vars
       if (len > 0) {
         chainblocks::arrayResize(var->payload.seqValue, len - 1);
       }
+
+      // sometimes we might have as input the same var!
+      // this is kind of a hack but helps UX
+      // we in that case output the same var with adjusted len!
+      if (input.payload.seqValue.elements == var->payload.seqValue.elements)
+        const_cast<CBVar &>(input).payload.seqValue.len = len - 1;
     } else {
       throw ActivationError("Variable is not a sequence, failed to Drop.");
+    }
+
+    return input;
+  }
+};
+
+struct DropFront : SeqUser {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = referenceVariable(context, _name.c_str());
+    }
+
+    CBVar *var = _target;
+
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        throw ActivationError("Variable is not a table, failed to Clear.");
+      }
+
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, _key.c_str());
+      }
+      var = _cell;
+    }
+
+    if (likely(var->valueType == Seq) && var->payload.seqValue.len > 0) {
+      auto &arr = var->payload.seqValue;
+      const auto len = arr.len - 1;
+      // store to put back at end
+      // we do this to allow further grows
+      // to recycle this var (well if not blittable that is)
+      auto first = arr.elements[0];
+      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
+                    "Wrong seq elements size!");
+      // shift backward current elements
+      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
+      // put first at end
+      arr.elements[len] = first;
+      // resize, will cut first out too
+      chainblocks::arrayResize(arr, len);
+
+      // sometimes we might have as input the same var!
+      // this is kind of a hack but helps UX
+      // we in that case output the same var with adjusted len!
+      if (input.payload.seqValue.elements == arr.elements)
+        const_cast<CBVar &>(input).payload.seqValue.len = len;
+    } else {
+      throw ActivationError("Variable is not a sequence, failed to DropFront.");
     }
 
     return input;
@@ -2294,6 +2361,7 @@ RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
 RUNTIME_CORE_BLOCK_TYPE(Drop);
+RUNTIME_CORE_BLOCK_TYPE(DropFront);
 RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks

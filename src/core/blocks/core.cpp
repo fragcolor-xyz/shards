@@ -1088,6 +1088,17 @@ RUNTIME_BLOCK_getParam(Drop);
 RUNTIME_BLOCK_activate(Drop);
 RUNTIME_BLOCK_END(Drop);
 
+// Register DropFront
+RUNTIME_CORE_BLOCK_FACTORY(DropFront);
+RUNTIME_BLOCK_cleanup(DropFront);
+RUNTIME_BLOCK_inputTypes(DropFront);
+RUNTIME_BLOCK_outputTypes(DropFront);
+RUNTIME_BLOCK_parameters(DropFront);
+RUNTIME_BLOCK_setParam(DropFront);
+RUNTIME_BLOCK_getParam(DropFront);
+RUNTIME_BLOCK_activate(DropFront);
+RUNTIME_BLOCK_END(DropFront);
+
 // Register Get
 RUNTIME_CORE_BLOCK_FACTORY(Get);
 RUNTIME_BLOCK_cleanup(Get);
@@ -1322,6 +1333,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Pop);
   REGISTER_CORE_BLOCK(Clear);
   REGISTER_CORE_BLOCK(Drop);
+  REGISTER_CORE_BLOCK(DropFront);
   REGISTER_CORE_BLOCK(Count);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);

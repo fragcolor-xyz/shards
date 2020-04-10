@@ -729,6 +729,10 @@
   (Log)
   (Assert.Is [112 114 97 99] true)
 
+  (DropFront .seq-a)
+  ;; this also tests that we fixup input as well
+  ;; (Get .seq-a)
+  (Assert.Is [114 97 99] true)
 
   (Msg "All looking good!")))
 
