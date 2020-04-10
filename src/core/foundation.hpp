@@ -676,21 +676,48 @@ struct Serialization {
     case CBType::None:
     case CBType::EndOfBlittableTypes:
     case CBType::Any:
+      break;
     case CBType::Enum:
+      read((uint8_t *)&output.payload, sizeof(int32_t) * 3);
+      break;
     case CBType::Bool:
+      read((uint8_t *)&output.payload, sizeof(CBBool));
+      break;
     case CBType::Int:
+      read((uint8_t *)&output.payload, sizeof(CBInt));
+      break;
     case CBType::Int2:
+      read((uint8_t *)&output.payload, sizeof(CBInt2));
+      break;
     case CBType::Int3:
+      read((uint8_t *)&output.payload, sizeof(CBInt3));
+      break;
     case CBType::Int4:
+      read((uint8_t *)&output.payload, sizeof(CBInt4));
+      break;
     case CBType::Int8:
+      read((uint8_t *)&output.payload, sizeof(CBInt8));
+      break;
     case CBType::Int16:
+      read((uint8_t *)&output.payload, sizeof(CBInt16));
+      break;
     case CBType::Float:
+      read((uint8_t *)&output.payload, sizeof(CBFloat));
+      break;
     case CBType::Float2:
+      read((uint8_t *)&output.payload, sizeof(CBFloat2));
+      break;
     case CBType::Float3:
+      read((uint8_t *)&output.payload, sizeof(CBFloat3));
+      break;
     case CBType::Float4:
+      read((uint8_t *)&output.payload, sizeof(CBFloat4));
+      break;
     case CBType::Color:
+      read((uint8_t *)&output.payload, sizeof(CBColor));
+      break;
     case CBType::StackIndex:
-      read((uint8_t *)&output.payload, sizeof(output.payload));
+      read((uint8_t *)&output.payload, sizeof(int64_t));
       break;
     case CBType::Bytes: {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
@@ -939,22 +966,62 @@ struct Serialization {
     case CBType::None:
     case CBType::EndOfBlittableTypes:
     case CBType::Any:
+      break;
     case CBType::Enum:
+      write((const uint8_t *)&input.payload, sizeof(int32_t) * 3);
+      total += sizeof(int32_t) * 3;
+      break;
     case CBType::Bool:
+      write((const uint8_t *)&input.payload, sizeof(CBBool));
+      total += sizeof(CBBool);
+      break;
     case CBType::Int:
+      write((const uint8_t *)&input.payload, sizeof(CBInt));
+      total += sizeof(CBInt);
+      break;
     case CBType::Int2:
+      write((const uint8_t *)&input.payload, sizeof(CBInt2));
+      total += sizeof(CBInt2);
+      break;
     case CBType::Int3:
+      write((const uint8_t *)&input.payload, sizeof(CBInt3));
+      total += sizeof(CBInt3);
+      break;
     case CBType::Int4:
+      write((const uint8_t *)&input.payload, sizeof(CBInt4));
+      total += sizeof(CBInt4);
+      break;
     case CBType::Int8:
+      write((const uint8_t *)&input.payload, sizeof(CBInt8));
+      total += sizeof(CBInt8);
+      break;
     case CBType::Int16:
+      write((const uint8_t *)&input.payload, sizeof(CBInt16));
+      total += sizeof(CBInt16);
+      break;
     case CBType::Float:
+      write((const uint8_t *)&input.payload, sizeof(CBFloat));
+      total += sizeof(CBFloat);
+      break;
     case CBType::Float2:
+      write((const uint8_t *)&input.payload, sizeof(CBFloat2));
+      total += sizeof(CBFloat2);
+      break;
     case CBType::Float3:
+      write((const uint8_t *)&input.payload, sizeof(CBFloat3));
+      total += sizeof(CBFloat3);
+      break;
     case CBType::Float4:
+      write((const uint8_t *)&input.payload, sizeof(CBFloat4));
+      total += sizeof(CBFloat4);
+      break;
     case CBType::Color:
+      write((const uint8_t *)&input.payload, sizeof(CBColor));
+      total += sizeof(CBColor);
+      break;
     case CBType::StackIndex:
-      write((const uint8_t *)&input.payload, sizeof(input.payload));
-      total += sizeof(input.payload);
+      write((const uint8_t *)&input.payload, sizeof(int64_t));
+      total += sizeof(int64_t);
       break;
     case CBType::Bytes:
       write((const uint8_t *)&input.payload.bytesSize,
