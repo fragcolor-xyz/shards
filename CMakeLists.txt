@@ -99,13 +99,15 @@ else()
   add_compile_options(-Wall)
 endif()
 
+if(FORCE_USE_LLD)
+  add_link_options(-fuse-ld=lld)
+endif()
+
 ### general
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
-    add_link_options(-fuse-ld=lld)
+    add_link_options(-static)
   endif()
-elseif(WIN32)
-  add_link_options(-static)
 endif()
 
 add_compile_options(-ffast-math -funroll-loops -Wno-multichar)
