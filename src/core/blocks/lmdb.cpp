@@ -28,6 +28,7 @@ struct Env {
     CHECKED(mdb_env_create(&_env));
 
     CHECKED(mdb_env_set_maxreaders(_env, maxReaders));
+    CHECKED(mdb_env_set_mapsize(_env, 3221225472)); // 3GB
 
     unsigned int flags = MDB_NOTLS | MDB_NOSYNC | MDB_NOSUBDIR;
 
