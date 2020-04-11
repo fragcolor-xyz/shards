@@ -734,6 +734,12 @@
   ;; (Get .seq-a)
   (Assert.Is [114 97 99] true)
 
+  (PopFront .seq-a)
+  (Assert.Is 114 true)
+
+  (Get .seq-a)
+  (Assert.Is [97 99] true)
+
   (Msg "All looking good!")))
 
 (schedule Root

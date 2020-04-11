@@ -1147,7 +1147,9 @@ BUILTIN("run") {
 
   if (node) {
     while (!node->empty()) {
-      auto noErrors = node->tick();
+      const auto pre = Clock::now();
+      const auto noErrors = node->tick();
+      const auto elapsed = Clock::now() - pre;
 
       // other chains might be not in error tho...
       // so return only if empty
@@ -1164,9 +1166,25 @@ BUILTIN("run") {
       }
       // We on purpose run terminate (evenutally)
       // before sleep
-      // cos during sleep some blocks (lmdb)
+      // cos during sleep some blocks
       // swap states and invalidate stuff
-      chainblocks::sleep(sleepTime);
+      if (sleepTime <= 0.0) {
+        chainblocks::sleep(-1.0);
+      } else {
+        Duration dsleep(sleepTime);
+        // remove the time we took to tick from sleep
+        Duration realSleepTime = dsleep - elapsed;
+        if (realSleepTime.count() <= 0.0) {
+          // tick took too long!!!
+          // warn sometimes and skip sleeping, skipping callbacks too
+          LOG_EVERY_N(100, INFO)
+              << "Skipping frame sleep and callbacks, ticking nodes is taking "
+                 "more time than the wanted sleeptime! Consider using Await/|| "
+                 "or reduce complexity.";
+        } else {
+          chainblocks::sleep(realSleepTime.count());
+        }
+      }
     }
   } else {
     while (!chainblocks::tick(chain)) {

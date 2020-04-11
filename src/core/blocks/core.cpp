@@ -1045,6 +1045,20 @@ RUNTIME_BLOCK_getParam(Pop);
 RUNTIME_BLOCK_activate(Pop);
 RUNTIME_BLOCK_END(Pop);
 
+// Register PopFront
+RUNTIME_CORE_BLOCK_FACTORY(PopFront);
+RUNTIME_BLOCK_cleanup(PopFront);
+RUNTIME_BLOCK_destroy(PopFront);
+RUNTIME_BLOCK_inputTypes(PopFront);
+RUNTIME_BLOCK_outputTypes(PopFront);
+RUNTIME_BLOCK_parameters(PopFront);
+RUNTIME_BLOCK_compose(PopFront);
+RUNTIME_BLOCK_requiredVariables(PopFront);
+RUNTIME_BLOCK_setParam(PopFront);
+RUNTIME_BLOCK_getParam(PopFront);
+RUNTIME_BLOCK_activate(PopFront);
+RUNTIME_BLOCK_END(PopFront);
+
 // Register Count
 RUNTIME_CORE_BLOCK_FACTORY(Count);
 RUNTIME_BLOCK_cleanup(Count);
@@ -1320,8 +1334,9 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Ref);
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
-  REGISTER_CORE_BLOCK(Pop);
   REGISTER_CORE_BLOCK(Clear);
+  REGISTER_CORE_BLOCK(Pop);
+  REGISTER_CORE_BLOCK(PopFront);
   REGISTER_CORE_BLOCK(Drop);
   REGISTER_CORE_BLOCK(DropFront);
   REGISTER_CORE_BLOCK(Count);

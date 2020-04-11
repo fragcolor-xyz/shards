@@ -1548,6 +1548,122 @@ struct Pop : SeqUser {
   }
 };
 
+struct PopFront : SeqUser {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  CBVar _output{};
+
+  void destroy() { destroyVar(_output); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_isTable) {
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        if (data.shared.elements[i].name == _name &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          auto &tableTypes = data.shared.elements[i].exposedType.table.types;
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            if (_key == tableKeys.elements[y] &&
+                tableTypes.elements[y].basicType == Seq) {
+              // if we have 1 type we can predict the output
+              // with more just make us a any seq, will need ExpectX blocks
+              // likely
+              if (tableTypes.elements[y].seqTypes.len == 1)
+                return tableTypes.elements[y].seqTypes.elements[0];
+              else
+                return CoreInfo::AnySeqType;
+            }
+          }
+        }
+      }
+      throw CBException("Pop: key not found or key value is not a sequence!.");
+    } else {
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &cv = data.shared.elements[i];
+        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+          // if we have 1 type we can predict the output
+          // with more just make us a any seq, will need ExpectX blocks likely
+          if (cv.exposedType.seqTypes.len == 1)
+            return cv.exposedType.seqTypes.elements[0];
+          else
+            return CoreInfo::AnySeqType;
+        }
+      }
+    }
+    throw CBException("Variable is not a sequence.");
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_target) {
+      _target = referenceVariable(context, _name.c_str());
+    }
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        throw ActivationError("Variable is not a table, failed to Pop.");
+      }
+
+      if (unlikely(_cell == nullptr)) {
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, _key.c_str());
+      }
+      auto &seq = *_cell;
+
+      if (seq.valueType != Seq) {
+        throw ActivationError(
+            "Variable (in table) is not a sequence, failed to Pop.");
+      }
+
+      if (seq.payload.seqValue.len == 0) {
+        throw ActivationError("Pop: sequence was empty.");
+      }
+
+      auto &arr = seq.payload.seqValue;
+      const auto len = arr.len - 1;
+      // store to put back at end
+      // we do this to allow further grows
+      // to recycle this var (well if not blittable that is)
+      auto first = arr.elements[0];
+      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
+                    "Wrong seq elements size!");
+      // shift backward current elements
+      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
+      // put first at end
+      arr.elements[len] = first;
+      // resize, will cut first out too
+      chainblocks::arrayResize(arr, len);
+
+      cloneVar(_output, first);
+      return _output;
+    } else {
+      if (_target->valueType != Seq) {
+        throw ActivationError("Variable is not a sequence, failed to Pop.");
+      }
+
+      if (_target->payload.seqValue.len == 0) {
+        throw ActivationError("Pop: sequence was empty.");
+      }
+
+      auto &arr = _target->payload.seqValue;
+      const auto len = arr.len - 1;
+      // store to put back at end
+      // we do this to allow further grows
+      // to recycle this var (well if not blittable that is)
+      auto first = arr.elements[0];
+      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
+                    "Wrong seq elements size!");
+      // shift backward current elements
+      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
+      // put first at end
+      arr.elements[len] = first;
+      // resize, will cut first out too
+      chainblocks::arrayResize(arr, len);
+
+      cloneVar(_output, first);
+      return _output;
+    }
+  }
+};
+
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
       "Indices",
@@ -2392,6 +2508,7 @@ RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
+RUNTIME_CORE_BLOCK_TYPE(PopFront);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
 RUNTIME_CORE_BLOCK_TYPE(Drop);
 RUNTIME_CORE_BLOCK_TYPE(DropFront);
