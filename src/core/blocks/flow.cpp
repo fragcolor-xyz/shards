@@ -300,20 +300,5 @@ struct Cond {
   }
 };
 
-// Register
-RUNTIME_CORE_BLOCK(Cond);
-RUNTIME_BLOCK_inputTypes(Cond);
-RUNTIME_BLOCK_outputTypes(Cond);
-RUNTIME_BLOCK_parameters(Cond);
-RUNTIME_BLOCK_compose(Cond);
-RUNTIME_BLOCK_exposedVariables(Cond);
-RUNTIME_BLOCK_setParam(Cond);
-RUNTIME_BLOCK_getParam(Cond);
-RUNTIME_BLOCK_activate(Cond);
-RUNTIME_BLOCK_cleanup(Cond);
-RUNTIME_BLOCK_warmup(Cond);
-RUNTIME_BLOCK_destroy(Cond);
-RUNTIME_BLOCK_END(Cond);
-
-void registerFlowBlocks() { REGISTER_CORE_BLOCK(Cond); }
+void registerFlowBlocks() { REGISTER_CBLOCK("Cond", Cond); }
 }; // namespace chainblocks

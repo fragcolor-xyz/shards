@@ -925,16 +925,6 @@ RUNTIME_BLOCK_outputTypes(SetInput);
 RUNTIME_BLOCK_activate(SetInput);
 RUNTIME_BLOCK_END(SetInput);
 
-// Register Pause
-RUNTIME_CORE_BLOCK_FACTORY(Pause);
-RUNTIME_BLOCK_inputTypes(Pause);
-RUNTIME_BLOCK_outputTypes(Pause);
-RUNTIME_BLOCK_parameters(Pause);
-RUNTIME_BLOCK_setParam(Pause);
-RUNTIME_BLOCK_getParam(Pause);
-RUNTIME_BLOCK_activate(Pause);
-RUNTIME_BLOCK_END(Pause);
-
 // Register And
 RUNTIME_CORE_BLOCK_FACTORY(And);
 RUNTIME_BLOCK_inputTypes(And);
@@ -1337,7 +1327,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Count);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);
-  REGISTER_CORE_BLOCK(Pause);
   REGISTER_CORE_BLOCK(Restart);
   REGISTER_CORE_BLOCK(Return);
   REGISTER_CORE_BLOCK(Stop);
@@ -1427,5 +1416,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);
   REGISTER_CBLOCK("Once", Once);
+
+  REGISTER_CBLOCK("Pause", Pause);
+  REGISTER_CBLOCK("PauseMs", PauseMs);
 }
 }; // namespace chainblocks

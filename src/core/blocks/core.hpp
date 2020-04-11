@@ -367,38 +367,72 @@ struct SetInput {
 };
 
 struct Pause {
-  static inline ParamsInfo sleepParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Time", "The amount of time in seconds (float) to pause this chain.",
-      CoreInfo::NoneIntOrFloat));
+  ExposedInfo reqs{};
+  static inline Parameters params{
+      {"Time",
+       "The amount of time in seconds (float) to pause this chain.",
+       {CoreInfo::NoneType, CoreInfo::FloatType}}};
 
-  double time{};
+  ParamVar time{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(sleepParamsInfo);
-  }
+  static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
-    if (value.valueType == CBType::Float)
-      time = value.payload.floatValue;
-    else if (value.valueType == CBType::Int)
-      time = double(value.payload.intValue);
-    else
-      time = 0.0;
-  }
+  void setParam(int index, CBVar value) { time = value; }
 
-  CBVar getParam(int index) {
-    if (time == 0.0)
-      return Empty;
-    else
-      return Var(time);
+  CBVar getParam(int index) { return time; }
+
+  void warmup(CBContext *context) { time.warmup(context); }
+
+  void cleanup() { time.cleanup(); }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (time.isVariable()) {
+      reqs = ExposedInfo(ExposedInfo::Variable(
+          time.variableName(), "The required variable", CoreInfo::FloatType));
+    } else {
+      reqs = {};
+    }
+    return CBExposedTypesInfo(reqs);
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    suspend(context, time);
+    const auto &t = time.get();
+    if (t.valueType == None)
+      suspend(context, 0.0);
+    else
+      suspend(context, t.payload.floatValue);
+    return input;
+  }
+};
+
+struct PauseMs : public Pause {
+  static inline Parameters params{
+      {"Time",
+       "The amount of time in milliseconds to pause this chain.",
+       {CoreInfo::NoneType, CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (time.isVariable()) {
+      reqs = ExposedInfo(ExposedInfo::Variable(
+          time.variableName(), "The required variable", CoreInfo::IntType));
+    } else {
+      reqs = {};
+    }
+    return CBExposedTypesInfo(reqs);
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    const auto &t = time.get();
+    if (t.valueType == None)
+      suspend(context, 0.0);
+    else
+      suspend(context, t.payload.intValue);
     return input;
   }
 };
@@ -2340,7 +2374,6 @@ struct Once {
 RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(Input);
 RUNTIME_CORE_BLOCK_TYPE(SetInput);
-RUNTIME_CORE_BLOCK_TYPE(Pause);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);
