@@ -8,9 +8,11 @@
                 (DB.Get "MyKey")
                 (Assert.Is "Hello DataBase world!" true)
                 (Log)
+                "MySeq"
+                (Set .seqname)
                 (Const [1 2 3 4])
-                (DB.Update "MySeq")
-                (DB.Get "MySeq")
+                (DB.Update .seqname)
+                (DB.Get .seqname)
                 (Assert.Is [1 2 3 4] true)
                 (Log)
                 ))

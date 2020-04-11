@@ -300,5 +300,91 @@ struct Cond {
   }
 };
 
-void registerFlowBlocks() { REGISTER_CBLOCK("Cond", Cond); }
+struct MaybeRestart {
+  CBTypesInfo inputTypes() {
+    if (_blocks) {
+      auto blks = _blocks.blocks();
+      return blks.elements[0]->inputTypes(blks.elements[0]);
+    } else {
+      return CoreInfo::AnyType;
+    }
+  }
+
+  CBTypesInfo outputTypes() {
+    if (_blocks) {
+      auto blks = _blocks.blocks();
+      return blks.elements[0]->outputTypes(blks.elements[0]);
+    } else {
+      return CoreInfo::AnyType;
+    }
+  }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  void cleanup() {
+    if (_blocks)
+      _blocks.cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    if (_blocks)
+      _blocks.warmup(ctx);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_blocks)
+      return _blocks.compose(data).outputType;
+    else
+      return {};
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (!_blocks)
+      return {};
+
+    auto blks = _blocks.blocks();
+    return blks.elements[0]->exposedVariables(blks.elements[0]);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (!_blocks)
+      return {};
+
+    auto blks = _blocks.blocks();
+    return blks.elements[0]->exposedVariables(blks.elements[0]);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (likely(_blocks)) {
+      try {
+        return _blocks.activate(context, input);
+      } catch (const ChainCancellation &) {
+        throw;
+      } catch (const ChainRestart &) {
+        throw;
+      } catch (const ActivationError &ex) {
+        if (ex.triggerFailure()) {
+          LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
+        }
+        return Var::Restart();
+      }
+    } else {
+      return {};
+    }
+  }
+
+private:
+  BlocksVar _blocks{};
+  static inline Parameters _params{
+      {"Blocks", "The blocks to try activate.", {CoreInfo::BlocksOrNone}}};
+};
+
+void registerFlowBlocks() {
+  REGISTER_CBLOCK("Cond", Cond);
+  REGISTER_CBLOCK("MaybeRestart", MaybeRestart);
+}
 }; // namespace chainblocks

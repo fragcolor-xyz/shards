@@ -801,7 +801,9 @@ private:
 
   BlocksVar _blocks{};
   static inline Parameters _params{
-      {"Blocks", "The blocks to mutate.", {CoreInfo::BlocksOrNone}}};
+      {"Blocks",
+       "The blocks to activate in another worker thread.",
+       {CoreInfo::BlocksOrNone}}};
 };
 
 void registerChainsBlocks() {
