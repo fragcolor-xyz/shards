@@ -633,7 +633,6 @@ typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
 
-// Generally when stop() is called
 typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 
 // Genetic programming optional mutation procedure
@@ -648,14 +647,19 @@ typedef void(__cdecl *CBSetStateProc)(struct CBlock *, struct CBVar state);
 typedef void(__cdecl *CBResetStateProc)(struct CBlock *);
 
 struct CBlock {
+  // \-- Internal stuff, do not directly use! --/
+
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBInlineBlocks inlineBlockId;
 #else
   CBInlineBlocks inlineBlockId;
 #endif
-  CBBool owned; // flag to ensure blocks are unique when flows/chains
 
-  // The interface to fill
+  // flag to ensure blocks are unique when flows/chains
+  CBBool owned;
+
+  // \-- The interface to fill --/
+
   CBNameProc name; // Returns the name of the block, do not free the string,
                    // generally const
   CBHelpProc help; // Returns the help text of the block, do not free the
@@ -681,7 +685,7 @@ struct CBlock {
   CBGetParamProc getParam; // Gets a parameter, the block is the owner of any
                            // allocated stuff, DO NOT free them
 
-  CBWarmupProc warmup; // Called before running the chain
+  CBWarmupProc warmup; // Called before running the chain, once
   CBActivateProc activate;
   // Called every time you stop a coroutine or sometimes
   // internally to clean up the block
@@ -694,6 +698,8 @@ struct CBlock {
   // so any state (in fact) should be kept
   CBMutateProc mutate;
   CBCrossoverProc crossover;
+  // intended as persistent state during block lifetime
+  // persisting cleanups
   CBGetStateProc getState;
   CBSetStateProc setState;
   CBResetStateProc resetState;

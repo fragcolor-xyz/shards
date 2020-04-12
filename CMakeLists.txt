@@ -108,6 +108,8 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-static)
   endif()
+  # add_compile_options(-flto)
+  # add_link_options(-flto)
 endif()
 
 add_compile_options(-ffast-math -funroll-loops -Wno-multichar)
