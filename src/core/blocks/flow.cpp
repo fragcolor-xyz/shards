@@ -491,7 +491,7 @@ struct Await : public BaseSubFlow {
       // run normally
       if (Tasks.this_worker_id() == -1) {
         AsyncOp<InternalCore> op(context);
-        return op.sidechain<CBVar, tf::Taskflow>(
+        return op.sidechain<CBVar>(
             Tasks, [&]() { return _blocks.activate(context, input); });
       } else {
         return _blocks.activate(context, input);

@@ -8,6 +8,7 @@
 #include <future>
 #include <magic_enum.hpp>
 #include <string>
+#include <taskflow/taskflow.hpp>
 #include <vector>
 
 namespace chainblocks {
@@ -329,9 +330,8 @@ template <class CB_CORE> struct AsyncOp {
     fut.get();
   }
 
-  template <typename TFFlow, typename TFExe, class Function>
-  void sidechain(TFExe &exec, Function &&f) {
-    TFFlow flow;
+  template <class Function> void sidechain(tf::Executor &exec, Function &&f) {
+    tf::Taskflow flow;
     std::exception_ptr p = nullptr;
 
     // wrap into a call to catch exceptions
@@ -345,6 +345,12 @@ template <class CB_CORE> struct AsyncOp {
 
     flow.emplace(call);
     auto fut = exec.run(flow);
+    // ensure flow runs
+    // to ensure determinism and no leakage
+    DEFER({
+      if (fut.valid())
+        fut.wait();
+    });
 
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
@@ -352,34 +358,19 @@ template <class CB_CORE> struct AsyncOp {
         break;
       auto chainState = CB_CORE::suspend(_context, 0);
       if (chainState.payload.chainState == Restart) {
-        // flow might assert false if we never started the task...
-        // TODO this might become a issue cos we stall execution?
-        // It is a very edge case tho
-        if (fut.valid())
-          fut.wait();
         CB_CORE::throwRestart();
       } else if (chainState.payload.chainState != Continue) {
-        // flow might assert false if we never started the task...
-        // TODO this might become a issue cos we stall execution?
-        // It is a very edge case tho
-        if (fut.valid())
-          fut.wait();
         CB_CORE::throwCancellation();
       }
     }
-
-    // This should also throw if we had exceptions
-    // but it won't in this case cos taskflow won't handle
-    if (fut.valid())
-      fut.get();
 
     if (p)
       std::rethrow_exception(p);
   }
 
-  template <typename Result, typename TFFlow, typename TFExe, class Function>
-  Result sidechain(TFExe &exec, Function &&f) {
-    TFFlow flow;
+  template <typename Result, class Function>
+  Result sidechain(tf::Executor &exec, Function &&f) {
+    tf::Taskflow flow;
     std::exception_ptr p = nullptr;
     Result res;
 
@@ -395,32 +386,24 @@ template <class CB_CORE> struct AsyncOp {
     flow.emplace(call);
     auto fut = exec.run(flow);
 
+    // ensure flow runs
+    // to ensure determinism and no leakage
+    DEFER({
+      if (fut.valid())
+        fut.wait();
+    });
+
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
       if (state == std::future_status::ready)
         break;
       auto chainState = CB_CORE::suspend(_context, 0);
       if (chainState.payload.chainState == Restart) {
-        // flow might assert false if we never started the task...
-        // TODO this might become a issue cos we stall execution?
-        // It is a very edge case tho
-        if (fut.valid())
-          fut.wait();
         CB_CORE::throwRestart();
       } else if (chainState.payload.chainState != Continue) {
-        // flow might assert false if we never started the task...
-        // TODO this might become a issue cos we stall execution?
-        // It is a very edge case tho
-        if (fut.valid())
-          fut.wait();
         CB_CORE::throwCancellation();
       }
     }
-
-    // This should also throw if we had exceptions
-    // but it won't in this case cos taskflow won't handle
-    if (fut.valid())
-      fut.get();
 
     if (p)
       std::rethrow_exception(p);

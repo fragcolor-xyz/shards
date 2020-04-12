@@ -112,7 +112,7 @@ struct Client {
 
   void connect(CBContext *context, AsyncOp<InternalCore> &op) {
     try {
-      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+      op.sidechain(Tasks, [&]() {
         if (ssl) {
           // Set SNI Hostname (many hosts need this to handshake
           // successfully)
@@ -212,7 +212,7 @@ struct Get final : public Client {
   void request(CBContext *context, AsyncOp<InternalCore> &op,
                const CBVar &input) override {
     try {
-      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+      op.sidechain(Tasks, [&]() {
         vars.clear();
         vars.append(target.get().payload.stringValue);
         if (input.valueType == Table) {
@@ -263,7 +263,7 @@ struct Post final : public Client {
   void request(CBContext *context, AsyncOp<InternalCore> &op,
                const CBVar &input) override {
     try {
-      op.sidechain<tf::Taskflow>(Tasks, [&]() {
+      op.sidechain(Tasks, [&]() {
         vars.clear();
         if (input.valueType == Table) {
           ForEach(input.payload.tableValue, [&](auto key, auto &value) {

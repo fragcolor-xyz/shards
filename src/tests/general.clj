@@ -746,7 +746,14 @@
   (Time.EpochMs)
   (Log)
 
-  (Msg "All looking good!")))
+  (Msg "All looking good!")
+
+  ; test for a possible issue with thread pool on ending
+  (||
+   (-->
+    (Maybe
+     (ExpectString)
+     (Stop))))))
 
 (schedule Root
           (Chain
