@@ -396,10 +396,10 @@ private:
   RUNTIME_BLOCK_activate(To##_varName_);                                       \
   RUNTIME_BLOCK_END(To##_varName_);
 
-TO_SOMETHING_SIMPLE(Int, int64_t, intValue, stoi, IntType);
-TO_SOMETHING(Int, 2, int64_t, int2Value, stoi, Int2Type);
-TO_SOMETHING(Int, 3, int32_t, int3Value, stoi, Int3Type);
-TO_SOMETHING(Int, 4, int32_t, int4Value, stoi, Int4Type);
+TO_SOMETHING_SIMPLE(Int, int64_t, intValue, stoll, IntType);
+TO_SOMETHING(Int, 2, int64_t, int2Value, stoll, Int2Type);
+TO_SOMETHING(Int, 3, int32_t, int3Value, stol, Int3Type);
+TO_SOMETHING(Int, 4, int32_t, int4Value, stol, Int4Type);
 TO_SOMETHING_SIMPLE(Float, double, floatValue, stod, FloatType);
 TO_SOMETHING(Float, 2, double, float2Value, stod, Float2Type);
 TO_SOMETHING(Float, 3, float, float3Value, stof, Float3Type);
