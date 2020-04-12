@@ -1,20 +1,13 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
-#include "rigtorp/SPSCQueue.h"
 #include "shared.hpp"
-#include <boost/lockfree/queue.hpp>
 #include <chrono>
-#include <filesystem>
-#include <fstream>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <taskflow/taskflow.hpp>
 #include <thread>
-
-namespace fs = std::filesystem;
 
 namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
@@ -722,90 +715,6 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
   }
 };
 
-struct Await {
-  CBTypesInfo inputTypes() {
-    if (_blocks) {
-      auto blks = _blocks.blocks();
-      return blks.elements[0]->inputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
-
-  CBTypesInfo outputTypes() {
-    if (_blocks) {
-      auto blks = _blocks.blocks();
-      return blks.elements[0]->outputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
-
-  static CBParametersInfo parameters() { return _params; }
-
-  void setParam(int index, CBVar value) { _blocks = value; }
-
-  CBVar getParam(int index) { return _blocks; }
-
-  void cleanup() {
-    if (_blocks)
-      _blocks.cleanup();
-  }
-
-  void warmup(CBContext *ctx) {
-    if (_blocks)
-      _blocks.warmup(ctx);
-  }
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    if (_blocks)
-      return _blocks.compose(data).outputType;
-    else
-      return {};
-  }
-
-  CBExposedTypesInfo exposedVariables() {
-    if (!_blocks)
-      return {};
-
-    auto blks = _blocks.blocks();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
-  }
-
-  CBExposedTypesInfo requiredVariables() {
-    if (!_blocks)
-      return {};
-
-    auto blks = _blocks.blocks();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_blocks)) {
-      // avoid nesting, if we are alrady inside a worker
-      // run normally
-      if (Tasks.this_worker_id() == -1) {
-        AsyncOp<InternalCore> op(context);
-        return op.sidechain<CBVar, tf::Taskflow>(
-            Tasks, [&]() { return _blocks.activate(context, input); });
-      } else {
-        return _blocks.activate(context, input);
-      }
-    } else {
-      return {};
-    }
-  }
-
-private:
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-
-  BlocksVar _blocks{};
-  static inline Parameters _params{
-      {"Blocks",
-       "The blocks to activate in another worker thread.",
-       {CoreInfo::BlocksOrNone}}};
-};
-
 void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
@@ -813,6 +722,5 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("RunChain", RunChain);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
-  REGISTER_CBLOCK("Await", Await);
 }
 }; // namespace chainblocks

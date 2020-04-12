@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+#include "chainblocks.h"
 #include "shared.hpp"
+#include <taskflow/taskflow.hpp>
 
 namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
@@ -222,7 +224,7 @@ struct Cond {
             LOG(INFO) << "Cond: number of exposed variables between actions "
                          "mismatch, "
                          "variables won't be exposed, flow is unpredictable!";
-            exposing = true;
+            exposing = false;
           }
 
           if (exposing) {
@@ -233,7 +235,7 @@ struct Cond {
                     << "Cond: types of exposed variables between actions "
                        "mismatch, "
                        "variables won't be exposed, flow is unpredictable!";
-                exposing = true;
+                exposing = false;
                 break;
               }
             }
@@ -300,7 +302,7 @@ struct Cond {
   }
 };
 
-struct MaybeRestart {
+struct BaseSubFlow {
   CBTypesInfo inputTypes() {
     if (_blocks) {
       auto blks = _blocks.blocks();
@@ -337,27 +339,22 @@ struct MaybeRestart {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_blocks)
-      return _blocks.compose(data).outputType;
+      _composition = _blocks.compose(data);
     else
-      return {};
+      _composition = {};
+    return _composition.outputType;
   }
 
-  CBExposedTypesInfo exposedVariables() {
-    if (!_blocks)
-      return {};
+  CBExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
 
-    auto blks = _blocks.blocks();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
-  }
+protected:
+  BlocksVar _blocks{};
+  CBValidationResult _composition{};
+  static inline Parameters _params{
+      {"Blocks", "The blocks to activate.", {CoreInfo::BlocksOrNone}}};
+};
 
-  CBExposedTypesInfo requiredVariables() {
-    if (!_blocks)
-      return {};
-
-    auto blks = _blocks.blocks();
-    return blks.elements[0]->exposedVariables(blks.elements[0]);
-  }
-
+struct MaybeRestart : public BaseSubFlow {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_blocks)) {
       try {
@@ -376,15 +373,142 @@ struct MaybeRestart {
       return {};
     }
   }
+};
+
+struct Maybe : public BaseSubFlow {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _blocks = value;
+    else
+      _elseBlks = value;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _blocks;
+    else
+      return _elseBlks;
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // exposed stuff should be balanced
+    // and output should the same
+    CBValidationResult elseComp{};
+    if (_elseBlks)
+      elseComp = _elseBlks.compose(data);
+
+    if (_blocks)
+      _composition = _blocks.compose(data);
+    else
+      _composition = {};
+
+    if (_composition.outputType != elseComp.outputType) {
+      throw ComposeError(
+          "Maybe: output types mismatch between the two possible flows!");
+    }
+
+    auto exposing = true;
+    auto curlen = elseComp.exposedInfo.len;
+    auto newlen = _composition.exposedInfo.len;
+    if (curlen != newlen) {
+      LOG(INFO) << "Maybe: number of exposed variables between actions "
+                   "mismatch, "
+                   "variables won't be exposed, flow is unpredictable!";
+      exposing = false;
+    }
+
+    if (exposing) {
+      for (uint32_t i = 0; i < curlen; i++) {
+        if (elseComp.exposedInfo.elements[i] !=
+            _composition.exposedInfo.elements[i]) {
+          LOG(INFO) << "Maybe: types of exposed variables between actions "
+                       "mismatch, "
+                       "variables won't be exposed, flow is unpredictable!";
+          exposing = false;
+          break;
+        }
+      }
+    }
+    if (!exposing)
+      _composition.exposedInfo = {};
+
+    return _composition.outputType;
+  }
+
+  void cleanup() {
+    if (_elseBlks)
+      _elseBlks.cleanup();
+
+    BaseSubFlow::cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    if (_elseBlks)
+      _elseBlks.warmup(ctx);
+
+    BaseSubFlow::warmup(ctx);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (likely(_blocks)) {
+      try {
+        return _blocks.activate(context, input);
+      } catch (const ChainCancellation &) {
+        throw;
+      } catch (const ChainRestart &) {
+        throw;
+      } catch (const ActivationError &ex) {
+        if (ex.triggerFailure()) {
+          LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
+        }
+        return _elseBlks.activate(context, input);
+      }
+    } else {
+      return {};
+    }
+  }
 
 private:
-  BlocksVar _blocks{};
-  static inline Parameters _params{
-      {"Blocks", "The blocks to try activate.", {CoreInfo::BlocksOrNone}}};
+  BlocksVar _elseBlks{};
+  static inline Parameters _params{BaseSubFlow::_params,
+                                   {{"Else",
+                                     "The blocks to activate on failure.",
+                                     {CoreInfo::BlocksOrNone}}}};
+};
+
+struct Await : public BaseSubFlow {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (likely(_blocks)) {
+      // avoid nesting, if we are alrady inside a worker
+      // run normally
+      if (Tasks.this_worker_id() == -1) {
+        AsyncOp<InternalCore> op(context);
+        return op.sidechain<CBVar, tf::Taskflow>(
+            Tasks, [&]() { return _blocks.activate(context, input); });
+      } else {
+        return _blocks.activate(context, input);
+      }
+    } else {
+      return {};
+    }
+  }
+
+private:
+  tf::Executor &Tasks{Singleton<tf::Executor>::value};
 };
 
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
   REGISTER_CBLOCK("MaybeRestart", MaybeRestart);
+  REGISTER_CBLOCK("Maybe", Maybe);
+  REGISTER_CBLOCK("Await", Await);
 }
 }; // namespace chainblocks

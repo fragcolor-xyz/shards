@@ -271,7 +271,9 @@ template <class Function> struct Defer {
   ~Defer() { _f(); }
 };
 
-#define DEFER(_body_) ::chainblocks::Defer _([&]() _body_)
+#define DEFER_NAME_(uniq) _defer_##uniq
+#define DEFER_NAME DEFER_NAME_(__COUNTER__)
+#define DEFER(_body_) ::chainblocks::Defer DEFER_NAME([&]() _body_)
 
 template <class CB_CORE> struct AsyncOp {
   AsyncOp(CBContext *context) : _context(context) {}

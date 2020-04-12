@@ -31,10 +31,23 @@ struct NowMs : public Now {
     return Var(dt.count());
   }
 };
+
+struct EpochMs {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    using namespace std::chrono;
+    milliseconds ms =
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+    return Var(ms.count());
+  }
+};
 } // namespace Time
 
 void registerTimeBlocks() {
   REGISTER_CBLOCK("Time.Now", Time::Now);
   REGISTER_CBLOCK("Time.NowMs", Time::NowMs);
+  REGISTER_CBLOCK("Time.EpochMs", Time::EpochMs);
 }
 } // namespace chainblocks

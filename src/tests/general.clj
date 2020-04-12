@@ -740,6 +740,12 @@
   (Get .seq-a)
   (Assert.Is [97 99] true)
 
+  (Maybe (Take 3) :Else (Take 0))
+  (Assert.Is 97 true)
+
+  (Time.EpochMs)
+  (Log)
+
   (Msg "All looking good!")))
 
 (schedule Root
