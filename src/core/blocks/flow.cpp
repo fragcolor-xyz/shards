@@ -360,9 +360,7 @@ struct MaybeRestart : public BaseSubFlow {
       try {
         return _blocks.activate(context, input);
       } catch (const ChainCancellation &) {
-        throw;
-      } catch (const ChainRestart &) {
-        throw;
+        return Var::Stop();
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
@@ -456,9 +454,9 @@ struct Maybe : public BaseSubFlow {
       try {
         return _blocks.activate(context, input);
       } catch (const ChainCancellation &) {
-        throw;
+        return Var::Stop();
       } catch (const ChainRestart &) {
-        throw;
+        return Var::Restart();
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
