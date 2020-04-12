@@ -1288,9 +1288,9 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
         chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
-  if (strcmp(ctx.bottom->name(ctx.bottom), "Restart") == 0 ||
-      strcmp(ctx.bottom->name(ctx.bottom), "Stop") == 0 ||
-      strcmp(ctx.bottom->name(ctx.bottom), "Return") == 0) {
+  if (ctx.bottom && (strcmp(ctx.bottom->name(ctx.bottom), "Restart") == 0 ||
+                     strcmp(ctx.bottom->name(ctx.bottom), "Stop") == 0 ||
+                     strcmp(ctx.bottom->name(ctx.bottom), "Return")) == 0) {
     result.flowStopper = true;
   }
   return result;
