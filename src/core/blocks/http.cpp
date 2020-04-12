@@ -142,9 +142,9 @@ struct Client {
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(ERROR) << "Http connection failed, pausing chain half a second "
-                    "before restart, exception: "
-                 << ex.what();
+      LOG(WARNING) << "Http connection failed, pausing chain half a second "
+                      "before restart, exception: "
+                   << ex.what();
       suspend(context, 0.5);
       throw ActivationError("Http connection failed, restarting chain.",
                             CBChainState::Restart, false);
@@ -246,9 +246,9 @@ struct Get final : public Client {
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(ERROR) << "Http request failed, pausing chain half a second "
-                    "before restart, exception: "
-                 << ex.what();
+      LOG(WARNING) << "Http request failed, pausing chain half a second "
+                      "before restart, exception: "
+                   << ex.what();
 
       resetStream();
 

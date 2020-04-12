@@ -251,7 +251,8 @@ struct Cond {
         }
       }
 
-      if (idx > 0 && !_passthrough && validation.outputType != previousType)
+      if (idx > 0 && !_passthrough && !validation.flowStopper &&
+          validation.outputType != previousType)
         throw CBException("Cond: output types between actions mismatch.");
 
       idx++;
@@ -363,7 +364,7 @@ struct MaybeRestart : public BaseSubFlow {
         return Var::Stop();
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
-          LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
+          LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
         }
         return Var::Restart();
       }
@@ -402,7 +403,8 @@ struct Maybe : public BaseSubFlow {
     else
       _composition = {};
 
-    if (_composition.outputType != elseComp.outputType) {
+    if (!elseComp.flowStopper &&
+        _composition.outputType != elseComp.outputType) {
       throw ComposeError(
           "Maybe: output types mismatch between the two possible flows!");
     }
@@ -459,7 +461,7 @@ struct Maybe : public BaseSubFlow {
         return Var::Restart();
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
-          LOG(ERROR) << "Maybe block Ignored a failure: " << ex.what();
+          LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
         }
         return _elseBlks.activate(context, input);
       }
