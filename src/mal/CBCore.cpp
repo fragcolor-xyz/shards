@@ -82,11 +82,6 @@ void installCBCore(const malEnvPtr &env) {
   setupObserver(obs, env);
 
   if (!initDoneOnce) {
-    auto path = malpath();
-    if (path == "")
-      chainblocks::Globals::RootPath = "./";
-    else
-      chainblocks::Globals::RootPath = path;
     chainblocks::installSignalHandlers();
     cbRegisterAllBlocks();
     initDoneOnce = true;
@@ -1002,6 +997,15 @@ struct Observer : public chainblocks::RuntimeObserver {
 };
 
 BUILTIN("Chain") {
+  // ok this is a hack
+  // FIXME
+  // put in a better place
+  auto path = malpath();
+  if (path == "")
+    chainblocks::Globals::RootPath = "./";
+  else
+    chainblocks::Globals::RootPath = path;
+
   CHECK_ARGS_AT_LEAST(1);
   ARG(malString, chainName);
   auto mchain = new malCBChain(chainName->value());
