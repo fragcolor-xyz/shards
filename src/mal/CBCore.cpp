@@ -82,6 +82,11 @@ void installCBCore(const malEnvPtr &env) {
   setupObserver(obs, env);
 
   if (!initDoneOnce) {
+    auto path = malpath();
+    if (path == "")
+      chainblocks::Globals::RootPath = "./";
+    else
+      chainblocks::Globals::RootPath = path;
     chainblocks::installSignalHandlers();
     cbRegisterAllBlocks();
     initDoneOnce = true;
@@ -715,7 +720,6 @@ BUILTIN(".") {
 
 BUILTIN("Node") {
   auto node = new malCBNode();
-  chainblocks::Globals::RootPath = malpath();
   return malValuePtr(node);
 }
 
