@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+#include "blockwrapper.hpp"
 #include "chainblocks.h"
 #include "shared.hpp"
 #include <taskflow/taskflow.hpp>
@@ -23,6 +24,7 @@ static ParamsInfo condParamsInfo = ParamsInfo(
                       CoreInfo::BoolType));
 
 struct Cond {
+  // WORKS but TODO refactor using newer abstracted types
   CBVar _chains{};
   std::vector<std::vector<CBlock *>> _conditions;
   std::vector<std::vector<CBlock *>> _actions;
@@ -505,10 +507,71 @@ private:
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
 };
 
+struct When {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _cond = value;
+    else
+      _action = value;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _cond;
+    else
+      return _action;
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // both not exposing!
+    _cond.compose(data);
+    _shouldReturn = _action.compose(data).flowStopper;
+    return data.inputType;
+  }
+
+  void cleanup() {
+    _cond.cleanup();
+    _action.cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    _cond.warmup(ctx);
+    _action.warmup(ctx);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto cres = _cond.activate(context, input);
+    if (cres.valueType == Bool && cres.payload.boolValue) {
+      _action.activate(context, input);
+      if (_shouldReturn)
+        return Var::Return();
+    }
+    return input;
+  }
+
+private:
+  static inline Parameters _params{
+      {"Predicate",
+       "The predicate that must be true in order to trigger Action.",
+       {CoreInfo::BlocksOrNone}},
+      {"Action",
+       "The blocks to activate on when Predicate is true.",
+       {CoreInfo::BlocksOrNone}}};
+  BlocksVar _cond{};
+  BlocksVar _action{};
+  bool _shouldReturn = false;
+};
+
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
   REGISTER_CBLOCK("MaybeRestart", MaybeRestart);
   REGISTER_CBLOCK("Maybe", Maybe);
   REGISTER_CBLOCK("Await", Await);
+  REGISTER_CBLOCK("When", When);
 }
 }; // namespace chainblocks
