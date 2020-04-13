@@ -507,7 +507,7 @@ private:
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
 };
 
-struct When {
+template <bool COND> struct When {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -550,7 +550,7 @@ struct When {
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto cres = _cond.activate(context, input);
     // type check in compose!
-    if (cres.payload.boolValue) {
+    if (cres.payload.boolValue == COND) {
       _action.activate(context, input);
       if (_shouldReturn)
         return Var::Return();
@@ -561,10 +561,11 @@ struct When {
 private:
   static inline Parameters _params{
       {"Predicate",
-       "The predicate that must be true in order to trigger Action.",
+       "The predicate to evaluate in order to trigger Action.",
        {CoreInfo::BlocksOrNone}},
       {"Action",
-       "The blocks to activate on when Predicate is true.",
+       "The blocks to activate on when Predicate is true for When and false "
+       "for WhenNot.",
        {CoreInfo::BlocksOrNone}}};
   BlocksVar _cond{};
   BlocksVar _action{};
@@ -576,6 +577,7 @@ void registerFlowBlocks() {
   REGISTER_CBLOCK("MaybeRestart", MaybeRestart);
   REGISTER_CBLOCK("Maybe", Maybe);
   REGISTER_CBLOCK("Await", Await);
-  REGISTER_CBLOCK("When", When);
+  REGISTER_CBLOCK("When", When<true>);
+  REGISTER_CBLOCK("WhenNot", When<false>);
 }
 }; // namespace chainblocks

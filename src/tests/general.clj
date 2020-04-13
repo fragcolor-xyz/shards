@@ -746,6 +746,12 @@
   (Time.EpochMs)
   (Log)
 
+  true
+  (When (Is true) (Assert.Is true true))
+  (When (Is false) (Assert.Is false true))
+  (WhenNot (Is true) (Assert.Is false true))
+  (WhenNot (Is false) (Assert.Is true true))
+
   (Msg "All looking good!")
 
   ; test for a possible issue with thread pool on ending
