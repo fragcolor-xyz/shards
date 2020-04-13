@@ -2311,7 +2311,8 @@ struct Limit {
 };
 
 struct Repeat {
-  BlocksVar _blks;
+  BlocksVar _blks{};
+  BlocksVar _pred{};
   std::string _ctxVar;
   CBVar *_ctxTimes = nullptr;
   int64_t _times = 0;
@@ -2325,24 +2326,31 @@ struct Repeat {
       _ctxTimes = nullptr;
     }
     _blks.cleanup();
+    _pred.cleanup();
   }
 
-  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
+  void warmup(CBContext *ctx) {
+    _blks.warmup(ctx);
+    _pred.warmup(ctx);
+  }
 
-  static inline ParamsInfo repeatParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks),
-      ParamsInfo::Param("Times", "How many times we should repeat the action.",
-                        CoreInfo::IntsVar),
-      ParamsInfo::Param("Forever", "If we should repeat the action forever.",
-                        CoreInfo::BoolType));
+  static inline Parameters _params{
+      {"Action", "The blocks to repeat.", CoreInfo::Blocks},
+      {"Times", "How many times we should repeat the action.",
+       CoreInfo::IntsVar},
+      {"Forever",
+       "If we should repeat the action forever.",
+       {CoreInfo::BoolType}},
+      {"Until",
+       "Optional blocks to use as predicate to continue repeating until "
+       "it's true",
+       CoreInfo::BlocksOrNone}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(repeatParamsInfo);
-  }
+  static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -2360,6 +2368,9 @@ struct Repeat {
       break;
     case 2:
       _forever = value.payload.boolValue;
+      break;
+    case 3:
+      _pred = value;
       break;
     default:
       break;
@@ -2380,6 +2391,8 @@ struct Repeat {
       }
     case 2:
       return Var(_forever);
+    case 3:
+      return _pred;
     default:
       break;
     }
@@ -2388,6 +2401,11 @@ struct Repeat {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _validation = _blks.compose(data);
+    const auto predres = _pred.compose(data);
+    if (_pred && predres.outputType.basicType != Bool) {
+      throw ComposeError(
+          "Repeat block Until predicate should output a boolean!");
+    }
     return data.inputType;
   }
 
@@ -2420,8 +2438,16 @@ struct Repeat {
       CBVar blks = _blks;
       if (!activateBlocks(blks.payload.seqValue, context, input, repeatOutput))
         break; // this is a Return signal
+
       if (!_forever)
         repeats--;
+
+      if (_pred) {
+        const auto pres = _pred.activate(context, input);
+        // no type check, done in compose!
+        if (pres.payload.boolValue)
+          break;
+      }
     }
     return input;
   }

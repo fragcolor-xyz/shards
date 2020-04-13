@@ -529,7 +529,10 @@ struct When {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // both not exposing!
-    _cond.compose(data);
+    const auto cres = _cond.compose(data);
+    if (cres.outputType.basicType != CBType::Bool) {
+      throw ComposeError("When predicate should output a boolean value!");
+    }
     _shouldReturn = _action.compose(data).flowStopper;
     return data.inputType;
   }
@@ -546,7 +549,8 @@ struct When {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto cres = _cond.activate(context, input);
-    if (cres.valueType == Bool && cres.payload.boolValue) {
+    // type check in compose!
+    if (cres.payload.boolValue) {
       _action.activate(context, input);
       if (_shouldReturn)
         return Var::Return();
