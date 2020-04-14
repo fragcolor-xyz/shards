@@ -1418,9 +1418,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_BLOCK(Math, Floor);
   REGISTER_BLOCK(Math, Trunc);
   REGISTER_BLOCK(Math, Round);
-
-  REGISTER_BLOCK(Math, Mean);
-
+  REGISTER_CBLOCK("Math.Mean", Math::Mean);
   REGISTER_BLOCK(Math, Inc);
   REGISTER_BLOCK(Math, Dec);
 

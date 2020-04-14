@@ -428,8 +428,19 @@
   2.0 (Push "meanTest")
   0.0 (Push "meanTest")
   3.0 (Push "meanTest")
-  (Get "meanTest") (Math.Mean) (Log)
+  (Get "meanTest") (Math.Mean :Kind Mean.Arithmetic) (Log)
   (Assert.Is 1.5 true)
+
+  1.0 (Push "meanTest2")
+  2.0 (Push "meanTest2")
+  3.0 (Push "meanTest2")
+  (Get "meanTest2") (Math.Mean :Kind Mean.Geometric) (Log)
+  (ToString)
+  (Assert.Is "1.81712" true)
+
+  (Get "meanTest2") (Math.Mean :Kind Mean.Harmonic) (Log)
+  (ToString)
+  (Assert.Is "1.63636" true)
 
   1 (Set "indexAsVar")
   (Get "meanTest")

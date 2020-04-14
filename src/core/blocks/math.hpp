@@ -6,6 +6,7 @@
 // TODO, remove most of C macros, use more templates
 
 #include "core.hpp"
+#include <variant>
 
 namespace chainblocks {
 namespace Math {
@@ -615,19 +616,74 @@ MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf);
   RUNTIME_BLOCK_END(NAME);
 
 struct Mean {
+  struct ArithMean {
+    double operator()(const CBSeq &seq) {
+      const uint32_t inputLen = seq.len;
+      double mean = 0.0;
+      for (uint32_t i = 0; i < inputLen; i++) {
+        const auto &v = seq.elements[i];
+        mean += v.payload.floatValue;
+      }
+      mean /= double(inputLen);
+      return mean;
+    }
+  };
+
+  struct GeoMean {
+    double operator()(const CBSeq &seq) {
+      const uint32_t inputLen = seq.len;
+      double mean = 1.0;
+      for (uint32_t i = 0; i < inputLen; i++) {
+        const auto &v = seq.elements[i];
+        mean *= v.payload.floatValue;
+      }
+      return std::pow(mean, 1.0 / double(inputLen));
+    }
+  };
+
+  struct HarmoMean {
+    double operator()(const CBSeq &seq) {
+      const uint32_t inputLen = seq.len;
+      double mean = 0.0;
+      for (uint32_t i = 0; i < inputLen; i++) {
+        const auto &v = seq.elements[i];
+        mean += 1.0 / v.payload.floatValue;
+      }
+      return double(inputLen) / mean;
+    }
+  };
+
+  enum class MeanKind { Arithmetic, Geometric, Harmonic };
+  using Means = std::variant<ArithMean, GeoMean, HarmoMean>;
+  static inline EnumInfo<MeanKind> _meanEnum{"Mean", 'sink', 'mean'};
+
   static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static CBParametersInfo parameters() {
+    static Type kind{{CBType::Enum, {.enumeration = {'sink', 'mean'}}}};
+    static Parameters params{
+        {"Kind", "The kind of Pythagorean means.", {kind}}};
+    return params;
+  }
+
+  void setParam(int index, CBVar value) {
+    if (value.payload.enumValue == 0) {
+      mean = ArithMean();
+    } else if (value.payload.enumValue == 1) {
+      mean = GeoMean();
+    } else if (value.payload.enumValue == 2) {
+      mean = HarmoMean();
+    }
+  }
+
+  CBVar getParam(int index) { return Var::Enum(mean.index(), 'sink', 'mean'); }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    int64_t inputLen = input.payload.seqValue.len;
-    double mean = 0.0;
-    auto seq = IterableSeq(input.payload.seqValue);
-    for (auto &f : seq) {
-      mean += f.payload.floatValue;
-    }
-    mean /= double(inputLen);
-    return Var(mean);
+    return Var(
+        std::visit([&](auto &&m) { return m(input.payload.seqValue); }, mean));
   }
+
+  Means mean{ArithMean()};
 };
 
 template <class T> struct UnaryBin : public T {
