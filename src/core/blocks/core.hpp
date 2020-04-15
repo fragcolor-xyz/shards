@@ -1430,25 +1430,12 @@ struct DropFront : SeqUser {
 
     if (likely(var->valueType == Seq) && var->payload.seqValue.len > 0) {
       auto &arr = var->payload.seqValue;
-      const auto len = arr.len - 1;
-      // store to put back at end
-      // we do this to allow further grows
-      // to recycle this var (well if not blittable that is)
-      auto first = arr.elements[0];
-      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
-                    "Wrong seq elements size!");
-      // shift backward current elements
-      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
-      // put first at end
-      arr.elements[len] = first;
-      // resize, will cut first out too
-      chainblocks::arrayResize(arr, len);
-
+      chainblocks::arrayDel(arr, 0);
       // sometimes we might have as input the same var!
       // this is kind of a hack but helps UX
       // we in that case output the same var with adjusted len!
       if (input.payload.seqValue.elements == arr.elements)
-        const_cast<CBVar &>(input).payload.seqValue.len = len;
+        const_cast<CBVar &>(input).payload.seqValue.len = arr.len;
     } else {
       throw ActivationError("Variable is not a sequence, failed to DropFront.");
     }
@@ -1871,7 +1858,7 @@ struct Take {
   struct OutOfRangeEx : public ActivationError {
     OutOfRangeEx(int64_t len, int64_t index)
         : ActivationError("Take out of range!") {
-      LOG(ERROR) << "Out of range! len:" << len << " wanted index: " << index;
+      LOG(ERROR) << "Out of range! len: " << len << " wanted index: " << index;
     }
   };
 

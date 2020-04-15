@@ -151,18 +151,6 @@ struct WriteFile : public FileBase {
   }
 };
 
-// Register
-RUNTIME_CORE_BLOCK(WriteFile);
-RUNTIME_BLOCK_inputTypes(WriteFile);
-RUNTIME_BLOCK_outputTypes(WriteFile);
-RUNTIME_BLOCK_cleanup(WriteFile);
-RUNTIME_BLOCK_warmup(WriteFile);
-RUNTIME_BLOCK_parameters(WriteFile);
-RUNTIME_BLOCK_setParam(WriteFile);
-RUNTIME_BLOCK_getParam(WriteFile);
-RUNTIME_BLOCK_activate(WriteFile);
-RUNTIME_BLOCK_END(WriteFile);
-
 struct ReadFile : public FileBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
@@ -201,18 +189,6 @@ struct ReadFile : public FileBase {
     return _output;
   }
 };
-
-// Register
-RUNTIME_CORE_BLOCK(ReadFile);
-RUNTIME_BLOCK_inputTypes(ReadFile);
-RUNTIME_BLOCK_outputTypes(ReadFile);
-RUNTIME_BLOCK_cleanup(ReadFile);
-RUNTIME_BLOCK_warmup(ReadFile);
-RUNTIME_BLOCK_parameters(ReadFile);
-RUNTIME_BLOCK_setParam(ReadFile);
-RUNTIME_BLOCK_getParam(ReadFile);
-RUNTIME_BLOCK_activate(ReadFile);
-RUNTIME_BLOCK_END(ReadFile);
 
 struct LoadImage : public FileBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -269,8 +245,8 @@ struct WritePNG : public FileBase {
 };
 
 void registerSerializationBlocks() {
-  REGISTER_CORE_BLOCK(WriteFile);
-  REGISTER_CORE_BLOCK(ReadFile);
+  REGISTER_CBLOCK("WriteFile", WriteFile);
+  REGISTER_CBLOCK("ReadFile", ReadFile);
   REGISTER_CBLOCK("LoadImage", LoadImage);
   REGISTER_CBLOCK("WritePNG", WritePNG);
 }

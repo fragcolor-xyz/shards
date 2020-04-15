@@ -335,9 +335,15 @@ template <typename T, typename V> ALWAYS_INLINE inline V arrayPop(T &arr) {
 
 template <typename T>
 void ALWAYS_INLINE inline arrayDel(T &arr, uint32_t index) {
+  using V = decltype(arr.elements[0]);
   arr.len--;
+  V removed = arr.elements[index];
   memmove(&arr.elements[index], &arr.elements[index + 1],
           sizeof(*arr.elements) * (arr.len - index));
+  // keep removed value somewhere
+  // in other to still recycle it's memory and
+  // be able to destroy from stuff like destroyVar
+  arr.elements[arr.len] = removed;
 }
 
 template <typename T> NO_INLINE void arrayFree(T &arr);
@@ -439,11 +445,11 @@ public:
     }
   }
 
-  IterableArray(const IterableArray &other) : _seq(nullptr), _owned(true) {
+  IterableArray(const IterableArray &other) : _seq({}), _owned(true) {
     size_t size = other._seq.len;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq[i] = other._seq[i];
+      _seq.elements[i] = other._seq.elements[i];
     }
   }
 

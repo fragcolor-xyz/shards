@@ -229,8 +229,8 @@ struct Sort : public JointOp {
   } blocksKeyFn;
 
   template <class Compare, class KeyFn>
-  void insertSort(CBVar seq[], int n, Compare comp, KeyFn keyfn) {
-    int i, j;
+  void insertSort(CBVar seq[], int64_t n, Compare comp, KeyFn keyfn) {
+    int64_t i, j;
     CBVar key{};
     for (i = 1; i < n; i++) {
       key = seq[i];
@@ -262,7 +262,7 @@ struct Sort : public JointOp {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Sort in plac
-    auto len = _input->payload.seqValue.len;
+    int64_t len = int64_t(_input->payload.seqValue.len);
     if (_blks) {
       blocksKeyFn._ctx = context;
       if (!_desc) {
@@ -360,21 +360,20 @@ struct Remove : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    _blks.compose(data);
+    const auto pres = _blks.compose(data);
+    if (pres.outputType.basicType != CBType::Bool) {
+      throw ComposeError("Remove Predicate should output a boolean value.");
+    }
     return inputType;
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
-    auto len = _input->payload.seqValue.len;
-    for (auto i = len; i > 0; i--) {
-      auto &var = _input->payload.seqValue.elements[i - 1];
+    uint32_t len = _input->payload.seqValue.len;
+    for (uint32_t i = len; i > 0; i--) {
+      const auto &var = _input->payload.seqValue.elements[i - 1];
       if (_blks.activate(context, var) == True) {
-        // remove from input
-        if (var.valueType >= EndOfBlittableTypes) {
-          destroyVar(var);
-        }
         // this is acceptable cos del ops don't call free! or grow
         if (_fast)
           chainblocks::arrayDelFast(_input->payload.seqValue, i - 1);
@@ -388,10 +387,6 @@ struct Remove : public JointOp {
                   .elements) // avoid removing from same seq as input!
             continue;
 
-          auto &jvar = seq.elements[i - 1];
-          if (var.valueType >= EndOfBlittableTypes) {
-            destroyVar(jvar);
-          }
           if (_fast)
             chainblocks::arrayDelFast(seq, i - 1);
           else
@@ -708,14 +703,18 @@ struct Reduce {
       throw CBException("Reduce: Invalid sequence inner type, must be a single "
                         "defined type.");
     }
+    // we need to edit a copy of data
     CBInstanceData dataCopy = data;
+    // we need to deep copy it
+    dataCopy.shared = {};
+    DEFER({ arrayFree(dataCopy.shared); });
     dataCopy.inputType = data.inputType.seqTypes.elements[0];
-    // replace or add $0
-    for (uint32_t i = dataCopy.shared.len; i > 0; i--) {
+    // copy skilling any existing $0
+    for (uint32_t i = data.shared.len; i > 0; i--) {
       auto idx = i - 1;
-      auto &item = dataCopy.shared.elements[idx];
-      if (strcmp(item.name, "$0") == 0) {
-        arrayDelFast(dataCopy.shared, idx);
+      auto &item = data.shared.elements[idx];
+      if (strcmp(item.name, "$0") != 0) {
+        arrayPush(dataCopy.shared, item);
       }
     }
     _tmpInfo.exposedType = dataCopy.inputType;
