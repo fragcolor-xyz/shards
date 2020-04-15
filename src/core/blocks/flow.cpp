@@ -516,15 +516,19 @@ template <bool COND> struct When {
   void setParam(int index, CBVar value) {
     if (index == 0)
       _cond = value;
-    else
+    else if (index == 1)
       _action = value;
+    else
+      _passth = value.payload.boolValue;
   }
 
   CBVar getParam(int index) {
     if (index == 0)
       return _cond;
-    else
+    else if (index == 1)
       return _action;
+    else
+      return Var(_passth);
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -534,6 +538,12 @@ template <bool COND> struct When {
       throw ComposeError("When predicate should output a boolean value!");
     }
     _shouldReturn = _action.compose(data).flowStopper;
+    if (!_shouldReturn && !_passth) {
+      if (cres.outputType != data.inputType) {
+        throw ComposeError("When Passthrough is false but action output type "
+                           "does not match input type.");
+      }
+    }
     return data.inputType;
   }
 
@@ -551,9 +561,11 @@ template <bool COND> struct When {
     const auto cres = _cond.activate(context, input);
     // type check in compose!
     if (cres.payload.boolValue == COND) {
-      _action.activate(context, input);
+      const auto ares = _action.activate(context, input);
       if (_shouldReturn)
         return Var::Return();
+      if (!_passth)
+        return ares;
     }
     return input;
   }
@@ -566,9 +578,118 @@ private:
       {"Action",
        "The blocks to activate on when Predicate is true for When and false "
        "for WhenNot.",
-       {CoreInfo::BlocksOrNone}}};
+       {CoreInfo::BlocksOrNone}},
+      {"Passthrough",
+       "The input of this block will be the output. (default: true)",
+       {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _action{};
+  bool _passth = true;
+  bool _shouldReturn = false;
+};
+
+struct IfBlock {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _cond = value;
+    else if (index == 1)
+      _then = value;
+    else if (index == 2)
+      _else = value;
+    else
+      _passth = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _cond;
+    else if (index == 1)
+      return _then;
+    else if (index == 2)
+      return _else;
+    else
+      return Var(_passth);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // both not exposing!
+    const auto cres = _cond.compose(data);
+    if (cres.outputType.basicType != CBType::Bool) {
+      throw ComposeError("If - predicate should output a boolean value!");
+    }
+
+    const auto tres = _then.compose(data);
+    const auto eres = _else.compose(data);
+
+    if ((tres.flowStopper && !eres.flowStopper) ||
+        (!tres.flowStopper && eres.flowStopper)) {
+      throw ComposeError(
+          "If - actions unbalance, one stops the flow other does not.");
+    }
+
+    _shouldReturn = tres.flowStopper;
+
+    if (!_shouldReturn && !_passth) {
+      if (tres.outputType != eres.outputType) {
+        throw ComposeError("If - Passthrough is false but action output types "
+                           "do not match.");
+      }
+    }
+    return data.inputType;
+  }
+
+  void cleanup() {
+    _cond.cleanup();
+    _then.cleanup();
+    _else.cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    _cond.warmup(ctx);
+    _then.warmup(ctx);
+    _else.warmup(ctx);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto cres = _cond.activate(context, input);
+    // type check in compose!
+    if (cres.payload.boolValue) {
+      const auto tres = _then.activate(context, input);
+      if (_shouldReturn)
+        return Var::Return();
+      if (!_passth)
+        return tres;
+    } else {
+      const auto eres = _else.activate(context, input);
+      if (_shouldReturn)
+        return Var::Return();
+      if (!_passth)
+        return eres;
+    }
+    return input;
+  }
+
+private:
+  static inline Parameters _params{
+      {"Predicate",
+       "The predicate to evaluate in order to trigger Action.",
+       {CoreInfo::BlocksOrNone}},
+      {"Then", "The blocks to activate when Predicate is true.",
+       CoreInfo::BlocksOrNone},
+      {"Else", "The blocks to activate when Predicate is false.",
+       CoreInfo::BlocksOrNone},
+      {"Passthrough",
+       "The input of this block will be the output. (default: true)",
+       {CoreInfo::BoolType}}};
+  BlocksVar _cond{};
+  BlocksVar _then{};
+  BlocksVar _else{};
+  bool _passth = true;
   bool _shouldReturn = false;
 };
 
@@ -579,5 +700,6 @@ void registerFlowBlocks() {
   REGISTER_CBLOCK("Await", Await);
   REGISTER_CBLOCK("When", When<true>);
   REGISTER_CBLOCK("WhenNot", When<false>);
+  REGISTER_CBLOCK("If", IfBlock);
 }
 }; // namespace chainblocks

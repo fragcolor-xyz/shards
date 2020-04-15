@@ -4,7 +4,7 @@
 #ifndef CB_BLOCKWRAPPER_HPP
 #define CB_BLOCKWRAPPER_HPP
 
-#include "chainblocks.h"
+#include "chainblocks.hpp"
 #include "utility.hpp"
 
 namespace chainblocks {
@@ -256,6 +256,39 @@ template <class T> struct BlockWrapper {
   ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
   ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
                                &::chainblocks::BlockWrapper<__type__>::create)
+
+template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType,
+          Type &OutputType>
+struct TSimpleBlock {
+  static CBTypeInfo inputTypes() { return InputType; }
+  static CBTypeInfo outputTypes() { return OutputType; }
+  static CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, CBVar value) { params[index] = value; }
+
+  CBVar getParam(int index) { return params[index]; }
+
+  void cleanup() {
+    for (auto &param : params) {
+      params.cleanup();
+    }
+  }
+
+  void warmup(CBContext *context) {
+    for (auto &param : params) {
+      params.warmup(context);
+    }
+  }
+
+protected:
+  constexpr CBVar &param(size_t idx) {
+    static_assert(idx < NPARAMS, "Parameter index out of range.");
+    return param[idx].get();
+  }
+
+private:
+  std::array<TParamVar<CBCORE>, NPARAMS> params;
+};
 }; // namespace chainblocks
 
 #endif

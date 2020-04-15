@@ -763,6 +763,18 @@
   (WhenNot (Is true) (Assert.Is false true))
   (WhenNot (Is false) (Assert.Is true true))
 
+  true
+  (If (Is true) :Then (Msg "true!") :Else (Msg "false!"))
+  (Assert.Is true true)
+
+  false
+  (If (Is true) :Then (Const 10) :Else (Const 20) :Passthrough false)
+  (Assert.Is 20 true)
+
+  false
+  (If (Is false) :Then (Const 10) :Else (Const 20) :Passthrough false)
+  (Assert.Is 10 true)
+
   (Msg "All looking good!")
 
   ; test for a possible issue with thread pool on ending

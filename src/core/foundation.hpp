@@ -1284,6 +1284,10 @@ struct InternalCore {
 
 typedef TParamVar<InternalCore> ParamVar;
 
+template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
+struct SimpleBlock : public TSimpleBlock<InternalCore, Params, NPARAMS,
+                                         InputType, OutputType> {};
+
 template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E> {
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
