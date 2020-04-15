@@ -283,7 +283,7 @@ struct TSimpleBlock {
 protected:
   constexpr CBVar &param(size_t idx) {
     static_assert(idx < NPARAMS, "Parameter index out of range.");
-    return param[idx].get();
+    return params[idx].get();
   }
 
 private:
