@@ -181,17 +181,6 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-template <class T>
-typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
-almost_equal(T x, T y, int ulp) {
-  // the machine epsilon has to be scaled to the magnitude of the values used
-  // and multiplied by the desired precision in ULPs (units in the last place)
-  return __builtin_fabs(x - y) <=
-             std::numeric_limits<T>::epsilon() * __builtin_fabs(x + y) * ulp
-         // unless the result is subnormal
-         || __builtin_fabs(x - y) < std::numeric_limits<T>::min();
-}
-
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
@@ -215,7 +204,8 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Int:
     return a.payload.intValue == b.payload.intValue;
   case Float:
-    return almost_equal(a.payload.floatValue, b.payload.floatValue, 2);
+    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <=
+           FLT_EPSILON;
   case Int2: {
     CBInt2 vec = a.payload.int2Value == b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
