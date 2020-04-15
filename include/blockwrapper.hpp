@@ -6,6 +6,7 @@
 
 #include "chainblocks.hpp"
 #include "utility.hpp"
+#include <functional>
 
 namespace chainblocks {
 CB_HAS_MEMBER_TEST(name);
@@ -260,8 +261,8 @@ template <class T> struct BlockWrapper {
 template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType,
           Type &OutputType>
 struct TSimpleBlock {
-  static CBTypeInfo inputTypes() { return InputType; }
-  static CBTypeInfo outputTypes() { return OutputType; }
+  static CBTypesInfo inputTypes() { return InputType; }
+  static CBTypesInfo outputTypes() { return OutputType; }
   static CBParametersInfo parameters() { return Params; }
 
   void setParam(int index, CBVar value) { params[index] = value; }
@@ -288,6 +289,15 @@ protected:
 
 private:
   std::array<TParamVar<CBCORE>, NPARAMS> params;
+};
+
+typedef CBVar (*LambdaActivate)(const CBVar &input);
+template <LambdaActivate F, Type &InputType, Type &OutputType>
+struct LambdaBlock {
+  static CBTypesInfo inputTypes() { return InputType; }
+  static CBTypesInfo outputTypes() { return OutputType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) { return F(input); }
 };
 }; // namespace chainblocks
 

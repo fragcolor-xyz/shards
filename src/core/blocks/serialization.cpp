@@ -160,6 +160,9 @@ struct ReadFile : public FileBase {
   void cleanup() override {
     Serialization::varFree(_output);
     FileBase::cleanup();
+    if (_fileStream.good() && _fileStream.is_open()) {
+      _fileStream.close();
+    }
   }
 
   struct Reader {
