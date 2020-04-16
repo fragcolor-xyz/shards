@@ -1755,12 +1755,6 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   arr.cap = min_cap;
 }
 
-template <typename T> NO_INLINE void arrayFree(T &arr) {
-  if (arr.elements)
-    ::operator delete (arr.elements, std::align_val_t{16});
-  memset(&arr, 0x0, sizeof(T));
-}
-
 NO_INLINE void _destroyVarSlow(CBVar &var) {
   switch (var.valueType) {
   case Seq: {

@@ -64,17 +64,13 @@ struct JointOp {
     }
   }
 
-  void ensureJoinSetup(CBContext *context) {
+  void warmup(CBContext *context) {
     if (!_input) {
-      if (_inputVar.valueType != ContextVar)
-        throw ActivationError("From sequence variable invalid.");
-
       _input = referenceVariable(context, _inputVar.payload.stringValue);
-
-      if (_input->valueType != Seq)
-        throw ActivationError("From sequence variable is not a Seq.");
     }
+  }
 
+  void ensureJoinSetup(CBContext *context) {
     if (_columns.valueType != None) {
       auto len = _input->payload.seqValue.len;
       if (_multiSortColumns.size() == 0) {
@@ -121,19 +117,25 @@ struct JointOp {
   }
 };
 
-struct Sort : public JointOp {
+struct ActionJointOp : public JointOp {
   BlocksVar _blks{};
-  std::vector<CBVar> _multiSortKeys;
-  bool _desc = false;
-
-  void setup() { blocksKeyFn._bu = this; }
-
   void cleanup() {
     _blks.cleanup();
     JointOp::cleanup();
   }
 
-  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
+  void warmup(CBContext *ctx) {
+    JointOp::warmup(ctx);
+    _blks.warmup(ctx);
+  }
+};
+
+struct Sort : public ActionJointOp {
+
+  std::vector<CBVar> _multiSortKeys;
+  bool _desc = false;
+
+  void setup() { blocksKeyFn._bu = this; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
@@ -283,16 +285,8 @@ struct Sort : public JointOp {
   }
 };
 
-struct Remove : public JointOp {
-  BlocksVar _blks{};
+struct Remove : public ActionJointOp {
   bool _fast = false;
-
-  void cleanup() {
-    _blks.cleanup();
-    JointOp::cleanup();
-  }
-
-  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,

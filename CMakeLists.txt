@@ -103,6 +103,11 @@ if(FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
 endif()
 
+if(PROFILE_GPROF)
+  add_compile_options(-pg -DNO_FORCE_INLINE)
+  add_link_options(-pg)
+endif()
+
 ### general
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
