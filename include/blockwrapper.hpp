@@ -6,7 +6,6 @@
 
 #include "chainblocks.hpp"
 #include "utility.hpp"
-#include <functional>
 
 namespace chainblocks {
 CB_HAS_MEMBER_TEST(name);

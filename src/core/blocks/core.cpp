@@ -370,15 +370,15 @@ struct Remove : public JointOp {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
-    uint32_t len = _input->payload.seqValue.len;
+    const uint32_t len = _input->payload.seqValue.len;
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
       if (_blks.activate(context, var) == True) {
-        // this is acceptable cos del ops don't call free! or grow
+        // this is acceptable cos del ops don't call free or grow
         if (_fast)
-          chainblocks::arrayDelFast(_input->payload.seqValue, i - 1);
+          arrayDelFast(_input->payload.seqValue, i - 1);
         else
-          chainblocks::arrayDel(_input->payload.seqValue, i - 1);
+          arrayDel(_input->payload.seqValue, i - 1);
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
           auto &seq = seqVar->payload.seqValue;
@@ -388,9 +388,9 @@ struct Remove : public JointOp {
             continue;
 
           if (_fast)
-            chainblocks::arrayDelFast(seq, i - 1);
+            arrayDelFast(seq, i - 1);
           else
-            chainblocks::arrayDel(seq, i - 1);
+            arrayDel(seq, i - 1);
         }
       }
     }
@@ -869,6 +869,8 @@ struct Erase : SeqUser {
         const auto index = indices.payload.intValue;
         arrayDel(_target->payload.seqValue, index);
       } else {
+        // ensure we delete from highest index
+        // so to keep indices always valid
         IterableSeq sindices(indices);
         std::sort(sindices.begin(), sindices.end(),
                   [](CBVar a, CBVar b) { return a > b; });

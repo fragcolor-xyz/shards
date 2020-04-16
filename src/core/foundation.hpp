@@ -300,50 +300,56 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
 
 template <typename T, typename V>
 ALWAYS_INLINE inline void arrayPush(T &arr, const V &val) {
-  if ((arr.len + 1) > arr.cap)
+  if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);
+  }
   arr.elements[arr.len++] = val;
 }
 
 template <typename T>
 ALWAYS_INLINE inline void arrayResize(T &arr, uint32_t size) {
-  if (arr.len < size)
+  if (arr.cap < size) {
     arrayGrow(arr, size - arr.len);
+  }
   arr.len = size;
 }
 
 template <typename T, typename V>
 ALWAYS_INLINE inline void arrayInsert(T &arr, uint32_t index, const V &val) {
-  if ((arr.len + 1) > arr.cap)
+  if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);
+  }
   memmove(&arr.elements[index + 1], &arr.elements[index],
-          sizeof(*arr.elements) * (arr.len - index));
+          sizeof(V) * (arr.len - index));
   arr.len++;
   arr.elements[index] = val;
 }
 
-template <typename T>
-ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
-  arr.elements[index] = arr.elements[arr.len - 1];
-  arr.len--;
-}
-
 template <typename T, typename V> ALWAYS_INLINE inline V arrayPop(T &arr) {
+  assert(arr.len > 0);
   arr.len--;
   return arr.elements[arr.len];
 }
 
 template <typename T>
-void ALWAYS_INLINE inline arrayDel(T &arr, uint32_t index) {
-  using V = decltype(arr.elements[0]);
+ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
+  assert(arr.len > 0);
   arr.len--;
-  V removed = arr.elements[index];
-  memmove(&arr.elements[index], &arr.elements[index + 1],
-          sizeof(*arr.elements) * (arr.len - index));
-  // keep removed value somewhere
-  // in other to still recycle it's memory and
-  // be able to destroy from stuff like destroyVar
-  arr.elements[arr.len] = removed;
+  // this allows eventual destroyVar/cloneVar magic
+  // avoiding allocations even in nested seqs
+  std::swap(arr.elements[index], arr.elements[arr.len]);
+}
+
+template <typename T>
+ALWAYS_INLINE inline void arrayDel(T &arr, uint32_t index) {
+  assert(arr.len > 0);
+  // this allows eventual destroyVar/cloneVar magic
+  // avoiding allocations even in nested seqs
+  arr.len--;
+  while (index < arr.len) {
+    std::swap(arr.elements[index], arr.elements[index + 1]);
+    index++;
+  }
 }
 
 template <typename T> NO_INLINE void arrayFree(T &arr);
