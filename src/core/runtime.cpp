@@ -556,13 +556,10 @@ void releaseVariable(CBVar *variable) {
 static tf::Executor &MainTaskPool{Singleton<tf::Executor>::value};
 
 void suspend(CBContext *context, double seconds) {
-  if (MainTaskPool.this_worker_id() != -1) {
-    throw ActivationError(
-        "Trying to suspend a flow running on a worker thread!",
-        CBChainState::Stop, true);
-  } else if (!context->continuation)
+  if (!context->continuation) {
     throw ActivationError("Trying to suspend a context without coroutine!",
                           CBChainState::Stop, true);
+  }
 
   if (seconds <= 0) {
     context->next = Duration(0);

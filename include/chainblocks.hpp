@@ -284,14 +284,20 @@ struct Var : public CBVar {
   constexpr static CBVar True() {
     CBVar res{};
     res.valueType = CBType::Bool;
-    res.payload.boolValue = true;
+    // notice we need to use chain state
+    // as this is the active member
+    // should be fixed in c++20 tho
+    res.payload.chainState = (CBChainState)1;
     return res;
   }
 
   constexpr static CBVar False() {
     CBVar res{};
     res.valueType = CBType::Bool;
-    res.payload.boolValue = false;
+    // notice we need to use chain state
+    // as this is the active member
+    // should be fixed in c++20 tho
+    res.payload.chainState = (CBChainState)0;
     return res;
   }
 
