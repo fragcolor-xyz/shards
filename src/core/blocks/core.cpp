@@ -763,9 +763,7 @@ struct Erase : SeqUser {
   static CBParametersInfo parameters() { return _params; }
 
   void warmup(CBContext *ctx) {
-    if (!_target) {
-      _target = referenceVariable(ctx, _name.c_str());
-    }
+    SeqUser::warmup(ctx);
     _indices.warmup(ctx);
   }
 
@@ -1029,6 +1027,7 @@ RUNTIME_BLOCK_END(Push);
 // Register Pop
 RUNTIME_CORE_BLOCK_FACTORY(Pop);
 RUNTIME_BLOCK_cleanup(Pop);
+RUNTIME_BLOCK_warmup(Pop);
 RUNTIME_BLOCK_destroy(Pop);
 RUNTIME_BLOCK_inputTypes(Pop);
 RUNTIME_BLOCK_outputTypes(Pop);
@@ -1043,6 +1042,7 @@ RUNTIME_BLOCK_END(Pop);
 // Register PopFront
 RUNTIME_CORE_BLOCK_FACTORY(PopFront);
 RUNTIME_BLOCK_cleanup(PopFront);
+RUNTIME_BLOCK_warmup(PopFront);
 RUNTIME_BLOCK_destroy(PopFront);
 RUNTIME_BLOCK_inputTypes(PopFront);
 RUNTIME_BLOCK_outputTypes(PopFront);
@@ -1057,6 +1057,7 @@ RUNTIME_BLOCK_END(PopFront);
 // Register Count
 RUNTIME_CORE_BLOCK_FACTORY(Count);
 RUNTIME_BLOCK_cleanup(Count);
+RUNTIME_BLOCK_warmup(Count);
 RUNTIME_BLOCK_inputTypes(Count);
 RUNTIME_BLOCK_outputTypes(Count);
 RUNTIME_BLOCK_parameters(Count);
@@ -1068,6 +1069,7 @@ RUNTIME_BLOCK_END(Count);
 // Register Clear
 RUNTIME_CORE_BLOCK_FACTORY(Clear);
 RUNTIME_BLOCK_cleanup(Clear);
+RUNTIME_BLOCK_warmup(Clear);
 RUNTIME_BLOCK_inputTypes(Clear);
 RUNTIME_BLOCK_outputTypes(Clear);
 RUNTIME_BLOCK_parameters(Clear);
@@ -1079,6 +1081,7 @@ RUNTIME_BLOCK_END(Clear);
 // Register Drop
 RUNTIME_CORE_BLOCK_FACTORY(Drop);
 RUNTIME_BLOCK_cleanup(Drop);
+RUNTIME_BLOCK_warmup(Drop);
 RUNTIME_BLOCK_inputTypes(Drop);
 RUNTIME_BLOCK_outputTypes(Drop);
 RUNTIME_BLOCK_parameters(Drop);
@@ -1090,6 +1093,7 @@ RUNTIME_BLOCK_END(Drop);
 // Register DropFront
 RUNTIME_CORE_BLOCK_FACTORY(DropFront);
 RUNTIME_BLOCK_cleanup(DropFront);
+RUNTIME_BLOCK_warmup(DropFront);
 RUNTIME_BLOCK_inputTypes(DropFront);
 RUNTIME_BLOCK_outputTypes(DropFront);
 RUNTIME_BLOCK_parameters(DropFront);

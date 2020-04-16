@@ -1267,6 +1267,12 @@ struct SeqUser : VariableBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  void warmup(CBContext *context) {
+    if (!_target) {
+      _target = referenceVariable(context, _name.c_str());
+    }
+  }
+
   CBExposedTypesInfo requiredVariables() {
     if (_name.size() > 0) {
       if (_isTable) {
@@ -1288,10 +1294,6 @@ struct Count : SeqUser {
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
-
     CBVar *var = _target;
 
     if (unlikely(_isTable)) {
@@ -1327,10 +1329,6 @@ struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
-
     CBVar *var = _target;
 
     if (_isTable) {
@@ -1367,10 +1365,6 @@ struct Drop : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
-
     CBVar *var = _target;
 
     if (_isTable) {
@@ -1410,10 +1404,6 @@ struct DropFront : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
-
     CBVar *var = _target;
 
     if (_isTable) {
@@ -1490,9 +1480,6 @@ struct Pop : SeqUser {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
     if (_isTable) {
       if (_target->valueType != Table) {
         throw ActivationError("Variable is not a table, failed to Pop.");
@@ -1581,9 +1568,6 @@ struct PopFront : SeqUser {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
-    }
     if (_isTable) {
       if (_target->valueType != Table) {
         throw ActivationError("Variable is not a table, failed to Pop.");
