@@ -230,13 +230,13 @@ struct Globals {
 
   static inline std::string RootPath;
 
-  const static inline Var True = Var(true);
-  const static inline Var False = Var(false);
-  const static inline Var StopChain = Var::Stop();
-  const static inline Var RestartChain = Var::Restart();
-  const static inline Var ReturnPrevious = Var::Return();
-  const static inline Var RebaseChain = Var::Rebase();
-  const static inline Var Empty = Var();
+  constexpr static CBVar True = Var::True();
+  constexpr static CBVar False = Var::False();
+  constexpr static CBVar StopChain = Var::Stop();
+  constexpr static CBVar RestartChain = Var::Restart();
+  constexpr static CBVar ReturnPrevious = Var::Return();
+  constexpr static CBVar RebaseChain = Var::Rebase();
+  constexpr static CBVar Empty = Var::Empty();
 
   static inline CBTableInterface TableInterface{
       .tableForEach =
@@ -578,26 +578,21 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   };
 
-  memset(&var, 0x0, sizeof(CBVar));
+  var.valueType = CBType::None;
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
-  // don't loose dst refcount and flag!
-  auto rc = dst.refcount;
-  auto rcflag = dst.flags & CBVAR_FLAGS_REF_COUNTED;
-
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
-    memcpy(&dst, &src, sizeof(CBVar));
+    dst.valueType = src.valueType;
+    memcpy(&dst.payload, &src.payload, sizeof(CBVarPayload));
   } else if (src.valueType < EndOfBlittableTypes) {
     destroyVar(dst);
-    memcpy(&dst, &src, sizeof(CBVar));
+    dst.valueType = src.valueType;
+    memcpy(&dst.payload, &src.payload, sizeof(CBVarPayload));
   } else {
     _cloneVarSlow(dst, src);
   }
-
-  dst.refcount = rc;
-  dst.flags |= rcflag;
 }
 
 struct Serialization {

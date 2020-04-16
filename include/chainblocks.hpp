@@ -276,29 +276,48 @@ struct Var : public CBVar {
     }
   }
 
-  static Var Stop() {
-    Var res;
+  constexpr static CBVar Empty() {
+    CBVar res{};
+    return res;
+  }
+
+  constexpr static CBVar True() {
+    CBVar res{};
+    res.valueType = CBType::Bool;
+    res.payload.boolValue = true;
+    return res;
+  }
+
+  constexpr static CBVar False() {
+    CBVar res{};
+    res.valueType = CBType::Bool;
+    res.payload.boolValue = false;
+    return res;
+  }
+
+  constexpr static CBVar Stop() {
+    CBVar res{};
     res.valueType = None;
     res.payload.chainState = CBChainState::Stop;
     return res;
   }
 
-  static Var Restart() {
-    Var res;
+  constexpr static CBVar Restart() {
+    CBVar res{};
     res.valueType = None;
     res.payload.chainState = CBChainState::Restart;
     return res;
   }
 
-  static Var Return() {
-    Var res;
+  constexpr static CBVar Return() {
+    CBVar res{};
     res.valueType = None;
     res.payload.chainState = CBChainState::Return;
     return res;
   }
 
-  static Var Rebase() {
-    Var res;
+  constexpr static CBVar Rebase() {
+    CBVar res{};
     res.valueType = None;
     res.payload.chainState = CBChainState::Rebase;
     return res;
