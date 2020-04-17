@@ -164,12 +164,10 @@ elseif(APPLE)
   endif()
   include_directories(
     /usr/local/include
-    /usr/local/opt/readline/include
     /usr/local/opt/openssl/include
     )
   link_directories(
     /usr/local/lib
-    /usr/local/opt/readline/lib
     /usr/local/opt/openssl/lib
     )
 else()
@@ -250,6 +248,7 @@ set(
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/deps/rpmalloc
+  -I${CHAINBLOCKS_DIR}/deps/replxx/include
   -I${CHAINBLOCKS_DIR}/deps/snappy
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
@@ -331,6 +330,7 @@ endif()
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/rpmalloc
+  ${CHAINBLOCKS_DIR}/deps/replxx/include
   ${CHAINBLOCKS_DIR}/deps/snappy
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
@@ -466,10 +466,15 @@ else()
     )
 endif()
 
+add_compile_definitions(REPLXX_STATIC)
+set(replxx-source-patterns ${CHAINBLOCKS_DIR}/deps/replxx/src/*.cpp ${CHAINBLOCKS_DIR}/deps/replxx/src/*.cxx)
+file(GLOB replxx-sources ${replxx-source-patterns})
+
 set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/mdb.c
   ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/midl.c
+  ${replxx-sources}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
@@ -536,7 +541,7 @@ add_executable(
 add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbl -lreadline -lncurses ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
 
 ### our experimental edn eval

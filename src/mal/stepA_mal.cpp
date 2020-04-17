@@ -22,7 +22,7 @@ static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
 #ifndef NO_MAL_MAIN
-static ReadLine s_readLine("~/.mal-history");
+static ReadLine s_readLine("./cblp-history.txt");
 #endif
 
 static thread_local malEnvPtr currentEnv = nullptr;
