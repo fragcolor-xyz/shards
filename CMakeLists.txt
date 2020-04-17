@@ -108,6 +108,11 @@ if(PROFILE_GPROF)
   add_link_options(-pg)
 endif()
 
+if(PROFILE_COVERAGE)
+  add_compile_options(--coverage)
+  add_link_options(--coverage)
+endif()
+
 ### general
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
