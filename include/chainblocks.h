@@ -769,9 +769,10 @@ typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef CBSeq *(__cdecl *CBGetStack)(struct CBContext *context);
 
-typedef void(__cdecl *CBThrowException)(const char *errorText);
+typedef void(__cdecl *CBThrowException)(const char *errorText)
+    __attribute__((noreturn));
 
-typedef void(__cdecl *CBThrowExceptionSimple)();
+typedef void(__cdecl *CBThrowExceptionSimple)() __attribute__((noreturn));
 
 typedef struct CBVar(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
