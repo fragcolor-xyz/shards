@@ -1,7 +1,12 @@
-
-
 #ifndef CB_LSP_EVAL_HPP
 #define CB_LSP_EVAL_HPP
+
+/*
+ * This is an experiment
+ * needs major refactor of how variant is used
+ * should use std::visit
+ * also read is not our code yet could use same refactoring
+ */
 
 #include "../runtime.hpp"
 #include "print.hpp"

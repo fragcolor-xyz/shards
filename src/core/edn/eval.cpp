@@ -12,6 +12,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
       auto head = list.front().form;
       list.pop_front();
 
+      // TODO use std::visit
       switch (head.index()) {
       case form::TOKEN: {
         auto token = std::get<token::Token>(head);
