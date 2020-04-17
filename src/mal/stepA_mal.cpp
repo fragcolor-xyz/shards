@@ -22,7 +22,7 @@ static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
 #ifndef NO_MAL_MAIN
-static ReadLine s_readLine("./cblp-history.txt");
+static ReadLine *s_readLine = nullptr;
 #endif
 
 static thread_local malEnvPtr currentEnv = nullptr;
@@ -76,14 +76,16 @@ int malmain(int argc, char* argv[])
             std::cout << out << "\n";
     } else {
 #ifndef NO_MAL_MAIN
+        s_readLine = new ReadLine("./chainblocks-history.txt");
         String prompt = "user> ";
         String input;
         rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
-        while (s_readLine.get(prompt, input)) {
+        while (s_readLine->get(prompt, input)) {
             String out = safeRep(input, replEnv);
             if (out.length() > 0)
 	      std::cout << out << "\n";
         }
+        delete s_readLine;
 #endif
     }
     if(currentEnv == replEnv)
@@ -409,7 +411,7 @@ static void installFunctions(malEnvPtr env) {
 malValuePtr readline(const String& prompt)
 {
     String input;
-    if (s_readLine.get(prompt, input)) {
+    if (s_readLine->get(prompt, input)) {
         return mal::string(input);
     }
     return mal::nilValue();

@@ -553,8 +553,6 @@ void releaseVariable(CBVar *variable) {
   }
 }
 
-static tf::Executor &MainTaskPool{Singleton<tf::Executor>::value};
-
 void suspend(CBContext *context, double seconds) {
   if (!context->continuation) {
     throw ActivationError("Trying to suspend a context without coroutine!",
@@ -655,6 +653,19 @@ bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
 }
 
 CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }
+
+[[noreturn]] __attribute__((noreturn)) static void
+throwException(const char *msg) {
+  throw CBException(msg);
+}
+
+[[noreturn]] __attribute__((noreturn)) static void throwCancellation() {
+  throw ChainCancellation();
+}
+
+[[noreturn]] __attribute__((noreturn)) static void throwRestart() {
+  throw ChainRestart();
+}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
@@ -715,13 +726,11 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.getStack = [](CBContext *context) { return &context->stack; };
 
-  result.throwException = [](const char *errorText) {
-    throw chainblocks::CBException(errorText);
-  };
+  result.throwException = &chainblocks::throwException;
 
-  result.throwCancellation = []() { throw chainblocks::ChainCancellation(); };
+  result.throwCancellation = &chainblocks::throwCancellation;
 
-  result.throwRestart = []() { throw chainblocks::ChainRestart(); };
+  result.throwRestart = &chainblocks::throwRestart;
 
   result.suspend = [](CBContext *context, double seconds) {
     try {
