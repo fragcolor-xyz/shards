@@ -970,6 +970,7 @@ struct ValidationContext {
   std::vector<CBTypeInfo> stackTypes;
 
   CBlock *bottom{};
+  CBlock *next{};
 
   CBValidationCallback cb{};
   void *userData{};
@@ -1001,6 +1002,9 @@ void validateConnection(ValidationContext &ctx) {
     CBInstanceData data{};
     data.block = ctx.bottom;
     data.inputType = previousOutput;
+    if (ctx.next) {
+      data.outputTypes = ctx.next->inputTypes(ctx.next);
+    }
     // Pass all we got in the context!
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
@@ -1214,7 +1218,13 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
     }
   }
 
-  for (auto blk : chain) {
+  size_t chsize = chain.size();
+  for (size_t i = 0; i < chsize; i++) {
+    CBlock *blk = chain[i];
+    ctx.next = nullptr;
+    if (i < chsize - 1)
+      ctx.next = chain[i + 1];
+
     if (strcmp(blk->name(blk), "Input") == 0 ||
         strcmp(blk->name(blk), "And") == 0 ||
         strcmp(blk->name(blk), "Or") == 0) {

@@ -592,14 +592,16 @@ struct CBRunChainOutput {
 } __attribute__((aligned(16)));
 
 struct CBInstanceData {
-  // Used to optimize activations, replacing function pointers during
-  // bake/validation
+  // Used to optimize activations,
+  // replacing function pointers during compose
   struct CBlock *block;
 
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBTypesInfo stack;
   CBExposedTypesInfo shared;
+  // basically what the next block can get as input
+  struct CBTypesInfo outputTypes;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
