@@ -1285,11 +1285,11 @@ struct InternalCore {
     try {
       chainblocks::suspend(ctx, seconds);
     } catch (const ChainRestart &) {
-      return CBVar{{CBChainState::Restart}};
+      return Var::Restart();
     } catch (const ChainCancellation &) {
-      return CBVar{{CBChainState::Stop}};
+      return Var::Stop();
     }
-    return CBVar{{CBChainState::Continue}};
+    return Empty;
   }
 };
 
