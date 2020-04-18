@@ -775,6 +775,8 @@
   (If (Is false) :Then (Const 10) :Else (Const 20) :Passthrough false)
   (Assert.Is 10 true)
 
+  "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
+
   (Msg "All looking good!")
 
   ; test for a possible issue with thread pool on ending

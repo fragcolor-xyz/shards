@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+#include "chainblocks.hpp"
 #define String MalString
 #include "Environment.h"
 #include "MAL.h"
@@ -1001,6 +1002,77 @@ struct Observer : public chainblocks::RuntimeObserver {
   }
 };
 
+malCBlock *makeVarBlock(malCBVar *v, const char *blockName) {
+  auto b = chainblocks::createBlock(blockName);
+  b->setup(b);
+  b->setParam(b, 0, v->value());
+  auto blk = new malCBlock(b);
+  return blk;
+}
+
+BUILTIN(">>") { return mal::nilValue(); }
+
+BUILTIN(">>!") { return mal::nilValue(); }
+
+BUILTIN("&>") { return mal::nilValue(); }
+
+std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
+  enum State { Get, Set, Update, Ref, Push, PushNoClear };
+  State state = Get;
+  std::vector<malCBlockPtr> res;
+  while (begin != end) {
+    auto next = *begin++;
+    if (auto *v = DYNAMIC_CAST(malCBVar, next)) {
+      if (v->value().valueType == ContextVar) {
+        if (state == Get) {
+          res.emplace_back(makeVarBlock(v, "Get"));
+        } else if (state == Set) {
+          res.emplace_back(makeVarBlock(v, "Set"));
+          state = Get;
+        } else if (state == Update) {
+          res.emplace_back(makeVarBlock(v, "Update"));
+          state = Get;
+        } else if (state == Ref) {
+          res.emplace_back(makeVarBlock(v, "Ref"));
+          state = Get;
+        } else if (state == Push) {
+          res.emplace_back(makeVarBlock(v, "Push"));
+          state = Get;
+        } else if (state == PushNoClear) {
+          auto blk = makeVarBlock(v, "Push");
+          // set :Clear false
+          blk->value()->setParam(blk->value(), 3, chainblocks::Var(false));
+          res.emplace_back(blk);
+          state = Get;
+        } else {
+          throw chainblocks::CBException("Unexpected state");
+        }
+      } else {
+        auto blks = blockify(next);
+        res.insert(res.end(), blks.begin(), blks.end());
+      }
+    } else if (auto *v = DYNAMIC_CAST(malBuiltIn, next)) {
+      if (v->name() == ">=") {
+        state = Set;
+      } else if (v->name() == ">") {
+        state = Update;
+      } else if (v->name() == "&>") {
+        state = Ref;
+      } else if (v->name() == ">>") {
+        state = Push;
+      } else if (v->name() == ">>!") {
+        state = PushNoClear;
+      } else {
+        throw chainblocks::CBException("Unexpected token");
+      }
+    } else {
+      auto blks = blockify(next);
+      res.insert(res.end(), blks.begin(), blks.end());
+    }
+  }
+  return res;
+}
+
 BUILTIN("Chain") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malString, chainName);
@@ -1008,22 +1080,24 @@ BUILTIN("Chain") {
   auto chainref = mchain->value();
   auto chain = CBChain::sharedFromRef(chainref);
   while (argsBegin != argsEnd) {
+    auto pbegin = argsBegin;
     auto arg = *argsBegin++;
-    if (const malKeyword *v = DYNAMIC_CAST(malKeyword, arg)) // Options!
-    {
+    // Option keywords or blocks
+    if (const malKeyword *v = DYNAMIC_CAST(malKeyword, arg)) {
       if (v->value() == ":Looped") {
         chain->looped = true;
       } else if (v->value() == ":Unsafe") {
         chain->unsafe = true;
       }
     } else {
-      auto blks = blockify(arg);
+      auto blks = chainify(pbegin, argsEnd);
       for (auto blk : blks) {
         chain->addBlock(blk->value());
         // chain will manage this block from now on!
         blk->consume();
         mchain->reference(blk.ptr());
       }
+      break;
     }
   }
   return malValuePtr(mchain);
@@ -1037,13 +1111,10 @@ BUILTIN("Chain@") {
 
 BUILTIN("-->") {
   auto vec = new malValueVec();
-  while (argsBegin != argsEnd) {
-    auto arg = *argsBegin++;
-    auto blks = blockify(arg);
-    for (auto blk : blks) {
-      malCBlock *pblk = blk.ptr();
-      vec->emplace_back(pblk);
-    }
+  auto blks = chainify(argsBegin, argsEnd);
+  for (auto blk : blks) {
+    malCBlock *pblk = blk.ptr();
+    vec->emplace_back(pblk);
   }
   return malValuePtr(new malList(vec));
 }
