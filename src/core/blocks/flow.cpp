@@ -3,6 +3,7 @@
 
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
+#include "foundation.hpp"
 #include "shared.hpp"
 #include <taskflow/taskflow.hpp>
 
@@ -507,6 +508,35 @@ private:
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
 };
 
+// Not used actually
+// I decided to not expose from When and If
+// Exposing from flow stuff is dangerous
+struct ExposerFlow {
+  template <typename... Validations> void merge(Validations... vals) {
+    constexpr int size = sizeof...(vals);
+    std::array<CBValidationResult, size> v{vals...};
+    IterableExposedInfo master(v[0].exposedInfo);
+    for (size_t i = 1; i < v.size(); i++) {
+      IterableExposedInfo sub(v[i].exposedInfo);
+      if (master.size() != sub.size()) {
+        throw ComposeError(
+            "Flow is unbalanced, exposing a different amount of variables.");
+        _composition = {};
+        return;
+      }
+      if (!std::equal(master.begin(), master.end(), sub.begin())) {
+        throw ComposeError("Flow is unbalanced, type mismatch.");
+        _composition = {};
+        return;
+      }
+    }
+    _composition = v[0];
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+  CBValidationResult _composition{};
+};
+
 template <bool COND> struct When {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -537,7 +567,10 @@ template <bool COND> struct When {
     if (cres.outputType.basicType != CBType::Bool) {
       throw ComposeError("When predicate should output a boolean value!");
     }
-    _shouldReturn = _action.compose(data).flowStopper;
+
+    auto ares = _action.compose(data);
+
+    _shouldReturn = ares.flowStopper;
     if (!_shouldReturn && !_passth) {
       if (cres.outputType != data.inputType) {
         throw ComposeError("When Passthrough is false but action output type "
@@ -689,7 +722,7 @@ private:
   BlocksVar _cond{};
   BlocksVar _then{};
   BlocksVar _else{};
-  bool _passth = true;
+  bool _passth = false;
   bool _shouldReturn = false;
 };
 
