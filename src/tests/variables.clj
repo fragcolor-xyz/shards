@@ -166,6 +166,10 @@
   (Count .n2)
   (Log "count O")
 
+  "global1"
+  (Set .global1 :Global true)
+  (Get .global1)
+  (Assert.Is "global1" true)
 
   (Msg "Done!")
   ))

@@ -941,6 +941,14 @@ struct Get : public VariableBase {
   }
 
   bool defaultTypeCheck(const CBVar &value) {
+    auto warn = false;
+    DEFER({
+      if (warn) {
+        LOG(INFO)
+            << "Get found a variable but it's using the default value because "
+               "the type found did not match with the default type.";
+      }
+    });
     if (value.valueType != _defaultValue.valueType)
       return false;
 
@@ -962,6 +970,10 @@ struct Get : public VariableBase {
       return *_cell;
 
     if (!_target) {
+      // notice we don't care about _global
+      // cos we reference straight into activate
+      // altho not optimal, but we mitigate with cell trick
+      // this allows any runtime settle of Set
       _target = referenceVariable(context, _name.c_str());
       // sanity check that the variable is not pristine...
       // the setter chain might have stopped actually!

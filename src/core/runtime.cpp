@@ -529,7 +529,6 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
     CBVar &cv = it->second;
     cv.refcount++;
     cv.flags |= CBVAR_FLAGS_REF_COUNTED;
-    ;
     return &cv;
   }
 

@@ -777,6 +777,8 @@
 
   "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
+  "global1" (Set .global1 :Global true)
+
   (Msg "All looking good!")
 
   ; test for a possible issue with thread pool on ending
@@ -801,6 +803,9 @@
            (Set .loadedChain)
            (Log)
            (ChainRunner .loadedChain)
+           (Get .global1 :Default "nope")
+           (Assert.Is "global1" true)
+           (Log)
            ))
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
 
