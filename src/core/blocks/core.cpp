@@ -1420,6 +1420,8 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Math.Mean", Math::Mean);
   REGISTER_BLOCK(Math, Inc);
   REGISTER_BLOCK(Math, Dec);
+  REGISTER_CBLOCK("Max", Math::Max);
+  REGISTER_CBLOCK("Min", Math::Min);
 
   REGISTER_CBLOCK("Profile", Profile);
 

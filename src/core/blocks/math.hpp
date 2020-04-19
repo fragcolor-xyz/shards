@@ -199,10 +199,39 @@ struct BinaryBase : public Base {
   CBVar getParam(int index) { return _operand; }
 };
 
+template <class OP> struct BinaryOperation : public BinaryBase {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    OP op;
+    auto &operand = _operand.get();
+    if (likely(_opType == Normal)) {
+      op(_output, input, operand);
+      return _output;
+    } else if (_opType == Seq1) {
+      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        op(_output, input.payload.seqValue.elements[i], operand);
+        chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);
+      }
+      return _cachedSeq;
+    } else {
+      auto olen = operand.payload.seqValue.len;
+      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0; i++) {
+        op(_output, input.payload.seqValue.elements[i],
+           operand.payload.seqValue.elements[i % olen]);
+        chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);
+      }
+      return _cachedSeq;
+    }
+  }
+};
+
+// TODO implement CBVar operators
+// and replace with functional std::plus etc
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
-  struct NAME : public BinaryBase {                                            \
-    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
-                               const CBVar &operand) {                         \
+  struct NAME : public BinaryOperation<NAME> {                                 \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
+                                  const CBVar &operand) {                      \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
@@ -326,38 +355,13 @@ struct BinaryBase : public Base {
             #NAME " operation not supported between given types!");            \
       }                                                                        \
     }                                                                          \
-                                                                               \
-    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      auto &operand = _operand.get();                                          \
-      if (likely(_opType == Normal)) {                                         \
-        operate(_output, input, operand);                                      \
-        return _output;                                                        \
-      } else if (_opType == Seq1) {                                            \
-        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(_output, input.payload.seqValue.elements[i], operand);       \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
-        }                                                                      \
-        return _cachedSeq;                                                     \
-      } else {                                                                 \
-        auto olen = operand.payload.seqValue.len;                              \
-        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
-        for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
-             i++) {                                                            \
-          operate(_output, input.payload.seqValue.elements[i],                 \
-                  operand.payload.seqValue.elements[i % olen]);                \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
-        }                                                                      \
-        return _cachedSeq;                                                     \
-      }                                                                        \
-    }                                                                          \
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
-  struct NAME : public BinaryBase {                                            \
-    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input,              \
-                               const CBVar &operand) {                         \
+  struct NAME : public BinaryOperation<NAME> {                                 \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
+                                  const CBVar &operand) {                      \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -403,31 +407,6 @@ struct BinaryBase : public Base {
       default:                                                                 \
         throw ActivationError(                                                 \
             #NAME " operation not supported between given types!");            \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      auto &operand = _operand.get();                                          \
-      if (likely(_opType == Normal)) {                                         \
-        operate(_output, input, operand);                                      \
-        return _output;                                                        \
-      } else if (_opType == Seq1) {                                            \
-        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(_output, input.payload.seqValue.elements[i], operand);       \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
-        }                                                                      \
-        return _cachedSeq;                                                     \
-      } else {                                                                 \
-        auto olen = operand.payload.seqValue.len;                              \
-        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
-        for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0;       \
-             i++) {                                                            \
-          operate(_output, input.payload.seqValue.elements[i],                 \
-                  operand.payload.seqValue.elements[i % olen]);                \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
-        }                                                                      \
-        return _cachedSeq;                                                     \
       }                                                                        \
     }                                                                          \
   };                                                                           \
@@ -736,5 +715,17 @@ struct Inc : public UnaryBin<Add> {};
 RUNTIME_BLOCK_TYPE(Math, Inc);
 struct Dec : public UnaryBin<Subtract> {};
 RUNTIME_BLOCK_TYPE(Math, Dec);
+
+struct Max : public BinaryOperation<Max> {
+  void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
+    output = std::max(input, operand);
+  }
+};
+
+struct Min : public BinaryOperation<Min> {
+  void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
+    output = std::min(input, operand);
+  }
+};
 }; // namespace Math
 }; // namespace chainblocks

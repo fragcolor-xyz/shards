@@ -724,7 +724,11 @@
   (Log)
   (Assert.Is [112 113 102 115 98 100] true)
   (RTake [0 1 3 4])
-  (Assert.Is [100 98 102 113] true)
+  (Assert.Is [100 98 102 113] true) >= .s1
+  (Reduce (Max .$0)) (Log)
+  (Assert.Is 113 true)
+  .s1 (Reduce (Min .$0)) (Log)
+  (Assert.Is 98 true)
 
   (Await
    (-->
