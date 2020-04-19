@@ -659,15 +659,17 @@ struct IfBlock {
     const auto tres = _then.compose(data);
     const auto eres = _else.compose(data);
 
-    if ((tres.flowStopper && !eres.flowStopper) ||
-        (!tres.flowStopper && eres.flowStopper)) {
-      throw ComposeError(
-          "If - actions unbalance, one stops the flow other does not.");
-    }
+    // if exposes nothing, so this is not needed here!!!
+    // if ((tres.flowStopper && !eres.flowStopper) ||
+    //     (!tres.flowStopper && eres.flowStopper)) {
+    //   throw ComposeError(
+    //       "If - actions unbalance, one stops the flow other does not.");
+    // }
 
-    _shouldReturn = tres.flowStopper;
+    _tshouldReturn = tres.flowStopper;
+    _eshouldReturn = eres.flowStopper;
 
-    if (!_shouldReturn && !_passth) {
+    if (!_tshouldReturn && !_eshouldReturn && !_passth) {
       if (tres.outputType != eres.outputType) {
         throw ComposeError("If - Passthrough is false but action output types "
                            "do not match.");
@@ -693,13 +695,13 @@ struct IfBlock {
     // type check in compose!
     if (cres.payload.boolValue) {
       const auto tres = _then.activate(context, input);
-      if (_shouldReturn)
+      if (_tshouldReturn)
         return Var::Return();
       if (!_passth)
         return tres;
     } else {
       const auto eres = _else.activate(context, input);
-      if (_shouldReturn)
+      if (_eshouldReturn)
         return Var::Return();
       if (!_passth)
         return eres;
@@ -723,7 +725,8 @@ private:
   BlocksVar _then{};
   BlocksVar _else{};
   bool _passth = false;
-  bool _shouldReturn = false;
+  bool _tshouldReturn = false;
+  bool _eshouldReturn = false;
 };
 
 void registerFlowBlocks() {
