@@ -616,7 +616,7 @@ struct ForEachBlock {
       if (state != CBChainState::Continue) {
         // catch and assume Return was for us
         if (state == CBChainState::Return)
-          context->state = CBChainState::Continue;
+          context->continueFlow();
         break;
       }
     }
@@ -675,7 +675,7 @@ struct Map {
       if (state != CBChainState::Continue) {
         // catch and assume Return was for us
         if (state == CBChainState::Return)
-          context->state = CBChainState::Continue;
+          context->continueFlow();
         break;
       }
       arrayPush(_output.payload.seqValue, output);
@@ -757,7 +757,7 @@ struct Reduce {
       if (state != CBChainState::Continue) {
         // catch and assume Return was for us
         if (state == CBChainState::Return)
-          context->state = CBChainState::Continue;
+          context->continueFlow();
         break;
       }
       cloneVar(*_tmp, output);

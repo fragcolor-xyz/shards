@@ -109,16 +109,7 @@ public:
     sCore._core.throwException(errorText);
   }
 
-  [[noreturn]] static void throwCancellation(const char *errorText) {
-    sCore._core.throwCancellation();
-  }
-
-  [[noreturn]] static void throwRestart(const char *errorText) {
-    sCore._core.throwRestart();
-  }
-
-  [[nodiscard]] static CBChainState suspend(CBContext *context,
-                                            double seconds) {
+  static CBChainState suspend(CBContext *context, double seconds) {
     return sCore._core.suspend(context, seconds);
   }
 
@@ -181,8 +172,9 @@ public:
     return sCore._core.validateBlocks(blocks, callback, userData, data);
   }
 
-  static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
-    return sCore._core.runBlocks(blocks, context, input);
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
+                                CBVar *output) {
+    return sCore._core.runBlocks(blocks, context, input, output);
   }
 
   static void log(const char *msg) { sCore._core.log(msg); }

@@ -351,7 +351,7 @@ struct Input {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    context->state = CBChainState::Rebase;
+    context->rebaseFlow();
     return input;
   }
 };
@@ -444,11 +444,11 @@ struct And {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
-      context->state = CBChainState::Rebase;
+      context->rebaseFlow();
       return input;
     } else {
       // Reason: We are done, input IS FALSE so we stop this flow
-      context->state = CBChainState::Return;
+      context->returnFlow(input);
       return input;
     }
   }
@@ -460,11 +460,11 @@ struct Or {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
-      context->state = CBChainState::Return;
+      context->returnFlow(input);
       return input;
     } else {
       // Continue the flow, with the initial input as next input!
-      context->state = CBChainState::Rebase;
+      context->rebaseFlow();
       return input;
     }
   }
@@ -482,7 +482,7 @@ struct Stop {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    context->state = CBChainState::Stop;
+    context->stopFlow(input);
     return input;
   }
 };
@@ -491,7 +491,7 @@ struct Restart {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    context->state = CBChainState::Restart;
+    context->restartFlow(input);
     return input;
   }
 };
@@ -500,7 +500,7 @@ struct Return {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    context->state = CBChainState::Return;
+    context->returnFlow(input);
     return input;
   }
 };
@@ -2430,7 +2430,7 @@ struct Repeat {
       if (state != CBChainState::Continue) {
         // catch and reset return flag
         if (state == CBChainState::Return)
-          context->state = CBChainState::Continue;
+          context->continueFlow();
         break;
       }
 
