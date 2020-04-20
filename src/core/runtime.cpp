@@ -571,7 +571,7 @@ CBChainState suspend(CBContext *context, double seconds) {
 #ifdef CB_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
 #endif
-  return context->state;
+  return context->getState();
 }
 
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
@@ -582,18 +582,18 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
   DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output = activateBlock(blocks.elements[i], context, input);
-    if (context->state != CBChainState::Continue) {
-      switch (context->state) {
+    if (!context->shouldContinue()) {
+      switch (context->getState()) {
       case CBChainState::Return:
       case CBChainState::Stop:
       case CBChainState::Restart: {
-        return context->state;
+        return context->getState();
       }
       case CBChainState::Rebase: {
         // reset input to chain one
         // and reset state
         input = chainInput;
-        context->state = CBChainState::Continue;
+        context->continueFlow();
         continue;
       }
       case CBChainState::Continue:
@@ -602,7 +602,6 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
     }
     input = output;
   }
-  // true on full run!
   return CBChainState::Continue;
 }
 
@@ -615,18 +614,18 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
   for (uint32_t i = 0; i < blocks.len; i++) {
     output =
         activateBlock(blocks.elements[i].payload.blockValue, context, input);
-    if (context->state != CBChainState::Continue) {
-      switch (context->state) {
+    if (!context->shouldContinue()) {
+      switch (context->getState()) {
       case CBChainState::Return:
       case CBChainState::Stop:
       case CBChainState::Restart: {
-        return context->state;
+        return context->getState();
       }
       case CBChainState::Rebase: {
-        // set input to chain one
+        // reset input to chain one
         // and reset state
         input = chainInput;
-        context->state = CBChainState::Continue;
+        context->continueFlow();
         continue;
       }
       case CBChainState::Continue:
@@ -635,7 +634,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
     }
     input = output;
   }
-  // true on full run!
   return CBChainState::Continue;
 }
 
@@ -1531,19 +1529,19 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   for (auto blk : chain->blocks) {
     try {
       chain->previousOutput = activateBlock(blk, context, input);
-      if (context->state != CBChainState::Continue) {
-        switch (context->state) {
+      if (!context->shouldContinue()) {
+        switch (context->getState()) {
         case CBChainState::Return:
         case CBChainState::Restart: {
-          return {chain->previousOutput, Restarted};
+          return {context->getFlowStorage(), Restarted};
         }
         case CBChainState::Stop: {
-          return {chain->previousOutput, Stopped};
+          return {context->getFlowStorage(), Stopped};
         }
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
-          context->state = CBChainState::Continue;
+          context->continueFlow();
           continue;
         case CBChainState::Continue:
           break;
@@ -1569,7 +1567,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
-          context->state = CBChainState::Continue;
+          context->continueFlow();
           continue;
         case CBChainState::Continue:
           break;
@@ -1636,19 +1634,18 @@ boost::context::continuation run(CBChain *chain,
   // And call warmup on all the blocks!
   if (!warmup(chain, &context)) {
     chain->state = CBChain::State::Failed;
-    context.state = CBChainState::Stop;
+    context.stopFlow(Var::Empty);
     goto endOfChain;
   }
 
   context.continuation = context.continuation.resume();
-  if (context.state ==
-      CBChainState::Stop) // We might have stopped before even starting!
+  if (context.shouldStop()) // We might have stopped before even starting!
     goto endOfChain;
 
   while (running) {
     running = chain->looped;
     // reset context state
-    context.state = CBChainState::Continue;
+    context.continueFlow();
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     chain->finishedOutput = runRes.output; // Write result before setting flag
@@ -1657,11 +1654,11 @@ boost::context::continuation run(CBChain *chain,
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
-      context.state = CBChainState::Stop;
+      context.stopFlow(Var::Empty);
       break;
     } else if (unlikely(runRes.state == Stopped)) {
       LOG(DEBUG) << "chain " << chain->name << " stopped.";
-      context.state = CBChainState::Stop;
+      context.stopFlow(Var::Empty);
       break;
     }
 
@@ -1670,7 +1667,7 @@ boost::context::continuation run(CBChain *chain,
       context.next = Duration(0);
       context.continuation = context.continuation.resume();
       // This is delayed upon continuation!!
-      if (context.state == CBChainState::Stop) {
+      if (context.shouldStop()) {
         LOG(DEBUG) << "chain " << chain->name << " aborted on resume.";
         break;
       }

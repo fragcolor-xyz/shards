@@ -278,7 +278,7 @@ struct Evolve {
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node.schedule(obs, fitchain.get(), chain->previousOutput);
+              i.node.schedule(obs, fitchain.get(), chain->finishedOutput);
             },
             _coros);
 

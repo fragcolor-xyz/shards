@@ -8,9 +8,9 @@
 #include <taskflow/taskflow.hpp>
 
 #define HANDLE_FLOW(_ctx_, _output_)                                           \
-  if (_ctx_->state != CBChainState::Continue) {                                \
-    if (_ctx_->state == CBChainState::Return)                                  \
-      _ctx_->state = CBChainState::Continue;                                   \
+  if (!_ctx_->shouldContinue()) {                                              \
+    if (_ctx_->getState() == CBChainState::Return)                             \
+      _ctx_->continueFlow();                                                   \
     else                                                                       \
       return _output_;                                                         \
   }
@@ -376,7 +376,7 @@ struct MaybeRestart : public BaseSubFlow {
         if (ex.triggerFailure()) {
           LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
         }
-        context->state = CBChainState::Restart;
+        context->restartFlow(input);
       }
     }
     return output;

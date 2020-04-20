@@ -65,8 +65,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
 struct CBContext {
   CBContext(CBCoro &&sink, CBChain *starter)
-      : main(starter), state(CBChainState::Continue),
-        continuation(std::move(sink)), iterationCount(0), stack({}) {
+      : main(starter), continuation(std::move(sink)) {
     chainStack.push_back(starter);
   }
 
@@ -75,20 +74,55 @@ struct CBContext {
   const CBChain *main;
   std::vector<CBChain *> chainStack;
 
-  CBChainState state;
-
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
   Duration next{};
 #ifdef CB_USE_TSAN
-  void *tsan_handle;
+  void *tsan_handle = nullptr;
 #endif
 
   // Iteration counter
-  uint64_t iterationCount;
+  uint64_t iterationCount = 0;
 
   // Stack for local vars
-  CBSeq stack;
+  CBSeq stack{};
+
+  constexpr void stopFlow(const CBVar &lastValue) {
+    state = CBChainState::Stop;
+    flowStorage = lastValue;
+  }
+
+  constexpr void restartFlow(const CBVar &lastValue) {
+    state = CBChainState::Restart;
+    flowStorage = lastValue;
+  }
+
+  constexpr void returnFlow(const CBVar &lastValue) {
+    state = CBChainState::Return;
+    flowStorage = lastValue;
+  }
+
+  constexpr void rebaseFlow() { state = CBChainState::Rebase; }
+
+  constexpr void continueFlow() { state = CBChainState::Continue; }
+
+  constexpr bool shouldContinue() const {
+    return state == CBChainState::Continue;
+  }
+
+  constexpr bool shouldReturn() const { return state == CBChainState::Return; }
+
+  constexpr bool shouldStop() const { return state == CBChainState::Stop; }
+
+  constexpr CBChainState getState() const { return state; }
+
+  constexpr CBVar getFlowStorage() const { return flowStorage; }
+
+private:
+  CBChainState state = CBChainState::Continue;
+  // Used when flow is stopped/restart/return
+  // to store the previous result
+  CBVar flowStorage{};
 };
 
 #include "blocks/core.hpp"
@@ -477,7 +511,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
         chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
-      chain->context->state = CBChainState::Stop;
+      chain->context->stopFlow(Var::Empty);
 
       // BIG Warning: chain->context existed in the coro stack!!!
       // after this resume chain->context is trash!
@@ -537,9 +571,7 @@ inline bool hasEnded(CBChain *chain) {
   return chain->state > CBChain::State::IterationEnded;
 }
 
-inline bool isCanceled(CBContext *context) {
-  return context->state == CBChainState::Stop;
-}
+inline bool isCanceled(CBContext *context) { return context->shouldStop(); }
 
 inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // negative = no sleep, just run callbacks
