@@ -356,7 +356,8 @@ struct Consume : public Consumers {
           if (!_storage.empty()) {
             return _storage;
           } else {
-            return StopChain;
+            context->state = CBChainState::Stop;
+            return Var::Empty;
           }
         }
         suspend(context, 0);
@@ -429,7 +430,8 @@ struct Listen : public Consumers {
           if (!_storage.empty()) {
             return _storage;
           } else {
-            return StopChain;
+            context->state = CBChainState::Stop;
+            return Var::Empty;
           }
         }
         suspend(context, 0);

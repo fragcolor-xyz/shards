@@ -144,7 +144,7 @@ struct Style : public Base {
     case 0:
       return Var::Enum(_key, 'frag', 'ImGS');
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -599,7 +599,7 @@ struct Window : public Base {
     case 5:
       return _blks;
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -744,11 +744,11 @@ template <CBType CT> struct Variable : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _label.size() == 0 ? Empty : Var(_label);
+      return _label.size() == 0 ? Var::Empty : Var(_label);
     case 1:
-      return _variable_name.size() == 0 ? Empty : Var(_variable_name);
+      return _variable_name.size() == 0 ? Var::Empty : Var(_variable_name);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 };
@@ -767,12 +767,12 @@ struct CheckBox : public Variable<CBType::Bool> {
 
     if (_variable) {
       ::ImGui::Checkbox(_label.c_str(), &_variable->payload.boolValue);
-      return _variable->payload.boolValue ? True : False;
+      return _variable->payload.boolValue ? Var::True : Var::False;
     } else {
       // HACK kinda... we recycle _exposing since we are not using it in this
       // branch
       ::ImGui::Checkbox(_label.c_str(), &_exposing);
-      return _exposing ? True : False;
+      return _exposing ? Var::True : Var::False;
     }
   }
 };
@@ -806,11 +806,11 @@ struct Text : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _label.size() == 0 ? Empty : Var(_label);
+      return _label.size() == 0 ? Var::Empty : Var(_label);
     case 1:
       return _color;
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -906,7 +906,7 @@ struct Button : public Base {
     case 3:
       return Var(_size.x, _size.x);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -923,56 +923,56 @@ struct Button : public Base {
 
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
-    CBVar output = Empty;                                                      \
+    CBVar output = Var::Empty;                                                 \
     activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);     \
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    auto result = False;
+    auto result = Var::False;
     ImVec2 size;
     switch (_type) {
     case Normal:
       if (::ImGui::Button(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case Small:
       if (::ImGui::SmallButton(_label.c_str())) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case Invisible:
       if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case ArrowLeft:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case ArrowRight:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case ArrowUp:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     case ArrowDown:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
         IMBTN_RUN_ACTION;
-        result = True;
+        result = Var::True;
       }
       break;
     }
@@ -1091,9 +1091,9 @@ struct TreeNode : public Base {
 
     auto visible = ::ImGui::TreeNode(_label.c_str());
     if (visible) {
+      CBVar output{};
       // run inner blocks
-      _blocks.activate(context, input);
-
+      _blocks.activate(context, input, output);
       // pop the node if was visible
       ::ImGui::TreePop();
     }
@@ -1348,7 +1348,7 @@ struct Image : public Base {
     case 1:
       return Var(_trueSize);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 

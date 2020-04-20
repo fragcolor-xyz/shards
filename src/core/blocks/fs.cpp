@@ -42,7 +42,7 @@ struct Iterate {
     case 0:
       return Var(_recursive);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -133,9 +133,9 @@ struct IsFile {
   CBVar activate(CBContext *context, const CBVar &input) {
     fs::path p(input.payload.stringValue);
     if (fs::exists(p) && !fs::is_directory(p)) {
-      return True;
+      return Var::True;
     } else {
-      return False;
+      return Var::False;
     }
   }
 };
@@ -152,9 +152,9 @@ struct IsDirectory {
   CBVar activate(CBContext *context, const CBVar &input) {
     fs::path p(input.payload.stringValue);
     if (fs::exists(p) && fs::is_directory(p)) {
-      return True;
+      return Var::True;
     } else {
-      return False;
+      return Var::False;
     }
   }
 };
@@ -190,7 +190,7 @@ struct Filename {
     case 0:
       return Var(_noExt);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -245,7 +245,7 @@ struct Read {
     case 0:
       return Var(_binary);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 
@@ -320,7 +320,7 @@ struct Write {
     case 2:
       return Var(_append);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 

@@ -117,7 +117,8 @@ public:
     sCore._core.throwRestart();
   }
 
-  static CBVar suspend(CBContext *context, double seconds) {
+  [[nodiscard]] static CBChainState suspend(CBContext *context,
+                                            double seconds) {
     return sCore._core.suspend(context, seconds);
   }
 

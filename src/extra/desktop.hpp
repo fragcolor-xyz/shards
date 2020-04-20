@@ -316,7 +316,7 @@ struct SendKeyEventBase {
 
   CBVar getParam(int index) {
     if (_windowVarName.size() == 0) {
-      return Empty;
+      return Var::Empty;
     } else {
       return Var(_windowVarName);
     }

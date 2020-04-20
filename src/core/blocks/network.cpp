@@ -158,7 +158,7 @@ struct NetworkBase {
     case 2:
       return _blks;
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 

@@ -702,7 +702,9 @@ struct Mutant {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return _block.activate(context, input);
+    CBVar output{};
+    _block.activate(context, input, output);
+    return output;
   }
 
   CBlock *mutant() const {

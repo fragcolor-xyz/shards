@@ -738,8 +738,6 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   if (arg == mal::nilValue()) {
     // Wrap none into const
     CBVar var{};
-    var.valueType = None;
-    var.payload.chainState = Continue;
     WRAP_TO_CONST(var);
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
     CBVar strVar{};
@@ -789,8 +787,6 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     CBVar var{};
-    var.valueType = None;
-    var.payload.chainState = Continue;
     return malCBVarPtr(new malCBVar(var));
   } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
     auto &s = v->ref();
@@ -1519,7 +1515,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
     (*penv)->set(std::to_string(sh), malValuePtr(mvar.ptr()));
     return mvar->value();
   } catch (...) {
-    return Empty;
+    return chainblocks::Var::Empty;
   }
 }
 };

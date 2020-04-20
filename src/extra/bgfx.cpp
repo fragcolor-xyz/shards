@@ -92,7 +92,7 @@ struct BaseWindow : public Base {
     case 2:
       return Var(_height);
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 };
