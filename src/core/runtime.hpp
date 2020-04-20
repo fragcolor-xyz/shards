@@ -65,7 +65,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 
 struct CBContext {
   CBContext(CBCoro &&sink, CBChain *starter)
-      : main(starter), restarted(false), aborted(false),
+      : main(starter), state(CBChainState::Continue),
         continuation(std::move(sink)), iterationCount(0), stack({}) {
     chainStack.push_back(starter);
   }
@@ -75,10 +75,7 @@ struct CBContext {
   const CBChain *main;
   std::vector<CBChain *> chainStack;
 
-  // Those 2 go together with CBVar chainstates restart and stop
-  bool restarted;
-  // Also used to cancel a chain
-  bool aborted;
+  CBChainState state;
 
   // Used within the coro& stack! (suspend, etc)
   CBCoro &&continuation;
@@ -480,7 +477,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
         chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
-      chain->context->aborted = true;
+      chain->context->state = CBChainState::Stop;
 
       // BIG Warning: chain->context existed in the coro stack!!!
       // after this resume chain->context is trash!
@@ -521,7 +518,7 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
 
   Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
-    if (rootInput != Empty) {
+    if (rootInput != Var::Empty) {
       cloneVar(chain->rootTickInput, rootInput);
     }
 #ifdef CB_USE_TSAN
@@ -540,7 +537,9 @@ inline bool hasEnded(CBChain *chain) {
   return chain->state > CBChain::State::IterationEnded;
 }
 
-inline bool isCanceled(CBContext *context) { return context->aborted; }
+inline bool isCanceled(CBContext *context) {
+  return context->state == CBChainState::Stop;
+}
 
 inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // negative = no sleep, just run callbacks
@@ -661,7 +660,8 @@ struct CBNode {
     schedule(obs, chain, input, validate);
   }
 
-  template <class Observer> bool tick(Observer observer, CBVar input = Empty) {
+  template <class Observer>
+  bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
     _runningFlows = flows;
     for (auto &flow : _runningFlows) {
@@ -685,7 +685,7 @@ struct CBNode {
     return noErrors;
   }
 
-  bool tick(CBVar input = Empty) {
+  bool tick(CBVar input = chainblocks::Var::Empty) {
     EmptyObserver obs;
     return tick(obs, input);
   }

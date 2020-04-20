@@ -552,7 +552,7 @@ void releaseVariable(CBVar *variable) {
   }
 }
 
-void suspend(CBContext *context, double seconds) {
+CBChainState suspend(CBContext *context, double seconds) {
   if (!context->continuation) {
     throw ActivationError("Trying to suspend a context without coroutine!",
                           CBChainState::Stop, true);
@@ -571,51 +571,43 @@ void suspend(CBContext *context, double seconds) {
 #ifdef CB_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
 #endif
-  if (context->restarted) {
-    throw ChainRestart();
-  } else if (context->aborted) {
-    throw ChainCancellation();
-  }
+  return context->state;
 }
 
-bool activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output) {
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
   DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output = activateBlock(blocks.elements[i], context, input);
-    if (output.valueType == None) {
-      switch (output.payload.chainState) {
+    if (context->state != CBChainState::Continue) {
+      switch (context->state) {
+      case CBChainState::Return:
+      case CBChainState::Stop:
       case CBChainState::Restart: {
-        throw ChainRestart();
-      }
-      case CBChainState::Stop: {
-        throw ChainStop();
-      }
-      case CBChainState::Return: {
-        // Invert them, we return previous output (input)
-        output = input;
-        // falso on partial run!
-        return false;
+        return context->state;
       }
       case CBChainState::Rebase: {
+        // reset input to chain one
+        // and reset state
         input = chainInput;
+        context->state = CBChainState::Continue;
         continue;
       }
-      case Continue:
+      case CBChainState::Continue:
         break;
       }
     }
     input = output;
   }
   // true on full run!
-  return true;
+  return CBChainState::Continue;
 }
 
-bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output) {
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
@@ -623,32 +615,28 @@ bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
   for (uint32_t i = 0; i < blocks.len; i++) {
     output =
         activateBlock(blocks.elements[i].payload.blockValue, context, input);
-    if (output.valueType == None) {
-      switch (output.payload.chainState) {
+    if (context->state != CBChainState::Continue) {
+      switch (context->state) {
+      case CBChainState::Return:
+      case CBChainState::Stop:
       case CBChainState::Restart: {
-        throw ChainRestart();
-      }
-      case CBChainState::Stop: {
-        throw ChainStop();
-      }
-      case CBChainState::Return: {
-        // Invert them, we return previous output (input)
-        output = input;
-        // falso on partial run!
-        return false;
+        return context->state;
       }
       case CBChainState::Rebase: {
+        // set input to chain one
+        // and reset state
         input = chainInput;
+        context->state = CBChainState::Continue;
         continue;
       }
-      case Continue:
+      case CBChainState::Continue:
         break;
       }
     }
     input = output;
   }
   // true on full run!
-  return true;
+  return CBChainState::Continue;
 }
 
 CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }
@@ -656,14 +644,6 @@ CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }
 [[noreturn]] __attribute__((noreturn)) static void
 throwException(const char *msg) {
   throw CBException(msg);
-}
-
-[[noreturn]] __attribute__((noreturn)) static void throwCancellation() {
-  throw ChainCancellation();
-}
-
-[[noreturn]] __attribute__((noreturn)) static void throwRestart() {
-  throw ChainRestart();
 }
 }; // namespace chainblocks
 
@@ -727,19 +707,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.throwException = &chainblocks::throwException;
 
-  result.throwCancellation = &chainblocks::throwCancellation;
-
-  result.throwRestart = &chainblocks::throwRestart;
-
   result.suspend = [](CBContext *context, double seconds) {
-    try {
-      chainblocks::suspend(context, seconds);
-    } catch (const chainblocks::ChainRestart &) {
-      return CBVar{{CBChainState::Restart}};
-    } catch (const chainblocks::ChainCancellation &) {
-      return CBVar{{CBChainState::Stop}};
-    }
-    return CBVar{{CBChainState::Continue}};
+    return chainblocks::suspend(context, seconds);
   };
 
   result.cloneVar = [](CBVar *dst, const CBVar *src) {
@@ -808,10 +777,9 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return validateSetParam(block, index, param, callback, userData);
   };
 
-  result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input) {
-    CBVar output{};
-    chainblocks::activateBlocks(blocks, context, input, output);
-    return output;
+  result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
+                        CBVar *output) {
+    return chainblocks::activateBlocks(blocks, context, input, *output);
   };
 
   result.getChainInfo = [](CBChainRef chainref) {
@@ -1563,21 +1531,19 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   for (auto blk : chain->blocks) {
     try {
       chain->previousOutput = activateBlock(blk, context, input);
-      if (chain->previousOutput.valueType == None) {
-        switch (chain->previousOutput.payload.chainState) {
+      if (context->state != CBChainState::Continue) {
+        switch (context->state) {
+        case CBChainState::Return:
         case CBChainState::Restart: {
-          return {input, Restarted};
+          return {chain->previousOutput, Restarted};
         }
         case CBChainState::Stop: {
-          return {input, Stopped};
-        }
-        case CBChainState::Return: {
-          // Use input as output, return previous block result
-          return {input, Restarted};
+          return {chain->previousOutput, Stopped};
         }
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
+          context->state = CBChainState::Continue;
           continue;
         case CBChainState::Continue:
           break;
@@ -1593,19 +1559,17 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         return {input, Failed};
       } else {
         switch (e.requestedAction()) {
+        case CBChainState::Return:
         case CBChainState::Restart: {
           return {input, Restarted};
         }
         case CBChainState::Stop: {
           return {input, Stopped};
         }
-        case CBChainState::Return: {
-          // Use input as output, return previous block result
-          return {input, Restarted};
-        }
         case CBChainState::Rebase:
           // Rebase means we need to put back main input
           input = chainInput;
+          context->state = CBChainState::Continue;
           continue;
         case CBChainState::Continue:
           break;
@@ -1672,17 +1636,19 @@ boost::context::continuation run(CBChain *chain,
   // And call warmup on all the blocks!
   if (!warmup(chain, &context)) {
     chain->state = CBChain::State::Failed;
-    context.aborted = true;
+    context.state = CBChainState::Stop;
     goto endOfChain;
   }
 
   context.continuation = context.continuation.resume();
-  if (context.aborted) // We might have stopped before even starting!
+  if (context.state ==
+      CBChainState::Stop) // We might have stopped before even starting!
     goto endOfChain;
 
   while (running) {
     running = chain->looped;
-    context.restarted = false; // Remove restarted flag
+    // reset context state
+    context.state = CBChainState::Continue;
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     chain->finishedOutput = runRes.output; // Write result before setting flag
@@ -1691,11 +1657,11 @@ boost::context::continuation run(CBChain *chain,
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
-      context.aborted = true;
+      context.state = CBChainState::Stop;
       break;
     } else if (unlikely(runRes.state == Stopped)) {
       LOG(DEBUG) << "chain " << chain->name << " stopped.";
-      context.aborted = true;
+      context.state = CBChainState::Stop;
       break;
     }
 
@@ -1704,7 +1670,7 @@ boost::context::continuation run(CBChain *chain,
       context.next = Duration(0);
       context.continuation = context.continuation.resume();
       // This is delayed upon continuation!!
-      if (context.aborted) {
+      if (context.state == CBChainState::Stop) {
         LOG(DEBUG) << "chain " << chain->name << " aborted on resume.";
         break;
       }

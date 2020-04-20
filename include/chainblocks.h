@@ -45,12 +45,10 @@ enum CBType : uint8_t {
 
 enum CBChainState : uint8_t {
   Continue, // Nothing happened, continue
-  Rebase,   // Continue this chain but put the local chain initial input as next
-            // input
-  Restart,  // Restart the local chain from the top (notice not the root!)
-  Return,   // Used in conditional paths, end this chain and return previous
-            // output
-  Stop,     // Stop the chain execution (including root)
+  Rebase,   // Continue but put the local chain initial input as next input
+  Restart,  // Restart the current chain from the top (non inline chains)
+  Return,   // Control flow, end this chain/flow and return previous output
+  Stop      // Stop the flow execution
 };
 
 // These blocks run fully inline in the runchain threaded execution engine
@@ -476,19 +474,13 @@ struct CBFlow {
 
 struct CBVarPayload {
   union {
-#if defined(__cplusplus) || defined(CB_USE_ENUMS)
-    enum CBChainState chainState;
-#else
-    CBChainState chainState;
-#endif
+    CBBool boolValue;
 
     struct {
       CBPointer objectValue;
       int32_t objectVendorId;
       int32_t objectTypeId;
     };
-
-    CBBool boolValue;
 
     CBInt intValue;
     CBInt2 int2Value;
@@ -776,8 +768,11 @@ typedef void(__cdecl *CBThrowException)(const char *errorText)
 
 typedef void(__cdecl *CBThrowExceptionSimple)() __attribute__((noreturn));
 
-typedef struct CBVar(__cdecl *CBSuspend)(struct CBContext *context,
+typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
+
+typedef void(__cdecl *CBSetState)(struct CBContext *context,
+                                  CBChainState state);
 
 typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
@@ -800,9 +795,17 @@ typedef struct CBValidationResult(__cdecl *CBValidateBlocks)(
     CBlocks blocks, CBValidationCallback callback, void *userData,
     struct CBInstanceData data);
 
-typedef struct CBVar(__cdecl *CBRunBlocks)(CBlocks blocks,
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
+typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
+                                                struct CBContext *context,
+                                                struct CBVar input,
+                                                struct CBVar *output);
+#else
+typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            struct CBContext *context,
-                                           struct CBVar input);
+                                           struct CBVar input,
+                                           struct CBVar *output);
+#endif
 
 typedef void(__cdecl *CBLog)(const char *msg);
 
@@ -892,10 +895,10 @@ struct CBCore {
   // before calling any of those make sure to release
   // and call destructors manually!
   CBThrowException throwException;
-  CBThrowExceptionSimple throwCancellation;
-  CBThrowExceptionSimple throwRestart;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
+  // To be used to stop/restart etc flow
+  CBSetState setState;
 
   // Utility to deal with CBVars
   CBCloneVar cloneVar;

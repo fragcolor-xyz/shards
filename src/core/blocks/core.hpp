@@ -200,7 +200,7 @@ struct BaseOpsBin {
     case 0:
       return _value;
     default:
-      return Empty;
+      return Var::Empty;
     }
   }
 };
@@ -215,9 +215,9 @@ struct BaseOpsBin {
       }                                                                        \
       const auto &value = *_target;                                            \
       if (input OP value) {                                                    \
-        return True;                                                           \
+        return Var::True;                                                      \
       }                                                                        \
-      return False;                                                            \
+      return Var::False;                                                       \
     }                                                                          \
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -246,31 +246,31 @@ LOGIC_OP(IsLessEqual, <=);
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue     \
                   .elements[i]) {                                              \
-            return True;                                                       \
+            return Var::True;                                                  \
           }                                                                    \
         }                                                                      \
-        return False;                                                          \
+        return Var::False;                                                     \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (input.payload.seqValue.elements[i] OP value) {                   \
-            return True;                                                       \
+            return Var::True;                                                  \
           }                                                                    \
         }                                                                      \
-        return False;                                                          \
+        return Var::False;                                                     \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
           if (input OP value.payload.seqValue.elements[i]) {                   \
-            return True;                                                       \
+            return Var::True;                                                  \
           }                                                                    \
         }                                                                      \
-        return False;                                                          \
+        return Var::False;                                                     \
       } else if (input.valueType != Seq && value.valueType != Seq) {           \
         if (input OP value) {                                                  \
-          return True;                                                         \
+          return Var::True;                                                    \
         }                                                                      \
-        return False;                                                          \
+        return Var::False;                                                     \
       }                                                                        \
-      return False;                                                            \
+      return Var::False;                                                       \
     }                                                                          \
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -292,31 +292,31 @@ LOGIC_OP(IsLessEqual, <=);
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue   \
                     .elements[i])) {                                           \
-            return False;                                                      \
+            return Var::False;                                                 \
           }                                                                    \
         }                                                                      \
-        return True;                                                           \
+        return Var::True;                                                      \
       } else if (input.valueType == Seq && value.valueType != Seq) {           \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
           if (!(input.payload.seqValue.elements[i] OP value)) {                \
-            return False;                                                      \
+            return Var::False;                                                 \
           }                                                                    \
         }                                                                      \
-        return True;                                                           \
+        return Var::True;                                                      \
       } else if (input.valueType != Seq && value.valueType == Seq) {           \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {            \
           if (!(input OP value.payload.seqValue.elements[i])) {                \
-            return False;                                                      \
+            return Var::False;                                                 \
           }                                                                    \
         }                                                                      \
-        return True;                                                           \
+        return Var::True;                                                      \
       } else if (input.valueType != Seq && value.valueType != Seq) {           \
         if (!(input OP value)) {                                               \
-          return False;                                                        \
+          return Var::False;                                                   \
         }                                                                      \
-        return True;                                                           \
+        return Var::True;                                                      \
       }                                                                        \
-      return False;                                                            \
+      return Var::False;                                                       \
     }                                                                          \
   };                                                                           \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -351,7 +351,8 @@ struct Input {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return RebaseChain;
+    context->state = CBChainState::Rebase;
+    return input;
   }
 };
 
@@ -443,10 +444,12 @@ struct And {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
-      return RebaseChain;
+      context->state = CBChainState::Rebase;
+      return input;
     } else {
-      // Reason: We are done, input IS FALSE so we FAIL
-      return ReturnPrevious;
+      // Reason: We are done, input IS FALSE so we stop this flow
+      context->state = CBChainState::Return;
+      return input;
     }
   }
 };
@@ -457,10 +460,12 @@ struct Or {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
-      return ReturnPrevious;
+      context->state = CBChainState::Return;
+      return input;
     } else {
       // Continue the flow, with the initial input as next input!
-      return RebaseChain;
+      context->state = CBChainState::Rebase;
+      return input;
     }
   }
 };
@@ -477,7 +482,8 @@ struct Stop {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return Var::Stop();
+    context->state = CBChainState::Stop;
+    return input;
   }
 };
 
@@ -485,7 +491,8 @@ struct Restart {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return Var::Restart();
+    context->state = CBChainState::Restart;
+    return input;
   }
 };
 
@@ -493,7 +500,8 @@ struct Return {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return Var::Return();
+    context->state = CBChainState::Return;
+    return input;
   }
 };
 
@@ -1848,7 +1856,7 @@ struct Take {
     default:
       break;
     }
-    return Empty;
+    return Var::Empty;
   }
 
   struct OutOfRangeEx : public ActivationError {
@@ -2181,7 +2189,7 @@ struct Slice {
     default:
       break;
     }
-    return Empty;
+    return Var::Empty;
   }
 
   struct OutOfRangeEx : public ActivationError {
@@ -2416,19 +2424,23 @@ struct Repeat {
 
     while (repeats) {
       CBVar repeatOutput{};
-      repeatOutput.valueType = None;
-      repeatOutput.payload.chainState = CBChainState::Continue;
       CBVar blks = _blks;
-      if (!activateBlocks(blks.payload.seqValue, context, input, repeatOutput))
-        break; // this is a Return signal
+      auto state =
+          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
+      if (state != CBChainState::Continue) {
+        // catch and reset return flag
+        if (state == CBChainState::Return)
+          context->state = CBChainState::Continue;
+        break;
+      }
 
       if (!_forever)
         repeats--;
 
       if (_pred) {
-        const auto pres = _pred.activate(context, input);
-        // no type check, done in compose!
-        if (pres.payload.boolValue)
+        CBVar pres{};
+        state = _pred.activate(context, input, pres);
+        if (state != CBChainState::Continue || pres.payload.boolValue)
           break;
       }
     }

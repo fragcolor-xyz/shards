@@ -12,16 +12,7 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
   case EndOfBlittableTypes:
     break;
   case None:
-    if (var.payload.chainState == Continue)
-      os << "*None*";
-    else if (var.payload.chainState == CBChainState::Stop)
-      os << "*ChainStop*";
-    else if (var.payload.chainState == CBChainState::Restart)
-      os << "*ChainRestart*";
-    else if (var.payload.chainState == CBChainState::Return)
-      os << "*ChainReturn*";
-    else if (var.payload.chainState == CBChainState::Rebase)
-      os << "*ChainRebase*";
+    os << "*None*";
     break;
   case CBType::Any:
     os << "*Any*";

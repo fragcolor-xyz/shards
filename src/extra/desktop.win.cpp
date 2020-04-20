@@ -64,7 +64,7 @@ public:
       }
     }
 
-    return _window ? True : False;
+    return _window ? Var::True : Var::False;
   }
 };
 
@@ -247,7 +247,7 @@ struct IsForeground : public ActiveBase {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       auto currentForeground = GetForegroundWindow();
-      return hwnd == currentForeground ? True : False;
+      return hwnd == currentForeground ? Var::True : Var::False;
     } else {
       throw ActivationError("Input object was not a Desktop's window!");
     }
@@ -284,7 +284,7 @@ struct NotForeground : public ActiveBase {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       auto currentForeground = GetForegroundWindow();
-      return hwnd != currentForeground ? True : False;
+      return hwnd != currentForeground ? Var::True : Var::False;
     } else {
       throw ActivationError("Input object was not a Desktop's window!");
     }
@@ -508,7 +508,7 @@ struct PixelBase {
     switch (index) {
     case 0:
       if (variableName.size() == 0) {
-        return Empty;
+        return Var::Empty;
       } else {
         CBVar v{};
         v.valueType = CBType::ContextVar;

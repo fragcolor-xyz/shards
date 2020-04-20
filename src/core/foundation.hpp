@@ -48,14 +48,14 @@ CBValidationResult validateConnections(const CBlocks chain,
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
-bool activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output);
-bool activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput,
-                    CBVar &output);
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output);
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
-void suspend(CBContext *context, double seconds);
+CBChainState suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 CBlock *createBlock(const char *name);
@@ -230,14 +230,6 @@ struct Globals {
 
   static inline std::string RootPath;
 
-  constexpr static CBVar True = Var::True();
-  constexpr static CBVar False = Var::False();
-  constexpr static CBVar StopChain = Var::Stop();
-  constexpr static CBVar RestartChain = Var::Restart();
-  constexpr static CBVar ReturnPrevious = Var::Return();
-  constexpr static CBVar RebaseChain = Var::Rebase();
-  constexpr static CBVar Empty = Var::Empty();
-
   static inline CBTableInterface TableInterface{
       .tableForEach =
           [](CBTable table, CBTableForEachCallback cb, void *data) {
@@ -286,14 +278,6 @@ struct Globals {
             delete map;
           }};
 };
-
-#define True ::chainblocks::Globals::True
-#define False ::chainblocks::Globals::False
-#define StopChain ::chainblocks::Globals::StopChain
-#define RestartChain ::chainblocks::Globals::RestartChain
-#define ReturnPrevious ::chainblocks::Globals::ReturnPrevious
-#define RebaseChain ::chainblocks::Globals::RebaseChain
-#define Empty ::chainblocks::Globals::Empty
 
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
@@ -578,6 +562,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     break;
   };
 
+  memset(&var.payload, 0x0, sizeof(CBVarPayload));
   var.valueType = CBType::None;
 }
 
@@ -1255,12 +1240,6 @@ struct InternalCore {
     throw chainblocks::CBException(msg);
   }
 
-  [[noreturn]] static void throwCancellation() {
-    throw chainblocks::ChainCancellation();
-  }
-
-  [[noreturn]] static void throwRestart() { throw chainblocks::ChainRestart(); }
-
   static void log(const char *msg) { LOG(INFO) << msg; }
 
   static void registerEnumType(int32_t vendorId, int32_t enumId,
@@ -1275,21 +1254,13 @@ struct InternalCore {
     return validateConnections(blocks, callback, userData, data);
   }
 
-  static CBVar runBlocks(CBlocks blocks, CBContext *context, CBVar input) {
-    CBVar output{};
-    chainblocks::activateBlocks(blocks, context, input, output);
-    return output;
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
+                                CBVar *output) {
+    return chainblocks::activateBlocks(blocks, context, input, *output);
   }
 
-  static CBVar suspend(CBContext *ctx, double seconds) {
-    try {
-      chainblocks::suspend(ctx, seconds);
-    } catch (const ChainRestart &) {
-      return Var::Restart();
-    } catch (const ChainCancellation &) {
-      return Var::Stop();
-    }
-    return Empty;
+  static CBChainState suspend(CBContext *ctx, double seconds) {
+    return chainblocks::suspend(ctx, seconds);
   }
 };
 

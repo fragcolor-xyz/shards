@@ -7,6 +7,14 @@
 #include "shared.hpp"
 #include <taskflow/taskflow.hpp>
 
+#define HANDLE_FLOW(_ctx_, _output_)                                           \
+  if (_ctx_->state != CBChainState::Continue) {                                \
+    if (_ctx_->state == CBChainState::Return)                                  \
+      _ctx_->state = CBChainState::Continue;                                   \
+    else                                                                       \
+      return _output_;                                                         \
+  }
+
 namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(
@@ -277,19 +285,19 @@ struct Cond {
 
     auto idx = 0;
     CBVar actionInput = input;
-    CBVar finalOutput = RestartChain;
+    CBVar finalOutput{};
     for (auto &cond : _conditions) {
       CBVar output{};
       CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
       activateBlocks(blocks, context, input, output);
-      if (output == True) {
+      HANDLE_FLOW(context, input);
+      if (output == Var::True) {
         // Do the action if true!
         // And stop here
         output = {};
         CBlocks action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
-        if (!activateBlocks(action, context, actionInput, output))
-          return Var::Return(); // we need to propagate Return!
-
+        auto state = activateBlocks(action, context, actionInput, output);
+        CHECK_STATE(state, output);
         if (_threading) {
           // set the output as the next action input (not cond tho!)
           finalOutput = output;
@@ -360,20 +368,18 @@ protected:
 
 struct MaybeRestart : public BaseSubFlow {
   CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar output{};
     if (likely(_blocks)) {
       try {
-        return _blocks.activate(context, input);
-      } catch (const ChainCancellation &) {
-        return Var::Stop();
+        CHECK_STATE(_blocks.activate(context, input, output), output);
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
         }
-        return Var::Restart();
+        context->state = CBChainState::Restart;
       }
-    } else {
-      return {};
     }
+    return output;
   }
 };
 
@@ -412,30 +418,8 @@ struct Maybe : public BaseSubFlow {
           "Maybe: output types mismatch between the two possible flows!");
     }
 
-    auto exposing = true;
-    auto curlen = elseComp.exposedInfo.len;
-    auto newlen = _composition.exposedInfo.len;
-    if (curlen != newlen) {
-      LOG(INFO) << "Maybe: number of exposed variables between actions "
-                   "mismatch, "
-                   "variables won't be exposed, flow is unpredictable!";
-      exposing = false;
-    }
-
-    if (exposing) {
-      for (uint32_t i = 0; i < curlen; i++) {
-        if (elseComp.exposedInfo.elements[i] !=
-            _composition.exposedInfo.elements[i]) {
-          LOG(INFO) << "Maybe: types of exposed variables between actions "
-                       "mismatch, "
-                       "variables won't be exposed, flow is unpredictable!";
-          exposing = false;
-          break;
-        }
-      }
-    }
-    if (!exposing)
-      _composition.exposedInfo = {};
+    // Maybe won't expose
+    _composition.exposedInfo = {};
 
     return _composition.outputType;
   }
@@ -455,22 +439,18 @@ struct Maybe : public BaseSubFlow {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar output{};
     if (likely(_blocks)) {
       try {
-        return _blocks.activate(context, input);
-      } catch (const ChainCancellation &) {
-        return Var::Stop();
-      } catch (const ChainRestart &) {
-        return Var::Restart();
+        CHECK_STATE(_blocks.activate(context, input, output), output);
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
         }
-        return _elseBlks.activate(context, input);
+        _elseBlks.activate(context, input, output);
       }
-    } else {
-      return {};
     }
+    return output;
   }
 
 private:
@@ -489,19 +469,19 @@ struct Await : public BaseSubFlow {
   CBVar getParam(int index) { return _blocks; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar output{};
     if (likely(_blocks)) {
       // avoid nesting, if we are alrady inside a worker
       // run normally
       if (Tasks.this_worker_id() == -1) {
         AsyncOp<InternalCore> op(context);
-        return op.sidechain<CBVar>(
-            Tasks, [&]() { return _blocks.activate(context, input); });
+        op.sidechain(Tasks,
+                     [&]() { _blocks.activate(context, input, output); });
       } else {
-        return _blocks.activate(context, input);
+        _blocks.activate(context, input, output);
       }
-    } else {
-      return {};
     }
+    return output;
   }
 
 private:
@@ -570,8 +550,7 @@ template <bool COND> struct When {
 
     auto ares = _action.compose(data);
 
-    _shouldReturn = ares.flowStopper;
-    if (!_shouldReturn && !_passth) {
+    if (!ares.flowStopper && !_passth) {
       if (cres.outputType != data.inputType) {
         throw ComposeError("When Passthrough is false but action output type "
                            "does not match input type.");
@@ -591,14 +570,14 @@ template <bool COND> struct When {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    const auto cres = _cond.activate(context, input);
+    CBVar output{};
+    _cond.activate(context, input, output);
+    HANDLE_FLOW(context, input);
     // type check in compose!
-    if (cres.payload.boolValue == COND) {
-      const auto ares = _action.activate(context, input);
-      if (_shouldReturn)
-        return Var::Return();
+    if (output.payload.boolValue == COND) {
+      _action.activate(context, input, output);
       if (!_passth)
-        return ares;
+        return output;
     }
     return input;
   }
@@ -618,7 +597,6 @@ private:
   BlocksVar _cond{};
   BlocksVar _action{};
   bool _passth = true;
-  bool _shouldReturn = false;
 };
 
 struct IfBlock {
@@ -659,17 +637,7 @@ struct IfBlock {
     const auto tres = _then.compose(data);
     const auto eres = _else.compose(data);
 
-    // if exposes nothing, so this is not needed here!!!
-    // if ((tres.flowStopper && !eres.flowStopper) ||
-    //     (!tres.flowStopper && eres.flowStopper)) {
-    //   throw ComposeError(
-    //       "If - actions unbalance, one stops the flow other does not.");
-    // }
-
-    _tshouldReturn = tres.flowStopper;
-    _eshouldReturn = eres.flowStopper;
-
-    if (!_tshouldReturn && !_eshouldReturn && !_passth) {
+    if (!tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
         throw ComposeError("If - Passthrough is false but action output types "
                            "do not match.");
@@ -691,22 +659,20 @@ struct IfBlock {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    const auto cres = _cond.activate(context, input);
+    CBVar output{};
+    _cond.activate(context, input, output);
+    HANDLE_FLOW(context, input);
     // type check in compose!
-    if (cres.payload.boolValue) {
-      const auto tres = _then.activate(context, input);
-      if (_tshouldReturn)
-        return Var::Return();
-      if (!_passth)
-        return tres;
+    if (output.payload.boolValue) {
+      _then.activate(context, input, output);
     } else {
-      const auto eres = _else.activate(context, input);
-      if (_eshouldReturn)
-        return Var::Return();
-      if (!_passth)
-        return eres;
+      _else.activate(context, input, output);
     }
-    return input;
+
+    if (!_passth)
+      return output;
+    else
+      return input;
   }
 
 private:
@@ -725,8 +691,6 @@ private:
   BlocksVar _then{};
   BlocksVar _else{};
   bool _passth = false;
-  bool _tshouldReturn = false;
-  bool _eshouldReturn = false;
 };
 
 void registerFlowBlocks() {

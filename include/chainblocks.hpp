@@ -40,18 +40,6 @@ private:
   bool fatal;
 };
 
-class ChainCancellation : public ActivationError {
-public:
-  ChainCancellation() : ActivationError("", CBChainState::Stop, false) {}
-};
-
-using ChainStop = ChainCancellation;
-
-class ChainRestart : public ActivationError {
-public:
-  ChainRestart() : ActivationError("", CBChainState::Restart, false) {}
-};
-
 class ComposeError : public CBException {
 public:
   explicit ComposeError(std::string_view msg, bool fatal = true)
@@ -205,10 +193,7 @@ struct Parameters {
 };
 
 struct Var : public CBVar {
-  explicit Var() : CBVar() {
-    valueType = None;
-    payload.chainState = CBChainState::Continue;
-  }
+  explicit Var() : CBVar() { valueType = None; }
 
   explicit Var(const CBVar &other) {
     memcpy((void *)this, (void *)&other, sizeof(CBVar));
@@ -276,58 +261,9 @@ struct Var : public CBVar {
     }
   }
 
-  constexpr static CBVar Empty() {
-    CBVar res{};
-    return res;
-  }
-
-  constexpr static CBVar True() {
-    CBVar res{};
-    res.valueType = CBType::Bool;
-    // notice we need to use chain state
-    // as this is the active member
-    // should be fixed in c++20 tho
-    res.payload.chainState = (CBChainState)1;
-    return res;
-  }
-
-  constexpr static CBVar False() {
-    CBVar res{};
-    res.valueType = CBType::Bool;
-    // notice we need to use chain state
-    // as this is the active member
-    // should be fixed in c++20 tho
-    res.payload.chainState = (CBChainState)0;
-    return res;
-  }
-
-  constexpr static CBVar Stop() {
-    CBVar res{};
-    res.valueType = None;
-    res.payload.chainState = CBChainState::Stop;
-    return res;
-  }
-
-  constexpr static CBVar Restart() {
-    CBVar res{};
-    res.valueType = None;
-    res.payload.chainState = CBChainState::Restart;
-    return res;
-  }
-
-  constexpr static CBVar Return() {
-    CBVar res{};
-    res.valueType = None;
-    res.payload.chainState = CBChainState::Return;
-    return res;
-  }
-
-  constexpr static CBVar Rebase() {
-    CBVar res{};
-    res.valueType = None;
-    res.payload.chainState = CBChainState::Rebase;
-    return res;
-  }
+  constexpr static CBVar Empty{};
+  constexpr static CBVar True{true, nullptr, 0, CBType::Bool};
+  constexpr static CBVar False{false, nullptr, 0, CBType::Bool};
 
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,
@@ -506,6 +442,10 @@ struct Var : public CBVar {
     payload.seqValue.len = N;
   }
 };
+
+#define CHECK_STATE(_fn_, _output_)                                            \
+  if (_fn_ != CBChainState::Continue)                                          \
+  return _output_
 
 inline void ForEach(const CBTable &table,
                     std::function<void(const char *, CBVar &)> &&f) {

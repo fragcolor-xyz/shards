@@ -137,8 +137,6 @@ struct Client {
 
         connected = true;
       });
-    } catch (ChainCancellation &) {
-      throw;
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -241,8 +239,6 @@ struct Get final : public Client {
         // Receive the HTTP response
         http::read(stream, buffer, res);
       });
-    } catch (ChainCancellation &) {
-      throw;
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -294,8 +290,6 @@ struct Post final : public Client {
         // Receive the HTTP response
         http::read(stream, buffer, res);
       });
-    } catch (ChainCancellation &) {
-      throw;
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal

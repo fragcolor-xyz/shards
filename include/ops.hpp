@@ -186,13 +186,12 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
+  case None:
   case CBType::Any:
   case EndOfBlittableTypes:
     return true;
   case StackIndex:
     return a.payload.stackIndexValue == b.payload.stackIndexValue;
-  case None:
-    return a.payload.chainState == b.payload.chainState;
   case Object:
     return a.payload.objectValue == b.payload.objectValue;
   case Enum:
@@ -403,8 +402,6 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case None:
-    return a.payload.chainState < b.payload.chainState;
   case StackIndex:
     return a.payload.stackIndexValue < b.payload.stackIndexValue;
   case Enum:
@@ -506,6 +503,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Block:
   case Object:
   case CBType::Any:
+  case None:
   case EndOfBlittableTypes:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator < not supported for the given type: " +
@@ -597,8 +595,6 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
     return false;
 
   switch (a.valueType) {
-  case None:
-    return a.payload.chainState <= b.payload.chainState;
   case StackIndex:
     return a.payload.stackIndexValue <= b.payload.stackIndexValue;
   case Enum:
@@ -700,6 +696,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Block:
   case Object:
   case CBType::Any:
+  case None:
   case EndOfBlittableTypes:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator <= not supported for the given type: " +
@@ -873,8 +870,6 @@ template <> struct hash<CBVar> {
     auto res = hash<int>()(int(var.valueType));
     switch (var.valueType) {
     case None:
-      MAGIC_HASH(var.payload.chainState);
-      break;
     case Any:
       break;
     case Object:

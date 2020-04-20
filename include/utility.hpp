@@ -246,8 +246,8 @@ public:
     return _chainValidation;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return CB_CORE::runBlocks(_blocks, context, input);
+  CBChainState activate(CBContext *context, const CBVar &input, CBVar &output) {
+    return CB_CORE::runBlocks(_blocks, context, input, &output);
   }
 
   operator bool() const { return _blocksArray.size() > 0; }
@@ -285,14 +285,9 @@ template <class CB_CORE> struct AsyncOp {
     // Wait suspending!
     while (true) {
       auto state = asyncRes.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
+      if (state == std::future_status::ready ||
+          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
         break;
-      auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState == Restart) {
-        CB_CORE::throwRestart();
-      } else if (chainState.payload.chainState != Continue) {
-        CB_CORE::throwCancellation();
-      }
     }
     // This should also throw if we had exceptions
     return asyncRes.get();
@@ -301,14 +296,9 @@ template <class CB_CORE> struct AsyncOp {
   CBVar operator()(std::future<CBVar> &fut) {
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
+      if (state == std::future_status::ready ||
+          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
         break;
-      auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState == Restart) {
-        CB_CORE::throwRestart();
-      } else if (chainState.payload.chainState != Continue) {
-        CB_CORE::throwCancellation();
-      }
     }
     // This should also throw if we had exceptions
     return fut.get();
@@ -317,14 +307,9 @@ template <class CB_CORE> struct AsyncOp {
   void operator()(std::future<void> &fut) {
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
+      if (state == std::future_status::ready ||
+          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
         break;
-      auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState == Restart) {
-        CB_CORE::throwRestart();
-      } else if (chainState.payload.chainState != Continue) {
-        CB_CORE::throwCancellation();
-      }
     }
     // This should also throw if we had exceptions
     fut.get();
@@ -354,14 +339,9 @@ template <class CB_CORE> struct AsyncOp {
 
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
+      if (state == std::future_status::ready ||
+          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
         break;
-      auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState == Restart) {
-        CB_CORE::throwRestart();
-      } else if (chainState.payload.chainState != Continue) {
-        CB_CORE::throwCancellation();
-      }
     }
 
     if (p)
@@ -395,14 +375,9 @@ template <class CB_CORE> struct AsyncOp {
 
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready)
+      if (state == std::future_status::ready ||
+          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
         break;
-      auto chainState = CB_CORE::suspend(_context, 0);
-      if (chainState.payload.chainState == Restart) {
-        CB_CORE::throwRestart();
-      } else if (chainState.payload.chainState != Continue) {
-        CB_CORE::throwCancellation();
-      }
     }
 
     if (p)

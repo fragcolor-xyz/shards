@@ -59,7 +59,7 @@ void to_json(json &j, const CBVar &var) {
     break;
   }
   case None: {
-    j = json{{"type", 0}, {"value", int(var.payload.chainState)}};
+    j = json{{"type", 0}};
     break;
   }
   case Bool: {
@@ -256,7 +256,6 @@ void from_json(const json &j, CBVar &var) {
   }
   case None: {
     var.valueType = None;
-    var.payload.chainState = CBChainState(j.at("value").get<int>());
     break;
   }
   case Bool: {

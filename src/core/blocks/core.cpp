@@ -225,7 +225,7 @@ struct Sort : public ActionJointOp {
     CBVar _o;
 
     CBVar &operator()(CBVar &a) {
-      _o = _bu->_blks.activate(_ctx, a);
+      _bu->_blks.activate(_ctx, a, _o);
       return _o;
     }
   } blocksKeyFn;
@@ -364,10 +364,12 @@ struct Remove : public ActionJointOp {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
+    CBVar output{};
     const uint32_t len = _input->payload.seqValue.len;
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
-      if (_blks.activate(context, var) == True) {
+      CHECK_STATE(_blks.activate(context, var, output), output);
+      if (output == Var::True) {
         // this is acceptable cos del ops don't call free or grow
         if (_fast)
           arrayDelFast(_input->payload.seqValue, i - 1);
@@ -608,8 +610,15 @@ struct ForEachBlock {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IterableSeq in(input);
+    CBVar output{};
     for (auto &item : in) {
-      _blocks.activate(context, item);
+      auto state = _blocks.activate(context, item, output);
+      if (state != CBChainState::Continue) {
+        // catch and assume Return was for us
+        if (state == CBChainState::Return)
+          context->state = CBChainState::Continue;
+        break;
+      }
     }
     return input;
   }
@@ -659,10 +668,17 @@ struct Map {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IterableSeq in(input);
+    CBVar output{};
     arrayResize(_output.payload.seqValue, 0);
     for (auto &item : in) {
-      auto res = _blocks.activate(context, item);
-      arrayPush(_output.payload.seqValue, res);
+      auto state = _blocks.activate(context, item, output);
+      if (state != CBChainState::Continue) {
+        // catch and assume Return was for us
+        if (state == CBChainState::Return)
+          context->state = CBChainState::Continue;
+        break;
+      }
+      arrayPush(_output.payload.seqValue, output);
     }
     return _output;
   }
@@ -734,9 +750,17 @@ struct Reduce {
       throw ActivationError("Reduce: Input sequence was empty!");
     }
     cloneVar(*_tmp, input.payload.seqValue.elements[0]);
+    CBVar output{};
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
-      auto res = _blocks.activate(context, input.payload.seqValue.elements[i]);
-      cloneVar(*_tmp, res);
+      auto &item = input.payload.seqValue.elements[i];
+      auto state = _blocks.activate(context, item, output);
+      if (state != CBChainState::Continue) {
+        // catch and assume Return was for us
+        if (state == CBChainState::Return)
+          context->state = CBChainState::Continue;
+        break;
+      }
+      cloneVar(*_tmp, output);
     }
     cloneVar(_output, *_tmp);
     return _output;

@@ -433,8 +433,10 @@ struct RunChain : public BaseRunner {
         chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
-        if (unlikely(runRes.state == Failed || context->aborted)) {
-          return StopChain;
+        if (unlikely(runRes.state == Failed ||
+                     context->state == CBChainState::Stop)) {
+          context->state = CBChainState::Stop;
+          return runRes.output;
         } else if (passthrough) {
           return input;
         } else {
@@ -505,11 +507,11 @@ template <class T> struct BaseLoader : public BaseRunner {
         chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
-        if (unlikely(runRes.state == Failed || context->aborted)) {
-          return StopChain;
-        } else {
-          return input;
+        if (unlikely(runRes.state == Failed ||
+                     context->state == CBChainState::Stop)) {
+          context->state = CBChainState::Stop;
         }
+        return input;
       }
     } else {
       return input;
