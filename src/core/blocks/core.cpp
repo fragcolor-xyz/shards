@@ -369,7 +369,7 @@ struct Remove : public ActionJointOp {
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
       // conditional flow so we might have "returns" form (And) (Or)
-      if (_blks.activate(context, var, output, true) != CBChainState::Continue)
+      if (_blks.activate(context, var, output, true) > CBChainState::Return)
         return *_input;
 
       if (output == Var::True) {

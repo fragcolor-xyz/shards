@@ -2436,7 +2436,8 @@ struct Repeat {
       if (_pred) {
         CBVar pres{};
         state = _pred.activate(context, input, pres, true);
-        if (state != CBChainState::Continue || pres.payload.boolValue)
+        // logic flow here!
+        if (pres.payload.boolValue || state > CBChainState::Return)
           break;
       }
     }
