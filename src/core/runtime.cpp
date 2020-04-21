@@ -575,7 +575,8 @@ CBChainState suspend(CBContext *context, double seconds) {
 }
 
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output) {
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
@@ -585,17 +586,18 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
     if (!context->shouldContinue()) {
       switch (context->getState()) {
       case CBChainState::Return:
+        if (handlesReturn)
+          context->continueFlow();
+        return CBChainState::Return;
       case CBChainState::Stop:
-      case CBChainState::Restart: {
+      case CBChainState::Restart:
         return context->getState();
-      }
-      case CBChainState::Rebase: {
+      case CBChainState::Rebase:
         // reset input to chain one
         // and reset state
         input = chainInput;
         context->continueFlow();
         continue;
-      }
       case CBChainState::Continue:
         break;
       }
@@ -606,7 +608,8 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
 }
 
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output) {
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
   auto sidx = context->stack.len;
@@ -617,17 +620,18 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
     if (!context->shouldContinue()) {
       switch (context->getState()) {
       case CBChainState::Return:
+        if (handlesReturn)
+          context->continueFlow();
+        return CBChainState::Return;
       case CBChainState::Stop:
-      case CBChainState::Restart: {
+      case CBChainState::Restart:
         return context->getState();
-      }
-      case CBChainState::Rebase: {
+      case CBChainState::Rebase:
         // reset input to chain one
         // and reset state
         input = chainInput;
         context->continueFlow();
         continue;
-      }
       case CBChainState::Continue:
         break;
       }
@@ -776,8 +780,9 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
-                        CBVar *output) {
-    return chainblocks::activateBlocks(blocks, context, input, *output);
+                        CBVar *output, const CBBool handleReturn) {
+    return chainblocks::activateBlocks(blocks, context, input, *output,
+                                       handleReturn);
   };
 
   result.getChainInfo = [](CBChainRef chainref) {

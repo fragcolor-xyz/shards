@@ -443,10 +443,6 @@ struct Var : public CBVar {
   }
 };
 
-#define CHECK_STATE(_fn_, _output_)                                            \
-  if (_fn_ != CBChainState::Continue)                                          \
-  return _output_
-
 inline void ForEach(const CBTable &table,
                     std::function<void(const char *, CBVar &)> &&f) {
   table.api->tableForEach(

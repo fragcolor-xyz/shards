@@ -43,6 +43,13 @@
    (Log "res")
    ))
 
+(def logicChain
+  (Chain
+   "dologic"
+   (IsMore 10)
+   (Or)
+   (IsLess 0)))
+
 ;; ;; Broken for now indeed, until we implement jumps
 
 ;; ;; (def recursiveAnd
@@ -102,6 +109,47 @@
   0
   (Detach Loop)
   (WaitChain Loop)
+
+  ;; test logic
+  ;; ensure a sub inline chain
+  ;; using Return mechanics
+  ;; is handled by (If)
+  -10
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.Is true false)
+
+  -10
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.IsNot false false)
+
+  11
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.Is true false)
+
+  11
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.IsNot false false)
+
+  0
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.Is false false)
+
+  0
+  (If (Do logicChain)
+      (--> true)
+      (--> false))
+  (Assert.IsNot true false)
+
   (Log "Done")))
 
 (run Root 0.1)

@@ -2425,21 +2425,17 @@ struct Repeat {
     while (repeats) {
       CBVar repeatOutput{};
       CBVar blks = _blks;
-      auto state =
-          activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
-      if (state != CBChainState::Continue) {
-        // catch and reset return flag
-        if (state == CBChainState::Return)
-          context->continueFlow();
+      auto state = activateBlocks(blks.payload.seqValue, context, input,
+                                  repeatOutput, true);
+      if (state != CBChainState::Continue)
         break;
-      }
 
       if (!_forever)
         repeats--;
 
       if (_pred) {
         CBVar pres{};
-        state = _pred.activate(context, input, pres);
+        state = _pred.activate(context, input, pres, true);
         if (state != CBChainState::Continue || pres.payload.boolValue)
           break;
       }

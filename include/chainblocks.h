@@ -45,9 +45,9 @@ enum CBType : uint8_t {
 
 enum CBChainState : uint8_t {
   Continue, // Nothing happened, continue
+  Return,   // Control flow, end this chain/flow and return previous output
   Rebase,   // Continue but put the local chain initial input as next input
   Restart,  // Restart the current chain from the top (non inline chains)
-  Return,   // Control flow, end this chain/flow and return previous output
   Stop      // Stop the flow execution
 };
 
@@ -799,7 +799,8 @@ typedef struct CBValidationResult(__cdecl *CBValidateBlocks)(
 typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                                 struct CBContext *context,
                                                 struct CBVar input,
-                                                struct CBVar *output);
+                                                struct CBVar *output,
+                                                const CBBool handleReturn);
 #else
 typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            struct CBContext *context,
