@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+#include "foundation.hpp"
 #include "shared.hpp"
 #include <chrono>
 #include <future>
@@ -22,16 +23,17 @@ struct ChainBase {
   static inline Types ChainTypes{
       {CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};
 
+  static inline Types ChainVarTypes{ChainTypes, {CoreInfo::ChainVarType}};
+
   static inline ParamsInfo waitChainParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Chain", "The chain to run.", ChainTypes),
+      ParamsInfo::Param("Chain", "The chain to wait.", ChainVarTypes),
       ParamsInfo::Param("Once",
                         "Runs this sub-chain only once within the parent chain "
                         "execution cycle.",
                         CoreInfo::BoolType),
-      ParamsInfo::Param(
-          "Passthrough",
-          "The input of this block will be the output. Always on if Detached.",
-          CoreInfo::BoolType));
+      ParamsInfo::Param("Passthrough",
+                        "The input of this block will be the output.",
+                        CoreInfo::BoolType));
 
   static inline ParamsInfo runChainParamsInfo = ParamsInfo(
       ParamsInfo::Param("Chain", "The chain to run.", ChainTypes),
@@ -80,12 +82,12 @@ struct ChainBase {
   static inline ParamsInfo chainOnlyParamsInfo =
       ParamsInfo(ParamsInfo::Param("Chain", "The chain to run.", ChainTypes));
 
-  CBVar chainref;
+  ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
-  bool once;
-  bool doneOnce;
-  bool passthrough;
-  RunChainMode mode;
+  bool once = false;
+  bool doneOnce = false;
+  bool passthrough = false;
+  RunChainMode mode = RunChainMode::Inline;
   CBValidationResult chainValidation{};
 
   void destroy() { chainblocks::arrayFree(chainValidation.exposedInfo); }
@@ -112,10 +114,11 @@ struct ChainBase {
     chainblocks::arrayFree(chainValidation.exposedInfo);
 
     // Actualize the chain here...
-    if (chainref.valueType == CBType::Chain) {
-      chain = CBChain::sharedFromRef(chainref.payload.chainValue);
-    } else if (chainref.valueType == String) {
-      chain = chainblocks::Globals::GlobalChains[chainref.payload.stringValue];
+    if (chainref->valueType == CBType::Chain) {
+      chain = CBChain::sharedFromRef(chainref->payload.chainValue);
+    } else if (chainref->valueType == String) {
+      // TODO this should be mutex protected
+      chain = chainblocks::Globals::GlobalChains[chainref->payload.stringValue];
     } else {
       chain = nullptr;
     }
@@ -152,14 +155,18 @@ struct ChainBase {
                ? data.inputType
                : chainValidation.outputType;
   }
+
+  void cleanup() { chainref.cleanup(); }
+
+  void warmup(CBContext *ctx) { chainref.warmup(ctx); }
 };
 
 struct WaitChain : public ChainBase {
-  CBVar _output{};
+  OwnedVar _output{};
 
   void cleanup() {
+    ChainBase::cleanup();
     doneOnce = false;
-    destroyVar(_output);
   }
 
   static CBParametersInfo parameters() {
@@ -169,7 +176,7 @@ struct WaitChain : public ChainBase {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(chainref, value);
+      chainref = value;
       break;
     case 1:
       once = value.payload.boolValue;
@@ -197,7 +204,20 @@ struct WaitChain : public ChainBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!chain && chainref.isVariable())) {
+      auto vchain = chainref.get();
+      if (vchain.valueType == CBType::Chain) {
+        chain = CBChain::sharedFromRef(vchain.payload.chainValue);
+      } else if (vchain.valueType == String) {
+        // TODO this should be mutex protected
+        chain = chainblocks::Globals::GlobalChains[vchain.payload.stringValue];
+      } else {
+        chain = nullptr;
+      }
+    }
+
     if (unlikely(!chain)) {
+      LOG(WARNING) << "WaitChain's chain is void.";
       return input;
     } else if (!doneOnce) {
       if (once)
@@ -210,7 +230,8 @@ struct WaitChain : public ChainBase {
       if (passthrough) {
         return input;
       } else {
-        cloneVar(_output, chain->finishedOutput);
+        // ownedvar, will clone
+        _output = chain->finishedOutput;
         return _output;
       }
     } else {
@@ -233,7 +254,7 @@ struct Resume : public ChainBase {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) { cloneVar(chainref, value); }
+  void setParam(int index, CBVar value) { chainref = value; }
 
   CBVar getParam(int index) { return chainref; }
 
@@ -318,6 +339,7 @@ struct BaseRunner : public ChainBase {
     tryStopChain();
     _steppedFlow.chain = nullptr;
     doneOnce = false;
+    ChainBase::cleanup();
   }
 
   void doWarmup(CBContext *context) {
@@ -378,7 +400,7 @@ struct RunChain : public BaseRunner {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      cloneVar(chainref, value);
+      chainref = value;
       break;
     case 1:
       once = value.payload.boolValue;
@@ -412,7 +434,10 @@ struct RunChain : public BaseRunner {
     return Var();
   }
 
-  void warmup(CBContext *context) { doWarmup(context); }
+  void warmup(CBContext *context) {
+    ChainBase::warmup(context);
+    doWarmup(context);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
@@ -508,9 +533,7 @@ template <class T> struct BaseLoader : public BaseRunner {
         chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
-        if (unlikely(runRes.state == Failed || context->shouldStop())) {
-          // the expected type was input anyway, so no big deal
-          // in terms of stop type here
+        if (unlikely(runRes.state == Failed)) {
           context->stopFlow(input);
         }
         return input;
@@ -652,7 +675,10 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     _chain.cleanup();
   }
 
-  void warmup(CBContext *context) { _chain.warmup(context); }
+  void warmup(CBContext *context) {
+    BaseLoader<ChainLoader>::warmup(context);
+    _chain.warmup(context);
+  }
 
   void composeChain() {
     CBInstanceData data{};

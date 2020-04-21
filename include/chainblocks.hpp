@@ -262,8 +262,8 @@ struct Var : public CBVar {
   }
 
   constexpr static CBVar Empty{};
-  constexpr static CBVar True{true, nullptr, 0, CBType::Bool};
-  constexpr static CBVar False{false, nullptr, 0, CBType::Bool};
+  constexpr static CBVar True{{true}, {nullptr}, 0, CBType::Bool};
+  constexpr static CBVar False{{false}, {nullptr}, 0, CBType::Bool};
 
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,
