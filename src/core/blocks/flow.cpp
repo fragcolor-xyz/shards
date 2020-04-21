@@ -7,14 +7,6 @@
 #include "shared.hpp"
 #include <taskflow/taskflow.hpp>
 
-#define HANDLE_FLOW(_ctx_, _output_)                                           \
-  if (!_ctx_->shouldContinue()) {                                              \
-    if (_ctx_->getState() == CBChainState::Return)                             \
-      _ctx_->continueFlow();                                                   \
-    else                                                                       \
-      return _output_;                                                         \
-  }
-
 namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(

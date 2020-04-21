@@ -802,7 +802,8 @@ typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
 typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            struct CBContext *context,
                                            struct CBVar input,
-                                           struct CBVar *output);
+                                           struct CBVar *output,
+                                           const CBBool handleReturn);
 #endif
 
 typedef void(__cdecl *CBLog)(const char *msg);
