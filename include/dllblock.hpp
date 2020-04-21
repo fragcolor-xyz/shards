@@ -173,8 +173,9 @@ public:
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
-                                CBVar *output) {
-    return sCore._core.runBlocks(blocks, context, input, output);
+                                CBVar *output,
+                                const bool handleReturn = false) {
+    return sCore._core.runBlocks(blocks, context, input, output, handleReturn);
   }
 
   static void log(const char *msg) { sCore._core.log(msg); }

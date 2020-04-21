@@ -771,9 +771,6 @@ typedef void(__cdecl *CBThrowExceptionSimple)() __attribute__((noreturn));
 typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
 
-typedef void(__cdecl *CBSetState)(struct CBContext *context,
-                                  CBChainState state);
-
 typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void(__cdecl *CBDestroyVar)(struct CBVar *var);
@@ -898,8 +895,6 @@ struct CBCore {
   CBThrowException throwException;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
-  // To be used to stop/restart etc flow
-  CBSetState setState;
 
   // Utility to deal with CBVars
   CBCloneVar cloneVar;
