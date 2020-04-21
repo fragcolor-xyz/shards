@@ -433,7 +433,9 @@ struct RunChain : public BaseRunner {
         chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
-        if (unlikely(runRes.state == Failed || context->shouldStop())) {
+        if (unlikely(runRes.state == Failed)) {
+          // meaning there was an exception while
+          // running the sub chain, stop the parent too
           context->stopFlow(runRes.output);
           return runRes.output;
         } else if (passthrough) {
@@ -507,6 +509,8 @@ template <class T> struct BaseLoader : public BaseRunner {
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed || context->shouldStop())) {
+          // the expected type was input anyway, so no big deal
+          // in terms of stop type here
           context->stopFlow(input);
         }
         return input;

@@ -289,15 +289,19 @@ struct Cond {
     for (auto &cond : _conditions) {
       CBVar output{};
       CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
-      activateBlocks(blocks, context, input, output);
-      HANDLE_FLOW(context, input);
+      auto state = activateBlocks(blocks, context, input, output, true);
+      // conditional flow so we might have "returns" form (And) (Or)
+      if (state > CBChainState::Return)
+        return output;
+
       if (output == Var::True) {
         // Do the action if true!
         // And stop here
         output = {};
         CBlocks action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
-        auto state = activateBlocks(action, context, actionInput, output);
-        CHECK_STATE(state, output);
+        state = activateBlocks(action, context, actionInput, output);
+        if (state != CBChainState::Continue)
+          return output;
         if (_threading) {
           // set the output as the next action input (not cond tho!)
           finalOutput = output;
@@ -371,7 +375,7 @@ struct MaybeRestart : public BaseSubFlow {
     CBVar output{};
     if (likely(_blocks)) {
       try {
-        CHECK_STATE(_blocks.activate(context, input, output), output);
+        _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
@@ -442,7 +446,7 @@ struct Maybe : public BaseSubFlow {
     CBVar output{};
     if (likely(_blocks)) {
       try {
-        CHECK_STATE(_blocks.activate(context, input, output), output);
+        _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
         if (ex.triggerFailure()) {
           LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
@@ -571,8 +575,10 @@ template <bool COND> struct When {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
-    _cond.activate(context, input, output);
-    HANDLE_FLOW(context, input);
+    auto state = _cond.activate(context, input, output, true);
+    if (state > CBChainState::Return)
+      return input;
+
     // type check in compose!
     if (output.payload.boolValue == COND) {
       _action.activate(context, input, output);
@@ -660,8 +666,10 @@ struct IfBlock {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
-    _cond.activate(context, input, output);
-    HANDLE_FLOW(context, input);
+    auto state = _cond.activate(context, input, output, true);
+    if (state > CBChainState::Return)
+      return input;
+
     // type check in compose!
     if (output.payload.boolValue) {
       _then.activate(context, input, output);

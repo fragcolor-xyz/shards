@@ -368,7 +368,10 @@ struct Remove : public ActionJointOp {
     const uint32_t len = _input->payload.seqValue.len;
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
-      CHECK_STATE(_blks.activate(context, var, output), output);
+      // conditional flow so we might have "returns" form (And) (Or)
+      if (_blks.activate(context, var, output, true) != CBChainState::Continue)
+        return *_input;
+
       if (output == Var::True) {
         // this is acceptable cos del ops don't call free or grow
         if (_fast)
@@ -612,13 +615,10 @@ struct ForEachBlock {
     IterableSeq in(input);
     CBVar output{};
     for (auto &item : in) {
-      auto state = _blocks.activate(context, item, output);
-      if (state != CBChainState::Continue) {
-        // catch and assume Return was for us
-        if (state == CBChainState::Return)
-          context->continueFlow();
+      // handle return short circuit, assume it was for us
+      auto state = _blocks.activate(context, item, output, true);
+      if (state != CBChainState::Continue)
         break;
-      }
     }
     return input;
   }
@@ -671,13 +671,10 @@ struct Map {
     CBVar output{};
     arrayResize(_output.payload.seqValue, 0);
     for (auto &item : in) {
-      auto state = _blocks.activate(context, item, output);
-      if (state != CBChainState::Continue) {
-        // catch and assume Return was for us
-        if (state == CBChainState::Return)
-          context->continueFlow();
+      // handle return short circuit, assume it was for us
+      auto state = _blocks.activate(context, item, output, true);
+      if (state != CBChainState::Continue)
         break;
-      }
       arrayPush(_output.payload.seqValue, output);
     }
     return _output;
@@ -753,13 +750,10 @@ struct Reduce {
     CBVar output{};
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
-      auto state = _blocks.activate(context, item, output);
-      if (state != CBChainState::Continue) {
-        // catch and assume Return was for us
-        if (state == CBChainState::Return)
-          context->continueFlow();
+      // allow short circut with (Return)
+      auto state = _blocks.activate(context, item, output, true);
+      if (state != CBChainState::Continue)
         break;
-      }
       cloneVar(*_tmp, output);
     }
     cloneVar(_output, *_tmp);

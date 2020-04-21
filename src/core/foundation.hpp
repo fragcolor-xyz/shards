@@ -49,9 +49,11 @@ namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
 
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output);
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn = false);
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output);
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn = false);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
@@ -1255,8 +1257,9 @@ struct InternalCore {
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
-                                CBVar *output) {
-    return chainblocks::activateBlocks(blocks, context, input, *output);
+                                CBVar *output, const CBBool handleReturn) {
+    return chainblocks::activateBlocks(blocks, context, input, *output,
+                                       handleReturn);
   }
 
   static CBChainState suspend(CBContext *ctx, double seconds) {
