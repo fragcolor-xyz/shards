@@ -973,25 +973,25 @@ struct Get : public VariableBase {
     return true;
   }
 
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+  }
+
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr))
       return *_cell;
 
-    if (!_target) {
-      // notice we don't care about _global
-      // cos we reference straight into activate
-      // altho not optimal, but we mitigate with cell trick
-      // this allows any runtime settle of Set
-      _target = referenceVariable(context, _name.c_str());
-      // sanity check that the variable is not pristine...
-      // the setter chain might have stopped actually!
-      if (_defaultValue.valueType == None && _target->refcount == 1) {
-        throw ActivationError(
-            "Variable: " + _name +
-            " did not exist in the context and no default value "
-            "was given, likely "
-            "the Set block was in chain that already ended.");
-      }
+    // sanity check that the variable is not pristine...
+    // the setter chain might have stopped actually!
+    if (_defaultValue.valueType == None && _target->refcount == 1) {
+      throw ActivationError(
+          "Variable: " + _name +
+          " did not exist in the context and no default value "
+          "was given, likely "
+          "the Set block was in chain that already ended.");
     }
 
     if (_isTable) {

@@ -109,6 +109,8 @@
   0
   (Detach Loop)
   (WaitChain Loop)
+  (Assert.Is 5 true)
+  (Log)
 
   ;; test logic
   ;; ensure a sub inline chain

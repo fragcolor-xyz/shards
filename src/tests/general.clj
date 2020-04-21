@@ -811,14 +811,13 @@
           (Chain
            "LoadBinary"
            (ReadFile "testChain.bin")
-           (ExpectChain)
-           (Set .loadedChain)
-           (Log)
-           (ChainRunner .loadedChain)
-           (Get .global1 :Default "nope")
+           (ExpectChain) >= .loadedChain (Log)
+           (ChainRunner .loadedChain :Mode RunChainMode.Detached)
+           (WaitChain .loadedChain)
            (Assert.Is "global1" true)
-           (Log)
-           ))
+           (Get .global1 :Global true :Default "nope")
+           (Assert.Is "global1" true)
+           (Log)))
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
 
 (schedule Root testChain)

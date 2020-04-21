@@ -1123,6 +1123,7 @@ RUNTIME_BLOCK_END(DropFront);
 // Register Get
 RUNTIME_CORE_BLOCK_FACTORY(Get);
 RUNTIME_BLOCK_cleanup(Get);
+RUNTIME_BLOCK_warmup(Get);
 RUNTIME_BLOCK_destroy(Get);
 RUNTIME_BLOCK_inputTypes(Get);
 RUNTIME_BLOCK_outputTypes(Get);
