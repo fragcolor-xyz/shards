@@ -362,23 +362,6 @@ protected:
       {"Blocks", "The blocks to activate.", {CoreInfo::BlocksOrNone}}};
 };
 
-struct MaybeRestart : public BaseSubFlow {
-  CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar output{};
-    if (likely(_blocks)) {
-      try {
-        _blocks.activate(context, input, output);
-      } catch (const ActivationError &ex) {
-        if (ex.triggerFailure()) {
-          LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
-        }
-        context->restartFlow(input);
-      }
-    }
-    return output;
-  }
-};
-
 struct Maybe : public BaseSubFlow {
   static CBParametersInfo parameters() { return _params; }
 
@@ -695,7 +678,6 @@ private:
 
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
-  REGISTER_CBLOCK("MaybeRestart", MaybeRestart);
   REGISTER_CBLOCK("Maybe", Maybe);
   REGISTER_CBLOCK("Await", Await);
   REGISTER_CBLOCK("When", When<true>);

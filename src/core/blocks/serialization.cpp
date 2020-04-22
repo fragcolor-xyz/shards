@@ -118,8 +118,8 @@ struct WriteFile : public FileBase {
   void cleanup() override {
     if (_fileStream.good()) {
       _fileStream.flush();
-      _fileStream = {};
     }
+    _fileStream = {};
     FileBase::cleanup();
   }
 
@@ -160,9 +160,7 @@ struct ReadFile : public FileBase {
   void cleanup() override {
     Serialization::varFree(_output);
     FileBase::cleanup();
-    if (_fileStream.is_open()) {
-      _fileStream.close();
-    }
+    _fileStream = {};
   }
 
   struct Reader {
@@ -177,15 +175,14 @@ struct ReadFile : public FileBase {
     if (!_fileStream.is_open()) {
       std::string filename;
       if (!getFilename(context, filename)) {
-        return CBVar();
+        return Var::Empty;
       }
 
       _fileStream = std::ifstream(filename, std::ios::binary);
     }
 
-    if (_fileStream.eof()) {
-      return CBVar();
-    }
+    if (_fileStream.peek() == EOF)
+      return Var::Empty;
 
     Reader r(_fileStream);
     Serialization::deserialize(r, _output);
