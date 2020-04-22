@@ -151,20 +151,20 @@
   (Assert.Is 20)
   (Log)
 
-  "Value1" (Set "tab1" "v1")
-  "Value2" (Set "tab1" "v2")
-  (Get "tab1" "v1")
+  "Value1" (Set "tab11" "v1")
+  "Value2" (Set "tab11" "v2")
+  (Get "tab11" "v1")
   (Assert.Is "Value1" true)
   (Log)
-  (Get "tab1" "v2")
+  (Get "tab11" "v2")
   (Assert.IsNot "Value1" true)
   (Log)
 
-  (Count "tab1")
+  (Count "tab11")
   (Assert.Is 2 true)
 
-  (Clear "tab1")
-  (Count "tab1")
+  (Clear "tab11")
+  (Count "tab11")
   (Assert.Is 0 true)
   
   "My input"

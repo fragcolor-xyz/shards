@@ -48,8 +48,9 @@
   (Assert.Is "9" true)
   (Assert.IsNot 9 true)
 
+  (Sequence "e" :Clear false)
   1
-  (Push "e" :Clear false)
+  (Push "e")
   2
   (Push "e")
   3
@@ -119,9 +120,11 @@
   (Get "d" "k1")
   (Assert.Is ["a" "b" "c"] true)
 
+  (Sequence .nested :Clear false)
   (Get .d)
-  (Push .nested :Clear false)
+  (Push .nested)
 
+  (Sequence .d "k2")
   1111
   (Push .d "k2")
   (Get .d)
@@ -138,6 +141,7 @@
   (Assert.Is [] true)
   (Log)
 
+  (Sequence .n1)
   (Const [1 2 3])
   (Push .n1)
   (Const [2 3 4])
@@ -152,6 +156,7 @@
   (Count .n1)
   (Log "count U")
 
+  (Sequence .n2)
   (Const [1 2 3])
   (Push .n2)
   (Const [2 3 4])
@@ -179,7 +184,8 @@
   (Repeat
    (-->
     0.1 >> .sf
-    .sf >> .sff)
+    .sf >> .sff
+    )
    :Times 3)
 
   .sf (Assert.Is [0.1 0.1 0.1] true) (Log)
@@ -193,6 +199,8 @@
   10 >> .smany
   .smany (Assert.Is [true, [[0.1], [0.1, 0.1], [0.1, 0.1, 0.1]], 10] true) (Log)
 
+
+
   (Msg "Done!")
   ))
 
@@ -200,5 +208,6 @@
 (tick node)
 (tick node)
 (tick node)
+(def node nil)
 
 (prn "Done!")
