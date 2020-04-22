@@ -185,6 +185,14 @@
   .sf (Assert.Is [0.1 0.1 0.1] true) (Log)
   .sff (Assert.Is [[0.1] [0.1 0.1] [0.1 0.1 0.1]] true) (Log)
 
+  (Sequence .smany :Types [[Type.Float] Type.Bool])
+
+  true >> .smany
+  .sff >> .smany
+  ;; this is how push works... it will add Int type to the seq OK types basically
+  10 >> .smany
+  .smany (Assert.Is [true, [[0.1], [0.1, 0.1], [0.1, 0.1, 0.1]], 10] true) (Log)
+
   (Msg "Done!")
   ))
 
