@@ -10,7 +10,36 @@
 #include <cmath>
 
 namespace chainblocks {
+
+enum class BasicTypes {
+  Any,
+  Bool,
+  Int,
+  Int2,
+  Int3,
+  Int4,
+  Int8,
+  Int16,
+  Float,
+  Float2,
+  Float3,
+  Float4,
+  Color,
+  Chain,
+  Block,
+  Bytes,
+  String,
+  Image
+};
+
 struct CoreInfo {
+  static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", 'sink', 'type'};
+  static inline Type BasicTypesType{
+      {CBType::Enum, {.enumeration = {'sink', 'type'}}}};
+  static inline Type BasicTypesSeqType{
+      {CBType::Seq, {.seqTypes = BasicTypesType}}};
+  static inline Types BasicTypesTypes{{BasicTypesType, BasicTypesSeqType}};
+
   static inline Type NoneType{{CBType::None}};
 
 #define CB_CORE_TYPE_DEF(_cbtype_)                                             \
@@ -97,7 +126,7 @@ struct CoreInfo {
 
   static inline Types BlocksOrNone{Blocks, {NoneType}};
 
-  static inline Type BlocksOrNoneSeq{{CBType::Seq, .seqTypes = BlocksOrNone}};
+  static inline Type BlocksOrNoneSeq{{CBType::Seq, {.seqTypes = BlocksOrNone}}};
 
   static inline Types StringOrBytes{{StringType, BytesType}};
 
@@ -1140,16 +1169,13 @@ struct Push : public VariableBase {
   }
 
   void destroy() {
-    if (_firstPusher) {
-      if (_tableInfo.table.keys.elements)
-        chainblocks::arrayFree(_tableInfo.table.keys);
-      if (_tableInfo.table.types.elements)
-        chainblocks::arrayFree(_tableInfo.table.types);
-    }
+    if (_tableInfo.table.keys.elements)
+      chainblocks::arrayFree(_tableInfo.table.keys);
+    if (_tableInfo.table.types.elements)
+      chainblocks::arrayFree(_tableInfo.table.types);
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // TODO Add more types if inputs are of diff types
     const auto updateSeqInfo = [this, &data] {
       _seqInfo.basicType = Seq;
       _seqInnerInfo = data.inputType;
@@ -1277,6 +1303,209 @@ struct Push : public VariableBase {
       const auto len = _target->payload.seqValue.len;
       chainblocks::arrayResize(_target->payload.seqValue, len + 1);
       cloneVar(_target->payload.seqValue.elements[len], input);
+    }
+    return input;
+  }
+};
+
+struct Sequence : public VariableBase {
+  bool _clear = true;
+  bool _firstPusher = true;
+  ParamVar _types{Var::Enum(BasicTypes::Any, 'sink', 'type')};
+  Types _seqTypes{};
+  std::deque<Types> _innerTypes;
+
+  static inline ParamsInfo pushParams = ParamsInfo(
+      variableParamsInfo,
+      ParamsInfo::Param(
+          "Clear",
+          "If we should clear this sequence at every chain iteration; works "
+          "only if this is the first push; default: true.",
+          CoreInfo::BoolType),
+      ParamsInfo::Param("Types", "The sequence inner types to forward declare.",
+                        CoreInfo::BasicTypesTypes));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
+
+  void setParam(int index, CBVar value) {
+    if (index <= 2)
+      VariableBase::setParam(index, value);
+    else if (index == 3) {
+      _clear = value.payload.boolValue;
+    } else if (index == 4) {
+      _types = value;
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index <= 2)
+      return VariableBase::getParam(index);
+    else if (index == 3)
+      return Var(_clear);
+    else if (index == 4)
+      return _types;
+    throw CBException("Param index out of range.");
+  }
+
+  void addType(Types &inner, BasicTypes type) {
+    switch (type) {
+    case BasicTypes::Any:
+      inner._types.emplace_back(CoreInfo::AnyType);
+      break;
+    case BasicTypes::Bool:
+      inner._types.emplace_back(CoreInfo::BoolType);
+      break;
+    case BasicTypes::Int:
+      inner._types.emplace_back(CoreInfo::IntType);
+      break;
+    case BasicTypes::Int2:
+      inner._types.emplace_back(CoreInfo::Int2Type);
+      break;
+    case BasicTypes::Int3:
+      inner._types.emplace_back(CoreInfo::Int3Type);
+      break;
+    case BasicTypes::Int4:
+      inner._types.emplace_back(CoreInfo::Int4Type);
+      break;
+    case BasicTypes::Int8:
+      inner._types.emplace_back(CoreInfo::Int8Type);
+      break;
+    case BasicTypes::Int16:
+      inner._types.emplace_back(CoreInfo::Int16Type);
+      break;
+    case BasicTypes::Float:
+      inner._types.emplace_back(CoreInfo::FloatType);
+      break;
+    case BasicTypes::Float2:
+      inner._types.emplace_back(CoreInfo::Float2Type);
+      break;
+    case BasicTypes::Float3:
+      inner._types.emplace_back(CoreInfo::Float3Type);
+      break;
+    case BasicTypes::Float4:
+      inner._types.emplace_back(CoreInfo::Float4Type);
+      break;
+    case BasicTypes::Color:
+      inner._types.emplace_back(CoreInfo::ColorType);
+      break;
+    case BasicTypes::Chain:
+      inner._types.emplace_back(CoreInfo::ChainType);
+      break;
+    case BasicTypes::Block:
+      inner._types.emplace_back(CoreInfo::BlockType);
+      break;
+    case BasicTypes::Bytes:
+      inner._types.emplace_back(CoreInfo::BytesType);
+      break;
+    case BasicTypes::String:
+      inner._types.emplace_back(CoreInfo::StringType);
+      break;
+    case BasicTypes::Image:
+      inner._types.emplace_back(CoreInfo::ImageType);
+      break;
+    }
+  }
+
+  void processTypes(Types &inner, const IterableSeq &s) {
+    for (auto &v : s) {
+      if (v.valueType == Seq) {
+        auto &sinner = _innerTypes.emplace_back();
+        IterableSeq ss(v);
+        processTypes(sinner, ss);
+        CBTypeInfo stype{CBType::Seq, {.seqTypes = inner}};
+        inner._types.emplace_back(stype);
+      } else {
+        const auto type = BasicTypes(v.payload.enumValue);
+        // assume enum
+        addType(inner, type);
+      }
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // Ensure variable did not exist
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      auto &reference = data.shared.elements[i];
+      if (strcmp(reference.name, _name.c_str()) == 0) {
+        throw ComposeError("Sequence - Variable " + _name + " already exists.");
+      }
+    }
+
+    // Process types to expose
+    // cleaning up previous first
+    _seqTypes._types.clear();
+    _innerTypes.clear();
+    if (_types->valueType == Enum) {
+      // a single type
+      addType(_seqTypes, BasicTypes(_types->payload.enumValue));
+    } else {
+      IterableSeq st(_types);
+      processTypes(_seqTypes, st);
+    }
+
+    CBTypeInfo stype{CBType::Seq, {.seqTypes = _seqTypes}};
+    if (_global) {
+      _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+          _name.c_str(), "The exposed sequence.", stype, true));
+    } else {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The exposed sequence.", stype, true));
+    }
+
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+  }
+
+  void activateTable(CBContext *context, const CBVar &input) {
+    if (_target->valueType != Table) {
+      // Not initialized yet
+      _target->valueType = Table;
+      _target->payload.tableValue.api = &Globals::TableInterface;
+      _target->payload.tableValue.opaque = new CBMap();
+    }
+
+    if (unlikely(_cell == nullptr)) {
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, _key.c_str());
+    }
+    auto &seq = *_cell;
+
+    if (seq.valueType != Seq) {
+      seq.valueType = Seq;
+      seq.payload.seqValue = {};
+    }
+
+    if (_firstPusher && _clear) {
+      chainblocks::arrayResize(seq.payload.seqValue, 0);
+    }
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(_isTable)) {
+      activateTable(context, input);
+    } else {
+      if (_target->valueType != Seq) {
+        _target->valueType = Seq;
+        _target->payload.seqValue = {};
+      }
+
+      if (_firstPusher && _clear) {
+        chainblocks::arrayResize(_target->payload.seqValue, 0);
+      }
     }
     return input;
   }
@@ -2525,6 +2754,7 @@ RUNTIME_CORE_BLOCK_TYPE(RTake);
 RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
+RUNTIME_CORE_BLOCK_TYPE(Sequence);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(PopFront);
 RUNTIME_CORE_BLOCK_TYPE(Clear);

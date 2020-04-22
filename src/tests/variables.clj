@@ -171,6 +171,20 @@
   (Get .global1)
   (Assert.Is "global1" true)
 
+  ; Seq of Floats
+  (Sequence .sf :Types Type.Float)
+  ; Seq of Floats Seqs and so on
+  (Sequence .sff :Types [Type.Float])
+
+  (Repeat
+   (-->
+    0.1 >> .sf
+    .sf >> .sff)
+   :Times 3)
+
+  .sf (Assert.Is [0.1 0.1 0.1] true) (Log)
+  .sff (Assert.Is [[0.1] [0.1 0.1] [0.1 0.1 0.1]] true) (Log)
+
   (Msg "Done!")
   ))
 
