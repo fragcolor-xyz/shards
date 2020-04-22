@@ -22,6 +22,7 @@ struct FileBase {
                                    {CoreInfo::StringStringVarOrNone}}};
 
   ParamVar _filename{};
+  OwnedVar _currentFileName{};
 
   virtual void cleanup() { _filename.cleanup(); }
   void warmup(CBContext *context) { _filename.warmup(context); }
@@ -57,6 +58,7 @@ struct FileBase {
       return false;
 
     filename = ctxFile.payload.stringValue;
+    _currentFileName = _filename.get();
 
     // if absolute we are fine to begin with
     std::filesystem::path fp(filename);
@@ -132,7 +134,8 @@ struct WriteFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_fileStream.is_open()) {
+    if (!_fileStream.is_open() ||
+        (_filename.isVariable() && _filename.get() != _currentFileName)) {
       std::string filename;
       if (!getFilename(context, filename, false)) {
         return input;
@@ -172,7 +175,8 @@ struct ReadFile : public FileBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_fileStream.is_open()) {
+    if (!_fileStream.is_open() ||
+        (_filename.isVariable() && _filename.get() != _currentFileName)) {
       std::string filename;
       if (!getFilename(context, filename)) {
         return Var::Empty;
