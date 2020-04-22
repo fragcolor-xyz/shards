@@ -1029,8 +1029,8 @@ RUNTIME_BLOCK_END(Update);
 
 // Register Push
 RUNTIME_CORE_BLOCK_FACTORY(Push);
-RUNTIME_BLOCK_destroy(Push);
 RUNTIME_BLOCK_cleanup(Push);
+RUNTIME_BLOCK_destroy(Push);
 RUNTIME_BLOCK_warmup(Push);
 RUNTIME_BLOCK_inputTypes(Push);
 RUNTIME_BLOCK_outputTypes(Push);
@@ -1045,6 +1045,7 @@ RUNTIME_BLOCK_END(Push);
 // Register Sequence
 RUNTIME_CORE_BLOCK_FACTORY(Sequence);
 RUNTIME_BLOCK_cleanup(Sequence);
+RUNTIME_BLOCK_destroy(Sequence);
 RUNTIME_BLOCK_warmup(Sequence);
 RUNTIME_BLOCK_inputTypes(Sequence);
 RUNTIME_BLOCK_outputTypes(Sequence);

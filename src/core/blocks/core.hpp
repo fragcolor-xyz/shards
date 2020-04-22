@@ -6,6 +6,7 @@
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
+#include "chainblocks.hpp"
 #include <cassert>
 #include <cmath>
 
@@ -598,6 +599,34 @@ struct VariableBase {
     else
       return Var(_global);
   }
+
+  void initSeq() {
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
+      }
+
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, _key.c_str());
+
+      auto &seq = *_cell;
+      if (seq.valueType != Seq) {
+        seq.valueType = Seq;
+        seq.payload.seqValue = {};
+      }
+    } else {
+      if (_target->valueType != Seq) {
+        _target->valueType = Seq;
+        _target->payload.seqValue = {};
+      }
+      _cell = _target;
+    }
+
+    assert(_cell);
+  }
 };
 
 struct SetBase : public VariableBase {
@@ -941,8 +970,9 @@ struct Get : public VariableBase {
         _defaultType = deriveTypeInfo(_defaultValue);
         return _defaultType;
       } else {
-        throw CBException("Get: Could not infer an output type, key not found "
-                          "and no Default value provided.");
+        throw ComposeError("Get (" + _name + "/" + _key +
+                           "): Could not infer an output type, key not found "
+                           "and no Default value provided.");
       }
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -957,8 +987,9 @@ struct Get : public VariableBase {
       _defaultType = deriveTypeInfo(_defaultValue);
       return _defaultType;
     } else {
-      throw CBException(
-          "Get: Could not infer an output type and no Default value provided.");
+      throw ComposeError(
+          "Get (" + _name +
+          "): Could not infer an output type and no Default value provided.");
     }
   }
 
@@ -1137,7 +1168,7 @@ struct Swap {
 
 struct Push : public VariableBase {
   bool _clear = true;
-  bool _firstPusher = false; // if we are the initializers!
+  bool _firstPush = false;
   CBTypeInfo _seqInfo{};
   CBTypeInfo _seqInnerInfo{};
   CBTypeInfo _tableInfo{};
@@ -1226,8 +1257,10 @@ struct Push : public VariableBase {
           }
         }
       }
-      _firstPusher = true;
+      // not found
+      // implicitly initialize anyway
       updateTableInfo();
+      _firstPush = true;
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
@@ -1237,9 +1270,10 @@ struct Push : public VariableBase {
           return data.inputType; // found lets escape
         }
       }
-      // Assume we are the first pushing this variable
-      _firstPusher = true;
+      // not found
+      // implicitly initialize anyway
       updateSeqInfo();
+      _firstPush = true;
     }
     return data.inputType;
   }
@@ -1252,68 +1286,33 @@ struct Push : public VariableBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void activateTable(CBContext *context, const CBVar &input) {
-    if (_target->valueType != Table) {
-      // Not initialized yet
-      _target->valueType = Table;
-      _target->payload.tableValue.api = &Globals::TableInterface;
-      _target->payload.tableValue.opaque = new CBMap();
-    }
-
-    if (unlikely(_cell == nullptr)) {
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
-    }
-    auto &seq = *_cell;
-
-    if (seq.valueType != Seq) {
-      seq.valueType = Seq;
-      seq.payload.seqValue = {};
-    }
-
-    if (_firstPusher && _clear) {
-      chainblocks::arrayResize(seq.payload.seqValue, 0);
-    }
-
-    const auto len = seq.payload.seqValue.len;
-    chainblocks::arrayResize(seq.payload.seqValue, len + 1);
-    cloneVar(seq.payload.seqValue.elements[len], input);
-  }
-
   void warmup(CBContext *context) {
     if (_global)
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+
+    initSeq();
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(_isTable)) {
-      activateTable(context, input);
-    } else {
-      if (_target->valueType != Seq) {
-        _target->valueType = Seq;
-        _target->payload.seqValue = {};
-      }
-
-      if (_firstPusher && _clear) {
-        chainblocks::arrayResize(_target->payload.seqValue, 0);
-      }
-
-      const auto len = _target->payload.seqValue.len;
-      chainblocks::arrayResize(_target->payload.seqValue, len + 1);
-      cloneVar(_target->payload.seqValue.elements[len], input);
+    assert(_cell);
+    if (_clear && _firstPush) {
+      chainblocks::arrayResize(_cell->payload.seqValue, 0);
     }
+    const auto len = _cell->payload.seqValue.len;
+    chainblocks::arrayResize(_cell->payload.seqValue, len + 1);
+    cloneVar(_cell->payload.seqValue.elements[len], input);
     return input;
   }
 };
 
 struct Sequence : public VariableBase {
   bool _clear = true;
-  bool _firstPusher = true;
   ParamVar _types{Var::Enum(BasicTypes::Any, 'sink', 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
+  CBTypeInfo _tableInfo{};
 
   static inline ParamsInfo pushParams = ParamsInfo(
       variableParamsInfo,
@@ -1326,6 +1325,13 @@ struct Sequence : public VariableBase {
                         CoreInfo::BasicTypesTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
+
+  void destroy() {
+    if (_tableInfo.table.keys.elements)
+      chainblocks::arrayFree(_tableInfo.table.keys);
+    if (_tableInfo.table.types.elements)
+      chainblocks::arrayFree(_tableInfo.table.types);
+  }
 
   void setParam(int index, CBVar value) {
     if (index <= 2)
@@ -1423,11 +1429,47 @@ struct Sequence : public VariableBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    const auto updateTableInfo = [this, &data] {
+      _tableInfo.basicType = Table;
+      if (_tableInfo.table.types.elements) {
+        chainblocks::arrayFree(_tableInfo.table.types);
+      }
+      if (_tableInfo.table.keys.elements) {
+        chainblocks::arrayFree(_tableInfo.table.keys);
+      }
+      CBTypeInfo stype{CBType::Seq, {.seqTypes = _seqTypes}};
+      chainblocks::arrayPush(_tableInfo.table.types, stype);
+      chainblocks::arrayPush(_tableInfo.table.keys, _key.c_str());
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      }
+    };
+
     // Ensure variable did not exist
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      auto &reference = data.shared.elements[i];
-      if (strcmp(reference.name, _name.c_str()) == 0) {
-        throw ComposeError("Sequence - Variable " + _name + " already exists.");
+    if (!_isTable) {
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &reference = data.shared.elements[i];
+        if (strcmp(reference.name, _name.c_str()) == 0) {
+          throw ComposeError("Sequence - Variable " + _name +
+                             " already exists.");
+        }
+      }
+    } else {
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        if (data.shared.elements[i].name == _name &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            if (_key == tableKeys.elements[y]) {
+              throw ComposeError("Sequence - Variable " + _key + " in table " +
+                                 _name + " already exists.");
+            }
+          }
+        }
       }
     }
 
@@ -1443,13 +1485,17 @@ struct Sequence : public VariableBase {
       processTypes(_seqTypes, st);
     }
 
-    CBTypeInfo stype{CBType::Seq, {.seqTypes = _seqTypes}};
-    if (_global) {
-      _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-          _name.c_str(), "The exposed sequence.", stype, true));
+    if (!_isTable) {
+      CBTypeInfo stype{CBType::Seq, {.seqTypes = _seqTypes}};
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed sequence.", stype, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed sequence.", stype, true));
+      }
     } else {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed sequence.", stype, true));
+      updateTableInfo();
     }
 
     return data.inputType;
@@ -1468,44 +1514,15 @@ struct Sequence : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
-  }
 
-  void activateTable(CBContext *context, const CBVar &input) {
-    if (_target->valueType != Table) {
-      // Not initialized yet
-      _target->valueType = Table;
-      _target->payload.tableValue.api = &Globals::TableInterface;
-      _target->payload.tableValue.opaque = new CBMap();
-    }
-
-    if (unlikely(_cell == nullptr)) {
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
-    }
-    auto &seq = *_cell;
-
-    if (seq.valueType != Seq) {
-      seq.valueType = Seq;
-      seq.payload.seqValue = {};
-    }
-
-    if (_firstPusher && _clear) {
-      chainblocks::arrayResize(seq.payload.seqValue, 0);
-    }
+    initSeq();
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(_isTable)) {
-      activateTable(context, input);
-    } else {
-      if (_target->valueType != Seq) {
-        _target->valueType = Seq;
-        _target->payload.seqValue = {};
-      }
-
-      if (_firstPusher && _clear) {
-        chainblocks::arrayResize(_target->payload.seqValue, 0);
-      }
+    assert(_cell);
+    if (_clear) {
+      auto &seq = *_cell;
+      chainblocks::arrayResize(seq.payload.seqValue, 0);
     }
     return input;
   }
@@ -1684,6 +1701,8 @@ struct DropFront : SeqUser {
 };
 
 struct Pop : SeqUser {
+  // TODO refactor like Push
+
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   CBVar _output{};
@@ -1772,6 +1791,8 @@ struct Pop : SeqUser {
 };
 
 struct PopFront : SeqUser {
+  // TODO refactor like push
+
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   CBVar _output{};
