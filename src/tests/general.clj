@@ -301,33 +301,6 @@
     (Log)
   ) 6)
 
-  (Repeat (-->
-    (Get "index" :Default 0)
-    (Math.Add 1)
-    (Set "index")
-  ) 6)
-  (Get "index")
-  (Assert.Is 6 true)
-
-  (Repeat (-->
-    (Get "index2" :Default 0)
-    (Math.Add 1)
-    (Set "index2")
-    (Cond [(--> (Is 6)) (--> (Return))])
-  ) :Forever true)
-  (Get "index2")
-  (Assert.Is 6 true)
-
-  (Repeat (-->
-    10 (Set "tableInList" "x")
-    20 (Set "tableInList" "y")
-    30 (Set "tableInList" "z")
-    (Get "tableInList")
-    (Push "newListInRepeat" :Clear false)
-  ) 5)
-  (Get "newListInRepeat") (Log)
-  (Count "newListInRepeat") (Assert.Is 5 true)
-
   2 (Push "unsortedList")
   4 (Push "unsortedList")
   1 (Push "unsortedList")
@@ -469,12 +442,9 @@
   (Assert.Is 2 true)
 
   10 (Set "repeatsn")
-  (Repeat (-->
-    (Get "repeatsCount" :Default 0)
-    (Math.Add 1)
-    (Set "repeatsCount")
-  ) (# "repeatsn"))
-  (Get "repeatsCount")
+  0 >= .iterCount
+  (Repeat (--> .iterCount (Math.Add 1) > .iterCount) :Times (# "repeatsn"))
+  .iterCount
   (Assert.Is 10 true)
 
   0 (Math.Add 10) (Assert.Is 10 true)
