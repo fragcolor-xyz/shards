@@ -141,7 +141,6 @@ struct Evolve {
             });
         Tasks.run(initFlow).get();
 
-        // Also populate chain2Indi
         size_t idx = 0;
         for (auto &i : _population) {
           i.idx = idx;
@@ -343,6 +342,21 @@ struct Evolve {
         Tasks.run(runFlow).get();
       }
 #endif
+
+      { // Stop all the population chains
+        tf::Taskflow flow;
+
+        flow.parallel_for(
+            _population.begin(), _population.end(), [](Individual &i) {
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              auto fitchain =
+                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              stop(chain.get());
+              stop(fitchain.get());
+            });
+
+        Tasks.run(flow).get();
+      }
 
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
