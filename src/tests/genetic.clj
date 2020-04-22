@@ -13,6 +13,7 @@
  Root
  (Chain
   "test"
+  (Sequence .best :Types [Type.Float Type.Chain])
   (Repeat
    (-->
     (Evolve
@@ -26,10 +27,9 @@
      fitness
      :Population 64
      :Coroutines 8)
-    (Log)
-    (Ref "best"))
+    (Log) > .best)
    15)
-  (Get "best")
+  .best
   (Take 1)
   (ToJson)
   (Log)
