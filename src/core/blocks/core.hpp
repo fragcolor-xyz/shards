@@ -2538,7 +2538,6 @@ struct Repeat {
   int64_t _times = 0;
   bool _forever = false;
   ExposedInfo _requiredInfo{};
-  CBValidationResult _validation{};
 
   void cleanup() {
     if (_ctxTimes) {
@@ -2620,7 +2619,7 @@ struct Repeat {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _validation = _blks.compose(data);
+    _blks.compose(data);
     const auto predres = _pred.compose(data);
     if (_pred && predres.outputType.basicType != Bool) {
       throw ComposeError(
@@ -2639,8 +2638,6 @@ struct Repeat {
       return CBExposedTypesInfo(_requiredInfo);
     }
   }
-
-  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto repeats = _forever ? 1 : _times;
