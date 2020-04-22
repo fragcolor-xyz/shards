@@ -25,6 +25,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <deque>
 #include <list>
 #include <set>
 #include <type_traits>
