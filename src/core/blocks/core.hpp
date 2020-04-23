@@ -599,34 +599,6 @@ struct VariableBase {
     else
       return Var(_global);
   }
-
-  void initSeq() {
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        // Not initialized yet
-        _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
-        _target->payload.tableValue.opaque = new CBMap();
-      }
-
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
-
-      auto &seq = *_cell;
-      if (seq.valueType != Seq) {
-        seq.valueType = Seq;
-        seq.payload.seqValue = {};
-      }
-    } else {
-      if (_target->valueType != Seq) {
-        _target->valueType = Seq;
-        _target->payload.seqValue = {};
-      }
-      _cell = _target;
-    }
-
-    assert(_cell);
-  }
 };
 
 struct SetBase : public VariableBase {
@@ -1166,12 +1138,67 @@ struct Swap {
   }
 };
 
-struct Push : public VariableBase {
+struct SeqBase : public VariableBase {
   bool _clear = true;
+  CBTypeInfo _tableInfo{};
+
+  void initSeq() {
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
+      }
+
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, _key.c_str());
+
+      auto &seq = *_cell;
+      if (seq.valueType != Seq) {
+        seq.valueType = Seq;
+        seq.payload.seqValue = {};
+      }
+    } else {
+      if (_target->valueType != Seq) {
+        _target->valueType = Seq;
+        _target->payload.seqValue = {};
+      }
+      _cell = _target;
+    }
+
+    assert(_cell);
+  }
+
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+
+    initSeq();
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void destroy() {
+    if (_tableInfo.table.keys.elements)
+      chainblocks::arrayFree(_tableInfo.table.keys);
+    if (_tableInfo.table.types.elements)
+      chainblocks::arrayFree(_tableInfo.table.types);
+  }
+};
+
+struct Push : public SeqBase {
   bool _firstPush = false;
   CBTypeInfo _seqInfo{};
   CBTypeInfo _seqInnerInfo{};
-  CBTypeInfo _tableInfo{};
 
   static inline ParamsInfo pushParams = ParamsInfo(
       variableParamsInfo,
@@ -1197,13 +1224,6 @@ struct Push : public VariableBase {
     else if (index == 3)
       return Var(_clear);
     throw CBException("Param index out of range.");
-  }
-
-  void destroy() {
-    if (_tableInfo.table.keys.elements)
-      chainblocks::arrayFree(_tableInfo.table.keys);
-    if (_tableInfo.table.types.elements)
-      chainblocks::arrayFree(_tableInfo.table.types);
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -1278,23 +1298,6 @@ struct Push : public VariableBase {
     return data.inputType;
   }
 
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(_exposedInfo);
-  }
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  void warmup(CBContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
-
-    initSeq();
-  }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     assert(_cell);
     if (_clear && _firstPush) {
@@ -1307,12 +1310,10 @@ struct Push : public VariableBase {
   }
 };
 
-struct Sequence : public VariableBase {
-  bool _clear = true;
+struct Sequence : public SeqBase {
   ParamVar _types{Var::Enum(BasicTypes::Any, 'sink', 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
-  CBTypeInfo _tableInfo{};
 
   static inline ParamsInfo pushParams = ParamsInfo(
       variableParamsInfo,
@@ -1499,23 +1500,6 @@ struct Sequence : public VariableBase {
     }
 
     return data.inputType;
-  }
-
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(_exposedInfo);
-  }
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  void warmup(CBContext *context) {
-    if (_global)
-      _target = referenceGlobalVariable(context, _name.c_str());
-    else
-      _target = referenceVariable(context, _name.c_str());
-
-    initSeq();
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
