@@ -355,8 +355,8 @@ using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
                   &Core::expTypesFree>;
 
-inline void registerBlock(const char *fullName,
-                          CBBlockConstructor constructor) {
+inline void registerBlock(const char *fullName, CBBlockConstructor constructor,
+                          std::string_view _) {
   Core::registerBlock(fullName, constructor);
 }
 }; // namespace chainblocks

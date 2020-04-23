@@ -61,15 +61,16 @@ void releaseVariable(CBVar *variable);
 CBChainState suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
-CBlock *createBlock(const char *name);
+CBlock *createBlock(std::string_view name);
 void registerCoreBlocks();
-void registerBlock(const char *fullName, CBBlockConstructor constructor);
+void registerBlock(std::string_view name, CBBlockConstructor constructor,
+                   std::string_view fullTypeName = std::string_view());
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
-void registerRunLoopCallback(const char *eventName, CBCallback callback);
-void unregisterRunLoopCallback(const char *eventName);
-void registerExitCallback(const char *eventName, CBCallback callback);
-void unregisterExitCallback(const char *eventName);
+void registerRunLoopCallback(std::string_view eventName, CBCallback callback);
+void unregisterRunLoopCallback(std::string_view eventName);
+void registerExitCallback(std::string_view eventName, CBCallback callback);
+void unregisterExitCallback(std::string_view eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
@@ -104,7 +105,7 @@ struct CBChain {
       : looped(false), unsafe(false), name(chain_name), coro(nullptr),
         rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
         composedHash(0), context(nullptr), node(nullptr) {
-    LOG(TRACE) << "CBChain(): " << name;
+    DLOG(DEBUG) << "CBChain(): " << name;
 #ifdef CB_USE_TSAN
     tsan_coro = nullptr;
 #endif
@@ -113,7 +114,7 @@ struct CBChain {
   ~CBChain() {
     clear();
     chainblocks::destroyVar(rootTickInput);
-    LOG(TRACE) << "~CBChain() " << name;
+    DLOG(DEBUG) << "~CBChain() " << name;
 
 #ifdef CB_USE_TSAN
     if (tsan_coro) {
@@ -217,14 +218,16 @@ using CBMapIt = std::unordered_map<
                                         16>>::iterator;
 
 struct Globals {
-  static inline std::unordered_map<std::string, CBBlockConstructor>
+  static inline std::unordered_map<std::string_view, CBBlockConstructor>
       BlocksRegister;
+  static inline std::unordered_map<std::string_view, std::string_view>
+      BlockNamesToFullTypeNames;
   static inline std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
   static inline std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 
   // map = ordered! we need that for those
-  static inline std::map<std::string, CBCallback> RunLoopHooks;
-  static inline std::map<std::string, CBCallback> ExitHooks;
+  static inline std::map<std::string_view, CBCallback> RunLoopHooks;
+  static inline std::map<std::string_view, CBCallback> ExitHooks;
 
   static inline std::unordered_map<std::string, std::shared_ptr<CBChain>>
       GlobalChains;

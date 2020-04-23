@@ -255,7 +255,8 @@ template <class T> struct BlockWrapper {
 #define REGISTER_CBLOCK(__name__, __type__)                                    \
   ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
   ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
-                               &::chainblocks::BlockWrapper<__type__>::create)
+                               &::chainblocks::BlockWrapper<__type__>::create, \
+                               NAMEOF_FULL_TYPE(__type__))
 
 template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType,
           Type &OutputType>

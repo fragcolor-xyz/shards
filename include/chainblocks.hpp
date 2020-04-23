@@ -56,7 +56,7 @@ public:
   explicit InvalidVarTypeError(std::string_view msg) : CBException(msg) {}
 };
 
-CBlock *createBlock(const char *name);
+CBlock *createBlock(std::string_view name);
 
 struct Type {
   CBTypeInfo _type;
@@ -193,7 +193,7 @@ struct Parameters {
 };
 
 struct Var : public CBVar {
-  explicit Var() : CBVar() { valueType = None; }
+  constexpr Var() : CBVar() {}
 
   explicit Var(const CBVar &other) {
     memcpy((void *)this, (void *)&other, sizeof(CBVar));

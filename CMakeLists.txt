@@ -262,6 +262,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/xxHash
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
+  -I${CHAINBLOCKS_DIR}/deps/nameof/include
   -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   )
@@ -343,6 +344,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/xxHash
   ${CHAINBLOCKS_DIR}/deps/json/include
   ${CHAINBLOCKS_DIR}/deps/magic_enum/include
+  ${CHAINBLOCKS_DIR}/deps/nameof/include
   ${CHAINBLOCKS_DIR}/deps/kcp
   ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   ${CHAINBLOCKS_DIR}/deps/cpp-taskflow

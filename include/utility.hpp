@@ -7,6 +7,7 @@
 #include "chainblocks.h"
 #include <future>
 #include <magic_enum.hpp>
+#include <nameof.hpp>
 #include <string>
 #include <taskflow/taskflow.hpp>
 #include <vector>

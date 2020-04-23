@@ -137,7 +137,7 @@ void registerCoreBlocks() {
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for
   // them
-  std::vector<std::pair<std::string, CBBlockConstructor>> earlyblocks;
+  std::vector<std::pair<std::string_view, CBBlockConstructor>> earlyblocks;
   for (auto &pair : Globals::BlocksRegister) {
     earlyblocks.push_back(pair);
   }
@@ -193,7 +193,7 @@ void registerCoreBlocks() {
 
   // re run early blocks registration!
   for (auto &pair : earlyblocks) {
-    registerBlock(pair.first.c_str(), pair.second);
+    registerBlock(pair.first, pair.second);
   }
 
 #ifndef NDEBUG
@@ -259,7 +259,7 @@ void registerCoreBlocks() {
 #endif
 }
 
-CBlock *createBlock(const char *name) {
+CBlock *createBlock(std::string_view name) {
   auto it = Globals::BlocksRegister.find(name);
   if (it == Globals::BlocksRegister.end()) {
     return nullptr;
@@ -268,149 +268,151 @@ CBlock *createBlock(const char *name) {
   auto blkp = it->second();
 
   // Hook inline blocks to override activation in runChain
-  if (strcmp(name, "Const") == 0) {
+  if (name == "Const") {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
-  } else if (strcmp(name, "Stop") == 0) {
+  } else if (name == "Stop") {
     blkp->inlineBlockId = CBInlineBlocks::CoreStop;
-  } else if (strcmp(name, "Input") == 0) {
+  } else if (name == "Input") {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
-  } else if (strcmp(name, "Restart") == 0) {
+  } else if (name == "Restart") {
     blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
-  } else if (strcmp(name, "Sleep") == 0) {
+  } else if (name == "Sleep") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
-  } else if (strcmp(name, "Repeat") == 0) {
+  } else if (name == "Repeat") {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
-  } else if (strcmp(name, "Once") == 0) {
+  } else if (name == "Once") {
     blkp->inlineBlockId = CBInlineBlocks::CoreOnce;
-  } else if (strcmp(name, "Get") == 0) {
+  } else if (name == "Get") {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
-  } else if (strcmp(name, "Set") == 0) {
+  } else if (name == "Set") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
-  } else if (strcmp(name, "Update") == 0) {
+  } else if (name == "Update") {
     blkp->inlineBlockId = CBInlineBlocks::CoreUpdate;
-  } else if (strcmp(name, "Swap") == 0) {
+  } else if (name == "Swap") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSwap;
-  } else if (strcmp(name, "Push") == 0) {
+  } else if (name == "Push") {
     blkp->inlineBlockId = CBInlineBlocks::CorePush;
-  } else if (strcmp(name, "Is") == 0) {
+  } else if (name == "Is") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIs;
-  } else if (strcmp(name, "IsNot") == 0) {
+  } else if (name == "IsNot") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsNot;
-  } else if (strcmp(name, "IsMore") == 0) {
+  } else if (name == "IsMore") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsMore;
-  } else if (strcmp(name, "IsLess") == 0) {
+  } else if (name == "IsLess") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsLess;
-  } else if (strcmp(name, "IsMoreEqual") == 0) {
+  } else if (name == "IsMoreEqual") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsMoreEqual;
-  } else if (strcmp(name, "IsLessEqual") == 0) {
+  } else if (name == "IsLessEqual") {
     blkp->inlineBlockId = CBInlineBlocks::CoreIsLessEqual;
-  } else if (strcmp(name, "And") == 0) {
+  } else if (name == "And") {
     blkp->inlineBlockId = CBInlineBlocks::CoreAnd;
-  } else if (strcmp(name, "Or") == 0) {
+  } else if (name == "Or") {
     blkp->inlineBlockId = CBInlineBlocks::CoreOr;
-  } else if (strcmp(name, "Not") == 0) {
+  } else if (name == "Not") {
     blkp->inlineBlockId = CBInlineBlocks::CoreNot;
-  } else if (strcmp(name, "Math.Add") == 0) {
+  } else if (name == "Math.Add") {
     blkp->inlineBlockId = CBInlineBlocks::MathAdd;
-  } else if (strcmp(name, "Math.Subtract") == 0) {
+  } else if (name == "Math.Subtract") {
     blkp->inlineBlockId = CBInlineBlocks::MathSubtract;
-  } else if (strcmp(name, "Math.Multiply") == 0) {
+  } else if (name == "Math.Multiply") {
     blkp->inlineBlockId = CBInlineBlocks::MathMultiply;
-  } else if (strcmp(name, "Math.Divide") == 0) {
+  } else if (name == "Math.Divide") {
     blkp->inlineBlockId = CBInlineBlocks::MathDivide;
-  } else if (strcmp(name, "Math.Xor") == 0) {
+  } else if (name == "Math.Xor") {
     blkp->inlineBlockId = CBInlineBlocks::MathXor;
-  } else if (strcmp(name, "Math.And") == 0) {
+  } else if (name == "Math.And") {
     blkp->inlineBlockId = CBInlineBlocks::MathAnd;
-  } else if (strcmp(name, "Math.Or") == 0) {
+  } else if (name == "Math.Or") {
     blkp->inlineBlockId = CBInlineBlocks::MathOr;
-  } else if (strcmp(name, "Math.Mod") == 0) {
+  } else if (name == "Math.Mod") {
     blkp->inlineBlockId = CBInlineBlocks::MathMod;
-  } else if (strcmp(name, "Math.LShift") == 0) {
+  } else if (name == "Math.LShift") {
     blkp->inlineBlockId = CBInlineBlocks::MathLShift;
-  } else if (strcmp(name, "Math.RShift") == 0) {
+  } else if (name == "Math.RShift") {
     blkp->inlineBlockId = CBInlineBlocks::MathRShift;
-  } else if (strcmp(name, "Math.Abs") == 0) {
+  } else if (name == "Math.Abs") {
     blkp->inlineBlockId = CBInlineBlocks::MathAbs;
-  } else if (strcmp(name, "Math.Exp") == 0) {
+  } else if (name == "Math.Exp") {
     blkp->inlineBlockId = CBInlineBlocks::MathExp;
-  } else if (strcmp(name, "Math.Exp2") == 0) {
+  } else if (name == "Math.Exp2") {
     blkp->inlineBlockId = CBInlineBlocks::MathExp2;
-  } else if (strcmp(name, "Math.Expm1") == 0) {
+  } else if (name == "Math.Expm1") {
     blkp->inlineBlockId = CBInlineBlocks::MathExpm1;
-  } else if (strcmp(name, "Math.Log") == 0) {
+  } else if (name == "Math.Log") {
     blkp->inlineBlockId = CBInlineBlocks::MathLog;
-  } else if (strcmp(name, "Math.Log10") == 0) {
+  } else if (name == "Math.Log10") {
     blkp->inlineBlockId = CBInlineBlocks::MathLog10;
-  } else if (strcmp(name, "Math.Log2") == 0) {
+  } else if (name == "Math.Log2") {
     blkp->inlineBlockId = CBInlineBlocks::MathLog2;
-  } else if (strcmp(name, "Math.Log1p") == 0) {
+  } else if (name == "Math.Log1p") {
     blkp->inlineBlockId = CBInlineBlocks::MathLog1p;
-  } else if (strcmp(name, "Math.Sqrt") == 0) {
+  } else if (name == "Math.Sqrt") {
     blkp->inlineBlockId = CBInlineBlocks::MathSqrt;
-  } else if (strcmp(name, "Math.Cbrt") == 0) {
+  } else if (name == "Math.Cbrt") {
     blkp->inlineBlockId = CBInlineBlocks::MathCbrt;
-  } else if (strcmp(name, "Math.Sin") == 0) {
+  } else if (name == "Math.Sin") {
     blkp->inlineBlockId = CBInlineBlocks::MathSin;
-  } else if (strcmp(name, "Math.Cos") == 0) {
+  } else if (name == "Math.Cos") {
     blkp->inlineBlockId = CBInlineBlocks::MathCos;
-  } else if (strcmp(name, "Math.Tan") == 0) {
+  } else if (name == "Math.Tan") {
     blkp->inlineBlockId = CBInlineBlocks::MathTan;
-  } else if (strcmp(name, "Math.Asin") == 0) {
+  } else if (name == "Math.Asin") {
     blkp->inlineBlockId = CBInlineBlocks::MathAsin;
-  } else if (strcmp(name, "Math.Acos") == 0) {
+  } else if (name == "Math.Acos") {
     blkp->inlineBlockId = CBInlineBlocks::MathAcos;
-  } else if (strcmp(name, "Math.Atan") == 0) {
+  } else if (name == "Math.Atan") {
     blkp->inlineBlockId = CBInlineBlocks::MathAtan;
-  } else if (strcmp(name, "Math.Sinh") == 0) {
+  } else if (name == "Math.Sinh") {
     blkp->inlineBlockId = CBInlineBlocks::MathSinh;
-  } else if (strcmp(name, "Math.Cosh") == 0) {
+  } else if (name == "Math.Cosh") {
     blkp->inlineBlockId = CBInlineBlocks::MathCosh;
-  } else if (strcmp(name, "Math.Tanh") == 0) {
+  } else if (name == "Math.Tanh") {
     blkp->inlineBlockId = CBInlineBlocks::MathTanh;
-  } else if (strcmp(name, "Math.Asinh") == 0) {
+  } else if (name == "Math.Asinh") {
     blkp->inlineBlockId = CBInlineBlocks::MathAsinh;
-  } else if (strcmp(name, "Math.Acosh") == 0) {
+  } else if (name == "Math.Acosh") {
     blkp->inlineBlockId = CBInlineBlocks::MathAcosh;
-  } else if (strcmp(name, "Math.Atanh") == 0) {
+  } else if (name == "Math.Atanh") {
     blkp->inlineBlockId = CBInlineBlocks::MathAtanh;
-  } else if (strcmp(name, "Math.Erf") == 0) {
+  } else if (name == "Math.Erf") {
     blkp->inlineBlockId = CBInlineBlocks::MathErf;
-  } else if (strcmp(name, "Math.Erfc") == 0) {
+  } else if (name == "Math.Erfc") {
     blkp->inlineBlockId = CBInlineBlocks::MathErfc;
-  } else if (strcmp(name, "Math.TGamma") == 0) {
+  } else if (name == "Math.TGamma") {
     blkp->inlineBlockId = CBInlineBlocks::MathTGamma;
-  } else if (strcmp(name, "Math.LGamma") == 0) {
+  } else if (name == "Math.LGamma") {
     blkp->inlineBlockId = CBInlineBlocks::MathLGamma;
-  } else if (strcmp(name, "Math.Ceil") == 0) {
+  } else if (name == "Math.Ceil") {
     blkp->inlineBlockId = CBInlineBlocks::MathCeil;
-  } else if (strcmp(name, "Math.Floor") == 0) {
+  } else if (name == "Math.Floor") {
     blkp->inlineBlockId = CBInlineBlocks::MathFloor;
-  } else if (strcmp(name, "Math.Trunc") == 0) {
+  } else if (name == "Math.Trunc") {
     blkp->inlineBlockId = CBInlineBlocks::MathTrunc;
-  } else if (strcmp(name, "Math.Round") == 0) {
+  } else if (name == "Math.Round") {
     blkp->inlineBlockId = CBInlineBlocks::MathRound;
   }
 
   return blkp;
 }
 
-void registerBlock(const char *fullName, CBBlockConstructor constructor) {
-  auto cname = std::string(fullName);
-  auto findIt = Globals::BlocksRegister.find(cname);
+void registerBlock(std::string_view name, CBBlockConstructor constructor,
+                   std::string_view fullTypeName) {
+  auto findIt = Globals::BlocksRegister.find(name);
   if (findIt == Globals::BlocksRegister.end()) {
-    Globals::BlocksRegister.insert(std::make_pair(cname, constructor));
+    Globals::BlocksRegister.insert(std::make_pair(name, constructor));
     // DLOG(INFO) << "added block: " << cname;
   } else {
-    Globals::BlocksRegister[cname] = constructor;
-    LOG(INFO) << "overridden block: " << cname;
+    Globals::BlocksRegister[name] = constructor;
+    LOG(INFO) << "overridden block: " << name;
   }
+
+  Globals::BlockNamesToFullTypeNames[name] = fullTypeName;
 
   for (auto &pobs : Globals::Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
-    obs->registerBlock(fullName, constructor);
+    obs->registerBlock(name.data(), constructor);
   }
 }
 
@@ -454,22 +456,22 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   }
 }
 
-void registerRunLoopCallback(const char *eventName, CBCallback callback) {
+void registerRunLoopCallback(std::string_view eventName, CBCallback callback) {
   chainblocks::Globals::RunLoopHooks[eventName] = callback;
 }
 
-void unregisterRunLoopCallback(const char *eventName) {
+void unregisterRunLoopCallback(std::string_view eventName) {
   auto findIt = chainblocks::Globals::RunLoopHooks.find(eventName);
   if (findIt != chainblocks::Globals::RunLoopHooks.end()) {
     chainblocks::Globals::RunLoopHooks.erase(findIt);
   }
 }
 
-void registerExitCallback(const char *eventName, CBCallback callback) {
+void registerExitCallback(std::string_view eventName, CBCallback callback) {
   chainblocks::Globals::ExitHooks[eventName] = callback;
 }
 
-void unregisterExitCallback(const char *eventName) {
+void unregisterExitCallback(std::string_view eventName) {
   auto findIt = chainblocks::Globals::ExitHooks.find(eventName);
   if (findIt != chainblocks::Globals::ExitHooks.end()) {
     chainblocks::Globals::ExitHooks.erase(findIt);

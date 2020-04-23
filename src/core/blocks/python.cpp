@@ -269,7 +269,7 @@ struct Env {
       p->refcount--;
 
       if (p->refcount == 0) {
-        LOG(TRACE) << "PyObj::Dealloc";
+        DLOG(DEBUG) << "PyObj::Dealloc";
         if (p->type)
           p->type->dealloc(p);
       }
@@ -308,7 +308,7 @@ struct Env {
     auto frame = _frameNew(ts, code.get(), dict, dict);
     ts->frame = frame;
 
-    LOG(TRACE) << "Py frame initialized";
+    DLOG(DEBUG) << "Py frame initialized";
   }
 
   static void init() {
@@ -349,7 +349,7 @@ struct Env {
         return;
       init(0);
 
-      LOG(TRACE) << "PyInit called fine!";
+      DLOG(DEBUG) << "PyInit called fine!";
 
 #define DLIMPORT(_proc_, _name_)                                               \
   _proc_ = (_name_)dynLoad(dll, #_name_);                                      \
@@ -407,7 +407,7 @@ struct Env {
 
       DLIMPORT(_py_none, _Py_NoneStruct);
 
-      LOG(TRACE) << "Python symbols loaded";
+      DLOG(DEBUG) << "Python symbols loaded";
 
       _ok = true;
 
@@ -1100,7 +1100,7 @@ struct Py {
     if (_self.get()) {
       auto pyctx = Env::capsule(context);
       Env::setAttr(_self, "__cbcontext__", pyctx);
-      LOG(TRACE) << "Self refcount: " << int(_self->refcount);
+      DLOG(DEBUG) << "Self refcount: " << int(_self->refcount);
       res = Env::call(_activate, Env::incRefGet(_self), Env::var2Py(input));
     } else {
       res = Env::call(_activate, Env::var2Py(input));
