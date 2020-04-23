@@ -729,6 +729,13 @@ struct CBNode {
       flow->chain->flow = nullptr;
     }
     flows.clear();
+    // find dangling variables, notice but do not destroy
+    for (auto var : variables) {
+      if (var.second.refcount > 0) {
+        LOG(ERROR) << "Found a dangling global variable: " << var.first;
+      }
+    }
+    variables.clear();
   }
 
   void remove(CBChain *chain) {

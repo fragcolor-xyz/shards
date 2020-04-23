@@ -334,7 +334,7 @@ struct Evolve {
               // compute the fitness
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              node.schedule(obs, fitchain.get(), chain->previousOutput);
+              node.schedule(obs, fitchain.get(), chain->finishedOutput);
               while (!node.empty()) {
                 node.tick(obs);
               }
@@ -353,6 +353,7 @@ struct Evolve {
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
               stop(fitchain.get());
+              i.node.terminate();
             });
 
         Tasks.run(flow).get();
