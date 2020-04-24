@@ -199,7 +199,7 @@ class malRoot {
 public:
   void reference(malValue *val) { m_refs.emplace_back(val); }
 
-private:
+protected:
   std::vector<malValuePtr> m_refs;
 };
 
@@ -215,11 +215,17 @@ public:
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
 
   ~malCBChain() {
+    // unref all we hold  first
+    m_refs.clear();
+
+    // remove from globals TODO some mutex maybe
     auto cp = CBChain::sharedFromRef(m_chain);
     auto it = chainblocks::Globals::GlobalChains.find(cp.get()->name);
     if (it != chainblocks::Globals::GlobalChains.end() && it->second == cp) {
       chainblocks::Globals::GlobalChains.erase(it);
     }
+
+    // delref
     DLOG(DEBUG) << "Deleting a CBChain - " << cp->name;
     CBChain::deleteRef(m_chain);
   }
@@ -255,6 +261,9 @@ public:
   malCBlock(const malCBlock &that, const malValuePtr &meta) = delete;
 
   ~malCBlock() {
+    // unref all we hold  first
+    m_refs.clear();
+
     // could be nullptr
     if (m_block) {
       m_block->destroy(m_block);
@@ -297,6 +306,9 @@ public:
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
   ~malCBNode() {
+    // unref all we hold  first
+    m_refs.clear();
+
     assert(m_node);
     delete m_node;
     DLOG(DEBUG) << "Deleted a CBNode";
@@ -339,6 +351,9 @@ public:
   }
 
   ~malCBVar() {
+    // unref all we hold  first
+    m_refs.clear();
+
     if (m_cloned)
       chainblocks::destroyVar(m_var);
   }
