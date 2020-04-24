@@ -1430,7 +1430,7 @@ struct Sequence : public SeqBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    const auto updateTableInfo = [this, &data] {
+    const auto updateTableInfo = [this] {
       _tableInfo.basicType = Table;
       if (_tableInfo.table.types.elements) {
         chainblocks::arrayFree(_tableInfo.table.types);
