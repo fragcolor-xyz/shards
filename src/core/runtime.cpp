@@ -400,7 +400,7 @@ void registerBlock(std::string_view name, CBBlockConstructor constructor,
   auto findIt = Globals::BlocksRegister.find(name);
   if (findIt == Globals::BlocksRegister.end()) {
     Globals::BlocksRegister.insert(std::make_pair(name, constructor));
-    // DLOG(INFO) << "added block: " << cname;
+    // LOG(TRACE) << "added block: " << cname;
   } else {
     Globals::BlocksRegister[name] = constructor;
     LOG(INFO) << "overridden block: " << name;
@@ -422,7 +422,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
   auto findIt = Globals::ObjectTypesRegister.find(id);
   if (findIt == Globals::ObjectTypesRegister.end()) {
     Globals::ObjectTypesRegister.insert(std::make_pair(id, info));
-    // DLOG(INFO) << "added object type: " << typeName;
+    // LOG(TRACE) << "added object type: " << typeName;
   } else {
     Globals::ObjectTypesRegister[id] = info;
     LOG(INFO) << "overridden object type: " << typeName;
@@ -442,7 +442,7 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   auto findIt = Globals::ObjectTypesRegister.find(id);
   if (findIt == Globals::ObjectTypesRegister.end()) {
     Globals::EnumTypesRegister.insert(std::make_pair(id, info));
-    // DLOG(INFO) << "added enum type: " << typeName;
+    // LOG(TRACE) << "added enum type: " << typeName;
   } else {
     Globals::EnumTypesRegister[id] = info;
     LOG(INFO) << "overridden enum type: " << typeName;

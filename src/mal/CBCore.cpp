@@ -206,7 +206,7 @@ protected:
 class malCBChain : public malValue, public malRoot {
 public:
   malCBChain(const MalString &name) {
-    DLOG(DEBUG) << "Created a CBChain - " << name;
+    LOG(TRACE) << "Created a CBChain - " << name;
     auto chain = new CBChain(name.c_str());
     m_chain = chain->newRef();
     chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(m_chain);
@@ -226,7 +226,7 @@ public:
     }
 
     // delref
-    DLOG(DEBUG) << "Deleting a CBChain - " << cp->name;
+    LOG(TRACE) << "Deleting a CBChain - " << cp->name;
     CBChain::deleteRef(m_chain);
   }
 
@@ -301,7 +301,7 @@ private:
 
 class malCBNode : public malValue, public malRoot {
 public:
-  malCBNode() : m_node(new CBNode()) { DLOG(DEBUG) << "Created a CBNode"; }
+  malCBNode() : m_node(new CBNode()) { LOG(TRACE) << "Created a CBNode"; }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
@@ -311,7 +311,7 @@ public:
 
     assert(m_node);
     delete m_node;
-    DLOG(DEBUG) << "Deleted a CBNode";
+    LOG(TRACE) << "Deleted a CBNode";
   }
 
   virtual MalString print(bool readably) const {

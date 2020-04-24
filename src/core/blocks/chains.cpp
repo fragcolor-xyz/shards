@@ -82,8 +82,6 @@ struct ChainBase {
   static inline ParamsInfo chainOnlyParamsInfo =
       ParamsInfo(ParamsInfo::Param("Chain", "The chain to run.", ChainTypes));
 
-  ~ChainBase() { DLOG(DEBUG) << "~ChainBase"; }
-
   ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
   bool once{false};

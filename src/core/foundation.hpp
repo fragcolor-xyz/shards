@@ -40,7 +40,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <boost/context/continuation.hpp>
 typedef boost::context::continuation CBCoro;
 
-#define TRACE_LINE DLOG(TRACE) << "#trace#"
+#define TRACE_LINE LOG(TRACE) << "#trace#"
 
 CBValidationResult validateConnections(const CBlocks chain,
                                        CBValidationCallback callback,
@@ -102,7 +102,7 @@ struct CBChain {
   };
 
   CBChain(const char *chain_name) : name(chain_name) {
-    DLOG(DEBUG) << "CBChain(): " << name;
+    LOG(TRACE) << "CBChain(): " << name;
   }
 
   ~CBChain() {
@@ -112,7 +112,7 @@ struct CBChain {
       __tsan_destroy_fiber(tsan_coro);
     }
 #endif
-    DLOG(DEBUG) << "~CBChain() " << name;
+    LOG(TRACE) << "~CBChain() " << name;
   }
 
   void warmup(CBContext *context) {
@@ -176,7 +176,7 @@ struct CBChain {
 
   static void deleteRef(CBChainRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
-    DLOG(DEBUG) << (*pref)->name << " chain deleteRef";
+    LOG(TRACE) << (*pref)->name << " chain deleteRef";
     delete pref;
   }
 
@@ -190,7 +190,7 @@ struct CBChain {
 
   static CBChainRef addRef(CBChainRef ref) {
     auto cref = sharedFromRef(ref);
-    DLOG(DEBUG) << cref->name << " chain addRef";
+    LOG(TRACE) << cref->name << " chain addRef";
     auto res = new std::shared_ptr<CBChain>(cref);
     return reinterpret_cast<CBChainRef>(res);
   }

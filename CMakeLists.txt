@@ -81,23 +81,12 @@ if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
   set(CHAINBLOCKS_EXTRA_LINKS "")
 endif()
 
-if(X86)
-  add_compile_definitions(
-    ELPP_THREAD_SAFE
-    ELPP_DISABLE_TRACE_LOGS
-    ELPP_FEATURE_PERFORMANCE_TRACKING
-    ELPP_DEFAULT_LOG_FILE="chainblocks.log"
-    BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-  add_compile_options(-Wall)
-else()
-  add_compile_definitions(
-    ELPP_THREAD_SAFE
-    ELPP_DISABLE_TRACE_LOGS
-    ELPP_FEATURE_PERFORMANCE_TRACKING
-    ELPP_DEFAULT_LOG_FILE="chainblocks.log"
-    BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-  add_compile_options(-Wall)
-endif()
+add_compile_definitions(
+  ELPP_THREAD_SAFE
+  ELPP_FEATURE_PERFORMANCE_TRACKING
+  ELPP_DEFAULT_LOG_FILE="chainblocks.log"
+  BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
+add_compile_options(-Wall)
 
 if(FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
@@ -120,6 +109,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
   # add_compile_options(-flto)
   # add_link_options(-flto)
+  add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
 endif()
 
 add_compile_options(-ffast-math -funroll-loops -Wno-multichar)
