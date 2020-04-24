@@ -18,6 +18,8 @@ struct Evolve {
   static CBTypesInfo outputTypes() { return _outputType; }
   static CBParametersInfo parameters() { return _params; }
 
+  void setup() { _exec.reset(new tf::Executor(2)); }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
@@ -42,6 +44,10 @@ struct Evolve {
       _elitism = value.payload.floatValue;
       break;
     case 7:
+      _threads = std::max(int64_t(1), value.payload.intValue);
+      _exec.reset(new tf::Executor(size_t(_threads)));
+      break;
+    case 8:
       _coros = value.payload.intValue;
       break;
     default:
@@ -66,9 +72,11 @@ struct Evolve {
     case 6:
       return Var(_elitism);
     case 7:
+      return Var(_threads);
+    case 8:
       return Var(_coros);
     default:
-      return CBVar();
+      return Var::Empty;
     }
   }
 
@@ -98,7 +106,7 @@ struct Evolve {
             stop(chain.get());
             Serialization::varFree(i.chain);
           });
-      Tasks.run(cleanupFlow).get();
+      _exec->run(cleanupFlow).get();
 
       _sortedPopulation.clear();
       _population.clear();
@@ -139,7 +147,7 @@ struct Evolve {
               Reader r2(i2Stream);
               Serialization::deserialize(r2, i.fitnessChain);
             });
-        Tasks.run(initFlow).get();
+        _exec->run(initFlow).get();
 
         size_t idx = 0;
         for (auto &i : _population) {
@@ -205,7 +213,7 @@ struct Evolve {
 #if 0
         crossoverFlow.dump(std::cout);
 #endif
-        Tasks.run(crossoverFlow).get();
+        _exec->run(crossoverFlow).get();
 
         _era++;
       }
@@ -231,7 +239,7 @@ struct Evolve {
             },
             _coros);
 
-        Tasks.run(flow).get();
+        _exec->run(flow).get();
       }
 
       {
@@ -248,16 +256,16 @@ struct Evolve {
             },
             _coros);
 
-        Tasks
-            .run_until(flow,
-                       [&]() {
-                         size_t ended = 0;
-                         for (auto &p : _population) {
-                           if (p.node.empty())
-                             ended++;
-                         }
-                         return ended == _population.size();
-                       })
+        _exec
+            ->run_until(flow,
+                        [&]() {
+                          size_t ended = 0;
+                          for (auto &p : _population) {
+                            if (p.node.empty())
+                              ended++;
+                          }
+                          return ended == _population.size();
+                        })
             .get();
       }
 
@@ -281,7 +289,7 @@ struct Evolve {
             },
             _coros);
 
-        Tasks.run(flow).get();
+        _exec->run(flow).get();
       }
 
       {
@@ -300,16 +308,16 @@ struct Evolve {
             },
             _coros);
 
-        Tasks
-            .run_until(flow,
-                       [&]() {
-                         size_t ended = 0;
-                         for (auto &p : _population) {
-                           if (p.node.empty())
-                             ended++;
-                         }
-                         return ended == _population.size();
-                       })
+        _exec
+            ->run_until(flow,
+                        [&]() {
+                          size_t ended = 0;
+                          for (auto &p : _population) {
+                            if (p.node.empty())
+                              ended++;
+                          }
+                          return ended == _population.size();
+                        })
             .get();
       }
 #else
@@ -339,7 +347,7 @@ struct Evolve {
                 node.tick(obs);
               }
             });
-        Tasks.run(runFlow).get();
+        _exec->run(runFlow).get();
       }
 #endif
 
@@ -356,7 +364,7 @@ struct Evolve {
               i.node.terminate();
             });
 
-        Tasks.run(flow).get();
+        _exec->run(flow).get();
       }
 
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
@@ -394,7 +402,7 @@ struct Evolve {
                                }
                                mutate(individual);
                              });
-        Tasks.run(mutFlow).get();
+        _exec->run(mutFlow).get();
       }
 
       _result.clear();
@@ -488,18 +496,14 @@ private:
        "The rate of extinction, 0.1 = 10%.",
        {CoreInfo::FloatType}},
       {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
+      {"Threads", "The number of cpu threads to use.", {CoreInfo::IntType}},
       {"Coroutines",
        "The number of coroutines to run on each thread.",
        {CoreInfo::IntType}}};
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
 
-#if 1
-  using GeneticPool = tf::Executor;
-  tf::Executor &Tasks{Singleton<GeneticPool>::value};
-#else
-  static inline tf::Executor Tasks{1};
-#endif
+  std::unique_ptr<tf::Executor> _exec;
 
   ParamVar _baseChain{};
   ParamVar _fitnessChain{};
@@ -512,6 +516,7 @@ private:
       _crossingOver;
   int64_t _popsize = 64;
   int64_t _coros = 8;
+  int64_t _threads = 2;
   double _mutation = 0.2;
   double _crossover = 0.2;
   double _extinction = 0.1;
