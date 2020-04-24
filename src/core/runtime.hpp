@@ -415,6 +415,9 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
+  case NoopBlock:
+    return input;
+    break;
   default: {
     // NotInline
     return blk->activate(blk, context, &input);
@@ -537,6 +540,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
   auto res = chain->state == CBChain::State::Ended;
 
   chain->state = CBChain::State::Stopped;
+  destroyVar(chain->rootTickInput);
 
   return res;
 }

@@ -55,6 +55,9 @@ enum CBChainState : uint8_t {
 enum CBInlineBlocks : uint32_t {
   NotInline,
 
+  // special flag that will optimize and skip activate calls
+  NoopBlock,
+
   StackPush,
   StackPop,
   StackSwap,

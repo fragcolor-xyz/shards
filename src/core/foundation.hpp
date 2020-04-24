@@ -101,29 +101,19 @@ struct CBChain {
     Ended
   };
 
-  CBChain(const char *chain_name)
-      : looped(false), unsafe(false), name(chain_name), coro(nullptr),
-        rootTickInput(CBVar()), finishedOutput(CBVar()), ownedOutput(false),
-        composedHash(0), context(nullptr), node(nullptr) {
+  CBChain(const char *chain_name) : name(chain_name) {
     DLOG(DEBUG) << "CBChain(): " << name;
-#ifdef CB_USE_TSAN
-    tsan_coro = nullptr;
-#endif
   }
 
   ~CBChain() {
     clear();
-    chainblocks::destroyVar(rootTickInput);
-    DLOG(DEBUG) << "~CBChain() " << name;
-
 #ifdef CB_USE_TSAN
     if (tsan_coro) {
       __tsan_destroy_fiber(tsan_coro);
     }
 #endif
+    DLOG(DEBUG) << "~CBChain() " << name;
   }
-
-  void clear();
 
   void warmup(CBContext *context) {
     for (auto &blk : blocks) {
@@ -151,14 +141,14 @@ struct CBChain {
   }
 
   // Attributes
-  bool looped;
-  bool unsafe;
+  bool looped{false};
+  bool unsafe{false};
 
   std::string name;
 
-  CBCoro *coro;
+  CBCoro *coro{nullptr};
 #ifdef CB_USE_TSAN
-  void *tsan_coro;
+  void *tsan_coro{nullptr};
 #endif
 
   std::atomic<State> state{Stopped};
@@ -166,13 +156,13 @@ struct CBChain {
   CBVar rootTickInput{};
   CBVar previousOutput{};
   CBVar finishedOutput{};
-  bool ownedOutput;
+  bool ownedOutput{false};
 
   std::size_t composedHash;
 
-  CBContext *context;
-  CBNode *node;
-  CBFlow *flow;
+  CBContext *context{nullptr};
+  CBNode *node{nullptr};
+  CBFlow *flow{nullptr};
   std::vector<CBlock *> blocks;
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,
@@ -186,6 +176,7 @@ struct CBChain {
 
   static void deleteRef(CBChainRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
+    DLOG(DEBUG) << (*pref)->name << " chain deleteRef";
     delete pref;
   }
 
@@ -199,10 +190,13 @@ struct CBChain {
 
   static CBChainRef addRef(CBChainRef ref) {
     auto cref = sharedFromRef(ref);
-    auto res = new std::shared_ptr<CBChain>();
-    *res = cref;
+    DLOG(DEBUG) << cref->name << " chain addRef";
+    auto res = new std::shared_ptr<CBChain>(cref);
     return reinterpret_cast<CBChainRef>(res);
   }
+
+private:
+  void clear();
 };
 
 namespace chainblocks {

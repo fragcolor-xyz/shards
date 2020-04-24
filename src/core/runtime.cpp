@@ -1441,6 +1441,8 @@ void CBChain::clear() {
 
   for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
     (*it)->cleanup(*it);
+  }
+  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
     (*it)->destroy(*it);
     // blk is responsible to free itself, as they might use any allocation
     // strategy they wish!
@@ -1895,13 +1897,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     dst.payload.chainValue = CBChain::addRef(src.payload.chainValue);
     break;
   case CBType::Object:
-    if (dst.valueType == CBType::Object) {
-      // in this case destroy the previous instance!
-      // unless we are the same object, in that case
-      // just return
-      if (dst.payload.objectValue == src.payload.objectValue) {
-        return;
-      }
+    if (dst != src) {
       destroyVar(dst);
     }
 

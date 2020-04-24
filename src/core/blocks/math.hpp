@@ -633,7 +633,6 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  using Means = std::variant<ArithMean, GeoMean, HarmoMean>;
   static inline EnumInfo<MeanKind> _meanEnum{"Mean", 'sink', 'mean'};
 
   static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
@@ -646,23 +645,31 @@ struct Mean {
   }
 
   void setParam(int index, CBVar value) {
-    if (value.payload.enumValue == 0) {
-      mean = ArithMean();
-    } else if (value.payload.enumValue == 1) {
-      mean = GeoMean();
-    } else if (value.payload.enumValue == 2) {
-      mean = HarmoMean();
+    mean = MeanKind(value.payload.enumValue);
+  }
+
+  CBVar getParam(int index) { return Var::Enum(mean, 'sink', 'mean'); }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    switch (mean) {
+    case MeanKind::Arithmetic: {
+      ArithMean m;
+      return Var(m(input.payload.seqValue));
+    }
+    case MeanKind::Geometric: {
+      GeoMean m;
+      return Var(m(input.payload.seqValue));
+    }
+    case MeanKind::Harmonic: {
+      HarmoMean m;
+      return Var(m(input.payload.seqValue));
+    }
+    default:
+      throw ActivationError("Invalid mean case.");
     }
   }
 
-  CBVar getParam(int index) { return Var::Enum(mean.index(), 'sink', 'mean'); }
-
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    return Var(
-        std::visit([&](auto &&m) { return m(input.payload.seqValue); }, mean));
-  }
-
-  Means mean{ArithMean()};
+  MeanKind mean{MeanKind::Arithmetic};
 };
 
 template <class T> struct UnaryBin : public T {

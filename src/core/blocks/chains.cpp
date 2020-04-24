@@ -82,12 +82,14 @@ struct ChainBase {
   static inline ParamsInfo chainOnlyParamsInfo =
       ParamsInfo(ParamsInfo::Param("Chain", "The chain to run.", ChainTypes));
 
+  ~ChainBase() { DLOG(DEBUG) << "~ChainBase"; }
+
   ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
-  bool once = false;
-  bool doneOnce = false;
-  bool passthrough = false;
-  RunChainMode mode = RunChainMode::Inline;
+  bool once{false};
+  bool doneOnce{false};
+  bool passthrough{false};
+  RunChainMode mode{RunChainMode::Inline};
   CBValidationResult chainValidation{};
 
   void destroy() { chainblocks::arrayFree(chainValidation.exposedInfo); }
@@ -165,6 +167,8 @@ struct WaitChain : public ChainBase {
   OwnedVar _output{};
 
   void cleanup() {
+    if (chainref.isVariable())
+      chain = nullptr;
     ChainBase::cleanup();
     doneOnce = false;
   }

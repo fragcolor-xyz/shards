@@ -193,7 +193,9 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case StackIndex:
     return a.payload.stackIndexValue == b.payload.stackIndexValue;
   case Object:
-    return a.payload.objectValue == b.payload.objectValue;
+    return a.payload.objectVendorId == b.payload.objectVendorId &&
+           a.payload.objectTypeId == b.payload.objectTypeId &&
+           a.payload.objectValue == b.payload.objectValue;
   case Enum:
     return a.payload.enumVendorId == b.payload.enumVendorId &&
            a.payload.enumTypeId == b.payload.enumTypeId &&

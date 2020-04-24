@@ -500,16 +500,7 @@ void to_json(json &j, const CBChainRef &chainref) {
 
 void from_json(const json &j, CBChainRef &chainref) {
   auto chainName = j.at("name").get<std::string>();
-  auto findIt = chainblocks::Globals::GlobalChains.find(chainName);
-  std::shared_ptr<CBChain> chain;
-  if (findIt != chainblocks::Globals::GlobalChains.end()) {
-    chain = findIt->second;
-    // Need to clean it up for rewrite!
-    chain->clear();
-  } else {
-    chain.reset(new CBChain(chainName.c_str()));
-    chainblocks::Globals::GlobalChains[chainName] = chain;
-  }
+  auto chain = new CBChain(chainName.c_str());
 
   chain->looped = j.at("looped").get<bool>();
   chain->unsafe = j.at("unsafe").get<bool>();
