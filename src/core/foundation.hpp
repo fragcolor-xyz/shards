@@ -946,6 +946,9 @@ struct Serialization {
           if (info.reference) {
             info.reference(output.payload.objectValue);
           }
+        } else {
+          throw chainblocks::CBException(
+              "Failed to find object type in registry.");
         }
       }
       break;

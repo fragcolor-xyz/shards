@@ -2,6 +2,7 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "nlohmann/json.hpp"
+#include "chainblocks.h"
 #include "shared.hpp"
 #include <magic_enum.hpp>
 #include <taskflow/taskflow.hpp>
@@ -38,6 +39,12 @@ void _releaseMemory(CBVar &var) {
   case Chain: {
     CBChain::deleteRef(var.payload.chainValue);
   } break;
+  case CBType::Object: {
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        var.objectInfo && var.objectInfo->release) {
+      var.objectInfo->release(var.payload.objectValue);
+    }
+  } break;
   default:
     break;
   }
@@ -48,18 +55,9 @@ void to_json(json &j, const CBVar &var) {
   auto valType = magic_enum::enum_name(var.valueType);
   switch (var.valueType) {
   case Any:
-  case Object:
-  case Chain: {
-    json jchain = var.payload.chainValue;
-    j = json{{"type", valType}, {"value", jchain}};
-    break;
-  }
-  case EndOfBlittableTypes: {
-    j = json{{"type", 0}, {"value", int(Continue)}};
-    break;
-  }
+  case EndOfBlittableTypes:
   case None: {
-    j = json{{"type", 0}};
+    j = json{{"type", valType}};
     break;
   }
   case Bool: {
@@ -233,6 +231,35 @@ void to_json(json &j, const CBVar &var) {
     }
     break;
   }
+  case Chain: {
+    json jchain = var.payload.chainValue;
+    j = json{{"type", valType}, {"value", jchain}};
+    break;
+  }
+  case Object: {
+    j = json{{"type", valType},
+             {"vendorId", var.payload.objectVendorId},
+             {"typeId", var.payload.objectTypeId}};
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        var.objectInfo && var.objectInfo->serialize) {
+      size_t len = 0;
+      uint8_t *data = nullptr;
+      CBPointer handle = nullptr;
+      if (!var.objectInfo->serialize(var.payload.objectValue, &data, &len,
+                                     &handle)) {
+        throw chainblocks::CBException(
+            "Failed to serialize custom object variable!");
+      }
+      std::vector<uint8_t> buf;
+      buf.resize(len);
+      memcpy(&buf.front(), data, len);
+      j.emplace("data", buf);
+      var.objectInfo->free(handle);
+    } else {
+      throw chainblocks::ActivationError("Custom object cannot be serialized.");
+    }
+    break;
+  }
   };
 }
 
@@ -244,18 +271,10 @@ void from_json(const json &j, CBVar &var) {
   }
   switch (valType.value()) {
   case Any:
-  case Object:
-  case Chain: {
-    var.valueType = Chain;
-    var.payload.chainValue = j.at("value").get<CBChainRef>();
-    break;
-  }
-  case EndOfBlittableTypes: {
-    var = {};
-    break;
-  }
+  case EndOfBlittableTypes:
   case None: {
-    var.valueType = None;
+    var = {};
+    var.valueType = valType.value();
     break;
   }
   case Bool: {
@@ -468,6 +487,33 @@ void from_json(const json &j, CBVar &var) {
     }
     break;
   }
+  case Chain: {
+    var.valueType = Chain;
+    var.payload.chainValue = j.at("value").get<CBChainRef>();
+    break;
+  }
+  case Object: {
+    var.valueType = Object;
+    var.payload.objectVendorId = CBEnum(j.at("vendorId").get<int32_t>());
+    var.payload.objectTypeId = CBEnum(j.at("typeId").get<int32_t>());
+    var.payload.objectValue = nullptr;
+    int64_t id =
+        (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
+    auto it = chainblocks::Globals::ObjectTypesRegister.find(id);
+    if (it != chainblocks::Globals::ObjectTypesRegister.end()) {
+      auto &info = it->second;
+      auto data = j.at("data").get<std::vector<uint8_t>>();
+      var.payload.objectValue = info.deserialize(&data.front(), data.size());
+      var.flags |= CBVAR_FLAGS_USES_OBJINFO;
+      var.objectInfo = &info;
+      if (info.reference)
+        info.reference(var.payload.objectValue);
+    } else {
+      throw chainblocks::ActivationError(
+          "Failed to find object type in registry.");
+    }
+    break;
+  }
   }
 }
 
@@ -475,26 +521,17 @@ void to_json(json &j, const CBChainRef &chainref) {
   auto chain = CBChain::sharedFromRef(chainref);
   std::vector<json> blocks;
   for (auto blk : chain->blocks) {
-    std::vector<json> params;
-    auto paramsDesc = blk->parameters(blk);
-    for (uint32_t i = 0; paramsDesc.len > i; i++) {
-      auto &desc = paramsDesc.elements[i];
-      auto value = blk->getParam(blk, i);
-
-      json param_obj = {{"name", desc.name}, {"value", value}};
-
-      params.push_back(param_obj);
-    }
-
-    json block_obj = {{"name", blk->name(blk)}, {"params", params}};
-
-    blocks.push_back(block_obj);
+    CBVar blkVar{};
+    blkVar.valueType = CBType::Block;
+    blkVar.payload.blockValue = blk;
+    blocks.emplace_back(blkVar);
   }
-
   j = {
-      {"blocks", blocks},        {"name", chain->name},
-      {"looped", chain->looped}, {"unsafe", chain->unsafe},
-      {"version", 0.1},
+      {"blocks", blocks},
+      {"name", chain->name},
+      {"looped", chain->looped},
+      {"unsafe", chain->unsafe},
+      {"version", CHAINBLOCKS_CURRENT_ABI},
   };
 }
 
@@ -505,41 +542,9 @@ void from_json(const json &j, CBChainRef &chainref) {
   chain->looped = j.at("looped").get<bool>();
   chain->unsafe = j.at("unsafe").get<bool>();
 
-  auto jblocks = j.at("blocks");
-  for (auto jblock : jblocks) {
-    auto blkname = jblock.at("name").get<std::string>();
-    auto blk = chainblocks::createBlock(blkname.c_str());
-    if (!blk) {
-      auto errmsg = "Failed to create block of type: " + std::string(blkname);
-      throw chainblocks::ActivationError(errmsg.c_str());
-    }
-
-    // Setup
-    blk->setup(blk);
-
-    // Set params
-    auto jparams = jblock.at("params");
-    auto blkParams = blk->parameters(blk);
-    for (auto jparam : jparams) {
-      auto paramName = jparam.at("name").get<std::string>();
-      auto value = jparam.at("value").get<CBVar>();
-
-      if (value.valueType != None) {
-        for (uint32_t i = 0; blkParams.len > i; i++) {
-          auto &paramInfo = blkParams.elements[i];
-          if (paramName == paramInfo.name) {
-            blk->setParam(blk, i, value);
-            break;
-          }
-        }
-      }
-
-      // Assume block copied memory internally so we can clean up here!!!
-      _releaseMemory(value);
-    }
-
-    // From now on this chain owns the block
-    chain->addBlock(blk);
+  auto blks = j.at("blocks").get<std::vector<CBVar>>();
+  for (auto blk : blks) {
+    chain->addBlock(blk.payload.blockValue);
     chainref = chain->newRef();
   }
 }
