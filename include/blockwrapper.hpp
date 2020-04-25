@@ -71,13 +71,13 @@ template <class T> struct BlockWrapper {
       result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
         auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
         bw->block.destroy();
-        bw->~BlockWrapper<T>();
+        bw->BlockWrapper<T>::~BlockWrapper<T>();
         ::operator delete (bw, std::align_val_t{16});
       });
     } else {
       result->destroy = static_cast<CBDestroyProc>([](CBlock *b) {
         auto bw = reinterpret_cast<BlockWrapper<T> *>(b);
-        bw->~BlockWrapper<T>();
+        bw->BlockWrapper<T>::~BlockWrapper<T>();
         ::operator delete (bw, std::align_val_t{16});
       });
     }

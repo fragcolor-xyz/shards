@@ -17,6 +17,8 @@
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      auto blk = (_name_##Runtime *)block;                                     \
+      blk->_name_##Runtime::~_name_##Runtime();                                \
       ::operator delete ((_name_##Runtime *)block, std::align_val_t{16});      \
     });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
@@ -51,6 +53,8 @@
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      auto blk = (_name_##Runtime *)block;                                     \
+      blk->_name_##Runtime::~_name_##Runtime();                                \
       ::operator delete ((_name_##Runtime *)block, std::align_val_t{16});      \
     });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
@@ -86,6 +90,8 @@
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      auto blk = (_name_##Runtime *)block;                                     \
+      blk->_name_##Runtime::~_name_##Runtime();                                \
       ::operator delete ((_name_##Runtime *)block, std::align_val_t{16});      \
     });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \
@@ -121,6 +127,8 @@
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
+      auto blk = (_name_##Runtime *)block;                                     \
+      blk->_name_##Runtime::~_name_##Runtime();                                \
       ::operator delete ((_name_##Runtime *)block, std::align_val_t{16});      \
     });                                                                        \
     result->inputTypes = static_cast<CBInputTypesProc>(                        \

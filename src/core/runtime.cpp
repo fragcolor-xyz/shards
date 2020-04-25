@@ -280,10 +280,18 @@ void registerCoreBlocks() {
     ~BlockB() { LOG(TRACE) << "B dtor"; }
   };
 
+  struct BlockC : BlockA {
+    PrintOnDtor x;
+  };
+
   using MyBlock = BlockWrapper<BlockB>;
+  using MyBlock2 = BlockWrapper<BlockC>;
 
   auto fooblk = MyBlock::create();
   fooblk->destroy(fooblk);
+
+  auto fooblk2 = MyBlock2::create();
+  fooblk2->destroy(fooblk2);
 #endif
 }
 
