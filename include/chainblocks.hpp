@@ -129,8 +129,8 @@ struct ParameterInfo {
 };
 
 struct Parameters {
-  std::vector<ParameterInfo> _infos;
-  std::vector<CBParameterInfo> _pinfos;
+  std::vector<ParameterInfo> _infos{};
+  std::vector<CBParameterInfo> _pinfos{};
 
   Parameters() = default;
 
@@ -187,8 +187,10 @@ struct Parameters {
   }
 
   operator CBParametersInfo() {
-    CBParametersInfo res{&_pinfos[0], (uint32_t)_pinfos.size(), 0};
-    return res;
+    if (_pinfos.empty())
+      return CBParametersInfo{nullptr, 0, 0};
+    else
+      return CBParametersInfo{&_pinfos.front(), (uint32_t)_pinfos.size(), 0};
   }
 };
 
