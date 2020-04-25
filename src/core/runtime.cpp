@@ -256,6 +256,34 @@ void registerCoreBlocks() {
   assert(ts.elements == nullptr);
   assert(ts.len == 0);
   assert(ts.cap == 0);
+
+  struct PrintOnDtor {
+    ~PrintOnDtor() { LOG(TRACE) << "Inner deleted too!"; }
+  };
+
+  struct BlockA {
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+    static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
+    CBVar activate(CBContext *context, const CBVar &input) {
+      return Var::Empty;
+    }
+
+    PrintOnDtor x;
+
+    ~BlockA() { LOG(TRACE) << "A dtor"; }
+  };
+
+  struct BlockB : BlockA {
+    PrintOnDtor x;
+
+    ~BlockB() { LOG(TRACE) << "B dtor"; }
+  };
+
+  using MyBlock = BlockWrapper<BlockB>;
+
+  auto fooblk = MyBlock::create();
+  fooblk->destroy(fooblk);
 #endif
 }
 
