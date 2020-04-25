@@ -49,7 +49,7 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind ./cbl ../src/tests/general.clj && valgrind ./cbl ../src/tests/variables.clj && valgrind ./cbl ../src/tests/linalg.clj && valgrind ./cbl ../src/tests/channels.clj && valgrind ./cbl ../src/tests/genetic.clj && valgrind ./cbl ../src/tests/lmdb.clj"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/lmdb.clj"
 
   ciWindowsRel:
     runs-on: windows-latest
@@ -155,40 +155,6 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja -DFORCE_CORE2=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=Release ..
-        ninja cbl
-    - name: Test
-      run: |
-        cd build
-        ./cbl ../src/tests/general.clj
-        ./cbl ../src/tests/variables.clj
-        ./cbl ../src/tests/subchains.clj
-        ./cbl ../src/tests/linalg.clj
-        ./cbl ../src/tests/loader.clj
-        ./cbl ../src/tests/network.clj
-        ./cbl ../src/tests/struct.clj
-        ./cbl ../src/tests/flows.clj
-        ./cbl ../src/tests/stack.clj
-        ./cbl ../src/tests/kdtree.clj
-        ./cbl ../src/tests/channels.clj
-        ./cbl ../src/tests/lmdb.clj
-        ./cbl ../src/tests/genetic.clj
-        ./cbl ../src/tests/imaging.clj
-        ./cbl ../src/tests/http.clj
-
-  ciMacAsan:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Deps
-      run: |
-        sudo xcode-select --switch /Applications/Xcode_11.app
-        brew install boost cmake ninja clang-format
-    - name: Build
-      run: |
-        git submodule update --init --recursive
-        mkdir build
-        cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=asan ..
         ninja cbl
     - name: Test
       run: |
