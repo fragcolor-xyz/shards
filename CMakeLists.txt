@@ -113,14 +113,14 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
 else()
   # add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT EMSCRIPTEN)
     add_link_options(-fsanitize=undefined)
   endif()
 endif()
 
 add_compile_options(-ffast-math -funroll-loops -Wno-multichar)
 
-if(X86)
+if(X86 AND NOT EMSCRIPTEN)
   if(NOT FORCE_CORE2)
     # CBVars are m256 basically, so this is extremely good! (AVX!)
     add_compile_options(-march=sandybridge)
@@ -171,7 +171,10 @@ elseif(APPLE)
     /usr/local/lib
     /usr/local/opt/openssl/lib
     )
-else()
+elseif(EMSCRIPTEN)
+  # might vary.. this is mac brew stuff
+  include_directories(/usr/local/include)
+elseif(UNIX)
   set(BOOST_LIBS -lboost_context -lssl -lcrypto)
   set(EXTRA_LIBS -pthread -ldl -lrt)
 endif()
@@ -490,7 +493,6 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
@@ -502,10 +504,18 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
+
+if(NOT EMSCRIPTEN)
+  set(
+    RUNTIME_SRC
+    ${RUNTIME_SRC}
+    ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
+    )
+endif()
 
 add_library(
   cb_static STATIC

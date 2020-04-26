@@ -465,7 +465,7 @@ struct XPendBase {
 };
 
 struct XpendTo : public XPendBase {
-  ThreadShared<std::string> _scratchStr;
+  std::string _scratchStr;
 
   ParamVar _collection{};
 
@@ -545,10 +545,10 @@ struct AppendTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr() += collection.payload.stringValue;
-      _scratchStr() += input.payload.stringValue;
-      Var tmp(_scratchStr());
+      _scratchStr.clear();
+      _scratchStr += collection.payload.stringValue;
+      _scratchStr += input.payload.stringValue;
+      Var tmp(_scratchStr);
       cloneVar(collection, tmp);
       break;
     }
@@ -575,10 +575,10 @@ struct PrependTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr() += input.payload.stringValue;
-      _scratchStr() += collection.payload.stringValue;
-      Var tmp(_scratchStr());
+      _scratchStr.clear();
+      _scratchStr += input.payload.stringValue;
+      _scratchStr += collection.payload.stringValue;
+      Var tmp(_scratchStr);
       cloneVar(collection, tmp);
       break;
     }
