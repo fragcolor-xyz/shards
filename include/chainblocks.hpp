@@ -312,8 +312,13 @@ struct Var : public CBVar {
 
   explicit Var(int a, int b) : CBVar() {
     valueType = Int2;
+#ifndef __EMSCRIPTEN__
     payload.int2Value[0] = a;
     payload.int2Value[1] = b;
+#else
+    payload.int2Value[0] = a;
+    payload.int2Value[1] = b;
+#endif
   }
 
   explicit Var(int a, int b, int c) : CBVar() {
