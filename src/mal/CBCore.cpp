@@ -1492,6 +1492,8 @@ BUILTIN("import") {
   if (!handle) {
     LOG(ERROR) << "dlerror: " << dlerror();
   }
+#else
+  void *handle = nullptr;
 #endif
 
   if (!handle) {
