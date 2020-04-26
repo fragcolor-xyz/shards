@@ -212,7 +212,53 @@ CB_ARRAY_DECL(CBStrings, CBString);
 #define shufflevector __builtin_shuffle
 #endif
 
+#ifndef __EMSCRIPTEN__
 typedef int64_t CBInt2 __attribute__((vector_size(16)));
+#else
+// Emscripten and WASM
+// Do not support vector Int64x2
+// We need to emulate it
+typedef struct CBInt2 {
+  int64_t v[2];
+
+#ifdef __cplusplus
+  int64_t &operator[](int index) { return v[index]; }
+  int64_t operator[](int index) const { return v[index]; }
+
+#define CBINT2_BOOLOP(__op__, __op2__)                                         \
+  CBInt2 __op__(const CBInt2 &other) const {                                   \
+    CBInt2 res;                                                                \
+    res[0] = v[0] __op2__ other.v[0] ? -1 : 0;                                 \
+    res[0] = v[1] __op2__ other.v[1] ? -1 : 0;                                 \
+    return res;                                                                \
+  }
+
+  CBINT2_BOOLOP(operator==, ==)
+  CBINT2_BOOLOP(operator<=, <=)
+  CBINT2_BOOLOP(operator<, <)
+
+#define CBINT2_MATHOP(__op__, __op2__)                                         \
+  CBInt2 __op__(const CBInt2 &other) const {                                   \
+    CBInt2 res;                                                                \
+    res[0] = v[0] __op2__ other.v[0];                                          \
+    res[0] = v[1] __op2__ other.v[1];                                          \
+    return res;                                                                \
+  }
+
+  CBINT2_MATHOP(operator+, +)
+  CBINT2_MATHOP(operator-, -)
+  CBINT2_MATHOP(operator*, *)
+  CBINT2_MATHOP(operator/, /)
+  CBINT2_MATHOP(operator%, %)
+  CBINT2_MATHOP(operator^, ^)
+  CBINT2_MATHOP(operator&, &)
+  CBINT2_MATHOP(operator|, |)
+  CBINT2_MATHOP(operator<<, <<)
+  CBINT2_MATHOP(operator>>, >>)
+
+#endif
+} CBInt2;
+#endif
 typedef int32_t CBInt3 __attribute__((vector_size(16)));
 typedef int32_t CBInt4 __attribute__((vector_size(16)));
 typedef int16_t CBInt8 __attribute__((vector_size(16)));
