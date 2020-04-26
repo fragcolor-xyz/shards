@@ -24,12 +24,12 @@ private:
 template<class T>
 class RefCountedPtr {
 public:
-    RefCountedPtr() : m_object(0) { }
+    RefCountedPtr() : m_object(nullptr) { }
 
-    RefCountedPtr(T* object) : m_object(0)
+    RefCountedPtr(T* object) : m_object(nullptr)
     { acquire(object); }
 
-    RefCountedPtr(const RefCountedPtr& rhs) : m_object(0)
+    RefCountedPtr(const RefCountedPtr& rhs) : m_object(nullptr)
     { acquire(rhs.m_object); }
 
     const RefCountedPtr& operator = (const RefCountedPtr& rhs) {
@@ -58,7 +58,7 @@ public:
 
 private:
     void acquire(T* object) {
-        if (object != NULL) {
+        if (object) {
             object->acquire();
         }
         release();
@@ -66,7 +66,7 @@ private:
     }
 
     void release() {
-        if ((m_object != NULL) && (m_object->release() == 0)) {
+        if (m_object && (m_object->release() == 0)) {
             delete m_object;
         }
     }

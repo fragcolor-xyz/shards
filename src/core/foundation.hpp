@@ -338,7 +338,7 @@ ALWAYS_INLINE inline void arrayDel(T &arr, uint32_t index) {
 
 template <typename T> inline void arrayFree(T &arr) {
   if (arr.elements)
-    ::operator delete (arr.elements, std::align_val_t{16});
+    ::operator delete[](arr.elements, std::align_val_t{16});
   memset(&arr, 0x0, sizeof(T));
 }
 
