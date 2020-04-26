@@ -256,42 +256,6 @@ void registerCoreBlocks() {
   assert(ts.elements == nullptr);
   assert(ts.len == 0);
   assert(ts.cap == 0);
-
-  struct PrintOnDtor {
-    ~PrintOnDtor() { LOG(TRACE) << "Inner deleted too!"; }
-  };
-
-  struct BlockA {
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-    static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
-
-    CBVar activate(CBContext *context, const CBVar &input) {
-      return Var::Empty;
-    }
-
-    PrintOnDtor x;
-
-    ~BlockA() { LOG(TRACE) << "A dtor"; }
-  };
-
-  struct BlockB : BlockA {
-    PrintOnDtor x;
-
-    ~BlockB() { LOG(TRACE) << "B dtor"; }
-  };
-
-  struct BlockC : BlockA {
-    PrintOnDtor x;
-  };
-
-  using MyBlock = BlockWrapper<BlockB>;
-  using MyBlock2 = BlockWrapper<BlockC>;
-
-  auto fooblk = MyBlock::create();
-  fooblk->destroy(fooblk);
-
-  auto fooblk2 = MyBlock2::create();
-  fooblk2->destroy(fooblk2);
 #endif
 }
 
@@ -1766,7 +1730,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
       new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
-    ::operator delete (arr.elements, std::align_val_t{16});
+    ::operator delete[](arr.elements, std::align_val_t{16});
   }
   arr.elements = (decltype(arr.elements))newbuf;
 #endif
