@@ -266,6 +266,9 @@ struct Resume : public ChainBase {
   // symbol, TODO maybe use CBVar refcount!
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!chain) {
+      throw ActivationError("Resume, chain not found.");
+    }
     // assign current flow to the chain we are going to
     chain->flow = context->main->flow;
     // if we have a node also make sure chain knows about it
@@ -300,6 +303,9 @@ struct Resume : public ChainBase {
 
 struct Start : public Resume {
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!chain) {
+      throw ActivationError("Start, chain not found.");
+    }
     // assign current flow to the chain we are going to
     chain->flow = context->main->flow;
     // if we have a node also make sure chain knows about it
@@ -371,7 +377,9 @@ struct BaseRunner : public ChainBase {
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
       // stop the root
-      chainblocks::stop(chain.get());
+      if (!chainblocks::stop(chain.get())) {
+        throw ActivationError("Stepped sub-chain did not end normally.");
+      }
 
       // swap flow to the root chain
       _steppedFlow.chain = chain.get();
