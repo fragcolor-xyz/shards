@@ -1,15 +1,17 @@
 (def root (Node))
 
-(defn mychain [] (Chain "mychain"
-  "Hello chain"
-  (Set "var1" :Global true)
-  (Cond [
-    (--> true) (--> 1 (Set "var2" :Global true))
-    (--> false) (--> 2 (Set "var2" :Global true))
-  ])
-  (Input) ; test Input
-  (Log)
-  (Assert.Is "Initial input" true)))
+(def mychain
+  (Chain
+   "mychain"
+   "Hello chain"
+   (Set "var1" :Global true)
+   (Cond [
+          (--> true) (--> 1 (Set "var2" :Global true))
+          (--> false) (--> 2 (Set "var2" :Global true))
+          ])
+   (Input) ; test Input
+   (Log)
+   (Assert.Is "Initial input" true)))
 
 (def otherChain (Chain "other" 99))
 
@@ -92,15 +94,16 @@
    false ; fail on purpose here
    (Assert.Is true true)))
 
-(schedule root otherChain)
-
-(schedule root (Chain "root"
+(def main
+  (Chain
+  "root"
   "Initial input"
-  (DispatchOnce (mychain))
+  (DispatchOnce mychain)
   (Get "var1")
   (Log "var1")
   (Get "var2")
   (Log "var2")
+  (Detach otherChain)
   (WaitChain otherChain)
   (Log "otherChain")
   (Assert.Is 99 true)
@@ -111,7 +114,7 @@
   20
   (Dispatch funcChain)
 
-  ; test a stepped chain that (Stop)s
+                                        ; test a stepped chain that (Stop)s
   (Step tickedChain)
   (Msg "had message 1")
   (Assert.Is 1 true) ; pause after 1
@@ -175,7 +178,31 @@
   (Start startButNotResumed)
   (Msg "root resumed")
 
-  (Msg "done")
-))
+  (Msg "done")))
 
-(run root 0.1)
+(schedule root main)
+
+(run root)
+
+(schedule
+ root
+ (Chain
+  "save"
+  (Const main)
+  (WriteFile "subchains.chain")
+  (Msg "Serialized!")))
+
+(run root)
+
+(schedule
+ root
+ (Chain
+  "load"
+  (ReadFile "subchains.chain")
+  (ExpectChain) >= .chain
+  (Log "loaded")
+  (ChainRunner .chain)))
+
+(run root)
+
+(prn "DONE")

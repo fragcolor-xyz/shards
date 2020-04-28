@@ -239,6 +239,8 @@ struct Server : public NetworkBase {
     NetworkBase::destroy();
   }
 
+  Serialization deserial;
+
   void do_receive() {
     _socket.socket->async_receive_from(
         boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
@@ -256,7 +258,8 @@ struct Server : public NetworkBase {
 
             // deserialize from buffer
             Reader r(&_recv_buffer().front(), bytes_recvd);
-            Serialization::deserialize(r, pkt.payload);
+            deserial.reset();
+            deserial.deserialize(r, pkt.payload);
 
             // add ready packet to queue
             _queue.push(pkt);
@@ -339,6 +342,8 @@ struct Client : public NetworkBase {
     NetworkBase::destroy();
   }
 
+  Serialization deserial;
+
   void do_receive() {
     _socket.socket->async_receive_from(
         boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
@@ -353,7 +358,8 @@ struct Client : public NetworkBase {
 
             // deserialize from buffer
             Reader r(&_recv_buffer().front(), bytes_recvd);
-            Serialization::deserialize(r, v);
+            deserial.reset();
+            deserial.deserialize(r, v);
 
             // process a packet
             _queue.push(v);
@@ -455,10 +461,13 @@ struct Send {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  Serialization serializer;
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto socket = getSocket(context);
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
-    auto size = Serialization::serialize(input, w);
+    serializer.reset();
+    auto size = serializer.serialize(input, w);
     // use async, avoid syscalls!
     socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size),
                             *socket->endpoint);

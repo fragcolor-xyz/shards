@@ -104,8 +104,8 @@ struct ChainBase {
         return;
 
       visiting.insert(chain.get());
+      DEFER({ visiting.erase(chain.get()); });
       chainblocks::stop(chain.get());
-      visiting.erase(chain.get());
     }
   }
 
@@ -113,14 +113,16 @@ struct ChainBase {
     // Free any previous result!
     chainblocks::arrayFree(chainValidation.exposedInfo);
 
-    // Actualize the chain here...
-    if (chainref->valueType == CBType::Chain) {
-      chain = CBChain::sharedFromRef(chainref->payload.chainValue);
-    } else if (chainref->valueType == String) {
-      // TODO this should be mutex protected
-      chain = chainblocks::Globals::GlobalChains[chainref->payload.stringValue];
-    } else {
-      chain = nullptr;
+    // Actualize the chain here, if we are deserialized
+    // chain might already be populated!
+    if (!chain) {
+      if (chainref->valueType == CBType::Chain) {
+        chain = CBChain::sharedFromRef(chainref->payload.chainValue);
+      } else if (chainref->valueType == String) {
+        chain = Globals::GlobalChains[chainref->payload.stringValue];
+      } else {
+        chain = nullptr;
+      }
     }
 
     // Easy case, no chain...
@@ -159,6 +161,21 @@ struct ChainBase {
   void cleanup() { chainref.cleanup(); }
 
   void warmup(CBContext *ctx) { chainref.warmup(ctx); }
+
+  // Use state to mark the dependency for serialization as well!
+
+  CBVar getState() {
+    if (chain)
+      return Var(chain);
+    else
+      return Var::Empty;
+  }
+
+  void setState(CBVar state) {
+    if (state.valueType == CBType::Chain) {
+      chain = CBChain::sharedFromRef(state.payload.chainValue);
+    }
+  }
 };
 
 struct WaitChain : public ChainBase {
@@ -200,9 +217,8 @@ struct WaitChain : public ChainBase {
     case 2:
       return Var(passthrough);
     default:
-      break;
+      return Var::Empty;
     }
-    return Var();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -211,8 +227,7 @@ struct WaitChain : public ChainBase {
       if (vchain.valueType == CBType::Chain) {
         chain = CBChain::sharedFromRef(vchain.payload.chainValue);
       } else if (vchain.valueType == String) {
-        // TODO this should be mutex protected
-        chain = chainblocks::Globals::GlobalChains[vchain.payload.stringValue];
+        chain = Globals::GlobalChains[vchain.payload.stringValue];
       } else {
         chain = nullptr;
       }
@@ -347,8 +362,8 @@ struct BaseRunner : public ChainBase {
     auto current = context->chainStack.back();
     if (mode == RunChainMode::Inline && chain && current != chain.get()) {
       context->chainStack.push_back(chain.get());
+      DEFER({ context->chainStack.pop_back(); });
       chain->warmup(context);
-      context->chainStack.pop_back();
     }
   }
 
@@ -360,7 +375,6 @@ struct BaseRunner : public ChainBase {
   }
 
   ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
-    LOG(TRACE) << "Stepping...";
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
       // stop the root
