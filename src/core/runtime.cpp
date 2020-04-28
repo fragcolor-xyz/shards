@@ -1599,6 +1599,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 }
 
 bool warmup(CBChain *chain, CBContext *context) {
+  context->chainStack.push_back(chain);
+  DEFER({ context->chainStack.pop_back(); });
   for (auto blk : chain->blocks) {
     try {
       if (blk->warmup)

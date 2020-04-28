@@ -120,14 +120,17 @@ struct Evolve {
       // We reuse those chains for every era
       // Only the DNA changes
       if (_population.size() == 0) {
+        Serialization serial;
         std::stringstream chainStream;
         Writer w1(chainStream);
-        Serialization::serialize(_baseChain, w1);
+        serial.reset();
+        serial.serialize(_baseChain, w1);
         auto chainStr = chainStream.str();
 
         std::stringstream fitnessStream;
         Writer w2(fitnessStream);
-        Serialization::serialize(_fitnessChain, w2);
+        serial.reset();
+        serial.serialize(_fitnessChain, w2);
         auto fitnessStr = fitnessStream.str();
 
         _population.resize(_popsize);
@@ -137,15 +140,18 @@ struct Evolve {
         tf::Taskflow initFlow;
         initFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
+              Serialization deserial;
               std::stringstream i1Stream(chainStr);
               Reader r1(i1Stream);
-              Serialization::deserialize(r1, i.chain);
+              deserial.reset();
+              deserial.deserialize(r1, i.chain);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               gatherMutants(chain.get(), i.mutants);
 
               std::stringstream i2Stream(fitnessStr);
               Reader r2(i2Stream);
-              Serialization::deserialize(r2, i.fitnessChain);
+              deserial.reset();
+              deserial.deserialize(r2, i.fitnessChain);
             });
         _exec->run(initFlow).get();
 
