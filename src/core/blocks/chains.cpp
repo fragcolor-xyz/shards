@@ -269,12 +269,10 @@ struct Resume : public ChainBase {
     if (!chain) {
       throw ActivationError("Resume, chain not found.");
     }
-    // assign current flow to the chain we are going to
-    chain->flow = context->main->flow;
     // if we have a node also make sure chain knows about it
     chain->node = context->main->node;
     // assign the new chain as current chain on the flow
-    chain->flow->chain = chain.get();
+    context->flow->chain = chain.get();
 
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
@@ -283,7 +281,7 @@ struct Resume : public ChainBase {
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain.get());
+      chainblocks::prepare(chain.get(), context->flow);
     }
 
     // Start it if not started
@@ -306,18 +304,16 @@ struct Start : public Resume {
     if (!chain) {
       throw ActivationError("Start, chain not found.");
     }
-    // assign current flow to the chain we are going to
-    chain->flow = context->main->flow;
     // if we have a node also make sure chain knows about it
     chain->node = context->main->node;
     // assign the new chain as current chain on the flow
-    chain->flow->chain = chain.get();
+    context->flow->chain = chain.get();
 
     // ensure chain is not running, we start from top
     chainblocks::stop(chain.get());
 
     // Prepare
-    chainblocks::prepare(chain.get());
+    chainblocks::prepare(chain.get(), context->flow);
 
     // Start
     chainblocks::start(chain.get(), input);
@@ -333,8 +329,6 @@ struct Start : public Resume {
 };
 
 struct BaseRunner : public ChainBase {
-  CBFlow _steppedFlow;
-
   // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
@@ -345,7 +339,6 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     tryStopChain();
-    _steppedFlow.chain = nullptr;
     doneOnce = false;
     ChainBase::cleanup();
   }
@@ -367,29 +360,21 @@ struct BaseRunner : public ChainBase {
   }
 
   ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
-    // We want to allow a sub flow within the stepped chain
-    if (!_steppedFlow.chain) {
-      _steppedFlow.chain = chain.get();
-      chain->flow = &_steppedFlow;
-      chain->node = context->main->node;
-    }
-
+    LOG(TRACE) << "Stepping...";
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
       // stop the root
       if (!chainblocks::stop(chain.get())) {
         throw ActivationError("Stepped sub-chain did not end normally.");
       }
-
-      // swap flow to the root chain
-      _steppedFlow.chain = chain.get();
-      chain->flow = &_steppedFlow;
-      chain->node = context->main->node;
     }
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain.get());
+      chain->node = context->main->node;
+      // Notice we don't share our flow!
+      // let the chain create one by passing null
+      chainblocks::prepare(chain.get(), nullptr);
     }
 
     // Starting
@@ -397,8 +382,8 @@ struct BaseRunner : public ChainBase {
       chainblocks::start(chain.get(), input);
     }
 
-    // tick the flow one rather then directly the chain!
-    chainblocks::tick(_steppedFlow.chain, input);
+    // Tick the chain on the flow that this Step chain created
+    chainblocks::tick(chain->context->flow->chain, input);
   }
 };
 
@@ -465,7 +450,6 @@ struct RunChain : public BaseRunner {
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
-        chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {
@@ -540,7 +524,6 @@ template <class T> struct BaseLoader : public BaseRunner {
         return input;
       } else {
         // Run within the root flow
-        chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {

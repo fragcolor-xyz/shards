@@ -64,14 +64,15 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
 
 struct CBContext {
-  CBContext(CBCoro &&sink, CBChain *starter)
-      : main(starter), continuation(std::move(sink)) {
+  CBContext(CBCoro &&sink, CBChain *starter, CBFlow *flow)
+      : main(starter), flow(flow), continuation(std::move(sink)) {
     chainStack.push_back(starter);
   }
 
   ~CBContext() { chainblocks::arrayFree(stack); }
 
   const CBChain *main;
+  CBFlow *flow;
   std::vector<CBChain *> chainStack;
 
   // Used within the coro& stack! (suspend, etc)
@@ -468,10 +469,10 @@ inline void cleanup(CBChain *chain) {
   chain->variables.clear();
 }
 
-boost::context::continuation run(CBChain *chain,
+boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink);
 
-inline void prepare(CBChain *chain) {
+inline void prepare(CBChain *chain, CBFlow *flow) {
   if (chain->coro)
     return;
 
@@ -482,9 +483,9 @@ inline void prepare(CBChain *chain) {
   chain->tsan_coro = __tsan_create_fiber(0);
   __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
-  chain->coro = new CBCoro(
-      boost::context::callcc([&chain](boost::context::continuation &&sink) {
-        return run(chain, std::move(sink));
+  chain->coro = new CBCoro(boost::context::callcc(
+      [chain, flow](boost::context::continuation &&sink) {
+        return run(chain, flow, std::move(sink));
       }));
 #ifdef CB_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
@@ -662,12 +663,11 @@ struct CBNode {
           chain->blocks,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
-            auto node = reinterpret_cast<CBNode *>(userData);
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              node->errorMsg.assign(errorTxt);
-              node->errorMsg += ", input block: " + std::string(blk->name(blk));
-              throw chainblocks::CBException(node->errorMsg.c_str());
+              throw chainblocks::CBException(
+                  std::string(errorTxt) +
+                  ", input block: " + std::string(blk->name(blk)));
             } else {
               LOG(INFO) << "Validation warning: " << errorTxt
                         << " input block: " << blk->name(blk);
@@ -678,15 +678,10 @@ struct CBNode {
       freeDerivedInfo(data.inputType);
     }
 
-    auto flow = std::make_shared<CBFlow>();
-    flow->chain = chain;
-    flows.push_back(flow);
     chain->node = this;
-    chain->flow = flow.get();
-
     observer.before_prepare(chain);
-    chainblocks::prepare(chain);
-
+    // create a flow as well
+    chainblocks::prepare(chain, _flows.emplace_back(new CBFlow{chain}).get());
     observer.before_start(chain);
     chainblocks::start(chain, input);
   }
@@ -699,13 +694,8 @@ struct CBNode {
   template <class Observer>
   bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
-    _runningFlows = flows;
+    _runningFlows = _flows;
     for (auto &flow : _runningFlows) {
-      // make sure flow is actually the current one
-      // since this chain might be moved into another flow!
-      if (flow.get() != flow->chain->flow)
-        continue;
-
       observer.before_tick(flow->chain);
       chainblocks::tick(flow->chain, input);
       if (!chainblocks::isRunning(flow->chain)) {
@@ -713,9 +703,8 @@ struct CBNode {
         if (!chainblocks::stop(flow->chain)) {
           noErrors = false;
         }
-        flows.remove(flow);
+        _flows.remove(flow);
         flow->chain->node = nullptr;
-        flow->chain->flow = nullptr;
       }
     }
     return noErrors;
@@ -727,12 +716,11 @@ struct CBNode {
   }
 
   void terminate() {
-    for (auto &flow : flows) {
+    for (auto &flow : _flows) {
       chainblocks::stop(flow->chain);
       flow->chain->node = nullptr;
-      flow->chain->flow = nullptr;
     }
-    flows.clear();
+    _flows.clear();
     // find dangling variables, notice but do not destroy
     for (auto var : variables) {
       if (var.second.refcount > 0) {
@@ -744,23 +732,21 @@ struct CBNode {
 
   void remove(CBChain *chain) {
     chainblocks::stop(chain);
-    flows.remove_if([chain](const std::shared_ptr<CBFlow> &flow) {
-      return flow->chain == chain;
-    });
+    _flows.remove_if([chain](auto &flow) { return flow->chain == chain; });
     chain->node = nullptr;
-    chain->flow = nullptr;
   }
 
-  bool empty() { return flows.empty(); }
+  bool empty() { return _flows.empty(); }
 
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,
                      boost::alignment::aligned_allocator<
                          std::pair<const std::string, CBVar>, 16>>
       variables;
-  std::list<std::shared_ptr<CBFlow>> flows;
+
+private:
+  std::list<std::shared_ptr<CBFlow>> _flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
-  std::string errorMsg;
 };
 
 #endif

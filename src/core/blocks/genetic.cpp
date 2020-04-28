@@ -883,7 +883,8 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   auto chain = CBChain::sharedFromRef(individual.chain.payload.chainValue);
   // we need to hack this in as we run out of context
   CBCoro foo{};
-  CBContext ctx(std::move(foo), chain.get());
+  CBFlow flow{};
+  CBContext ctx(std::move(foo), chain.get(), &flow);
   ctx.chainStack.push_back(chain.get());
   std::for_each(
       std::begin(individual.mutants), std::end(individual.mutants),

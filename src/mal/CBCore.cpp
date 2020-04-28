@@ -1161,7 +1161,7 @@ BUILTIN("prepare") {
       nullptr);
   chainblocks::arrayFree(chainValidation.exposedInfo);
   chain->node = &TLSRootNode;
-  chainblocks::prepare(chain.get());
+  chainblocks::prepare(chain.get(), nullptr);
   return mal::nilValue();
 }
 

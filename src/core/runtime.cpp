@@ -1617,7 +1617,7 @@ bool warmup(CBChain *chain, CBContext *context) {
   return true;
 }
 
-boost::context::continuation run(CBChain *chain,
+boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink) {
   auto running = true;
 
@@ -1631,7 +1631,8 @@ boost::context::continuation run(CBChain *chain,
   }
 
   // Create a new context and copy the sink in
-  CBContext context(std::move(sink), chain);
+  CBFlow anonFlow{chain};
+  CBContext context(std::move(sink), chain, flow ? flow : &anonFlow);
 #ifdef CB_USE_TSAN
   context.tsan_handle = chain->tsan_coro;
 #endif
@@ -1644,12 +1645,16 @@ boost::context::continuation run(CBChain *chain,
   if (!warmup(chain, &context)) {
     chain->state = CBChain::State::Failed;
     context.stopFlow(Var::Empty);
+    LOG(ERROR) << "chain " << chain->name << " warmup failed.";
     goto endOfChain;
   }
 
   context.continuation = context.continuation.resume();
-  if (context.shouldStop()) // We might have stopped before even starting!
+  if (context.shouldStop()) {
+    // We might have stopped before even starting!
+    LOG(ERROR) << "chain " << chain->name << " stopped before starting.";
     goto endOfChain;
+  }
 
   while (running) {
     running = chain->looped;
@@ -1698,6 +1703,9 @@ endOfChain:
   // errors and the next eventual stop() should avoid resuming
   if (chain->state != CBChain::State::Failed)
     chain->state = CBChain::State::Ended;
+
+  LOG(TRACE) << "chain " << chain->name << " ended.";
+
   return std::move(context.continuation);
 }
 

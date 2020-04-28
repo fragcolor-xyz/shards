@@ -162,7 +162,6 @@ struct CBChain {
 
   CBContext *context{nullptr};
   CBNode *node{nullptr};
-  CBFlow *flow{nullptr};
   std::vector<CBlock *> blocks;
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,

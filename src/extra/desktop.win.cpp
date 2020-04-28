@@ -156,7 +156,7 @@ EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
             nullptr); // detached don't share context!
         chainblocks::arrayFree(chainValidation.exposedInfo);
         if (gHookChain) {
-          chainblocks::prepare(gHookChain.get());
+          chainblocks::prepare(gHookChain.get(), nullptr);
           chainblocks::start(gHookChain.get());
           chainblocks::sleep(0);
         }
