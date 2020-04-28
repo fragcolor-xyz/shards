@@ -201,7 +201,9 @@
   (ReadFile "subchains.chain")
   (ExpectChain) >= .chain
   (Log "loaded")
-  (ChainRunner .chain)))
+  ;; We must do this here! cos .chain will try to resume self
+  (ChainRunner .chain :Mode RunChainMode.Detached)
+  (WaitChain .chain)))
 
 (run root)
 
