@@ -238,10 +238,10 @@ struct Evolve {
             [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
-              i.node.terminate();
+              i.node->terminate();
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node.schedule(chain.get());
+              i.node->schedule(chain.get());
             },
             _coros);
 
@@ -257,8 +257,8 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              if (!i.node.empty())
-                i.node.tick();
+              if (!i.node->empty())
+                i.node->tick();
             },
             _coros);
 
@@ -267,7 +267,7 @@ struct Evolve {
                         [&]() {
                           size_t ended = 0;
                           for (auto &p : _population) {
-                            if (p.node.empty())
+                            if (p.node->empty())
                               ended++;
                           }
                           return ended == _population.size();
@@ -285,13 +285,13 @@ struct Evolve {
             [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
-              i.node.terminate();
+              i.node->terminate();
               // compute the fitness
               TickObserver obs{i};
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node.schedule(obs, fitchain.get(), chain->finishedOutput);
+              i.node->schedule(obs, fitchain.get(), chain->finishedOutput);
             },
             _coros);
 
@@ -307,9 +307,9 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              if (!i.node.empty()) {
+              if (!i.node->empty()) {
                 TickObserver obs{i};
-                i.node.tick(obs);
+                i.node->tick(obs);
               }
             },
             _coros);
@@ -319,7 +319,7 @@ struct Evolve {
                         [&]() {
                           size_t ended = 0;
                           for (auto &p : _population) {
-                            if (p.node.empty())
+                            if (p.node->empty())
                               ended++;
                           }
                           return ended == _population.size();
@@ -335,22 +335,21 @@ struct Evolve {
         tf::Taskflow runFlow;
         runFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
-              CBNode node;
               TickObserver obs{i};
 
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              node.schedule(chain.get());
+              i.node->schedule(chain.get());
               while (!node.empty()) {
-                node.tick();
+                i.node->tick();
               }
 
               // compute the fitness
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              node.schedule(obs, fitchain.get(), chain->finishedOutput);
-              while (!node.empty()) {
-                node.tick(obs);
+              i.node->schedule(obs, fitchain.get(), chain->finishedOutput);
+              while (!i.node->empty()) {
+                i.node->tick(obs);
               }
             });
         _exec->run(runFlow).get();
@@ -367,7 +366,7 @@ struct Evolve {
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
               stop(fitchain.get());
-              i.node.terminate();
+              i.node->terminate();
             });
 
         _exec->run(flow).get();
@@ -445,7 +444,7 @@ private:
     // We need many of them cos we use threads
     CBVar fitnessChain{};
     // The node we run on
-    CBNode node{};
+    std::shared_ptr<CBNode> node{CBNode::make()};
 
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;

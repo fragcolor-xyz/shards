@@ -173,7 +173,7 @@ struct ChainBase {
 
   void setState(CBVar state) {
     if (state.valueType == CBType::Chain) {
-      chain = CBChain::sharedFromRef(state.payload.chainValue);
+      chain = std::move(CBChain::sharedFromRef(state.payload.chainValue));
     }
   }
 };
@@ -370,7 +370,9 @@ struct BaseRunner : public ChainBase {
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
     if (!chainblocks::isRunning(chain.get())) {
       // validated during infer not here! (false)
-      context->main->node->schedule(chain.get(), input, false);
+      auto node = context->main->node.lock();
+      if (node)
+        node->schedule(chain.get(), input, false);
     }
   }
 
@@ -635,7 +637,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   }
 };
 
-struct ChainRunner : public BaseLoader<ChainLoader> {
+struct ChainRunner : public BaseLoader<ChainRunner> {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Chain", "The chain variable to compose and run.",
                         CoreInfo::ChainVarType),
@@ -665,7 +667,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     if (index == 0) {
       _chain = value;
     } else {
-      BaseLoader<ChainLoader>::setParam(index, value);
+      BaseLoader<ChainRunner>::setParam(index, value);
     }
   }
 
@@ -673,17 +675,17 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     if (index == 0) {
       return _chain;
     } else {
-      return BaseLoader<ChainLoader>::getParam(index);
+      return BaseLoader<ChainRunner>::getParam(index);
     }
   }
 
   void cleanup() {
-    BaseLoader<ChainLoader>::cleanup();
+    BaseLoader<ChainRunner>::cleanup();
     _chain.cleanup();
   }
 
   void warmup(CBContext *context) {
-    BaseLoader<ChainLoader>::warmup(context);
+    BaseLoader<ChainRunner>::warmup(context);
     _chain.warmup(context);
   }
 
@@ -748,7 +750,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
       doWarmup(context);
     }
 
-    return BaseLoader<ChainLoader>::activate(context, input);
+    return BaseLoader<ChainRunner>::activate(context, input);
   }
 };
 

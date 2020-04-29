@@ -175,6 +175,8 @@ struct CBChainProvider;
 struct CBContext;
 
 struct CBNode;
+struct CBNodeRefOpaque;
+typedef struct CBNodeRefOpaque *CBNodeRef;
 
 struct CBFlow;
 
@@ -818,10 +820,10 @@ typedef struct CBChain *(__cdecl *CBCreateChain)(const char *name,
                                                  CBBool unsafe);
 typedef void(__cdecl *CBDestroyChain)(struct CBChain *chain);
 
-typedef struct CBNode *(__cdecl *CBCreateNode)();
-typedef void(__cdecl *CBDestroyNode)(struct CBNode *chain);
-typedef void(__cdecl *CBSchedule)(struct CBNode *node, struct CBChain *chain);
-typedef CBBool(__cdecl *CBTick)(struct CBNode *node);
+typedef CBNodeRef(__cdecl *CBCreateNode)();
+typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
+typedef void(__cdecl *CBSchedule)(CBNodeRef node, struct CBChain *chain);
+typedef CBBool(__cdecl *CBTick)(CBNodeRef node);
 typedef void(__cdecl *CBSleep)(double seconds, CBBool runCallbacks);
 
 #define CB_ARRAY_TYPE(_array_, _value_)                                        \

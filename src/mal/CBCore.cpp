@@ -301,16 +301,15 @@ private:
 
 class malCBNode : public malValue, public malRoot {
 public:
-  malCBNode() : m_node(new CBNode()) { LOG(TRACE) << "Created a CBNode"; }
+  malCBNode() : m_node(std::move(CBNode::make())) {
+    LOG(TRACE) << "Created a CBNode";
+  }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
   ~malCBNode() {
     // unref all we hold  first
     m_refs.clear();
-
-    assert(m_node);
-    delete m_node;
     LOG(TRACE) << "Deleted a CBNode";
   }
 
@@ -320,7 +319,7 @@ public:
     return stream.str();
   }
 
-  CBNode *value() const { return m_node; }
+  CBNode *value() const { return m_node.get(); }
 
   void schedule(malCBChain *chain) {
     auto cp = CBChain::sharedFromRef(chain->value());
@@ -337,7 +336,7 @@ public:
   }
 
 private:
-  CBNode *m_node;
+  std::shared_ptr<CBNode> m_node;
 };
 
 class malCBVar : public malValue, public malRoot {
@@ -1139,7 +1138,7 @@ BUILTIN("schedule") {
 }
 
 // used in chains without a node (manually prepared etc)
-thread_local CBNode TLSRootNode;
+thread_local std::shared_ptr<CBNode> TLSRootNode{CBNode::make()};
 
 BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
@@ -1160,7 +1159,7 @@ BUILTIN("prepare") {
       },
       nullptr);
   chainblocks::arrayFree(chainValidation.exposedInfo);
-  chain->node = &TLSRootNode;
+  chain->node = TLSRootNode->shared_from_this();
   chainblocks::prepare(chain.get(), nullptr);
   return mal::nilValue();
 }

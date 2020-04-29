@@ -161,7 +161,7 @@ class Node : public ValueBase {
 public:
   Node(const token::Token &token, const std::shared_ptr<Environment> &env)
       : ValueBase(token, env) {
-    _node = std::make_shared<CBNode>();
+    _node = CBNode::make();
   }
 
 private:
