@@ -116,6 +116,7 @@ struct Evolve {
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
     return op([&]() {
+      LOG(TRACE) << "Evolve, first run, init";
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes
@@ -166,6 +167,8 @@ struct Evolve {
 
         _era = 0;
       } else {
+        LOG(TRACE) << "Evolve, crossover";
+
         // do crossover here, populating tasks properly
         tf::Taskflow crossoverFlow;
         _crossingOver.clear();
@@ -228,6 +231,7 @@ struct Evolve {
       // We run chains up to completion
       // From validation to end, every iteration/era
       // We run in such a way to allow coroutines + threads properly
+      LOG(TRACE) << "Evolve, schedule chains";
       {
         tf::Taskflow flow;
 
@@ -247,7 +251,7 @@ struct Evolve {
 
         _exec->run(flow).get();
       }
-
+      LOG(TRACE) << "Evolve, run chains";
       {
         tf::Taskflow flow;
 
@@ -274,7 +278,7 @@ struct Evolve {
                         })
             .get();
       }
-
+      LOG(TRACE) << "Evolve, schedule fitness";
       {
         tf::Taskflow flow;
 
@@ -297,7 +301,7 @@ struct Evolve {
 
         _exec->run(flow).get();
       }
-
+      LOG(TRACE) << "Evolve, run fitness";
       {
         tf::Taskflow flow;
 
@@ -355,7 +359,7 @@ struct Evolve {
         _exec->run(runFlow).get();
       }
 #endif
-
+      LOG(TRACE) << "Evolve, stopping all chains";
       { // Stop all the population chains
         tf::Taskflow flow;
 
@@ -372,12 +376,14 @@ struct Evolve {
         _exec->run(flow).get();
       }
 
+      LOG(TRACE) << "Evolve, sorting";
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
                    std::reference_wrapper<Individual> b) {
                   return a.get().fitness > b.get().fitness;
                 });
 
+      LOG(TRACE) << "Evolve, resetting flags";
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
@@ -394,6 +400,7 @@ struct Evolve {
                       id.parent1Idx = -1;
                     });
 
+      LOG(TRACE) << "Evolve, run mutations";
       // Do mutations at end, yet when contexts are still valid!
       // since we might need them
       {
@@ -410,6 +417,7 @@ struct Evolve {
         _exec->run(mutFlow).get();
       }
 
+      LOG(TRACE) << "Evolve, era done";
       _result.clear();
       _result.emplace_back(Var(_sortedPopulation.front().get().fitness));
       _result.emplace_back(_sortedPopulation.front().get().chain);

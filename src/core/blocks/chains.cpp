@@ -173,7 +173,7 @@ struct ChainBase {
 
   void setState(CBVar state) {
     if (state.valueType == CBType::Chain) {
-      chain = std::move(CBChain::sharedFromRef(state.payload.chainValue));
+      chain = CBChain::sharedFromRef(state.payload.chainValue);
     }
   }
 };

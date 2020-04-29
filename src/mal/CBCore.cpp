@@ -301,9 +301,7 @@ private:
 
 class malCBNode : public malValue, public malRoot {
 public:
-  malCBNode() : m_node(std::move(CBNode::make())) {
-    LOG(TRACE) << "Created a CBNode";
-  }
+  malCBNode() : m_node(CBNode::make()) { LOG(TRACE) << "Created a CBNode"; }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
@@ -1027,8 +1025,10 @@ BUILTIN(">>!") { return mal::nilValue(); }
 
 BUILTIN("&>") { return mal::nilValue(); }
 
+BUILTIN(">==") { return mal::nilValue(); }
+
 std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
-  enum State { Get, Set, Update, Ref, Push, PushNoClear };
+  enum State { Get, Set, SetGlobal, Update, Ref, Push, PushNoClear };
   State state = Get;
   std::vector<malCBlockPtr> res;
   while (begin != end) {
@@ -1039,6 +1039,12 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
           res.emplace_back(makeVarBlock(v, "Get"));
         } else if (state == Set) {
           res.emplace_back(makeVarBlock(v, "Set"));
+          state = Get;
+        } else if (state == SetGlobal) {
+          auto blk = makeVarBlock(v, "Set");
+          // set :Global true
+          blk->value()->setParam(blk->value(), 2, chainblocks::Var(true));
+          res.emplace_back(blk);
           state = Get;
         } else if (state == Update) {
           res.emplace_back(makeVarBlock(v, "Update"));
@@ -1065,6 +1071,8 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
     } else if (auto *v = DYNAMIC_CAST(malBuiltIn, next)) {
       if (v->name() == ">=") {
         state = Set;
+      } else if (v->name() == ">==") {
+        state = SetGlobal;
       } else if (v->name() == ">") {
         state = Update;
       } else if (v->name() == "&>") {

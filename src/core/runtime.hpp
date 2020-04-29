@@ -509,6 +509,9 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
   if (result)
     cloneVar(*result, chain->finishedOutput);
 
+  if (chain->state == CBChain::State::Stopped)
+    return true;
+
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
     if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
