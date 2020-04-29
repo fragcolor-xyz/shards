@@ -823,10 +823,16 @@ struct Serialization {
     memset(&output, 0x0, sizeof(CBVar));
   }
 
-  // notice we don't clear those refs! they must be weak
   std::unordered_map<std::string, CBChainRef> chains;
 
-  void reset() { chains.clear(); }
+  void reset() {
+    for (auto &ref : chains) {
+      CBChain::deleteRef(ref.second);
+    }
+    chains.clear();
+  }
+
+  ~Serialization() { reset(); }
 
   template <class BinaryReader>
   void deserialize(BinaryReader &read, CBVar &output) {
@@ -1079,7 +1085,7 @@ struct Serialization {
 
       auto chain = new CBChain(&buf[0]);
       output.payload.chainValue = chain->newRef();
-      chains.emplace(&buf[0], output.payload.chainValue);
+      chains.emplace(&buf[0], CBChain::addRef(output.payload.chainValue));
       read((uint8_t *)&chain->looped, 1);
       read((uint8_t *)&chain->unsafe, 1);
       // blocks len
@@ -1336,7 +1342,7 @@ struct Serialization {
       if (chains.count(chain->name) > 0) {
         break;
       }
-      chains.emplace(chain->name, input.payload.chainValue);
+      chains.emplace(chain->name, CBChain::addRef(input.payload.chainValue));
 
       { // Looped & Unsafe
         write((const uint8_t *)&chain->looped, 1);
