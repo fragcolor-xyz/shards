@@ -308,6 +308,7 @@ public:
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
   ~malCBNode() {
+    m_node->terminate();
     // unref all we hold  first
     m_refs.clear();
     LOG(TRACE) << "Deleted a CBNode";
