@@ -499,15 +499,17 @@ void callExitCallbacks() {
 }
 
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
-  assert(ctx->main->node);
-  CBVar &v = ctx->main->node->variables[name];
+  auto node = ctx->main->node.lock();
+  assert(node);
+  CBVar &v = node->variables[name];
   v.refcount++;
   v.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &v;
 }
 
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
-  assert(ctx->main->node);
+  auto node = ctx->main->node.lock();
+  assert(node);
 
   // try find a chain variable
   // from top to bottom of chain stack
@@ -525,8 +527,8 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
 
   // Was not in chains.. find in global node,
   // if fails create on top chain
-  auto it = ctx->main->node->variables.find(name);
-  if (it != ctx->main->node->variables.end()) {
+  auto it = node->variables.find(name);
+  if (it != node->variables.end()) {
     // found, lets get out here
     CBVar &cv = it->second;
     cv.refcount++;
@@ -817,15 +819,24 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.destroyChain = [](CBChain *chain) { delete chain; };
 
-  result.createNode = []() { return new CBNode(); };
+  result.createNode = []() {
+    return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
+  };
 
-  result.destroyNode = [](CBNode *node) { delete node; };
+  result.destroyNode = [](CBNodeRef node) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    delete snode;
+  };
 
-  result.schedule = [](CBNode *node, CBChain *chain) { node->schedule(chain); };
+  result.schedule = [](CBNodeRef node, CBChain *chain) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->schedule(chain);
+  };
 
-  result.tick = [](CBNode *node) {
-    node->tick();
-    if (node->empty())
+  result.tick = [](CBNodeRef node) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->tick();
+    if ((*snode)->empty())
       return false;
     else
       return true;
@@ -1434,11 +1445,6 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 }
 
 void CBChain::clear() {
-  if (node) {
-    node->remove(this);
-    node = nullptr;
-  }
-
   for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
     (*it)->cleanup(*it);
   }

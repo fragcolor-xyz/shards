@@ -163,7 +163,7 @@ struct CBChain {
 
   CBContext *context{nullptr};
 
-  CBNode *node{nullptr};
+  std::weak_ptr<CBNode> node;
 
   std::vector<CBlock *> blocks;
 
@@ -179,10 +179,13 @@ struct CBChain {
 
   static void deleteRef(CBChainRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
-    LOG(TRACE) << (*pref)->name << " chain deleteRef";
+    LOG(TRACE) << (*pref)->name
+               << " chain deleteRef - use_count: " << pref->use_count();
     delete pref;
   }
 
+  // Dangerous, this really should be used when we START
+  // using the shared ref and only ONCE at the start of it!
   CBChainRef newRef() {
     return reinterpret_cast<CBChainRef>(new std::shared_ptr<CBChain>(this));
   }
@@ -193,7 +196,8 @@ struct CBChain {
 
   static CBChainRef addRef(CBChainRef ref) {
     auto cref = sharedFromRef(ref);
-    LOG(TRACE) << cref->name << " chain addRef";
+    LOG(TRACE) << cref->name
+               << " chain addRef - use_count: " << cref.use_count();
     auto res = new std::shared_ptr<CBChain>(cref);
     return reinterpret_cast<CBChainRef>(res);
   }

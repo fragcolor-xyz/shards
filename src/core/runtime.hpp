@@ -635,7 +635,15 @@ struct RuntimeCallbacks {
 };
 }; // namespace chainblocks
 
-struct CBNode {
+struct CBNode : public std::enable_shared_from_this<CBNode> {
+  static std::shared_ptr<CBNode> make() {
+    return std::shared_ptr<CBNode>(new CBNode());
+  }
+
+  static std::shared_ptr<CBNode> *makePtr() {
+    return new std::shared_ptr<CBNode>(new CBNode());
+  }
+
   ~CBNode() { terminate(); }
 
   struct EmptyObserver {
@@ -649,7 +657,7 @@ struct CBNode {
   template <class Observer>
   void schedule(Observer observer, CBChain *chain, CBVar input = {},
                 bool validate = true) {
-    if (chain->node)
+    if (chain->node.lock())
       throw chainblocks::CBException(
           "schedule failed, chain was already scheduled!");
 
@@ -677,7 +685,7 @@ struct CBNode {
       freeDerivedInfo(data.inputType);
     }
 
-    chain->node = this;
+    chain->node = shared_from_this();
     observer.before_prepare(chain);
     // create a flow as well
     chainblocks::prepare(chain, _flows.emplace_back(new CBFlow{chain}).get());
@@ -703,7 +711,6 @@ struct CBNode {
           noErrors = false;
         }
         _flows.remove(flow);
-        flow->chain->node = nullptr;
       }
     }
     return noErrors;
@@ -717,7 +724,6 @@ struct CBNode {
   void terminate() {
     for (auto &flow : _flows) {
       chainblocks::stop(flow->chain);
-      flow->chain->node = nullptr;
     }
     _flows.clear();
     // find dangling variables, notice but do not destroy
@@ -727,12 +733,6 @@ struct CBNode {
       }
     }
     variables.clear();
-  }
-
-  void remove(CBChain *chain) {
-    chainblocks::stop(chain);
-    _flows.remove_if([chain](auto &flow) { return flow->chain == chain; });
-    chain->node = nullptr;
   }
 
   bool empty() { return _flows.empty(); }
@@ -746,6 +746,7 @@ struct CBNode {
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
   std::list<std::shared_ptr<CBFlow>> _runningFlows;
+  CBNode() = default;
 };
 
 namespace chainblocks {
@@ -822,7 +823,8 @@ struct Serialization {
     memset(&output, 0x0, sizeof(CBVar));
   }
 
-  std::unordered_map<std::string, CBChain *> chains;
+  // notice we don't clear those refs! they must be weak
+  std::unordered_map<std::string, CBChainRef> chains;
 
   void reset() { chains.clear(); }
 
@@ -1068,16 +1070,16 @@ struct Serialization {
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
 
-      auto loadNodeVars = chains.size() == 0;
       // search if we already have this chain!
       auto cit = chains.find(&buf[0]);
       if (cit != chains.end()) {
-        output.payload.chainValue = cit->second->newRef();
+        output.payload.chainValue = CBChain::addRef(cit->second);
         break;
       }
 
       auto chain = new CBChain(&buf[0]);
-      chains.emplace(&buf[0], chain);
+      output.payload.chainValue = chain->newRef();
+      chains.emplace(&buf[0], output.payload.chainValue);
       read((uint8_t *)&chain->looped, 1);
       read((uint8_t *)&chain->unsafe, 1);
       // blocks len
@@ -1101,21 +1103,6 @@ struct Serialization {
         CBVar tmp{};
         deserialize(read, tmp);
         chain->variables[&buf[0]] = tmp;
-      }
-      output.payload.chainValue = chain->newRef();
-      if (loadNodeVars) {
-        // variables len
-        read((uint8_t *)&len, sizeof(uint32_t));
-        auto varsLen = len;
-        for (uint32_t i = 0; i < varsLen; i++) {
-          read((uint8_t *)&len, sizeof(uint32_t));
-          buf.resize(len + 1);
-          read((uint8_t *)&buf[0], len);
-          buf[len] = 0;
-          CBVar tmp{};
-          deserialize(read, tmp);
-          chain->node->variables[&buf[0]] = tmp;
-        }
       }
       break;
     }
@@ -1345,12 +1332,11 @@ struct Serialization {
         total += len;
       }
 
-      auto storeNodeVars = chains.size() == 0;
       // stop here if we had it already
       if (chains.count(chain->name) > 0) {
         break;
       }
-      chains.emplace(chain->name, chain);
+      chains.emplace(chain->name, input.payload.chainValue);
 
       { // Looped & Unsafe
         write((const uint8_t *)&chain->looped, 1);
@@ -1385,24 +1371,6 @@ struct Serialization {
         // Serialization discards anything cept payload
         // That is what we want anyway!
         total += serialize(var.second, write);
-      }
-      if (storeNodeVars) {
-        if (!chain->node || chain->node->variables.size() == 0) {
-          uint32_t len = 0;
-          write((const uint8_t *)&len, sizeof(uint32_t));
-          total += sizeof(uint32_t);
-        } else {
-          for (auto &var : chain->node->variables) {
-            uint32_t len = uint32_t(var.first.size());
-            write((const uint8_t *)&len, sizeof(uint32_t));
-            total += sizeof(uint32_t);
-            write((const uint8_t *)var.first.c_str(), len);
-            total += len;
-            // Serialization discards anything cept payload
-            // That is what we want anyway!
-            total += serialize(var.second, write);
-          }
-        }
       }
       break;
     }

@@ -770,31 +770,48 @@
      (ExpectString)
      (Stop))))))
 
-(schedule Root
-          (Chain
-           "SaveBinary"
-           (Const testChain)
-           (WriteFile "testChain.bin")))
-(if (run Root 0.001 100) nil (throw "Root tick failed"))
+(prn "Doing SaveBinary")
 
-(schedule Root
-          (Chain
-           "LoadBinary"
-           (ReadFile "testChain.bin")
-           (ExpectChain) >= .loadedChain (Log)
-           (ChainRunner .loadedChain :Mode RunChainMode.Detached)
-           (WaitChain .loadedChain)
-           (Assert.Is "global1" true)
-           (Get .global1 :Global true :Default "nope")
-           (Assert.Is "global1" true)
-           (Log)))
+(def saveBinary
+  (Chain
+   "SaveBinary"
+   (Const testChain)
+   (WriteFile "testChain.bin")))
+(schedule Root saveBinary)
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
+;; For now Node holds ref...
+(def Root (Node))
+(def saveBinary nil)
+
+(prn "Doing LoadBinary")
+
+(def loadBinary
+  (Chain
+   "LoadBinary"
+   (ReadFile "testChain.bin")
+   (ExpectChain) >= .loadedChain (Log)
+   (ChainRunner .loadedChain :Mode RunChainMode.Detached)
+   (WaitChain .loadedChain)
+   (Assert.Is "global1" true)
+   (Get .global1 :Global true :Default "nope")
+   (Assert.Is "global1" true)
+   (Log)))
+(schedule Root loadBinary)
+(if (run Root 0.001 100) nil (throw "Root tick failed"))
+;; For now Node holds ref...
+(def Root (Node))
+(def loadBinary nil)
+
+(prn "Doing normal run")
 
 (schedule Root testChain)
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
-
+;; For now Node holds ref...
 (def Root (Node))
 (def testChain nil)
+(def inner1 nil)
+
+(prn "Doing LoopedChain")
 
 (def loopedChain (Chain "LoopedChain" :Looped
   10 (Push "loopVar1")
