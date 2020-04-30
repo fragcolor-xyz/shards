@@ -28,7 +28,6 @@
    (Msg "two - Done")
    ))
 
-(prepare chain2)
 (schedule Root chain1)
 (run Root 0.1)
 
