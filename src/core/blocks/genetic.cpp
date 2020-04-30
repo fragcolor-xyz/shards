@@ -91,7 +91,7 @@ struct Evolve {
 
     CBInstanceData vdata{};
     vdata.chain = data.chain;
-    auto res = validateConnections(
+    auto res = composeChain(
         bchain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -108,7 +108,7 @@ struct Evolve {
     arrayFree(res.exposedInfo);
 
     vdata.inputType = res.outputType;
-    res = validateConnections(
+    res = composeChain(
         fchain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -748,7 +748,7 @@ struct Mutant {
             }
           }
         } else if (mut.valueType == Seq) {
-          auto res = validateConnections(
+          auto res = composeChain(
               mut.payload.seqValue,
               [](const CBlock *errorBlock, const char *errorTxt,
                  bool nonfatalWarning, void *userData) {},

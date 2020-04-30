@@ -766,7 +766,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
-    return validateConnections(chain, callback, userData, data);
+    return composeChain(chain, callback, userData, data);
   };
 
   result.runChain = [](CBChain *chain, CBContext *context, CBVar input) {
@@ -775,7 +775,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
                              void *userData, CBInstanceData data) {
-    return validateConnections(blocks, callback, userData, data);
+    return composeChain(blocks, callback, userData, data);
   };
 
   result.validateSetParam = [](CBlock *block, int index, CBVar param,
@@ -1183,10 +1183,9 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data,
-                                       bool globalsOnly) {
+CBValidationResult composeChain(const std::vector<CBlock *> &chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data, bool globalsOnly) {
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1311,30 +1310,30 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   return result;
 }
 
-CBValidationResult validateConnections(const CBChain *chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
-  return validateConnections(chain->blocks, callback, userData, data, true);
+CBValidationResult composeChain(const CBChain *chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
+  return composeChain(chain->blocks, callback, userData, data, true);
 }
 
-CBValidationResult validateConnections(const CBlocks chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+CBValidationResult composeChain(const CBlocks chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
   }
-  return validateConnections(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, false);
 }
 
-CBValidationResult validateConnections(const CBSeq chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+CBValidationResult composeChain(const CBSeq chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i].payload.blockValue);
   }
-  return validateConnections(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, false);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {

@@ -97,138 +97,6 @@ static HWND AsHWND(const CBVar &var) {
   return NULL;
 }
 
-typedef void *(__cdecl *cbLispCreateFunc)(const char *path);
-typedef CBVar(__cdecl *cbLispEvalFunc)(void *env, const char *str);
-
-struct HookInstance {
-  HINSTANCE dll = nullptr;
-  HOOKPROC hookProc = nullptr;
-  cbLispCreateFunc linit = nullptr;
-  cbLispEvalFunc leval = nullptr;
-  int refcount = 0;
-
-  void init() {
-    dll = LoadLibrary(TEXT("libcb.dll"));
-    if (!dll) {
-      throw CBException("Failed to find and open libcb.dll!");
-    }
-    hookProc = (HOOKPROC)GetProcAddress(dll, "DesktopHookCallback");
-    assert(hookProc);
-    linit = (cbLispCreateFunc)GetProcAddress(dll, "cbLispCreate");
-    assert(linit);
-    leval = (cbLispEvalFunc)GetProcAddress(dll, "cbLispEval");
-    assert(leval);
-  }
-};
-
-HookInstance gDesktopHook{};
-bool gDesktopHookLoaded = false;
-std::shared_ptr<CBChain> gHookChain;
-UINT_PTR gCurrentTimer = 0;
-
-extern "C" {
-EXPORTED __cdecl LRESULT DesktopHookCallback(int nCode, WPARAM wParam,
-                                             LPARAM lParam) {
-  // This runs in another process and must initialize the system and load the
-  // script we need
-  if (!gDesktopHookLoaded) {
-    gDesktopHook.init();
-    auto env = gDesktopHook.linit(nullptr); // TODO path
-    auto codeId = "code" + std::to_string(GetCurrentThreadId());
-    auto code = InjectHookBase::getRemoteCode(codeId);
-    if (code.size() > 0) {
-      CBVar res = gDesktopHook.leval(env, code.c_str());
-      if (res.valueType == CBType::Chain) {
-        gHookChain = CBChain::sharedFromRef(res.payload.chainValue);
-        auto chainValidation = validateConnections(
-            gHookChain.get(),
-            [](const CBlock *errorBlock, const char *errorTxt,
-               bool nonfatalWarning, void *userData) {
-              if (!nonfatalWarning) {
-                LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                           << errorTxt;
-                gHookChain = nullptr;
-              } else {
-                LOG(INFO) << "RunChain: warning during inner chain validation: "
-                          << errorTxt;
-              }
-            },
-            nullptr); // detached don't share context!
-        chainblocks::arrayFree(chainValidation.exposedInfo);
-        if (gHookChain) {
-          chainblocks::prepare(gHookChain.get(), nullptr);
-          chainblocks::start(gHookChain.get());
-          chainblocks::sleep(0);
-        }
-      }
-    }
-    gDesktopHookLoaded = true;
-  } else if (gHookChain) {
-    chainblocks::tick(gHookChain.get());
-    chainblocks::sleep(0);
-  }
-  return CallNextHookEx(0, nCode, wParam, lParam);
-}
-};
-
-struct InjectHook : public InjectHookBase {
-  HHOOK _hook = nullptr;
-  std::string _codeId;
-
-  void setup() {
-    if (!gDesktopHook.dll) {
-      gDesktopHook.init();
-      gDesktopHook.refcount++;
-    } else {
-      gDesktopHook.refcount++;
-    }
-  }
-
-  void destroy() {
-    if (_hook) {
-      UnhookWindowsHookEx(_hook);
-      _hook = nullptr;
-    }
-
-    gDesktopHook.refcount--;
-    if (gDesktopHook.refcount == 0) {
-      FreeLibrary(gDesktopHook.dll);
-      gDesktopHook.dll = nullptr;
-      gDesktopHook.refcount = 0;
-    }
-  }
-
-  void cleanup() {
-    if (_hook) {
-      UnhookWindowsHookEx(_hook);
-      _hook = nullptr;
-    }
-
-    if (_codeId.size() > 0) {
-      deleteRemoteCode(_codeId);
-    }
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    auto hwnd = AsHWND(input);
-    if (hwnd) {
-      if (!_hook) {
-        auto threadId = GetWindowThreadProcessId(hwnd, NULL);
-        _codeId = "code" + std::to_string(threadId);
-        setRemoteCode(_codeId, _code);
-        _hook = SetWindowsHookEx(WH_CALLWNDPROC, gDesktopHook.hookProc,
-                                 gDesktopHook.dll, threadId);
-        if (!_hook) {
-          throw ActivationError("Failed to hook window process!");
-        }
-      }
-      return input;
-    } else {
-      throw ActivationError("Input object was not a Desktop's window!");
-    }
-  };
-};
-
 struct PID : public PIDBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto hwnd = AsHWND(input);
@@ -1188,18 +1056,6 @@ RUNTIME_BLOCK_outputTypes(PID);
 RUNTIME_BLOCK_activate(PID);
 RUNTIME_BLOCK_END(PID);
 
-RUNTIME_BLOCK(Desktop, InjectHook);
-RUNTIME_BLOCK_setup(InjectHook);
-RUNTIME_BLOCK_cleanup(InjectHook);
-RUNTIME_BLOCK_destroy(InjectHook);
-RUNTIME_BLOCK_inputTypes(InjectHook);
-RUNTIME_BLOCK_outputTypes(InjectHook);
-RUNTIME_BLOCK_activate(InjectHook);
-RUNTIME_BLOCK_parameters(InjectHook);
-RUNTIME_BLOCK_setParam(InjectHook);
-RUNTIME_BLOCK_getParam(InjectHook);
-RUNTIME_BLOCK_END(InjectHook);
-
 RUNTIME_BLOCK(Desktop, IsForeground);
 RUNTIME_BLOCK_inputTypes(IsForeground);
 RUNTIME_BLOCK_outputTypes(IsForeground);
@@ -1419,7 +1275,6 @@ void registerDesktopBlocks() {
   REGISTER_BLOCK(Desktop, HasWindow);
   REGISTER_BLOCK(Desktop, WaitWindow);
   REGISTER_BLOCK(Desktop, PID);
-  REGISTER_BLOCK(Desktop, InjectHook);
   REGISTER_BLOCK(Desktop, IsForeground);
   REGISTER_BLOCK(Desktop, SetForeground);
   REGISTER_BLOCK(Desktop, NotForeground);

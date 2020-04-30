@@ -166,7 +166,7 @@ struct ChainBase {
     dataCopy.chain = chain.get();
 
     // We need to validate the sub chain to figure it out!
-    chainValidation = validateConnections(
+    chainValidation = composeChain(
         chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -731,7 +731,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     _chain.warmup(context);
   }
 
-  void composeChain(CBContext *context) {
+  void doCompose(CBContext *context) {
     CBInstanceData data{};
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
@@ -744,7 +744,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     visiting.insert(chain.get());
 
     // We need to validate the sub chain to figure it out!
-    auto res = validateConnections(
+    auto res = composeChain(
         chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -773,7 +773,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
       // Compose and hash in a thread
       auto asyncRes =
           std::async(std::launch::async, [this, context, chainVar]() {
-            composeChain(context);
+            doCompose(context);
             chain->composedHash = std::hash<CBVar>()(chainVar);
           });
 

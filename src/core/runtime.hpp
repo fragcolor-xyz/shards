@@ -47,18 +47,20 @@ private:
 };
 
 [[nodiscard]] CBValidationResult
-validateConnections(const std::vector<CBlock *> &chain,
-                    CBValidationCallback callback, void *userData,
-                    CBInstanceData data, bool globalsOnly);
-[[nodiscard]] CBValidationResult
-validateConnections(const CBlocks chain, CBValidationCallback callback,
-                    void *userData, CBInstanceData data = CBInstanceData());
-[[nodiscard]] CBValidationResult
-validateConnections(const CBSeq chain, CBValidationCallback callback,
-                    void *userData, CBInstanceData data = CBInstanceData());
-[[nodiscard]] CBValidationResult
-validateConnections(const CBChain *chain, CBValidationCallback callback,
-                    void *userData, CBInstanceData data = CBInstanceData());
+composeChain(const std::vector<CBlock *> &chain, CBValidationCallback callback,
+             void *userData, CBInstanceData data, bool globalsOnly);
+[[nodiscard]] CBValidationResult composeChain(const CBlocks chain,
+                                              CBValidationCallback callback,
+                                              void *userData,
+                                              CBInstanceData data);
+[[nodiscard]] CBValidationResult composeChain(const CBSeq chain,
+                                              CBValidationCallback callback,
+                                              void *userData,
+                                              CBInstanceData data);
+[[nodiscard]] CBValidationResult composeChain(const CBChain *chain,
+                                              CBValidationCallback callback,
+                                              void *userData,
+                                              CBInstanceData data);
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
@@ -677,7 +679,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       CBInstanceData data{};
       data.chain = chain;
       data.inputType = deriveTypeInfo(input);
-      auto validation = validateConnections(
+      auto validation = composeChain(
           chain->blocks,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {

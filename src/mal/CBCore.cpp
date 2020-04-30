@@ -441,9 +441,10 @@ struct ChainFileWatcher {
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
             data.shared = shared;
+            data.chain = chain.get();
 
             // run validation to infertypes and specialize
-            auto chainValidation = validateConnections(
+            auto chainValidation = composeChain(
                 chain.get(),
                 [](const CBlock *errorBlock, const char *errorTxt,
                    bool nonfatalWarning, void *userData) {
@@ -1153,7 +1154,10 @@ BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
   ARG(malCBChain, chainvar);
   auto chain = CBChain::sharedFromRef(chainvar->value());
-  auto chainValidation = validateConnections(
+  CBInstanceData data{};
+  data.chain = chain.get();
+  chain->node = TLSRootNode->shared_from_this();
+  auto chainValidation = composeChain(
       chain.get(),
       [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
          void *userData) {
@@ -1166,9 +1170,8 @@ BUILTIN("prepare") {
                     << errorTxt;
         }
       },
-      nullptr);
+      nullptr, data);
   chainblocks::arrayFree(chainValidation.exposedInfo);
-  chain->node = TLSRootNode->shared_from_this();
   chainblocks::prepare(chain.get(), nullptr);
   return mal::nilValue();
 }

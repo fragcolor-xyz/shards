@@ -42,9 +42,9 @@ typedef boost::context::continuation CBCoro;
 
 #define TRACE_LINE LOG(TRACE) << "#trace#"
 
-CBValidationResult validateConnections(const CBlocks chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data);
+CBValidationResult composeChain(const CBlocks chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data);
 
 namespace chainblocks {
 constexpr uint32_t FragCC = 'frag'; // 1718772071
@@ -626,7 +626,7 @@ struct InternalCore {
                                            CBValidationCallback callback,
                                            void *userData,
                                            CBInstanceData data) {
-    return validateConnections(blocks, callback, userData, data);
+    return composeChain(blocks, callback, userData, data);
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
