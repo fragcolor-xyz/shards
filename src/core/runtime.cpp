@@ -954,6 +954,7 @@ struct ValidationContext {
 
   CBlock *bottom{};
   CBlock *next{};
+  CBChain *chain{};
 
   CBValidationCallback cb{};
   void *userData{};
@@ -984,6 +985,7 @@ void validateConnection(ValidationContext &ctx) {
   if (ctx.bottom->compose) {
     CBInstanceData data{};
     data.block = ctx.bottom;
+    data.chain = ctx.chain;
     data.inputType = previousOutput;
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
@@ -1185,11 +1187,13 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data,
                                        bool globalsOnly) {
-  auto ctx = ValidationContext();
+  ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
+  ctx.chain = data.chain;
   ctx.userData = userData;
+
   for (uint32_t i = 0; i < data.stack.len; i++) {
     ctx.stackTypes.push_back(data.stack.elements[i]);
   }
@@ -1287,12 +1291,14 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   CBValidationResult result = {ctx.previousOutputType};
+
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
       if (!globalsOnly || type.global)
         chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
+
   if (chain.size() > 0) {
     auto &last = chain.back();
     if (strcmp(last->name(last), "Restart") == 0 ||
@@ -1301,6 +1307,7 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
       result.flowStopper = true;
     }
   }
+
   return result;
 }
 

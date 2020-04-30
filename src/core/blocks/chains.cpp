@@ -104,7 +104,7 @@ struct ChainBase {
         return;
 
       visiting.insert(chain.get());
-      DEFER({ visiting.erase(chain.get()); });
+      DEFER(visiting.erase(chain.get()));
       chainblocks::stop(chain.get());
     }
   }
@@ -129,11 +129,41 @@ struct ChainBase {
     if (!chain)
       return data.inputType;
 
+    assert(data.chain);
+
+    chain->node = data.chain->node;
+
+    auto node = data.chain->node.lock();
+    assert(node);
+
+    if (node->visitedChains.count(chain.get()))
+      return node->visitedChains[chain.get()];
+
     // avoid stackoverflow
     if (visiting.count(chain.get()))
       return data.inputType; // we don't know yet...
 
+    LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
+               << " composing: " << chain->name;
+
+    // we can add early in this case!
+    // useful for Resume/Start
+    if (passthrough) {
+      node->visitedChains.emplace(chain.get(), data.inputType);
+      LOG(TRACE) << "Marking as composed: " << chain->name
+                 << " ptr: " << chain.get();
+    } else if (mode == Stepped) {
+      node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
+      LOG(TRACE) << "Marking as composed: " << chain->name
+                 << " ptr: " << chain.get();
+    }
+
+    // and the subject here
     visiting.insert(chain.get());
+    DEFER(visiting.erase(chain.get()));
+
+    auto dataCopy = data;
+    dataCopy.chain = chain.get();
 
     // We need to validate the sub chain to figure it out!
     chainValidation = validateConnections(
@@ -149,13 +179,21 @@ struct ChainBase {
                       << errorTxt;
           }
         },
-        this, data);
+        this, dataCopy);
 
-    visiting.erase(chain.get());
+    auto outputType = data.inputType;
+    if (!passthrough) {
+      if (mode == Inline)
+        outputType = chainValidation.outputType;
+      else if (mode == Stepped)
+        outputType = CoreInfo::AnyType; // unpredictable
+      else
+        outputType = data.inputType;
+    }
 
-    return passthrough || mode == RunChainMode::Detached
-               ? data.inputType
-               : chainValidation.outputType;
+    node->visitedChains.emplace(chain.get(), outputType);
+
+    return outputType;
   }
 
   void cleanup() { chainref.cleanup(); }
@@ -165,10 +203,12 @@ struct ChainBase {
   // Use state to mark the dependency for serialization as well!
 
   CBVar getState() {
-    if (chain)
+    if (chain) {
       return Var(chain);
-    else
+    } else {
+      LOG(TRACE) << "getState no chain was avail";
       return Var::Empty;
+    }
   }
 
   void setState(CBVar state) {
@@ -267,6 +307,7 @@ struct Resume : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    passthrough = true;
     ChainBase::compose(data);
     return data.inputType;
   }
@@ -613,6 +654,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
       data.shared = _sharedCopy;
+      data.chain = context->chainStack.back();
       _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 
@@ -689,10 +731,11 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     _chain.warmup(context);
   }
 
-  void composeChain() {
+  void composeChain(CBContext *context) {
     CBInstanceData data{};
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
+    data.chain = context->chainStack.back();
 
     // avoid stackoverflow
     if (visiting.count(chain.get()))
@@ -728,10 +771,11 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
     if (_chainHash == 0 || _chainHash != chain->composedHash) {
       // Compose and hash in a thread
-      auto asyncRes = std::async(std::launch::async, [this, chainVar]() {
-        composeChain();
-        chain->composedHash = std::hash<CBVar>()(chainVar);
-      });
+      auto asyncRes =
+          std::async(std::launch::async, [this, context, chainVar]() {
+            composeChain(context);
+            chain->composedHash = std::hash<CBVar>()(chainVar);
+          });
 
       // Wait suspending!
       while (true) {

@@ -593,6 +593,9 @@ struct CBInstanceData {
   // replacing function pointers during compose
   struct CBlock *block;
 
+  // The current chain we are composing
+  struct CBChain *chain;
+
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBTypesInfo stack;

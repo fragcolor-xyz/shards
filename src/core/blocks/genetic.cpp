@@ -80,6 +80,56 @@ struct Evolve {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // we still want to run a compose on the subject, in order
+    // to serialize it properly!
+    assert(_baseChain.valueType == CBType::Chain);
+    assert(_fitnessChain.valueType == CBType::Chain);
+
+    auto bchain = CBChain::sharedFromRef(_baseChain.payload.chainValue);
+    auto fchain = CBChain::sharedFromRef(_fitnessChain.payload.chainValue);
+
+    CBInstanceData vdata{};
+    vdata.chain = data.chain;
+    auto res = validateConnections(
+        bchain.get(),
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Evolve: failed subject chain validation, error: "
+                       << errorTxt;
+            throw CBException("Evolve: failed subject chain validation");
+          } else {
+            LOG(INFO) << "Evolve: warning during subject chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, vdata);
+    arrayFree(res.exposedInfo);
+
+    vdata.inputType = res.outputType;
+    res = validateConnections(
+        fchain.get(),
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Evolve: failed fitness chain validation, error: "
+                       << errorTxt;
+            throw CBException("Evolve: failed fitness chain validation");
+          } else {
+            LOG(INFO) << "Evolve: warning during fitness chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, vdata);
+    if (res.outputType.basicType != CBType::Float) {
+      throw ComposeError("Evolve: fitness chain should output a float!");
+    }
+    arrayFree(res.exposedInfo);
+
+    return _outputType;
+  }
+
   struct Writer {
     std::stringstream &_stream;
     Writer(std::stringstream &stream) : _stream(stream) {}
@@ -494,14 +544,12 @@ private:
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
-      {"Chain",
-       "The chain to optimize and evolve.",
-       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
+      {"Chain", "The chain to optimize and evolve.", {CoreInfo::ChainType}},
       {"Fitness",
        "The fitness chain to run at the end of the main chain evaluation and "
        "using "
        "its last output; should output a Float fitness value.",
-       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
+       {CoreInfo::ChainType}},
       {"Population", "The population size.", {CoreInfo::IntType}},
       {"Mutation", "The rate of mutation, 0.1 = 10%.", {CoreInfo::FloatType}},
       {"Crossover", "The rate of crossover, 0.1 = 10%.", {CoreInfo::FloatType}},
@@ -518,8 +566,8 @@ private:
 
   std::unique_ptr<tf::Executor> _exec;
 
-  ParamVar _baseChain{};
-  ParamVar _fitnessChain{};
+  OwnedVar _baseChain{};
+  OwnedVar _fitnessChain{};
   std::vector<CBVar> _result;
   std::vector<Individual> _population;
   std::vector<std::reference_wrapper<Individual>> _sortedPopulation;

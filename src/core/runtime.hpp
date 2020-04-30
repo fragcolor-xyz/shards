@@ -660,14 +660,22 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   template <class Observer>
   void schedule(Observer observer, CBChain *chain, CBVar input = {},
                 bool validate = true) {
-    if (chain->node.lock())
-      throw chainblocks::CBException(
-          "schedule failed, chain was already scheduled!");
+    // TODO do this better...
+    // this way does not work
+    // if (chain->node.lock())
+    //   throw chainblocks::CBException(
+    //       "schedule failed, chain was already scheduled!");
+
+    // this is to avoid recursion during compose
+    visitedChains.clear();
+
+    chain->node = shared_from_this();
 
     observer.before_compose(chain);
     if (validate) {
       // Validate the chain
       CBInstanceData data{};
+      data.chain = chain;
       data.inputType = deriveTypeInfo(input);
       auto validation = validateConnections(
           chain->blocks,
@@ -688,7 +696,6 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       freeDerivedInfo(data.inputType);
     }
 
-    chain->node = shared_from_this();
     observer.before_prepare(chain);
     // create a flow as well
     chainblocks::prepare(chain, _flows.emplace_back(new CBFlow{chain}).get());
@@ -753,6 +760,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
                      boost::alignment::aligned_allocator<
                          std::pair<const std::string, CBVar>, 16>>
       variables;
+
+  std::unordered_map<CBChain *, CBTypeInfo> visitedChains;
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
@@ -1090,13 +1099,16 @@ struct Serialization {
       // search if we already have this chain!
       auto cit = chains.find(&buf[0]);
       if (cit != chains.end()) {
+        LOG(TRACE) << "Skipping deserializing chain: "
+                   << CBChain::sharedFromRef(cit->second)->name;
         output.payload.chainValue = CBChain::addRef(cit->second);
         break;
       }
 
       auto chain = new CBChain(&buf[0]);
       output.payload.chainValue = chain->newRef();
-      chains.emplace(&buf[0], CBChain::addRef(output.payload.chainValue));
+      chains.emplace(chain->name, CBChain::addRef(output.payload.chainValue));
+      LOG(TRACE) << "Deserializing chain: " << chain->name;
       read((uint8_t *)&chain->looped, 1);
       read((uint8_t *)&chain->unsafe, 1);
       // blocks len
@@ -1351,8 +1363,11 @@ struct Serialization {
 
       // stop here if we had it already
       if (chains.count(chain->name) > 0) {
+        LOG(TRACE) << "Skipping serializing chain: " << chain->name;
         break;
       }
+
+      LOG(TRACE) << "Serializing chain: " << chain->name;
       chains.emplace(chain->name, CBChain::addRef(input.payload.chainValue));
 
       { // Looped & Unsafe
