@@ -660,8 +660,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   };
 
   template <class Observer>
-  void schedule(Observer observer, CBChain *chain, CBVar input = {},
-                bool validate = true) {
+  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain,
+                CBVar input = {}, bool validate = true) {
     // TODO do this better...
     // this way does not work
     // if (chain->node.lock())
@@ -673,11 +673,11 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
     chain->node = shared_from_this();
 
-    observer.before_compose(chain);
+    observer.before_compose(chain.get());
     if (validate) {
       // Validate the chain
       CBInstanceData data{};
-      data.chain = chain;
+      data.chain = chain.get();
       data.inputType = deriveTypeInfo(input);
       auto validation = composeChain(
           chain->blocks,
@@ -698,14 +698,18 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       freeDerivedInfo(data.inputType);
     }
 
-    observer.before_prepare(chain);
+    observer.before_prepare(chain.get());
     // create a flow as well
-    chainblocks::prepare(chain, _flows.emplace_back(new CBFlow{chain}).get());
-    observer.before_start(chain);
-    chainblocks::start(chain, input);
+    chainblocks::prepare(chain.get(),
+                         _flows.emplace_back(new CBFlow{chain.get()}).get());
+    observer.before_start(chain.get());
+    chainblocks::start(chain.get(), input);
+
+    scheduled.insert(chain);
   }
 
-  void schedule(CBChain *chain, CBVar input = {}, bool validate = true) {
+  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = {},
+                bool validate = true) {
     EmptyObserver obs;
     schedule(obs, chain, input, validate);
   }
@@ -735,11 +739,18 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   void terminate() {
+    // stop all visited
+    // ensures all sub/inner chains are stopped
     for (auto &[chain, _] : visitedChains) {
       chainblocks::stop(chain);
       chain->node.reset();
     }
+
     _flows.clear();
+
+    // release all chains
+    scheduled.clear();
+
     // find dangling variables, notice but do not destroy
     for (auto var : variables) {
       if (var.second.refcount > 0) {
@@ -749,11 +760,13 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     variables.clear();
   }
 
-  void remove(CBChain *chain) {
-    chainblocks::stop(chain);
-    _flows.remove_if([chain](auto &flow) { return flow->chain == chain; });
+  void remove(const std::shared_ptr<CBChain> &chain) {
+    chainblocks::stop(chain.get());
+    _flows.remove_if(
+        [chain](auto &flow) { return flow->chain == chain.get(); });
     chain->node.reset();
-    visitedChains.erase(chain);
+    visitedChains.erase(chain.get());
+    scheduled.erase(chain);
   }
 
   bool empty() { return _flows.empty(); }
@@ -765,6 +778,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       variables;
 
   std::unordered_map<CBChain *, CBTypeInfo> visitedChains;
+
+  std::unordered_set<std::shared_ptr<CBChain>> scheduled;
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
@@ -1108,7 +1123,7 @@ struct Serialization {
         break;
       }
 
-      auto chain = new CBChain(&buf[0]);
+      auto chain = CBChain::make(&buf[0]);
       output.payload.chainValue = chain->newRef();
       chains.emplace(chain->name, CBChain::addRef(output.payload.chainValue));
       LOG(TRACE) << "Deserializing chain: " << chain->name;

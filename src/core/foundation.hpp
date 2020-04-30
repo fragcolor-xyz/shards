@@ -90,7 +90,15 @@ ALWAYS_INLINE inline void destroyVar(CBVar &src);
 struct InternalCore;
 } // namespace chainblocks
 
-struct CBChain {
+struct CBChain : public std::enable_shared_from_this<CBChain> {
+  static std::shared_ptr<CBChain> make(std::string_view chain_name) {
+    return std::shared_ptr<CBChain>(new CBChain(chain_name));
+  }
+
+  static std::shared_ptr<CBChain> *makePtr(std::string_view chain_name) {
+    return new std::shared_ptr<CBChain>(new CBChain(chain_name));
+  }
+
   enum State {
     Stopped,
     Prepared,
@@ -100,10 +108,6 @@ struct CBChain {
     Failed,
     Ended
   };
-
-  CBChain(const char *chain_name) : name(chain_name) {
-    LOG(TRACE) << "CBChain() " << name;
-  }
 
   ~CBChain() {
     clear();
@@ -184,10 +188,9 @@ struct CBChain {
     delete pref;
   }
 
-  // Dangerous, this really should be used when we START
-  // using the shared ref and only ONCE at the start of it!
   CBChainRef newRef() {
-    return reinterpret_cast<CBChainRef>(new std::shared_ptr<CBChain>(this));
+    return reinterpret_cast<CBChainRef>(
+        new std::shared_ptr<CBChain>(shared_from_this()));
   }
 
   static CBChainRef weakRef(std::shared_ptr<CBChain> &shared) {
@@ -203,6 +206,10 @@ struct CBChain {
   }
 
 private:
+  CBChain(std::string_view chain_name) : name(chain_name) {
+    LOG(TRACE) << "CBChain() " << name;
+  }
+
   void clear();
 };
 

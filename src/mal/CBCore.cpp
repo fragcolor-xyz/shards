@@ -207,9 +207,9 @@ class malCBChain : public malValue, public malRoot {
 public:
   malCBChain(const MalString &name) {
     LOG(TRACE) << "Created a CBChain - " << name;
-    auto chain = new CBChain(name.c_str());
+    auto chain = CBChain::make(name);
     m_chain = chain->newRef();
-    chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(m_chain);
+    chainblocks::Globals::GlobalChains[name] = chain;
   }
 
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
@@ -306,9 +306,9 @@ public:
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
   ~malCBNode() {
-    m_node->terminate();
-    // unref all we hold  first
+    // Delete all refs first
     m_refs.clear();
+    m_node->terminate();
     LOG(TRACE) << "Deleted a CBNode";
   }
 
@@ -322,7 +322,7 @@ public:
 
   void schedule(malCBChain *chain) {
     auto cp = CBChain::sharedFromRef(chain->value());
-    m_node->schedule(cp.get());
+    m_node->schedule(cp);
     reference(chain);
   }
 

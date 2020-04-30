@@ -413,7 +413,7 @@ struct BaseRunner : public ChainBase {
       // validated during infer not here! (false)
       auto node = context->main->node.lock();
       if (node)
-        node->schedule(chain.get(), input, false);
+        node->schedule(chain, input, false);
     }
   }
 

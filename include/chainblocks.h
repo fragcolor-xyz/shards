@@ -818,14 +818,13 @@ typedef void(__cdecl *CBLog)(const char *msg);
 
 typedef struct CBlock *(__cdecl *CBCreateBlock)(const char *name);
 
-typedef struct CBChain *(__cdecl *CBCreateChain)(const char *name,
-                                                 CBlocks blocks, CBBool looped,
-                                                 CBBool unsafe);
-typedef void(__cdecl *CBDestroyChain)(struct CBChain *chain);
+typedef CBChainRef(__cdecl *CBCreateChain)(const char *name, CBlocks blocks,
+                                           CBBool looped, CBBool unsafe);
+typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
 
 typedef CBNodeRef(__cdecl *CBCreateNode)();
 typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
-typedef void(__cdecl *CBSchedule)(CBNodeRef node, struct CBChain *chain);
+typedef void(__cdecl *CBSchedule)(CBNodeRef node, CBChainRef chain);
 typedef CBBool(__cdecl *CBTick)(CBNodeRef node);
 typedef void(__cdecl *CBSleep)(double seconds, CBBool runCallbacks);
 

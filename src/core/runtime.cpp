@@ -200,7 +200,7 @@ void registerCoreBlocks() {
   // TODO remove when we have better tests/samples
 
   // Test chain DSL
-  auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
+  auto chain1 = std::shared_ptr<CBChain>(Chain("test-chain")
                                              .looped(true)
                                              .let(1)
                                              .block("Log")
@@ -808,16 +808,16 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.createChain = [](const char *name, CBlocks blocks, bool looped,
                           bool unsafe) {
-    auto chain = new CBChain(name);
+    auto chain = CBChain::make(name);
     chain->looped = looped;
     chain->unsafe = unsafe;
     for (uint32_t i = 0; i < blocks.len; i++) {
       chain->addBlock(blocks.elements[i]);
     }
-    return chain;
+    return chain->newRef();
   };
 
-  result.destroyChain = [](CBChain *chain) { delete chain; };
+  result.destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
 
   result.createNode = []() {
     return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
@@ -828,9 +828,9 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     delete snode;
   };
 
-  result.schedule = [](CBNodeRef node, CBChain *chain) {
+  result.schedule = [](CBNodeRef node, CBChainRef chain) {
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    (*snode)->schedule(chain);
+    (*snode)->schedule(CBChain::sharedFromRef(chain));
   };
 
   result.tick = [](CBNodeRef node) {
@@ -1520,8 +1520,8 @@ void installSignalHandlers() {
   std::signal(SIGSEGV, &error_handler);
 }
 
-Chain::operator CBChain *() {
-  auto chain = new CBChain(_name.c_str());
+Chain::operator std::shared_ptr<CBChain>() {
+  auto chain = CBChain::make(_name);
   chain->looped = _looped;
   for (auto blk : _blocks) {
     chain->addBlock(blk);

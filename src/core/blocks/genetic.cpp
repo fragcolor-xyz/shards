@@ -297,7 +297,7 @@ struct Evolve {
               i.node->terminate();
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(chain.get());
+              i.node->schedule(chain);
             },
             _coros);
 
@@ -347,7 +347,7 @@ struct Evolve {
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(obs, fitchain.get(), chain->finishedOutput);
+              i.node->schedule(obs, fitchain, chain->finishedOutput);
             },
             _coros);
 
@@ -395,7 +395,7 @@ struct Evolve {
 
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(chain.get());
+              i.node->schedule(chain);
               while (!node.empty()) {
                 i.node->tick();
               }
