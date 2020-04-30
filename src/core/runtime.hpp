@@ -735,9 +735,9 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   void terminate() {
-    for (auto &flow : _flows) {
-      chainblocks::stop(flow->chain);
-      flow->chain->node.reset();
+    for (auto &[chain, _] : visitedChains) {
+      chainblocks::stop(chain);
+      chain->node.reset();
     }
     _flows.clear();
     // find dangling variables, notice but do not destroy
@@ -753,6 +753,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     chainblocks::stop(chain);
     _flows.remove_if([chain](auto &flow) { return flow->chain == chain; });
     chain->node.reset();
+    visitedChains.erase(chain);
   }
 
   bool empty() { return _flows.empty(); }

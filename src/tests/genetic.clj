@@ -76,7 +76,7 @@
       (Chain
        "evolveme"
        :Looped
-       (Once (--> 0 >= .niters))
+       (Once (--> 0 >== .niters)) ;; global on purpose for testing
        .niters (Math.Inc) > .niters
        (When (IsMore 10) (Stop))
        (Step (Chain "stepped" (Start state1)))
@@ -89,7 +89,7 @@
       :Threads 10
       :Coroutines 1)
      (Log) > .best)
-    1)
+    4)
    .best
    (Log)
    ))

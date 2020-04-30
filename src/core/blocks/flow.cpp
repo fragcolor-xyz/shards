@@ -624,7 +624,7 @@ struct IfBlock {
                            "do not match.");
       }
     }
-    return data.inputType;
+    return _passth ? data.inputType : tres.outputType;
   }
 
   void cleanup() {

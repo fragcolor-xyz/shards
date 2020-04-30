@@ -123,7 +123,9 @@ struct Evolve {
         },
         this, vdata);
     if (res.outputType.basicType != CBType::Float) {
-      throw ComposeError("Evolve: fitness chain should output a float!");
+      throw ComposeError(
+          "Evolve: fitness chain should output a Float, but instead got " +
+          type2Name(res.outputType.basicType));
     }
     arrayFree(res.exposedInfo);
 
