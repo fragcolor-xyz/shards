@@ -212,7 +212,7 @@ CB_ARRAY_DECL(CBStrings, CBString);
 #define shufflevector __builtin_shuffle
 #endif
 
-#ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN_DISABLED__
 typedef int64_t CBInt2 __attribute__((vector_size(16)));
 #else
 // Emscripten and WASM

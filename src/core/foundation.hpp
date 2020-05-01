@@ -36,9 +36,14 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#ifndef __EMSCRIPTEN__
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
 typedef boost::context::continuation CBCoro;
+#else
+#include <emscripten.h>
+typedef emscripten_coroutine CBCoro;
+#endif
 
 #define TRACE_LINE LOG(TRACE) << "#trace#"
 

@@ -5,7 +5,6 @@
 #include "chainblocks.h"
 #include "foundation.hpp"
 #include "shared.hpp"
-#include <taskflow/taskflow.hpp>
 
 namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
@@ -450,13 +449,16 @@ struct Await : public BaseSubFlow {
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
     if (likely(_blocks)) {
+#ifndef __EMSCRIPTEN__
       // avoid nesting, if we are alrady inside a worker
       // run normally
       if (Tasks.this_worker_id() == -1) {
         AsyncOp<InternalCore> op(context);
         op.sidechain(Tasks,
                      [&]() { _blocks.activate(context, input, output); });
-      } else {
+      } else
+#endif
+      {
         _blocks.activate(context, input, output);
       }
     }
@@ -464,7 +466,9 @@ struct Await : public BaseSubFlow {
   }
 
 private:
+#ifndef __EMSCRIPTEN__
   tf::Executor &Tasks{Singleton<tf::Executor>::value};
+#endif
 };
 
 // Not used actually

@@ -17,8 +17,9 @@
 #include <iostream>
 #include <list>
 #include <map>
-#include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<double>;
@@ -449,9 +450,13 @@ inline void cleanup(CBChain *chain) {
     auto blk = *it;
     try {
       blk->cleanup(blk);
-    } catch (boost::context::detail::forced_unwind const &e) {
+    }
+#ifndef __EMSCRIPTEN__
+    catch (boost::context::detail::forced_unwind const &e) {
       throw; // required for Boost Coroutine!
-    } catch (const std::exception &e) {
+    }
+#endif
+    catch (const std::exception &e) {
       LOG(ERROR) << "Block cleanup error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what() << '\n';
@@ -470,8 +475,18 @@ inline void cleanup(CBChain *chain) {
   chain->variables.clear();
 }
 
+#ifndef __EMSCRIPTEN__
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink);
+#else
+struct emcorodata {
+  CBChain *chain;
+  CBFlow *flow;
+  CBCoro *coro;
+};
+
+void emcofunc(void *p);
+#endif
 
 inline void prepare(CBChain *chain, CBFlow *flow) {
   if (chain->coro)
@@ -484,10 +499,21 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
   chain->tsan_coro = __tsan_create_fiber(0);
   __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
+
+#ifndef __EMSCRIPTEN__
   chain->coro = new CBCoro(boost::context::callcc(
       [chain, flow](boost::context::continuation &&sink) {
         return run(chain, flow, std::move(sink));
       }));
+#else
+  chain->coro = new CBCoro();
+  auto data = new emcorodata();
+  data->chain = chain;
+  data->flow = flow;
+  data->coro = chain->coro;
+  *chain->coro = emscripten_coroutine_create(&emcofunc, data, 64 * 1024);
+#endif
+
 #ifdef CB_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
 #endif
@@ -527,7 +553,13 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
       auto curr = __tsan_get_current_fiber();
       __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
+
+#ifndef __EMSCRIPTEN__
       chain->coro->resume();
+#else
+      emscripten_coroutine_next(*chain->coro);
+#endif
+
 #ifdef CB_USE_TSAN
       __tsan_switch_to_fiber(curr, 0);
 #endif
@@ -568,7 +600,13 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
     auto curr = __tsan_get_current_fiber();
     __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
+
+#ifndef __EMSCRIPTEN__
     *chain->coro = chain->coro->resume();
+#else
+    emscripten_coroutine_next(*chain->coro);
+#endif
+
 #ifdef CB_USE_TSAN
     __tsan_switch_to_fiber(curr, 0);
 #endif

@@ -82,11 +82,14 @@ if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
 endif()
 
 add_compile_definitions(
-  ELPP_THREAD_SAFE
   ELPP_FEATURE_PERFORMANCE_TRACKING
   ELPP_DEFAULT_LOG_FILE="chainblocks.log"
   BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 add_compile_options(-Wall)
+
+if(NOT EMSCRIPTEN)
+  add_compile_definitions(ELPP_THREAD_SAFE)
+endif()
 
 if(FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
@@ -140,7 +143,9 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   # custom allocator
-  add_compile_definitions(USE_RPMALLOC)
+  if(NOT EMSCRIPTEN)
+    add_compile_definations(USE_RPMALLOC)
+  endif()
 
   # aggressive inlining
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -172,8 +177,7 @@ elseif(APPLE)
     /usr/local/opt/openssl/lib
     )
 elseif(EMSCRIPTEN)
-  # might vary.. this is mac brew stuff
-  include_directories(/usr/local/include)
+  include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
 elseif(UNIX)
   set(BOOST_LIBS -lboost_context -lssl -lcrypto)
   set(EXTRA_LIBS -pthread -ldl -lrt)
@@ -457,7 +461,7 @@ if(NOT BUILD_CORE_ONLY)
     )
 endif()
 
-if(NOT IOS)
+if(NOT IOS AND NOT EMSCRIPTEN)
   set(CB_EXTRAS
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
@@ -478,8 +482,6 @@ file(GLOB replxx-sources ${replxx-source-patterns})
 
 set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
-  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/mdb.c
-  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/midl.c
   ${replxx-sources}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
@@ -491,20 +493,13 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/core.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/linalg.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CB_EXTRAS}
   )
 
@@ -512,8 +507,17 @@ if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
+    ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/mdb.c
+    ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/midl.c
+    ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
+    ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
 endif()
 
