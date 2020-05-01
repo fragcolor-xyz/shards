@@ -41,8 +41,34 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <boost/context/continuation.hpp>
 typedef boost::context::continuation CBCoro;
 #else
-#include <emscripten.h>
-typedef emscripten_coroutine CBCoro;
+#include <emscripten/fiber.h>
+struct CBCoro {
+  static constexpr int stack_size = 128 * 1024;
+  static constexpr int as_stack_size = 4096;
+
+  static inline thread_local std::unique_ptr<emscripten_fiber_t> main;
+  static inline thread_local uint8_t asyncify_main_stack[as_stack_size];
+
+  CBCoro() {
+    if (!main) {
+      LOG(TRACE) << "EM MAIN FIBER INIT";
+      auto mfiber = new emscripten_fiber_t;
+      main.reset(mfiber);
+      emscripten_fiber_init_from_current_context(mfiber, asyncify_main_stack,
+                                                 as_stack_size);
+    }
+
+    c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
+  }
+
+  ~CBCoro() { ::operator delete[](c_stack, std::align_val_t{16}); }
+
+  emscripten_fiber_t em_fiber;
+  uint8_t asyncify_stack[as_stack_size];
+  uint8_t *c_stack;
+
+  operator bool() const { return true; }
+};
 #endif
 
 #define TRACE_LINE LOG(TRACE) << "#trace#"

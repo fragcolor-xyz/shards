@@ -10,6 +10,7 @@
 #include <memory>
 #include <cassert>
 #include <filesystem>
+#include <cstring>
 
 malValuePtr READ(const String& input);
 String PRINT(malValuePtr ast);
@@ -67,13 +68,18 @@ int malmain(int argc, char* argv[])
     makeArgv(replEnv, argc - 2, argv + 2);
 
     if (argc > 1) {
-        auto scriptPath = std::filesystem::path(argv[1]);
-        replEnv->currentPath(scriptPath.parent_path().string());
-        auto fileonly = scriptPath.filename().string();
-        String filename = escape(fileonly);
-        String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
-        if (out.length() > 0 && out != "nil")
+        if(strcmp(argv[1],"-e") == 0 && argc == 3) {
+            String out = safeRep(argv[2], replEnv);
             std::cout << out << "\n";
+        } else {
+            auto scriptPath = std::filesystem::path(argv[1]);
+            replEnv->currentPath(scriptPath.parent_path().string());
+            auto fileonly = scriptPath.filename().string();
+            String filename = escape(fileonly);
+            String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
+            if (out.length() > 0 && out != "nil")
+                std::cout << out << "\n";
+        }
     } else {
 #ifndef NO_MAL_MAIN
         s_readLine = new ReadLine("./chainblocks-history.txt");

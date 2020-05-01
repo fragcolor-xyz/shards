@@ -485,7 +485,7 @@ struct emcorodata {
   CBCoro *coro;
 };
 
-void emcofunc(void *p);
+extern "C" void emcofunc(void *p);
 #endif
 
 inline void prepare(CBChain *chain, CBFlow *flow) {
@@ -511,7 +511,13 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
   data->chain = chain;
   data->flow = flow;
   data->coro = chain->coro;
-  *chain->coro = emscripten_coroutine_create(&emcofunc, data, 64 * 1024);
+  LOG(TRACE) << "EM FIBER INIT";
+  emscripten_fiber_init(&chain->coro->em_fiber, emcofunc, data,
+                        chain->coro->c_stack, chain->coro->stack_size,
+                        chain->coro->asyncify_stack,
+                        chain->coro->as_stack_size);
+  LOG(TRACE) << "EM FIBER SWAP main->chain";
+  emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
 #endif
 
 #ifdef CB_USE_TSAN
@@ -557,7 +563,8 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 #ifndef __EMSCRIPTEN__
       chain->coro->resume();
 #else
-      emscripten_coroutine_next(*chain->coro);
+      LOG(TRACE) << "EM FIBER SWAP main->chain";
+      emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
 #endif
 
 #ifdef CB_USE_TSAN
@@ -604,7 +611,8 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
 #ifndef __EMSCRIPTEN__
     *chain->coro = chain->coro->resume();
 #else
-    emscripten_coroutine_next(*chain->coro);
+    LOG(TRACE) << "EM FIBER SWAP main->chain";
+    emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
 #endif
 
 #ifdef CB_USE_TSAN

@@ -89,6 +89,8 @@ add_compile_options(-Wall)
 
 if(NOT EMSCRIPTEN)
   add_compile_definitions(ELPP_THREAD_SAFE)
+else()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASYNCIFY=1")
 endif()
 
 if(FORCE_USE_LLD)
@@ -145,17 +147,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
   # custom allocator
   if(NOT EMSCRIPTEN)
     add_compile_definitions(USE_RPMALLOC)
-  endif()
-
-  # aggressive inlining
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_compile_options(-mllvm -inline-threshold=100000)
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-finline-limit=100000)
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    # using Intel C++
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-    # using Visual Studio C++
+    # aggressive inlining
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+      add_compile_options(-mllvm -inline-threshold=100000)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      add_compile_options(-finline-limit=100000)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+      # using Intel C++
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+      # using Visual Studio C++
+    endif()
   endif()
 endif()
 ###

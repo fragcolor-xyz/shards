@@ -465,14 +465,13 @@ struct XPendBase {
 };
 
 struct XpendTo : public XPendBase {
-  std::string _scratchStr;
+  ThreadShared<std::string> _scratchStr;
 
   ParamVar _collection{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  // TODO use xpendTypes...
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
       "Collection", "The collection to add the input to.", xpendTypes));
 
@@ -545,10 +544,10 @@ struct AppendTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr.clear();
-      _scratchStr += collection.payload.stringValue;
-      _scratchStr += input.payload.stringValue;
-      Var tmp(_scratchStr);
+      _scratchStr().clear();
+      _scratchStr() += collection.payload.stringValue;
+      _scratchStr() += input.payload.stringValue;
+      Var tmp(_scratchStr());
       cloneVar(collection, tmp);
       break;
     }
@@ -575,10 +574,10 @@ struct PrependTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr.clear();
-      _scratchStr += input.payload.stringValue;
-      _scratchStr += collection.payload.stringValue;
-      Var tmp(_scratchStr);
+      _scratchStr().clear();
+      _scratchStr() += input.payload.stringValue;
+      _scratchStr() += collection.payload.stringValue;
+      Var tmp(_scratchStr());
       cloneVar(collection, tmp);
       break;
     }
