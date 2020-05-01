@@ -7,10 +7,14 @@
 #include "chainblocks.h"
 #include <future>
 #include <magic_enum.hpp>
+#include <memory>
 #include <nameof.hpp>
 #include <string>
-#include <taskflow/taskflow.hpp>
 #include <vector>
+
+#ifndef __EMSCRIPTEN__
+#include <taskflow/taskflow.hpp>
+#endif
 
 namespace chainblocks {
 // SFINAE tests
@@ -279,6 +283,7 @@ template <class Function> struct Defer {
   ::chainblocks::Defer DEFER_NAME(uniq)([&]() { body; })
 #define DEFER(body) DEFER_DEF(__LINE__, body)
 
+#ifndef __EMSCRIPTEN__
 template <class CB_CORE> struct AsyncOp {
   AsyncOp(CBContext *context) : _context(context) {}
 
@@ -392,6 +397,7 @@ template <class CB_CORE> struct AsyncOp {
 private:
   CBContext *_context;
 };
+#endif
 }; // namespace chainblocks
 
 #endif

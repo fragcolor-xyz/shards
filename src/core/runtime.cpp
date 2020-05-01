@@ -159,21 +159,24 @@ void registerCoreBlocks() {
   registerCastingBlocks();
   registerSerializationBlocks();
   Math::LinAlg::registerBlocks();
-  registerFSBlocks();
   registerJsonBlocks();
-  registerNetworkBlocks();
   registerStructBlocks();
   registerTimeBlocks();
-  // registerOSBlocks();
   Regex::registerBlocks();
-  registerProcessBlocks();
   channels::registerBlocks();
-  Python::registerBlocks();
-  LMDB::registerBlocks();
-  Genetic::registerBlocks();
   Random::registerBlocks();
   Imaging::registerBlocks();
+
+#ifndef __EMSCRIPTEN__
+  // registerOSBlocks();
+  registerFSBlocks();
+  LMDB::registerBlocks();
+  registerProcessBlocks();
+  Genetic::registerBlocks();
+  registerNetworkBlocks();
+  Python::registerBlocks();
   Http::registerBlocks();
+#endif
 
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : Globals::EnumTypesRegister) {
@@ -567,14 +570,22 @@ CBChainState suspend(CBContext *context, double seconds) {
   } else {
     context->next = Clock::now().time_since_epoch() + Duration(seconds);
   }
+
 #ifdef CB_USE_TSAN
   auto curr = __tsan_get_current_fiber();
   __tsan_switch_to_fiber(context->tsan_handle, 0);
 #endif
+
+#ifndef __EMSCRIPTEN__
   context->continuation = context->continuation.resume();
+#else
+  emscripten_yield();
+#endif
+
 #ifdef CB_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
 #endif
+
   return context->getState();
 }
 
@@ -1507,7 +1518,9 @@ void error_handler(int err_sig) {
   }
 
   if (printTrace) {
+#ifndef __EMSCRIPTEN__
     LOG(ERROR) << boost::stacktrace::stacktrace();
+#endif
   }
 
   std::raise(err_sig);
@@ -1568,9 +1581,13 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           break;
         }
       }
-    } catch (boost::context::detail::forced_unwind const &e) {
+    }
+#ifndef __EMSCRIPTEN__
+    catch (boost::context::detail::forced_unwind const &e) {
       throw; // required for Boost Coroutine!
-    } catch (const ActivationError &e) {
+    }
+#endif
+    catch (const ActivationError &e) {
       if (unlikely(e.triggerFailure())) {
         LOG(ERROR) << "Block activation error, failed block: "
                    << std::string(blk->name(blk));
@@ -1631,8 +1648,20 @@ bool warmup(CBChain *chain, CBContext *context) {
   return true;
 }
 
+#ifndef __EMSCRIPTEN__
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
-                                 boost::context::continuation &&sink) {
+                                 boost::context::continuation &&sink)
+#else
+void emcofunc(void *p)
+#endif
+{
+#ifdef __EMSCRIPTEN__
+  auto data = reinterpret_cast<emcorodata *>(p);
+  auto chain = data->chain;
+  auto flow = data->flow;
+  auto coro = data->coro;
+#endif
+
   auto running = true;
 
   // Reset state
@@ -1646,7 +1675,13 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
 
   // Create a new context and copy the sink in
   CBFlow anonFlow{chain};
+#ifndef __EMSCRIPTEN__
   CBContext context(std::move(sink), chain, flow ? flow : &anonFlow);
+#else
+  CBCoro co = *coro;
+  CBContext context(std::move(co), chain, flow ? flow : &anonFlow);
+#endif
+
 #ifdef CB_USE_TSAN
   context.tsan_handle = chain->tsan_coro;
 #endif
@@ -1663,7 +1698,13 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
     goto endOfChain;
   }
 
+// yield after warming up
+#ifndef __EMSCRIPTEN__
   context.continuation = context.continuation.resume();
+#else
+  emscripten_yield();
+#endif
+
   if (context.shouldStop()) {
     // We might have stopped before even starting!
     LOG(ERROR) << "chain " << chain->name << " stopped before starting.";
@@ -1693,7 +1734,11 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
     if (!chain->unsafe && chain->looped) {
       // Ensure no while(true), yield anyway every run
       context.next = Duration(0);
+#ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
+#else
+      emscripten_yield();
+#endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
         LOG(DEBUG) << "chain " << chain->name << " aborted on resume.";
@@ -1720,7 +1765,11 @@ endOfChain:
 
   LOG(TRACE) << "chain " << chain->name << " ended.";
 
+#ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
+#else
+  delete data;
+#endif
 }
 
 template <typename T>

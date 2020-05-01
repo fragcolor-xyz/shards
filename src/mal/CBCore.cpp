@@ -13,7 +13,9 @@
 #include "rigtorp/SPSCQueue.h"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
+#ifndef __EMSCRIPTEN__
 #include <boost/process/environment.hpp>
+#endif
 #include <filesystem>
 #include <set>
 #include <thread>
@@ -1504,10 +1506,14 @@ BUILTIN("import") {
 
 BUILTIN("getenv") {
   CHECK_ARGS_IS(1);
+#ifndef __EMSCRIPTEN__
   ARG(malString, value);
   auto envs = boost::this_process::environment();
   auto env_value = envs[value->value()].to_string();
   return mal::string(env_value);
+#else
+  return mal::nilValue();
+#endif
 }
 
 BUILTIN_ISA("Var?", malCBVar);
