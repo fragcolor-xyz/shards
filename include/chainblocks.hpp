@@ -569,7 +569,7 @@ public:
     return *this;
   }
 
-  operator CBChain *();
+  operator std::shared_ptr<CBChain>();
 
   // -- LEAKS --
   // operator CBVar() {

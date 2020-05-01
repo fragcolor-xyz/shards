@@ -207,9 +207,9 @@ class malCBChain : public malValue, public malRoot {
 public:
   malCBChain(const MalString &name) {
     LOG(TRACE) << "Created a CBChain - " << name;
-    auto chain = new CBChain(name.c_str());
+    auto chain = CBChain::make(name);
     m_chain = chain->newRef();
-    chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(m_chain);
+    chainblocks::Globals::GlobalChains[name] = chain;
   }
 
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
@@ -301,16 +301,14 @@ private:
 
 class malCBNode : public malValue, public malRoot {
 public:
-  malCBNode() : m_node(new CBNode()) { LOG(TRACE) << "Created a CBNode"; }
+  malCBNode() : m_node(CBNode::make()) { LOG(TRACE) << "Created a CBNode"; }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
   ~malCBNode() {
-    // unref all we hold  first
+    // Delete all refs first
     m_refs.clear();
-
-    assert(m_node);
-    delete m_node;
+    m_node->terminate();
     LOG(TRACE) << "Deleted a CBNode";
   }
 
@@ -320,11 +318,11 @@ public:
     return stream.str();
   }
 
-  CBNode *value() const { return m_node; }
+  CBNode *value() const { return m_node.get(); }
 
   void schedule(malCBChain *chain) {
     auto cp = CBChain::sharedFromRef(chain->value());
-    m_node->schedule(cp.get());
+    m_node->schedule(cp);
     reference(chain);
   }
 
@@ -337,7 +335,7 @@ public:
   }
 
 private:
-  CBNode *m_node;
+  std::shared_ptr<CBNode> m_node;
 };
 
 class malCBVar : public malValue, public malRoot {
@@ -443,9 +441,10 @@ struct ChainFileWatcher {
             CBInstanceData data{};
             data.inputType = inputTypeInfo;
             data.shared = shared;
+            data.chain = chain.get();
 
             // run validation to infertypes and specialize
-            auto chainValidation = validateConnections(
+            auto chainValidation = composeChain(
                 chain.get(),
                 [](const CBlock *errorBlock, const char *errorTxt,
                    bool nonfatalWarning, void *userData) {
@@ -1027,8 +1026,10 @@ BUILTIN(">>!") { return mal::nilValue(); }
 
 BUILTIN("&>") { return mal::nilValue(); }
 
+BUILTIN(">==") { return mal::nilValue(); }
+
 std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
-  enum State { Get, Set, Update, Ref, Push, PushNoClear };
+  enum State { Get, Set, SetGlobal, Update, Ref, Push, PushNoClear };
   State state = Get;
   std::vector<malCBlockPtr> res;
   while (begin != end) {
@@ -1039,6 +1040,12 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
           res.emplace_back(makeVarBlock(v, "Get"));
         } else if (state == Set) {
           res.emplace_back(makeVarBlock(v, "Set"));
+          state = Get;
+        } else if (state == SetGlobal) {
+          auto blk = makeVarBlock(v, "Set");
+          // set :Global true
+          blk->value()->setParam(blk->value(), 2, chainblocks::Var(true));
+          res.emplace_back(blk);
           state = Get;
         } else if (state == Update) {
           res.emplace_back(makeVarBlock(v, "Update"));
@@ -1065,6 +1072,8 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
     } else if (auto *v = DYNAMIC_CAST(malBuiltIn, next)) {
       if (v->name() == ">=") {
         state = Set;
+      } else if (v->name() == ">==") {
+        state = SetGlobal;
       } else if (v->name() == ">") {
         state = Update;
       } else if (v->name() == "&>") {
@@ -1139,13 +1148,16 @@ BUILTIN("schedule") {
 }
 
 // used in chains without a node (manually prepared etc)
-thread_local CBNode TLSRootNode;
+thread_local std::shared_ptr<CBNode> TLSRootNode{CBNode::make()};
 
 BUILTIN("prepare") {
   CHECK_ARGS_IS(1);
   ARG(malCBChain, chainvar);
   auto chain = CBChain::sharedFromRef(chainvar->value());
-  auto chainValidation = validateConnections(
+  CBInstanceData data{};
+  data.chain = chain.get();
+  chain->node = TLSRootNode->shared_from_this();
+  auto chainValidation = composeChain(
       chain.get(),
       [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
          void *userData) {
@@ -1158,10 +1170,9 @@ BUILTIN("prepare") {
                     << errorTxt;
         }
       },
-      nullptr);
+      nullptr, data);
   chainblocks::arrayFree(chainValidation.exposedInfo);
-  chain->node = &TLSRootNode;
-  chainblocks::prepare(chain.get());
+  chainblocks::prepare(chain.get(), nullptr);
   return mal::nilValue();
 }
 

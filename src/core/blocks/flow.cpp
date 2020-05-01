@@ -177,7 +177,7 @@ struct Cond {
     // Validate condition chains, altho they do not influence anything we need
     // to report errors
     for (const auto &action : _conditions) {
-      auto validation = validateConnections(
+      auto validation = composeChain(
           action,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
@@ -200,7 +200,7 @@ struct Cond {
     auto first = true;
     auto exposing = true;
     for (const auto &action : _actions) {
-      auto validation = validateConnections(
+      auto validation = composeChain(
           action,
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
@@ -624,7 +624,7 @@ struct IfBlock {
                            "do not match.");
       }
     }
-    return data.inputType;
+    return _passth ? data.inputType : tres.outputType;
   }
 
   void cleanup() {

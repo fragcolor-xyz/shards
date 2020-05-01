@@ -200,7 +200,7 @@ void registerCoreBlocks() {
   // TODO remove when we have better tests/samples
 
   // Test chain DSL
-  auto chain1 = std::unique_ptr<CBChain>(Chain("test-chain")
+  auto chain1 = std::shared_ptr<CBChain>(Chain("test-chain")
                                              .looped(true)
                                              .let(1)
                                              .block("Log")
@@ -256,42 +256,6 @@ void registerCoreBlocks() {
   assert(ts.elements == nullptr);
   assert(ts.len == 0);
   assert(ts.cap == 0);
-
-  struct PrintOnDtor {
-    ~PrintOnDtor() { LOG(TRACE) << "Inner deleted too!"; }
-  };
-
-  struct BlockA {
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-    static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
-
-    CBVar activate(CBContext *context, const CBVar &input) {
-      return Var::Empty;
-    }
-
-    PrintOnDtor x;
-
-    ~BlockA() { LOG(TRACE) << "A dtor"; }
-  };
-
-  struct BlockB : BlockA {
-    PrintOnDtor x;
-
-    ~BlockB() { LOG(TRACE) << "B dtor"; }
-  };
-
-  struct BlockC : BlockA {
-    PrintOnDtor x;
-  };
-
-  using MyBlock = BlockWrapper<BlockB>;
-  using MyBlock2 = BlockWrapper<BlockC>;
-
-  auto fooblk = MyBlock::create();
-  fooblk->destroy(fooblk);
-
-  auto fooblk2 = MyBlock2::create();
-  fooblk2->destroy(fooblk2);
 #endif
 }
 
@@ -535,15 +499,17 @@ void callExitCallbacks() {
 }
 
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
-  assert(ctx->main->node);
-  CBVar &v = ctx->main->node->variables[name];
+  auto node = ctx->main->node.lock();
+  assert(node);
+  CBVar &v = node->variables[name];
   v.refcount++;
   v.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &v;
 }
 
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
-  assert(ctx->main->node);
+  auto node = ctx->main->node.lock();
+  assert(node);
 
   // try find a chain variable
   // from top to bottom of chain stack
@@ -561,8 +527,8 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
 
   // Was not in chains.. find in global node,
   // if fails create on top chain
-  auto it = ctx->main->node->variables.find(name);
-  if (it != ctx->main->node->variables.end()) {
+  auto it = node->variables.find(name);
+  if (it != node->variables.end()) {
     // found, lets get out here
     CBVar &cv = it->second;
     cv.refcount++;
@@ -800,7 +766,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.validateChain = [](CBChain *chain, CBValidationCallback callback,
                             void *userData, CBInstanceData data) {
-    return validateConnections(chain, callback, userData, data);
+    return composeChain(chain, callback, userData, data);
   };
 
   result.runChain = [](CBChain *chain, CBContext *context, CBVar input) {
@@ -809,7 +775,7 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
                              void *userData, CBInstanceData data) {
-    return validateConnections(blocks, callback, userData, data);
+    return composeChain(blocks, callback, userData, data);
   };
 
   result.validateSetParam = [](CBlock *block, int index, CBVar param,
@@ -842,26 +808,35 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
 
   result.createChain = [](const char *name, CBlocks blocks, bool looped,
                           bool unsafe) {
-    auto chain = new CBChain(name);
+    auto chain = CBChain::make(name);
     chain->looped = looped;
     chain->unsafe = unsafe;
     for (uint32_t i = 0; i < blocks.len; i++) {
       chain->addBlock(blocks.elements[i]);
     }
-    return chain;
+    return chain->newRef();
   };
 
-  result.destroyChain = [](CBChain *chain) { delete chain; };
+  result.destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
 
-  result.createNode = []() { return new CBNode(); };
+  result.createNode = []() {
+    return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
+  };
 
-  result.destroyNode = [](CBNode *node) { delete node; };
+  result.destroyNode = [](CBNodeRef node) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    delete snode;
+  };
 
-  result.schedule = [](CBNode *node, CBChain *chain) { node->schedule(chain); };
+  result.schedule = [](CBNodeRef node, CBChainRef chain) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->schedule(CBChain::sharedFromRef(chain));
+  };
 
-  result.tick = [](CBNode *node) {
-    node->tick();
-    if (node->empty())
+  result.tick = [](CBNodeRef node) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->tick();
+    if ((*snode)->empty())
       return false;
     else
       return true;
@@ -979,6 +954,7 @@ struct ValidationContext {
 
   CBlock *bottom{};
   CBlock *next{};
+  CBChain *chain{};
 
   CBValidationCallback cb{};
   void *userData{};
@@ -1009,6 +985,7 @@ void validateConnection(ValidationContext &ctx) {
   if (ctx.bottom->compose) {
     CBInstanceData data{};
     data.block = ctx.bottom;
+    data.chain = ctx.chain;
     data.inputType = previousOutput;
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
@@ -1206,15 +1183,16 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data,
-                                       bool globalsOnly) {
-  auto ctx = ValidationContext();
+CBValidationResult composeChain(const std::vector<CBlock *> &chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data, bool globalsOnly) {
+  ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
   ctx.cb = callback;
+  ctx.chain = data.chain;
   ctx.userData = userData;
+
   for (uint32_t i = 0; i < data.stack.len; i++) {
     ctx.stackTypes.push_back(data.stack.elements[i]);
   }
@@ -1312,12 +1290,14 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
   }
 
   CBValidationResult result = {ctx.previousOutputType};
+
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
       if (!globalsOnly || type.global)
         chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
+
   if (chain.size() > 0) {
     auto &last = chain.back();
     if (strcmp(last->name(last), "Restart") == 0 ||
@@ -1326,33 +1306,34 @@ CBValidationResult validateConnections(const std::vector<CBlock *> &chain,
       result.flowStopper = true;
     }
   }
+
   return result;
 }
 
-CBValidationResult validateConnections(const CBChain *chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
-  return validateConnections(chain->blocks, callback, userData, data, true);
+CBValidationResult composeChain(const CBChain *chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
+  return composeChain(chain->blocks, callback, userData, data, true);
 }
 
-CBValidationResult validateConnections(const CBlocks chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+CBValidationResult composeChain(const CBlocks chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
   }
-  return validateConnections(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, false);
 }
 
-CBValidationResult validateConnections(const CBSeq chain,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+CBValidationResult composeChain(const CBSeq chain,
+                                CBValidationCallback callback, void *userData,
+                                CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i].payload.blockValue);
   }
-  return validateConnections(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, false);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {
@@ -1470,11 +1451,6 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
 }
 
 void CBChain::clear() {
-  if (node) {
-    node->remove(this);
-    node = nullptr;
-  }
-
   for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
     (*it)->cleanup(*it);
   }
@@ -1544,8 +1520,8 @@ void installSignalHandlers() {
   std::signal(SIGSEGV, &error_handler);
 }
 
-Chain::operator CBChain *() {
-  auto chain = new CBChain(_name.c_str());
+Chain::operator std::shared_ptr<CBChain>() {
+  auto chain = CBChain::make(_name);
   chain->looped = _looped;
   for (auto blk : _blocks) {
     chain->addBlock(blk);
@@ -1635,6 +1611,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
 }
 
 bool warmup(CBChain *chain, CBContext *context) {
+  context->chainStack.push_back(chain);
+  DEFER({ context->chainStack.pop_back(); });
   for (auto blk : chain->blocks) {
     try {
       if (blk->warmup)
@@ -1653,7 +1631,7 @@ bool warmup(CBChain *chain, CBContext *context) {
   return true;
 }
 
-boost::context::continuation run(CBChain *chain,
+boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink) {
   auto running = true;
 
@@ -1667,7 +1645,8 @@ boost::context::continuation run(CBChain *chain,
   }
 
   // Create a new context and copy the sink in
-  CBContext context(std::move(sink), chain);
+  CBFlow anonFlow{chain};
+  CBContext context(std::move(sink), chain, flow ? flow : &anonFlow);
 #ifdef CB_USE_TSAN
   context.tsan_handle = chain->tsan_coro;
 #endif
@@ -1680,12 +1659,16 @@ boost::context::continuation run(CBChain *chain,
   if (!warmup(chain, &context)) {
     chain->state = CBChain::State::Failed;
     context.stopFlow(Var::Empty);
+    LOG(ERROR) << "chain " << chain->name << " warmup failed.";
     goto endOfChain;
   }
 
   context.continuation = context.continuation.resume();
-  if (context.shouldStop()) // We might have stopped before even starting!
+  if (context.shouldStop()) {
+    // We might have stopped before even starting!
+    LOG(ERROR) << "chain " << chain->name << " stopped before starting.";
     goto endOfChain;
+  }
 
   while (running) {
     running = chain->looped;
@@ -1734,6 +1717,9 @@ endOfChain:
   // errors and the next eventual stop() should avoid resuming
   if (chain->state != CBChain::State::Failed)
     chain->state = CBChain::State::Ended;
+
+  LOG(TRACE) << "chain " << chain->name << " ended.";
+
   return std::move(context.continuation);
 }
 
@@ -1766,7 +1752,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
       new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
-    ::operator delete (arr.elements, std::align_val_t{16});
+    ::operator delete[](arr.elements, std::align_val_t{16});
   }
   arr.elements = (decltype(arr.elements))newbuf;
 #endif

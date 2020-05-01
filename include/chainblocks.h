@@ -175,6 +175,8 @@ struct CBChainProvider;
 struct CBContext;
 
 struct CBNode;
+struct CBNodeRefOpaque;
+typedef struct CBNodeRefOpaque *CBNodeRef;
 
 struct CBFlow;
 
@@ -637,6 +639,9 @@ struct CBInstanceData {
   // replacing function pointers during compose
   struct CBlock *block;
 
+  // The current chain we are composing
+  struct CBChain *chain;
+
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBTypesInfo stack;
@@ -859,15 +864,14 @@ typedef void(__cdecl *CBLog)(const char *msg);
 
 typedef struct CBlock *(__cdecl *CBCreateBlock)(const char *name);
 
-typedef struct CBChain *(__cdecl *CBCreateChain)(const char *name,
-                                                 CBlocks blocks, CBBool looped,
-                                                 CBBool unsafe);
-typedef void(__cdecl *CBDestroyChain)(struct CBChain *chain);
+typedef CBChainRef(__cdecl *CBCreateChain)(const char *name, CBlocks blocks,
+                                           CBBool looped, CBBool unsafe);
+typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
 
-typedef struct CBNode *(__cdecl *CBCreateNode)();
-typedef void(__cdecl *CBDestroyNode)(struct CBNode *chain);
-typedef void(__cdecl *CBSchedule)(struct CBNode *node, struct CBChain *chain);
-typedef CBBool(__cdecl *CBTick)(struct CBNode *node);
+typedef CBNodeRef(__cdecl *CBCreateNode)();
+typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
+typedef void(__cdecl *CBSchedule)(CBNodeRef node, CBChainRef chain);
+typedef CBBool(__cdecl *CBTick)(CBNodeRef node);
 typedef void(__cdecl *CBSleep)(double seconds, CBBool runCallbacks);
 
 #define CB_ARRAY_TYPE(_array_, _value_)                                        \

@@ -1,26 +1,24 @@
 (def root (Node))
 
-(defn mychain [] (Chain "mychain"
-  "Hello chain"
-  (Set "var1" :Global true)
-  (Cond [
-    (--> true) (--> 1 (Set "var2" :Global true))
-    (--> false) (--> 1 (Set "var2" :Global true))
-  ])
-  (Input) ; test Input
-  (Log)
-  (Assert.Is "Initial input" true)))
+(def mychain
+  (Chain
+   "mychain"
+   "Hello chain"
+   (Set "var1" :Global true)
+   (Cond [
+          (--> true) (--> 1 (Set "var2" :Global true))
+          (--> false) (--> 2 (Set "var2" :Global true))
+          ])
+   (Input) ; test Input
+   (Log)
+   (Assert.Is "Initial input" true)))
 
-(def otherChain (Chain "other"
-  99))
+(def otherChain (Chain "other" 99))
 
-(def funcChain (Chain "func"
-  (Is 10)
-  (Or)
-  (Is 20)
-  (Or)
-  (Log)
-  ))
+(def funcChain
+  (Chain
+   "func"
+   (If (--> (Is 10) (Or) (Is 20)) (Log))))
 
 (def jumpChain
   (Chain
@@ -28,23 +26,64 @@
    (Msg "jumped...")
    (Resume "ticked")))
 
-(def tickedChain (Chain "ticked"
-  (Msg "message 1")
-  1
-  (Pause)
-  
-  (Msg "message 2")
-  (Resume "jumphere!")
-  2
-  (Pause)
-  
-  (Msg "message 3")
-  3
-  (Pause)
-  
-  (Msg "message 4")
-  4
-  (Pause)))
+(def jumpChain2
+  (Chain
+   "jumphere2!"
+   (Msg "jumped...")
+   (Resume "ticked2")))
+
+(def stopChain
+  (Chain
+   "stopping"
+   (Msg "resumed stopping")
+   (Stop)))
+
+(def tickedChain
+  (Chain
+   "ticked"
+   (Msg "message 1")
+   1
+   (Pause)
+   (Msg "message 2")
+                                        ; test jumping to another coro
+   (Resume "jumphere!")
+   (Msg "ticked resumed")
+   2
+   (Pause)
+   (Msg "message 3")
+   3
+   (Pause)
+
+   (Msg "message 4")
+   4
+   (Pause)
+                               ; make sure main is not stopped in this case
+   (Resume "stopping")
+   ;; the flow stopped before!
+   ;; this should be unreachable
+   false (Assert.Is true true)
+   ))
+
+(def tickedChain2
+  (Chain
+   "ticked2"
+   (Msg "message 1")
+   1
+   (Pause)
+   (Msg "message 2")
+                                        ; test jumping to another coro
+   (Start "jumphere2!")
+   (Msg "ticked resumed")
+   2
+   (Pause)
+   (Msg "message 3")
+   3
+   (Pause)
+
+   (Msg "message 4")
+   4
+   (Msg "ticked2 done")
+   ))
 
 (def startButNotResumed
   (Chain
@@ -55,17 +94,18 @@
    false ; fail on purpose here
    (Assert.Is true true)))
 
-(schedule root otherChain)
-
-(schedule root (Chain "root"
+(def main
+  (Chain
+  "root"
   "Initial input"
-  (DispatchOnce (mychain))
+  (DispatchOnce mychain)
   (Get "var1")
-  (Log)
+  (Log "var1")
   (Get "var2")
-  (Log)
+  (Log "var2")
+  (Detach otherChain)
   (WaitChain otherChain)
-  (Log)
+  (Log "otherChain")
   (Assert.Is 99 true)
   10
   (Dispatch funcChain)
@@ -74,33 +114,97 @@
   20
   (Dispatch funcChain)
 
+                                        ; test a stepped chain that (Stop)s
   (Step tickedChain)
-  (Assert.Is 1 true)
-  (Msg "next step")
+  (Msg "had message 1")
+  (Assert.Is 1 true) ; pause after 1
+
   (Step tickedChain)
-  (Assert.Is 1 true) ; jumped
+  (Msg "had message 2")
+  (Assert.Is 1 true) ; resume pauses jumped
+
   (Step tickedChain)
+  (Msg "before ticked resume")
+  (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
+
+  (Step tickedChain) ; pause after 2
   (Assert.Is 2 true)
-  (Msg "next step")
+
+  (Step tickedChain) ; resume pauses when going stopping
+  (Msg "had message 3")
+  (Assert.Is 3 true) ; pause after 3
+
   (Step tickedChain)
-  (Assert.Is 3 true)
-  (Msg "next step")
-  (Step tickedChain)
+  (Msg "had message 4")
+  (Assert.Is 4 true) ; pause after 4
+
+  (Step tickedChain) ; will stop the chain
   (Assert.Is 4 true)
-  (Msg "next step")
-  (Step tickedChain)
+  (Step tickedChain) ; last result chain is done
   (Assert.Is 4 true)
-  (Msg "next step")
-  (Step tickedChain)
-  (Assert.Is 1 true)
-  (Msg "next step")
+  (Step tickedChain) ; last result chain is done
+  (Assert.Is 4 true)
+
+                                        ; test a stepped chain that never stops and rotates
+  (Repeat
+   (-->
+    (Msg "repeating!")
+    (Step tickedChain2)
+    (Msg "had message 1")
+    (Assert.Is 1 true) ; pause after 1
+
+    (Step tickedChain2)
+    (Msg "had message 2")
+    (Assert.Is 1 true) ; resume pauses jumped
+
+    (Step tickedChain2)
+    (Msg "before ticked resume")
+    (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
+
+    (Step tickedChain2) ; pause after 2
+    (Assert.Is 2 true)
+
+    (Step tickedChain2) ; resume pauses when going stopping
+    (Msg "had message 3")
+    (Assert.Is 3 true) ; pause after 3
+
+    (Step tickedChain2)
+    (Msg "had message 4")
+    (Assert.Is 4 true) ; pause after 4
+    ) :Times 3)
 
   (Start startButNotResumed)
   (Msg "root resumed")
   (Start startButNotResumed)
   (Msg "root resumed")
 
-  (Msg "done")
-))
+  (Msg "done")))
 
-(run root 0.1)
+(schedule root main)
+
+(run root)
+
+(schedule
+ root
+ (Chain
+  "save"
+  (Const main)
+  (WriteFile "subchains.chain")
+  (Msg "Serialized!")))
+
+(run root)
+
+(schedule
+ root
+ (Chain
+  "load"
+  (ReadFile "subchains.chain")
+  (ExpectChain) >= .chain
+  (Log "loaded")
+  ;; We must do this here! cos .chain will try to resume self
+  (ChainRunner .chain :Mode RunChainMode.Detached)
+  (WaitChain .chain)))
+
+(run root)
+
+(prn "DONE")

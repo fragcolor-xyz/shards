@@ -104,8 +104,8 @@ struct ChainBase {
         return;
 
       visiting.insert(chain.get());
+      DEFER(visiting.erase(chain.get()));
       chainblocks::stop(chain.get());
-      visiting.erase(chain.get());
     }
   }
 
@@ -113,28 +113,60 @@ struct ChainBase {
     // Free any previous result!
     chainblocks::arrayFree(chainValidation.exposedInfo);
 
-    // Actualize the chain here...
-    if (chainref->valueType == CBType::Chain) {
-      chain = CBChain::sharedFromRef(chainref->payload.chainValue);
-    } else if (chainref->valueType == String) {
-      // TODO this should be mutex protected
-      chain = chainblocks::Globals::GlobalChains[chainref->payload.stringValue];
-    } else {
-      chain = nullptr;
+    // Actualize the chain here, if we are deserialized
+    // chain might already be populated!
+    if (!chain) {
+      if (chainref->valueType == CBType::Chain) {
+        chain = CBChain::sharedFromRef(chainref->payload.chainValue);
+      } else if (chainref->valueType == String) {
+        chain = Globals::GlobalChains[chainref->payload.stringValue];
+      } else {
+        chain = nullptr;
+      }
     }
 
     // Easy case, no chain...
     if (!chain)
       return data.inputType;
 
+    assert(data.chain);
+
+    chain->node = data.chain->node;
+
+    auto node = data.chain->node.lock();
+    assert(node);
+
+    if (node->visitedChains.count(chain.get()))
+      return node->visitedChains[chain.get()];
+
     // avoid stackoverflow
     if (visiting.count(chain.get()))
       return data.inputType; // we don't know yet...
 
+    LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
+               << " composing: " << chain->name;
+
+    // we can add early in this case!
+    // useful for Resume/Start
+    if (passthrough) {
+      node->visitedChains.emplace(chain.get(), data.inputType);
+      LOG(TRACE) << "Marking as composed: " << chain->name
+                 << " ptr: " << chain.get();
+    } else if (mode == Stepped) {
+      node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
+      LOG(TRACE) << "Marking as composed: " << chain->name
+                 << " ptr: " << chain.get();
+    }
+
+    // and the subject here
     visiting.insert(chain.get());
+    DEFER(visiting.erase(chain.get()));
+
+    auto dataCopy = data;
+    dataCopy.chain = chain.get();
 
     // We need to validate the sub chain to figure it out!
-    chainValidation = validateConnections(
+    chainValidation = composeChain(
         chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -147,18 +179,43 @@ struct ChainBase {
                       << errorTxt;
           }
         },
-        this, data);
+        this, dataCopy);
 
-    visiting.erase(chain.get());
+    auto outputType = data.inputType;
+    if (!passthrough) {
+      if (mode == Inline)
+        outputType = chainValidation.outputType;
+      else if (mode == Stepped)
+        outputType = CoreInfo::AnyType; // unpredictable
+      else
+        outputType = data.inputType;
+    }
 
-    return passthrough || mode == RunChainMode::Detached
-               ? data.inputType
-               : chainValidation.outputType;
+    node->visitedChains.emplace(chain.get(), outputType);
+
+    return outputType;
   }
 
   void cleanup() { chainref.cleanup(); }
 
   void warmup(CBContext *ctx) { chainref.warmup(ctx); }
+
+  // Use state to mark the dependency for serialization as well!
+
+  CBVar getState() {
+    if (chain) {
+      return Var(chain);
+    } else {
+      LOG(TRACE) << "getState no chain was avail";
+      return Var::Empty;
+    }
+  }
+
+  void setState(CBVar state) {
+    if (state.valueType == CBType::Chain) {
+      chain = CBChain::sharedFromRef(state.payload.chainValue);
+    }
+  }
 };
 
 struct WaitChain : public ChainBase {
@@ -200,9 +257,8 @@ struct WaitChain : public ChainBase {
     case 2:
       return Var(passthrough);
     default:
-      break;
+      return Var::Empty;
     }
-    return Var();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -211,8 +267,7 @@ struct WaitChain : public ChainBase {
       if (vchain.valueType == CBType::Chain) {
         chain = CBChain::sharedFromRef(vchain.payload.chainValue);
       } else if (vchain.valueType == String) {
-        // TODO this should be mutex protected
-        chain = chainblocks::Globals::GlobalChains[vchain.payload.stringValue];
+        chain = Globals::GlobalChains[vchain.payload.stringValue];
       } else {
         chain = nullptr;
       }
@@ -252,6 +307,7 @@ struct Resume : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    passthrough = true;
     ChainBase::compose(data);
     return data.inputType;
   }
@@ -266,12 +322,13 @@ struct Resume : public ChainBase {
   // symbol, TODO maybe use CBVar refcount!
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // assign current flow to the chain we are going to
-    chain->flow = context->main->flow;
+    if (!chain) {
+      throw ActivationError("Resume, chain not found.");
+    }
     // if we have a node also make sure chain knows about it
     chain->node = context->main->node;
     // assign the new chain as current chain on the flow
-    chain->flow->chain = chain.get();
+    context->flow->chain = chain.get();
 
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
@@ -280,7 +337,7 @@ struct Resume : public ChainBase {
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain.get());
+      chainblocks::prepare(chain.get(), context->flow);
     }
 
     // Start it if not started
@@ -300,18 +357,19 @@ struct Resume : public ChainBase {
 
 struct Start : public Resume {
   CBVar activate(CBContext *context, const CBVar &input) {
-    // assign current flow to the chain we are going to
-    chain->flow = context->main->flow;
+    if (!chain) {
+      throw ActivationError("Start, chain not found.");
+    }
     // if we have a node also make sure chain knows about it
     chain->node = context->main->node;
     // assign the new chain as current chain on the flow
-    chain->flow->chain = chain.get();
+    context->flow->chain = chain.get();
 
     // ensure chain is not running, we start from top
     chainblocks::stop(chain.get());
 
     // Prepare
-    chainblocks::prepare(chain.get());
+    chainblocks::prepare(chain.get(), context->flow);
 
     // Start
     chainblocks::start(chain.get(), input);
@@ -327,8 +385,6 @@ struct Start : public Resume {
 };
 
 struct BaseRunner : public ChainBase {
-  CBFlow _steppedFlow;
-
   // Only chain runners should expose varaibles to the context
   CBExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
@@ -339,7 +395,6 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     tryStopChain();
-    _steppedFlow.chain = nullptr;
     doneOnce = false;
     ChainBase::cleanup();
   }
@@ -348,40 +403,35 @@ struct BaseRunner : public ChainBase {
     auto current = context->chainStack.back();
     if (mode == RunChainMode::Inline && chain && current != chain.get()) {
       context->chainStack.push_back(chain.get());
+      DEFER({ context->chainStack.pop_back(); });
       chain->warmup(context);
-      context->chainStack.pop_back();
     }
   }
 
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
     if (!chainblocks::isRunning(chain.get())) {
       // validated during infer not here! (false)
-      context->main->node->schedule(chain.get(), input, false);
+      auto node = context->main->node.lock();
+      if (node)
+        node->schedule(chain, input, false);
     }
   }
 
   ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
-    // We want to allow a sub flow within the stepped chain
-    if (!_steppedFlow.chain) {
-      _steppedFlow.chain = chain.get();
-      chain->flow = &_steppedFlow;
-      chain->node = context->main->node;
-    }
-
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
       // stop the root
-      chainblocks::stop(chain.get());
-
-      // swap flow to the root chain
-      _steppedFlow.chain = chain.get();
-      chain->flow = &_steppedFlow;
-      chain->node = context->main->node;
+      if (!chainblocks::stop(chain.get())) {
+        throw ActivationError("Stepped sub-chain did not end normally.");
+      }
     }
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chainblocks::prepare(chain.get());
+      chain->node = context->main->node;
+      // Notice we don't share our flow!
+      // let the chain create one by passing null
+      chainblocks::prepare(chain.get(), nullptr);
     }
 
     // Starting
@@ -389,8 +439,8 @@ struct BaseRunner : public ChainBase {
       chainblocks::start(chain.get(), input);
     }
 
-    // tick the flow one rather then directly the chain!
-    chainblocks::tick(_steppedFlow.chain, input);
+    // Tick the chain on the flow that this Step chain created
+    chainblocks::tick(chain->context->flow->chain, input);
   }
 };
 
@@ -457,7 +507,6 @@ struct RunChain : public BaseRunner {
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
-        chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {
@@ -532,7 +581,6 @@ template <class T> struct BaseLoader : public BaseRunner {
         return input;
       } else {
         // Run within the root flow
-        chain->flow = context->main->flow;
         chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {
@@ -606,6 +654,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       CBInstanceData data{};
       data.inputType = _inputTypeCopy;
       data.shared = _sharedCopy;
+      data.chain = context->chainStack.back();
       _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 
@@ -630,7 +679,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   }
 };
 
-struct ChainRunner : public BaseLoader<ChainLoader> {
+struct ChainRunner : public BaseLoader<ChainRunner> {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Chain", "The chain variable to compose and run.",
                         CoreInfo::ChainVarType),
@@ -660,7 +709,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     if (index == 0) {
       _chain = value;
     } else {
-      BaseLoader<ChainLoader>::setParam(index, value);
+      BaseLoader<ChainRunner>::setParam(index, value);
     }
   }
 
@@ -668,24 +717,25 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     if (index == 0) {
       return _chain;
     } else {
-      return BaseLoader<ChainLoader>::getParam(index);
+      return BaseLoader<ChainRunner>::getParam(index);
     }
   }
 
   void cleanup() {
-    BaseLoader<ChainLoader>::cleanup();
+    BaseLoader<ChainRunner>::cleanup();
     _chain.cleanup();
   }
 
   void warmup(CBContext *context) {
-    BaseLoader<ChainLoader>::warmup(context);
+    BaseLoader<ChainRunner>::warmup(context);
     _chain.warmup(context);
   }
 
-  void composeChain() {
+  void doCompose(CBContext *context) {
     CBInstanceData data{};
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
+    data.chain = context->chainStack.back();
 
     // avoid stackoverflow
     if (visiting.count(chain.get()))
@@ -694,7 +744,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
     visiting.insert(chain.get());
 
     // We need to validate the sub chain to figure it out!
-    auto res = validateConnections(
+    auto res = composeChain(
         chain.get(),
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -721,10 +771,11 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
 
     if (_chainHash == 0 || _chainHash != chain->composedHash) {
       // Compose and hash in a thread
-      auto asyncRes = std::async(std::launch::async, [this, chainVar]() {
-        composeChain();
-        chain->composedHash = std::hash<CBVar>()(chainVar);
-      });
+      auto asyncRes =
+          std::async(std::launch::async, [this, context, chainVar]() {
+            doCompose(context);
+            chain->composedHash = std::hash<CBVar>()(chainVar);
+          });
 
       // Wait suspending!
       while (true) {
@@ -743,7 +794,7 @@ struct ChainRunner : public BaseLoader<ChainLoader> {
       doWarmup(context);
     }
 
-    return BaseLoader<ChainLoader>::activate(context, input);
+    return BaseLoader<ChainRunner>::activate(context, input);
   }
 };
 

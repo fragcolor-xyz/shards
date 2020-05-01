@@ -133,6 +133,8 @@ struct WriteFile : public FileBase {
     }
   };
 
+  Serialization serial;
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_fileStream.is_open() ||
         (_filename.isVariable() && _filename.get() != _currentFileName)) {
@@ -149,7 +151,8 @@ struct WriteFile : public FileBase {
     }
 
     Writer s(_fileStream);
-    Serialization::serialize(input, s);
+    serial.reset();
+    serial.serialize(input, s);
     return input;
   }
 };
@@ -174,6 +177,8 @@ struct ReadFile : public FileBase {
     }
   };
 
+  Serialization serial;
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_fileStream.is_open() ||
         (_filename.isVariable() && _filename.get() != _currentFileName)) {
@@ -189,7 +194,8 @@ struct ReadFile : public FileBase {
       return Var::Empty;
 
     Reader r(_fileStream);
-    Serialization::deserialize(r, _output);
+    serial.reset();
+    serial.deserialize(r, _output);
     return _output;
   }
 };

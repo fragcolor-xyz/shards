@@ -80,6 +80,58 @@ struct Evolve {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // we still want to run a compose on the subject, in order
+    // to serialize it properly!
+    assert(_baseChain.valueType == CBType::Chain);
+    assert(_fitnessChain.valueType == CBType::Chain);
+
+    auto bchain = CBChain::sharedFromRef(_baseChain.payload.chainValue);
+    auto fchain = CBChain::sharedFromRef(_fitnessChain.payload.chainValue);
+
+    CBInstanceData vdata{};
+    vdata.chain = data.chain;
+    auto res = composeChain(
+        bchain.get(),
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Evolve: failed subject chain validation, error: "
+                       << errorTxt;
+            throw CBException("Evolve: failed subject chain validation");
+          } else {
+            LOG(INFO) << "Evolve: warning during subject chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, vdata);
+    arrayFree(res.exposedInfo);
+
+    vdata.inputType = res.outputType;
+    res = composeChain(
+        fchain.get(),
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Evolve: failed fitness chain validation, error: "
+                       << errorTxt;
+            throw CBException("Evolve: failed fitness chain validation");
+          } else {
+            LOG(INFO) << "Evolve: warning during fitness chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, vdata);
+    if (res.outputType.basicType != CBType::Float) {
+      throw ComposeError(
+          "Evolve: fitness chain should output a Float, but instead got " +
+          type2Name(res.outputType.basicType));
+    }
+    arrayFree(res.exposedInfo);
+
+    return _outputType;
+  }
+
   struct Writer {
     std::stringstream &_stream;
     Writer(std::stringstream &stream) : _stream(stream) {}
@@ -116,18 +168,22 @@ struct Evolve {
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
     return op([&]() {
+      LOG(TRACE) << "Evolve, first run, init";
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes
       if (_population.size() == 0) {
+        Serialization serial;
         std::stringstream chainStream;
         Writer w1(chainStream);
-        Serialization::serialize(_baseChain, w1);
+        serial.reset();
+        serial.serialize(_baseChain, w1);
         auto chainStr = chainStream.str();
 
         std::stringstream fitnessStream;
         Writer w2(fitnessStream);
-        Serialization::serialize(_fitnessChain, w2);
+        serial.reset();
+        serial.serialize(_fitnessChain, w2);
         auto fitnessStr = fitnessStream.str();
 
         _population.resize(_popsize);
@@ -137,15 +193,18 @@ struct Evolve {
         tf::Taskflow initFlow;
         initFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
+              Serialization deserial;
               std::stringstream i1Stream(chainStr);
               Reader r1(i1Stream);
-              Serialization::deserialize(r1, i.chain);
+              deserial.reset();
+              deserial.deserialize(r1, i.chain);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               gatherMutants(chain.get(), i.mutants);
 
               std::stringstream i2Stream(fitnessStr);
               Reader r2(i2Stream);
-              Serialization::deserialize(r2, i.fitnessChain);
+              deserial.reset();
+              deserial.deserialize(r2, i.fitnessChain);
             });
         _exec->run(initFlow).get();
 
@@ -160,6 +219,8 @@ struct Evolve {
 
         _era = 0;
       } else {
+        LOG(TRACE) << "Evolve, crossover";
+
         // do crossover here, populating tasks properly
         tf::Taskflow crossoverFlow;
         _crossingOver.clear();
@@ -222,6 +283,7 @@ struct Evolve {
       // We run chains up to completion
       // From validation to end, every iteration/era
       // We run in such a way to allow coroutines + threads properly
+      LOG(TRACE) << "Evolve, schedule chains";
       {
         tf::Taskflow flow;
 
@@ -232,16 +294,16 @@ struct Evolve {
             [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
-              i.node.terminate();
+              i.node->terminate();
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node.schedule(chain.get());
+              i.node->schedule(chain);
             },
             _coros);
 
         _exec->run(flow).get();
       }
-
+      LOG(TRACE) << "Evolve, run chains";
       {
         tf::Taskflow flow;
 
@@ -251,8 +313,8 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              if (!i.node.empty())
-                i.node.tick();
+              if (!i.node->empty())
+                i.node->tick();
             },
             _coros);
 
@@ -261,14 +323,14 @@ struct Evolve {
                         [&]() {
                           size_t ended = 0;
                           for (auto &p : _population) {
-                            if (p.node.empty())
+                            if (p.node->empty())
                               ended++;
                           }
                           return ended == _population.size();
                         })
             .get();
       }
-
+      LOG(TRACE) << "Evolve, schedule fitness";
       {
         tf::Taskflow flow;
 
@@ -279,19 +341,19 @@ struct Evolve {
             [](auto &iref) {
               Individual &i = iref.get();
               // Make sure to reset any remains, should be noop
-              i.node.terminate();
+              i.node->terminate();
               // compute the fitness
               TickObserver obs{i};
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node.schedule(obs, fitchain.get(), chain->finishedOutput);
+              i.node->schedule(obs, fitchain, chain->finishedOutput);
             },
             _coros);
 
         _exec->run(flow).get();
       }
-
+      LOG(TRACE) << "Evolve, run fitness";
       {
         tf::Taskflow flow;
 
@@ -301,9 +363,9 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              if (!i.node.empty()) {
+              if (!i.node->empty()) {
                 TickObserver obs{i};
-                i.node.tick(obs);
+                i.node->tick(obs);
               }
             },
             _coros);
@@ -313,7 +375,7 @@ struct Evolve {
                         [&]() {
                           size_t ended = 0;
                           for (auto &p : _population) {
-                            if (p.node.empty())
+                            if (p.node->empty())
                               ended++;
                           }
                           return ended == _population.size();
@@ -329,28 +391,27 @@ struct Evolve {
         tf::Taskflow runFlow;
         runFlow.parallel_for(
             _population.begin(), _population.end(), [&](Individual &i) {
-              CBNode node;
               TickObserver obs{i};
 
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              node.schedule(chain.get());
+              i.node->schedule(chain);
               while (!node.empty()) {
-                node.tick();
+                i.node->tick();
               }
 
               // compute the fitness
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              node.schedule(obs, fitchain.get(), chain->finishedOutput);
-              while (!node.empty()) {
-                node.tick(obs);
+              i.node->schedule(obs, fitchain.get(), chain->finishedOutput);
+              while (!i.node->empty()) {
+                i.node->tick(obs);
               }
             });
         _exec->run(runFlow).get();
       }
 #endif
-
+      LOG(TRACE) << "Evolve, stopping all chains";
       { // Stop all the population chains
         tf::Taskflow flow;
 
@@ -361,18 +422,20 @@ struct Evolve {
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
               stop(fitchain.get());
-              i.node.terminate();
+              i.node->terminate();
             });
 
         _exec->run(flow).get();
       }
 
+      LOG(TRACE) << "Evolve, sorting";
       std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
                 [](std::reference_wrapper<Individual> a,
                    std::reference_wrapper<Individual> b) {
                   return a.get().fitness > b.get().fitness;
                 });
 
+      LOG(TRACE) << "Evolve, resetting flags";
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
@@ -389,6 +452,7 @@ struct Evolve {
                       id.parent1Idx = -1;
                     });
 
+      LOG(TRACE) << "Evolve, run mutations";
       // Do mutations at end, yet when contexts are still valid!
       // since we might need them
       {
@@ -405,6 +469,7 @@ struct Evolve {
         _exec->run(mutFlow).get();
       }
 
+      LOG(TRACE) << "Evolve, era done";
       _result.clear();
       _result.emplace_back(Var(_sortedPopulation.front().get().fitness));
       _result.emplace_back(_sortedPopulation.front().get().chain);
@@ -439,7 +504,7 @@ private:
     // We need many of them cos we use threads
     CBVar fitnessChain{};
     // The node we run on
-    CBNode node{};
+    std::shared_ptr<CBNode> node{CBNode::make()};
 
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;
@@ -481,14 +546,12 @@ private:
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
-      {"Chain",
-       "The chain to optimize and evolve.",
-       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
+      {"Chain", "The chain to optimize and evolve.", {CoreInfo::ChainType}},
       {"Fitness",
        "The fitness chain to run at the end of the main chain evaluation and "
        "using "
        "its last output; should output a Float fitness value.",
-       {CoreInfo::ChainType, CoreInfo::ChainVarType}},
+       {CoreInfo::ChainType}},
       {"Population", "The population size.", {CoreInfo::IntType}},
       {"Mutation", "The rate of mutation, 0.1 = 10%.", {CoreInfo::FloatType}},
       {"Crossover", "The rate of crossover, 0.1 = 10%.", {CoreInfo::FloatType}},
@@ -505,8 +568,8 @@ private:
 
   std::unique_ptr<tf::Executor> _exec;
 
-  ParamVar _baseChain{};
-  ParamVar _fitnessChain{};
+  OwnedVar _baseChain{};
+  OwnedVar _fitnessChain{};
   std::vector<CBVar> _result;
   std::vector<Individual> _population;
   std::vector<std::reference_wrapper<Individual>> _sortedPopulation;
@@ -687,7 +750,7 @@ struct Mutant {
             }
           }
         } else if (mut.valueType == Seq) {
-          auto res = validateConnections(
+          auto res = composeChain(
               mut.payload.seqValue,
               [](const CBlock *errorBlock, const char *errorTxt,
                  bool nonfatalWarning, void *userData) {},
@@ -883,7 +946,8 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   auto chain = CBChain::sharedFromRef(individual.chain.payload.chainValue);
   // we need to hack this in as we run out of context
   CBCoro foo{};
-  CBContext ctx(std::move(foo), chain.get());
+  CBFlow flow{};
+  CBContext ctx(std::move(foo), chain.get(), &flow);
   ctx.chainStack.push_back(chain.get());
   std::for_each(
       std::begin(individual.mutants), std::end(individual.mutants),
