@@ -144,7 +144,7 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   # custom allocator
   if(NOT EMSCRIPTEN)
-    add_compile_definations(USE_RPMALLOC)
+    add_compile_definitions(USE_RPMALLOC)
   endif()
 
   # aggressive inlining
