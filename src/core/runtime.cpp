@@ -579,8 +579,7 @@ CBChainState suspend(CBContext *context, double seconds) {
 #ifndef __EMSCRIPTEN__
   context->continuation = context->continuation.resume();
 #else
-  LOG(TRACE) << "EM FIBER SWAP chain->main suspend";
-  emscripten_fiber_swap(&context->continuation.em_fiber, CBCoro::main.get());
+  context->continuation.yield();
 #endif
 
 #ifdef CB_USE_TSAN
@@ -1653,17 +1652,9 @@ bool warmup(CBChain *chain, CBContext *context) {
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink)
 #else
-extern "C" void emcofunc(void *p)
+void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #endif
 {
-#ifdef __EMSCRIPTEN__
-  LOG(TRACE) << "Entered coro run";
-  auto data = reinterpret_cast<emcorodata *>(p);
-  auto chain = data->chain;
-  auto flow = data->flow;
-  auto coro = data->coro;
-#endif
-
   auto running = true;
 
   // Reset state
@@ -1704,8 +1695,7 @@ extern "C" void emcofunc(void *p)
 #ifndef __EMSCRIPTEN__
   context.continuation = context.continuation.resume();
 #else
-  LOG(TRACE) << "EM FIBER SWAP chain->main";
-  emscripten_fiber_swap(&context.continuation.em_fiber, CBCoro::main.get());
+  context.continuation.yield();
 #endif
 
   if (context.shouldStop()) {
@@ -1740,8 +1730,7 @@ extern "C" void emcofunc(void *p)
 #ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
 #else
-      LOG(TRACE) << "EM FIBER SWAP chain->main";
-      emscripten_fiber_swap(&context.continuation.em_fiber, CBCoro::main.get());
+      context.continuation.yield();
 #endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
@@ -1772,9 +1761,7 @@ endOfChain:
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else
-  delete data;
-  LOG(TRACE) << "EM FIBER SWAP chain->main ending";
-  emscripten_fiber_swap(&context.continuation.em_fiber, CBCoro::main.get());
+  context.continuation.yield();
 #endif
 }
 
