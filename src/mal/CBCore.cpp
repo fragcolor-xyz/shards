@@ -90,7 +90,9 @@ void installCBCore(const malEnvPtr &env) {
       chainblocks::Globals::RootPath = "./";
     else
       chainblocks::Globals::RootPath = path;
+#ifndef __EMSCRIPTEN__
     chainblocks::installSignalHandlers();
+#endif
     cbRegisterAllBlocks();
     initDoneOnce = true;
   }

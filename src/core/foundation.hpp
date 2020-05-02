@@ -49,8 +49,8 @@ struct CBCoro {
   CBCoro();
   void init(const std::function<void(CBChain *, CBFlow *, CBCoro *)> &func,
             CBChain *chain, CBFlow *flow);
-  void resume();
-  void yield();
+  NO_INLINE void resume();
+  NO_INLINE void yield();
 
   // compatibility with boost
   operator bool() const { return true; }
