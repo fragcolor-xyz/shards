@@ -46,28 +46,21 @@ struct CBCoro {
   static constexpr int stack_size = 128 * 1024;
   static constexpr int as_stack_size = 4096;
 
-  static inline thread_local std::unique_ptr<emscripten_fiber_t> main;
-  static inline thread_local uint8_t asyncify_main_stack[as_stack_size];
+  CBCoro();
+  void init(const std::function<void(CBChain *, CBFlow *, CBCoro *)> &func,
+            CBChain *chain, CBFlow *flow);
+  void resume();
+  void yield();
 
-  CBCoro() {
-    if (!main) {
-      LOG(TRACE) << "EM MAIN FIBER INIT";
-      auto mfiber = new emscripten_fiber_t;
-      main.reset(mfiber);
-      emscripten_fiber_init_from_current_context(mfiber, asyncify_main_stack,
-                                                 as_stack_size);
-    }
-
-    c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
-  }
-
-  ~CBCoro() { ::operator delete[](c_stack, std::align_val_t{16}); }
+  // compatibility with boost
+  operator bool() const { return true; }
 
   emscripten_fiber_t em_fiber;
+  std::function<void(CBChain *, CBFlow *, CBCoro *)> func;
+  CBChain *chain;
+  CBFlow *flow;
   uint8_t asyncify_stack[as_stack_size];
-  uint8_t *c_stack;
-
-  operator bool() const { return true; }
+  alignas(16) uint8_t c_stack[stack_size];
 };
 #endif
 

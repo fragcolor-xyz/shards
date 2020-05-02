@@ -479,13 +479,7 @@ inline void cleanup(CBChain *chain) {
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink);
 #else
-struct emcorodata {
-  CBChain *chain;
-  CBFlow *flow;
-  CBCoro *coro;
-};
-
-extern "C" void emcofunc(void *p);
+void run(CBChain *chain, CBFlow *flow, CBCoro *coro);
 #endif
 
 inline void prepare(CBChain *chain, CBFlow *flow) {
@@ -507,17 +501,8 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
       }));
 #else
   chain->coro = new CBCoro();
-  auto data = new emcorodata();
-  data->chain = chain;
-  data->flow = flow;
-  data->coro = chain->coro;
-  LOG(TRACE) << "EM FIBER INIT";
-  emscripten_fiber_init(&chain->coro->em_fiber, emcofunc, data,
-                        chain->coro->c_stack, chain->coro->stack_size,
-                        chain->coro->asyncify_stack,
-                        chain->coro->as_stack_size);
-  LOG(TRACE) << "EM FIBER SWAP main->chain";
-  emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
+  chain->coro->init(run, chain, flow);
+  chain->coro->resume();
 #endif
 
 #ifdef CB_USE_TSAN
@@ -560,12 +545,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
       __tsan_switch_to_fiber(chain->tsan_coro, 0);
 #endif
 
-#ifndef __EMSCRIPTEN__
       chain->coro->resume();
-#else
-      LOG(TRACE) << "EM FIBER SWAP main->chain";
-      emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
-#endif
 
 #ifdef CB_USE_TSAN
       __tsan_switch_to_fiber(curr, 0);
@@ -611,8 +591,7 @@ inline bool tick(CBChain *chain, CBVar rootInput = {}) {
 #ifndef __EMSCRIPTEN__
     *chain->coro = chain->coro->resume();
 #else
-    LOG(TRACE) << "EM FIBER SWAP main->chain";
-    emscripten_fiber_swap(CBCoro::main.get(), &chain->coro->em_fiber);
+    chain->coro->resume();
 #endif
 
 #ifdef CB_USE_TSAN
