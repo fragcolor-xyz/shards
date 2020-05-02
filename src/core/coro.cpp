@@ -9,13 +9,13 @@ static struct Globals {
 #ifndef NDEBUG
     CBCoro c1;
     c1.init(
-      [](CBChain *chain, CBFlow *flow, CBCoro *coro) {
-        LOG(TRACE) << "Inside coro";
-        coro->yield();
-        LOG(TRACE) << "Inside coro again";
-        coro->yield();
-      },
-      nullptr, nullptr);
+        [](CBChain *chain, CBFlow *flow, CBCoro *coro) {
+          LOG(TRACE) << "Inside coro";
+          coro->yield();
+          LOG(TRACE) << "Inside coro again";
+          coro->yield();
+        },
+        nullptr, nullptr);
     c1.resume();
     c1.resume();
 #endif
@@ -45,12 +45,12 @@ void CBCoro::init(
                         asyncify_stack, as_stack_size);
 }
 
-void CBCoro::resume() {
+NO_INLINE void CBCoro::resume() {
   LOG(TRACE) << "EM FIBER SWAP RESUME";
   emscripten_fiber_swap(&Globals.main_coro, &em_fiber);
 }
 
-void CBCoro::yield() {
+NO_INLINE void CBCoro::yield() {
   LOG(TRACE) << "EM FIBER SWAP YIELD";
   emscripten_fiber_swap(&em_fiber, &Globals.main_coro);
 }
