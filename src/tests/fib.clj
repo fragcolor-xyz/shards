@@ -10,7 +10,7 @@
 (def fib1
   (Chain
                                         ; chain header
-   "fib"
+   "fib1"
                                         ; actual algo
    ;; (Log "enter")
    >= .n
@@ -25,7 +25,7 @@
 (def fib2
   (Chain
                                         ; chain header
-   "fib"
+   "fib2"
                                         ; actual algo
    ;; (Log "enter")
    >= .n
@@ -39,7 +39,7 @@
 (def fib3
   (Chain
                                         ; chain header
-   "fib"
+   "fib3"
                                         ; actual algo
    ;; (Log "enter")
    (Push)
@@ -50,5 +50,10 @@
    ;; (Log "exit")
    ))
 
-(schedule Root (Chain "run" 34 (Do fib3) (Log "result")))
+(schedule Root (Chain "run" 34 (Do fib1) (Log "result")))
 (run Root)
+
+(def fib1 nil)
+(def fib2 nil)
+(def fib3 nil)
+(def Root nil)

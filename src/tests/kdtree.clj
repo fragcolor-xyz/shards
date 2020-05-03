@@ -2,20 +2,6 @@
 ;; a (Algo.KDTree) can be implemented in the future for that
 ;; this is just a proof of concept and a test for the language efficiency
 
-(defn store [vars]
-  (map
-   (fn* [x]
-        [(Get x)
-         (Push (str x "-mem##") :Clear false)])
-   vars))
-
-(defn restore [vars]
-  (map
-   (fn* [x]
-        [(Pop (str x "-mem##"))
-         (Update x)])
-   vars))
-
 (def k 2) ;; 2 dims
 (def build-tree
   (Chain
@@ -54,12 +40,8 @@
       (Math.Add 1)
       (Push)
                                         ; recurse to build deeper tree
-      ;; -->
-      (store ["median" "median+1" "points" "depth"])
-      (Do "build-tree")
+      (Recur)
       (Push "left-mem" :Clear false)
-      (restore ["median" "median+1" "points" "depth"])
-      ;; <--   
                                         ; pop args
       (Pop)
       (Pop)
@@ -73,12 +55,8 @@
       (Math.Add 1)
       (Push)
                                         ; recurse to build deeper tree
-      ;; -->
-      (store ["median" "median+1" "points" "depth"])
-      (Do "build-tree")
+      (Recur)
       (Push "right-mem" :Clear false)
-      (restore ["median" "median+1" "points" "depth"])
-      ;; <--
                                         ; pop args
       (Pop)
       (Pop)

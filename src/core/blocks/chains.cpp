@@ -328,8 +328,6 @@ struct Resume : public ChainBase {
     if (!chain) {
       throw ActivationError("Resume, chain not found.");
     }
-    // if we have a node also make sure chain knows about it
-    chain->node = context->main->node;
     // assign the new chain as current chain on the flow
     context->flow->chain = chain.get();
 
@@ -363,8 +361,6 @@ struct Start : public Resume {
     if (!chain) {
       throw ActivationError("Start, chain not found.");
     }
-    // if we have a node also make sure chain knows about it
-    chain->node = context->main->node;
     // assign the new chain as current chain on the flow
     context->flow->chain = chain.get();
 
@@ -393,28 +389,21 @@ struct Recur : public ChainBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // set current chain as `chain`
-    chain = data.chain->shared_from_this();
+    _wchain = data.chain->shared_from_this();
 
     // find all variables to store in current chain
     // use vector in the end.. cos slightly faster
-    std::deque<ParamVar> vars;
     IterableExposedInfo shares(data.shared);
     for (CBExposedTypeInfo &shared : shares) {
       if (shared.scope == data.chain && shared.isMutable) {
         CBVar ctxVar{};
         ctxVar.valueType = ContextVar;
         ctxVar.payload.stringValue = shared.name;
-        auto &p = vars.emplace_back();
+        auto &p = _vars.emplace_back();
         p = ctxVar;
       }
     }
-
-    _len = vars.size();
-    _vars.resize(_len);
-    for (size_t i = 0; i < _len; i++) {
-      _vars[i] = vars[i];
-    }
-
+    _len = _vars.size();
     return ChainBase::compose(data);
   }
 
@@ -423,6 +412,9 @@ struct Recur : public ChainBase {
     for (auto &v : _vars) {
       v.warmup(ctx);
     }
+    auto schain = _wchain.lock();
+    assert(schain);
+    _chain = schain.get();
   }
 
   void cleanup() {
@@ -430,20 +422,27 @@ struct Recur : public ChainBase {
       v.cleanup();
     }
     // force releasing resources
+    for (size_t i = 0; i < _len; i++) {
+      IterableSeq s(_storage[i]);
+      for (auto &v : s) {
+        destroyVar(v);
+      }
+      arrayFree(_storage[i]);
+    }
     _storage.resize(0);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // store _vars
     for (size_t i = 0; i < _len; i++) {
-      // this will clone implicitly
-      _storage[i].emplace_back(_vars[i].get());
+      const auto len = _storage[i].len;
+      arrayResize(_storage[i], len + 1);
+      cloneVar(_storage[i].elements[len], _vars[i].get());
     }
 
     // (Do self)
     // Run within the root flow
-    chain->node = context->main->node;
-    auto runRes = runSubChain(chain.get(), context, input);
+    auto runRes = runSubChain(_chain, context, input);
     if (unlikely(runRes.state == Failed)) {
       // meaning there was an exception while
       // running the sub chain, stop the parent too
@@ -452,16 +451,18 @@ struct Recur : public ChainBase {
 
     // restore _vars
     for (size_t i = 0; i < _len; i++) {
-      cloneVar(_vars[i].get(), _storage[i].back());
-      _storage[i].pop_back();
+      auto pops = arrayPop<CBSeq, CBVar>(_storage[i]);
+      cloneVar(_vars[i].get(), pops);
     }
 
     return runRes.output;
   }
 
-  std::vector<ParamVar> _vars;
+  std::weak_ptr<CBChain> _wchain;
+  CBChain *_chain;
+  std::deque<ParamVar> _vars;
   size_t _len; // cache it to have nothing on stack from us
-  std::vector<std::vector<OwnedVar>> _storage;
+  std::vector<CBSeq> _storage;
 };
 
 struct BaseRunner : public ChainBase {
@@ -486,6 +487,7 @@ struct BaseRunner : public ChainBase {
       DEFER({ context->chainStack.pop_back(); });
       chain->warmup(context);
     }
+    chain->node = context->main->node;
   }
 
   ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
@@ -508,7 +510,6 @@ struct BaseRunner : public ChainBase {
 
     // Prepare if no callc was called
     if (!chain->coro) {
-      chain->node = context->main->node;
       // Notice we don't share our flow!
       // let the chain create one by passing null
       chainblocks::prepare(chain.get(), nullptr);
@@ -587,7 +588,6 @@ struct RunChain : public BaseRunner {
         return passthrough ? input : chain->previousOutput;
       } else {
         // Run within the root flow
-        chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {
           // meaning there was an exception while
@@ -661,7 +661,6 @@ template <class T> struct BaseLoader : public BaseRunner {
         return input;
       } else {
         // Run within the root flow
-        chain->node = context->main->node;
         auto runRes = runSubChain(chain.get(), context, input);
         if (unlikely(runRes.state == Failed)) {
           context->stopFlow(input);
