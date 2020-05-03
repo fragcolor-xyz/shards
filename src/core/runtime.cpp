@@ -275,6 +275,8 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (name == "Stop") {
     blkp->inlineBlockId = CBInlineBlocks::CoreStop;
+  } else if (name == "Pass") {
+    blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Input") {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
   } else if (name == "Restart") {
@@ -1002,6 +1004,8 @@ void validateConnection(ValidationContext &ctx) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
     // Pass all we got in the context!
+    // TODO caching, this is repeated many times
+    // anyway won't influence run perf
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
         chainblocks::arrayPush(data.shared, type);
@@ -1030,9 +1034,10 @@ void validateConnection(ValidationContext &ctx) {
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
-    auto &exposed_param = exposedVars.elements[i];
+    auto exposed_param = exposedVars.elements[i];
     std::string name(exposed_param.name);
-    ctx.exposed[name].insert(exposed_param);
+    exposed_param.scope = exposed_param.global ? nullptr : ctx.chain;
+    ctx.exposed[name].emplace(exposed_param);
 
     // Reference mutability checks
     if (strcmp(ctx.bottom->name(ctx.bottom), "Ref") == 0) {
@@ -1090,6 +1095,7 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   // Take selector checks
+  // TODO move into Take compose, we know have block variable
   if (strcmp(ctx.bottom->name(ctx.bottom), "Take") == 0) {
     if (previousOutput.basicType == Seq) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;

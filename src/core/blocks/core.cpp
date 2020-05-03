@@ -1357,6 +1357,8 @@ MATH_BINARY_BLOCK(Inc);
 MATH_BINARY_BLOCK(Dec);
 }; // namespace Math
 
+CBVar unreachableActivation(const CBVar &input) { throw; }
+
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Input);
@@ -1466,5 +1468,9 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Pause", Pause);
   REGISTER_CBLOCK("PauseMs", PauseMs);
+
+  using PassMockBlock =
+      LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
+  REGISTER_CBLOCK("Pass", PassMockBlock);
 }
 }; // namespace chainblocks

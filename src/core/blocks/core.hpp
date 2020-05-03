@@ -6,6 +6,7 @@
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
+#include "chainblocks.h"
 #include "chainblocks.hpp"
 #include <cassert>
 #include <cmath>

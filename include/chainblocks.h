@@ -485,6 +485,9 @@ struct CBExposedTypeInfo {
 
   // If the exposed variable should be available to all chains in the node
   CBBool global;
+
+  // private/internal, leave nullptr
+  CBChain *scope;
 };
 
 struct CBValidationResult {

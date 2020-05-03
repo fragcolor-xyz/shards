@@ -131,6 +131,9 @@ struct ChainBase {
 
     assert(data.chain);
 
+    if (chain.get() == data.chain)
+      return data.inputType; // we don't know yet...
+
     chain->node = data.chain->node;
 
     auto node = data.chain->node.lock();
@@ -382,6 +385,83 @@ struct Start : public Resume {
 
     return input;
   }
+};
+
+struct Recur : public ChainBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // set current chain as `chain`
+    chain = data.chain->shared_from_this();
+
+    // find all variables to store in current chain
+    // use vector in the end.. cos slightly faster
+    std::deque<ParamVar> vars;
+    IterableExposedInfo shares(data.shared);
+    for (CBExposedTypeInfo &shared : shares) {
+      if (shared.scope == data.chain && shared.isMutable) {
+        CBVar ctxVar{};
+        ctxVar.valueType = ContextVar;
+        ctxVar.payload.stringValue = shared.name;
+        auto &p = vars.emplace_back();
+        p = ctxVar;
+      }
+    }
+
+    _len = vars.size();
+    _vars.resize(_len);
+    for (size_t i = 0; i < _len; i++) {
+      _vars[i] = vars[i];
+    }
+
+    return ChainBase::compose(data);
+  }
+
+  void warmup(CBContext *ctx) {
+    _storage.resize(_len);
+    for (auto &v : _vars) {
+      v.warmup(ctx);
+    }
+  }
+
+  void cleanup() {
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+    // force releasing resources
+    _storage.resize(0);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // store _vars
+    for (size_t i = 0; i < _len; i++) {
+      // this will clone implicitly
+      _storage[i].emplace_back(_vars[i].get());
+    }
+
+    // (Do self)
+    // Run within the root flow
+    chain->node = context->main->node;
+    auto runRes = runSubChain(chain.get(), context, input);
+    if (unlikely(runRes.state == Failed)) {
+      // meaning there was an exception while
+      // running the sub chain, stop the parent too
+      context->stopFlow(runRes.output);
+    }
+
+    // restore _vars
+    for (size_t i = 0; i < _len; i++) {
+      cloneVar(_vars[i].get(), _storage[i].back());
+      _storage[i].pop_back();
+    }
+
+    return runRes.output;
+  }
+
+  std::vector<ParamVar> _vars;
+  size_t _len; // cache it to have nothing on stack from us
+  std::vector<std::vector<OwnedVar>> _storage;
 };
 
 struct BaseRunner : public ChainBase {
@@ -805,5 +885,6 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("RunChain", RunChain);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
+  REGISTER_CBLOCK("Recur", Recur);
 }
 }; // namespace chainblocks
