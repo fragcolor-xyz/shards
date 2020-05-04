@@ -96,6 +96,7 @@ public:
     } else {
       _cp = &_v;
     }
+    assert(_cp);
   }
 
   void cleanup() {
@@ -114,7 +115,10 @@ public:
   operator CBVar() const { return _v; }
   const CBVar *operator->() const { return &_v; }
 
-  CBVar &get() { return *_cp; }
+  CBVar &get() {
+    assert(_cp);
+    return *_cp;
+  }
 
   bool isVariable() { return _v.valueType == ContextVar; }
 

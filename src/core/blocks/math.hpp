@@ -171,12 +171,8 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
-  ALWAYS_INLINE void op(CBVar &output, const CBVar &input,
-                        const CBVar &operand) {
-    as_underlying().doOperate(output, input, operand);
-  }
-
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    OP op;
     const auto operand = _operand.get();
     if (likely(_opType == Normal)) {
       op(_output, input, operand);
@@ -199,21 +195,14 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       return _cachedSeq;
     }
   }
-
-protected:
-  friend OP;
-
-private:
-  OP &as_underlying() { return static_cast<OP &>(*this); }
-  OP const &as_underlying() const { return static_cast<OP const &>(*this); }
 };
 
 // TODO implement CBVar operators
 // and replace with functional std::plus etc
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
-  struct NAME : public BinaryOperation<NAME> {                                 \
-    ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,            \
-                                 const CBVar &operand) {                       \
+  struct NAME##Op final {                                                      \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
+                                  const CBVar &operand) {                      \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
@@ -338,12 +327,13 @@ private:
       }                                                                        \
     }                                                                          \
   };                                                                           \
+  using NAME = BinaryOperation<NAME##Op>;                                      \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
-  struct NAME : public BinaryOperation<NAME> {                                 \
-    ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,            \
-                                 const CBVar &operand) {                       \
+  struct NAME##Op {                                                            \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
+                                  const CBVar &operand) {                      \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -392,6 +382,7 @@ private:
       }                                                                        \
     }                                                                          \
   };                                                                           \
+  using NAME = BinaryOperation<NAME##Op>;                                      \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 MATH_BINARY_OPERATION(Add, +, 0);
@@ -705,18 +696,20 @@ RUNTIME_BLOCK_TYPE(Math, Inc);
 struct Dec : public UnaryBin<Subtract> {};
 RUNTIME_BLOCK_TYPE(Math, Dec);
 
-struct Max : public BinaryOperation<Max> {
-  ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,
-                               const CBVar &operand) {
+struct MaxOp final {
+  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
+                                const CBVar &operand) {
     output = std::max(input, operand);
   }
 };
+using Max = BinaryOperation<MaxOp>;
 
-struct Min : public BinaryOperation<Min> {
-  ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,
-                               const CBVar &operand) {
+struct MinOp final {
+  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
+                                const CBVar &operand) {
     output = std::min(input, operand);
   }
 };
+using Min = BinaryOperation<MinOp>;
 }; // namespace Math
 }; // namespace chainblocks
