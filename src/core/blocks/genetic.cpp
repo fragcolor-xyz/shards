@@ -660,7 +660,7 @@ struct Mutant {
     }
   }
 
-  void cleanupMutations() {
+  void cleanupMutations() const {
     if (_mutations.valueType == Seq) {
       IterableSeq muts(_mutations);
       for (auto &mut : muts) {
@@ -672,6 +672,26 @@ struct Mutant {
           for (auto &bv : blks) {
             auto blk = bv.payload.blockValue;
             blk->cleanup(blk);
+          }
+        }
+      }
+    }
+  }
+
+  void warmupMutations(CBContext *ctx) const {
+    if (_mutations.valueType == Seq) {
+      IterableSeq muts(_mutations);
+      for (auto &mut : muts) {
+        if (mut.valueType == Block) {
+          auto blk = mut.payload.blockValue;
+          if (blk->warmup)
+            blk->warmup(blk, ctx);
+        } else if (mut.valueType == Seq) {
+          IterableSeq blks(mut);
+          for (auto &bv : blks) {
+            auto blk = bv.payload.blockValue;
+            if (blk->warmup)
+              blk->warmup(blk, ctx);
           }
         }
       }
@@ -705,27 +725,7 @@ struct Mutant {
 
   void destroy() { destroyBlocks(); }
 
-  void warmup(CBContext *ctx) {
-    _block.warmup(ctx);
-
-    if (_mutations.valueType == Seq) {
-      IterableSeq muts(_mutations);
-      for (auto &mut : muts) {
-        if (mut.valueType == Block) {
-          auto blk = mut.payload.blockValue;
-          if (blk->warmup)
-            blk->warmup(blk, ctx);
-        } else if (mut.valueType == Seq) {
-          IterableSeq blks(mut);
-          for (auto &bv : blks) {
-            auto blk = bv.payload.blockValue;
-            if (blk->warmup)
-              blk->warmup(blk, ctx);
-          }
-        }
-      }
-    }
-  }
+  void warmup(CBContext *ctx) { _block.warmup(ctx); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     auto inner = mutant();
@@ -977,6 +977,9 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
             // if not use default operation
             if (mutator._mutations.valueType == Seq &&
                 uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
+              // we need to warmup / cleanup in this case
+              // mutant mini chain also currently is not composed! FIXME?
+              mutator.warmupMutations(&ctx);
               auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
               if (mblks.valueType == Block) {
                 auto blk = mblks.payload.blockValue;
@@ -990,6 +993,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
                 // Was likely None, so use default op
                 mutateVar(current);
               }
+              mutator.cleanupMutations();
             } else {
               mutateVar(current);
             }
