@@ -12,7 +12,7 @@
 //   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 //   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-//   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+//    CBVar activate(CBContext *context, const CBVar &input) {
 //     auto envs = boost::this_process::environment();
 //     _value = envs[_name(context).payload.stringValue].to_string();
 //     return Var(_value);
@@ -23,7 +23,7 @@
 //   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 //   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-//   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+//    CBVar activate(CBContext *context, const CBVar &input) {
 //     auto envs = boost::this_process::environment();
 //     envs[_name(context).payload.stringValue] = input.payload.stringValue;
 //     return input;
@@ -34,7 +34,7 @@
 //   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 //   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-//   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+//    CBVar activate(CBContext *context, const CBVar &input) {
 //     auto envs = boost::this_process::environment();
 //     envs[_name(context).payload.stringValue] += input.payload.stringValue;
 //     return input;
@@ -45,7 +45,7 @@
 //   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 //   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-//   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+//    CBVar activate(CBContext *context, const CBVar &input) {
 //     auto envs = boost::this_process::environment();
 //     envs[_name(context).payload.stringValue].clear();
 //     return input;

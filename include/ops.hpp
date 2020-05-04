@@ -100,11 +100,11 @@ inline std::string type2Name(CBType type) {
   return name;
 }
 
-ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
+inline bool operator!=(const CBVar &a, const CBVar &b);
+inline bool operator<(const CBVar &a, const CBVar &b);
+inline bool operator>(const CBVar &a, const CBVar &b);
+inline bool operator>=(const CBVar &a, const CBVar &b);
+inline bool operator==(const CBVar &a, const CBVar &b);
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
@@ -181,7 +181,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
+inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -297,9 +297,9 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
            a.payload.imageValue.width == b.payload.imageValue.width &&
            a.payload.imageValue.height == b.payload.imageValue.height &&
            (a.payload.imageValue.data == b.payload.imageValue.data ||
-            memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                   a.payload.imageValue.channels * a.payload.imageValue.width *
-                       a.payload.imageValue.height) == 0);
+            (memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
+                    a.payload.imageValue.channels * a.payload.imageValue.width *
+                        a.payload.imageValue.height) == 0));
   case Seq:
     return _seqEq(a, b);
   case Table:
@@ -399,7 +399,7 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
+inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -592,7 +592,7 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
+inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -708,17 +708,11 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
-  return !(a == b);
-}
+inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
 
-ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) {
-  return b < a;
-}
+inline bool operator>(const CBVar &a, const CBVar &b) { return b < a; }
 
-ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
-  return b <= a;
-}
+inline bool operator>=(const CBVar &a, const CBVar &b) { return b <= a; }
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)

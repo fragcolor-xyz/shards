@@ -190,6 +190,9 @@ struct Cond {
             }
           },
           this, data, false);
+      if (validation.outputType.basicType != CBType::Bool) {
+        throw ComposeError("Cond - expected Bool output from predicate blocks");
+      }
       chainblocks::arrayFree(validation.exposedInfo);
     }
 
@@ -282,10 +285,10 @@ struct Cond {
       CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
       auto state = activateBlocks(blocks, context, input, output, true);
       // conditional flow so we might have "returns" form (And) (Or)
-      if (state > CBChainState::Return)
+      if (unlikely(state > CBChainState::Return))
         return output;
 
-      if (output == Var::True) {
+      if (output.payload.boolValue) {
         // Do the action if true!
         // And stop here
         output = {};
@@ -555,7 +558,7 @@ template <bool COND> struct When {
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
     auto state = _cond.activate(context, input, output, true);
-    if (state > CBChainState::Return)
+    if (unlikely(state > CBChainState::Return))
       return input;
 
     // type check in compose!
@@ -646,7 +649,7 @@ struct IfBlock {
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
     auto state = _cond.activate(context, input, output, true);
-    if (state > CBChainState::Return)
+    if (unlikely(state > CBChainState::Return))
       return input;
 
     // type check in compose!

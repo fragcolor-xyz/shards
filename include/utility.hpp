@@ -91,21 +91,22 @@ public:
 
   void warmup(CBContext *ctx) {
     if (_v.valueType == ContextVar) {
-      if (!_cp) {
-        _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
-      }
+      assert(!_cp);
+      _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
     } else if (_v.valueType == StackIndex) {
-      if (!_stack) {
-        _stack = CB_CORE::getStack(ctx);
-      }
+      assert(!_stack);
+      _stack = CB_CORE::getStack(ctx);
+    } else {
+      _cp = &_v;
     }
   }
 
   void cleanup() {
-    if (_cp) {
+    if (_v.valueType == ContextVar) {
+      assert(_cp);
       CB_CORE::releaseVariable(_cp);
-      _cp = nullptr;
     }
+    _cp = nullptr;
     _stack = nullptr;
   }
 
@@ -119,13 +120,11 @@ public:
   const CBVar *operator->() const { return &_v; }
 
   CBVar &get() {
-    if (_v.valueType == ContextVar) {
-      return *_cp;
-    } else if (_v.valueType == StackIndex) {
+    if (unlikely(_v.valueType == StackIndex)) {
       return _stack
           ->elements[ptrdiff_t(_stack->len - 1) - _v.payload.stackIndexValue];
     } else {
-      return _v;
+      return *_cp;
     }
   }
 

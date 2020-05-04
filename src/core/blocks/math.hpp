@@ -200,9 +200,12 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    OP op;
-    auto &operand = _operand.get();
+  void op(CBVar &output, const CBVar &input, const CBVar &operand) {
+    as_underlying().doOperate(output, input, operand);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto operand = _operand.get();
     if (likely(_opType == Normal)) {
       op(_output, input, operand);
       return _output;
@@ -224,14 +227,20 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       return _cachedSeq;
     }
   }
+
+protected:
+  friend OP;
+
+private:
+  OP &as_underlying() { return static_cast<OP &>(*this); }
+  OP const &as_underlying() const { return static_cast<OP const &>(*this); }
 };
 
 // TODO implement CBVar operators
 // and replace with functional std::plus etc
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
   struct NAME : public BinaryOperation<NAME> {                                 \
-    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand) {                      \
+    void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {  \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
@@ -360,8 +369,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
   struct NAME : public BinaryOperation<NAME> {                                 \
-    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand) {                      \
+    void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {  \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -442,10 +450,10 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
 // Not used for now...
 #define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
   struct NAME##UnaryFuncD {                                                    \
-    ALWAYS_INLINE double operator()(double x) { return FUNCD(x); }             \
+    double operator()(double x) { return FUNCD(x); }                           \
   };                                                                           \
   struct NAME##UnaryFuncF {                                                    \
-    ALWAYS_INLINE float operator()(float x) { return FUNCF(x); }               \
+    float operator()(float x) { return FUNCF(x); }                             \
   };
 
 MATH_UNARY_FUNCTOR(Abs, __builtin_fabs, __builtin_fabsf);
@@ -480,7 +488,7 @@ MATH_UNARY_FUNCTOR(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_FUNCTOR(Round, __builtin_round, __builtin_roundf);
 
 template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
-  ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {
+  void operate(CBVar &output, const CBVar &input) {
     FuncD fd;
     FuncF ff;
     if constexpr (CBT == CBType::Float) {
@@ -508,7 +516,7 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
 
 #define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
   struct NAME : public UnaryBase {                                             \
-    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
+    void operate(CBVar &output, const CBVar &input) {                          \
       switch (input.valueType) {                                               \
       case Float:                                                              \
         output.valueType = Float;                                              \
@@ -538,7 +546,7 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
       }                                                                        \
     }                                                                          \
                                                                                \
-    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
       if (unlikely(input.valueType == Seq)) {                                  \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
@@ -650,7 +658,7 @@ struct Mean {
 
   CBVar getParam(int index) { return Var::Enum(mean, 'sink', 'mean'); }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     switch (mean) {
     case MeanKind::Arithmetic: {
       ArithMean m;
@@ -724,13 +732,13 @@ struct Dec : public UnaryBin<Subtract> {};
 RUNTIME_BLOCK_TYPE(Math, Dec);
 
 struct Max : public BinaryOperation<Max> {
-  void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
+  void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {
     output = std::max(input, operand);
   }
 };
 
 struct Min : public BinaryOperation<Min> {
-  void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
+  void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {
     output = std::min(input, operand);
   }
 };

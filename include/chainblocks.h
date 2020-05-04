@@ -271,9 +271,13 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 #if defined(NDEBUG) && !defined(NO_FORCE_INLINE)
 #define ALWAYS_INLINE __attribute__((always_inline))
 #define NO_INLINE __attribute__((noinline))
+#define FLATTEN __attribute__((flatten))
+#define FLAT_INLINE __attribute__((flatten, always_inline))
 #else
 #define ALWAYS_INLINE
 #define NO_INLINE
+#define FLATTEN
+#define FLAT_INLINE
 #endif
 
 #else // TODO
@@ -289,6 +293,8 @@ typedef float CBFloat4[4];
 
 #define ALWAYS_INLINE
 #define NO_INLINE
+#define FLATTEN
+#define FLAT_INLINE
 
 #endif
 

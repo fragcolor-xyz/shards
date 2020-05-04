@@ -15,8 +15,7 @@ struct VectorUnaryBase : public UnaryBase {
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
   template <class Operation>
-  ALWAYS_INLINE CBVar doActivate(CBContext *context, const CBVar &input,
-                                 Operation operate) {
+  CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     CBVar output{};
     if (input.valueType == Seq) {
       chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
@@ -43,8 +42,7 @@ struct VectorBinaryBase : public BinaryBase {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   template <class Operation>
-  ALWAYS_INLINE CBVar doActivate(CBContext *context, const CBVar &input,
-                                 Operation operate) {
+  CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     auto &operand = _operand.get();
     CBVar output{};
     if (_opType == Normal) {
@@ -94,7 +92,7 @@ struct Cross : public VectorBinaryBase {
     }
   };
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
     return doActivate(context, input, op);
   }
@@ -143,7 +141,7 @@ struct Dot : public VectorBinaryBase {
     };
   };
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
     return doActivate(context, input, op);
   }
@@ -158,7 +156,7 @@ struct LengthSquared : public VectorUnaryBase {
       dotOp(output, input, input);
     }
   };
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
     return doActivate(context, input, op);
   }
@@ -174,7 +172,7 @@ struct Length : public VectorUnaryBase {
       output.payload.floatValue = __builtin_sqrt(output.payload.floatValue);
     }
   };
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
     return doActivate(context, input, op);
   }
@@ -225,7 +223,7 @@ struct Normalize : public VectorUnaryBase {
     }
   };
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
     return doActivate(context, input, op);
   }
@@ -308,7 +306,7 @@ struct MatMul : public VectorBinaryBase {
     }
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     const auto &operand = _operand.get();
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
@@ -332,7 +330,7 @@ struct Transpose : public VectorUnaryBase {
     return data.inputType;
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     size_t height = input.payload.seqValue.len;
     if (height < 2 || height > 4) {
       // todo 2x1 should be go too
@@ -505,7 +503,7 @@ struct Orthographic : VectorUnaryBase {
     return Var();
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     auto right = 0.5 * _width;
     auto left = -right;
     auto top = 0.5 * _height;

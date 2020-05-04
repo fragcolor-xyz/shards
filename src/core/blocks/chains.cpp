@@ -490,7 +490,7 @@ struct BaseRunner : public ChainBase {
     chain->node = context->main->node;
   }
 
-  ALWAYS_INLINE void activateDetached(CBContext *context, const CBVar &input) {
+  void activateDetached(CBContext *context, const CBVar &input) {
     if (!chainblocks::isRunning(chain.get())) {
       // validated during infer not here! (false)
       auto node = context->main->node.lock();
@@ -499,7 +499,7 @@ struct BaseRunner : public ChainBase {
     }
   }
 
-  ALWAYS_INLINE void activateStepMode(CBContext *context, const CBVar &input) {
+  void activateStepMode(CBContext *context, const CBVar &input) {
     // Allow to re run chains
     if (chainblocks::hasEnded(chain.get())) {
       // stop the root

@@ -17,7 +17,7 @@ struct Now {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dt = tnow - _clock.Start;
     return Var(dt.count());
@@ -25,7 +25,7 @@ struct Now {
 };
 
 struct NowMs : public Now {
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
     return Var(dt.count());
@@ -36,7 +36,7 @@ struct EpochMs {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     using namespace std::chrono;
     milliseconds ms =
         duration_cast<milliseconds>(system_clock::now().time_since_epoch());
