@@ -161,6 +161,12 @@ struct Client {
 
   void cleanup() { resetStream(); }
 
+  void warmup(CBContext *ctx) {
+    port.warmup(ctx);
+    host.warmup(ctx);
+    target.warmup(ctx);
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
 
