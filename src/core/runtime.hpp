@@ -136,9 +136,11 @@ namespace chainblocks {
 
 void installSignalHandlers();
 
-ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
-                                         const CBVar &input) {
+FLAT_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
+                                       const CBVar &input) {
   switch (blk->inlineBlockId) {
+  case NoopBlock:
+    return input;
   case StackPush: {
     chainblocks::arrayPush(context->stack, input);
     return input;
@@ -301,7 +303,7 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
-#if 1
+#if 0
   case MathExp: {
     auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
     return cblock->core.activate(context, input);
@@ -419,9 +421,6 @@ ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
-  case NoopBlock:
-    return input;
-    break;
   default: {
     // NotInline
     return blk->activate(blk, context, &input);

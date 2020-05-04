@@ -108,8 +108,8 @@ struct RuntimeObserver {
                                 CBEnumInfo info) {}
 };
 
-ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src);
-ALWAYS_INLINE inline void destroyVar(CBVar &src);
+inline void cloneVar(CBVar &dst, const CBVar &src);
+inline void destroyVar(CBVar &src);
 
 struct InternalCore;
 } // namespace chainblocks
@@ -320,16 +320,14 @@ struct Globals {
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
 
-template <typename T, typename V>
-ALWAYS_INLINE inline void arrayPush(T &arr, const V &val) {
+template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);
   }
   arr.elements[arr.len++] = val;
 }
 
-template <typename T>
-ALWAYS_INLINE inline void arrayResize(T &arr, uint32_t size) {
+template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   if (arr.cap < size) {
     arrayGrow(arr, size - arr.len);
   }
@@ -337,7 +335,7 @@ ALWAYS_INLINE inline void arrayResize(T &arr, uint32_t size) {
 }
 
 template <typename T, typename V>
-ALWAYS_INLINE inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);
   }
@@ -347,14 +345,13 @@ ALWAYS_INLINE inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   arr.elements[index] = val;
 }
 
-template <typename T, typename V> ALWAYS_INLINE inline V arrayPop(T &arr) {
+template <typename T, typename V> inline V arrayPop(T &arr) {
   assert(arr.len > 0);
   arr.len--;
   return arr.elements[arr.len];
 }
 
-template <typename T>
-ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
+template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
   assert(arr.len > 0);
   arr.len--;
   // this allows eventual destroyVar/cloneVar magic
@@ -362,8 +359,7 @@ ALWAYS_INLINE inline void arrayDelFast(T &arr, uint32_t index) {
   std::swap(arr.elements[index], arr.elements[arr.len]);
 }
 
-template <typename T>
-ALWAYS_INLINE inline void arrayDel(T &arr, uint32_t index) {
+template <typename T> inline void arrayDel(T &arr, uint32_t index) {
   assert(arr.len > 0);
   // this allows eventual destroyVar/cloneVar magic
   // avoiding allocations even in nested seqs
@@ -566,7 +562,7 @@ namespace chainblocks {
 NO_INLINE void _destroyVarSlow(CBVar &var);
 NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 
-ALWAYS_INLINE inline void destroyVar(CBVar &var) {
+inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
   case Table:
   case Seq:
@@ -604,7 +600,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   var.valueType = CBType::None;
 }
 
-ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
+inline void cloneVar(CBVar &dst, const CBVar &src) {
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
     dst.valueType = src.valueType;

@@ -261,7 +261,7 @@ struct Sort : public ActionJointOp {
     }
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Sort in plac
     int64_t len = int64_t(_input->payload.seqValue.len);
@@ -361,7 +361,7 @@ struct Remove : public ActionJointOp {
     return inputType;
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     JointOp::ensureJoinSetup(context);
     // Remove in place, will possibly remove any sorting!
     CBVar output{};
@@ -369,7 +369,8 @@ struct Remove : public ActionJointOp {
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
       // conditional flow so we might have "returns" form (And) (Or)
-      if (_blks.activate(context, var, output, true) > CBChainState::Return)
+      if (unlikely(_blks.activate(context, var, output, true) >
+                   CBChainState::Return))
         return *_input;
 
       if (output == Var::True) {
@@ -450,7 +451,7 @@ struct Profile {
     throw CBException("Parameter out of range.");
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     LOG(INFO) << "Profiling: " << _label;
     TIMED_FUNC(timerObj);
     CBVar output{};
@@ -530,7 +531,7 @@ struct XpendTo : public XPendBase {
 };
 
 struct AppendTo : public XpendTo {
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
@@ -559,7 +560,7 @@ struct AppendTo : public XpendTo {
 };
 
 struct PrependTo : public XpendTo {
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activate(CBContext *context, const CBVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
