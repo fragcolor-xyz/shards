@@ -3,6 +3,7 @@
 
 #include "../runtime.hpp"
 #include "utility.hpp"
+#include <chrono>
 
 namespace chainblocks {
 struct JointOp {
@@ -401,7 +402,7 @@ struct Remove : public ActionJointOp {
 struct Profile {
   BlocksVar _blocks{};
   CBExposedTypesInfo _exposed{};
-  std::string _label;
+  std::string _label{"<no label>"};
 
   static inline Parameters _params{
       {"Action", "The action blocks to profile.", {CoreInfo::Blocks}},
@@ -452,10 +453,14 @@ struct Profile {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    LOG(INFO) << "Profiling: " << _label;
-    TIMED_FUNC(timerObj);
     CBVar output{};
+    const auto start = std::chrono::high_resolution_clock::now();
     activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
+    const auto stop = std::chrono::high_resolution_clock::now();
+    const auto dur =
+        std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
+            .count();
+    LOG(INFO) << _label << " took " << dur << " microseconds.";
     return output;
   }
 };

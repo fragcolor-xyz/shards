@@ -50,7 +50,7 @@
    ;; (Log "exit")
    ))
 
-(schedule Root (Chain "run" 34 (Do fib3) (Log "result")))
+(schedule Root (Chain "run" (Profile (--> 34 (Do fib3))) (Log "result")))
 (run Root)
 
 (def fib1 nil)
