@@ -42,7 +42,6 @@ struct Flatten {
     case Float:
     case Bytes:
     case Array:
-    case StackIndex:
     case Bool: {
       currentType = info;
       break;
@@ -100,7 +99,6 @@ struct Flatten {
     case String:
     case Path:
     case ContextVar:
-    case StackIndex:
     case Image:
     case Int:
     case Float:

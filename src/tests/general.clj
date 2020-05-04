@@ -666,11 +666,6 @@
   (IsMore .int4-b)
   (Assert.Is true true)
 
-  10
-  (Push)
-  9
-  (Math.Multiply .0)
-
   "{
     \"pi\": 3.141,
     \"happy\": true,

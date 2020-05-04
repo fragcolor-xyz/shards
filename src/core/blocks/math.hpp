@@ -40,29 +40,28 @@ struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
   static inline Types MathTypesOrVar{{
-      CoreInfo::StackIndexType, CoreInfo::StackIndexSeqType,
-      CoreInfo::IntType,        CoreInfo::IntSeqType,
-      CoreInfo::IntVarType,     CoreInfo::IntVarSeqType,
-      CoreInfo::Int2Type,       CoreInfo::Int2SeqType,
-      CoreInfo::Int2VarType,    CoreInfo::Int2VarSeqType,
-      CoreInfo::Int3Type,       CoreInfo::Int3SeqType,
-      CoreInfo::Int3VarType,    CoreInfo::Int3VarSeqType,
-      CoreInfo::Int4Type,       CoreInfo::Int4SeqType,
-      CoreInfo::Int4VarType,    CoreInfo::Int4VarSeqType,
-      CoreInfo::Int8Type,       CoreInfo::Int8SeqType,
-      CoreInfo::Int8VarType,    CoreInfo::Int8VarSeqType,
-      CoreInfo::Int16Type,      CoreInfo::Int16SeqType,
-      CoreInfo::Int16VarType,   CoreInfo::Int16VarSeqType,
-      CoreInfo::FloatType,      CoreInfo::FloatSeqType,
-      CoreInfo::FloatVarType,   CoreInfo::FloatVarSeqType,
-      CoreInfo::Float2Type,     CoreInfo::Float2SeqType,
-      CoreInfo::Float2VarType,  CoreInfo::Float2VarSeqType,
-      CoreInfo::Float3Type,     CoreInfo::Float3SeqType,
-      CoreInfo::Float3VarType,  CoreInfo::Float3VarSeqType,
-      CoreInfo::Float4Type,     CoreInfo::Float4SeqType,
-      CoreInfo::Float4VarType,  CoreInfo::Float4VarSeqType,
-      CoreInfo::ColorType,      CoreInfo::ColorSeqType,
-      CoreInfo::ColorVarType,   CoreInfo::ColorVarSeqType,
+      CoreInfo::IntType,       CoreInfo::IntSeqType,
+      CoreInfo::IntVarType,    CoreInfo::IntVarSeqType,
+      CoreInfo::Int2Type,      CoreInfo::Int2SeqType,
+      CoreInfo::Int2VarType,   CoreInfo::Int2VarSeqType,
+      CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
+      CoreInfo::Int3VarType,   CoreInfo::Int3VarSeqType,
+      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,
+      CoreInfo::Int4VarType,   CoreInfo::Int4VarSeqType,
+      CoreInfo::Int8Type,      CoreInfo::Int8SeqType,
+      CoreInfo::Int8VarType,   CoreInfo::Int8VarSeqType,
+      CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
+      CoreInfo::Int16VarType,  CoreInfo::Int16VarSeqType,
+      CoreInfo::FloatType,     CoreInfo::FloatSeqType,
+      CoreInfo::FloatVarType,  CoreInfo::FloatVarSeqType,
+      CoreInfo::Float2Type,    CoreInfo::Float2SeqType,
+      CoreInfo::Float2VarType, CoreInfo::Float2VarSeqType,
+      CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
+      CoreInfo::Float3VarType, CoreInfo::Float3VarSeqType,
+      CoreInfo::Float4Type,    CoreInfo::Float4SeqType,
+      CoreInfo::Float4VarType, CoreInfo::Float4VarSeqType,
+      CoreInfo::ColorType,     CoreInfo::ColorSeqType,
+      CoreInfo::ColorVarType,  CoreInfo::ColorVarSeqType,
   }};
 
   static inline ParamsInfo mathParamsInfo =
@@ -128,34 +127,6 @@ struct BinaryBase : public Base {
         throw CBException("Math operand variable not found: " +
                           std::string(operandSpec.payload.stringValue));
       }
-    } else if (operandSpec.valueType == StackIndex) {
-      // pick from stack
-      auto wanted =
-          (ptrdiff_t(data.stack.len) - 1) - operandSpec.payload.stackIndexValue;
-      if (wanted < 0)
-        throw CBException("Operand not found in the stack");
-      if (data.stack.elements[wanted].basicType != Seq &&
-          data.inputType.basicType != Seq) {
-        if (data.stack.elements[wanted] != data.inputType)
-          throw CBException("Operation not supported between different types");
-        _opType = Normal;
-      } else if (data.stack.elements[wanted].basicType != Seq &&
-                 data.inputType.basicType == Seq) {
-        if (data.inputType.seqTypes.len != 1 ||
-            data.stack.elements[wanted] != data.inputType.seqTypes.elements[0])
-          throw CBException("Operation not supported between different types");
-        _opType = Seq1;
-      } else if (data.stack.elements[wanted].basicType == Seq &&
-                 data.inputType.basicType == Seq) {
-        if (data.stack.elements[wanted] != data.inputType) {
-          // this internally compares seq types!
-          throw CBException("Operation not supported between different types");
-        }
-        _opType = SeqSeq;
-      } else {
-        throw CBException(
-            "Math broadcasting not supported between given types!");
-      }
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         if (operandSpec.valueType != data.inputType.basicType)
@@ -200,11 +171,12 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
-  void op(CBVar &output, const CBVar &input, const CBVar &operand) {
+  ALWAYS_INLINE void op(CBVar &output, const CBVar &input,
+                        const CBVar &operand) {
     as_underlying().doOperate(output, input, operand);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     const auto operand = _operand.get();
     if (likely(_opType == Normal)) {
       op(_output, input, operand);
@@ -240,7 +212,8 @@ private:
 // and replace with functional std::plus etc
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
   struct NAME : public BinaryOperation<NAME> {                                 \
-    void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {  \
+    ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,            \
+                                 const CBVar &operand) {                       \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         if constexpr (DIV_BY_ZERO)                                             \
@@ -369,7 +342,8 @@ private:
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
   struct NAME : public BinaryOperation<NAME> {                                 \
-    void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {  \
+    ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,            \
+                                 const CBVar &operand) {                       \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -450,10 +424,10 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
 // Not used for now...
 #define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
   struct NAME##UnaryFuncD {                                                    \
-    double operator()(double x) { return FUNCD(x); }                           \
+    ALWAYS_INLINE double operator()(double x) { return FUNCD(x); }             \
   };                                                                           \
   struct NAME##UnaryFuncF {                                                    \
-    float operator()(float x) { return FUNCF(x); }                             \
+    ALWAYS_INLINE float operator()(float x) { return FUNCF(x); }               \
   };
 
 MATH_UNARY_FUNCTOR(Abs, __builtin_fabs, __builtin_fabsf);
@@ -488,7 +462,7 @@ MATH_UNARY_FUNCTOR(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_FUNCTOR(Round, __builtin_round, __builtin_roundf);
 
 template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
-  void operate(CBVar &output, const CBVar &input) {
+  ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {
     FuncD fd;
     FuncF ff;
     if constexpr (CBT == CBType::Float) {
@@ -516,7 +490,7 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
 
 #define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
   struct NAME : public UnaryBase {                                             \
-    void operate(CBVar &output, const CBVar &input) {                          \
+    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
       switch (input.valueType) {                                               \
       case Float:                                                              \
         output.valueType = Float;                                              \
@@ -546,7 +520,7 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
       }                                                                        \
     }                                                                          \
                                                                                \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (unlikely(input.valueType == Seq)) {                                  \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
@@ -732,13 +706,15 @@ struct Dec : public UnaryBin<Subtract> {};
 RUNTIME_BLOCK_TYPE(Math, Dec);
 
 struct Max : public BinaryOperation<Max> {
-  void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {
+  ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,
+                               const CBVar &operand) {
     output = std::max(input, operand);
   }
 };
 
 struct Min : public BinaryOperation<Min> {
-  void doOperate(CBVar &output, const CBVar &input, const CBVar &operand) {
+  ALWAYS_INLINE void doOperate(CBVar &output, const CBVar &input,
+                               const CBVar &operand) {
     output = std::min(input, operand);
   }
 };

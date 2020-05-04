@@ -93,9 +93,6 @@ public:
     if (_v.valueType == ContextVar) {
       assert(!_cp);
       _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
-    } else if (_v.valueType == StackIndex) {
-      assert(!_stack);
-      _stack = CB_CORE::getStack(ctx);
     } else {
       _cp = &_v;
     }
@@ -103,11 +100,9 @@ public:
 
   void cleanup() {
     if (_v.valueType == ContextVar) {
-      assert(_cp);
       CB_CORE::releaseVariable(_cp);
     }
     _cp = nullptr;
-    _stack = nullptr;
   }
 
   CBVar &operator=(const CBVar &value) {
@@ -119,14 +114,7 @@ public:
   operator CBVar() const { return _v; }
   const CBVar *operator->() const { return &_v; }
 
-  CBVar &get() {
-    if (unlikely(_v.valueType == StackIndex)) {
-      return _stack
-          ->elements[ptrdiff_t(_stack->len - 1) - _v.payload.stackIndexValue];
-    } else {
-      return *_cp;
-    }
-  }
+  CBVar &get() { return *_cp; }
 
   bool isVariable() { return _v.valueType == ContextVar; }
 

@@ -378,7 +378,7 @@ namespace mal {
     malValuePtr trueValue();
     malValuePtr vector(malValueVec* items);
     malValuePtr vector(malValueIter begin, malValueIter end);
-    malValuePtr contextVar(const String& name, bool stackPos);
+    malValuePtr contextVar(const String& name);
 };
 
 #endif // INCLUDE_TYPES_H

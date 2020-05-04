@@ -72,8 +72,7 @@ bool Tokeniser::matchRegex(const Regex& regex)
         return false;
     }
 
-    ASSERT(match.size() == 1, "Should only have one submatch, not %lu\n",
-                              match.size());
+    ASSERT(match.size() == 1, "Should only have one submatch, not %llu\n", match.size());
     ASSERT(match.position(0) == 0, "Need to match first character\n");
     ASSERT(match.length(0) > 0, "Need to match a non-empty string\n");
 
@@ -192,11 +191,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     }
     if (token[0] == '.') {
       auto str = token.substr(1);
-      if (std::regex_match(str, intRegex)) {
-	return mal::contextVar(str, true);
-      } else {
-	return mal::contextVar(str, false);
-      }
+      return mal::contextVar(str);
     }
     if (token == "^") {
         malValuePtr meta = readForm(tokeniser);

@@ -688,7 +688,6 @@ struct ToBytes {
     case CBType::String:
     case CBType::Path:
     case CBType::ContextVar:
-    case CBType::StackIndex:
     case CBType::Image:
     case CBType::Chain:
     case CBType::Block:
@@ -707,7 +706,6 @@ struct ToBytes {
     case CBType::EndOfBlittableTypes:
     case CBType::None:
     case CBType::Object:
-    case CBType::StackIndex:
     case CBType::Any: {
       break;
     }
