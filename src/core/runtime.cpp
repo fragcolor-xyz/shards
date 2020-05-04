@@ -11,50 +11,6 @@
 #include <string.h>
 #include <unordered_set>
 
-#ifdef USE_RPMALLOC
-#include <rpmalloc/rpmalloc.h>
-
-void *operator new(std::size_t s) {
-  rpmalloc_initialize();
-  return rpmalloc(s);
-}
-void *operator new[](std::size_t s) {
-  rpmalloc_initialize();
-  return rpmalloc(s);
-}
-void *operator new(std::size_t s, const std::nothrow_t &tag) noexcept {
-  rpmalloc_initialize();
-  return rpmalloc(s);
-}
-void *operator new[](std::size_t s, const std::nothrow_t &tag) noexcept {
-  rpmalloc_initialize();
-  return rpmalloc(s);
-}
-void *operator new(std::size_t size, std::align_val_t align) {
-  rpmalloc_initialize();
-  return rpaligned_alloc(static_cast<std::size_t>(align), size);
-}
-
-void operator delete(void *ptr) noexcept { rpfree(ptr); }
-void operator delete[](void *ptr) noexcept { rpfree(ptr); }
-void operator delete(void *ptr, const std::nothrow_t &tag) noexcept {
-  rpfree(ptr);
-}
-void operator delete[](void *ptr, const std::nothrow_t &tag) noexcept {
-  rpfree(ptr);
-}
-void operator delete(void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
-void operator delete[](void *ptr, std::size_t sz) noexcept { rpfree(ptr); }
-
-void operator delete(void *ptr, std::size_t size,
-                     std::align_val_t align) noexcept {
-  rpfree(ptr);
-}
-void operator delete(void *ptr, std::align_val_t align) noexcept {
-  rpfree(ptr);
-}
-#endif
-
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
@@ -142,10 +98,6 @@ void registerCoreBlocks() {
     earlyblocks.push_back(pair);
   }
   Globals::BlocksRegister.clear();
-
-#ifdef USE_RPMALLOC
-  rpmalloc_initialize();
-#endif
 
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
@@ -1784,12 +1736,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   if (min_cap < 2 * arr.cap)
     min_cap = 2 * arr.cap;
 
-#ifdef USE_RPMALLOC
-  rpmalloc_initialize();
-  arr.elements = (decltype(arr.elements))rpaligned_realloc(
-      arr.elements, 16, sizeof(arr.elements[0]) * min_cap,
-      sizeof(arr.elements[0]) * arr.len, 0);
-#else
+  // TODO investigate realloc
   auto newbuf =
       new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
@@ -1797,7 +1744,6 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
     ::operator delete[](arr.elements, std::align_val_t{16});
   }
   arr.elements = (decltype(arr.elements))newbuf;
-#endif
 
   // also memset to 0 new memory in order to make cloneVars valid on new items
   size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);

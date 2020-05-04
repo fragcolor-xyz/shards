@@ -150,7 +150,6 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # custom allocator
   if(NOT EMSCRIPTEN)
-    add_compile_definitions(USE_RPMALLOC)
     # aggressive inlining
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
       add_compile_options(-mllvm -inline-threshold=100000)
@@ -261,7 +260,6 @@ set(
   ${MY_PROJECT_HEADER_PATHS}
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
-  -I${CHAINBLOCKS_DIR}/deps/rpmalloc
   -I${CHAINBLOCKS_DIR}/deps/replxx/include
   -I${CHAINBLOCKS_DIR}/deps/snappy
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
@@ -344,7 +342,6 @@ endif()
 
 ### runtime
 include_directories(
-  ${CHAINBLOCKS_DIR}/deps/rpmalloc
   ${CHAINBLOCKS_DIR}/deps/replxx/include
   ${CHAINBLOCKS_DIR}/deps/snappy
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
@@ -467,12 +464,7 @@ if(NOT BUILD_CORE_ONLY)
     )
 endif()
 
-if(NOT IOS AND NOT EMSCRIPTEN)
-  set(CB_EXTRAS
-    ${CB_EXTRAS}
-    ${CHAINBLOCKS_DIR}/deps/rpmalloc/rpmalloc/rpmalloc.c
-    )
-else()
+if(IOS)
   set(CB_EXTRAS
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
