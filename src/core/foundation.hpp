@@ -600,7 +600,7 @@ inline void destroyVar(CBVar &var) {
   var.valueType = CBType::None;
 }
 
-inline void cloneVar(CBVar &dst, const CBVar &src) {
+ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
   if (src.valueType < EndOfBlittableTypes &&
       dst.valueType < EndOfBlittableTypes) {
     dst.valueType = src.valueType;
@@ -623,8 +623,6 @@ struct InternalCore {
   static void releaseVariable(CBVar *variable) {
     chainblocks::releaseVariable(variable);
   }
-
-  static CBSeq *getStack(CBContext *context);
 
   static void cloneVar(CBVar &dst, const CBVar &src) {
     chainblocks::cloneVar(dst, src);

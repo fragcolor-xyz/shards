@@ -273,14 +273,10 @@ CBlock *createBlock(std::string_view name) {
   // Hook inline blocks to override activation in runChain
   if (name == "Const") {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
-  } else if (name == "Stop") {
-    blkp->inlineBlockId = CBInlineBlocks::CoreStop;
   } else if (name == "Pass") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Input") {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
-  } else if (name == "Restart") {
-    blkp->inlineBlockId = CBInlineBlocks::CoreRestart;
   } else if (name == "Sleep") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
   } else if (name == "Repeat") {
@@ -291,6 +287,8 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (name == "Set") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
+  } else if (name == "Ref") {
+    blkp->inlineBlockId = CBInlineBlocks::CoreRef;
   } else if (name == "Update") {
     blkp->inlineBlockId = CBInlineBlocks::CoreUpdate;
   } else if (name == "Swap") {
@@ -658,8 +656,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
   return CBChainState::Continue;
 }
 
-CBSeq *InternalCore::getStack(CBContext *context) { return &context->stack; }
-
 [[noreturn]] __attribute__((noreturn)) static void
 throwException(const char *msg) {
   throw CBException(msg);
@@ -721,8 +717,6 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   result.releaseVariable = [](CBVar *variable) {
     return chainblocks::releaseVariable(variable);
   };
-
-  result.getStack = [](CBContext *context) { return &context->stack; };
 
   result.throwException = &chainblocks::throwException;
 

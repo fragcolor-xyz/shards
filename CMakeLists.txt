@@ -147,7 +147,7 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   add_compile_definitions(CPUBITS32)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # custom allocator
   if(NOT EMSCRIPTEN)
     add_compile_definitions(USE_RPMALLOC)

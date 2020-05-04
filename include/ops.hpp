@@ -78,9 +78,6 @@ inline std::string type2Name(CBType type) {
   case ContextVar:
     name = "ContextVar";
     break;
-  case StackIndex:
-    name = "StackIndex";
-    break;
   case CBType::Path:
     name = "Path";
     break;
@@ -100,11 +97,11 @@ inline std::string type2Name(CBType type) {
   return name;
 }
 
-inline bool operator!=(const CBVar &a, const CBVar &b);
-inline bool operator<(const CBVar &a, const CBVar &b);
-inline bool operator>(const CBVar &a, const CBVar &b);
-inline bool operator>=(const CBVar &a, const CBVar &b);
-inline bool operator==(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
@@ -181,7 +178,7 @@ inline bool _tableEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-inline bool operator==(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
@@ -190,8 +187,6 @@ inline bool operator==(const CBVar &a, const CBVar &b) {
   case CBType::Any:
   case EndOfBlittableTypes:
     return true;
-  case StackIndex:
-    return a.payload.stackIndexValue == b.payload.stackIndexValue;
   case Object:
     return a.payload.objectVendorId == b.payload.objectVendorId &&
            a.payload.objectTypeId == b.payload.objectTypeId &&
@@ -399,13 +394,11 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-inline bool operator<(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
   switch (a.valueType) {
-  case StackIndex:
-    return a.payload.stackIndexValue < b.payload.stackIndexValue;
   case Enum:
     return a.payload.enumVendorId < b.payload.enumVendorId ||
            a.payload.enumTypeId < b.payload.enumTypeId ||
@@ -592,13 +585,11 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-inline bool operator<=(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
   switch (a.valueType) {
-  case StackIndex:
-    return a.payload.stackIndexValue <= b.payload.stackIndexValue;
   case Enum:
     return a.payload.enumVendorId == b.payload.enumVendorId &&
            a.payload.enumTypeId == b.payload.enumTypeId &&
@@ -708,11 +699,17 @@ inline bool operator<=(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
+ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
+  return !(a == b);
+}
 
-inline bool operator>(const CBVar &a, const CBVar &b) { return b < a; }
+ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) {
+  return b < a;
+}
 
-inline bool operator>=(const CBVar &a, const CBVar &b) { return b <= a; }
+ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
+  return b <= a;
+}
 
 inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)
@@ -955,9 +952,6 @@ template <> struct hash<CBVar> {
         res = res ^ hash<CBVar>()(blk->getParam(blk, int(i)));
       }
     } break;
-    case StackIndex:
-      MAGIC_HASH(var.payload.stackIndexValue);
-      break;
     case Bytes: {
       std::string_view buf((char *)var.payload.bytesValue,
                            var.payload.bytesSize);

@@ -651,8 +651,6 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":String");
   case ContextVar:
     return mal::keyword(":ContextVar");
-  case StackIndex:
-    return mal::keyword(":StackIndex");
   case Path:
     return mal::keyword(":Path");
   case Image:
@@ -1564,19 +1562,11 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
 }
 
 namespace mal {
-malValuePtr contextVar(const MalString &token, bool stack) {
-  if (stack) {
-    auto offset = std::stoul(token);
-    CBVar v{};
-    v.valueType = CBType::StackIndex;
-    v.payload.stackIndexValue = offset;
-    return malValuePtr(new malCBVar(v));
-  } else {
-    CBVar tmp{}, v{};
-    tmp.valueType = CBType::ContextVar;
-    tmp.payload.stringValue = token.c_str();
-    chainblocks::cloneVar(v, tmp);
-    return malValuePtr(new malCBVar(v, true));
-  }
+malValuePtr contextVar(const MalString &token) {
+  CBVar tmp{}, v{};
+  tmp.valueType = CBType::ContextVar;
+  tmp.payload.stringValue = token.c_str();
+  chainblocks::cloneVar(v, tmp);
+  return malValuePtr(new malCBVar(v, true));
 }
 } // namespace mal

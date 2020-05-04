@@ -136,8 +136,8 @@ namespace chainblocks {
 
 void installSignalHandlers();
 
-FLAT_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
-                                       const CBVar &input) {
+FLATTEN ALWAYS_INLINE inline CBVar
+activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   switch (blk->inlineBlockId) {
   case NoopBlock:
     return input;
@@ -211,14 +211,6 @@ FLAT_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
     auto cblock = reinterpret_cast<chainblocks::InputRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
-  case CoreStop: {
-    auto cblock = reinterpret_cast<chainblocks::StopRuntime *>(blk);
-    return cblock->core.activate(context, input);
-  }
-  case CoreRestart: {
-    auto cblock = reinterpret_cast<chainblocks::RestartRuntime *>(blk);
-    return cblock->core.activate(context, input);
-  }
   case CoreTakeSeq: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
     return cblock->core.activateSeq(context, input);
@@ -249,6 +241,10 @@ FLAT_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context,
   }
   case CoreSet: {
     auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
+    return cblock->core.activate(context, input);
+  }
+  case CoreRef: {
+    auto cblock = reinterpret_cast<chainblocks::RefRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
   case CoreUpdate: {
@@ -831,7 +827,6 @@ struct Serialization {
     case CBType::Float3:
     case CBType::Float4:
     case CBType::Color:
-    case CBType::StackIndex:
       break;
     case CBType::Bytes:
       delete[] output.payload.bytesValue;
@@ -954,9 +949,6 @@ struct Serialization {
       break;
     case CBType::Color:
       read((uint8_t *)&output.payload, sizeof(CBColor));
-      break;
-    case CBType::StackIndex:
-      read((uint8_t *)&output.payload, sizeof(int64_t));
       break;
     case CBType::Bytes: {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
@@ -1272,10 +1264,6 @@ struct Serialization {
     case CBType::Color:
       write((const uint8_t *)&input.payload, sizeof(CBColor));
       total += sizeof(CBColor);
-      break;
-    case CBType::StackIndex:
-      write((const uint8_t *)&input.payload, sizeof(int64_t));
-      total += sizeof(int64_t);
       break;
     case CBType::Bytes:
       write((const uint8_t *)&input.payload.bytesSize,

@@ -59,7 +59,6 @@ struct CoreInfo {
   }
 
   CB_CORE_TYPE_DEF(Any);
-  CB_CORE_TYPE_DEF(StackIndex);
   CB_CORE_TYPE_DEF(Bool);
   CB_CORE_TYPE_DEF(Int);
   CB_CORE_TYPE_DEF(Int2);
@@ -203,8 +202,8 @@ struct BaseOpsBin {
   void cleanup() {
     if (_target && _value.valueType == ContextVar) {
       releaseVariable(_target);
-      _target = nullptr;
     }
+    _target = nullptr;
   }
 
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -232,16 +231,18 @@ struct BaseOpsBin {
       return Var::Empty;
     }
   }
+
+  void warmup(CBContext *context) {
+    _target = _value.valueType == ContextVar
+                  ? referenceVariable(context, _value.payload.stringValue)
+                  : &_value;
+  }
 };
 
 #define LOGIC_OP(NAME, OP)                                                     \
   struct NAME : public BaseOpsBin {                                            \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      if (!_target) {                                                          \
-        _target = _value.valueType == ContextVar                               \
-                      ? referenceVariable(context, _value.payload.stringValue) \
-                      : &_value;                                               \
-      }                                                                        \
+    FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context,                   \
+                                         const CBVar &input) {                 \
       const auto &value = *_target;                                            \
       if (input OP value) {                                                    \
         return Var::True;                                                      \
@@ -261,11 +262,6 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ANY_SEQ_OP(NAME, OP)                                             \
   struct NAME : public BaseOpsBin {                                            \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      if (!_target) {                                                          \
-        _target = _value.valueType == ContextVar                               \
-                      ? referenceVariable(context, _value.payload.stringValue) \
-                      : &_value;                                               \
-      }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
         auto vlen = value.payload.seqValue.len;                                \
@@ -307,11 +303,6 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ALL_SEQ_OP(NAME, OP)                                             \
   struct NAME : public BaseOpsBin {                                            \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      if (!_target) {                                                          \
-        _target = _value.valueType == ContextVar                               \
-                      ? referenceVariable(context, _value.payload.stringValue) \
-                      : &_value;                                               \
-      }                                                                        \
       const auto &value = *_target;                                            \
       if (input.valueType == Seq && value.valueType == Seq) {                  \
         auto vlen = value.payload.seqValue.len;                                \
@@ -367,6 +358,7 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
   RUNTIME_CORE_BLOCK_FACTORY(NAME);                                            \
   RUNTIME_BLOCK_destroy(NAME);                                                 \
   RUNTIME_BLOCK_cleanup(NAME);                                                 \
+  RUNTIME_BLOCK_warmup(NAME);                                                  \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \
@@ -379,7 +371,7 @@ struct Input {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     context->rebaseFlow();
     return input;
   }
@@ -429,7 +421,7 @@ struct Pause {
     return CBExposedTypesInfo(reqs);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     const auto &t = time.get();
     if (t.valueType == None)
       suspend(context, 0.0);
@@ -644,7 +636,7 @@ struct SetBase : public VariableBase {
       _target = referenceVariable(context, _name.c_str());
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
       return input;
@@ -763,7 +755,7 @@ struct Ref : public SetBase {
     _cell = nullptr;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr)) {
       // must keep refcount!
       auto rc = _cell->refcount;
@@ -1011,7 +1003,7 @@ struct Get : public VariableBase {
       _target = referenceVariable(context, _name.c_str());
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (likely(_cell != nullptr))
       return *_cell;
 
@@ -1087,9 +1079,16 @@ struct Swap {
     if (_targetA) {
       releaseVariable(_targetA);
       releaseVariable(_targetB);
-      _targetA = nullptr;
-      _targetB = nullptr;
     }
+    _targetA = nullptr;
+    _targetB = nullptr;
+  }
+
+  void warmup(CBContext *ctx) {
+    assert(!_targetA);
+    assert(!_targetB);
+    _targetA = referenceVariable(ctx, _nameA.c_str());
+    _targetB = referenceVariable(ctx, _nameB.c_str());
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -1125,11 +1124,7 @@ struct Swap {
     throw CBException("Param index out of range.");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_targetA) {
-      _targetA = referenceVariable(context, _nameA.c_str());
-      _targetB = referenceVariable(context, _nameB.c_str());
-    }
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto tmp = *_targetA;
     *_targetA = *_targetB;
     *_targetB = tmp;
@@ -1297,7 +1292,7 @@ struct Push : public SeqBase {
     return data.inputType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     assert(_cell);
     if (_clear && _firstPush) {
       chainblocks::arrayResize(_cell->payload.seqValue, 0);
@@ -2105,7 +2100,7 @@ struct Take {
     }
   }
 
-  CBVar activateSeq(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
     const auto inputLen = input.payload.seqValue.len;
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
 
@@ -2540,21 +2535,30 @@ struct Repeat {
   std::string _ctxVar;
   CBVar *_ctxTimes = nullptr;
   int64_t _times = 0;
+  int64_t *_repeats{nullptr};
   bool _forever = false;
   ExposedInfo _requiredInfo{};
 
   void cleanup() {
     if (_ctxTimes) {
       releaseVariable(_ctxTimes);
-      _ctxTimes = nullptr;
     }
     _blks.cleanup();
     _pred.cleanup();
+    _ctxTimes = nullptr;
+    _repeats = nullptr;
   }
 
   void warmup(CBContext *ctx) {
     _blks.warmup(ctx);
     _pred.warmup(ctx);
+    if (_ctxVar.size()) {
+      assert(!_ctxTimes);
+      _ctxTimes = referenceVariable(ctx, _ctxVar.c_str());
+      _repeats = &_ctxTimes->payload.intValue;
+    } else {
+      _repeats = &_times;
+    }
   }
 
   static inline Parameters _params{
@@ -2643,15 +2647,8 @@ struct Repeat {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    auto repeats = _forever ? 1 : _times;
-
-    if (_ctxVar.size()) {
-      if (!_ctxTimes)
-        _ctxTimes = referenceVariable(context, _ctxVar.c_str());
-      repeats = _ctxTimes->payload.intValue;
-    }
-
+  FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    auto repeats = *_repeats;
     while (repeats) {
       CBVar repeatOutput{};
       CBVar blks = _blks;
@@ -2724,7 +2721,7 @@ struct Once {
 
   CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!done)) {
       done = true;
       CBVar repeatOutput{};

@@ -1152,8 +1152,9 @@ RUNTIME_BLOCK_END(Get);
 
 // Register Swap
 RUNTIME_CORE_BLOCK_FACTORY(Swap);
-RUNTIME_BLOCK_cleanup(Swap);
 RUNTIME_BLOCK_inputTypes(Swap);
+RUNTIME_BLOCK_warmup(Swap);
+RUNTIME_BLOCK_cleanup(Swap);
 RUNTIME_BLOCK_outputTypes(Swap);
 RUNTIME_BLOCK_parameters(Swap);
 RUNTIME_BLOCK_requiredVariables(Swap);

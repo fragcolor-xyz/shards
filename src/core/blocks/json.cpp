@@ -63,10 +63,6 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"value", var.payload.boolValue}};
     break;
   }
-  case StackIndex: {
-    j = json{{"type", valType}, {"value", var.payload.stackIndexValue}};
-    break;
-  }
   case Int: {
     j = json{{"type", valType}, {"value", var.payload.intValue}};
     break;
@@ -284,11 +280,6 @@ void from_json(const json &j, CBVar &var) {
   case Int: {
     var.valueType = Int;
     var.payload.intValue = j.at("value").get<int64_t>();
-    break;
-  }
-  case StackIndex: {
-    var.valueType = StackIndex;
-    var.payload.stackIndexValue = j.at("value").get<int64_t>();
     break;
   }
   case Int2: {

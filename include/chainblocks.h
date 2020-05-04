@@ -15,19 +15,18 @@ enum CBType : uint8_t {
   Any,
   Enum,
   Bool,
-  Int,        // A 64bits int
-  Int2,       // A vector of 2 64bits ints
-  Int3,       // A vector of 3 32bits ints
-  Int4,       // A vector of 4 32bits ints
-  Int8,       // A vector of 8 16bits ints
-  Int16,      // A vector of 16 8bits ints
-  Float,      // A 64bits float
-  Float2,     // A vector of 2 64bits floats
-  Float3,     // A vector of 3 32bits floats
-  Float4,     // A vector of 4 32bits floats
-  Color,      // A vector of 4 uint8
-  Block,      // a block, useful for future introspection blocks!
-  StackIndex, // an index in the stack, used as cheap ContextVar
+  Int,    // A 64bits int
+  Int2,   // A vector of 2 64bits ints
+  Int3,   // A vector of 3 32bits ints
+  Int4,   // A vector of 4 32bits ints
+  Int8,   // A vector of 8 16bits ints
+  Int16,  // A vector of 16 8bits ints
+  Float,  // A 64bits float
+  Float2, // A vector of 2 64bits floats
+  Float3, // A vector of 3 32bits floats
+  Float4, // A vector of 4 32bits floats
+  Color,  // A vector of 4 uint8
+  Block,  // a block, useful for future introspection blocks!
 
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
 
@@ -66,12 +65,11 @@ enum CBInlineBlocks : uint32_t {
   CoreConst,
   CoreSleep,
   CoreInput,
-  CoreStop,
-  CoreRestart,
   CoreRepeat,
   CoreOnce,
   CoreGet,
   CoreSet,
+  CoreRef,
   CoreUpdate,
   CoreSwap,
   CoreTakeSeq,
@@ -272,12 +270,10 @@ typedef float CBFloat4 __attribute__((vector_size(16)));
 #define ALWAYS_INLINE __attribute__((always_inline))
 #define NO_INLINE __attribute__((noinline))
 #define FLATTEN __attribute__((flatten))
-#define FLAT_INLINE __attribute__((flatten, always_inline))
 #else
 #define ALWAYS_INLINE
 #define NO_INLINE
 #define FLATTEN
-#define FLAT_INLINE
 #endif
 
 #else // TODO
@@ -294,7 +290,6 @@ typedef float CBFloat4[4];
 #define ALWAYS_INLINE
 #define NO_INLINE
 #define FLATTEN
-#define FLAT_INLINE
 
 #endif
 
@@ -522,8 +517,7 @@ struct CBFlow {
 // #### In the case of activate:
 //   * The input var memory is owned by the previous block.
 //   * The output var memory is owned by the activating block.
-//   * The activating block will have to manage any CBVar that puts in the stack
-// or context variables as well!
+//   * The activating block will have to manage any CBVar that puts in context
 // #### In the case of setParam:
 //   * If the block needs to store the String or Seq data it will then need to
 // deep copy it.
@@ -571,8 +565,6 @@ struct CBVarPayload {
       // useful when serializing, recycling memory
       uint32_t stringCapacity;
     };
-
-    int64_t stackIndexValue;
 
     struct CBColor colorValue;
 
@@ -824,8 +816,6 @@ typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
-typedef CBSeq *(__cdecl *CBGetStack)(struct CBContext *context);
-
 typedef void(__cdecl *CBThrowException)(const char *errorText)
     __attribute__((noreturn));
 
@@ -947,9 +937,6 @@ struct CBCore {
   // To be used within blocks, to manipulate variables
   CBReferenceVariable referenceVariable;
   CBReleaseVariable releaseVariable;
-
-  // Context stack access
-  CBGetStack getStack;
 
   // Can be used to propagate block errors
   // assume [[noreturn]]
