@@ -69,22 +69,10 @@ struct Convolve {
     int index = 0;
     for (int y = low; y <= high; y++) {
       for (int x = low; x <= high; x++) {
-        int idxx = _xindex + x;
-
-        // pad shifting to nearest
-        while (idxx < 0)
-          idxx++;
-        while (idxx >= w)
-          idxx--;
-
-        int idxy = _yindex + y;
-
-        // pad shifting to nearest
-        while (idxy < 0)
-          idxy++;
-        while (idxx >= h)
-          idxy--;
-
+        const int cidxx = _xindex + x;
+        const int cidxy = _yindex + y;
+        const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
+        const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
         const int addr = ((w * idxy) + idxx) * c;
         for (int i = 0; i < c; i++) {
           _bytes[index++] = input.payload.imageValue.data[addr + i];
@@ -132,7 +120,8 @@ struct StripAlpha {
       }
     }
 
-    return Var(&_bytes.front(), w, h, 3, input.payload.imageValue.flags);
+    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3,
+               input.payload.imageValue.flags);
   }
 
 private:
