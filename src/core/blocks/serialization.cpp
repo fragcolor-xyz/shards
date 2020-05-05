@@ -24,7 +24,7 @@ struct FileBase {
   ParamVar _filename{};
   OwnedVar _currentFileName{};
 
-  virtual void cleanup() { _filename.cleanup(); }
+  void cleanup() { _filename.cleanup(); }
   void warmup(CBContext *context) { _filename.warmup(context); }
 
   static CBParametersInfo parameters() { return params; }
@@ -117,7 +117,7 @@ struct WriteFile : public FileBase {
     }
   }
 
-  void cleanup() override {
+  void cleanup() {
     if (_fileStream.good()) {
       _fileStream.flush();
     }
@@ -163,10 +163,10 @@ struct ReadFile : public FileBase {
   std::ifstream _fileStream;
   CBVar _output{};
 
-  void cleanup() override {
+  void cleanup() {
     Serialization::varFree(_output);
-    FileBase::cleanup();
     _fileStream = {};
+    FileBase::cleanup();
   }
 
   struct Reader {
@@ -206,11 +206,12 @@ struct LoadImage : public FileBase {
 
   CBVar _output{};
 
-  void cleanup() override {
+  void cleanup() {
     if (_output.valueType == Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
-      _output = {};
+      _output = Var::Empty;
     }
+
     FileBase::cleanup();
   }
 
@@ -220,17 +221,22 @@ struct LoadImage : public FileBase {
       throw ActivationError("File not found!");
     }
 
-    CBVar res{};
-    res.valueType = Image;
+    if (_output.valueType == Image && _output.payload.imageValue.data) {
+      stbi_image_free(_output.payload.imageValue.data);
+      _output = Var::Empty;
+    }
+
+    _output.valueType = Image;
     int x, y, n;
-    res.payload.imageValue.data = stbi_load(filename.c_str(), &x, &y, &n, 0);
-    if (!res.payload.imageValue.data) {
+    _output.payload.imageValue.data =
+        stbi_load(filename.c_str(), &x, &y, &n, 0);
+    if (!_output.payload.imageValue.data) {
       throw ActivationError("Failed to load image file");
     }
-    res.payload.imageValue.width = uint16_t(x);
-    res.payload.imageValue.height = uint16_t(y);
-    res.payload.imageValue.channels = uint16_t(n);
-    return res;
+    _output.payload.imageValue.width = uint16_t(x);
+    _output.payload.imageValue.height = uint16_t(y);
+    _output.payload.imageValue.channels = uint16_t(n);
+    return _output;
   }
 };
 
