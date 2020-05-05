@@ -101,10 +101,6 @@ public:
     return sCore._core.releaseVariable(variable);
   }
 
-  static CBSeq *getStack(CBContext *context) {
-    return sCore._core.getStack(context);
-  }
-
   [[noreturn]] static void throwException(const char *errorText) {
     sCore._core.throwException(errorText);
   }

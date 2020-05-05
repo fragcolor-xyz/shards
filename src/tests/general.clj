@@ -754,6 +754,10 @@
 
   "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
+  (Const [-0.1 -0.2 0.4])
+  (Math.Abs)
+  (Assert.Is [0.1 0.2 0.4] true)
+
   "global1" (Set .global1 :Global true)
 
   (Msg "All looking good!")

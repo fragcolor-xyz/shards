@@ -515,7 +515,7 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
       if (unlikely(input.valueType == Seq)) {                                  \
         chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(_output, input);                                             \
+          operate(_output, input.payload.seqValue.elements[i]);                \
           chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
         }                                                                      \
         return _cachedSeq;                                                     \
