@@ -783,6 +783,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
   ParamVar _chain{};
   std::size_t _chainHash = 0;
+  CBChain *_chainPtr = nullptr;
 
   void setParam(int index, CBVar value) {
     if (index == 0) {
@@ -848,7 +849,8 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (unlikely(!chain))
       return input;
 
-    if (_chainHash == 0 || _chainHash != chain->composedHash) {
+    if (_chainHash == 0 || _chainHash != chain->composedHash ||
+        _chainPtr != chain.get()) {
       // Compose and hash in a thread
       auto asyncRes =
           std::async(std::launch::async, [this, context, chainVar]() {
