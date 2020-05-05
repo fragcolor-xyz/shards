@@ -168,11 +168,11 @@ struct Evolve {
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
     return op([&]() {
-      LOG(TRACE) << "Evolve, first run, init";
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes
       if (_population.size() == 0) {
+        LOG(TRACE) << "Evolve, first run, init";
         Serialization serial;
         std::stringstream chainStream;
         Writer w1(chainStream);
