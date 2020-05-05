@@ -112,6 +112,7 @@ inline void cloneVar(CBVar &dst, const CBVar &src);
 inline void destroyVar(CBVar &src);
 
 struct InternalCore;
+using OwnedVar = TOwnedVar<InternalCore>;
 } // namespace chainblocks
 
 struct CBChain : public std::enable_shared_from_this<CBChain> {
@@ -184,10 +185,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   CBVar rootTickInput{};
   CBVar previousOutput{};
 
-  CBVar finishedOutput{};
-  bool ownedOutput{false};
+  chainblocks::OwnedVar finishedOutput{};
 
-  std::size_t composedHash;
+  std::size_t composedHash{};
 
   CBContext *context{nullptr};
 
@@ -238,8 +238,6 @@ private:
 };
 
 namespace chainblocks {
-using OwnedVar = TOwnedVar<InternalCore>;
-
 using CBMap = std::unordered_map<
     std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
     boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,

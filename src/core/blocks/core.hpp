@@ -562,8 +562,8 @@ struct VariableBase {
   void cleanup() {
     if (_target) {
       releaseVariable(_target);
-      _target = nullptr;
     }
+    _target = nullptr;
     _cell = nullptr;
   }
 

@@ -804,6 +804,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   void cleanup() {
     BaseLoader<ChainRunner>::cleanup();
     _chain.cleanup();
+    _chainPtr = nullptr;
   }
 
   void warmup(CBContext *context) {
@@ -816,6 +817,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
     data.chain = context->chainStack.back();
+    chain->node = context->main->node;
 
     // avoid stackoverflow
     if (visiting.count(chain.get()))
@@ -871,6 +873,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
       asyncRes.get();
 
       _chainHash = chain->composedHash;
+      _chainPtr = chain.get();
 
       doWarmup(context);
     }

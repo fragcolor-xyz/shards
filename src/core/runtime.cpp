@@ -1432,11 +1432,6 @@ void CBChain::clear() {
     }
   }
   variables.clear();
-
-  if (ownedOutput) {
-    chainblocks::destroyVar(finishedOutput);
-    ownedOutput = false;
-  }
 }
 
 namespace chainblocks {
@@ -1612,12 +1607,6 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   // Reset state
   chain->state = CBChain::State::Prepared;
 
-  // Clean previous output if we had one
-  if (chain->ownedOutput) {
-    destroyVar(chain->finishedOutput);
-    chain->ownedOutput = false;
-  }
-
   // Create a new context and copy the sink in
   CBFlow anonFlow{chain};
 #ifndef __EMSCRIPTEN__
@@ -1662,9 +1651,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
     context.continueFlow();
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
-    chain->finishedOutput = runRes.output; // Write result before setting flag
-    context.iterationCount++;              // increatse iteration counter
-    context.stack.len = 0;
+    context.iterationCount++; // increatse iteration counter
+    context.stack.len = 0;    // reset stack
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
@@ -1693,12 +1681,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   }
 
 endOfChain:
-  // Copy the output variable since the next call might wipe it
-  auto tmp = chain->finishedOutput;
-  // Reset it, we are not sure on the internal state
-  memset(&chain->finishedOutput, 0x0, sizeof(CBVar));
-  chain->ownedOutput = true;
-  cloneVar(chain->finishedOutput, tmp);
+  chain->finishedOutput = chain->previousOutput;
 
   // run cleanup on all the blocks
   cleanup(chain);

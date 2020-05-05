@@ -293,8 +293,6 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              // Make sure to reset any remains, should be noop
-              i.node->terminate();
               // Evaluate our brain chain
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               i.node->schedule(chain);
@@ -340,8 +338,6 @@ struct Evolve {
             _sortedPopulation.end(),
             [](auto &iref) {
               Individual &i = iref.get();
-              // Make sure to reset any remains, should be noop
-              i.node->terminate();
               // compute the fitness
               TickObserver obs{i};
               auto fitchain =
@@ -403,7 +399,7 @@ struct Evolve {
               // compute the fitness
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              i.node->schedule(obs, fitchain.get(), chain->finishedOutput);
+              i.node->schedule(obs, fitchain, chain->finishedOutput);
               while (!i.node->empty()) {
                 i.node->tick(obs);
               }
@@ -421,7 +417,9 @@ struct Evolve {
               auto fitchain =
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
+              chain->composedHash = 0;
               stop(fitchain.get());
+              fitchain->composedHash = 0;
               i.node->terminate();
             });
 
@@ -527,7 +525,7 @@ private:
 
     void before_stop(CBChain *chain) {
       // Collect fitness last result
-      auto fitnessVar = chain->previousOutput;
+      auto fitnessVar = chain->finishedOutput;
       if (fitnessVar.valueType == Float) {
         self.fitness = fitnessVar.payload.floatValue;
       }

@@ -433,8 +433,6 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
   context->chainStack.push_back(chain);
   DEFER({ context->chainStack.pop_back(); });
   auto runRes = chainblocks::runChain(chain, context, input);
-  // Write result before setting flag, TODO mutex inter-locked?
-  chain->finishedOutput = runRes.output;
   return runRes;
 }
 
@@ -771,7 +769,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     // release all chains
     scheduled.clear();
 
-    // find dangling variables, notice but do not destroy
+    // find dangling variables and notice
     for (auto var : variables) {
       if (var.second.refcount > 0) {
         LOG(ERROR) << "Found a dangling global variable: " << var.first;
