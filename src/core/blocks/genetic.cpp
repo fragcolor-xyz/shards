@@ -147,7 +147,7 @@ struct Evolve {
   };
 
   void warmup(CBContext *context) {
-    if(!_exec || _exec->num_workers() != size_t(_threads)) {
+    if (!_exec || _exec->num_workers() != size_t(_threads)) {
       _exec.reset(new tf::Executor(size_t(_threads)));
     }
   }
@@ -411,7 +411,7 @@ struct Evolve {
         _exec->run(runFlow).get();
       }
 #endif
-      LOG(TRACE) << "Evolve, stopping all chains";
+      LOG(INFO) << "Evolve, stopping all chains";
       { // Stop all the population chains
         tf::Taskflow flow;
 
@@ -430,11 +430,19 @@ struct Evolve {
         _exec->run(flow).get();
       }
 
-      LOG(TRACE) << "Evolve, sorting";
-      pdqsort(_sortedPopulation.begin(), _sortedPopulation.end(),
-              [](auto &a, auto &b) { return a->fitness > b->fitness; });
+      LOG(INFO) << "Evolve, sorting";
+      // remove non normal fitness (sort needs this or crashes will happen)
+      std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
+                    [](auto &i) {
+                      if (!std::isnormal(i->fitness)) {
+                        i->fitness = -std::numeric_limits<float>::max();
+                      }
+                    });
+      pdqsort(
+          _sortedPopulation.begin(), _sortedPopulation.end(),
+          [](const auto &a, const auto &b) { return a->fitness > b->fitness; });
 
-      LOG(TRACE) << "Evolve, resetting flags";
+      LOG(INFO) << "Evolve, resetting flags";
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
@@ -505,7 +513,7 @@ private:
     // Keep track of mutants and push/pop mutations on chain
     std::vector<MutantInfo> mutants;
 
-    double fitness{std::numeric_limits<double>::min()};
+    double fitness{-std::numeric_limits<float>::max()};
 
     bool extinct = false;
 
@@ -532,7 +540,7 @@ private:
     void before_compose(CBChain *chain) {
       // Keep in mind that individuals might not reach chain termination
       // they might "crash", so fitness should be set to minimum before any run
-      self.fitness = std::numeric_limits<double>::min();
+      self.fitness = -std::numeric_limits<float>::max();
     }
   };
 

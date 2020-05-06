@@ -134,7 +134,8 @@ struct Parameters {
 
   Parameters() = default;
 
-  Parameters(const Parameters &others, const std::vector<ParameterInfo>& infos) {
+  Parameters(const Parameters &others,
+             const std::vector<ParameterInfo> &infos) {
     for (auto &info : others._infos) {
       _infos.push_back(info);
     }
