@@ -2,6 +2,7 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "../runtime.hpp"
+#include "pdqsort.h"
 #include "utility.hpp"
 #include <chrono>
 
@@ -887,8 +888,8 @@ struct Erase : SeqUser {
         // ensure we delete from highest index
         // so to keep indices always valid
         IterableSeq sindices(indices);
-        std::sort(sindices.begin(), sindices.end(),
-                  [](CBVar a, CBVar b) { return a > b; });
+        pdqsort(sindices.begin(), sindices.end(),
+                [](CBVar a, CBVar b) { return a > b; });
         for (auto &idx : sindices) {
           const auto index = idx.payload.intValue;
           arrayDel(_target->payload.seqValue, index);

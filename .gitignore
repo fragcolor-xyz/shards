@@ -12,9 +12,7 @@ src/py/MANIFEST
 src/nim/tests/tcbvar.xml
 src/nim/tcbvar.xml
 *.log
-build
-build-release
-build-lnx
+/build*
 src/core/.DS_Store
 .DS_Store
 src/.DS_Store

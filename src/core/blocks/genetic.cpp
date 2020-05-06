@@ -5,6 +5,7 @@
 #include "shared.hpp"
 #include "taskflow/core/executor.hpp"
 #include <limits>
+#include <pdqsort.h>
 #include <sstream>
 #include <taskflow/taskflow.hpp>
 
@@ -17,8 +18,6 @@ struct Evolve {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return _outputType; }
   static CBParametersInfo parameters() { return _params; }
-
-  void setup() { _exec.reset(new tf::Executor(2)); }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -45,7 +44,6 @@ struct Evolve {
       break;
     case 7:
       _threads = std::max(int64_t(1), value.payload.intValue);
-      _exec.reset(new tf::Executor(size_t(_threads)));
       break;
     case 8:
       _coros = value.payload.intValue;
@@ -148,6 +146,12 @@ struct Evolve {
     }
   };
 
+  void warmup(CBContext *context) {
+    if(!_exec || _exec->num_workers() != size_t(_threads)) {
+      _exec.reset(new tf::Executor(size_t(_threads)));
+    }
+  }
+
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
@@ -157,6 +161,11 @@ struct Evolve {
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
             stop(chain.get());
             Serialization::varFree(i.chain);
+            auto fitchain =
+                CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+            stop(fitchain.get());
+            Serialization::varFree(i.fitnessChain);
+            i.node->terminate();
           });
       _exec->run(cleanupFlow).get();
 
@@ -173,6 +182,7 @@ struct Evolve {
       // Only the DNA changes
       if (_population.size() == 0) {
         LOG(TRACE) << "Evolve, first run, init";
+
         Serialization serial;
         std::stringstream chainStream;
         Writer w1(chainStream);
@@ -200,6 +210,7 @@ struct Evolve {
               deserial.deserialize(r1, i.chain);
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               gatherMutants(chain.get(), i.mutants);
+              resetState(i);
 
               std::stringstream i2Stream(fitnessStr);
               Reader r2(i2Stream);
@@ -211,18 +222,8 @@ struct Evolve {
         size_t idx = 0;
         for (auto &i : _population) {
           i.idx = idx;
-          auto fitchain =
-              CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-          _sortedPopulation.emplace_back(i);
+          _sortedPopulation.emplace_back(&i);
           idx++;
-        }
-
-        LOG(TRACE) << "Evolve, run first reset";
-        {
-          tf::Taskflow mutFlow;
-          mutFlow.parallel_for(_population.begin(), _population.end(),
-                               [&](auto &i) { resetState(i); });
-          _exec->run(mutFlow).get();
         }
 
         _era = 0;
@@ -234,7 +235,7 @@ struct Evolve {
         _crossingOver.clear();
         int currentIdx = 0;
         for (auto &ind : _sortedPopulation) {
-          ind.get().crossoverTask.reset();
+          ind->crossoverTask.reset();
           if (Rng::frand() < _crossover) {
             // In this case this individual
             // becomes the child between two other individuals
@@ -250,30 +251,29 @@ struct Evolve {
             auto parent1 = _sortedPopulation[parent1Idx];
 
             if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
-                parent0Idx != parent1Idx &&
-                parent0.get().parent0Idx != currentIdx &&
-                parent0.get().parent1Idx != currentIdx &&
-                parent1.get().parent0Idx != currentIdx &&
-                parent1.get().parent1Idx != currentIdx) {
-              ind.get().crossoverTask = crossoverFlow.emplace(
-                  [=]() { crossover(ind, parent0, parent1); });
+                parent0Idx != parent1Idx && parent0->parent0Idx != currentIdx &&
+                parent0->parent1Idx != currentIdx &&
+                parent1->parent0Idx != currentIdx &&
+                parent1->parent1Idx != currentIdx) {
+              ind->crossoverTask = crossoverFlow.emplace(
+                  [=]() { crossover(*ind, *parent0, *parent1); });
 #if 0
               ind.get().crossoverTask.name(std::to_string(currentIdx) + " = " +
                                            std::to_string(parent0Idx) + " + " +
                                            std::to_string(parent1Idx));
 #endif
               _crossingOver.emplace_back(ind, parent0, parent1);
-              ind.get().parent0Idx = parent0Idx;
-              ind.get().parent1Idx = parent1Idx;
+              ind->parent0Idx = parent0Idx;
+              ind->parent1Idx = parent1Idx;
             }
           }
           currentIdx++;
         }
 
         for (auto [a, b, c] : _crossingOver) {
-          auto &atask = a.get().crossoverTask;
-          auto &btask = b.get().crossoverTask;
-          auto &ctask = c.get().crossoverTask;
+          auto &atask = a->crossoverTask;
+          auto &btask = b->crossoverTask;
+          auto &ctask = c->crossoverTask;
           if (!btask.empty())
             btask.precede(atask);
           if (!ctask.empty())
@@ -299,11 +299,10 @@ struct Evolve {
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &iref) {
-              Individual &i = iref.get();
+            [](auto &i) {
               // Evaluate our brain chain
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(chain);
+              auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
+              i->node->schedule(chain);
             },
             _coros);
 
@@ -317,10 +316,9 @@ struct Evolve {
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &iref) {
-              Individual &i = iref.get();
-              if (!i.node->empty())
-                i.node->tick();
+            [](auto &i) {
+              if (!i->node->empty())
+                i->node->tick();
             },
             _coros);
 
@@ -344,14 +342,13 @@ struct Evolve {
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &iref) {
-              Individual &i = iref.get();
+            [](auto &i) {
               // compute the fitness
-              TickObserver obs{i};
+              TickObserver obs{*i};
               auto fitchain =
-                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(obs, fitchain, chain->finishedOutput);
+                  CBChain::sharedFromRef(i->fitnessChain.payload.chainValue);
+              auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
+              i->node->schedule(obs, fitchain, chain->finishedOutput);
             },
             _coros);
 
@@ -365,11 +362,10 @@ struct Evolve {
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
-            [](auto &iref) {
-              Individual &i = iref.get();
-              if (!i.node->empty()) {
-                TickObserver obs{i};
-                i.node->tick(obs);
+            [](auto &i) {
+              if (!i->node->empty()) {
+                TickObserver obs{*i};
+                i->node->tick(obs);
               }
             },
             _coros);
@@ -435,27 +431,22 @@ struct Evolve {
       }
 
       LOG(TRACE) << "Evolve, sorting";
-      std::sort(_sortedPopulation.begin(), _sortedPopulation.end(),
-                [](std::reference_wrapper<Individual> a,
-                   std::reference_wrapper<Individual> b) {
-                  return a.get().fitness > b.get().fitness;
-                });
+      pdqsort(_sortedPopulation.begin(), _sortedPopulation.end(),
+              [](auto &a, auto &b) { return a->fitness > b->fitness; });
 
       LOG(TRACE) << "Evolve, resetting flags";
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
-                      auto &id = i.get();
-                      id.extinct = false;
-                      id.parent0Idx = -1;
-                      id.parent1Idx = -1;
+                      i->extinct = false;
+                      i->parent0Idx = -1;
+                      i->parent1Idx = -1;
                     });
       std::for_each(_sortedPopulation.end() - _nkills, _sortedPopulation.end(),
                     [](auto &i) {
-                      auto &id = i.get();
-                      id.extinct = true;
-                      id.parent0Idx = -1;
-                      id.parent1Idx = -1;
+                      i->extinct = true;
+                      i->parent0Idx = -1;
+                      i->parent1Idx = -1;
                     });
 
       LOG(TRACE) << "Evolve, run mutations";
@@ -466,19 +457,18 @@ struct Evolve {
         mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
                              _sortedPopulation.end(), [&](auto &i) {
                                // reset the individual if extinct
-                               auto &individual = i.get();
-                               if (individual.extinct) {
-                                 resetState(individual);
+                               if (i->extinct) {
+                                 resetState(*i);
                                }
-                               mutate(individual);
+                               mutate(*i);
                              });
         _exec->run(mutFlow).get();
       }
 
       LOG(TRACE) << "Evolve, era done";
       _result.clear();
-      _result.emplace_back(Var(_sortedPopulation.front().get().fitness));
-      _result.emplace_back(_sortedPopulation.front().get().chain);
+      _result.emplace_back(Var(_sortedPopulation.front()->fitness));
+      _result.emplace_back(_sortedPopulation.front()->chain);
       return Var(_result);
     });
   }
@@ -578,10 +568,8 @@ private:
   OwnedVar _fitnessChain{};
   std::vector<CBVar> _result;
   std::vector<Individual> _population;
-  std::vector<std::reference_wrapper<Individual>> _sortedPopulation;
-  std::vector<std::tuple<std::reference_wrapper<Individual>,
-                         std::reference_wrapper<Individual>,
-                         std::reference_wrapper<Individual>>>
+  std::vector<Individual *> _sortedPopulation;
+  std::vector<std::tuple<Individual *, Individual *, Individual *>>
       _crossingOver;
   int64_t _popsize = 64;
   int64_t _coros = 8;

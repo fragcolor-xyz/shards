@@ -118,9 +118,9 @@ struct ParameterInfo {
   Types _types;
 
   ParameterInfo(const char *name, const char *help, Types types)
-      : _name(name), _help(help), _types(types) {}
+      : _name(name), _help(help), _types(std::move(types)) {}
   ParameterInfo(const char *name, Types types)
-      : _name(name), _help(""), _types(types) {}
+      : _name(name), _help(""), _types(std::move(types)) {}
 
   operator CBParameterInfo() {
     CBParameterInfo res{_name, _help, _types};
@@ -134,7 +134,7 @@ struct Parameters {
 
   Parameters() = default;
 
-  Parameters(const Parameters &others, std::vector<ParameterInfo> infos) {
+  Parameters(const Parameters &others, const std::vector<ParameterInfo>& infos) {
     for (auto &info : others._infos) {
       _infos.push_back(info);
     }
@@ -380,7 +380,7 @@ struct Var : public CBVar {
   }
 
   explicit Var(const std::shared_ptr<CBChain> &chain) : CBVar() {
-    valueType = Chain;
+    valueType = CBType::Chain;
     payload.chainValue = reinterpret_cast<CBChainRef>(
         &const_cast<std::shared_ptr<CBChain> &>(chain));
   }

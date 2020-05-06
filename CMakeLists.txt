@@ -270,6 +270,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/nameof/include
   -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
+  -I${CHAINBLOCKS_DIR}/deps/pdqsort
   )
 
 ### setup clang format
@@ -354,6 +355,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
+  ${CHAINBLOCKS_DIR}/deps/pdqsort
   )
 
 if(NOT BUILD_CORE_ONLY)
