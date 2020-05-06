@@ -217,6 +217,14 @@ struct Evolve {
           idx++;
         }
 
+        LOG(TRACE) << "Evolve, run first reset";
+        {
+          tf::Taskflow mutFlow;
+          mutFlow.parallel_for(_population.begin(), _population.end(),
+                               [&](auto &i) { resetState(i); });
+          _exec->run(mutFlow).get();
+        }
+
         _era = 0;
       } else {
         LOG(TRACE) << "Evolve, crossover";
