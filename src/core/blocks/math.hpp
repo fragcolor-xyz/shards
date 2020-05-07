@@ -11,16 +11,11 @@
 namespace chainblocks {
 namespace Math {
 struct Base {
-  static inline Types MathTypes{{
-      CoreInfo::IntType,       CoreInfo::IntSeqType,    CoreInfo::Int2Type,
-      CoreInfo::Int2SeqType,   CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
-      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,   CoreInfo::Int8Type,
-      CoreInfo::Int8SeqType,   CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
-      CoreInfo::FloatType,     CoreInfo::FloatSeqType,  CoreInfo::Float2Type,
-      CoreInfo::Float2SeqType, CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
-      CoreInfo::Float4Type,    CoreInfo::Float4SeqType, CoreInfo::ColorType,
-      CoreInfo::ColorSeqType,
-  }};
+  static inline Types MathTypes{
+      {CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type,
+       CoreInfo::Int4Type, CoreInfo::Int8Type, CoreInfo::Int16Type,
+       CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
+       CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
   CBVar _scratch{};
   OwnedVar _result{};
@@ -35,30 +30,19 @@ struct UnaryBase : public Base {};
 struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
-  static inline Types MathTypesOrVar{{
-      CoreInfo::IntType,       CoreInfo::IntSeqType,
-      CoreInfo::IntVarType,    CoreInfo::IntVarSeqType,
-      CoreInfo::Int2Type,      CoreInfo::Int2SeqType,
-      CoreInfo::Int2VarType,   CoreInfo::Int2VarSeqType,
-      CoreInfo::Int3Type,      CoreInfo::Int3SeqType,
-      CoreInfo::Int3VarType,   CoreInfo::Int3VarSeqType,
-      CoreInfo::Int4Type,      CoreInfo::Int4SeqType,
-      CoreInfo::Int4VarType,   CoreInfo::Int4VarSeqType,
-      CoreInfo::Int8Type,      CoreInfo::Int8SeqType,
-      CoreInfo::Int8VarType,   CoreInfo::Int8VarSeqType,
-      CoreInfo::Int16Type,     CoreInfo::Int16SeqType,
-      CoreInfo::Int16VarType,  CoreInfo::Int16VarSeqType,
-      CoreInfo::FloatType,     CoreInfo::FloatSeqType,
-      CoreInfo::FloatVarType,  CoreInfo::FloatVarSeqType,
-      CoreInfo::Float2Type,    CoreInfo::Float2SeqType,
-      CoreInfo::Float2VarType, CoreInfo::Float2VarSeqType,
-      CoreInfo::Float3Type,    CoreInfo::Float3SeqType,
-      CoreInfo::Float3VarType, CoreInfo::Float3VarSeqType,
-      CoreInfo::Float4Type,    CoreInfo::Float4SeqType,
-      CoreInfo::Float4VarType, CoreInfo::Float4VarSeqType,
-      CoreInfo::ColorType,     CoreInfo::ColorSeqType,
-      CoreInfo::ColorVarType,  CoreInfo::ColorVarSeqType,
-  }};
+  static inline Types MathTypesOrVar{
+      {CoreInfo::IntType,    CoreInfo::IntVarType,
+       CoreInfo::Int2Type,   CoreInfo::Int2VarType,
+       CoreInfo::Int3Type,   CoreInfo::Int3VarType,
+       CoreInfo::Int4Type,   CoreInfo::Int4VarType,
+       CoreInfo::Int8Type,   CoreInfo::Int8VarType,
+       CoreInfo::Int16Type,  CoreInfo::Int16VarType,
+       CoreInfo::FloatType,  CoreInfo::FloatVarType,
+       CoreInfo::Float2Type, CoreInfo::Float2VarType,
+       CoreInfo::Float3Type, CoreInfo::Float3VarType,
+       CoreInfo::Float4Type, CoreInfo::Float4VarType,
+       CoreInfo::ColorType,  CoreInfo::ColorVarType,
+       CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}};
 
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", "The operand.", MathTypesOrVar));
@@ -98,9 +82,7 @@ struct BinaryBase : public Base {
             _opType = Seq1;
           } else if (data.shared.elements[i].exposedType.basicType == Seq &&
                      data.inputType.basicType == Seq) {
-            if (data.shared.elements[i].exposedType != data.inputType)
-              throw CBException(
-                  "Operation not supported between different types");
+            // TODO need to have deeper types compatibility at least
             _opType = SeqSeq;
           } else {
             throw CBException(
@@ -126,10 +108,7 @@ struct BinaryBase : public Base {
         _opType = Seq1;
       } else if (operandSpec.valueType == Seq &&
                  data.inputType.basicType == Seq) {
-        ToTypeInfo info(operandSpec);
-        if (info != data.inputType) {
-          throw CBException("Operation not supported between different types");
-        }
+        // TODO need to have deeper types compatibility at least
         _opType = SeqSeq;
       } else {
         throw CBException(
@@ -156,20 +135,10 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
-  ALWAYS_INLINE void operate(OpType opType, CBVar &output, const CBVar &a,
-                             const CBVar &b) {
+  void operate(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
     OP op;
-    if (likely(opType == Normal)) {
-      op(output, a, b);
-    } else if (opType == Seq1) {
-      output.valueType = Seq;
-      chainblocks::arrayResize(output.payload.seqValue, 0);
-      for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-        // notice, we use scratch _output here
-        op(_scratch, a.payload.seqValue.elements[i], b);
-        chainblocks::arrayPush(output.payload.seqValue, _scratch);
-      }
-    } else {
+    if (opType == SeqSeq) {
+      // TODO auto-parallelize with taskflow (should be optional)
       auto olen = b.payload.seqValue.len;
       output.valueType = Seq;
       chainblocks::arrayResize(output.payload.seqValue, 0);
@@ -190,12 +159,38 @@ template <class OP> struct BinaryOperation : public BinaryBase {
           operate(SeqSeq, output.payload.seqValue.elements[len], sa, sb);
         }
       }
+    } else {
+      if (opType == Normal && output.valueType == Seq) {
+        // something changed, avoid leaking
+        // this should happen only here, because compose of SeqSeq is loose
+        LOG(TRACE) << "Changing type of output during Math operation.";
+        destroyVar(output);
+      }
+      operateFast(opType, output, a, b);
+    }
+  }
+
+  ALWAYS_INLINE void operateFast(OpType opType, CBVar &output, const CBVar &a,
+                                 const CBVar &b) {
+    OP op;
+    if (likely(opType == Normal)) {
+      op(output, a, b);
+    } else if (opType == Seq1) {
+      output.valueType = Seq;
+      chainblocks::arrayResize(output.payload.seqValue, 0);
+      for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+        // notice, we use scratch _output here
+        op(_scratch, a.payload.seqValue.elements[i], b);
+        chainblocks::arrayPush(output.payload.seqValue, _scratch);
+      }
+    } else {
+      operate(opType, output, a, b);
     }
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     const auto operand = _operand.get();
-    operate(_opType, _result, input, operand);
+    operateFast(_opType, _result, input, operand);
     return _result;
   }
 };
