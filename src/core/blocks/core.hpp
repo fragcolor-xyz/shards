@@ -1413,7 +1413,7 @@ struct Sequence : public SeqBase {
         auto &sinner = _innerTypes.emplace_back();
         IterableSeq ss(v);
         processTypes(sinner, ss);
-        CBTypeInfo stype{CBType::Seq, {.seqTypes = inner}};
+        CBTypeInfo stype{CBType::Seq, {.seqTypes = sinner}};
         inner._types.emplace_back(stype);
       } else {
         const auto type = BasicTypes(v.payload.enumValue);

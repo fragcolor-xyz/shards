@@ -517,12 +517,12 @@ inline void start(CBChain *chain, CBVar input = {}) {
 }
 
 inline bool stop(CBChain *chain, CBVar *result = nullptr) {
-  // Clone the results if we need them
-  if (result)
-    cloneVar(*result, chain->finishedOutput);
-
-  if (chain->state == CBChain::State::Stopped)
+  if (chain->state == CBChain::State::Stopped) {
+    // Clone the results if we need them
+    if (result)
+      cloneVar(*result, chain->finishedOutput);
     return true;
+  }
 
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
@@ -558,6 +558,10 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 
   chain->state = CBChain::State::Stopped;
   destroyVar(chain->rootTickInput);
+
+  // Clone the results if we need them
+  if (result)
+    cloneVar(*result, chain->finishedOutput);
 
   return res;
 }

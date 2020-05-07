@@ -722,7 +722,7 @@ struct Reduce {
     dataCopy.shared = {};
     DEFER({ arrayFree(dataCopy.shared); });
     dataCopy.inputType = data.inputType.seqTypes.elements[0];
-    // copy skilling any existing $0
+    // copy killing any existing $0
     for (uint32_t i = data.shared.len; i > 0; i--) {
       auto idx = i - 1;
       auto &item = data.shared.elements[idx];
