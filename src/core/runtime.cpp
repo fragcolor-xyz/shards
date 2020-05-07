@@ -1276,7 +1276,16 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
 CBValidationResult composeChain(const CBChain *chain,
                                 CBValidationCallback callback, void *userData,
                                 CBInstanceData data) {
-  return composeChain(chain->blocks, callback, userData, data, true);
+  auto res = composeChain(chain->blocks, callback, userData, data, true);
+  if (chain->blocks.size() > 0) {
+    auto inTypes = chain->blocks[0]->inputTypes(chain->blocks[0]);
+    if (inTypes.len == 1 && inTypes.elements[0].basicType == None)
+      chain->inputType = CBTypeInfo{};
+  } else {
+    chain->inputType = data.inputType;
+  }
+  chain->outputType = res.outputType;
+  return res;
 }
 
 CBValidationResult composeChain(const CBlocks chain,
