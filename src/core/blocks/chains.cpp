@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2019-2020 Giovanni Petrantoni */
+/* Copyright Â© 2019-2020 Giovanni Petrantoni */
 
 #include "foundation.hpp"
 #include "shared.hpp"
@@ -168,26 +168,40 @@ struct ChainBase {
     auto dataCopy = data;
     dataCopy.chain = chain.get();
 
-    // We need to validate the sub chain to figure it out!
-    chainValidation = composeChain(
-        chain.get(),
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
-          if (!nonfatalWarning) {
-            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                       << errorTxt;
-            throw CBException("RunChain: failed inner chain validation");
-          } else {
-            LOG(INFO) << "RunChain: warning during inner chain validation: "
-                      << errorTxt;
-          }
-        },
-        this, dataCopy);
+    CBTypeInfo chainOutput;
+    // make sure to compose only once...
+    if (chain->composedHash == 0) {
+      chainValidation = composeChain(
+          chain.get(),
+          [](const CBlock *errorBlock, const char *errorTxt,
+             bool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              LOG(ERROR) << "RunChain: failed inner chain validation, error: "
+                         << errorTxt;
+              throw ComposeError("RunChain: failed inner chain validation");
+            } else {
+              LOG(INFO) << "RunChain: warning during inner chain validation: "
+                        << errorTxt;
+            }
+          },
+          this, dataCopy);
+      chain->composedHash = 1; // no need to hash properly here
+      chainOutput = chainValidation.outputType;
+    } else {
+      if (!passthrough && mode != Stepped &&
+          data.inputType != chain->inputType) {
+        throw ComposeError("Attempted to call an already composed chain with a "
+                           "different input type! chain: " +
+                           chain->name);
+      }
+      chainOutput = chain->outputType;
+    }
 
     auto outputType = data.inputType;
+
     if (!passthrough) {
       if (mode == Inline)
-        outputType = chainValidation.outputType;
+        outputType = chainOutput;
       else if (mode == Stepped)
         outputType = CoreInfo::AnyType; // unpredictable
       else
@@ -195,6 +209,8 @@ struct ChainBase {
     }
 
     node->visitedChains.emplace(chain.get(), outputType);
+    LOG(TRACE) << "Marking as composed: " << chain->name
+               << " ptr: " << chain.get();
 
     return outputType;
   }
@@ -301,6 +317,8 @@ struct WaitChain : public ChainBase {
 };
 
 struct Resume : public ChainBase {
+  void setup() { passthrough = true; }
+
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Chain", "The name of the chain to switch to.", ChainTypes));
 
@@ -357,6 +375,8 @@ struct Resume : public ChainBase {
 };
 
 struct Start : public Resume {
+  void setup() { passthrough = true; }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!chain) {
       throw ActivationError("Start, chain not found.");
@@ -476,6 +496,8 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     tryStopChain();
+    if (chain)
+      chain->warmedUp = false;
     doneOnce = false;
     ChainBase::cleanup();
   }
@@ -483,11 +505,15 @@ struct BaseRunner : public ChainBase {
   void doWarmup(CBContext *context) {
     auto current = context->chainStack.back();
     if (mode == RunChainMode::Inline && chain && current != chain.get()) {
+      if (chain->warmedUp)
+        return;
+
       context->chainStack.push_back(chain.get());
       DEFER({ context->chainStack.pop_back(); });
       chain->warmup(context);
+      chain->warmedUp = true;
+      chain->node = context->main->node;
     }
-    chain->node = context->main->node;
   }
 
   void activateDetached(CBContext *context, const CBVar &input) {
@@ -748,8 +774,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
           chainblocks::stop(chain.get());
           _provider->release(_provider, chain.get());
         }
-        chain.reset(update.chain);
 
+        chain.reset(update.chain);
         doWarmup(context);
       }
     }
@@ -874,7 +900,6 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
       _chainHash = chain->composedHash;
       _chainPtr = chain.get();
-
       doWarmup(context);
     }
 

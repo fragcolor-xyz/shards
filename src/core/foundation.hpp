@@ -187,7 +187,12 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   chainblocks::OwnedVar finishedOutput{};
 
+  // those are mostly used internally in chains.cpp
   std::size_t composedHash{};
+  bool warmedUp{false};
+
+  mutable CBTypeInfo inputType{};
+  mutable CBTypeInfo outputType{};
 
   CBContext *context{nullptr};
 
