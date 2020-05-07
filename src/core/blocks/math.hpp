@@ -22,19 +22,15 @@ struct Base {
       CoreInfo::ColorSeqType,
   }};
 
-  CBVar _cachedSeq{};
-  CBVar _output{};
+  CBVar _scratch{};
+  OwnedVar _result{};
 
   static CBTypesInfo inputTypes() { return MathTypes; }
 
   static CBTypesInfo outputTypes() { return MathTypes; }
 };
 
-struct UnaryBase : public Base {
-  void destroy() { chainblocks::arrayFree(_cachedSeq.payload.seqValue); }
-
-  void setup() { _cachedSeq.valueType = Seq; }
-};
+struct UnaryBase : public Base {};
 
 struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
@@ -74,17 +70,6 @@ struct BinaryBase : public Base {
   void cleanup() { _operand.cleanup(); }
 
   void warmup(CBContext *context) { _operand.warmup(context); }
-
-  void destroy() {
-    if (_cachedSeq.valueType == Seq) {
-      chainblocks::arrayFree(_cachedSeq.payload.seqValue);
-    }
-  }
-
-  void setup() {
-    _cachedSeq.valueType = Seq;
-    _cachedSeq.payload.seqValue = {};
-  }
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(mathParamsInfo);
@@ -171,29 +156,47 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+  ALWAYS_INLINE void operate(OpType opType, CBVar &output, const CBVar &a,
+                             const CBVar &b) {
     OP op;
-    const auto operand = _operand.get();
-    if (likely(_opType == Normal)) {
-      op(_output, input, operand);
-      return _output;
-    } else if (_opType == Seq1) {
-      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
-      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        op(_output, input.payload.seqValue.elements[i], operand);
-        chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);
+    if (likely(opType == Normal)) {
+      op(output, a, b);
+    } else if (opType == Seq1) {
+      output.valueType = Seq;
+      chainblocks::arrayResize(output.payload.seqValue, 0);
+      for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+        // notice, we use scratch _output here
+        op(_scratch, a.payload.seqValue.elements[i], b);
+        chainblocks::arrayPush(output.payload.seqValue, _scratch);
       }
-      return _cachedSeq;
     } else {
-      auto olen = operand.payload.seqValue.len;
-      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
-      for (uint32_t i = 0; i < input.payload.seqValue.len && olen > 0; i++) {
-        op(_output, input.payload.seqValue.elements[i],
-           operand.payload.seqValue.elements[i % olen]);
-        chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);
+      auto olen = b.payload.seqValue.len;
+      output.valueType = Seq;
+      chainblocks::arrayResize(output.payload.seqValue, 0);
+      for (uint32_t i = 0; i < a.payload.seqValue.len && olen > 0; i++) {
+        const auto &sa = a.payload.seqValue.elements[i];
+        const auto &sb = b.payload.seqValue.elements[i % olen];
+        if (likely(sa.valueType != Seq && sb.valueType != Seq)) {
+          // using scratch
+          op(_scratch, sa, sb);
+          chainblocks::arrayPush(output.payload.seqValue, _scratch);
+        } else if (sa.valueType == Seq && sb.valueType != Seq) {
+          const auto len = output.payload.seqValue.len;
+          chainblocks::arrayResize(output.payload.seqValue, len + 1);
+          operate(Seq1, output.payload.seqValue.elements[len], sa, sb);
+        } else {
+          const auto len = output.payload.seqValue.len;
+          chainblocks::arrayResize(output.payload.seqValue, len + 1);
+          operate(SeqSeq, output.payload.seqValue.elements[len], sa, sb);
+        }
       }
-      return _cachedSeq;
     }
+  }
+
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    const auto operand = _operand.get();
+    operate(_opType, _result, input, operand);
+    return _result;
   }
 };
 
@@ -398,10 +401,8 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
 
 #define MATH_BINARY_BLOCK(NAME)                                                \
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
-  RUNTIME_BLOCK_destroy(NAME);                                                 \
   RUNTIME_BLOCK_cleanup(NAME);                                                 \
   RUNTIME_BLOCK_warmup(NAME);                                                  \
-  RUNTIME_BLOCK_setup(NAME);                                                   \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_parameters(NAME);                                              \
@@ -513,15 +514,16 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
                                                                                \
     ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
       if (unlikely(input.valueType == Seq)) {                                  \
-        chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);              \
+        _result.valueType = Seq;                                               \
+        chainblocks::arrayResize(_result.payload.seqValue, 0);                 \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(_output, input.payload.seqValue.elements[i]);                \
-          chainblocks::arrayPush(_cachedSeq.payload.seqValue, _output);        \
+          operate(_scratch, input.payload.seqValue.elements[i]);               \
+          chainblocks::arrayPush(_result.payload.seqValue, _scratch);          \
         }                                                                      \
-        return _cachedSeq;                                                     \
+        return _result;                                                        \
       } else {                                                                 \
-        operate(_output, input);                                               \
-        return _output;                                                        \
+        operate(_scratch, input);                                              \
+        return _scratch;                                                       \
       }                                                                        \
     }                                                                          \
   };                                                                           \
@@ -560,8 +562,6 @@ MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf);
 
 #define MATH_UNARY_BLOCK(NAME)                                                 \
   RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
-  RUNTIME_BLOCK_destroy(NAME);                                                 \
-  RUNTIME_BLOCK_setup(NAME);                                                   \
   RUNTIME_BLOCK_inputTypes(NAME);                                              \
   RUNTIME_BLOCK_outputTypes(NAME);                                             \
   RUNTIME_BLOCK_activate(NAME);                                                \

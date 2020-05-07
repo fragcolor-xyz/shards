@@ -16,17 +16,17 @@ struct VectorUnaryBase : public UnaryBase {
 
   template <class Operation>
   CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
-    CBVar output{};
     if (input.valueType == Seq) {
-      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      _result.valueType = Seq;
+      chainblocks::arrayResize(_result.payload.seqValue, 0);
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        operate(output, input);
-        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
+        operate(_scratch, input);
+        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
       }
-      return _cachedSeq;
+      return _result;
     } else {
-      operate(output, input);
-      return output;
+      operate(_scratch, input);
+      return _scratch;
     }
   }
 };
@@ -44,27 +44,28 @@ struct VectorBinaryBase : public BinaryBase {
   template <class Operation>
   CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     auto &operand = _operand.get();
-    CBVar output{};
     if (_opType == Normal) {
-      operate(output, input, operand);
-      return output;
+      operate(_scratch, input, operand);
+      return _scratch;
     } else if (_opType == Seq1) {
-      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      _result.valueType = Seq;
+      chainblocks::arrayResize(_result.payload.seqValue, 0);
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        operate(output, input.payload.seqValue.elements[i], operand);
-        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
+        operate(_scratch, input.payload.seqValue.elements[i], operand);
+        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
       }
-      return _cachedSeq;
+      return _result;
     } else {
-      chainblocks::arrayResize(_cachedSeq.payload.seqValue, 0);
+      _result.valueType = Seq;
+      chainblocks::arrayResize(_result.payload.seqValue, 0);
       for (uint32_t i = 0;
            i < input.payload.seqValue.len && i < operand.payload.seqValue.len;
            i++) {
-        operate(output, input.payload.seqValue.elements[i],
+        operate(_scratch, input.payload.seqValue.elements[i],
                 operand.payload.seqValue.elements[i]);
-        chainblocks::arrayPush(_cachedSeq.payload.seqValue, output);
+        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
       }
-      return _cachedSeq;
+      return _result;
     }
   }
 };
@@ -298,11 +299,12 @@ struct MatMul : public VectorBinaryBase {
           "MatMul expected 2 arrays with the same number of columns");
     }
 
-    chainblocks::arrayResize(_cachedSeq.payload.seqValue, dima);
+    _result.valueType = Seq;
+    chainblocks::arrayResize(_result.payload.seqValue, dima);
     for (size_t i = 0; i < dima; i++) {
       const auto &y = b.payload.seqValue.elements[i];
       const auto r = mvmul(a, y);
-      _cachedSeq.payload.seqValue.elements[i] = r;
+      _result.payload.seqValue.elements[i] = r;
     }
   }
 
@@ -311,7 +313,7 @@ struct MatMul : public VectorBinaryBase {
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
       mmmul(input, operand);
-      return _cachedSeq;
+      return _result;
     } else if (_opType == Seq1) {
       return mvmul(input, operand);
     } else {
@@ -352,13 +354,14 @@ struct Transpose : public VectorUnaryBase {
       break;
     }
 
-    chainblocks::arrayResize(_cachedSeq.payload.seqValue, width);
+    _result.valueType = Seq;
+    chainblocks::arrayResize(_result.payload.seqValue, width);
 
     double v1{}, v2{}, v3{}, v4{};
     for (size_t w = 0; w < width; w++) {
       switch (height) {
       case 2:
-        _cachedSeq.payload.seqValue.elements[w].valueType = Float2;
+        _result.payload.seqValue.elements[w].valueType = Float2;
         switch (width) {
         case 2:
           v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
@@ -375,11 +378,11 @@ struct Transpose : public VectorUnaryBase {
         default:
           break;
         }
-        _cachedSeq.payload.seqValue.elements[w].payload.float2Value[0] = v1;
-        _cachedSeq.payload.seqValue.elements[w].payload.float2Value[1] = v2;
+        _result.payload.seqValue.elements[w].payload.float2Value[0] = v1;
+        _result.payload.seqValue.elements[w].payload.float2Value[1] = v2;
         break;
       case 3:
-        _cachedSeq.payload.seqValue.elements[w].valueType = Float3;
+        _result.payload.seqValue.elements[w].valueType = Float3;
         switch (width) {
         case 2:
           v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
@@ -399,12 +402,12 @@ struct Transpose : public VectorUnaryBase {
         default:
           break;
         }
-        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[0] = v1;
-        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[1] = v2;
-        _cachedSeq.payload.seqValue.elements[w].payload.float3Value[2] = v3;
+        _result.payload.seqValue.elements[w].payload.float3Value[0] = v1;
+        _result.payload.seqValue.elements[w].payload.float3Value[1] = v2;
+        _result.payload.seqValue.elements[w].payload.float3Value[2] = v3;
         break;
       case 4:
-        _cachedSeq.payload.seqValue.elements[w].valueType = Float4;
+        _result.payload.seqValue.elements[w].valueType = Float4;
         switch (width) {
         case 2:
           v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
@@ -427,14 +430,14 @@ struct Transpose : public VectorUnaryBase {
         default:
           break;
         }
-        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[0] = v1;
-        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[1] = v2;
-        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[2] = v3;
-        _cachedSeq.payload.seqValue.elements[w].payload.float4Value[3] = v4;
+        _result.payload.seqValue.elements[w].payload.float4Value[0] = v1;
+        _result.payload.seqValue.elements[w].payload.float4Value[1] = v2;
+        _result.payload.seqValue.elements[w].payload.float4Value[2] = v3;
+        _result.payload.seqValue.elements[w].payload.float4Value[3] = v4;
         break;
       }
     }
-    return _cachedSeq;
+    return _result;
   }
 };
 
@@ -445,11 +448,11 @@ struct Orthographic : VectorUnaryBase {
   double _far = 1000.0;
 
   void setup() {
-    UnaryBase::setup();
-    chainblocks::arrayResize(_cachedSeq.payload.seqValue, 4);
+    _result.valueType = Seq;
+    chainblocks::arrayResize(_result.payload.seqValue, 4);
     for (auto i = 0; i < 4; i++) {
-      _cachedSeq.payload.seqValue.elements[i] = CBVar();
-      _cachedSeq.payload.seqValue.elements[i].valueType = Float4;
+      _result.payload.seqValue.elements[i] = Var::Empty;
+      _result.payload.seqValue.elements[i].valueType = Float4;
     }
   }
 
@@ -509,28 +512,26 @@ struct Orthographic : VectorUnaryBase {
     auto top = 0.5 * _height;
     auto bottom = -top;
     auto zrange = 1.0 / (_far - _near);
-    _cachedSeq.payload.seqValue.elements[0].payload.float4Value[0] =
+    _result.payload.seqValue.elements[0].payload.float4Value[0] =
         2.0 / (right - left);
-    _cachedSeq.payload.seqValue.elements[1].payload.float4Value[1] =
+    _result.payload.seqValue.elements[1].payload.float4Value[1] =
         2.0 / (top - bottom);
-    _cachedSeq.payload.seqValue.elements[2].payload.float4Value[2] = -zrange;
-    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[0] =
+    _result.payload.seqValue.elements[2].payload.float4Value[2] = -zrange;
+    _result.payload.seqValue.elements[3].payload.float4Value[0] =
         (left + right) / (left - right);
-    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[1] =
+    _result.payload.seqValue.elements[3].payload.float4Value[1] =
         (top + bottom) / (bottom - top);
-    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[2] =
+    _result.payload.seqValue.elements[3].payload.float4Value[2] =
         -_near * zrange;
-    _cachedSeq.payload.seqValue.elements[3].payload.float4Value[3] = 1.0;
-    return _cachedSeq;
+    _result.payload.seqValue.elements[3].payload.float4Value[3] = 1.0;
+    return _result;
   }
 };
 
 #define LINALG_BINARY_BLOCK(_name_)                                            \
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
-  RUNTIME_BLOCK_destroy(_name_);                                               \
   RUNTIME_BLOCK_cleanup(_name_);                                               \
   RUNTIME_BLOCK_warmup(_name_);                                                \
-  RUNTIME_BLOCK_setup(_name_);                                                 \
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
   RUNTIME_BLOCK_parameters(_name_);                                            \
@@ -547,8 +548,6 @@ LINALG_BINARY_BLOCK(MatMul);
 
 #define LINALG_UNARY_BLOCK(_name_)                                             \
   RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
-  RUNTIME_BLOCK_destroy(_name_);                                               \
-  RUNTIME_BLOCK_setup(_name_);                                                 \
   RUNTIME_BLOCK_compose(_name_);                                               \
   RUNTIME_BLOCK_inputTypes(_name_);                                            \
   RUNTIME_BLOCK_outputTypes(_name_);                                           \
@@ -561,7 +560,6 @@ LINALG_UNARY_BLOCK(Length);
 LINALG_UNARY_BLOCK(Transpose);
 
 RUNTIME_BLOCK(Math.LinAlg, Orthographic);
-RUNTIME_BLOCK_destroy(Orthographic);
 RUNTIME_BLOCK_setup(Orthographic);
 RUNTIME_BLOCK_inputTypes(Orthographic);
 RUNTIME_BLOCK_outputTypes(Orthographic);
