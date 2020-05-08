@@ -145,25 +145,22 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       for (uint32_t i = 0; i < a.payload.seqValue.len && olen > 0; i++) {
         const auto &sa = a.payload.seqValue.elements[i];
         const auto &sb = b.payload.seqValue.elements[i % olen];
-        if (likely(sa.valueType != Seq && sb.valueType != Seq)) {
-          // using scratch
-          op(_scratch, sa, sb);
-          chainblocks::arrayPush(output.payload.seqValue, _scratch);
+        auto type = Normal;
+        if (likely(sa.valueType == Seq && sb.valueType == Seq)) {
+          type = SeqSeq;
         } else if (sa.valueType == Seq && sb.valueType != Seq) {
-          const auto len = output.payload.seqValue.len;
-          chainblocks::arrayResize(output.payload.seqValue, len + 1);
-          operate(Seq1, output.payload.seqValue.elements[len], sa, sb);
-        } else {
-          const auto len = output.payload.seqValue.len;
-          chainblocks::arrayResize(output.payload.seqValue, len + 1);
-          operate(SeqSeq, output.payload.seqValue.elements[len], sa, sb);
+          type = Seq1;
         }
+        const auto len = output.payload.seqValue.len;
+        chainblocks::arrayResize(output.payload.seqValue, len + 1);
+        operate(type, output.payload.seqValue.elements[len], sa, sb);
       }
     } else {
       if (opType == Normal && output.valueType == Seq) {
         // something changed, avoid leaking
         // this should happen only here, because compose of SeqSeq is loose
-        LOG(TRACE) << "Changing type of output during Math operation.";
+        LOG(TRACE) << "Changing type of output during Math operation, this is "
+                      "ok but potentially slow.";
         destroyVar(output);
       }
       operateFast(opType, output, a, b);
