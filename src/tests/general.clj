@@ -8,7 +8,8 @@
   >= .x
   (Pop) >= .y
   .x
-  (Math.Add .y)))
+  (Math.Add .y)
+  (Push)))
 
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")

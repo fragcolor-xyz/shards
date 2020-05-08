@@ -1511,10 +1511,32 @@ struct SeqUser : VariableBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void warmup(CBContext *context) {
-    if (!_target) {
-      _target = referenceVariable(context, _name.c_str());
+  void initSeq() {
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // We need to init this in order to fetch cell addr
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
+      }
+
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, _key.c_str());
+    } else {
+      _cell = _target;
     }
+
+    assert(_cell);
+  }
+
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+
+    initSeq();
   }
 
   CBExposedTypesInfo requiredVariables() {
@@ -1538,31 +1560,17 @@ struct Count : SeqUser {
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar *var = _target;
-
-    if (unlikely(_isTable)) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Count.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      var = _cell;
-    }
-
-    if (likely(var->valueType == Seq)) {
-      return Var(int64_t(var->payload.seqValue.len));
-    } else if (var->valueType == Table) {
+    if (likely(_cell->valueType == Seq)) {
+      return Var(int64_t(_cell->payload.seqValue.len));
+    } else if (_cell->valueType == Table) {
       return Var(int64_t(
-          var->payload.tableValue.api->tableSize(var->payload.tableValue)));
-    } else if (var->valueType == Bytes) {
-      return Var(int64_t(var->payload.bytesSize));
-    } else if (var->valueType == String) {
-      return Var(int64_t(var->payload.stringLen > 0
-                             ? var->payload.stringLen
-                             : strlen(var->payload.stringValue)));
+          _cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
+    } else if (_cell->valueType == Bytes) {
+      return Var(int64_t(_cell->payload.bytesSize));
+    } else if (_cell->valueType == String) {
+      return Var(int64_t(_cell->payload.stringLen > 0
+                             ? _cell->payload.stringLen
+                             : strlen(_cell->payload.stringValue)));
     } else {
       return Var(0);
     }
@@ -1573,32 +1581,18 @@ struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar *var = _target;
-
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Clear.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      var = _cell;
-    }
-
-    if (likely(var->valueType == Seq)) {
+    if (likely(_cell->valueType == Seq)) {
       // notice this is fine because destroyVar will destroy .cap later
       // so we make sure we are not leaking Vars
-      chainblocks::arrayResize(var->payload.seqValue, 0);
+      chainblocks::arrayResize(_cell->payload.seqValue, 0);
 
-      // sometimes we might have as input the same var!
+      // sometimes we might have as input the same _cell!
       // this is kind of a hack but helps UX
-      // we in that case output the same var with adjusted len!
-      if (input.payload.seqValue.elements == var->payload.seqValue.elements)
+      // we in that case output the same _cell with adjusted len!
+      if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<CBVar &>(input).payload.seqValue.len = 0;
-    } else if (var->valueType == Table) {
-      var->payload.tableValue.api->tableClear(var->payload.tableValue);
+    } else if (_cell->valueType == Table) {
+      _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
     }
 
     return input;
@@ -1609,32 +1603,18 @@ struct Drop : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar *var = _target;
-
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Clear.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      var = _cell;
-    }
-
-    if (likely(var->valueType == Seq)) {
-      auto len = var->payload.seqValue.len;
+    if (likely(_cell->valueType == Seq)) {
+      auto len = _cell->payload.seqValue.len;
       // notice this is fine because destroyVar will destroy .cap later
       // so we make sure we are not leaking Vars
       if (len > 0) {
-        chainblocks::arrayResize(var->payload.seqValue, len - 1);
+        chainblocks::arrayResize(_cell->payload.seqValue, len - 1);
       }
 
-      // sometimes we might have as input the same var!
+      // sometimes we might have as input the same _cell!
       // this is kind of a hack but helps UX
-      // we in that case output the same var with adjusted len!
-      if (input.payload.seqValue.elements == var->payload.seqValue.elements)
+      // we in that case output the same _cell with adjusted len!
+      if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<CBVar &>(input).payload.seqValue.len = len - 1;
     } else {
       throw ActivationError("Variable is not a sequence, failed to Drop.");
@@ -1648,26 +1628,12 @@ struct DropFront : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar *var = _target;
-
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Clear.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      var = _cell;
-    }
-
-    if (likely(var->valueType == Seq) && var->payload.seqValue.len > 0) {
-      auto &arr = var->payload.seqValue;
+    if (likely(_cell->valueType == Seq) && _cell->payload.seqValue.len > 0) {
+      auto &arr = _cell->payload.seqValue;
       chainblocks::arrayDel(arr, 0);
-      // sometimes we might have as input the same var!
+      // sometimes we might have as input the same _cell!
       // this is kind of a hack but helps UX
-      // we in that case output the same var with adjusted len!
+      // we in that case output the same _cell with adjusted len!
       if (input.payload.seqValue.elements == arr.elements)
         const_cast<CBVar &>(input).payload.seqValue.len = arr.len;
     } else {
@@ -1726,45 +1692,18 @@ struct Pop : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Pop.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      auto &seq = *_cell;
-
-      if (seq.valueType != Seq) {
-        throw ActivationError(
-            "Variable (in table) is not a sequence, failed to Pop.");
-      }
-
-      if (seq.payload.seqValue.len == 0) {
-        throw ActivationError("Pop: sequence was empty.");
-      }
-
-      // Clone and make the var ours
-      auto pops = chainblocks::arrayPop<CBSeq, CBVar>(seq.payload.seqValue);
-      cloneVar(_output, pops);
-      return _output;
-    } else {
-      if (_target->valueType != Seq) {
-        throw ActivationError("Variable is not a sequence, failed to Pop.");
-      }
-
-      if (_target->payload.seqValue.len == 0) {
-        throw ActivationError("Pop: sequence was empty.");
-      }
-
-      // Clone and make the var ours
-      auto pops =
-          chainblocks::arrayPop<CBSeq, CBVar>(_target->payload.seqValue);
-      cloneVar(_output, pops);
-      return _output;
+    if (_cell->valueType != Seq) {
+      throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
+
+    if (_cell->payload.seqValue.len == 0) {
+      throw ActivationError("Pop: sequence was empty.");
+    }
+
+    // Clone
+    auto pops = chainblocks::arrayPop<CBSeq, CBVar>(_cell->payload.seqValue);
+    cloneVar(_output, pops);
+    return _output;
   }
 };
 
@@ -1816,70 +1755,31 @@ struct PopFront : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_isTable) {
-      if (_target->valueType != Table) {
-        throw ActivationError("Variable is not a table, failed to Pop.");
-      }
-
-      if (unlikely(_cell == nullptr)) {
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, _key.c_str());
-      }
-      auto &seq = *_cell;
-
-      if (seq.valueType != Seq) {
-        throw ActivationError(
-            "Variable (in table) is not a sequence, failed to Pop.");
-      }
-
-      if (seq.payload.seqValue.len == 0) {
-        throw ActivationError("Pop: sequence was empty.");
-      }
-
-      auto &arr = seq.payload.seqValue;
-      const auto len = arr.len - 1;
-      // store to put back at end
-      // we do this to allow further grows
-      // to recycle this var (well if not blittable that is)
-      auto first = arr.elements[0];
-      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
-                    "Wrong seq elements size!");
-      // shift backward current elements
-      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
-      // put first at end
-      arr.elements[len] = first;
-      // resize, will cut first out too
-      chainblocks::arrayResize(arr, len);
-
-      cloneVar(_output, first);
-      return _output;
-    } else {
-      if (_target->valueType != Seq) {
-        throw ActivationError("Variable is not a sequence, failed to Pop.");
-      }
-
-      if (_target->payload.seqValue.len == 0) {
-        throw ActivationError("Pop: sequence was empty.");
-      }
-
-      auto &arr = _target->payload.seqValue;
-      const auto len = arr.len - 1;
-      // store to put back at end
-      // we do this to allow further grows
-      // to recycle this var (well if not blittable that is)
-      auto first = arr.elements[0];
-      static_assert(sizeof(*arr.elements) == sizeof(CBVar),
-                    "Wrong seq elements size!");
-      // shift backward current elements
-      memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
-      // put first at end
-      arr.elements[len] = first;
-      // resize, will cut first out too
-      chainblocks::arrayResize(arr, len);
-
-      cloneVar(_output, first);
-      return _output;
+    if (_cell->valueType != Seq) {
+      throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
+
+    if (_cell->payload.seqValue.len == 0) {
+      throw ActivationError("Pop: sequence was empty.");
+    }
+
+    auto &arr = _cell->payload.seqValue;
+    const auto len = arr.len - 1;
+    // store to put back at end
+    // we do this to allow further grows
+    // to recycle this _cell (well if not blittable that is)
+    auto first = arr.elements[0];
+    static_assert(sizeof(*arr.elements) == sizeof(CBVar),
+                  "Wrong seq elements size!");
+    // shift backward current elements
+    memmove(&arr.elements[0], &arr.elements[1], sizeof(*arr.elements) * len);
+    // put first at end
+    arr.elements[len] = first;
+    // resize, will cut first out too
+    chainblocks::arrayResize(arr, len);
+
+    cloneVar(_output, first);
+    return _output;
   }
 };
 

@@ -72,8 +72,6 @@ struct CBContext {
     chainStack.push_back(starter);
   }
 
-  ~CBContext() { chainblocks::arrayFree(stack); }
-
   const CBChain *main;
   CBFlow *flow;
   std::vector<CBChain *> chainStack;
@@ -87,9 +85,6 @@ struct CBContext {
 
   // Iteration counter
   uint64_t iterationCount = 0;
-
-  // Stack for local vars
-  CBSeq stack{};
 
   constexpr void stopFlow(const CBVar &lastValue) {
     state = CBChainState::Stop;
@@ -141,28 +136,6 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   switch (blk->inlineBlockId) {
   case NoopBlock:
     return input;
-  case StackPush: {
-    chainblocks::arrayPush(context->stack, input);
-    return input;
-  }
-  case StackPop: {
-    if (context->stack.len == 0)
-      throw CBException("Pop: Stack underflow!");
-    return chainblocks::arrayPop<CBSeq, CBVar>(context->stack);
-  }
-  case StackSwap: {
-    auto s = context->stack.len;
-    auto a = context->stack.elements[s - 1];
-    context->stack.elements[s - 1] = context->stack.elements[s - 2];
-    context->stack.elements[s - 2] = a;
-    return input;
-  }
-  case StackDrop: {
-    if (context->stack.len == 0)
-      throw CBException("Drop: Stack underflow!");
-    context->stack.len--;
-    return input;
-  }
   case CoreConst: {
     auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
     return cblock->core._value;

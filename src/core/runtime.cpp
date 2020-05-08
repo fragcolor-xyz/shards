@@ -546,8 +546,6 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const bool handlesReturn) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = context->stack.len;
-  DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output = activateBlock(blocks.elements[i], context, input);
     if (!context->shouldContinue()) {
@@ -579,8 +577,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const bool handlesReturn) {
   auto input = chainInput;
   // validation prevents extra pops so this should be safe
-  auto sidx = context->stack.len;
-  DEFER({ context->stack.len = sidx; });
   for (uint32_t i = 0; i < blocks.len; i++) {
     output =
         activateBlock(blocks.elements[i].payload.blockValue, context, input);
@@ -1185,67 +1181,6 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
         throw chainblocks::CBException(
             "SetInput input type must be the same original chain input type.");
       }
-    } else if (strcmp(blk->name(blk), "Push") == 0) {
-      // Check first param see if empty/null
-      auto seqName = blk->getParam(blk, 0);
-      if (seqName.payload.stringValue == nullptr ||
-          seqName.payload.stringValue[0] == 0) {
-        blk->inlineBlockId = StackPush;
-        // keep previous output type
-        // push stack type
-        ctx.stackTypes.push_back(ctx.previousOutputType);
-      } else {
-        ctx.bottom = blk;
-        validateConnection(ctx);
-      }
-    } else if (strcmp(blk->name(blk), "Pop") == 0) {
-      // Check first param see if empty/null
-      auto seqName = blk->getParam(blk, 0);
-      if (seqName.payload.stringValue == nullptr ||
-          seqName.payload.stringValue[0] == 0) {
-        blk->inlineBlockId = StackPop;
-        if (ctx.stackTypes.empty()) {
-          throw chainblocks::CBException("Stack Pop, but stack was empty!");
-        }
-        ctx.previousOutputType = ctx.stackTypes.back();
-        ctx.stackTypes.pop_back();
-      } else {
-        ctx.bottom = blk;
-        validateConnection(ctx);
-      }
-    } else if (strcmp(blk->name(blk), "Drop") == 0) {
-      // Check first param see if empty/null
-      auto seqName = blk->getParam(blk, 0);
-      if (seqName.payload.stringValue == nullptr ||
-          seqName.payload.stringValue[0] == 0) {
-        blk->inlineBlockId = StackDrop;
-        if (ctx.stackTypes.empty()) {
-          throw chainblocks::CBException("Stack Drop, but stack was empty!");
-        }
-        ctx.stackTypes.pop_back();
-      } else {
-        ctx.bottom = blk;
-        validateConnection(ctx);
-      }
-    } else if (strcmp(blk->name(blk), "Swap") == 0) {
-      // Check first param see if empty/null
-      auto aname = blk->getParam(blk, 0);
-      auto bname = blk->getParam(blk, 1);
-      if ((aname.payload.stringValue == nullptr ||
-           aname.payload.stringValue[0] == 0) &&
-          (bname.payload.stringValue == nullptr ||
-           bname.payload.stringValue[0] == 0)) {
-        blk->inlineBlockId = StackSwap;
-        if (ctx.stackTypes.size() < 2) {
-          throw chainblocks::CBException("Stack Swap, but stack size < 2!");
-        }
-        std::swap(ctx.stackTypes[ctx.stackTypes.size() - 1],
-                  ctx.stackTypes[ctx.stackTypes.size() - 2]);
-        ctx.previousOutputType = ctx.stackTypes.back();
-      } else {
-        ctx.bottom = blk;
-        validateConnection(ctx);
-      }
     } else {
       ctx.bottom = blk;
       validateConnection(ctx);
@@ -1509,15 +1444,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   memset(&chain->previousOutput, 0x0, sizeof(CBVar));
   chain->state = CBChain::State::Iterating;
   chain->context = context;
-
-  // store stack index
-  auto sidx = context->stack.len;
-
   // Todo on exit
-  DEFER({
-    context->stack.len = sidx;
-    chain->state = CBChain::State::IterationEnded;
-  });
+  DEFER({ chain->state = CBChain::State::IterationEnded; });
 
   auto input = chainInput;
   for (auto blk : chain->blocks) {
@@ -1665,7 +1593,6 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     context.iterationCount++; // increatse iteration counter
-    context.stack.len = 0;    // reset stack
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
