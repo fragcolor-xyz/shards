@@ -8,9 +8,11 @@
    "build-tree"
                                         ; organize args from stack
    (Pop)
+   (ExpectInt)
    (Set "depth")
    (Pop)
    (Set "points")
+   (ExpectSeq)
                                         ; count points
    (Count "points")
    (Cond
@@ -42,9 +44,6 @@
                                         ; recurse to build deeper tree
       (Recur)
       (Push "left-mem" :Clear false)
-                                        ; pop args
-      (Pop)
-      (Pop)
                                         ; pop points
       (Get "points")
       (Slice :From (# "median+1"))
@@ -57,9 +56,6 @@
                                         ; recurse to build deeper tree
       (Recur)
       (Push "right-mem" :Clear false)
-                                        ; pop args
-      (Pop)
-      (Pop)
                                         ; compose our result "tuple" seq
       (Clear "result")
                                         ; top

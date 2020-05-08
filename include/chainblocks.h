@@ -57,11 +57,6 @@ enum CBInlineBlocks : uint32_t {
   // special flag that will optimize and skip activate calls
   NoopBlock,
 
-  StackPush,
-  StackPop,
-  StackSwap,
-  StackDrop,
-
   CoreConst,
   CoreSleep,
   CoreInput,
