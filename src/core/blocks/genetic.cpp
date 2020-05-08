@@ -411,7 +411,7 @@ struct Evolve {
         _exec->run(runFlow).get();
       }
 #endif
-      LOG(INFO) << "Evolve, stopping all chains";
+      LOG(TRACE) << "Evolve, stopping all chains";
       { // Stop all the population chains
         tf::Taskflow flow;
 
@@ -422,15 +422,17 @@ struct Evolve {
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
               chain->composedHash = 0;
+              chain->warmedUp = false;
               stop(fitchain.get());
               fitchain->composedHash = 0;
+              fitchain->warmedUp = false;
               i.node->terminate();
             });
 
         _exec->run(flow).get();
       }
 
-      LOG(INFO) << "Evolve, sorting";
+      LOG(TRACE) << "Evolve, sorting";
       // remove non normal fitness (sort needs this or crashes will happen)
       std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
                     [](auto &i) {
@@ -442,7 +444,7 @@ struct Evolve {
           _sortedPopulation.begin(), _sortedPopulation.end(),
           [](const auto &a, const auto &b) { return a->fitness > b->fitness; });
 
-      LOG(INFO) << "Evolve, resetting flags";
+      LOG(TRACE) << "Evolve, resetting flags";
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
