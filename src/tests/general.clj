@@ -5,11 +5,15 @@
   "My input 2"))
 
 (def adder (Chain "adder"
-  >= .x
-  (Pop) >= .y
-  .x
-  (Math.Add .y)
-  (Push)))
+  >= .adder-x
+  (Pop) >= .adder-y
+  .adder-x
+  (Math.Add .adder-y)))
+
+(def adderSeq (Chain "adderSeq"
+  >= .args (Take 1) >= .adder-y
+  .args (Take 0)
+  (Math.Add .adder-y)))
 
 (def! testChain (Chain "namedChain"
   (Msg "Running tests!")
@@ -730,6 +734,18 @@
   .nestedSeq (Math.Multiply [[2 3 4]])
   (Log)
   (Assert.Is [[2, 6, 12], [4, 9, 16], [6, 12, 20]] true)
+
+  .nestedSeq >> .adder-args >> .adder-args
+  .adder-args (Do adderSeq)
+  (Log)
+  (Assert.Is [[2, 4, 6], [4, 6, 8], [6, 8, 10]] true)
+
+  (Clear .adder-args)
+
+  (Const [2 3 4]) >> .adder-args >> .adder-args
+  .adder-args (Do adderSeq)
+  (Log)
+  (Assert.Is [4 6 8] true)
 
   11 (Push)
   10 (Do adder)
