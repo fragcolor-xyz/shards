@@ -1465,6 +1465,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_BLOCK(Math, Dec);
   REGISTER_CBLOCK("Max", Math::Max);
   REGISTER_CBLOCK("Min", Math::Min);
+  REGISTER_CBLOCK("Math.Pow", Math::Pow);
 
   REGISTER_CBLOCK("Profile", Profile);
 

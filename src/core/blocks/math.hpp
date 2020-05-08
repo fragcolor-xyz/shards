@@ -702,5 +702,53 @@ struct MinOp final {
   }
 };
 using Min = BinaryOperation<MinOp>;
+
+#define MATH_BINARY_FLOAT_PROC(NAME, PROC)                                     \
+  struct NAME##Op final {                                                      \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
+                                  const CBVar &operand) {                      \
+      switch (input.valueType) {                                               \
+      case Float:                                                              \
+        output.valueType = Float;                                              \
+        output.payload.floatValue =                                            \
+            PROC(input.payload.floatValue, operand.payload.floatValue);        \
+        break;                                                                 \
+      case Float2:                                                             \
+        output.valueType = Float2;                                             \
+        output.payload.float2Value[0] = PROC(input.payload.float2Value[0],     \
+                                             operand.payload.float2Value[0]);  \
+        output.payload.float2Value[1] = PROC(input.payload.float2Value[1],     \
+                                             operand.payload.float2Value[1]);  \
+        break;                                                                 \
+      case Float3:                                                             \
+        output.valueType = Float3;                                             \
+        output.payload.float3Value[0] = PROC(input.payload.float3Value[0],     \
+                                             operand.payload.float3Value[0]);  \
+        output.payload.float3Value[1] = PROC(input.payload.float3Value[1],     \
+                                             operand.payload.float3Value[1]);  \
+        output.payload.float3Value[2] = PROC(input.payload.float3Value[2],     \
+                                             operand.payload.float3Value[2]);  \
+        break;                                                                 \
+      case Float4:                                                             \
+        output.valueType = Float4;                                             \
+        output.payload.float4Value[0] = PROC(input.payload.float4Value[0],     \
+                                             operand.payload.float4Value[0]);  \
+        output.payload.float4Value[1] = PROC(input.payload.float4Value[1],     \
+                                             operand.payload.float4Value[1]);  \
+        output.payload.float4Value[2] = PROC(input.payload.float4Value[2],     \
+                                             operand.payload.float4Value[2]);  \
+        output.payload.float4Value[3] = PROC(input.payload.float4Value[3],     \
+                                             operand.payload.float4Value[3]);  \
+        break;                                                                 \
+      default:                                                                 \
+        throw ActivationError(                                                 \
+            #NAME " operation not supported between given types!");            \
+      }                                                                        \
+    }                                                                          \
+  };                                                                           \
+  using NAME = BinaryOperation<NAME##Op>;
+
+MATH_BINARY_FLOAT_PROC(Pow, std::pow);
+using Pow = BinaryOperation<PowOp>;
 }; // namespace Math
 }; // namespace chainblocks
