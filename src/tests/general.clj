@@ -755,6 +755,10 @@
   11 (Do adder)
   (Assert.Is 22 true)
 
+  8.0
+  (Math.Pow 2.0) 
+  (Assert.Is 64.0 true)
+
   (Erase [2 0] .seq-a)
   (Get .seq-a)
   (Log)
