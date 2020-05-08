@@ -135,7 +135,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   };
 
   ~CBChain() {
-    clear();
+    reset();
 #ifdef CB_USE_TSAN
     if (tsan_coro) {
       __tsan_destroy_fiber(tsan_coro);
@@ -239,7 +239,7 @@ private:
     LOG(TRACE) << "CBChain() " << name;
   }
 
-  void clear();
+  void reset();
 };
 
 namespace chainblocks {

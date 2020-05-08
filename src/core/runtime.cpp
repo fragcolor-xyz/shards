@@ -1422,7 +1422,7 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
   return false;
 }
 
-void CBChain::clear() {
+void CBChain::reset() {
   for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
     (*it)->cleanup(*it);
   }
@@ -1441,6 +1441,10 @@ void CBChain::clear() {
     }
   }
   variables.clear();
+
+  composedHash = 0;
+  inputType = {};
+  outputType = {};
 }
 
 namespace chainblocks {
