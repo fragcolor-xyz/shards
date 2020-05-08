@@ -136,7 +136,6 @@ struct BinaryBase : public Base {
 
 template <class OP> struct BinaryOperation : public BinaryBase {
   void operate(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
-    OP op;
     if (opType == SeqSeq) {
       // TODO auto-parallelize with taskflow (should be optional)
       auto olen = b.payload.seqValue.len;
@@ -159,7 +158,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       if (opType == Normal && output.valueType == Seq) {
         // something changed, avoid leaking
         // this should happen only here, because compose of SeqSeq is loose
-        LOG(TRACE) << "Changing type of output during Math operation, this is "
+        LOG(DEBUG) << "Changing type of output during Math operation, this is "
                       "ok but potentially slow.";
         destroyVar(output);
       }
