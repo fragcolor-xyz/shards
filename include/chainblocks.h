@@ -483,7 +483,7 @@ struct CBExposedTypeInfo {
   CBBool global;
 
   // private/internal, leave nullptr
-  CBChain *scope;
+  struct CBChain *scope;
 };
 
 struct CBValidationResult {
@@ -816,8 +816,13 @@ typedef void(__cdecl *CBThrowException)(const char *errorText)
 
 typedef void(__cdecl *CBThrowExceptionSimple)() __attribute__((noreturn));
 
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
+typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
+                                              double seconds);
+#else
 typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
+#endif
 
 typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 

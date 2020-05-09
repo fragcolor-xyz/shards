@@ -2549,7 +2549,7 @@ struct Repeat {
 
   FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     auto repeats = *_repeats;
-    while (repeats) {
+    while (repeats || _forever) {
       CBVar repeatOutput{};
       CBVar blks = _blks;
       auto state = activateBlocks(blks.payload.seqValue, context, input,
@@ -2557,14 +2557,11 @@ struct Repeat {
       if (state != CBChainState::Continue)
         break;
 
-      if (!_forever)
-        repeats--;
-
       if (_pred) {
         CBVar pres{};
         state = _pred.activate(context, input, pres, true);
         // logic flow here!
-        if (unlikely(pres.payload.boolValue || state > CBChainState::Return))
+        if (unlikely(state > CBChainState::Return || pres.payload.boolValue))
           break;
       }
     }
