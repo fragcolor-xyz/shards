@@ -2548,14 +2548,17 @@ struct Repeat {
   }
 
   FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    auto repeats = *_repeats;
-    while (repeats || _forever) {
+    auto repeats = _forever ? 1 : *_repeats;
+    while (repeats) {
       CBVar repeatOutput{};
       CBVar blks = _blks;
       auto state = activateBlocks(blks.payload.seqValue, context, input,
                                   repeatOutput, true);
       if (state != CBChainState::Continue)
         break;
+
+      if (!_forever)
+        repeats--;
 
       if (_pred) {
         CBVar pres{};
