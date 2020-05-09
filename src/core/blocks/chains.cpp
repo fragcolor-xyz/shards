@@ -239,6 +239,7 @@ struct ChainBase {
 
 struct WaitChain : public ChainBase {
   OwnedVar _output{};
+  CBExposedTypeInfo _requiredChain{};
 
   void cleanup() {
     if (chainref.isVariable())
@@ -277,6 +278,20 @@ struct WaitChain : public ChainBase {
       return Var(passthrough);
     default:
       return Var::Empty;
+    }
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (chainref.isVariable()) {
+      _requiredChain = CBExposedTypeInfo{chainref.variableName(),
+                                         "The chain to run.",
+                                         CoreInfo::ChainType,
+                                         false,
+                                         false,
+                                         false};
+      return {&_requiredChain, 1, 0};
+    } else {
+      return {};
     }
   }
 
@@ -496,8 +511,6 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     tryStopChain();
-    if (chain)
-      chain->warmedUp = false;
     doneOnce = false;
     ChainBase::cleanup();
   }
@@ -507,12 +520,7 @@ struct BaseRunner : public ChainBase {
     if (mode == RunChainMode::Inline && chain && current != chain.get()) {
       if (chain->warmedUp)
         return;
-
-      context->chainStack.push_back(chain.get());
-      DEFER({ context->chainStack.pop_back(); });
       chain->warmup(context);
-      chain->warmedUp = true;
-      chain->node = context->main->node;
     }
   }
 
@@ -810,6 +818,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   ParamVar _chain{};
   std::size_t _chainHash = 0;
   CBChain *_chainPtr = nullptr;
+  CBExposedTypeInfo _requiredChain{};
 
   void setParam(int index, CBVar value) {
     if (index == 0) {
@@ -836,6 +845,20 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   void warmup(CBContext *context) {
     BaseLoader<ChainRunner>::warmup(context);
     _chain.warmup(context);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_chain.isVariable()) {
+      _requiredChain = CBExposedTypeInfo{_chain.variableName(),
+                                         "The chain to run.",
+                                         CoreInfo::ChainType,
+                                         false,
+                                         false,
+                                         false};
+      return {&_requiredChain, 1, 0};
+    } else {
+      return {};
+    }
   }
 
   void doCompose(CBContext *context) {

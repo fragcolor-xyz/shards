@@ -85,6 +85,7 @@
                                        (RandomInt 10)
                                        (Math.Add 1))]))
       fitness
+      :Elitism 0.0
       :Population 100
       :Threads 10
       :Coroutines 1)
@@ -92,6 +93,11 @@
     4)
    .best
    (Log)
+   (Take 1) (ExpectChain) >= .bestChain
+   (ChainRunner .bestChain :Mode RunChainMode.Detached)
+   (Msg "Waiting...")
+   (WaitChain .bestChain)
+   (Msg "Exiting...")
    ))
 
 (schedule Root evolveme)

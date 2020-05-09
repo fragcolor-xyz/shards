@@ -1515,27 +1515,6 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   return {chain->previousOutput, Running};
 }
 
-bool warmup(CBChain *chain, CBContext *context) {
-  context->chainStack.push_back(chain);
-  DEFER({ context->chainStack.pop_back(); });
-  for (auto blk : chain->blocks) {
-    try {
-      if (blk->warmup)
-        blk->warmup(blk, context);
-    } catch (const std::exception &e) {
-      LOG(ERROR) << "Block warmup error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      return false;
-    } catch (...) {
-      LOG(ERROR) << "Block warmup error, failed block: "
-                 << std::string(blk->name(blk));
-      return false;
-    }
-  }
-  return true;
-}
-
 #ifndef __EMSCRIPTEN__
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink)
@@ -1566,7 +1545,9 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   // We prerolled our coro, suspend here before actually starting.
   // This allows us to allocate the stack ahead of time.
   // And call warmup on all the blocks!
-  if (!warmup(chain, &context)) {
+  try {
+    chain->warmup(&context);
+  } catch (...) {
     chain->state = CBChain::State::Failed;
     context.stopFlow(Var::Empty);
     LOG(ERROR) << "chain " << chain->name << " warmup failed.";
@@ -1624,7 +1605,7 @@ endOfChain:
   chain->finishedOutput = chain->previousOutput;
 
   // run cleanup on all the blocks
-  cleanup(chain);
+  chain->cleanup();
 
   // Need to take care that we might have stopped the chain very early due to
   // errors and the next eventual stop() should avoid resuming
@@ -1916,3 +1897,65 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   }
 }
 }; // namespace chainblocks
+
+void CBChain::warmup(CBContext *context) {
+  assert(!warmedUp);
+
+  context->chainStack.push_back(this);
+  DEFER({ context->chainStack.pop_back(); });
+  for (auto blk : blocks) {
+    try {
+      if (blk->warmup)
+        blk->warmup(blk, context);
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Block warmup error, failed block: "
+                 << std::string(blk->name(blk));
+      LOG(ERROR) << e.what();
+      throw;
+    } catch (...) {
+      LOG(ERROR) << "Block warmup error, failed block: "
+                 << std::string(blk->name(blk));
+      throw;
+    }
+  }
+
+  warmedUp = true;
+  node = context->main->node;
+}
+
+void CBChain::cleanup() {
+  assert(warmedUp);
+
+  // Run cleanup on all blocks, prepare them for a new start if necessary
+  // Do this in reverse to allow a safer cleanup
+  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+    auto blk = *it;
+    try {
+      blk->cleanup(blk);
+    }
+#ifndef __EMSCRIPTEN__
+    catch (boost::context::detail::forced_unwind const &e) {
+      throw; // required for Boost Coroutine!
+    }
+#endif
+    catch (const std::exception &e) {
+      LOG(ERROR) << "Block cleanup error, failed block: "
+                 << std::string(blk->name(blk));
+      LOG(ERROR) << e.what() << '\n';
+    } catch (...) {
+      LOG(ERROR) << "Block cleanup error, failed block: "
+                 << std::string(blk->name(blk));
+    }
+  }
+  // Also clear all variables reporting dangling ones
+  for (auto var : variables) {
+    if (var.second.refcount > 0) {
+      LOG(ERROR) << "Found a dangling variable: " << var.first
+                 << " in chain: " << name;
+    }
+  }
+  variables.clear();
+
+  warmedUp = false;
+  node.reset();
+}

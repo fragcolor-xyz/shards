@@ -144,12 +144,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
     LOG(TRACE) << "~CBChain() " << name;
   }
 
-  void warmup(CBContext *context) {
-    for (auto &blk : blocks) {
-      if (blk->warmup)
-        blk->warmup(blk, context);
-    }
-  }
+  void warmup(CBContext *context);
+
+  void cleanup();
 
   // Also the chain takes ownership of the block!
   void addBlock(CBlock *blk) {

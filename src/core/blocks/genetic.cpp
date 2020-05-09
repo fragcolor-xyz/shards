@@ -285,6 +285,14 @@ struct Evolve {
         _exec->run(crossoverFlow).get();
 
         _era++;
+
+        // hack/fix
+        // it is likely possible that the best chain we outputted
+        // was used and so warmedup
+        auto best = CBChain::sharedFromRef(
+            _sortedPopulation.front()->chain.payload.chainValue);
+        if (best->warmedUp)
+          best->cleanup();
       }
 
 #if 1
@@ -422,10 +430,8 @@ struct Evolve {
                   CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
               stop(chain.get());
               chain->composedHash = 0;
-              chain->warmedUp = false;
               stop(fitchain.get());
               fitchain->composedHash = 0;
-              fitchain->warmedUp = false;
               i.node->terminate();
             });
 

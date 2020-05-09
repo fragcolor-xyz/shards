@@ -409,38 +409,6 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
   return runRes;
 }
 
-inline void cleanup(CBChain *chain) {
-  // Run cleanup on all blocks, prepare them for a new start if necessary
-  // Do this in reverse to allow a safer cleanup
-  for (auto it = chain->blocks.rbegin(); it != chain->blocks.rend(); ++it) {
-    auto blk = *it;
-    try {
-      blk->cleanup(blk);
-    }
-#ifndef __EMSCRIPTEN__
-    catch (boost::context::detail::forced_unwind const &e) {
-      throw; // required for Boost Coroutine!
-    }
-#endif
-    catch (const std::exception &e) {
-      LOG(ERROR) << "Block cleanup error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what() << '\n';
-    } catch (...) {
-      LOG(ERROR) << "Block cleanup error, failed block: "
-                 << std::string(blk->name(blk));
-    }
-  }
-  // Also clear all variables reporting dangling ones
-  for (auto var : chain->variables) {
-    if (var.second.refcount > 0) {
-      LOG(ERROR) << "Found a dangling variable: " << var.first
-                 << " in chain: " << chain->name;
-    }
-  }
-  chain->variables.clear();
-}
-
 #ifndef __EMSCRIPTEN__
 boost::context::continuation run(CBChain *chain, CBFlow *flow,
                                  boost::context::continuation &&sink);
@@ -523,7 +491,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     chain->coro = nullptr;
   } else {
     // if we had a coro this will run inside it!
-    cleanup(chain);
+    chain->cleanup();
   }
 
   // return true if we ended, as in we did our job
