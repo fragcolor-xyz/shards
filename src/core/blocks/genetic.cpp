@@ -147,8 +147,8 @@ struct Evolve {
   };
 
   void warmup(CBContext *context) {
-    if (!_exec || _exec->num_workers() != size_t(_threads)) {
-      _exec.reset(new tf::Executor(size_t(_threads)));
+    if (!_exec || _exec->num_workers() != (size_t(_threads) + 1)) {
+      _exec.reset(new tf::Executor(size_t(_threads) + 1));
     }
   }
 
@@ -176,7 +176,7 @@ struct Evolve {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     AsyncOp<InternalCore> op(context);
-    return op([&]() {
+    return op.sidechain<CBVar>(*_exec, [&]() {
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes
