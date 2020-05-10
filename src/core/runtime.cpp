@@ -1577,11 +1577,14 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
-      context.stopFlow(Var::Empty);
+      context.stopFlow(runRes.output);
       break;
     } else if (unlikely(runRes.state == Stopped)) {
       LOG(DEBUG) << "chain " << chain->name << " stopped.";
-      context.stopFlow(Var::Empty);
+      context.stopFlow(runRes.output);
+      // also replace the previous output with actual output
+      // as it's likely coming from flowStorage of context!
+      chain->previousOutput = runRes.output;
       break;
     }
 
