@@ -1,14 +1,19 @@
 #ifndef CB_RANDOM_HPP
 #define CB_RANDOM_HPP
 
-#include "random.hpp"
 #include "shared.hpp"
+#include <random>
 
 namespace chainblocks {
 namespace Random {
-struct RandomRng;
-using Rng = Rng<RandomRng>;
-template <Type &OUTTYPE, CBType CBTYPE> struct Rand {
+struct RandBase {
+  static inline thread_local std::random_device _rd{};
+  static inline thread_local std::mt19937 _gen{_rd()};
+  static inline thread_local std::uniform_int_distribution<> _uintdis{};
+  static inline thread_local std::uniform_real_distribution<> _udis{0.0, 1.0};
+};
+
+template <Type &OUTTYPE, CBType CBTYPE> struct Rand : public RandBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return OUTTYPE; }
   static CBParametersInfo parameters() { return _params; }
@@ -22,14 +27,14 @@ template <Type &OUTTYPE, CBType CBTYPE> struct Rand {
     res.valueType = CBTYPE;
     if constexpr (CBTYPE == CBType::Int) {
       if (_max.valueType == None)
-        res.payload.intValue = Rng::rand();
+        res.payload.intValue = _uintdis(_gen);
       else
-        res.payload.intValue = Rng::rand(_max.payload.intValue);
+        res.payload.intValue = _uintdis(_gen) % _max.payload.intValue;
     } else if constexpr (CBTYPE == CBType::Float) {
       if (_max.valueType == None)
-        res.payload.floatValue = Rng::frand();
+        res.payload.floatValue = _udis(_gen);
       else
-        res.payload.floatValue = Rng::frand(_max.payload.floatValue);
+        res.payload.floatValue = _udis(_gen) * _max.payload.floatValue;
     }
     return res;
   }

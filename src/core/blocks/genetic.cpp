@@ -1,18 +1,31 @@
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
 #include "chainblocks.hpp"
-#include "random.hpp"
 #include "shared.hpp"
 #include "taskflow/core/executor.hpp"
 #include <limits>
 #include <pdqsort.h>
+#include <random>
 #include <sstream>
 #include <taskflow/taskflow.hpp>
 
 namespace chainblocks {
 namespace Genetic {
-struct GeneticRng;
-using Rng = Rng<GeneticRng>;
+
+struct Random {
+  static double nextDouble() { return _udis(_gen); }
+  static int nextInt() { return _uintdis(_gen); }
+  static double nextNormal() { return _ndis(_gen); }
+  static double nextNormal1() { return _ndis1(_gen); }
+
+  static inline thread_local std::random_device _rd{};
+  static inline thread_local std::mt19937 _gen{_rd()};
+  static inline thread_local std::uniform_int_distribution<> _uintdis{};
+  static inline thread_local std::uniform_real_distribution<> _udis{0.0, 1.0};
+  static inline thread_local std::normal_distribution<> _ndis{0.0, 0.1};
+  static inline thread_local std::normal_distribution<> _ndis1{0.0, 1.0};
+};
+
 struct Mutant;
 struct Evolve {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -236,18 +249,18 @@ struct Evolve {
         int currentIdx = 0;
         for (auto &ind : _sortedPopulation) {
           ind->crossoverTask.reset();
-          if (Rng::frand() < _crossover) {
+          if (Random::nextDouble() < _crossover) {
             // In this case this individual
             // becomes the child between two other individuals
             // there is a chance also to keep current values
             // so this is effectively tree way crossover
             // Select from high fitness individuals
             const auto parent0Idx =
-                int(std::pow(Rng::frand(), 4) * double(_popsize));
+                int(std::pow(Random::nextDouble(), 4) * double(_popsize));
             auto parent0 = _sortedPopulation[parent0Idx];
 
             const auto parent1Idx =
-                int(std::pow(Rng::frand(), 4) * double(_popsize));
+                int(std::pow(Random::nextDouble(), 4) * double(_popsize));
             auto parent1 = _sortedPopulation[parent1Idx];
 
             if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
@@ -831,58 +844,54 @@ private:
 inline void mutateVar(CBVar &var) {
   switch (var.valueType) {
   case CBType::Int: {
-    const auto add = Rng::fnormal(0.0, 1.0) * double(var.payload.intValue);
+    const auto add = Random::nextNormal1() * double(var.payload.intValue);
     var.payload.intValue += int64_t(add);
   } break;
   case CBType::Int2: {
     for (auto i = 0; i < 2; i++) {
-      const auto add =
-          Rng::fnormal(0.0, 1.0) * double(var.payload.int2Value[i]);
+      const auto add = Random::nextNormal1() * double(var.payload.int2Value[i]);
       var.payload.int2Value[i] += int64_t(add);
     }
   } break;
   case CBType::Int3: {
     for (auto i = 0; i < 3; i++) {
-      const auto add =
-          Rng::fnormal(0.0, 1.0) * double(var.payload.int3Value[i]);
+      const auto add = Random::nextNormal1() * double(var.payload.int3Value[i]);
       var.payload.int3Value[i] += int32_t(add);
     }
   } break;
   case CBType::Int4: {
     for (auto i = 0; i < 4; i++) {
-      const auto add =
-          Rng::fnormal(0.0, 1.0) * double(var.payload.int4Value[i]);
+      const auto add = Random::nextNormal1() * double(var.payload.int4Value[i]);
       var.payload.int4Value[i] += int32_t(add);
     }
   } break;
   case CBType::Int8: {
     for (auto i = 0; i < 8; i++) {
-      const auto add =
-          Rng::fnormal(0.0, 1.0) * double(var.payload.int8Value[i]);
+      const auto add = Random::nextNormal1() * double(var.payload.int8Value[i]);
       var.payload.int8Value[i] += int16_t(add);
     }
   } break;
   case CBType::Int16: {
     for (auto i = 0; i < 16; i++) {
       const auto add =
-          Rng::fnormal(0.0, 1.0) * double(var.payload.int16Value[i]);
+          Random::nextNormal1() * double(var.payload.int16Value[i]);
       var.payload.int16Value[i] += int8_t(add);
     }
   } break;
   case CBType::Float: {
-    var.payload.floatValue += Rng::fnormal(0.0, 0.1);
+    var.payload.floatValue += Random::nextNormal();
   } break;
   case CBType::Float2: {
     for (auto i = 0; i < 2; i++)
-      var.payload.float2Value[i] += Rng::fnormal(0.0, 0.1);
+      var.payload.float2Value[i] += Random::nextNormal();
   } break;
   case CBType::Float3: {
     for (auto i = 0; i < 3; i++)
-      var.payload.float3Value[i] += float(Rng::fnormal(0.0, 0.1));
+      var.payload.float3Value[i] += float(Random::nextNormal());
   } break;
   case CBType::Float4: {
     for (auto i = 0; i < 4; i++)
-      var.payload.float4Value[i] += float(Rng::fnormal(0.0, 0.1));
+      var.payload.float4Value[i] += float(Random::nextNormal());
   } break;
   default:
     break;
@@ -936,7 +945,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0,
         IterableSeq idxs(indices);
         for (auto &idx : idxs) {
           const auto i = int(idx.payload.intValue);
-          const auto r = Rng::frand();
+          const auto r = Random::nextDouble();
           if (r < 0.33) {
             // take from 0
             auto val = p0b->getParam(p0b, i);
@@ -962,7 +971,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   std::for_each(
       std::begin(individual.mutants), std::end(individual.mutants),
       [&](MutantInfo &info) {
-        if (Rng::frand() > _mutation) {
+        if (Random::nextDouble() > _mutation) {
           return;
         }
 
@@ -980,7 +989,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
             auto &iseq = indices.payload.seqValue;
             // do stuff on the param
             // select a random one
-            auto rparam = Rng::rand(iseq.len);
+            auto rparam = Random::nextInt() % iseq.len;
             auto current = mutant->getParam(
                 mutant, int(iseq.elements[rparam].payload.intValue));
             // if we have mutation blocks use them

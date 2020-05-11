@@ -781,6 +781,8 @@
   (Time.EpochMs)
   (Log)
 
+  (RandomFloat) (IsLess 1.0) (Assert.Is true true)
+
   true
   (When (Is true) (Assert.Is true true))
   (When (Is false) (Assert.Is false true))
