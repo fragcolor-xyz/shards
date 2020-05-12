@@ -48,4 +48,4 @@
 	url = https://github.com/chainblocks/nameof.git
 [submodule "deps/pdqsort"]
 	path = deps/pdqsort
-	url = https://github.com/orlp/pdqsort.git
+	url = https://github.com/chainblocks/pdqsort.git

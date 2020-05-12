@@ -237,24 +237,36 @@ struct Sort : public ActionJointOp {
     int64_t i, j;
     CBVar key{};
     for (i = 1; i < n; i++) {
+      // main
       key = seq[i];
+      // joined seqs
       _multiSortKeys.clear();
       for (const auto &seqVar : _multiSortColumns) {
         const auto &col = seqVar->payload.seqValue;
+        if (col.len != n) {
+          throw ActivationError(
+              "Sort: All the sequences to be processed must have "
+              "the same length as the input sequence.");
+        }
         _multiSortKeys.push_back(col.elements[i]);
       }
       j = i - 1;
       // notice no &, we WANT to copy
       auto b = keyfn(key);
       while (j >= 0 && comp(keyfn(seq[j]), b)) {
+        // main
         seq[j + 1] = seq[j];
+        // joined seqs
         for (const auto &seqVar : _multiSortColumns) {
           const auto &col = seqVar->payload.seqValue;
           col.elements[j + 1] = col.elements[j];
         }
+        // main + join
         j = j - 1;
       }
+      // main
       seq[j + 1] = key;
+      // joined seq
       auto z = 0;
       for (const auto &seqVar : _multiSortColumns) {
         const auto &col = seqVar->payload.seqValue;
@@ -389,10 +401,12 @@ struct Remove : public ActionJointOp {
                   .elements) // avoid removing from same seq as input!
             continue;
 
-          if (_fast)
-            arrayDelFast(seq, i - 1);
-          else
-            arrayDel(seq, i - 1);
+          if (seq.len >= i) {
+            if (_fast)
+              arrayDelFast(seq, i - 1);
+            else
+              arrayDel(seq, i - 1);
+          }
         }
       }
     }
