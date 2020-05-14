@@ -1380,6 +1380,9 @@ MATH_BINARY_BLOCK(Dec);
 }; // namespace Math
 
 CBVar unreachableActivation(const CBVar &input) { throw; }
+CBVar exitProgramActivation(const CBVar &input) {
+  exit(input.payload.intValue);
+}
 
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
@@ -1494,6 +1497,9 @@ void registerBlocksCoreBlocks() {
 
   using PassMockBlock =
       LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
+  using ExitBlock =
+      LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_CBLOCK("Pass", PassMockBlock);
+  REGISTER_CBLOCK("Exit", ExitBlock);
 }
 }; // namespace chainblocks
