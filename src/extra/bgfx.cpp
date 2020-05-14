@@ -112,6 +112,7 @@ struct MainWindow : public BaseWindow {
   Context _bgfx_context{};
   chainblocks::ImGui::Context _imgui_context{};
   int32_t _wheelScroll = 0;
+  // TODO thread_local? anyway sort multiple threads
   static inline std::vector<SDL_Event> sdlEvents;
 
   void cleanup() {
@@ -193,6 +194,8 @@ struct MainWindow : public BaseWindow {
       if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
         throw ActivationError("Failed to call SDL_GetWindowWMInfo");
       }
+      // Ensure clicks will happen even from out of focus!
+      SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
       bgfx::Init initInfo{};
 #ifdef __APPLE__
@@ -254,14 +257,6 @@ struct MainWindow : public BaseWindow {
       _initDone = true;
     }
 
-    // check events, figure if we want to quit!
-    for (auto &evnt : sdlEvents) {
-      if (evnt.type == SDL_QUIT) {
-        LOG(INFO) << "SDL quit event!";
-        std::exit(0);
-      }
-    }
-
     // Set them always as they might override each other during the chain
     *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
     *_bgfxCtx = Var::Object(&_bgfx_context, FragCC, BgfxContextCC);
@@ -317,6 +312,9 @@ struct MainWindow : public BaseWindow {
         io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
         io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
         io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+      } else if (event.type == SDL_QUIT) {
+        LOG(INFO) << "SDL quit event!";
+        std::exit(0);
       }
     }
 
