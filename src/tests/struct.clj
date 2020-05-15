@@ -44,6 +44,21 @@
   (Take 2)
   (ExpectFloat)
   (Assert.Is 3.0 true)
+
+  (Const [1 2 3]) >> .args2
+  22 >> .args2
+  .args2
+  (Pack "i64[3] p")
+  (Log)
+  (Unpack "i64[3] p") >= .y
+  (Take 1)
+  (ExpectInt)
+  (Assert.Is 22 true)
+  .y (Take 0) (ExpectSeq)
+  (Log)
+  (Take 2)
+  (ExpectInt)
+  (Assert.Is 3 true)
   ))
 
 (tick Root)
