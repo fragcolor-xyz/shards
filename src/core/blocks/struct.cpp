@@ -435,7 +435,8 @@ struct Unpack : public StructBase {
       switch (member.tag) {
       case Tags::i8Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int8_t>(arr.elements[i].payload.intValue, input, member.offset);
+          read<int8_t>(arr.elements[i].payload.intValue, input,
+                       member.offset + i);
         }
         break;
       case Tags::i8:
@@ -444,7 +445,8 @@ struct Unpack : public StructBase {
         break;
       case Tags::i16Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int16_t>(arr.elements[i].payload.intValue, input, member.offset);
+          read<int16_t>(arr.elements[i].payload.intValue, input,
+                        member.offset + (2 * i));
         }
         break;
       case Tags::i16:
@@ -453,7 +455,8 @@ struct Unpack : public StructBase {
         break;
       case Tags::i32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int32_t>(arr.elements[i].payload.intValue, input, member.offset);
+          read<int32_t>(arr.elements[i].payload.intValue, input,
+                        member.offset + (4 * i));
         }
         break;
       case Tags::i32:
@@ -462,7 +465,8 @@ struct Unpack : public StructBase {
         break;
       case Tags::i64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int64_t>(arr.elements[i].payload.intValue, input, member.offset);
+          read<int64_t>(arr.elements[i].payload.intValue, input,
+                        member.offset + (8 * i));
         }
         break;
       case Tags::i64:
@@ -471,7 +475,8 @@ struct Unpack : public StructBase {
         break;
       case Tags::f32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<float>(arr.elements[i].payload.floatValue, input, member.offset);
+          read<float>(arr.elements[i].payload.floatValue, input,
+                      member.offset + (4 * i));
         }
         break;
       case Tags::f32:
@@ -481,7 +486,7 @@ struct Unpack : public StructBase {
       case Tags::f64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
           read<double>(arr.elements[i].payload.floatValue, input,
-                       member.offset);
+                       member.offset + (8 * i));
         }
         break;
       case Tags::f64:

@@ -26,8 +26,24 @@
   (Unpack "s i32")
   (Log)
   (Take 0)
+  (ExpectString)
   (Log)
-  ;; (Assert.Is "Hello structured data" true)
+  (Assert.Is "Hello structured data" true)
+
+  (Const [1.0 2.0 3.0]) >> .args
+  22 >> .args
+  .args
+  (Pack "f32[3] p")
+  (Log)
+  (Unpack "f32[3] p") >= .x
+  (Take 1)
+  (ExpectInt)
+  (Assert.Is 22 true)
+  .x (Take 0) (ExpectSeq)
+  (Log)
+  (Take 2)
+  (ExpectFloat)
+  (Assert.Is 3.0 true)
   ))
 
 (tick Root)
