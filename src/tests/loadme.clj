@@ -4,5 +4,6 @@
          (Get "var")
          (Math.Add 1)
          (Log)
-         (Msg "Hello")))
+         (Msg "Hello")
+         (Detach "myChain")))
 

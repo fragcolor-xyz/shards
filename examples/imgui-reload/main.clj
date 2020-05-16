@@ -7,10 +7,10 @@
  (Chain
   "main" :Looped
   (BGFX.MainWindow :Title "SDL Window" :Width 400 :Height 720)
-  (DispatchOnce(Chain
-                "init"
-                "" (Set "text1")
-                (applyStyle)))
+  (DispatchOnce (Chain
+                 "init"
+                 "" (Set "text1")
+                 (applyStyle)))
   (ImGui.Window
    :Title "Hot-reloaded window"
    :Width 400 :Height 720 :PosX 0 :PosY 0

@@ -393,6 +393,7 @@ struct ChainFileWatcher {
   rigtorp::SPSCQueue<ChainLoadResult> results;
   std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
   boost::lockfree::queue<CBChain *> garbage;
+  std::weak_ptr<CBNode> node;
 
   CBTypeInfo inputTypeInfo;
   chainblocks::IterableExposedInfo shared;
@@ -401,6 +402,7 @@ struct ChainFileWatcher {
                             const CBInstanceData &data)
       : running(true), fileName(file), path(currentPath), results(2),
         garbage(2), inputTypeInfo(data.inputType), shared(data.shared) {
+    node = data.chain->node;
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = std::filesystem::path(path);
@@ -446,6 +448,7 @@ struct ChainFileWatcher {
             data.inputType = inputTypeInfo;
             data.shared = shared;
             data.chain = chain.get();
+            data.chain->node = node;
 
             // run validation to infertypes and specialize
             auto chainValidation = composeChain(

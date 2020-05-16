@@ -145,6 +145,8 @@ struct ChainBase {
     auto node = data.chain->node.lock();
     assert(node);
 
+    // TODO FIXME, chainloader/chain runner might access this from another
+    // thread
     if (node->visitedChains.count(chain.get()))
       return node->visitedChains[chain.get()];
 
@@ -214,9 +216,11 @@ struct ChainBase {
         outputType = data.inputType;
     }
 
-    node->visitedChains.emplace(chain.get(), outputType);
-    LOG(TRACE) << "Marking as composed: " << chain->name
-               << " ptr: " << chain.get();
+    if (!passthrough && mode != Stepped) {
+      node->visitedChains.emplace(chain.get(), outputType);
+      LOG(TRACE) << "Marking as composed: " << chain->name
+                 << " ptr: " << chain.get();
+    }
 
     return outputType;
   }
@@ -842,7 +846,11 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
     }
   }
 
-  void cleanup() { BaseLoader<ChainLoader>::cleanup(); }
+  void cleanup() {
+    BaseLoader<ChainLoader>::cleanup();
+    if (_provider)
+      _provider->reset(_provider);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(!_provider))
@@ -853,6 +861,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       data.inputType = _inputTypeCopy;
       data.shared = _sharedCopy;
       data.chain = context->chainStack.back();
+      assert(data.chain->node.lock());
       _provider->setup(_provider, Globals::RootPath.c_str(), data);
     }
 
@@ -867,7 +876,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
           chainblocks::stop(chain.get());
         }
 
-        // notice we provide a noop deleter cos provider releases
+        // but let the provider release the pointer!
         chain.reset(update.chain,
                     [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
