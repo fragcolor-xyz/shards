@@ -35,6 +35,12 @@ struct ChainBase {
                         "The input of this block will be the output.",
                         CoreInfo::BoolType));
 
+  static inline ParamsInfo stopChainParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Chain", "The chain to wait.", ChainVarTypes),
+      ParamsInfo::Param("Passthrough",
+                        "The input of this block will be the output.",
+                        CoreInfo::BoolType));
+
   static inline ParamsInfo runChainParamsInfo = ParamsInfo(
       ParamsInfo::Param("Chain", "The chain to run.", ChainTypes),
       ParamsInfo::Param("Once",
@@ -327,6 +333,85 @@ struct WaitChain : public ChainBase {
       }
     } else {
       return input;
+    }
+  }
+};
+
+struct StopChain : public ChainBase {
+  OwnedVar _output{};
+  CBExposedTypeInfo _requiredChain{};
+
+  void cleanup() {
+    if (chainref.isVariable())
+      chain = nullptr;
+    ChainBase::cleanup();
+  }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(stopChainParamsInfo);
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chainref = value;
+      break;
+    case 1:
+      passthrough = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return chainref;
+    case 1:
+      return Var(passthrough);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (chainref.isVariable()) {
+      _requiredChain = CBExposedTypeInfo{chainref.variableName(),
+                                         "The chain to run.",
+                                         CoreInfo::ChainType,
+                                         false,
+                                         false,
+                                         false};
+      return {&_requiredChain, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!chain && chainref.isVariable())) {
+      auto vchain = chainref.get();
+      if (vchain.valueType == CBType::Chain) {
+        chain = CBChain::sharedFromRef(vchain.payload.chainValue);
+      } else if (vchain.valueType == String) {
+        chain = Globals::GlobalChains[vchain.payload.stringValue];
+      } else {
+        chain = nullptr;
+      }
+    }
+
+    if (unlikely(!chain)) {
+      LOG(WARNING) << "StopChain's chain is void.";
+      return input;
+    } else {
+      if (passthrough) {
+        stop(chain.get());
+        return input;
+      } else {
+        stop(chain.get(), &_output);
+        return _output;
+      }
     }
   }
 };
@@ -935,6 +1020,7 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
   REGISTER_CBLOCK("WaitChain", WaitChain);
+  REGISTER_CBLOCK("StopChain", StopChain);
   REGISTER_CBLOCK("RunChain", RunChain);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);

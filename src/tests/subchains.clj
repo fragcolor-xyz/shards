@@ -15,6 +15,8 @@
 
 (def otherChain (Chain "other" 99))
 
+(def loopedOther (Chain "otherLooped" :Looped 10))
+
 (def funcChain
   (Chain
    "func"
@@ -96,89 +98,93 @@
 
 (def main
   (Chain
-  "root"
-  "Initial input"
-  (DispatchOnce mychain)
-  (Get "var1")
-  (Log "var1")
-  (Get "var2")
-  (Log "var2")
-  (Detach otherChain)
-  (WaitChain otherChain)
-  (Log "otherChain")
-  (Assert.Is 99 true)
-  10
-  (Dispatch funcChain)
-  12
-  (Dispatch funcChain)
-  20
-  (Dispatch funcChain)
+   "root"
+   "Initial input"
+   (DispatchOnce mychain)
+   (Get "var1")
+   (Log "var1")
+   (Get "var2")
+   (Log "var2")
+   (Detach otherChain)
+   (WaitChain otherChain)
+   (Log "otherChain")
+   (Assert.Is 99 true)
+   10
+   (Dispatch funcChain)
+   12
+   (Dispatch funcChain)
+   20
+   (Dispatch funcChain)
+
+   (Detach loopedOther)
+   (StopChain loopedOther)
+   (WaitChain loopedOther)
 
                                         ; test a stepped chain that (Stop)s
-  (Step tickedChain)
-  (Msg "had message 1")
-  (Assert.Is 1 true) ; pause after 1
+   (Step tickedChain)
+   (Msg "had message 1")
+   (Assert.Is 1 true) ; pause after 1
 
-  (Step tickedChain)
-  (Msg "had message 2")
-  (Assert.Is 1 true) ; resume pauses jumped
+   (Step tickedChain)
+   (Msg "had message 2")
+   (Assert.Is 1 true) ; resume pauses jumped
 
-  (Step tickedChain)
-  (Msg "before ticked resume")
-  (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
+   (Step tickedChain)
+   (Msg "before ticked resume")
+   (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
 
-  (Step tickedChain) ; pause after 2
-  (Assert.Is 2 true)
+   (Step tickedChain) ; pause after 2
+   (Assert.Is 2 true)
 
-  (Step tickedChain) ; resume pauses when going stopping
-  (Msg "had message 3")
-  (Assert.Is 3 true) ; pause after 3
+   (Step tickedChain) ; resume pauses when going stopping
+   (Msg "had message 3")
+   (Assert.Is 3 true) ; pause after 3
 
-  (Step tickedChain)
-  (Msg "had message 4")
-  (Assert.Is 4 true) ; pause after 4
+   (Step tickedChain)
+   (Msg "had message 4")
+   (Assert.Is 4 true) ; pause after 4
 
-  (Step tickedChain) ; will stop the chain
-  (Assert.Is 4 true)
-  (Step tickedChain) ; last result chain is done
-  (Assert.Is 4 true)
-  (Step tickedChain) ; last result chain is done
-  (Assert.Is 4 true)
+   (Step tickedChain) ; will stop the chain
+   (Assert.Is 4 true)
+   (Step tickedChain) ; last result chain is done
+   (Assert.Is 4 true)
+   (Step tickedChain) ; last result chain is done
+   (Assert.Is 4 true)
 
                                         ; test a stepped chain that never stops and rotates
-  (Repeat
-   (-->
-    (Msg "repeating!")
-    (Step tickedChain2)
-    (Msg "had message 1")
-    (Assert.Is 1 true) ; pause after 1
+   (Repeat
+    (-->
+     (Msg "repeating!")
+     (Step tickedChain2)
+     (Msg "had message 1")
+     (Assert.Is 1 true) ; pause after 1
 
-    (Step tickedChain2)
-    (Msg "had message 2")
-    (Assert.Is 1 true) ; resume pauses jumped
+     (Step tickedChain2)
+     (Msg "had message 2")
+     (Assert.Is 1 true) ; resume pauses jumped
 
-    (Step tickedChain2)
-    (Msg "before ticked resume")
-    (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
+     (Step tickedChain2)
+     (Msg "before ticked resume")
+     (Assert.Is 1 true) ; resumed ticked and resumed ticked again so paused
 
-    (Step tickedChain2) ; pause after 2
-    (Assert.Is 2 true)
+     (Step tickedChain2) ; pause after 2
+     (Assert.Is 2 true)
 
-    (Step tickedChain2) ; resume pauses when going stopping
-    (Msg "had message 3")
-    (Assert.Is 3 true) ; pause after 3
+     (Step tickedChain2) ; resume pauses when going stopping
+     (Msg "had message 3")
+     (Assert.Is 3 true) ; pause after 3
 
-    (Step tickedChain2)
-    (Msg "had message 4")
-    (Assert.Is 4 true) ; pause after 4
-    ) :Times 3)
+     (Step tickedChain2)
+     (Msg "had message 4")
+     (Assert.Is 4 true) ; pause after 4
+     ):Times 3)
 
-  (Start startButNotResumed)
-  (Msg "root resumed")
-  (Start startButNotResumed)
-  (Msg "root resumed")
+   (Start startButNotResumed)
+   (Msg "root resumed")
+   (Start startButNotResumed)
+   (Msg "root resumed")
 
-  (Msg "done")))
+   (Msg "done")))
 
 (schedule root main)
 
