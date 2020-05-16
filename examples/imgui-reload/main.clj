@@ -19,4 +19,4 @@
     (ChainLoader (Chain@ "imgui-sandbox.clj"))))
   (BGFX.Draw)))
 
-(run Root 0.015)
+(run Root 0.0167)

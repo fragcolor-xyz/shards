@@ -780,10 +780,11 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         if (chain) {
           // stop and release previous version
           chainblocks::stop(chain.get());
-          _provider->release(_provider, chain.get());
         }
 
-        chain.reset(update.chain);
+        // notice we provide a noop deleter cos provider releases
+        chain.reset(update.chain,
+                    [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
       }
     }
