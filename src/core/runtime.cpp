@@ -1905,6 +1905,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }; // namespace chainblocks
 
 void CBChain::warmup(CBContext *context) {
+  LOG(TRACE) << "Warming up " << name;
   assert(!warmedUp);
 
   context->chainStack.push_back(this);
@@ -1930,6 +1931,7 @@ void CBChain::warmup(CBContext *context) {
 }
 
 void CBChain::cleanup() {
+  LOG(TRACE) << "Cleaning up " << name;
   assert(warmedUp);
 
   // Run cleanup on all blocks, prepare them for a new start if necessary

@@ -161,13 +161,18 @@ struct ChainBase {
     // we can add early in this case!
     // useful for Resume/Start
     if (passthrough) {
-      node->visitedChains.emplace(chain.get(), data.inputType);
-      LOG(TRACE) << "Pre-Marking as composed: " << chain->name
-                 << " ptr: " << chain.get();
+      auto [_, done] = node->visitedChains.emplace(chain.get(), data.inputType);
+      if (done) {
+        LOG(TRACE) << "Pre-Marking as composed: " << chain->name
+                   << " ptr: " << chain.get();
+      }
     } else if (mode == Stepped) {
-      node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
-      LOG(TRACE) << "Pre-Marking as composed: " << chain->name
-                 << " ptr: " << chain.get();
+      auto [_, done] =
+          node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
+      if (done) {
+        LOG(TRACE) << "Pre-Marking as composed: " << chain->name
+                   << " ptr: " << chain.get();
+      }
     }
 
     // and the subject here
@@ -180,6 +185,7 @@ struct ChainBase {
     CBTypeInfo chainOutput;
     // make sure to compose only once...
     if (chain->composedHash == 0) {
+      LOG(TRACE) << "Running " << chain->name << " compose.";
       chainValidation = composeChain(
           chain.get(),
           [](const CBlock *errorBlock, const char *errorTxt,
@@ -196,7 +202,9 @@ struct ChainBase {
           this, dataCopy);
       chain->composedHash = 1; // no need to hash properly here
       chainOutput = chainValidation.outputType;
+      LOG(TRACE) << "Chain " << chain->name << " composed.";
     } else {
+      LOG(TRACE) << "Skipping " << chain->name << " compose.";
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
         LOG(ERROR) << "Previous chain composed type "
@@ -222,11 +230,13 @@ struct ChainBase {
     }
 
     if (!passthrough && mode != Stepped) {
-      node->visitedChains.emplace(chain.get(), outputType);
-      LOG(TRACE) << "Marking as composed: " << chain->name
-                 << " ptr: " << chain.get() << " inputType "
-                 << type2Name(chain->inputType.basicType) << " outputType "
-                 << type2Name(chain->outputType.basicType);
+      auto [_, done] = node->visitedChains.emplace(chain.get(), outputType);
+      if (done) {
+        LOG(TRACE) << "Marking as composed: " << chain->name
+                   << " ptr: " << chain.get() << " inputType "
+                   << type2Name(chain->inputType.basicType) << " outputType "
+                   << type2Name(chain->outputType.basicType);
+      }
     }
 
     return outputType;
@@ -417,10 +427,11 @@ struct StopChain : public ChainBase {
       return input;
     } else {
       if (passthrough) {
-        stop(chain.get());
+        tryStopChain();
         return input;
       } else {
-        stop(chain.get(), &_output);
+        tryStopChain();
+        _output = chain->finishedOutput;
         return _output;
       }
     }
