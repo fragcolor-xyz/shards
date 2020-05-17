@@ -780,6 +780,11 @@
 
   (Time.EpochMs)
   (Log)
+  
+  (Int3 3 3 3) (Flatten) (Assert.Is [3 3 3] true) >> .i3s
+  (Int3 6 6 6) (Flatten) (Assert.Is [6 6 6] true) >> .i3s
+  .i3s (Flatten) (Assert.Is [3 3 3 6 6 6] true)
+  (Log)
 
   (RandomFloat) (IsLess 1.0) (Assert.Is true true)
 

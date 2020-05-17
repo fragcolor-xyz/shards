@@ -1213,9 +1213,12 @@ CBValidationResult composeChain(const CBChain *chain,
                                 CBInstanceData data) {
   auto res = composeChain(chain->blocks, callback, userData, data, true);
   if (chain->blocks.size() > 0) {
+    // If first block is a plain None, mark this chain has None input
     auto inTypes = chain->blocks[0]->inputTypes(chain->blocks[0]);
     if (inTypes.len == 1 && inTypes.elements[0].basicType == None)
       chain->inputType = CBTypeInfo{};
+    else
+      chain->inputType = data.inputType;
   } else {
     chain->inputType = data.inputType;
   }

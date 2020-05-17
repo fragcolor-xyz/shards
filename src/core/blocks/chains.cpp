@@ -155,17 +155,18 @@ struct ChainBase {
       return data.inputType; // we don't know yet...
 
     LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
-               << " composing: " << chain->name;
+               << " composing: " << chain->name
+               << " input basic type: " << type2Name(data.inputType.basicType);
 
     // we can add early in this case!
     // useful for Resume/Start
     if (passthrough) {
       node->visitedChains.emplace(chain.get(), data.inputType);
-      LOG(TRACE) << "Marking as composed: " << chain->name
+      LOG(TRACE) << "Pre-Marking as composed: " << chain->name
                  << " ptr: " << chain.get();
     } else if (mode == Stepped) {
       node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
-      LOG(TRACE) << "Marking as composed: " << chain->name
+      LOG(TRACE) << "Pre-Marking as composed: " << chain->name
                  << " ptr: " << chain.get();
     }
 
@@ -198,6 +199,10 @@ struct ChainBase {
     } else {
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
+        LOG(ERROR) << "Previous chain composed type "
+                   << type2Name(chain->inputType.basicType)
+                   << " requested call type "
+                   << type2Name(data.inputType.basicType);
         throw ComposeError("Attempted to call an already composed chain with a "
                            "different input type! chain: " +
                            chain->name);
@@ -219,7 +224,9 @@ struct ChainBase {
     if (!passthrough && mode != Stepped) {
       node->visitedChains.emplace(chain.get(), outputType);
       LOG(TRACE) << "Marking as composed: " << chain->name
-                 << " ptr: " << chain.get();
+                 << " ptr: " << chain.get() << " inputType "
+                 << type2Name(chain->inputType.basicType) << " outputType "
+                 << type2Name(chain->outputType.basicType);
     }
 
     return outputType;

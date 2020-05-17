@@ -381,6 +381,7 @@ struct Var : public CBVar {
   }
 
   explicit Var(const std::shared_ptr<CBChain> &chain) : CBVar() {
+    // INTERNAL USE ONLY, ABI LIKELY NOT COMPATIBLE!
     valueType = CBType::Chain;
     payload.chainValue = reinterpret_cast<CBChainRef>(
         &const_cast<std::shared_ptr<CBChain> &>(chain));
