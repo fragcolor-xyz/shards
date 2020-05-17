@@ -102,6 +102,11 @@ struct Cross : public VectorBinaryBase {
 struct Dot : public VectorBinaryBase {
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    VectorBinaryBase::compose(data);
+    return CoreInfo::FloatType;
+  }
+
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
       if (operand.valueType != input.valueType)
@@ -151,6 +156,11 @@ struct Dot : public VectorBinaryBase {
 struct LengthSquared : public VectorUnaryBase {
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    VectorUnaryBase::compose(data);
+    return CoreInfo::FloatType;
+  }
+
   struct Operation {
     Dot::Operation dotOp;
     void operator()(CBVar &output, const CBVar &input) {
@@ -165,6 +175,11 @@ struct LengthSquared : public VectorUnaryBase {
 
 struct Length : public VectorUnaryBase {
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    VectorUnaryBase::compose(data);
+    return CoreInfo::FloatType;
+  }
 
   struct Operation {
     LengthSquared::Operation lenOp;
