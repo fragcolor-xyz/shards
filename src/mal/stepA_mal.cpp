@@ -52,7 +52,6 @@ void malinit(malEnvPtr env) {
 
 malValuePtr maleval(const char* str, malEnvPtr env) {
     assert(env);
-    currentEnv = env;
     return EVAL(READ(str), env);
 }
 
@@ -150,7 +149,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env)
 {
     if (!env) {
         env = currentEnv;
-	assert(env);
+	    assert(env);
     }
     // not quite sure, but for now lets not update currentenv here
     // limit it only to root entry points

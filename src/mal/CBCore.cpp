@@ -479,6 +479,9 @@ struct ChainFileWatcher {
           if (!garbage.empty()) {
             CBChain *gchain;
             if (garbage.pop(gchain)) {
+              auto &data = liveChains[gchain];
+              LOG(TRACE) << "Collecting hot chain " << gchain->name
+                         << " env refcount: " << std::get<0>(data)->refCount();
               liveChains.erase(gchain);
             }
           }
@@ -498,6 +501,9 @@ struct ChainFileWatcher {
       if (!garbage.empty()) {
         CBChain *gchain;
         if (garbage.pop(gchain)) {
+          auto &data = liveChains[gchain];
+          LOG(TRACE) << "Collecting hot chain " << gchain->name
+                     << " env refcount: " << std::get<0>(data)->refCount();
           liveChains.erase(gchain);
         }
       }

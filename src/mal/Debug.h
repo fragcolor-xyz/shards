@@ -6,9 +6,11 @@
 #endif
 #include <stdlib.h>
 
+#ifndef NDEBUG
 #define DEBUG_TRACE                    1
-//#define DEBUG_OBJECT_LIFETIMES         1
-//#define DEBUG_ENV_LIFETIMES            1
+// #define DEBUG_OBJECT_LIFETIMES         1
+// #define DEBUG_ENV_LIFETIMES            1
+#endif
 
 #define DEBUG_TRACE_FILE    stderr
 
