@@ -304,8 +304,7 @@ struct Evolve {
         // was used and so warmedup
         auto best = CBChain::sharedFromRef(
             _sortedPopulation.front()->chain.payload.chainValue);
-        if (best->warmedUp)
-          best->cleanup();
+        best->cleanup(true);
       }
 
 #if 1

@@ -146,7 +146,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   void warmup(CBContext *context);
 
-  void cleanup();
+  void cleanup(bool force = false);
 
   // Also the chain takes ownership of the block!
   void addBlock(CBlock *blk) {
@@ -186,7 +186,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   // those are mostly used internally in chains.cpp
   std::size_t composedHash{};
-  bool warmedUp{false};
+  int warmupCount{0};
 
   mutable CBTypeInfo inputType{};
   mutable CBTypeInfo outputType{};

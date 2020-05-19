@@ -359,6 +359,8 @@ struct WaitChain : public ChainBase {
 };
 
 struct StopChain : public ChainBase {
+  void setup() { passthrough = true; }
+
   OwnedVar _output{};
   CBExposedTypeInfo _requiredChain{};
 
@@ -426,11 +428,12 @@ struct StopChain : public ChainBase {
       LOG(WARNING) << "StopChain's chain is void.";
       return input;
     } else {
-      if (passthrough) {
+      if (chain->state != CBChain::State::Stopped)
         tryStopChain();
+
+      if (passthrough) {
         return input;
       } else {
-        tryStopChain();
         _output = chain->finishedOutput;
         return _output;
       }
@@ -625,8 +628,6 @@ struct BaseRunner : public ChainBase {
   void doWarmup(CBContext *context) {
     auto current = context->chainStack.back();
     if (mode == RunChainMode::Inline && chain && current != chain.get()) {
-      if (chain->warmedUp)
-        return;
       chain->warmup(context);
     }
   }

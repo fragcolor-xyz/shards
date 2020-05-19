@@ -1383,6 +1383,7 @@ void CBChain::reset() {
   composedHash = 0;
   inputType = {};
   outputType = {};
+  warmupCount = 0;
 }
 
 namespace chainblocks {
@@ -1905,65 +1906,72 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }; // namespace chainblocks
 
 void CBChain::warmup(CBContext *context) {
-  LOG(TRACE) << "Warming up " << name;
-  assert(!warmedUp);
+  warmupCount++;
+  LOG(TRACE) << "Warming up " << name << " count: " << warmupCount;
+  assert(warmupCount > 0);
 
-  context->chainStack.push_back(this);
-  DEFER({ context->chainStack.pop_back(); });
-  for (auto blk : blocks) {
-    try {
-      if (blk->warmup)
-        blk->warmup(blk, context);
-    } catch (const std::exception &e) {
-      LOG(ERROR) << "Block warmup error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      throw;
-    } catch (...) {
-      LOG(ERROR) << "Block warmup error, failed block: "
-                 << std::string(blk->name(blk));
-      throw;
+  if (warmupCount == 1) {
+    context->chainStack.push_back(this);
+    DEFER({ context->chainStack.pop_back(); });
+    for (auto blk : blocks) {
+      try {
+        if (blk->warmup)
+          blk->warmup(blk, context);
+      } catch (const std::exception &e) {
+        LOG(ERROR) << "Block warmup error, failed block: "
+                   << std::string(blk->name(blk));
+        LOG(ERROR) << e.what();
+        throw;
+      } catch (...) {
+        LOG(ERROR) << "Block warmup error, failed block: "
+                   << std::string(blk->name(blk));
+        throw;
+      }
     }
-  }
 
-  warmedUp = true;
-  node = context->main->node;
+    node = context->main->node;
+  }
 }
 
-void CBChain::cleanup() {
-  LOG(TRACE) << "Cleaning up " << name;
-  assert(warmedUp);
+void CBChain::cleanup(bool force) {
+  if (force)
+    warmupCount = 1;
 
-  // Run cleanup on all blocks, prepare them for a new start if necessary
-  // Do this in reverse to allow a safer cleanup
-  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
-    auto blk = *it;
-    try {
-      blk->cleanup(blk);
-    }
+  warmupCount--;
+  LOG(TRACE) << "Cleaning up " << name << " count: " << warmupCount
+             << " forced: " << force;
+  assert(warmupCount >= 0);
+
+  if (warmupCount == 0) {
+    // Run cleanup on all blocks, prepare them for a new start if necessary
+    // Do this in reverse to allow a safer cleanup
+    for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+      auto blk = *it;
+      try {
+        blk->cleanup(blk);
+      }
 #ifndef __EMSCRIPTEN__
-    catch (boost::context::detail::forced_unwind const &e) {
-      throw; // required for Boost Coroutine!
-    }
+      catch (boost::context::detail::forced_unwind const &e) {
+        throw; // required for Boost Coroutine!
+      }
 #endif
-    catch (const std::exception &e) {
-      LOG(ERROR) << "Block cleanup error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what() << '\n';
-    } catch (...) {
-      LOG(ERROR) << "Block cleanup error, failed block: "
-                 << std::string(blk->name(blk));
+      catch (const std::exception &e) {
+        LOG(ERROR) << "Block cleanup error, failed block: "
+                   << std::string(blk->name(blk));
+        LOG(ERROR) << e.what() << '\n';
+      } catch (...) {
+        LOG(ERROR) << "Block cleanup error, failed block: "
+                   << std::string(blk->name(blk));
+      }
     }
-  }
-  // Also clear all variables reporting dangling ones
-  for (auto var : variables) {
-    if (var.second.refcount > 0) {
-      LOG(ERROR) << "Found a dangling variable: " << var.first
-                 << " in chain: " << name;
+    // Also clear all variables reporting dangling ones
+    for (auto var : variables) {
+      if (var.second.refcount > 0) {
+        LOG(ERROR) << "Found a dangling variable: " << var.first
+                   << " in chain: " << name;
+      }
     }
+    variables.clear();
+    node.reset();
   }
-  variables.clear();
-
-  warmedUp = false;
-  node.reset();
 }
