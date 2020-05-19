@@ -32,9 +32,9 @@
       (Math.Mod k)
       (Set "dimension")
                                         ; sort points
-      (Sort (# "points") :Key (--> (Take (# "dimension"))))
+      (Sort .points :Key (--> (Take .dimension)))
                                         ; split left and right, push points
-      (Slice :To (# "median"))
+      (Slice :To .median)
                                         ; left points arg
       (Push)
                                         ; depth arg
@@ -60,7 +60,7 @@
       (Clear "result")
                                         ; top
       (Get "points")
-      (Take (# "median"))
+      (Take .median)
       (Push "result")
                                         ;start with left
       (Pop "left-mem")

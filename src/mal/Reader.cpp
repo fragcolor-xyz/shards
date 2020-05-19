@@ -170,6 +170,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
         { "'",   "quote" },
         { "~@",  "splice-unquote" },
         { "~",   "unquote" },
+        { "#",   "chainify"}
     };
 
     struct Constant {
@@ -183,22 +184,27 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     };
 
     String token = tokeniser.next();
+    
     if (token[0] == '"') {
         return mal::string(unescape(token));
     }
+    
     if (token[0] == ':') {
         return mal::keyword(token);
     }
+    
     if (token[0] == '.') {
       auto str = token.substr(1);
       return mal::contextVar(str);
     }
+    
     if (token == "^") {
         malValuePtr meta = readForm(tokeniser);
         malValuePtr value = readForm(tokeniser);
         // Note that meta and value switch places
         return mal::list(mal::symbol("with-meta"), value, meta);
     }
+
     for (auto &constant : constantTable) {
         if (token == constant.token) {
             return constant.value;

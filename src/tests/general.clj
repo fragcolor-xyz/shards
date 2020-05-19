@@ -20,7 +20,7 @@
   
   true
   (Cond [
-    (--> (Is true)) (--> (Msg "Cond was true!!") false)
+    #[(Is true)] #[(Msg "Cond was true!!") false]
     (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
   (Assert.Is false true)
   (Log)
@@ -195,19 +195,19 @@
   ; b1r
   0
   (Math.And 0xFF)
-  (Math.Or (# "x"))
+  (Math.Or .x)
   (Math.LShift 8)
   (Update "x")
   ; b2r
   59
   (Math.And 0xFF)
-  (Math.Or (# "x"))
+  (Math.Or .x)
   (Math.LShift 8)
   (Update "x")
   ; b3r
   156
   (Math.And 0xFF)
-  (Math.Or (# "x"))
+  (Math.Or .x)
   (Update "x")
   ; result
   (Get "x")
@@ -232,7 +232,7 @@
   (Int 10) (ToFloat) (Set "fx")
   (Get "fx") (Assert.Is (Float 10) true)
   (Get "fx") (Assert.IsNot (Int 10) true)
-  (Float 5) (Math.Divide (# "fx")) (Assert.Is 0.5 true)
+  (Float 5) (Math.Divide .fx) (Assert.Is 0.5 true)
 
   10 (Push "myseq")
   20 (Push "myseq")
@@ -317,7 +317,7 @@
   0 (Push "unsortedList")
   1 (Push "unsortedList")
   5 (Push "unsortedList")
-  (Sort (# "unsortedList"))
+  (Sort .unsortedList)
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
 
@@ -335,10 +335,10 @@
   1 (Push "unsortedList3")
   5 (Push "unsortedList3")
   
-  (Sort (# "unsortedList2") [(# "unsortedList3")])
+  (Sort .unsortedList2 [.unsortedList3])
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
-  (Sort (# "unsortedList2") (# "unsortedList3"))
+  (Sort .unsortedList2 .unsortedList3)
   (Log)
   (Assert.Is [0 1 1 2 4 5] true)
   (Get "unsortedList3") 
@@ -352,7 +352,7 @@
   0 (Push "unsortedList")
   1 (Push "unsortedList")
   5 (Push "unsortedList")
-  (Sort (# "unsortedList") :Desc true)
+  (Sort .unsortedList :Desc true)
   (Log)
   (Assert.Is [5 4 2 1 1 0] true)
   (Count "unsortedList")
@@ -385,11 +385,11 @@
   (Const [1 1 0])
   (Set "toFindVar")
   (Get "unsortedList")
-  (IndexOf (# "toFindVar"))
+  (IndexOf .toFindVar)
   (Assert.Is 3 true)
 
-  (Remove (# "unsortedList") :Predicate (--> (IsMore 3)))
-  (Sort (# "unsortedList") :Desc true)
+  (Remove .unsortedList :Predicate (--> (IsMore 3)))
+  (Sort .unsortedList :Desc true)
   (Assert.Is [2 1 1 0] true)
   (Count "unsortedList")
   (Assert.Is 4 true)
@@ -399,8 +399,8 @@
 
   (Get "unsortedList2")
   (Set "unsortedList2Copy")
-  (Remove (# "unsortedList2Copy") [(# "unsortedList3")] (--> (IsMore 3)))
-  (Sort (# "unsortedList2Copy") [(# "unsortedList3")])
+  (Remove .unsortedList2Copy [.unsortedList3] (--> (IsMore 3)))
+  (Sort .unsortedList2Copy [.unsortedList3])
   (Log)
   (Assert.Is [0 1 1 2] true)
   (Get "unsortedList3")
@@ -411,7 +411,7 @@
 
   (Const [[2 "x"] [3 "y"] [1 "z"]])
   (Ref "constSeq")
-  (Sort (# "constSeq") :Key (-->
+  (Sort .constSeq :Key (-->
               (Take 0)))
   (Assert.Is [[1 "z"] [2 "x"] [3 "y"]] true)
 
@@ -435,11 +435,11 @@
 
   1 (Set "indexAsVar")
   (Get "meanTest")
-  (Take (# "indexAsVar"))
+  (Take .indexAsVar)
   (Assert.Is 2.0 true)
   (Const [1 2]) (Set "indexAsVar2")
   (Get "meanTest")
-  (Take (# "indexAsVar2"))
+  (Take .indexAsVar2)
   (Assert.Is [2.0 0.0] true)
 
   (Repeat (-->
@@ -453,7 +453,7 @@
 
   10 (Set "repeatsn")
   0 >= .iterCount
-  (Repeat (--> .iterCount (Math.Add 1) > .iterCount) :Times (# "repeatsn"))
+  (Repeat (--> .iterCount (Math.Add 1) > .iterCount) :Times .repeatsn)
   .iterCount
   (Assert.Is 10 true)
 
@@ -498,7 +498,7 @@
   (BytesToInt64)
   (Assert.Is [1 2 3 4 5] true)
   
-  0 (PrependTo (# "pretest"))
+  0 (PrependTo .pretest)
   (Get "pretest")
   (Assert.Is [0 1 2 3 4 5] true)
   (Log)
@@ -510,23 +510,23 @@
   (Take 4) (FS.Filename :NoExtension true) (Log)
 
   "The result is: "   (Set "text1")
-  "Hello world, "     (AppendTo (# "text1"))
-  "this is a string"  (AppendTo (# "text1"))
+  "Hello world, "     (AppendTo .text1)
+  "this is a string"  (AppendTo .text1)
   (Get "text1") (Log)
   (Assert.Is "The result is: Hello world, this is a string" true)
 
   "The result is: "   (Set "text2")
-  "Hello world, "     (AppendTo (# "text2"))
-  "this is a string again"  (AppendTo (# "text2"))
+  "Hello world, "     (AppendTo .text2)
+  "this is a string again"  (AppendTo .text2)
   (Get "text2") (Log)
   (Assert.IsNot "The result is: Hello world, this is a string" true)
 
-  "## " (PrependTo (# "text2"))
+  "## " (PrependTo .text2)
   (Get "text2") (Log)
   (Assert.Is "## The result is: Hello world, this is a string again" true)
 
   "test.txt"
-  (FS.Write (# "text2") :Overwrite true)
+  (FS.Write .text2 :Overwrite true)
   (FS.Read)
   (Assert.Is "## The result is: Hello world, this is a string again" true)
   (Log)
@@ -564,11 +564,11 @@
   2 (Push "s2")
   3 (Push "s2")
   (Get "s1")
-  (Is (# "s2"))
+  (Is .s2)
   (Assert.Is true true)
 
   (Get "s1")
-  (DBlock "Is" [(# "s2")])
+  (DBlock "Is" [.s2])
   (Assert.Is true true)
 
   4 (Push "s1")
@@ -641,7 +641,7 @@
   (Const [111 112 101 114 97 116 105 111 110 115])
   (Set "seq-b")
   (Get "seq-a")
-  (IsMore (# "seq-b"))
+  (IsMore .seq-b)
   (Assert.Is true true)
 
   (Const [111 112 101 114 97])
@@ -649,7 +649,7 @@
   (Const [111 112 101 114 97 116 105])
   (Update "seq-b")
   (Get "seq-a")
-  (IsLess (# "seq-b"))
+  (IsLess .seq-b)
   (Assert.Is true true)
 
   (Const [111 112 101 114 97 99])
@@ -657,7 +657,7 @@
   (Const [111 112 101 114 97 99])
   (Update "seq-b")
   (Get "seq-a")
-  (IsMoreEqual (# "seq-b"))
+  (IsMoreEqual .seq-b)
   (Assert.Is true true)
 
   (Int4 111 112 101 200)
@@ -665,7 +665,7 @@
   (Int4 111 112 99 300)
   (Set "int4-b")
   (Get "int4-a")
-  (IsMore (# "int4-b"))
+  (IsMore .int4-b)
   (Assert.Is true true)
 
   (Int4 111 112 101 300)

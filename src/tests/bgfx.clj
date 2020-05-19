@@ -26,7 +26,7 @@
     (Float4 2 3 4 5)
     (Set "x")
     (Float4 1 2 3 4)
-    (Math.Add (# "x"))
+    (Math.Add .x)
     (ImGui.Text)
 
     (Get "image1")

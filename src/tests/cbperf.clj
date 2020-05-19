@@ -10,6 +10,6 @@
       (Get "idx") 
       (Math.Add 1)
       (Update "idx")
-    ) (# "nfloats"))
+    ) .nfloats)
     ))))
 (run Root 0.01)

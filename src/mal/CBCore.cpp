@@ -808,6 +808,8 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   return result;
 }
 
+std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end);
+
 malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
@@ -877,7 +879,6 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.valueType = Block;
     var.payload.blockValue = block;
     auto bvar = new malCBVar(var);
-    bvar->reference(v);
     v->consume();
     return malCBVarPtr(bvar);
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
@@ -1124,9 +1125,7 @@ BUILTIN("Chain") {
       auto blks = chainify(pbegin, argsEnd);
       for (auto blk : blks) {
         chain->addBlock(blk->value());
-        // chain will manage this block from now on!
         blk->consume();
-        mchain->reference(blk.ptr());
       }
       break;
     }
@@ -1140,6 +1139,12 @@ BUILTIN("Chain@") {
   return malValuePtr(new malChainProvider(value->ref()));
 }
 
+BUILTIN("Chain*") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  return malValuePtr(new malChainProvider(value->ref()));
+}
+
 BUILTIN("-->") {
   auto vec = new malValueVec();
   auto blks = chainify(argsBegin, argsEnd);
@@ -1147,7 +1152,20 @@ BUILTIN("-->") {
     malCBlock *pblk = blk.ptr();
     vec->emplace_back(pblk);
   }
-  return malValuePtr(new malList(vec));
+  return malValuePtr(new malVector(vec));
+}
+
+BUILTIN("chainify") {
+  CHECK_ARGS_IS(1);
+  ARG(malSequence, value);
+  auto vec = new malValueVec();
+  LOG(TRACE) << "Inside chainify";
+  auto blks = chainify(value->begin(), value->end());
+  for (auto blk : blks) {
+    malCBlock *pblk = blk.ptr();
+    vec->emplace_back(pblk);
+  }
+  return malValuePtr(new malVector(vec));
 }
 
 BUILTIN("schedule") {
@@ -1315,18 +1333,6 @@ BUILTIN("sleep") {
   ARG(malNumber, sleepTime);
   chainblocks::sleep(sleepTime->value());
   return mal::nilValue();
-}
-
-BUILTIN("#") {
-  CHECK_ARGS_IS(1);
-  ARG(malString, value);
-  auto &s = value->ref();
-  CBVar var{};
-  var.valueType = ContextVar;
-  var.payload.stringValue = s.c_str();
-  auto mvar = new malCBVar(var);
-  mvar->reference(value);
-  return malValuePtr(mvar);
 }
 
 BUILTIN("Path") {
