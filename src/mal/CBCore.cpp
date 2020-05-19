@@ -519,7 +519,7 @@ struct ChainFileWatcher {
 class malChainProvider : public malValue, public chainblocks::ChainProvider {
 public:
   malChainProvider(const MalString &name)
-      : _filename(name), _watcher(nullptr) {}
+      : chainblocks::ChainProvider(), _filename(name), _watcher(nullptr) {}
 
   malChainProvider(const malCBVar &that, const malValuePtr &meta) = delete;
 
@@ -536,7 +536,7 @@ public:
 
   void reset() override { _watcher.reset(nullptr); }
 
-  bool ready() override { return _watcher.get() != nullptr; }
+  bool ready() override { return bool(_watcher); }
 
   void setup(const char *path, const CBInstanceData &data) override {
     _watcher.reset(new ChainFileWatcher(_filename, path, data));
@@ -880,6 +880,7 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     var.payload.blockValue = block;
     auto bvar = new malCBVar(var);
     v->consume();
+    bvar->reference(v);
     return malCBVarPtr(bvar);
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
@@ -1126,6 +1127,7 @@ BUILTIN("Chain") {
       for (auto blk : blks) {
         chain->addBlock(blk->value());
         blk->consume();
+        mchain->reference(blk.ptr());
       }
       break;
     }
@@ -1156,6 +1158,19 @@ BUILTIN("-->") {
 }
 
 BUILTIN("chainify") {
+  CHECK_ARGS_IS(1);
+  ARG(malSequence, value);
+  auto vec = new malValueVec();
+  LOG(TRACE) << "Inside chainify";
+  auto blks = chainify(value->begin(), value->end());
+  for (auto blk : blks) {
+    malCBlock *pblk = blk.ptr();
+    vec->emplace_back(pblk);
+  }
+  return malValuePtr(new malVector(vec));
+}
+
+BUILTIN("unquote") {
   CHECK_ARGS_IS(1);
   ARG(malSequence, value);
   auto vec = new malValueVec();

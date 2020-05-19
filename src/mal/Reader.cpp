@@ -169,8 +169,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
         { "`",   "quasiquote" },
         { "'",   "quote" },
         { "~@",  "splice-unquote" },
-        { "~",   "unquote" },
-        { "#",   "chainify"}
+        { "~",   "unquote" }
     };
 
     struct Constant {

@@ -497,7 +497,8 @@ public:
       return p->release(chain);
     };
   }
-  ~ChainProvider() {}
+
+  virtual ~ChainProvider() {}
 
   virtual void reset() = 0;
 
