@@ -60,6 +60,7 @@ jobs:
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW64
+        update: true
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win.sh Release
     - uses: actions/upload-artifact@master
@@ -76,6 +77,7 @@ jobs:
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW32
+        update: true
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win32.sh Release
     - uses: actions/upload-artifact@master
@@ -92,6 +94,7 @@ jobs:
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW64
+        update: true
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win.sh Debug
 
@@ -104,6 +107,7 @@ jobs:
     - uses: numworks/setup-msys2@v1
       with:
         msystem: MINGW32
+        update: true
     - run: msys2do pacman -Syu --noconfirm
     - run: msys2do ./build-win32.sh Debug
 
