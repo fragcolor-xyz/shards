@@ -1380,10 +1380,10 @@ void CBChain::reset() {
   }
   variables.clear();
 
+  inlineUsers.clear();
   composedHash = 0;
   inputType = {};
   outputType = {};
-  warmupCount = 0;
 }
 
 namespace chainblocks {
@@ -1526,6 +1526,8 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
 void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #endif
 {
+  LOG(TRACE) << "chain " << chain->name << " starting.";
+
   auto running = true;
 
   // Reset state
@@ -1612,7 +1614,7 @@ endOfChain:
   chain->finishedOutput = chain->previousOutput;
 
   // run cleanup on all the blocks
-  chain->cleanup();
+  chain->cleanup(true);
 
   // Need to take care that we might have stopped the chain very early due to
   // errors and the next eventual stop() should avoid resuming
@@ -1906,11 +1908,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }; // namespace chainblocks
 
 void CBChain::warmup(CBContext *context) {
-  warmupCount++;
-  LOG(TRACE) << "Warming up " << name << " count: " << warmupCount;
-  assert(warmupCount > 0);
-
-  if (warmupCount == 1) {
+  if (!warmedUp) {
     context->chainStack.push_back(this);
     DEFER({ context->chainStack.pop_back(); });
     for (auto blk : blocks) {
@@ -1930,19 +1928,12 @@ void CBChain::warmup(CBContext *context) {
     }
 
     node = context->main->node;
+    warmedUp = true;
   }
 }
 
 void CBChain::cleanup(bool force) {
-  if (force)
-    warmupCount = 1;
-
-  warmupCount--;
-  LOG(TRACE) << "Cleaning up " << name << " count: " << warmupCount
-             << " forced: " << force;
-  assert(warmupCount >= 0);
-
-  if (warmupCount == 0) {
+  if (warmedUp && (force || inlineUsers.size() == 0)) {
     // Run cleanup on all blocks, prepare them for a new start if necessary
     // Do this in reverse to allow a safer cleanup
     for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
@@ -1973,5 +1964,6 @@ void CBChain::cleanup(bool force) {
     }
     variables.clear();
     node.reset();
+    warmedUp = false;
   }
 }

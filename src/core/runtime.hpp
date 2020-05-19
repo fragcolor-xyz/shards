@@ -462,6 +462,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     // Clone the results if we need them
     if (result)
       cloneVar(*result, chain->finishedOutput);
+
     return true;
   }
 
@@ -491,7 +492,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     chain->coro = nullptr;
   } else {
     // if we had a coro this will run inside it!
-    chain->cleanup();
+    chain->cleanup(true);
   }
 
   // return true if we ended, as in we did our job

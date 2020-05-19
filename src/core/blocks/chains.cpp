@@ -103,18 +103,6 @@ struct ChainBase {
 
   static inline thread_local std::set<CBChain *> visiting;
 
-  void tryStopChain() {
-    if (chain) {
-      // avoid stackoverflow
-      if (visiting.count(chain.get()))
-        return;
-
-      visiting.insert(chain.get());
-      DEFER(visiting.erase(chain.get()));
-      chainblocks::stop(chain.get());
-    }
-  }
-
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     chainblocks::arrayFree(chainValidation.exposedInfo);
@@ -428,9 +416,7 @@ struct StopChain : public ChainBase {
       LOG(WARNING) << "StopChain's chain is void.";
       return input;
     } else {
-      if (chain->state != CBChain::State::Stopped)
-        tryStopChain();
-
+      chainblocks::stop(chain.get());
       if (passthrough) {
         return input;
       } else {
@@ -620,15 +606,22 @@ struct BaseRunner : public ChainBase {
   }
 
   void cleanup() {
-    tryStopChain();
+    if (chain) {
+      if (mode == RunChainMode::Inline) {
+        chain->inlineUsers.erase(this);
+        chain->cleanup();
+      } else {
+        chainblocks::stop(chain.get());
+      }
+    }
     doneOnce = false;
     ChainBase::cleanup();
   }
 
   void doWarmup(CBContext *context) {
-    auto current = context->chainStack.back();
-    if (mode == RunChainMode::Inline && chain && current != chain.get()) {
+    if (mode == RunChainMode::Inline && chain) {
       chain->warmup(context);
+      chain->inlineUsers.emplace(this);
     }
   }
 
