@@ -607,7 +607,7 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     if (chain) {
-      if (mode == RunChainMode::Inline) {
+      if (mode == RunChainMode::Inline && chain->inlineUsers.count(this) != 0) {
         chain->inlineUsers.erase(this);
         chain->cleanup();
       } else {
@@ -619,9 +619,10 @@ struct BaseRunner : public ChainBase {
   }
 
   void doWarmup(CBContext *context) {
-    if (mode == RunChainMode::Inline && chain) {
-      chain->warmup(context);
+    if (mode == RunChainMode::Inline && chain &&
+        chain->inlineUsers.count(this) == 0) {
       chain->inlineUsers.emplace(this);
+      chain->warmup(context);
     }
   }
 
