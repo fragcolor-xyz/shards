@@ -1909,6 +1909,12 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 
 void CBChain::warmup(CBContext *context) {
   if (!warmedUp) {
+    LOG(INFO) << "Running warmup on chain: " << name;
+
+    // we likely need this early!
+    node = context->main->node;
+    warmedUp = true;
+
     context->chainStack.push_back(this);
     DEFER({ context->chainStack.pop_back(); });
     for (auto blk : blocks) {
@@ -1926,14 +1932,17 @@ void CBChain::warmup(CBContext *context) {
         throw;
       }
     }
-
-    node = context->main->node;
-    warmedUp = true;
   }
 }
 
 void CBChain::cleanup(bool force) {
   if (warmedUp && (force || inlineUsers.size() == 0)) {
+    LOG(INFO) << "Running cleanup on chain: " << name
+              << " inline users count: " << inlineUsers.size();
+
+    warmedUp = false;
+    inlineUsers.clear();
+
     // Run cleanup on all blocks, prepare them for a new start if necessary
     // Do this in reverse to allow a safer cleanup
     for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
@@ -1955,6 +1964,7 @@ void CBChain::cleanup(bool force) {
                    << std::string(blk->name(blk));
       }
     }
+
     // Also clear all variables reporting dangling ones
     for (auto var : variables) {
       if (var.second.refcount > 0) {
@@ -1963,7 +1973,8 @@ void CBChain::cleanup(bool force) {
       }
     }
     variables.clear();
+
+    // finally reset the node
     node.reset();
-    warmedUp = false;
   }
 }

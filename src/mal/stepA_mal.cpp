@@ -23,10 +23,10 @@ static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
 #ifndef NO_MAL_MAIN
-static ReadLine *s_readLine = nullptr;
+static ReadLine *s_readLine{nullptr};
 #endif
 
-static thread_local malEnvPtr currentEnv = nullptr;
+static thread_local malEnvPtr currentEnv{};
 
 String malpath() {
   String result;
@@ -52,6 +52,7 @@ void malinit(malEnvPtr env) {
 
 malValuePtr maleval(const char* str, malEnvPtr env) {
     assert(env);
+    currentEnv = env;
     return EVAL(READ(str), env);
 }
 

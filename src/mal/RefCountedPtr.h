@@ -15,8 +15,8 @@ public:
     int refCount() const { return m_refCount; }
 
 private:
-    RefCounted(const RefCounted&); // no copy ctor
-    RefCounted& operator = (const RefCounted&); // no assignments
+    RefCounted(const RefCounted&) = delete;
+    RefCounted& operator = (const RefCounted&) = delete;
 
     mutable int m_refCount;
 };

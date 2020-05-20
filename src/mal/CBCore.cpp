@@ -1161,7 +1161,6 @@ BUILTIN("chainify") {
   CHECK_ARGS_IS(1);
   ARG(malSequence, value);
   auto vec = new malValueVec();
-  LOG(TRACE) << "Inside chainify";
   auto blks = chainify(value->begin(), value->end());
   for (auto blk : blks) {
     malCBlock *pblk = blk.ptr();
@@ -1174,7 +1173,6 @@ BUILTIN("unquote") {
   CHECK_ARGS_IS(1);
   ARG(malSequence, value);
   auto vec = new malValueVec();
-  LOG(TRACE) << "Inside chainify";
   auto blks = chainify(value->begin(), value->end());
   for (auto blk : blks) {
     malCBlock *pblk = blk.ptr();

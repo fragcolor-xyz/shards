@@ -646,6 +646,7 @@ struct BaseRunner : public ChainBase {
 
     // Prepare if no callc was called
     if (!chain->coro) {
+      chain->node = context->main->node;
       // Notice we don't share our flow!
       // let the chain create one by passing null
       chainblocks::prepare(chain.get(), nullptr);
