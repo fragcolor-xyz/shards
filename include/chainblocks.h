@@ -489,6 +489,7 @@ struct CBExposedTypeInfo {
 struct CBValidationResult {
   struct CBTypeInfo outputType;
   CBExposedTypesInfo exposedInfo;
+  CBExposedTypesInfo requiredInfo;
   // used when the last block of the flow is
   // Restart/Stop/Return etc
   bool flowStopper;

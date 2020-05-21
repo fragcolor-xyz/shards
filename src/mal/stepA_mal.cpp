@@ -52,7 +52,6 @@ void malinit(malEnvPtr env) {
 
 malValuePtr maleval(const char* str, malEnvPtr env) {
     assert(env);
-    currentEnv = env;
     return EVAL(READ(str), env);
 }
 

@@ -151,6 +151,6 @@
       (--> false))
   (Assert.IsNot true false)
 
-  (Log "Done")))
+  (Msg "Done")))
 
 (run Root 0.1)

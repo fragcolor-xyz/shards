@@ -96,7 +96,10 @@ struct ChainBase {
   RunChainMode mode{RunChainMode::Inline};
   CBValidationResult chainValidation{};
 
-  void destroy() { chainblocks::arrayFree(chainValidation.exposedInfo); }
+  void destroy() {
+    chainblocks::arrayFree(chainValidation.exposedInfo);
+    chainblocks::arrayFree(chainValidation.requiredInfo);
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -106,6 +109,7 @@ struct ChainBase {
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     chainblocks::arrayFree(chainValidation.exposedInfo);
+    chainblocks::arrayFree(chainValidation.requiredInfo);
 
     // Actualize the chain here, if we are deserialized
     // chain might already be populated!
@@ -116,6 +120,7 @@ struct ChainBase {
         chain = Globals::GlobalChains[chainref->payload.stringValue];
       } else {
         chain = nullptr;
+        LOG(DEBUG) << "ChainBase::compose on a null chain";
       }
     }
 
@@ -125,22 +130,32 @@ struct ChainBase {
 
     assert(data.chain);
 
-    if (chain.get() == data.chain)
+    if (chain.get() == data.chain) {
+      LOG(DEBUG)
+          << "ChainBase::compose early return, data.chain == chain, name: "
+          << chain->name;
       return data.inputType; // we don't know yet...
+    }
 
     chain->node = data.chain->node;
 
     auto node = data.chain->node.lock();
     assert(node);
 
-    // TODO FIXME, chainloader/chain runner might access this from another
-    // thread
-    if (node->visitedChains.count(chain.get()))
+    // TODO FIXME, chainloader/chain runner might access this from threads
+    if (node->visitedChains.count(chain.get())) {
+      // TODO FIXME, we need to verify input and shared here...
+      // but visited does not mean composed...
       return node->visitedChains[chain.get()];
+    }
 
     // avoid stackoverflow
-    if (visiting.count(chain.get()))
+    if (visiting.count(chain.get())) {
+      LOG(DEBUG)
+          << "ChainBase::compose early return, chain is being visited, name: "
+          << chain->name;
       return data.inputType; // we don't know yet...
+    }
 
     LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
                << " composing: " << chain->name
@@ -193,6 +208,7 @@ struct ChainBase {
       LOG(TRACE) << "Chain " << chain->name << " composed.";
     } else {
       LOG(TRACE) << "Skipping " << chain->name << " compose.";
+      // verify input type
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
         LOG(ERROR) << "Previous chain composed type "
@@ -203,7 +219,25 @@ struct ChainBase {
                            "different input type! chain: " +
                            chain->name);
       }
+
+      // write output type
       chainOutput = chain->outputType;
+
+      // ensure requirements match our input data
+      IterableExposedInfo shared(data.shared);
+      for (auto req : chain->requiredVariables) {
+        // find each in shared
+        auto res = std::find_if(shared.begin(), shared.end(),
+                                [&](CBExposedTypeInfo &x) {
+                                  std::string_view vx(x.name);
+                                  return req == vx;
+                                });
+        if (res == shared.end()) {
+          throw ComposeError("Attempted to call an already composed chain with "
+                             "a missing required variable: " +
+                             req);
+        }
+      }
     }
 
     auto outputType = data.inputType;
@@ -457,6 +491,7 @@ struct Resume : public ChainBase {
     if (!chain) {
       throw ActivationError("Resume, chain not found.");
     }
+
     // assign the new chain as current chain on the flow
     context->flow->chain = chain.get();
 
@@ -467,6 +502,7 @@ struct Resume : public ChainBase {
 
     // Prepare if no callc was called
     if (!chain->coro) {
+      chain->node = context->main->node;
       chainblocks::prepare(chain.get(), context->flow);
     }
 
@@ -492,6 +528,7 @@ struct Start : public Resume {
     if (!chain) {
       throw ActivationError("Start, chain not found.");
     }
+
     // assign the new chain as current chain on the flow
     context->flow->chain = chain.get();
 
@@ -499,6 +536,7 @@ struct Start : public Resume {
     chainblocks::stop(chain.get());
 
     // Prepare
+    chain->node = context->main->node;
     chainblocks::prepare(chain.get(), context->flow);
 
     // Start
@@ -607,8 +645,8 @@ struct BaseRunner : public ChainBase {
 
   void cleanup() {
     if (chain) {
-      if (mode == RunChainMode::Inline && chain->inlineUsers.count(this) != 0) {
-        chain->inlineUsers.erase(this);
+      if (mode == RunChainMode::Inline && chain->chainUsers.count(this) != 0) {
+        chain->chainUsers.erase(this);
         chain->cleanup();
       } else {
         chainblocks::stop(chain.get());
@@ -620,8 +658,8 @@ struct BaseRunner : public ChainBase {
 
   void doWarmup(CBContext *context) {
     if (mode == RunChainMode::Inline && chain &&
-        chain->inlineUsers.count(this) == 0) {
-      chain->inlineUsers.emplace(this);
+        chain->chainUsers.count(this) == 0) {
+      chain->chainUsers.emplace(this);
       chain->warmup(context);
     }
   }
@@ -1001,6 +1039,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
     visiting.erase(chain.get());
     chainblocks::arrayFree(res.exposedInfo);
+    chainblocks::arrayFree(res.requiredInfo);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {

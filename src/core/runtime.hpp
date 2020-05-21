@@ -466,6 +466,8 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     return true;
   }
 
+  LOG(TRACE) << "stopping chain: " << chain->name;
+
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
     if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
@@ -659,6 +661,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
           },
           this, data, true);
       chainblocks::arrayFree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.requiredInfo);
       freeDerivedInfo(data.inputType);
     }
 

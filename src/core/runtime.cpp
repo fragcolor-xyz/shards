@@ -456,6 +456,8 @@ void callExitCallbacks() {
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   auto node = ctx->main->node.lock();
   assert(node);
+  LOG(TRACE) << "Creating a global variable, chain: "
+             << ctx->chainStack.back()->name << " name: " << name;
   CBVar &v = node->variables[name];
   v.refcount++;
   v.flags |= CBVAR_FLAGS_REF_COUNTED;
@@ -492,6 +494,8 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
   }
 
   // worst case create in current top chain!
+  LOG(TRACE) << "Creating a variable, chain: " << ctx->chainStack.back()->name
+             << " name: " << name;
   CBVar &cv = ctx->chainStack.back()->variables[name];
   cv.refcount++;
   cv.flags |= CBVAR_FLAGS_REF_COUNTED;
@@ -505,8 +509,11 @@ void releaseVariable(CBVar *variable) {
   assert((variable->flags & CBVAR_FLAGS_REF_COUNTED) ==
          CBVAR_FLAGS_REF_COUNTED);
   assert(variable->refcount > 0);
+
   variable->refcount--;
   if (variable->refcount == 0) {
+    LOG(TRACE) << "Destroying a variable (0 ref count), type: "
+               << type2Name(variable->valueType);
     destroyVar(*variable);
   }
 }
@@ -902,6 +909,7 @@ struct ValidationContext {
       exposed;
   std::unordered_set<std::string> variables;
   std::unordered_set<std::string> references;
+  std::unordered_set<CBExposedTypeInfo> required;
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
@@ -1071,6 +1079,7 @@ void validateConnection(ValidationContext &ctx) {
   // make sure we have the vars we need, collect first
   for (const auto &required : requiredVars) {
     auto matching = false;
+    CBExposedTypeInfo match{};
 
     for (const auto &required_param : required.second) {
       std::string name(required_param.name);
@@ -1096,8 +1105,10 @@ void validateConnection(ValidationContext &ctx) {
           }
         }
       }
-      if (matching)
+      if (matching) {
+        match = required_param;
         break;
+      }
     }
 
     if (!matching) {
@@ -1138,6 +1149,8 @@ void validateConnection(ValidationContext &ctx) {
         err += "])";
       }
       ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+    } else {
+      ctx.required.emplace(match);
     }
   }
 }
@@ -1196,6 +1209,10 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
     }
   }
 
+  for (auto &req : ctx.required) {
+    chainblocks::arrayPush(result.requiredInfo, req);
+  }
+
   if (chain.size() > 0) {
     auto &last = chain.back();
     if (strcmp(last->name(last), "Restart") == 0 ||
@@ -1212,6 +1229,8 @@ CBValidationResult composeChain(const CBChain *chain,
                                 CBValidationCallback callback, void *userData,
                                 CBInstanceData data) {
   auto res = composeChain(chain->blocks, callback, userData, data, true);
+
+  // settle input and output type of chain
   if (chain->blocks.size() > 0) {
     // If first block is a plain None, mark this chain has None input
     auto inTypes = chain->blocks[0]->inputTypes(chain->blocks[0]);
@@ -1223,6 +1242,13 @@ CBValidationResult composeChain(const CBChain *chain,
     chain->inputType = data.inputType;
   }
   chain->outputType = res.outputType;
+
+  // add variables
+  chainblocks::IterableExposedInfo reqs(res.requiredInfo);
+  for (auto req : reqs) {
+    chain->requiredVariables.emplace_back(req.name);
+  }
+
   return res;
 }
 
@@ -1380,10 +1406,17 @@ void CBChain::reset() {
   }
   variables.clear();
 
-  inlineUsers.clear();
+  chainUsers.clear();
   composedHash = 0;
   inputType = {};
   outputType = {};
+  requiredVariables.clear();
+
+  auto n = node.lock();
+  if (n) {
+    n->visitedChains.erase(this);
+  }
+  node.reset();
 }
 
 namespace chainblocks {
@@ -1526,7 +1559,7 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
 void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #endif
 {
-  LOG(TRACE) << "chain " << chain->name << " starting.";
+  LOG(TRACE) << "chain " << chain->name << " rolling.";
 
   auto running = true;
 
@@ -1566,6 +1599,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #else
   context.continuation.yield();
 #endif
+
+  LOG(TRACE) << "chain " << chain->name << " starting.";
 
   if (context.shouldStop()) {
     // We might have stopped before even starting!
@@ -1909,7 +1944,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 
 void CBChain::warmup(CBContext *context) {
   if (!warmedUp) {
-    LOG(INFO) << "Running warmup on chain: " << name;
+    LOG(DEBUG) << "Running warmup on chain: " << name;
 
     // we likely need this early!
     node = context->main->node;
@@ -1932,16 +1967,17 @@ void CBChain::warmup(CBContext *context) {
         throw;
       }
     }
+
+    LOG(DEBUG) << "Ran warmup on chain: " << name;
   }
 }
 
 void CBChain::cleanup(bool force) {
-  if (warmedUp && (force || inlineUsers.size() == 0)) {
-    LOG(INFO) << "Running cleanup on chain: " << name
-              << " inline users count: " << inlineUsers.size();
+  if (warmedUp && (force || chainUsers.size() == 0)) {
+    LOG(DEBUG) << "Running cleanup on chain: " << name
+               << " users count: " << chainUsers.size();
 
     warmedUp = false;
-    inlineUsers.clear();
 
     // Run cleanup on all blocks, prepare them for a new start if necessary
     // Do this in reverse to allow a safer cleanup
@@ -1975,6 +2011,12 @@ void CBChain::cleanup(bool force) {
     variables.clear();
 
     // finally reset the node
+    auto n = node.lock();
+    if (n) {
+      n->visitedChains.erase(this);
+    }
     node.reset();
+
+    LOG(DEBUG) << "Ran cleanup on chain: " << name;
   }
 }

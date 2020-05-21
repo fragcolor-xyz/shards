@@ -173,6 +173,7 @@ public:
     destroy();
     CB_CORE::destroyVar(_blocksParam);
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
+    CB_CORE::expTypesFree(_chainValidation.requiredInfo);
   }
 
   void cleanup() {
@@ -222,6 +223,7 @@ public:
   CBValidationResult compose(const CBInstanceData &data) {
     // Free any previous result!
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
+    CB_CORE::expTypesFree(_chainValidation.requiredInfo);
 
     _chainValidation = CB_CORE::validateBlocks(
         _blocks,

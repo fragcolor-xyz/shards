@@ -117,6 +117,7 @@ struct Evolve {
         },
         this, vdata);
     arrayFree(res.exposedInfo);
+    arrayFree(res.requiredInfo);
 
     vdata.inputType = res.outputType;
     res = composeChain(
@@ -139,6 +140,7 @@ struct Evolve {
           type2Name(res.outputType.basicType));
     }
     arrayFree(res.exposedInfo);
+    arrayFree(res.requiredInfo);
 
     return _outputType;
   }
@@ -782,6 +784,7 @@ struct Mutant {
                               "mutation chain's output.");
           }
           arrayFree(res.exposedInfo);
+          arrayFree(res.requiredInfo);
         }
         idx++;
       }
