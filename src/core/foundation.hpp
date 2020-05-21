@@ -187,10 +187,11 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   // those are mostly used internally in chains.cpp
   std::size_t composedHash{};
   bool warmedUp{false};
-  std::unordered_set<void *> inlineUsers;
+  std::unordered_set<void *> chainUsers;
 
   mutable CBTypeInfo inputType{};
   mutable CBTypeInfo outputType{};
+  mutable std::vector<std::string> requiredVariables;
 
   CBContext *context{nullptr};
 

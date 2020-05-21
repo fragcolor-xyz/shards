@@ -89,6 +89,7 @@ struct Cond {
     }
     destroyVar(_chains);
     chainblocks::arrayFree(_chainValidation.exposedInfo);
+    chainblocks::arrayFree(_chainValidation.requiredInfo);
   }
 
   void setParam(int index, CBVar value) {
@@ -172,6 +173,7 @@ struct Cond {
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     chainblocks::arrayFree(_chainValidation.exposedInfo);
+    chainblocks::arrayFree(_chainValidation.requiredInfo);
 
     // Validate condition chains, altho they do not influence anything we need
     // to report errors
@@ -194,6 +196,7 @@ struct Cond {
         throw ComposeError("Cond - expected Bool output from predicate blocks");
       }
       chainblocks::arrayFree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.requiredInfo);
     }
 
     // Evaluate all actions, all must return the same type in order to be safe
@@ -249,10 +252,12 @@ struct Cond {
 
         // free the exposed info part
         chainblocks::arrayFree(validation.exposedInfo);
+        chainblocks::arrayFree(validation.requiredInfo);
 
         if (!exposing) {
           // make sure we expose nothing in this case!
           chainblocks::arrayFree(_chainValidation.exposedInfo);
+          chainblocks::arrayFree(_chainValidation.requiredInfo);
         }
       }
 
@@ -352,6 +357,7 @@ struct BaseSubFlow {
       _composition = _blocks.compose(data);
     else
       _composition = {};
+
     return _composition.outputType;
   }
 
@@ -385,8 +391,9 @@ struct Maybe : public BaseSubFlow {
     // exposed stuff should be balanced
     // and output should the same
     CBValidationResult elseComp{};
-    if (_elseBlks)
+    if (_elseBlks) {
       elseComp = _elseBlks.compose(data);
+    }
 
     if (_blocks)
       _composition = _blocks.compose(data);

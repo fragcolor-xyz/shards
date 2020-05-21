@@ -532,7 +532,6 @@ struct Window : public Base {
   std::string _title;
   int _curX = -1, _curY = -1, _curW = -1, _curH = -1;
   CBVar _posX{}, _posY{}, _width{}, _height{};
-  CBValidationResult _validation{};
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Title", "The title of the window to create.",
@@ -556,8 +555,6 @@ struct Window : public Base {
     _blks.compose(data);
     return data.inputType;
   }
-
-  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -837,7 +834,6 @@ struct Text : public Base {
 };
 
 struct Button : public Base {
-  CBValidationResult _validation{};
   static inline Type buttonTypeInfo{
       {CBType::Enum, {.enumeration = {.vendorId = 'frag', .typeId = 'ImGB'}}}};
 
@@ -914,8 +910,6 @@ struct Button : public Base {
     _blks.compose(data);
     return data.inputType;
   }
-
-  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   void cleanup() { _blks.cleanup(); }
 
@@ -1385,7 +1379,6 @@ RUNTIME_BLOCK_cleanup(Window);
 RUNTIME_BLOCK_warmup(Window);
 RUNTIME_BLOCK_compose(Window);
 RUNTIME_BLOCK_requiredVariables(Window);
-RUNTIME_BLOCK_exposedVariables(Window);
 RUNTIME_BLOCK_parameters(Window);
 RUNTIME_BLOCK_setParam(Window);
 RUNTIME_BLOCK_getParam(Window);
@@ -1422,7 +1415,6 @@ RUNTIME_BLOCK_cleanup(Button);
 RUNTIME_BLOCK_warmup(Button);
 RUNTIME_BLOCK_compose(Button);
 RUNTIME_BLOCK_requiredVariables(Button);
-RUNTIME_BLOCK_exposedVariables(Button);
 RUNTIME_BLOCK_parameters(Button);
 RUNTIME_BLOCK_setParam(Button);
 RUNTIME_BLOCK_getParam(Button);

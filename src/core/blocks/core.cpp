@@ -621,11 +621,9 @@ struct ForEachBlock {
   CBVar getParam(int index) { return _blocks; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _validation = _blocks.compose(data);
+    _blocks.compose(data);
     return data.inputType;
   }
-
-  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
@@ -650,7 +648,6 @@ private:
        {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
-  CBValidationResult _validation{};
 };
 
 struct Map {
