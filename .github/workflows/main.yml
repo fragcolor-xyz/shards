@@ -60,7 +60,7 @@ jobs:
     - uses: eine/setup-msys2@v0
       with:
         msystem: MINGW64
-        update: true
+        update: false
     - run: msys2do ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -76,7 +76,7 @@ jobs:
     - uses: eine/setup-msys2@v0
       with:
         msystem: MINGW32
-        update: true
+        update: false
     - run: msys2do ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -92,7 +92,7 @@ jobs:
     - uses: eine/setup-msys2@v0
       with:
         msystem: MINGW64
-        update: true
+        update: false
     - run: msys2do ./build-win.sh Debug
 
   ciWindowsDbg32:
@@ -104,7 +104,7 @@ jobs:
     - uses: eine/setup-msys2@v0
       with:
         msystem: MINGW32
-        update: true
+        update: false
     - run: msys2do ./build-win32.sh Debug
 
   ciMacDbg:
