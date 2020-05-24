@@ -233,7 +233,9 @@ struct ChainBase {
                                   return req == vx;
                                 });
         if (res == shared.end()) {
-          throw ComposeError("Attempted to call an already composed chain with "
+          throw ComposeError("Attempted to call an already composed chain (" +
+                             chain->name +
+                             ") with "
                              "a missing required variable: " +
                              req);
         }
