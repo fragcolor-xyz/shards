@@ -1150,7 +1150,9 @@ void validateConnection(ValidationContext &ctx) {
       }
       ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
     } else {
-      ctx.required.emplace(match);
+      // Add required stuff that we do not expose ourself
+      if (ctx.exposed.find(match.name) == ctx.exposed.end())
+        ctx.required.emplace(match);
     }
   }
 }
