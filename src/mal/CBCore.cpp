@@ -488,16 +488,25 @@ struct ChainFileWatcher {
 
           // sleep some, don't run callbacks here tho!
           chainblocks::sleep(2.0, false);
-        } catch (std::exception &e) {
+        } catch (malEmptyInputException &) {
+          ChainLoadResult result = {true, "emppty input exception", nullptr};
+          results.push(result);
+        } catch (malValuePtr &mv) {
+          ChainLoadResult result = {true, mv->print(true), nullptr};
+          results.push(result);
+        } catch (MalString &s) {
+          ChainLoadResult result = {true, s, nullptr};
+          results.push(result);
+        } catch (const std::exception &e) {
           ChainLoadResult result = {true, e.what(), nullptr};
           results.push(result);
         } catch (...) {
-          ChainLoadResult result = {true, "unknown error", nullptr};
+          ChainLoadResult result = {true, "unknown error (...)", nullptr};
           results.push(result);
         }
       }
 
-      // Collect garbage
+      // Final collect garbage before returing!
       if (!garbage.empty()) {
         CBChain *gchain;
         if (garbage.pop(gchain)) {

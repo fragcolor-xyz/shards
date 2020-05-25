@@ -114,15 +114,12 @@ static String safeRep(const String& input, malEnvPtr env)
     }
     catch (malEmptyInputException&) {
         return String();
-        throw;
     }
     catch (malValuePtr& mv) {
         return "Error: " + mv->print(true);
-        throw;
     }
     catch (String& s) {
         return "Error: " + s;
-        throw;
     };
 }
 
