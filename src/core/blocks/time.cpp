@@ -32,6 +32,33 @@ struct NowMs : public Now {
   }
 };
 
+struct Delta {
+  ProcessClock _clock{};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  void warmup(CBContext *context) {
+    _clock.Start = std::chrono::high_resolution_clock::now();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto tnow = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dt = tnow - _clock.Start;
+    _clock.Start = tnow; // reset timer
+    return Var(dt.count());
+  }
+};
+
+struct DeltaMs : public Delta {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto tnow = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
+    _clock.Start = tnow; // reset timer
+    return Var(dt.count());
+  }
+};
+
 struct EpochMs {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
@@ -48,6 +75,8 @@ struct EpochMs {
 void registerTimeBlocks() {
   REGISTER_CBLOCK("Time.Now", Time::Now);
   REGISTER_CBLOCK("Time.NowMs", Time::NowMs);
+  REGISTER_CBLOCK("Time.Delta", Time::Delta);
+  REGISTER_CBLOCK("Time.DeltaMs", Time::DeltaMs);
   REGISTER_CBLOCK("Time.EpochMs", Time::EpochMs);
 }
 } // namespace chainblocks

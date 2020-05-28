@@ -5,5 +5,7 @@
          (Math.Add 1)
          (Log)
          (Msg "Hello")
+         (Time.Delta)
+         (Log "DT")
          (Detach "myChain")))
 
