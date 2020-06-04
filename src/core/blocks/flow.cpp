@@ -432,9 +432,7 @@ struct Maybe : public BaseSubFlow {
       try {
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
-        if (ex.triggerFailure()) {
-          LOG(WARNING) << "Maybe block Ignored a failure: " << ex.what();
-        }
+        LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
         _elseBlks.activate(context, input, output);
       }
     }

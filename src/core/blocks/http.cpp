@@ -140,12 +140,9 @@ struct Client {
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(WARNING) << "Http connection failed, pausing chain half a second "
-                      "before restart, exception: "
-                   << ex.what();
+      LOG(WARNING) << "Http connection failed: " << ex.what();
       suspend(context, 0.5);
-      throw ActivationError("Http connection failed, restarting chain.",
-                            CBChainState::Restart, false);
+      throw ActivationError("Http connection failed.");
     }
   }
 
@@ -248,15 +245,12 @@ struct Get final : public Client {
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(WARNING) << "Http request failed, pausing chain half a second "
-                      "before restart, exception: "
-                   << ex.what();
+      LOG(WARNING) << "Http request failed: " << ex.what();
 
       resetStream();
 
       suspend(context, 0.5);
-      throw ActivationError("Http request failed, restarting chain.",
-                            CBChainState::Restart, false);
+      throw ActivationError("Http request failed.");
     }
   }
 };
@@ -299,15 +293,12 @@ struct Post final : public Client {
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(ERROR) << "Http request failed, pausing chain half a second "
-                    "before restart, exception: "
-                 << ex.what();
+      LOG(ERROR) << "Http request failed: " << ex.what();
 
       resetStream();
 
       suspend(context, 0.5);
-      throw ActivationError("Http request failed, restarting chain.",
-                            CBChainState::Restart, false);
+      throw ActivationError("Http request failed.");
     }
   }
 };

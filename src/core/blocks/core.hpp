@@ -500,6 +500,8 @@ struct Not {
 };
 
 struct Stop {
+  // TODO
+  // Must ensure input is the same kind of chain final output
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -509,6 +511,8 @@ struct Stop {
 };
 
 struct Restart {
+  // TODO
+  // Must ensure input is the same kind of chain root input
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   CBVar activate(CBContext *context, const CBVar &input) {

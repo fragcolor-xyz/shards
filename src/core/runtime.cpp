@@ -520,8 +520,7 @@ void releaseVariable(CBVar *variable) {
 
 CBChainState suspend(CBContext *context, double seconds) {
   if (!context->continuation) {
-    throw ActivationError("Trying to suspend a context without coroutine!",
-                          CBChainState::Stop, true);
+    throw ActivationError("Trying to suspend a context without coroutine!");
   }
 
   if (seconds <= 0) {
@@ -1514,31 +1513,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       throw; // required for Boost Coroutine!
     }
 #endif
-    catch (const ActivationError &e) {
-      if (unlikely(e.triggerFailure())) {
-        LOG(ERROR) << "Block activation error, failed block: "
-                   << std::string(blk->name(blk));
-        LOG(ERROR) << e.what();
-        return {input, Failed};
-      } else {
-        switch (e.requestedAction()) {
-        case CBChainState::Return:
-        case CBChainState::Restart: {
-          return {input, Restarted};
-        }
-        case CBChainState::Stop: {
-          return {input, Stopped};
-        }
-        case CBChainState::Rebase:
-          // Rebase means we need to put back main input
-          input = chainInput;
-          context->continueFlow();
-          continue;
-        case CBChainState::Continue:
-          break;
-        }
-      }
-    } catch (const std::exception &e) {
+    catch (const std::exception &e) {
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
@@ -1629,6 +1604,10 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
       // as it's likely coming from flowStorage of context!
       chain->previousOutput = runRes.output;
       break;
+    } else if (unlikely(runRes.state == Restarted)) {
+      // must clone over rootTickInput!
+      // restart overwrites rootTickInput on purpose
+      cloneVar(chain->rootTickInput, context.getFlowStorage());
     }
 
     if (!chain->unsafe && chain->looped) {

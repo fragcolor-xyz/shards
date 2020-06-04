@@ -27,17 +27,7 @@ private:
 
 class ActivationError : public CBException {
 public:
-  explicit ActivationError(std::string_view msg,
-                           CBChainState action = CBChainState::Stop,
-                           bool fatal = true)
-      : CBException(msg), action(action), fatal(fatal) {}
-
-  CBChainState requestedAction() const { return action; }
-  bool triggerFailure() const { return fatal; }
-
-private:
-  CBChainState action;
-  bool fatal;
+  explicit ActivationError(std::string_view msg) : CBException(msg) {}
 };
 
 class ComposeError : public CBException {
