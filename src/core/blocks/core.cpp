@@ -974,27 +974,6 @@ RUNTIME_BLOCK_outputTypes(Not);
 RUNTIME_BLOCK_activate(Not);
 RUNTIME_BLOCK_END(Not);
 
-// Register Stop
-RUNTIME_CORE_BLOCK_FACTORY(Stop);
-RUNTIME_BLOCK_inputTypes(Stop);
-RUNTIME_BLOCK_outputTypes(Stop);
-RUNTIME_BLOCK_activate(Stop);
-RUNTIME_BLOCK_END(Stop);
-
-// Register Restart
-RUNTIME_CORE_BLOCK_FACTORY(Restart);
-RUNTIME_BLOCK_inputTypes(Restart);
-RUNTIME_BLOCK_outputTypes(Restart);
-RUNTIME_BLOCK_activate(Restart);
-RUNTIME_BLOCK_END(Restart);
-
-// Register Return
-RUNTIME_CORE_BLOCK_FACTORY(Return);
-RUNTIME_BLOCK_inputTypes(Return);
-RUNTIME_BLOCK_outputTypes(Return);
-RUNTIME_BLOCK_activate(Return);
-RUNTIME_BLOCK_END(Return);
-
 // Register IsNan
 RUNTIME_CORE_BLOCK_FACTORY(IsValidNumber);
 RUNTIME_BLOCK_inputTypes(IsValidNumber);
@@ -1398,9 +1377,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Count);
   REGISTER_CORE_BLOCK(Get);
   REGISTER_CORE_BLOCK(Swap);
-  REGISTER_CORE_BLOCK(Restart);
-  REGISTER_CORE_BLOCK(Return);
-  REGISTER_CORE_BLOCK(Stop);
   REGISTER_CORE_BLOCK(And);
   REGISTER_CORE_BLOCK(Or);
   REGISTER_CORE_BLOCK(Not);
@@ -1498,5 +1474,9 @@ void registerBlocksCoreBlocks() {
       LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_CBLOCK("Pass", PassMockBlock);
   REGISTER_CBLOCK("Exit", ExitBlock);
+
+  REGISTER_CBLOCK("Return", Return);
+  REGISTER_CBLOCK("Restart", Restart);
+  REGISTER_CBLOCK("Stop", Stop);
 }
 }; // namespace chainblocks
