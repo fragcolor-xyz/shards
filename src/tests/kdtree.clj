@@ -46,7 +46,7 @@
       (Push "left-mem" :Clear false)
                                         ; pop points
       (Get "points")
-      (Slice :From (# "median+1"))
+      (Slice :From .median+1)
                                         ; left points arg
       (Push)
                                         ; depth arg
