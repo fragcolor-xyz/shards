@@ -18,7 +18,7 @@ static void installFunctions(malEnvPtr env);
 //  Installs functions, macros and constants implemented in MAL.
 
 static void makeArgv(malEnvPtr env, int argc, char* argv[]);
-static String safeRep(const String& input, malEnvPtr env);
+static String safeRep(const String& input, malEnvPtr env, bool *failed = nullptr);
 static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
@@ -65,17 +65,18 @@ int malmain(int argc, char* argv[])
 
     malinit(replEnv);
     makeArgv(replEnv, argc - 2, argv + 2);
+    bool failed = false;
 
     if (argc > 1) {
         if(strcmp(argv[1],"-e") == 0 && argc == 3) {
-            String out = safeRep(argv[2], replEnv);
+            String out = safeRep(argv[2], replEnv, &failed);
             std::cout << out << "\n";
         } else {
             auto scriptPath = std::filesystem::path(argv[1]);
             replEnv->currentPath(scriptPath.parent_path().string());
             auto fileonly = scriptPath.filename().string();
             String filename = escape(fileonly);
-            String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv);
+            String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
             if (out.length() > 0 && out != "nil")
                 std::cout << out << "\n";
         }
@@ -86,7 +87,7 @@ int malmain(int argc, char* argv[])
         String input;
         rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
         while (s_readLine->get(prompt, input)) {
-            String out = safeRep(input, replEnv);
+            String out = safeRep(input, replEnv, &failed);
             if (out.length() > 0)
 	      std::cout << out << "\n";
         }
@@ -95,7 +96,8 @@ int malmain(int argc, char* argv[])
     }
     if(currentEnv == replEnv)
       currentEnv = nullptr;
-    return 0;
+
+    return failed ? -1 : 0;
 }
 
 #ifndef NO_MAL_MAIN
@@ -107,18 +109,24 @@ int main(int argc, char* argv[])
 
 #endif
 
-static String safeRep(const String& input, malEnvPtr env)
+static String safeRep(const String& input, malEnvPtr env, bool *failed)
 {
     try {
         return rep(input, env);
     }
     catch (malEmptyInputException&) {
+        if(failed)
+            *failed = true;
         return String();
     }
     catch (malValuePtr& mv) {
+        if(failed)
+            *failed = true;
         return "Error: " + mv->print(true);
     }
     catch (String& s) {
+        if(failed)
+            *failed = true;
         return "Error: " + s;
     };
 }
