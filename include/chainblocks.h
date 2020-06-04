@@ -670,6 +670,10 @@ typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
                                                   struct CBInstanceData data);
 
+typedef void(__cdecl *CBComposedProc)(struct CBlock *,
+                                      const struct CBChain *chain,
+                                      const struct CBValidationResult *data);
+
 // The core of the block processing, avoid syscalls here
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
                                               struct CBContext *,
@@ -723,6 +727,10 @@ struct CBlock {
   // Optional call used during validation to fixup "Any" input
   // type and provide valid output and exposed variable types
   CBComposeProc compose;
+  // Optional call called when the whole chain hosting this block has been
+  // composed, this is called only on the top level, blocks that host other
+  // blocks should propagate it properly
+  CBComposedProc composed;
 
   CBParametersProc parameters;
   CBSetParamProc setParam; // Set a parameter, the block will copy the value, so

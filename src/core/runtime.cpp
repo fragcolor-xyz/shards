@@ -1227,9 +1227,7 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
 CBValidationResult composeChain(const CBChain *chain,
                                 CBValidationCallback callback, void *userData,
                                 CBInstanceData data) {
-  auto res = composeChain(chain->blocks, callback, userData, data, true);
-
-  // settle input and output type of chain
+  // settle input type of chain before compose
   if (chain->blocks.size() > 0) {
     // If first block is a plain None, mark this chain has None input
     auto inTypes = chain->blocks[0]->inputTypes(chain->blocks[0]);
@@ -1240,7 +1238,19 @@ CBValidationResult composeChain(const CBChain *chain,
   } else {
     chain->inputType = data.inputType;
   }
+
+  auto res = composeChain(chain->blocks, callback, userData, data, true);
+
+  // set outputtype
   chain->outputType = res.outputType;
+
+  std::vector<chainblocks::CBlockInfo> allBlocks;
+  chainblocks::gatherBlocks(chain, allBlocks);
+  // call composed on all blocks if they have it
+  for (auto &blk : allBlocks) {
+    if (blk.block->composed)
+      blk.block->composed(const_cast<CBlock *>(blk.block), chain, &res);
+  }
 
   // add variables
   chainblocks::IterableExposedInfo reqs(res.requiredInfo);
@@ -1860,7 +1870,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   switch (coll.index()) {
   case 0: {
     // chain
-    auto chain = std::get<CBChain *>(coll);
+    auto chain = std::get<const CBChain *>(coll);
     for (auto blk : chain->blocks) {
       gatherBlocks(blk, out);
     }

@@ -17,6 +17,7 @@ CB_HAS_MEMBER_TEST(outputTypes);
 CB_HAS_MEMBER_TEST(exposedVariables);
 CB_HAS_MEMBER_TEST(requiredVariables);
 CB_HAS_MEMBER_TEST(compose);
+CB_HAS_MEMBER_TEST(composed);
 CB_HAS_MEMBER_TEST(parameters);
 CB_HAS_MEMBER_TEST(setParam);
 CB_HAS_MEMBER_TEST(getParam);
@@ -162,8 +163,21 @@ template <class T> struct BlockWrapper {
             return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(data);
           });
     } else {
-      // infer is optional!
+      // compose is optional!
       result->compose = nullptr;
+    }
+
+    // composed
+    if constexpr (has_composed<T>::value) {
+      result->composed =
+          static_cast<CBComposedProc>([](CBlock *b, const CBChain *chain,
+                                         const CBValidationResult *result) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.composed(chain,
+                                                                   result);
+          });
+    } else {
+      // composed is optional!
+      result->composed = nullptr;
     }
 
     // warmup

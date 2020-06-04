@@ -500,8 +500,21 @@ struct Not {
 };
 
 struct Stop {
-  // TODO
-  // Must ensure input is the same kind of chain final output
+  CBTypeInfo _inputType{};
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _inputType = data.inputType;
+    return data.inputType;
+  }
+
+  void composed(const CBChain *chain, const CBValidationResult *result) {
+    if (_inputType != result->outputType) {
+      throw ComposeError(
+          "Stop input and chain output type mismatch, Stop "
+          "input must be the same type of the chain's output (regular flow).");
+    }
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -511,8 +524,15 @@ struct Stop {
 };
 
 struct Restart {
-  // TODO
   // Must ensure input is the same kind of chain root input
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.chain->inputType.basicType != CBType::None &&
+        data.inputType != data.chain->inputType)
+      throw ComposeError("Restart input and chain input type mismatch, Restart "
+                         "feeds back to the chain input.");
+    return data.inputType; // actually we are flow stopper
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
   CBVar activate(CBContext *context, const CBVar &input) {

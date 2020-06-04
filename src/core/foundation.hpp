@@ -874,7 +874,8 @@ struct VarStringStream {
   const char *str() { return cache.str(); }
 };
 
-using BlocksCollection = std::variant<CBChain *, CBlockPtr, CBlocks, CBVar>;
+using BlocksCollection =
+    std::variant<const CBChain *, CBlockPtr, CBlocks, CBVar>;
 
 struct CBlockInfo {
   CBlockInfo(const std::string_view &name, const CBlock *block)
