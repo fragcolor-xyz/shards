@@ -551,7 +551,6 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn) {
   auto input = chainInput;
-  // validation prevents extra pops so this should be safe
   for (uint32_t i = 0; i < blocks.len; i++) {
     output = activateBlock(blocks.elements[i], context, input);
     if (!context->shouldContinue()) {
@@ -582,7 +581,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn) {
   auto input = chainInput;
-  // validation prevents extra pops so this should be safe
   for (uint32_t i = 0; i < blocks.len; i++) {
     output =
         activateBlock(blocks.elements[i].payload.blockValue, context, input);
