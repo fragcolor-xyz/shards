@@ -412,6 +412,7 @@ if(NOT BUILD_CORE_ONLY)
       )
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
+      ${CHAINBLOCKS_DIR}/src/extra/bgfx.mm
       )
 
     set(CBLP_PLATFORM_LIBS

@@ -10,6 +10,10 @@
 using namespace chainblocks;
 
 namespace BGFX {
+#ifdef __APPLE__
+extern void *cbSetupMetalLayer(void *window);
+#endif
+
 struct Base {
   CBVar *_bgfxCtx;
 };
@@ -40,7 +44,7 @@ struct BaseWindow : public Base {
   static inline DpiAwareness DpiAware{};
   HWND _sysWnd = nullptr;
 #elif defined(__APPLE__)
-  NSWindow *_sysWnd = nullptr;
+  void *_sysWnd = nullptr;
 #elif defined(__linux__)
   void *_sysWnd = nullptr;
 #endif
@@ -115,6 +119,16 @@ struct MainWindow : public BaseWindow {
   // TODO thread_local? anyway sort multiple threads
   static inline std::vector<SDL_Event> sdlEvents;
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // Make sure MainWindow is UNIQUE
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      if (strcmp(data.shared.elements[i].name, "BGFX.Context") == 0) {
+        throw CBException("BGFX.MainWindow must be unique, found another use!");
+      }
+    }
+    return data.inputType;
+  }
+
   void cleanup() {
     _imgui_context.Reset();
 
@@ -157,17 +171,7 @@ struct MainWindow : public BaseWindow {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    // Make sure MainWindow is UNIQUE
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, "BGFX.Context") == 0) {
-        throw CBException("BGFX.MainWindow must be unique, found another use!");
-      }
-    }
-    return data.inputType;
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
+  void warmup(CBContext *context) {
     if (!_initDone) {
       auto initErr = SDL_Init(SDL_INIT_EVENTS);
       if (initErr != 0) {
@@ -199,7 +203,8 @@ struct MainWindow : public BaseWindow {
 
       bgfx::Init initInfo{};
 #ifdef __APPLE__
-      _sysWnd = winInfo.info.cocoa.window;
+      auto wnd = winInfo.info.cocoa.window;
+      _sysWnd = cbSetupMetalLayer(wnd);
 #elif defined(_WIN32)
       _sysWnd = winInfo.info.win.window;
 #elif defined(__linux__)
@@ -256,7 +261,9 @@ struct MainWindow : public BaseWindow {
 
       _initDone = true;
     }
+  }
 
+  CBVar activate(CBContext *context, const CBVar &input) {
     // Set them always as they might override each other during the chain
     *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
     *_bgfxCtx = Var::Object(&_bgfx_context, FragCC, BgfxContextCC);
@@ -506,28 +513,9 @@ struct Texture2D : public BaseConsumer {
   }
 };
 
-// Register
-RUNTIME_BLOCK(BGFX, MainWindow);
-RUNTIME_BLOCK_cleanup(MainWindow);
-RUNTIME_BLOCK_compose(MainWindow);
-RUNTIME_BLOCK_exposedVariables(MainWindow);
-RUNTIME_BLOCK_parameters(MainWindow);
-RUNTIME_BLOCK_setParam(MainWindow);
-RUNTIME_BLOCK_getParam(MainWindow);
-RUNTIME_BLOCK_inputTypes(MainWindow);
-RUNTIME_BLOCK_outputTypes(MainWindow);
-RUNTIME_BLOCK_activate(MainWindow);
-RUNTIME_BLOCK_END(MainWindow);
-
-RUNTIME_BLOCK(BGFX, Draw);
-RUNTIME_BLOCK_inputTypes(Draw);
-RUNTIME_BLOCK_outputTypes(Draw);
-RUNTIME_BLOCK_activate(Draw);
-RUNTIME_BLOCK_END(Draw);
-
 void registerBGFXBlocks() {
-  REGISTER_BLOCK(BGFX, MainWindow);
-  REGISTER_BLOCK(BGFX, Draw);
+  REGISTER_CBLOCK("BGFX.MainWindow", MainWindow);
+  REGISTER_CBLOCK("BGFX.Draw", Draw);
   REGISTER_CBLOCK("BGFX.Texture2D", Texture2D);
 }
 }; // namespace BGFX
