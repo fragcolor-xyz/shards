@@ -25,15 +25,14 @@ extern String rep(const String& input, malEnvPtr env);
 
 // Core.cpp
 extern void installCore(malEnvPtr env);
-extern void installCBCore(const malEnvPtr& env);
+extern void installCBCore(const malEnvPtr& env, const char *exePath, const char *scriptPath);
 
 // Reader.cpp
 extern malValuePtr readStr(const String& input);
 
 // Extras
-extern void malinit(malEnvPtr env);
+extern void malinit(malEnvPtr env, const char *exePath, const char *scriptPath);
 extern malValuePtr maleval(const char* str, malEnvPtr env);
 extern String malpath();
-extern void malsetpath(const String &path);
 
 #endif // INCLUDE_MAL_H

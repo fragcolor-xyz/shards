@@ -8,6 +8,7 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <filesystem>
 #include <string.h>
 #include <unordered_set>
 
@@ -76,6 +77,36 @@ extern void cbInitExtras();
 #endif
 
 static bool globalRegisterDone = false;
+
+void loadExternalBlocks(std::string from) {
+  namespace fs = std::filesystem;
+  auto root = fs::path(from);
+  auto pluginPath = root / "cblocks";
+  if (!fs::exists(pluginPath))
+    return;
+
+  for (auto &p : fs::recursive_directory_iterator(pluginPath)) {
+    if (p.is_regular_file()) {
+      auto ext = p.path().extension();
+      if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
+        auto filename = p.path().filename();
+        auto dllstr = p.path().string();
+        LOG(INFO) << "Loading external dll: " << filename;
+#if _WIN32
+        auto handle = LoadLibraryA(dllstr.c_str());
+        if (!handle) {
+          LOG(ERROR) << "LoadLibrary failed.";
+        }
+#elif defined(__linux__) || defined(__APPLE__)
+        auto handle = dlopen(dllstr.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (!handle) {
+          LOG(ERROR) << "dlerror: " << dlerror();
+        }
+#endif
+      }
+    }
+  }
+}
 
 void registerCoreBlocks() {
   if (globalRegisterDone)
@@ -212,6 +243,12 @@ void registerCoreBlocks() {
   assert(ts.len == 0);
   assert(ts.cap == 0);
 #endif
+
+  // finally iterate cblock directory and load external dlls
+  loadExternalBlocks(Globals::ExePath);
+  if (Globals::RootPath != Globals::ExePath) {
+    loadExternalBlocks(Globals::RootPath);
+  }
 }
 
 CBlock *createBlock(std::string_view name) {

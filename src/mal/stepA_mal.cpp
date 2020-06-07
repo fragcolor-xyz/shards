@@ -28,26 +28,12 @@ static ReadLine *s_readLine{nullptr};
 
 static thread_local malEnvPtr currentEnv{};
 
-String malpath() {
-  String result;
-  if(currentEnv) {
-    result = currentEnv->currentPath();
-  }
-  return result;
-}
-
-void malsetpath(const String &path) {
-  if(currentEnv) {
-    currentEnv->currentPath(path);
-  }
-}
-
-void malinit(malEnvPtr env) {
+void malinit(malEnvPtr env, const char *exePath, const char *scriptPath) {
     assert(env);
     currentEnv = env;
     installCore(env);
     installFunctions(env);
-    installCBCore(env);
+    installCBCore(env, exePath, scriptPath);
 }
 
 malValuePtr maleval(const char* str, malEnvPtr env) {
@@ -58,12 +44,15 @@ malValuePtr maleval(const char* str, malEnvPtr env) {
 int malmain(int argc, char* argv[])
 {
     malEnvPtr replEnv(new malEnv());
+
+    auto exePath = std::filesystem::path(argv[0]).parent_path().string();
+    auto scriptPath = exePath;
     if (argc > 1) {
-        auto scriptPath = std::filesystem::path(argv[1]);
-        replEnv->currentPath(scriptPath.parent_path().string());
+        scriptPath = std::filesystem::path(argv[1]).parent_path().string();
     }
 
-    malinit(replEnv);
+    malinit(replEnv, exePath.c_str(), scriptPath.c_str());
+
     makeArgv(replEnv, argc - 2, argv + 2);
     bool failed = false;
 
@@ -72,9 +61,8 @@ int malmain(int argc, char* argv[])
             String out = safeRep(argv[2], replEnv, &failed);
             std::cout << out << "\n";
         } else {
-            auto scriptPath = std::filesystem::path(argv[1]);
-            replEnv->currentPath(scriptPath.parent_path().string());
-            auto fileonly = scriptPath.filename().string();
+            auto scriptFilePath = std::filesystem::path(argv[1]);
+            auto fileonly = scriptFilePath.filename().string();
             String filename = escape(fileonly);
             String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
             if (out.length() > 0 && out != "nil")

@@ -269,6 +269,7 @@ struct Globals {
   static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
   static inline std::string RootPath;
+  static inline std::string ExePath;
 
   static inline CBTableInterface TableInterface{
       .tableForEach =

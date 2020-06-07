@@ -53,6 +53,8 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin));                       \
   }
 
+MalString malpath() { return chainblocks::Globals::RootPath; }
+
 extern void cbRegisterAllBlocks();
 
 class malCBChain;
@@ -80,19 +82,22 @@ static bool initDoneOnce = false;
 static std::map<MalString, malValuePtr> builtIns;
 static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
-void installCBCore(const malEnvPtr &env) {
+void installCBCore(const malEnvPtr &env, const char *exePath,
+                   const char *scriptPath) {
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
 
   if (!initDoneOnce) {
-    auto path = malpath();
-    if (path == "")
-      chainblocks::Globals::RootPath = "./";
-    else
-      chainblocks::Globals::RootPath = path;
+    chainblocks::Globals::ExePath = exePath;
+    chainblocks::Globals::RootPath = scriptPath;
+
+    LOG(DEBUG) << "Exe path: " << exePath;
+    LOG(DEBUG) << "Script path: " << scriptPath;
+
 #ifndef __EMSCRIPTEN__
     chainblocks::installSignalHandlers();
 #endif
+
     cbRegisterAllBlocks();
     initDoneOnce = true;
   }
@@ -405,10 +410,9 @@ struct ChainFileWatcher {
     node = data.chain->node;
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
-      auto localRoot = std::filesystem::path(path);
+      auto localRoot = std::filesystem::path(path).string();
       malEnvPtr rootEnv(new malEnv());
-      malinit(rootEnv);
-      rootEnv->currentPath(path);
+      malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
 
       while (running) {
         try {
@@ -433,7 +437,6 @@ struct ChainFileWatcher {
                             std::istreambuf_iterator<char>());
 
             malEnvPtr env(new malEnv(rootEnv));
-            env->currentPath(path);
             auto res = maleval(str.c_str(), env);
             auto var = varify(nullptr, res);
             if (var->value().valueType != CBType::Chain) {
@@ -1561,11 +1564,7 @@ BUILTIN_ISA("Block?", malCBlock);
 extern "C" {
 EXPORTED __cdecl void *cbLispCreate(const char *path) {
   auto env = new malEnvPtr(new malEnv);
-  malinit(*env);
-  if (path) {
-    MalString mpath(path);
-    malsetpath(mpath);
-  }
+  malinit(*env, path, path);
   return (void *)env;
 }
 
