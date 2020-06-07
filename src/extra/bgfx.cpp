@@ -12,6 +12,7 @@ using namespace chainblocks;
 namespace BGFX {
 #ifdef __APPLE__
 extern void *cbSetupMetalLayer(void *window);
+extern void cbDeallocMetalLayer(void *lyr);
 #endif
 
 struct Base {
@@ -136,6 +137,9 @@ struct MainWindow : public BaseWindow {
       imguiDestroy();
       bgfx::shutdown();
       unregisterRunLoopCallback("fragcolor.bgfx.ospump");
+#ifdef __APPLE__
+      cbDeallocMetalLayer(_sysWnd);
+#endif
       SDL_DestroyWindow(_window);
       SDL_Quit();
       _window = nullptr;
