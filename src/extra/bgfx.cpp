@@ -295,7 +295,7 @@ struct MainWindow : public BaseWindow {
       imbtns = imbtns | IMGUI_MBUT_MIDDLE;
     }
 
-    // find mouse wheel events
+    // process some events
     for (auto &event : sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
         _wheelScroll += event.wheel.y;
@@ -324,8 +324,16 @@ struct MainWindow : public BaseWindow {
         io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
         io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
       } else if (event.type == SDL_QUIT) {
-        LOG(INFO) << "SDL quit event!";
-        std::exit(0);
+        // stop the current chain on close
+        throw ActivationError("Window closed, aborting chain.");
+      } else if (event.type == SDL_WINDOWEVENT &&
+                 SDL_GetWindowID(_window) ==
+                     event.window
+                         .windowID) { // support multiple windows closure
+        if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+          // stop the current chain on close
+          throw ActivationError("Window closed, aborting chain.");
+        }
       }
     }
 
