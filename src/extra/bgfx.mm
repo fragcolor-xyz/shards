@@ -13,9 +13,4 @@ void *cbSetupMetalLayer(void *wnd) {
   [contentView setLayer:res];
   return res;
 }
-
-void cbDeallocMetalLayer(void *lyr) {
-  CAMetalLayer *layer = (CAMetalLayer*)lyr;
-  [layer dealloc];
-}
 }
