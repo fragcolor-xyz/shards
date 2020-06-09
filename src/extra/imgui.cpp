@@ -729,8 +729,7 @@ struct ChildWindow : public Base {
     CBVar output{};
     // this one throws that's why we use defer above!
     activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
-    return i
-    nput;
+    return input;
   }
 };
 
