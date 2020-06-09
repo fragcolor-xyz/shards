@@ -1147,6 +1147,28 @@ BUILTIN("Chain") {
   return malValuePtr(mchain);
 }
 
+static MalString printValues(malValueIter begin, malValueIter end,
+                             const MalString &sep, bool readably) {
+  MalString out;
+
+  if (begin != end) {
+    out += (*begin)->print(readably);
+    ++begin;
+  }
+
+  for (; begin != end; ++begin) {
+    out += sep;
+    out += (*begin)->print(readably);
+  }
+
+  return out;
+}
+
+BUILTIN("LOG") {
+  LOG(INFO) << printValues(argsBegin, argsEnd, " ", false);
+  return mal::nilValue();
+}
+
 BUILTIN("Chain@") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
@@ -1265,7 +1287,7 @@ BUILTIN("stop") {
   auto chain = CBChain::sharedFromRef(chainvar->value());
   CBVar res{};
   chainblocks::stop(chain.get(), &res);
-  return malValuePtr(new malCBVar(res));
+  return malValuePtr(new malCBVar(res, true));
 }
 
 BUILTIN("run") {
