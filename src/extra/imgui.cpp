@@ -11,8 +11,6 @@ using namespace chainblocks;
 namespace chainblocks {
 namespace ImGui {
 struct Base {
-  CBVar *_context;
-
   static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
       "ImGui.Context", "The ImGui Context.", Context::Info));
 
@@ -590,9 +588,9 @@ struct Window : public Base {
     case 2:
       return _posY;
     case 3:
-      return _posX;
+      return _width;
     case 4:
-      return _posY;
+      return _height;
     case 5:
       return _blks;
     default:
@@ -604,7 +602,8 @@ struct Window : public Base {
     _blks.cleanup();
     _curX = -1;
     _curY = -1;
-    _context = nullptr;
+    _curW = -1;
+    _curH = -1;
   }
 
   void warmup(CBContext *context) { _blks.warmup(context); }
@@ -646,6 +645,92 @@ struct Window : public Base {
     // this one throws that's why we use defer above!
     activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
     return input;
+  }
+};
+
+struct ChildWindow : public Base {
+  chainblocks::BlocksVar _blks{};
+  CBVar _width{}, _height{};
+  bool _border = false;
+  static inline ImGuiID windowIds{0};
+  ImGuiID _wndId = ++windowIds;
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Width", "The width of the child window to create",
+                        CoreInfo::IntOrNone),
+      ParamsInfo::Param("Height", "The height of the child window to create.",
+                        CoreInfo::IntOrNone),
+      ParamsInfo::Param(
+          "Border",
+          "If we want to draw a border frame around the child window.",
+          CoreInfo::BoolType),
+      ParamsInfo::Param("Contents", "The inner contents blocks.",
+                        CoreInfo::BlocksOrNone));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blks.compose(data);
+    return data.inputType;
+  }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _width = value;
+      break;
+    case 1:
+      _height = value;
+      break;
+    case 2:
+      _border = value.payload.boolValue;
+      break;
+    case 3:
+      _blks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _width;
+    case 1:
+      return _height;
+    case 2:
+      return Var(_border);
+    case 3:
+      return _blks;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup() { _blks.cleanup(); }
+
+  void warmup(CBContext *context) { _blks.warmup(context); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_blks)
+      return input;
+
+    ImVec2 size{0, 0};
+    if (_width.valueType == Int && _height.valueType == Int) {
+      size = {float(_width.payload.intValue), float(_height.payload.intValue)};
+    }
+
+    ::ImGui::BeginChild(_wndId, size, _border);
+    DEFER({ ::ImGui::EndChild(); });
+
+    CBVar output{};
+    // this one throws that's why we use defer above!
+    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+    return i
+    nput;
   }
 };
 
@@ -1362,81 +1447,14 @@ struct Image : public Base {
   }
 };
 
-// Register
-RUNTIME_BLOCK(ImGui, Style);
-RUNTIME_BLOCK_compose(Style);
-RUNTIME_BLOCK_requiredVariables(Style);
-RUNTIME_BLOCK_parameters(Style);
-RUNTIME_BLOCK_setParam(Style);
-RUNTIME_BLOCK_getParam(Style);
-RUNTIME_BLOCK_inputTypes(Style);
-RUNTIME_BLOCK_outputTypes(Style);
-RUNTIME_BLOCK_activate(Style);
-RUNTIME_BLOCK_END(Style);
-
-RUNTIME_BLOCK(ImGui, Window);
-RUNTIME_BLOCK_cleanup(Window);
-RUNTIME_BLOCK_warmup(Window);
-RUNTIME_BLOCK_compose(Window);
-RUNTIME_BLOCK_requiredVariables(Window);
-RUNTIME_BLOCK_parameters(Window);
-RUNTIME_BLOCK_setParam(Window);
-RUNTIME_BLOCK_getParam(Window);
-RUNTIME_BLOCK_inputTypes(Window);
-RUNTIME_BLOCK_outputTypes(Window);
-RUNTIME_BLOCK_activate(Window);
-RUNTIME_BLOCK_END(Window);
-
-RUNTIME_BLOCK(ImGui, CheckBox);
-RUNTIME_BLOCK_cleanup(CheckBox);
-RUNTIME_BLOCK_compose(CheckBox);
-RUNTIME_BLOCK_requiredVariables(CheckBox);
-RUNTIME_BLOCK_exposedVariables(CheckBox);
-RUNTIME_BLOCK_parameters(CheckBox);
-RUNTIME_BLOCK_setParam(CheckBox);
-RUNTIME_BLOCK_getParam(CheckBox);
-RUNTIME_BLOCK_inputTypes(CheckBox);
-RUNTIME_BLOCK_outputTypes(CheckBox);
-RUNTIME_BLOCK_activate(CheckBox);
-RUNTIME_BLOCK_END(CheckBox);
-
-RUNTIME_BLOCK(ImGui, Text);
-RUNTIME_BLOCK_requiredVariables(Text);
-RUNTIME_BLOCK_parameters(Text);
-RUNTIME_BLOCK_setParam(Text);
-RUNTIME_BLOCK_getParam(Text);
-RUNTIME_BLOCK_inputTypes(Text);
-RUNTIME_BLOCK_outputTypes(Text);
-RUNTIME_BLOCK_activate(Text);
-RUNTIME_BLOCK_END(Text);
-
-RUNTIME_BLOCK(ImGui, Button);
-RUNTIME_BLOCK_cleanup(Button);
-RUNTIME_BLOCK_warmup(Button);
-RUNTIME_BLOCK_compose(Button);
-RUNTIME_BLOCK_requiredVariables(Button);
-RUNTIME_BLOCK_parameters(Button);
-RUNTIME_BLOCK_setParam(Button);
-RUNTIME_BLOCK_getParam(Button);
-RUNTIME_BLOCK_inputTypes(Button);
-RUNTIME_BLOCK_outputTypes(Button);
-RUNTIME_BLOCK_activate(Button);
-RUNTIME_BLOCK_END(Button);
-
-RUNTIME_BLOCK(ImGui, HexViewer);
-RUNTIME_BLOCK_requiredVariables(HexViewer);
-RUNTIME_BLOCK_inputTypes(HexViewer);
-RUNTIME_BLOCK_outputTypes(HexViewer);
-RUNTIME_BLOCK_activate(HexViewer);
-RUNTIME_BLOCK_END(HexViewer);
-
 void registerImGuiBlocks() {
-  REGISTER_BLOCK(ImGui, Style);
-  REGISTER_BLOCK(ImGui, Window);
-  REGISTER_BLOCK(ImGui, CheckBox);
-  REGISTER_BLOCK(ImGui, Text);
-  REGISTER_BLOCK(ImGui, Button);
-  REGISTER_BLOCK(ImGui, HexViewer);
+  REGISTER_CBLOCK("ImGui.Style", Style);
+  REGISTER_CBLOCK("ImGui.Window", Window);
+  REGISTER_CBLOCK("ImGui.ChildWindow", ChildWindow);
+  REGISTER_CBLOCK("ImGui.CheckBox", CheckBox);
+  REGISTER_CBLOCK("ImGui.Text", Text);
+  REGISTER_CBLOCK("ImGui.Button", Button);
+  REGISTER_CBLOCK("ImGui.HexViewer", HexViewer);
   REGISTER_CBLOCK("ImGui.SameLine", SameLine);
   REGISTER_CBLOCK("ImGui.Separator", Separator);
   REGISTER_CBLOCK("ImGui.Indent", Indent);
