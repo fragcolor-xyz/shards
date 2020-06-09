@@ -392,14 +392,16 @@ struct Var : public CBVar {
     payload.intValue = src;
   }
 
-  explicit Var(const char *src) : CBVar() {
+  explicit Var(const char *src, size_t len = 0) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src;
+    payload.stringLen = len;
   }
 
   explicit Var(const std::string &src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src.c_str();
+    payload.stringLen = src.length();
   }
 
   explicit Var(CBTable &src) : CBVar() {
