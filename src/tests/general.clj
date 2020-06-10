@@ -840,6 +840,8 @@
    (Assert.Is "global1" true)
    (Get .global1 :Global true :Default "nope")
    (Assert.Is "global1" true)
+   (Log)
+   (Process.StackTrace)
    (Log)))
 (schedule Root loadBinary)
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
