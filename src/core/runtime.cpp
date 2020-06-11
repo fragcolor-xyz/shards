@@ -85,17 +85,22 @@ void loadExternalBlocks(std::string from) {
   if (!fs::exists(pluginPath))
     return;
 
+  auto pluginPathStr = pluginPath.string();
   for (auto &p : fs::recursive_directory_iterator(pluginPath)) {
     if (p.is_regular_file()) {
       auto ext = p.path().extension();
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
         auto dllstr = p.path().string();
-        LOG(INFO) << "Loading external dll: " << filename;
+        LOG(INFO) << "Loading external dll: " << filename
+                  << " path: " << dllstr;
 #if _WIN32
+        // add this directory also in the search path, in order to allow
+        // externals to load dlls too
+        SetDllDirectoryA(pluginPathStr.c_str());
         auto handle = LoadLibraryA(dllstr.c_str());
         if (!handle) {
-          LOG(ERROR) << "LoadLibrary failed.";
+          LOG(ERROR) << "LoadLibrary failed, error: " << GetLastError();
         }
 #elif defined(__linux__) || defined(__APPLE__)
         auto handle = dlopen(dllstr.c_str(), RTLD_NOW | RTLD_LOCAL);

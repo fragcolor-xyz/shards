@@ -511,7 +511,9 @@ struct Stop {
     if (_inputType != result->outputType) {
       throw ComposeError(
           "Stop input and chain output type mismatch, Stop "
-          "input must be the same type of the chain's output (regular flow).");
+          "input must be the same type of the chain's output "
+          "(regular flow), chain: " +
+          chain->name + " expected: " + type2Name(chain->outputType.basicType));
     }
   }
 
@@ -529,7 +531,9 @@ struct Restart {
     if (data.chain->inputType.basicType != CBType::None &&
         data.inputType != data.chain->inputType)
       throw ComposeError("Restart input and chain input type mismatch, Restart "
-                         "feeds back to the chain input.");
+                         "feeds back to the chain input, chain: " +
+                         data.chain->name + " expected: " +
+                         type2Name(data.chain->inputType.basicType));
     return data.inputType; // actually we are flow stopper
   }
 
