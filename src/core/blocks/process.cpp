@@ -12,6 +12,7 @@
 #define __kernel_entry
 #endif
 #include <boost/process.hpp>
+#include <boost/stacktrace.hpp>
 #include <sstream>
 #include <string>
 
@@ -77,13 +78,23 @@ struct Exec {
   }
 };
 
-// Register Exec
-RUNTIME_BLOCK(Process, Exec);
-RUNTIME_BLOCK_inputTypes(Exec);
-RUNTIME_BLOCK_outputTypes(Exec);
-RUNTIME_BLOCK_activate(Exec);
-RUNTIME_BLOCK_END(Exec);
+struct StackTrace {
+  std::string _output;
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  CBVar activate(CBContext *ctx, CBVar input) {
+    std::stringstream ss;
+    ss << boost::stacktrace::stacktrace();
+    _output = ss.str();
+    return Var(_output);
+  }
+};
 }; // namespace Process
 
-void registerProcessBlocks() { REGISTER_BLOCK(Process, Exec); }
+void registerProcessBlocks() {
+  REGISTER_CBLOCK("Process.Exec", Process::Exec);
+  REGISTER_CBLOCK("Process.StackTrace", Process::StackTrace);
+}
 }; // namespace chainblocks
