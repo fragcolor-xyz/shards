@@ -19,6 +19,7 @@ At runtime just dlopen the dll, that's it!
 #include <functional>
 
 #include "blockwrapper.hpp"
+#include "common_types.hpp"
 
 namespace chainblocks {
 // this must be defined in the external
