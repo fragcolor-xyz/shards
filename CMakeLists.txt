@@ -355,10 +355,11 @@ include_directories(
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/deps/pdqsort
+  ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
   )
 
 if(NOT BUILD_CORE_ONLY)
-  add_compile_definitions(CB_WITH_EXTRAS)
+  add_compile_definitions(CB_WITH_EXTRAS BIMG_DECODE_ENABLE=0)
 
   include_directories(
     ${CHAINBLOCKS_DIR}/deps/bx/include
@@ -390,7 +391,6 @@ if(NOT BUILD_CORE_ONLY)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
       # 64 bits
       set(CBLP_PLATFORM_LIBS
-        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win64_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
 	      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
@@ -398,7 +398,6 @@ if(NOT BUILD_CORE_ONLY)
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
       # 32 bits
       set(CBLP_PLATFORM_LIBS
-        ${CHAINBLOCKS_DIR}/deps/bimg/.build/win32_mingw-gcc/bin/libbimgRelease.a
         ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
 	      ${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
@@ -455,6 +454,8 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
+    ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
+    ${CHAINBLOCKS_DIR}/deps/bimg/src/image_gnf.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui/imgui.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui.cpp

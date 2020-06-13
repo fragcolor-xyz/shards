@@ -5,15 +5,6 @@ set -e
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget mingw-w64-i686-python
 
-# bimg
-cd deps/bimg/
-export MINGW=/c/msys64/mingw32 # chainblocks/setup-msys2, needed by bimg
-# hack to cope with terrible bimg build system
-ln -s $MINGW/bin/i686-w64-mingw32-g++.exe $MINGW/bin/x86_64-w64-mingw32-g++.exe
-ln -s $MINGW/bin/i686-w64-mingw32-gcc.exe $MINGW/bin/x86_64-w64-mingw32-gcc.exe
-make mingw-gcc-release32 > /dev/null 2>&1
-cd ../../
-
 # snappy
 cd deps/snappy
 mkdir build32

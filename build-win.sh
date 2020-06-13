@@ -5,12 +5,6 @@ set -e
 
 pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget mingw-w64-x86_64-python
 
-# bimg
-cd deps/bimg/
-export MINGW=/c/msys64/mingw64 # chainblocks/setup-msys2, needed by bimg
-make mingw-gcc-release64 > /dev/null 2>&1
-cd ../../
-
 # snappy
 cd deps/snappy
 mkdir build
