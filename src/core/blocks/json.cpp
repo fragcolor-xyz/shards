@@ -555,7 +555,7 @@ struct ToJson {
   CBVar getParam(int index) { return Var(_indent); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     json j = input;
     if (_indent == 0)
