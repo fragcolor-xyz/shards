@@ -414,27 +414,27 @@ struct Var : public CBVar {
     payload.colorValue = color;
   }
 
-  explicit Var(std::vector<CBVar> &vectorRef) {
+  explicit Var(std::vector<CBVar> &vectorRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = &vectorRef[0];
     payload.seqValue.len = vectorRef.size();
+    payload.seqValue.elements = payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }
 
-  explicit Var(std::vector<Var> &vectorRef) {
+  explicit Var(std::vector<Var> &vectorRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = &vectorRef[0];
     payload.seqValue.len = vectorRef.size();
+    payload.seqValue.elements = payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }
 
-  template <size_t N> explicit Var(std::array<CBVar, N> &arrRef) {
+  template <size_t N> explicit Var(std::array<CBVar, N> &arrRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = &arrRef[0];
+    payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
     payload.seqValue.len = N;
   }
 
-  template <size_t N> explicit Var(std::array<Var, N> &arrRef) {
+  template <size_t N> explicit Var(std::array<Var, N> &arrRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = &arrRef[0];
+    payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
     payload.seqValue.len = N;
   }
 };
