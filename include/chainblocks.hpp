@@ -417,13 +417,15 @@ struct Var : public CBVar {
   explicit Var(std::vector<CBVar> &vectorRef) : CBVar() {
     valueType = Seq;
     payload.seqValue.len = vectorRef.size();
-    payload.seqValue.elements = payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
+    payload.seqValue.elements =
+        payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }
 
   explicit Var(std::vector<Var> &vectorRef) : CBVar() {
     valueType = Seq;
     payload.seqValue.len = vectorRef.size();
-    payload.seqValue.elements = payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
+    payload.seqValue.elements =
+        payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }
 
   template <size_t N> explicit Var(std::array<CBVar, N> &arrRef) : CBVar() {

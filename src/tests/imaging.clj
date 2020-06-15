@@ -4,7 +4,7 @@
  Root
  (Chain
   "test"
-  (LoadImage "../../assets/simple1.png")
+  (LoadImage "../../assets/simple1.png") >= .baseImg
   (StripAlpha)
   (WritePNG "testbase.png")
   (Ref .img)
@@ -20,8 +20,13 @@
            (Get .s)
            (FloatsToImage 99 99 3)
            (WritePNG "test2.png")
-           )
+           (FillAlpha)
+           (ResizeImage 200 200)
+           (WritePNG "test2Resized.png"))
           30)
-  (Log)))
+  (Log)
+  .baseImg
+  (ResizeImage 200 200)
+  (WritePNG "testResized.png")))
 
 (run Root 0.1)
