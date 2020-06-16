@@ -96,16 +96,6 @@ struct Iterate {
   }
 };
 
-RUNTIME_BLOCK(FS, Iterate);
-RUNTIME_BLOCK_inputTypes(Iterate);
-RUNTIME_BLOCK_outputTypes(Iterate);
-RUNTIME_BLOCK_parameters(Iterate);
-RUNTIME_BLOCK_setParam(Iterate);
-RUNTIME_BLOCK_getParam(Iterate);
-RUNTIME_BLOCK_activate(Iterate);
-RUNTIME_BLOCK_destroy(Iterate);
-RUNTIME_BLOCK_END(Iterate);
-
 struct Extension {
   std::string _output;
 
@@ -121,12 +111,6 @@ struct Extension {
   }
 };
 
-RUNTIME_BLOCK(FS, Extension);
-RUNTIME_BLOCK_inputTypes(Extension);
-RUNTIME_BLOCK_outputTypes(Extension);
-RUNTIME_BLOCK_activate(Extension);
-RUNTIME_BLOCK_END(Extension);
-
 struct IsFile {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -140,12 +124,6 @@ struct IsFile {
   }
 };
 
-RUNTIME_BLOCK(FS, IsFile);
-RUNTIME_BLOCK_inputTypes(IsFile);
-RUNTIME_BLOCK_outputTypes(IsFile);
-RUNTIME_BLOCK_activate(IsFile);
-RUNTIME_BLOCK_END(IsFile);
-
 struct IsDirectory {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -158,12 +136,6 @@ struct IsDirectory {
     }
   }
 };
-
-RUNTIME_BLOCK(FS, IsDirectory);
-RUNTIME_BLOCK_inputTypes(IsDirectory);
-RUNTIME_BLOCK_outputTypes(IsDirectory);
-RUNTIME_BLOCK_activate(IsDirectory);
-RUNTIME_BLOCK_END(IsDirectory);
 
 struct Filename {
   std::string _output;
@@ -205,15 +177,6 @@ struct Filename {
     return Var(_output);
   }
 };
-
-RUNTIME_BLOCK(FS, Filename);
-RUNTIME_BLOCK_inputTypes(Filename);
-RUNTIME_BLOCK_outputTypes(Filename);
-RUNTIME_BLOCK_parameters(Filename);
-RUNTIME_BLOCK_setParam(Filename);
-RUNTIME_BLOCK_getParam(Filename);
-RUNTIME_BLOCK_activate(Filename);
-RUNTIME_BLOCK_END(Filename);
 
 struct Read {
   std::vector<uint8_t> _buffer;
@@ -268,15 +231,6 @@ struct Read {
     }
   }
 };
-
-RUNTIME_BLOCK(FS, Read);
-RUNTIME_BLOCK_inputTypes(Read);
-RUNTIME_BLOCK_outputTypes(Read);
-RUNTIME_BLOCK_parameters(Read);
-RUNTIME_BLOCK_setParam(Read);
-RUNTIME_BLOCK_getParam(Read);
-RUNTIME_BLOCK_activate(Read);
-RUNTIME_BLOCK_END(Read);
 
 struct Write {
   ParamVar _contents{};
@@ -355,25 +309,107 @@ struct Write {
   }
 };
 
-RUNTIME_BLOCK(FS, Write);
-RUNTIME_BLOCK_inputTypes(Write);
-RUNTIME_BLOCK_outputTypes(Write);
-RUNTIME_BLOCK_parameters(Write);
-RUNTIME_BLOCK_setParam(Write);
-RUNTIME_BLOCK_getParam(Write);
-RUNTIME_BLOCK_cleanup(Write);
-RUNTIME_BLOCK_warmup(Write);
-RUNTIME_BLOCK_activate(Write);
-RUNTIME_BLOCK_END(Write);
+struct Copy {
+  enum class OverBehavior { Fail, Skip, Overwrite, Update };
+  static inline EnumInfo<OverBehavior> OverWEnum{"IfExists", 'sink', 'fsow'};
+  static inline Type OverWEnumType{
+      {CBType::Enum, {.enumeration = {'sink', 'fsow'}}}};
+
+  ParamVar _destination{};
+  OverBehavior _overwrite{OverBehavior::Fail};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Destination",
+                        "The destination path, can be a file or a directory.",
+                        CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("Behavior",
+                        "What to do when the destination already exists.",
+                        OverWEnumType));
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _destination = value;
+      break;
+    case 1:
+      _overwrite = OverBehavior(value.payload.enumValue);
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _destination;
+    case 1:
+      return Var::Enum(_overwrite, 'sink', 'fsow');
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup() { _destination.cleanup(); }
+  void warmup(CBContext *context) { _destination.warmup(context); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto src = fs::path(input.payload.stringValue);
+    if (!fs::exists(src))
+      throw ActivationError("Source path does not exist.");
+
+    fs::copy_options options = fs::copy_options::recursive;
+
+    switch (_overwrite) {
+    case OverBehavior::Fail:
+      break;
+    case OverBehavior::Skip:
+      options |= fs::copy_options::skip_existing;
+      break;
+    case OverBehavior::Overwrite:
+      options |= fs::copy_options::overwrite_existing;
+      break;
+    case OverBehavior::Update:
+      options |= fs::copy_options::update_existing;
+      break;
+    }
+
+    const auto dstVar = _destination.get();
+    if (dstVar.valueType != String && dstVar.valueType != Path)
+      throw ActivationError("Destination is not a valid");
+    const auto dst = fs::path(dstVar.payload.stringValue);
+
+    std::error_code err;
+    if (fs::is_regular_file(src) &&
+        (!fs::exists(dst) || fs::is_regular_file(dst))) {
+      fs::copy_file(src, dst, options, err);
+      if (err) {
+        LOG(ERROR) << "copy error: " << err.message();
+        throw ActivationError("Copy failed.");
+      }
+    } else {
+      fs::copy(src, dst, options, err);
+      if (err) {
+        LOG(ERROR) << "copy error: " << err.message();
+        throw ActivationError("Copy failed.");
+      }
+    }
+
+    return input;
+  }
+};
 }; // namespace FS
 
 void registerFSBlocks() {
-  REGISTER_BLOCK(FS, Iterate);
-  REGISTER_BLOCK(FS, Extension);
-  REGISTER_BLOCK(FS, Filename);
-  REGISTER_BLOCK(FS, Read);
-  REGISTER_BLOCK(FS, Write);
-  REGISTER_BLOCK(FS, IsFile);
-  REGISTER_BLOCK(FS, IsDirectory);
+  REGISTER_CBLOCK("FS.Iterate", FS::Iterate);
+  REGISTER_CBLOCK("FS.Extension", FS::Extension);
+  REGISTER_CBLOCK("FS.Filename", FS::Filename);
+  REGISTER_CBLOCK("FS.Read", FS::Read);
+  REGISTER_CBLOCK("FS.Write", FS::Write);
+  REGISTER_CBLOCK("FS.IsFile", FS::IsFile);
+  REGISTER_CBLOCK("FS.IsDirectory", FS::IsDirectory);
+  REGISTER_CBLOCK("FS.Copy", FS::Copy);
 }
 }; // namespace chainblocks

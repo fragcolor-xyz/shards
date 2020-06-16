@@ -517,9 +517,9 @@
    (Get "text2") (Log)
    (Assert.Is "## The result is: Hello world, this is a string again" true)
 
-   "test.txt"
-   (FS.Write .text2 :Overwrite true)
-   (FS.Read)
+   "test.txt" (FS.Write .text2 :Overwrite true)
+   (FS.Copy "test-copy.txt" IfExists.Overwrite)
+   "test-copy.txt" (FS.Read)
    (Assert.Is "## The result is: Hello world, this is a string again" true)
    (Log)
 
