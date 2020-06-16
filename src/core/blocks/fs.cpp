@@ -360,7 +360,7 @@ struct Copy {
     if (!fs::exists(src))
       throw ActivationError("Source path does not exist.");
 
-    fs::copy_options options = fs::copy_options::recursive;
+    fs::copy_options options{};
 
     switch (_overwrite) {
     case OverBehavior::Fail:
@@ -390,6 +390,7 @@ struct Copy {
         throw ActivationError("Copy failed.");
       }
     } else {
+      options |= fs::copy_options::recursive;
       fs::copy(src, dst, options, err);
       if (err) {
         LOG(ERROR) << "copy error: " << err.message();
