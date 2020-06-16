@@ -256,7 +256,9 @@ public:
 
 template <class CB_CORE> struct TOwnedVar : public CBVar {
   TOwnedVar() : CBVar() {}
-  TOwnedVar(TOwnedVar &&source) = delete;
+  TOwnedVar(TOwnedVar &&source) {
+    *this = source;
+  }
   TOwnedVar(const TOwnedVar &source) : CBVar() {
     CB_CORE::cloneVar(*this, source);
   }
@@ -269,7 +271,11 @@ template <class CB_CORE> struct TOwnedVar : public CBVar {
     CB_CORE::cloneVar(*this, other);
     return *this;
   }
-  TOwnedVar &operator=(TOwnedVar &&other) = delete;
+  TOwnedVar &operator=(TOwnedVar &&other) {
+    CB_CORE::destroyVar(*this);
+    *this = other;
+    return *this;
+  }
   ~TOwnedVar() { CB_CORE::destroyVar(*this); }
 };
 
