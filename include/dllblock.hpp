@@ -245,7 +245,8 @@ private:
 };
 
 template <typename S, typename T, void (*arrayResize)(S &, uint64_t),
-          void (*arrayFree)(S &), typename Allocator = std::allocator<T>>
+          void (*arrayFree)(S &), void (*arrayPush)(S &, const T &),
+          typename Allocator = std::allocator<T>>
 class IterableArray {
 public:
   typedef S seq_type;
@@ -279,15 +280,15 @@ public:
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq[i] = *first++;
+      _seq.elements[i] = *first++;
     }
   }
 
-  IterableArray(const IterableArray &other) : _seq(nullptr), _owned(true) {
+  IterableArray(const IterableArray &other) : _seq({}), _owned(true) {
     size_t size = other._seq.len;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq[i] = other._seq[i];
+      _seq.elements[i] = other._seq.elements[i];
     }
   }
 
@@ -346,11 +347,11 @@ public:
   operator seq_type() const { return _seq; }
 };
 
-using IterableSeq =
-    IterableArray<CBSeq, CBVar, &Core::seqResize, &Core::seqFree>;
+using IterableSeq = IterableArray<CBSeq, CBVar, &Core::seqResize,
+                                  &Core::seqFree, &Core::seqPush>;
 using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
-                  &Core::expTypesFree>;
+                  &Core::expTypesFree, &Core::expTypesPush>;
 
 inline void registerBlock(const char *fullName, CBBlockConstructor constructor,
                           std::string_view _) {
