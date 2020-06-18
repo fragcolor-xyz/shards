@@ -14,15 +14,38 @@ struct FromImage {
       if (input.valueType != CBType::Image)
         throw ActivationError("Expected Image type.");
 
+      auto pixsize = 1;
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               0)
+        pixsize = 4;
+
       const int w = int(input.payload.imageValue.width);
       const int h = int(input.payload.imageValue.height);
       const int c = int(input.payload.imageValue.channels);
-      const int flatsize = w * h * c;
+      const int flatsize = w * h * c * pixsize;
 
       output.resize(flatsize, Var(0.0));
-      for (int i = 0; i < flatsize; i++) {
-        const auto fval = double(input.payload.imageValue.data[i]) / 255.0;
-        output[i].payload.floatValue = fval;
+
+      if (pixsize == 1) {
+        for (int i = 0; i < flatsize; i++) {
+          const auto fval = double(input.payload.imageValue.data[i]) / 255.0;
+          output[i].payload.floatValue = fval;
+        }
+      } else if (pixsize == 2) {
+        const auto u16 =
+            reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+        for (int i = 0; i < flatsize; i++) {
+          const auto fval = double(u16[i]) / 65535.0;
+          output[i].payload.floatValue = fval;
+        }
+      } else if (pixsize == 4) {
+        const auto f32 =
+            reinterpret_cast<float *>(input.payload.imageValue.data);
+        for (int i = 0; i < flatsize; i++) {
+          output[i].payload.floatValue = f32[i];
+        }
       }
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
@@ -798,9 +821,15 @@ struct ToBytes {
       break;
     }
     case CBType::Image: {
+      auto pixsize = 1;
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               0)
+        pixsize = 4;
       auto size = input.payload.imageValue.width *
                   input.payload.imageValue.height *
-                  input.payload.imageValue.channels;
+                  input.payload.imageValue.channels * pixsize;
       _buffer.resize(size);
       memcpy(&_buffer.front(), input.payload.imageValue.data, size);
       break;

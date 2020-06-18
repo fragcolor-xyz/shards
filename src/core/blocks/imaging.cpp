@@ -54,7 +54,13 @@ struct Convolve {
     int32_t h = int32_t(input.payload.imageValue.height);
     int32_t c = int32_t(input.payload.imageValue.channels);
 
-    _bytes.resize(_kernel * _kernel * c);
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
+
+    _bytes.resize(_kernel * _kernel * c * pixsize);
 
     if (_xindex >= w) {
       _xindex = 0;
@@ -68,15 +74,50 @@ struct Convolve {
     const int high = _radius - 1;
     const int low = high * -1;
     int index = 0;
-    for (int y = low; y <= high; y++) {
-      for (int x = low; x <= high; x++) {
-        const int cidxx = _xindex + x;
-        const int cidxy = _yindex + y;
-        const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
-        const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
-        const int addr = ((w * idxy) + idxx) * c;
-        for (int i = 0; i < c; i++) {
-          _bytes[index++] = input.payload.imageValue.data[addr + i];
+
+    if (pixsize == 1) {
+      for (int y = low; y <= high; y++) {
+        for (int x = low; x <= high; x++) {
+          const int cidxx = _xindex + x;
+          const int cidxy = _yindex + y;
+          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
+          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
+          const int addr = ((w * idxy) + idxx) * c;
+          for (int i = 0; i < c; i++) {
+            _bytes[index++] = input.payload.imageValue.data[addr + i];
+          }
+        }
+      }
+    } else if (pixsize == 2) {
+      const auto from =
+          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
+      for (int y = low; y <= high; y++) {
+        for (int x = low; x <= high; x++) {
+          const int cidxx = _xindex + x;
+          const int cidxy = _yindex + y;
+          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
+          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
+          const int addr = ((w * idxy) + idxx) * c;
+          for (int i = 0; i < c; i++) {
+            to[index++] = from[addr + i];
+          }
+        }
+      }
+    } else if (pixsize == 4) {
+      const auto from =
+          reinterpret_cast<float *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<float *>(_bytes[0]);
+      for (int y = low; y <= high; y++) {
+        for (int x = low; x <= high; x++) {
+          const int cidxx = _xindex + x;
+          const int cidxy = _yindex + y;
+          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
+          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
+          const int addr = ((w * idxy) + idxx) * c;
+          for (int i = 0; i < c; i++) {
+            to[index++] = from[addr + i];
+          }
         }
       }
     }
@@ -109,14 +150,48 @@ struct StripAlpha {
     int32_t w = int32_t(input.payload.imageValue.width);
     int32_t h = int32_t(input.payload.imageValue.height);
 
-    _bytes.resize(w * h * 3);
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
 
-    for (auto y = 0; y < h; y++) {
-      for (auto x = 0; x < w; x++) {
-        const auto faddr = ((w * y) + x) * 4;
-        const auto taddr = ((w * y) + x) * 3;
-        for (auto z = 0; z < 3; z++) {
-          _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
+    _bytes.resize(w * h * 3 * pixsize);
+
+    if (pixsize == 1) {
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 4;
+          const auto taddr = ((w * y) + x) * 3;
+          for (auto z = 0; z < 3; z++) {
+            _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
+          }
+        }
+      }
+    } else if (pixsize == 2) {
+      const auto from =
+          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 4;
+          const auto taddr = ((w * y) + x) * 3;
+          for (auto z = 0; z < 3; z++) {
+            to[taddr + z] = from[faddr + z];
+          }
+        }
+      }
+    } else if (pixsize == 4) {
+      const auto from =
+          reinterpret_cast<float *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<float *>(_bytes[0]);
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 4;
+          const auto taddr = ((w * y) + x) * 3;
+          for (auto z = 0; z < 3; z++) {
+            to[taddr + z] = from[faddr + z];
+          }
         }
       }
     }
@@ -144,16 +219,54 @@ struct FillAlpha {
     int32_t w = int32_t(input.payload.imageValue.width);
     int32_t h = int32_t(input.payload.imageValue.height);
 
-    _bytes.resize(w * h * 4);
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
 
-    for (auto y = 0; y < h; y++) {
-      for (auto x = 0; x < w; x++) {
-        const auto faddr = ((w * y) + x) * 3;
-        const auto taddr = ((w * y) + x) * 4;
-        for (auto z = 0; z < 3; z++) {
-          _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
+    _bytes.resize(w * h * 4 * pixsize);
+
+    if (pixsize == 1) {
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 3;
+          const auto taddr = ((w * y) + x) * 4;
+          for (auto z = 0; z < 3; z++) {
+            _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
+          }
+          _bytes[taddr + 3] = 255;
         }
-        _bytes[taddr + 3] = 255;
+      }
+    } else if (pixsize == 2) {
+      const auto from =
+          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 3;
+          const auto taddr = ((w * y) + x) * 4;
+          for (auto z = 0; z < 3; z++) {
+            to[taddr + z] = from[faddr + z];
+          }
+          to[taddr + 3] = 65535;
+        }
+      }
+    } else if (pixsize == 4) {
+      const auto from =
+          reinterpret_cast<float *>(input.payload.imageValue.data);
+      auto to = reinterpret_cast<float *>(_bytes[0]);
+      for (auto y = 0; y < h; y++) {
+        for (auto x = 0; x < w; x++) {
+          const auto faddr = ((w * y) + x) * 3;
+          const auto taddr = ((w * y) + x) * 4;
+          for (auto z = 0; z < 3; z++) {
+            to[taddr + z] = from[faddr + z];
+          }
+          // according to
+          // https://www.harrisgeospatial.com/docs/Image_Types.html
+          to[taddr + 3] = 1038.0;
+        }
       }
     }
 
@@ -203,6 +316,17 @@ struct Resize {
 
     if (c != 4) {
       throw ActivationError("number of channels not supported, must be 4.");
+    }
+
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
+
+    if (pixsize != 1) {
+      throw ActivationError(
+          "number of bits per pixel not supported, must be 8.");
     }
 
     if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_BGRA) == 0) {

@@ -462,6 +462,7 @@ struct Texture2D : public BaseConsumer {
     _texture.width = 0;
     _texture.height = 0;
     _texture.channels = 0;
+    _texture.bpp = 1;
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
@@ -469,10 +470,17 @@ struct Texture2D : public BaseConsumer {
   static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    auto bpp = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      bpp = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      bpp = 4;
+
     // Upload a completely new image if sizes changed, also first activation!
     if (input.payload.imageValue.width != _texture.width ||
         input.payload.imageValue.height != _texture.height ||
-        input.payload.imageValue.channels != _texture.channels) {
+        input.payload.imageValue.channels != _texture.channels ||
+        bpp != _texture.bpp) {
       if (_texture.handle.idx != bgfx::kInvalidHandle) {
         bgfx::destroy(_texture.handle);
       }
@@ -480,39 +488,95 @@ struct Texture2D : public BaseConsumer {
       _texture.width = input.payload.imageValue.width;
       _texture.height = input.payload.imageValue.height;
       _texture.channels = input.payload.imageValue.channels;
+      _texture.bpp = bpp;
 
-      switch (_texture.channels) {
-      case 1:
-        _texture.handle = bgfx::createTexture2D(
-            _texture.width, _texture.height, false, 1, bgfx::TextureFormat::R8);
-        break;
-      case 2:
-        _texture.handle =
-            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
-                                  bgfx::TextureFormat::RG8);
-        break;
-      case 3:
-        _texture.handle =
-            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
-                                  bgfx::TextureFormat::RGB8);
-        break;
-      case 4:
-        _texture.handle =
-            bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
-                                  bgfx::TextureFormat::RGBA8);
-        break;
-      default:
-        cbassert(false);
-        break;
+      if (_texture.bpp == 1) {
+        switch (_texture.channels) {
+        case 1:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::R8);
+          break;
+        case 2:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RG8);
+          break;
+        case 3:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RGB8);
+          break;
+        case 4:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RGBA8);
+          break;
+        default:
+          cbassert(false);
+          break;
+        }
+      } else if (_texture.bpp == 2) {
+        switch (_texture.channels) {
+        case 1:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::R16U);
+          break;
+        case 2:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RG16U);
+          break;
+        case 3:
+          throw ActivationError("Format not supported, it seems bgfx has no "
+                                "RGB16, try using RGBA16 instead (FillAlpha).");
+          break;
+        case 4:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RGBA16U);
+          break;
+        default:
+          cbassert(false);
+          break;
+        }
+      } else if (_texture.bpp == 4) {
+        switch (_texture.channels) {
+        case 1:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::R32F);
+          break;
+        case 2:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RG32F);
+          break;
+        case 3:
+          throw ActivationError(
+              "Format not supported, it seems bgfx has no RGB32F, try using "
+              "RGBA32F instead (FillAlpha).");
+          break;
+        case 4:
+          _texture.handle =
+              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+                                    bgfx::TextureFormat::RGBA32F);
+          break;
+        default:
+          cbassert(false);
+          break;
+        }
       }
     }
 
     // we copy because bgfx is multithreaded
     // this just queues this texture basically
     // this copy is internally managed
-    auto mem = bgfx::copy(input.payload.imageValue.data,
-                          uint32_t(_texture.width) * uint32_t(_texture.height) *
-                              uint32_t(_texture.channels));
+    auto mem =
+        bgfx::copy(input.payload.imageValue.data,
+                   uint32_t(_texture.width) * uint32_t(_texture.height) *
+                       uint32_t(_texture.channels) * uint32_t(_texture.bpp));
 
     bgfx::updateTexture2D(_texture.handle, 0, 0, 0, 0, _texture.width,
                           _texture.height, mem);

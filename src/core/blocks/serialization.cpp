@@ -201,10 +201,43 @@ struct ReadFile : public FileBase {
 };
 
 struct LoadImage : public FileBase {
+  enum class BPP { u8, u16, f32 };
+  static inline EnumInfo<BPP> BPPEnum{"BPP", 'sink', 'ibpp'};
+  static inline Type BPPEnumInfo{
+      {CBType::Enum, {.enumeration = {'sink', 'ibpp'}}}};
+
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
+  static inline Parameters params{
+      FileBase::params,
+      {{"BPP",
+        "bits per pixel (HDR images loading and such!)",
+        {BPPEnumInfo}}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 1:
+      _bpp = BPP(value.payload.enumValue);
+      break;
+    default:
+      FileBase::setParam(index, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 1:
+      return Var::Enum(_bpp, 'sink', 'ibpp');
+    default:
+      return FileBase::getParam(index);
+    }
+  }
+
   CBVar _output{};
+  BPP _bpp{BPP::u8};
 
   void cleanup() {
     if (_output.valueType == Image && _output.payload.imageValue.data) {
@@ -228,14 +261,38 @@ struct LoadImage : public FileBase {
 
     _output.valueType = Image;
     int x, y, n;
-    _output.payload.imageValue.data =
-        stbi_load(filename.c_str(), &x, &y, &n, 0);
-    if (!_output.payload.imageValue.data) {
-      throw ActivationError("Failed to load image file");
+    if (_bpp == BPP::u8) {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
+    } else if (_bpp == BPP::u16) {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
+    } else if (_bpp == BPP::f32) {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
     }
     _output.payload.imageValue.width = uint16_t(x);
     _output.payload.imageValue.height = uint16_t(y);
     _output.payload.imageValue.channels = uint16_t(n);
+    switch (_bpp) {
+    case BPP::u16:
+      _output.payload.imageValue.flags = CBIMAGE_FLAGS_16BITS_INT;
+      break;
+    case BPP::f32:
+      _output.payload.imageValue.flags = CBIMAGE_FLAGS_32BITS_FLOAT;
+      break;
+    default:
+      break;
+    }
     return _output;
   }
 };
@@ -245,6 +302,16 @@ struct WritePNG : public FileBase {
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
+
+    if (pixsize != 1) {
+      throw ActivationError("Bits per pixel must be 8");
+    }
+
     std::string filename;
     if (!getFilename(context, filename, false)) {
       throw ActivationError("Path does not exist!");

@@ -1795,12 +1795,23 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     dst.payload.stringLen = uint32_t(srcSize);
   } break;
   case Image: {
+    auto spixsize = 1;
+    auto dpixsize = 1;
+    if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      spixsize = 2;
+    else if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      spixsize = 4;
+    if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      dpixsize = 2;
+    else if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      dpixsize = 4;
+
     size_t srcImgSize = src.payload.imageValue.height *
                         src.payload.imageValue.width *
-                        src.payload.imageValue.channels;
+                        src.payload.imageValue.channels * spixsize;
     size_t dstCapacity = dst.payload.imageValue.height *
                          dst.payload.imageValue.width *
-                         dst.payload.imageValue.channels;
+                         dst.payload.imageValue.channels * dpixsize;
     if (dst.valueType != Image || srcImgSize > dstCapacity) {
       destroyVar(dst);
       dst.valueType = Image;

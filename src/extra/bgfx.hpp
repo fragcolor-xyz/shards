@@ -31,5 +31,6 @@ struct Texture {
   uint16_t width = 0;
   uint16_t height = 0;
   uint8_t channels = 0;
+  int bpp = 1;
 };
 }; // namespace BGFX

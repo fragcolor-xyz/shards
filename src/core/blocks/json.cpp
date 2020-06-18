@@ -140,9 +140,14 @@ void to_json(json &j, const CBVar &var) {
   }
   case Image: {
     if (var.payload.imageValue.data) {
+      auto pixsize = 1;
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+        pixsize = 4;
       auto binsize = var.payload.imageValue.width *
                      var.payload.imageValue.height *
-                     var.payload.imageValue.channels;
+                     var.payload.imageValue.channels * pixsize;
       std::vector<uint8_t> buffer;
       buffer.resize(binsize);
       memcpy(&buffer[0], var.payload.imageValue.data, binsize);
@@ -150,6 +155,7 @@ void to_json(json &j, const CBVar &var) {
                {"width", var.payload.imageValue.width},
                {"height", var.payload.imageValue.height},
                {"channels", var.payload.imageValue.channels},
+               {"flags", var.payload.imageValue.flags},
                {"data", buffer}};
     } else {
       j = json{{"type", 0}, {"value", int(Continue)}};
@@ -380,9 +386,15 @@ void from_json(const json &j, CBVar &var) {
     var.payload.imageValue.width = j.at("width").get<int32_t>();
     var.payload.imageValue.height = j.at("height").get<int32_t>();
     var.payload.imageValue.channels = j.at("channels").get<int32_t>();
+    var.payload.imageValue.flags = j.at("flags").get<int32_t>();
+    auto pixsize = 1;
+    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      pixsize = 2;
+    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      pixsize = 4;
     auto binsize = var.payload.imageValue.width *
                    var.payload.imageValue.height *
-                   var.payload.imageValue.channels;
+                   var.payload.imageValue.channels * pixsize;
     var.payload.imageValue.data = new uint8_t[binsize];
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     memcpy(var.payload.imageValue.data, &buffer[0], binsize);
