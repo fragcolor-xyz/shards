@@ -460,7 +460,7 @@ class ChainProvider {
 public:
   static inline Type NoneType{{CBType::None}};
   static inline Type ProviderType{
-      {CBType::Object, {.object = {.vendorId = 'frag', .typeId = 'chnp'}}}};
+      {CBType::Object, {.object = {.vendorId = 'sink', .typeId = 'chnp'}}}};
   static inline Types ProviderOrNone{{ProviderType, NoneType}};
 
   ChainProvider() {
@@ -507,7 +507,7 @@ public:
   operator CBVar() {
     CBVar res{};
     res.valueType = Object;
-    res.payload.objectVendorId = 'frag';
+    res.payload.objectVendorId = 'sink';
     res.payload.objectTypeId = 'chnp';
     res.payload.objectValue = &_provider;
     return res;
