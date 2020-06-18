@@ -823,7 +823,8 @@ struct ToBytes {
     }
     case CBType::Image: {
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
       else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
                CBIMAGE_FLAGS_16BITS_INT)

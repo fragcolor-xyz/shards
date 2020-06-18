@@ -712,6 +712,11 @@
               (Log)))))
    (Log)
    (Assert.Is 634 true)
+   
+   ; utf8 testing
+   "在庫なし"
+   (Assert.Is "在庫なし" true)
+   (Log)
 
    (Const [[1 2 3] [2 3 4] [3 4 5]]) &> .nestedSeq
    (Reduce (Math.Add .$0))

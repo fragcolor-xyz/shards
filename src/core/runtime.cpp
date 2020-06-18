@@ -119,6 +119,11 @@ void registerCoreBlocks() {
 
   globalRegisterDone = true;
 
+// UTF8 on windows
+#ifdef _WIN32
+  SetConsoleOutputCP(CP_UTF8);
+#endif
+
   el::Configurations defaultConf;
   defaultConf.setToDefault();
   defaultConf.setGlobally(el::ConfigurationType::Format,
