@@ -1010,10 +1010,11 @@ struct Serialization {
       size_t currentSize = 0;
       if (recycle) {
         auto bpp = 1;
-        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+            CBIMAGE_FLAGS_16BITS_INT)
           bpp = 2;
         else if ((output.payload.imageValue.flags &
-                  CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+                  CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
           bpp = 4;
         currentSize = output.payload.imageValue.channels *
                       output.payload.imageValue.height *
@@ -1030,10 +1031,11 @@ struct Serialization {
            sizeof(output.payload.imageValue.height));
 
       auto pixsize = 1;
-      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
       else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               0)
+               CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
 
       size_t size = output.payload.imageValue.channels *
@@ -1299,10 +1301,11 @@ struct Serialization {
     }
     case CBType::Image: {
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
       else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               0)
+               CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
       write((const uint8_t *)&input.payload.imageValue.channels,
             sizeof(input.payload.imageValue.channels));

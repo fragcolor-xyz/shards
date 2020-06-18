@@ -1797,13 +1797,17 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Image: {
     auto spixsize = 1;
     auto dpixsize = 1;
-    if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       spixsize = 2;
-    else if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((src.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       spixsize = 4;
-    if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       dpixsize = 2;
-    else if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((dst.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       dpixsize = 4;
 
     size_t srcImgSize = src.payload.imageValue.height *

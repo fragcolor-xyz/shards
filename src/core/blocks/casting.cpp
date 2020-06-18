@@ -15,10 +15,11 @@ struct FromImage {
         throw ActivationError("Expected Image type.");
 
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
       else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               0)
+               CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
 
       const int w = int(input.payload.imageValue.width);
@@ -822,10 +823,10 @@ struct ToBytes {
     }
     case CBType::Image: {
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
       else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               0)
+               CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 4;
       auto size = input.payload.imageValue.width *
                   input.payload.imageValue.height *

@@ -290,13 +290,17 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
-    if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       apixsize = 2;
-    else if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       apixsize = 4;
-    if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       bpixsize = 2;
-    else if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       bpixsize = 4;
     return apixsize == bpixsize &&
            a.payload.imageValue.channels == b.payload.imageValue.channels &&
@@ -971,9 +975,11 @@ template <> struct hash<CBVar> {
     } break;
     case Image: {
       auto pixsize = 1;
-      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
       MAGIC_HASH(var.payload.imageValue.width);
       MAGIC_HASH(var.payload.imageValue.height);

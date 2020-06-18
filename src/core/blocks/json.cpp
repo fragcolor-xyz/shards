@@ -141,9 +141,11 @@ void to_json(json &j, const CBVar &var) {
   case Image: {
     if (var.payload.imageValue.data) {
       auto pixsize = 1;
-      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
       auto binsize = var.payload.imageValue.width *
                      var.payload.imageValue.height *
@@ -388,9 +390,11 @@ void from_json(const json &j, CBVar &var) {
     var.payload.imageValue.channels = j.at("channels").get<int32_t>();
     var.payload.imageValue.flags = j.at("flags").get<int32_t>();
     auto pixsize = 1;
-    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
     auto binsize = var.payload.imageValue.width *
                    var.payload.imageValue.height *
