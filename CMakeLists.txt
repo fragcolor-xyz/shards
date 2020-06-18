@@ -417,7 +417,6 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      ${CHAINBLOCKS_DIR}/deps/bimg/.build/osx64_clang/bin/libbimgRelease.a
       ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/build/libSDL2.a
       ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -liconv
@@ -443,7 +442,6 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      ${CMAKE_CURRENT_LIST_DIR}/deps/bimg/.build/linux64_gcc/bin/libbimgRelease.a
       ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -lSDL2
       -lX11
