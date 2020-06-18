@@ -263,9 +263,7 @@ struct FillAlpha {
           for (auto z = 0; z < 3; z++) {
             to[taddr + z] = from[faddr + z];
           }
-          // according to
-          // https://www.harrisgeospatial.com/docs/Image_Types.html
-          to[taddr + 3] = 1038.0;
+          to[taddr + 3] = 1.0;
         }
       }
     }
