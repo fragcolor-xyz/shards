@@ -287,14 +287,26 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case CBType::String:
     return a.payload.stringValue == b.payload.stringValue ||
            strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
-  case Image:
-    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
+  case Image: {
+    auto apixsize = 1;
+    auto bpixsize = 1;
+    if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      apixsize = 2;
+    else if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      apixsize = 4;
+    if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+      bpixsize = 2;
+    else if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+      bpixsize = 4;
+    return apixsize == bpixsize &&
+           a.payload.imageValue.channels == b.payload.imageValue.channels &&
            a.payload.imageValue.width == b.payload.imageValue.width &&
            a.payload.imageValue.height == b.payload.imageValue.height &&
            (a.payload.imageValue.data == b.payload.imageValue.data ||
             (memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
                     a.payload.imageValue.channels * a.payload.imageValue.width *
-                        a.payload.imageValue.height) == 0));
+                        a.payload.imageValue.height * apixsize) == 0));
+  }
   case Seq:
     return _seqEq(a, b);
   case Table:
@@ -474,13 +486,6 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
-  case Image:
-    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
-           a.payload.imageValue.width == b.payload.imageValue.width &&
-           a.payload.imageValue.height == b.payload.imageValue.height &&
-           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                  a.payload.imageValue.channels * a.payload.imageValue.width *
-                      a.payload.imageValue.height) < 0;
   case Seq:
     return _seqLess(a, b);
   case Table:
@@ -494,6 +499,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            a.innerType == b.innerType &&
            memcmp(a.payload.arrayValue, b.payload.arrayValue,
                   a.payload.arrayLen * sizeof(CBVarPayload)) < 0;
+  case Image:
   case Chain:
   case Block:
   case Object:
@@ -665,13 +671,6 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case ContextVar:
   case CBType::String:
     return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
-  case Image:
-    return a.payload.imageValue.channels == b.payload.imageValue.channels &&
-           a.payload.imageValue.width == b.payload.imageValue.width &&
-           a.payload.imageValue.height == b.payload.imageValue.height &&
-           memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
-                  a.payload.imageValue.channels * a.payload.imageValue.width *
-                      a.payload.imageValue.height) <= 0;
   case Seq:
     return _seqLessEq(a, b);
   case Table:
@@ -685,6 +684,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.innerType == b.innerType &&
            memcmp(a.payload.arrayValue, b.payload.arrayValue,
                   a.payload.arrayLen * sizeof(CBVarPayload)) <= 0;
+  case Image:
   case Chain:
   case Block:
   case Object:
@@ -970,13 +970,18 @@ template <> struct hash<CBVar> {
       res = res ^ hash<std::string_view>()(buf);
     } break;
     case Image: {
+      auto pixsize = 1;
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+        pixsize = 4;
       MAGIC_HASH(var.payload.imageValue.width);
       MAGIC_HASH(var.payload.imageValue.height);
       MAGIC_HASH(var.payload.imageValue.channels);
       MAGIC_HASH(var.payload.imageValue.flags);
       auto len = size_t(var.payload.imageValue.width) *
                  size_t(var.payload.imageValue.height) *
-                 size_t(var.payload.imageValue.channels);
+                 size_t(var.payload.imageValue.channels) * pixsize;
       std::string_view buf((char *)var.payload.imageValue.data, len);
       res = res ^ hash<std::string_view>()(buf);
     } break;

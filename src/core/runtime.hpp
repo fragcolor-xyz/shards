@@ -1009,9 +1009,15 @@ struct Serialization {
     case CBType::Image: {
       size_t currentSize = 0;
       if (recycle) {
+        auto bpp = 1;
+        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+          bpp = 2;
+        else if ((output.payload.imageValue.flags &
+                  CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+          bpp = 4;
         currentSize = output.payload.imageValue.channels *
                       output.payload.imageValue.height *
-                      output.payload.imageValue.width;
+                      output.payload.imageValue.width * bpp;
       }
 
       read((uint8_t *)&output.payload.imageValue.channels,
@@ -1023,9 +1029,16 @@ struct Serialization {
       read((uint8_t *)&output.payload.imageValue.height,
            sizeof(output.payload.imageValue.height));
 
+      auto pixsize = 1;
+      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               0)
+        pixsize = 4;
+
       size_t size = output.payload.imageValue.channels *
                     output.payload.imageValue.height *
-                    output.payload.imageValue.width;
+                    output.payload.imageValue.width * pixsize;
 
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
@@ -1285,6 +1298,12 @@ struct Serialization {
       break;
     }
     case CBType::Image: {
+      auto pixsize = 1;
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+        pixsize = 2;
+      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               0)
+        pixsize = 4;
       write((const uint8_t *)&input.payload.imageValue.channels,
             sizeof(input.payload.imageValue.channels));
       total += sizeof(input.payload.imageValue.channels);
@@ -1299,7 +1318,7 @@ struct Serialization {
       total += sizeof(input.payload.imageValue.height);
       auto size = input.payload.imageValue.channels *
                   input.payload.imageValue.height *
-                  input.payload.imageValue.width;
+                  input.payload.imageValue.width * pixsize;
       write((const uint8_t *)input.payload.imageValue.data, size);
       total += size;
       break;

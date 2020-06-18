@@ -256,9 +256,7 @@ public:
 
 template <class CB_CORE> struct TOwnedVar : public CBVar {
   TOwnedVar() : CBVar() {}
-  TOwnedVar(TOwnedVar &&source) {
-    *this = source;
-  }
+  TOwnedVar(TOwnedVar &&source) { *this = source; }
   TOwnedVar(const TOwnedVar &source) : CBVar() {
     CB_CORE::cloneVar(*this, source);
   }

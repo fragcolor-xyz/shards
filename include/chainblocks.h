@@ -303,10 +303,11 @@ struct CBColor {
   uint8_t a;
 };
 
-// None = RGBA
 #define CBIMAGE_FLAGS_NONE (0)
 #define CBIMAGE_FLAGS_BGRA (1 << 0)
 #define CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA (1 << 1)
+#define CBIMAGE_FLAGS_16BITS_INT (1 << 2)
+#define CBIMAGE_FLAGS_32BITS_FLOAT (1 << 3)
 
 struct CBImage {
   uint16_t width;
