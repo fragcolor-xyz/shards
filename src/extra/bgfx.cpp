@@ -471,9 +471,11 @@ struct Texture2D : public BaseConsumer {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto bpp = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       bpp = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       bpp = 4;
 
     // Upload a completely new image if sizes changed, also first activation!

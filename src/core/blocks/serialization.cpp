@@ -291,6 +291,7 @@ struct LoadImage : public FileBase {
       _output.payload.imageValue.flags = CBIMAGE_FLAGS_32BITS_FLOAT;
       break;
     default:
+      _output.payload.imageValue.flags = 0;
       break;
     }
     return _output;
@@ -303,9 +304,11 @@ struct WritePNG : public FileBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     if (pixsize != 1) {

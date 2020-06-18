@@ -55,9 +55,11 @@ struct Convolve {
     int32_t c = int32_t(input.payload.imageValue.channels);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(_kernel * _kernel * c * pixsize);
@@ -151,9 +153,11 @@ struct StripAlpha {
     int32_t h = int32_t(input.payload.imageValue.height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(w * h * 3 * pixsize);
@@ -220,9 +224,11 @@ struct FillAlpha {
     int32_t h = int32_t(input.payload.imageValue.height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(w * h * 4 * pixsize);
@@ -317,9 +323,11 @@ struct Resize {
     }
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == 0)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == 0)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     if (pixsize != 1) {
@@ -329,14 +337,16 @@ struct Resize {
 
     if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_BGRA) == 0) {
       if ((input.payload.imageValue.flags &
-           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == 0) {
+           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
+          CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
         pixType = SMOL_PIXEL_BGRA8_PREMULTIPLIED;
       } else {
         pixType = SMOL_PIXEL_BGRA8_UNASSOCIATED;
       }
     } else {
       if ((input.payload.imageValue.flags &
-           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == 0) {
+           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
+          CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
         pixType = SMOL_PIXEL_RGBA8_PREMULTIPLIED;
       } else {
         pixType = SMOL_PIXEL_RGBA8_UNASSOCIATED;
