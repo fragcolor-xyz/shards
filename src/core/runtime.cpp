@@ -85,20 +85,17 @@ void loadExternalBlocks(std::string from) {
   if (!fs::exists(pluginPath))
     return;
 
-  auto pluginPathStr = pluginPath.string();
   for (auto &p : fs::recursive_directory_iterator(pluginPath)) {
     if (p.is_regular_file()) {
       auto ext = p.path().extension();
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
-        auto dllstr = p.path().string();
+        auto dllstr = p.path().wstring();
         LOG(INFO) << "Loading external dll: " << filename
                   << " path: " << dllstr;
 #if _WIN32
-        // add this directory also in the search path, in order to allow
-        // externals to load dlls too
-        SetDllDirectoryA(pluginPathStr.c_str());
-        auto handle = LoadLibraryA(dllstr.c_str());
+        auto handle = LoadLibraryExW(dllstr.c_str(), NULL,
+                                     LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!handle) {
           LOG(ERROR) << "LoadLibrary failed, error: " << GetLastError();
         }
@@ -122,6 +119,18 @@ void registerCoreBlocks() {
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
+  if (Globals::ExePath.size() > 0) {
+    auto pluginPath = std::filesystem::absolute(Globals::ExePath) / "cblocks";
+    auto pluginPathStr = pluginPath.wstring();
+    LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
+    AddDllDirectory(pluginPathStr.c_str());
+  }
+  if (Globals::RootPath.size() > 0) {
+    auto pluginPath = std::filesystem::absolute(Globals::RootPath) / "cblocks";
+    auto pluginPathStr = pluginPath.wstring();
+    LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
+    AddDllDirectory(pluginPathStr.c_str());
+  }
 #endif
 
   el::Configurations defaultConf;
