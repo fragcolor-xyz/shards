@@ -621,7 +621,16 @@ struct ForEachBlock {
   CBVar getParam(int index) { return _blocks; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+    auto dataCopy = data;
+    if (data.inputType.basicType != Seq) {
+      throw ComposeError("Expected a sequence as input.");
+    }
+    if (data.inputType.seqTypes.len == 1) {
+      dataCopy.inputType = data.inputType.seqTypes.elements[0];
+    } else {
+      dataCopy.inputType = CoreInfo::AnyType;
+    }
+    _blocks.compose(dataCopy);
     return data.inputType;
   }
 

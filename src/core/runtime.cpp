@@ -982,8 +982,16 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   if (!inputMatches) {
+    auto foundString = type2Name(ctx.previousOutputType.basicType);
+    std::string expectedString;
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      expectedString.append(" ");
+      expectedString.append(type2Name(inputInfo.basicType));
+    }
     std::string err("Could not find a matching input type, block: " +
-                    std::string(ctx.bottom->name(ctx.bottom)));
+                    std::string(ctx.bottom->name(ctx.bottom)) + " expected:" +
+                    expectedString + " found instead: " + foundString);
     ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
   }
 
