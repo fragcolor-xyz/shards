@@ -49,6 +49,3 @@
 [submodule "deps/pdqsort"]
 	path = deps/pdqsort
 	url = https://github.com/chainblocks/pdqsort.git
-[submodule "deps/smolscale"]
-	path = deps/smolscale
-	url = https://github.com/chainblocks/smolscale.git
