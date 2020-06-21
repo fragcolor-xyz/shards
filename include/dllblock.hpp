@@ -177,6 +177,8 @@ public:
 
   static void log(const char *msg) { sCore._core.log(msg); }
 
+  static const char *rootPath() { return sCore._core.getRootPath(); }
+
 private:
   static inline CoreLoader sCore{};
 };
