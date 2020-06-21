@@ -270,7 +270,6 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   -I${CHAINBLOCKS_DIR}/deps/pdqsort
-  -I${CHAINBLOCKS_DIR}/deps/smolscale
   )
 
 ### setup clang format
@@ -356,7 +355,6 @@ include_directories(
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/deps/pdqsort
-  ${CHAINBLOCKS_DIR}/deps/smolscale
   ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
   )
 
@@ -517,7 +515,6 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
     ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
-    ${CHAINBLOCKS_DIR}/deps/smolscale/smolscale.c
     )
 else()
   set(

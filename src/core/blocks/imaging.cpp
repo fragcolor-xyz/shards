@@ -2,7 +2,9 @@
 #define IMAGING_H
 
 #include "shared.hpp"
-#include "smolscale.h"
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize.h>
 
 namespace chainblocks {
 namespace Imaging {
@@ -312,15 +314,9 @@ struct Resize {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    uint32_t w = uint32_t(input.payload.imageValue.width);
-    uint32_t h = uint32_t(input.payload.imageValue.height);
-    uint32_t c = uint32_t(input.payload.imageValue.channels);
-
-    SmolPixelType pixType = SMOL_PIXEL_MAX;
-
-    if (c != 4) {
-      throw ActivationError("number of channels not supported, must be 4.");
-    }
+    int w = uint32_t(input.payload.imageValue.width);
+    int h = uint32_t(input.payload.imageValue.height);
+    int c = uint32_t(input.payload.imageValue.channels);
 
     auto pixsize = 1;
     if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
@@ -330,37 +326,41 @@ struct Resize {
              CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
-    if (pixsize != 1) {
-      throw ActivationError(
-          "number of bits per pixel not supported, must be 8.");
-    }
+    _bytes.resize(_width * _height * c * pixsize);
 
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_BGRA) == 0) {
-      if ((input.payload.imageValue.flags &
-           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
-          CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
-        pixType = SMOL_PIXEL_BGRA8_PREMULTIPLIED;
-      } else {
-        pixType = SMOL_PIXEL_BGRA8_UNASSOCIATED;
+    int flags = 0;
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
+        CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+      flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
+
+    if (pixsize == 1) {
+      auto res = stbir_resize_uint8_generic(
+          input.payload.imageValue.data, w, h, w * c, &_bytes.front(), _width,
+          _height, _width * c, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+          STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB,
+          nullptr);
+      if (res == 0) {
+        throw ActivationError("Failed to resize image!");
       }
-    } else {
-      if ((input.payload.imageValue.flags &
-           CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
-          CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
-        pixType = SMOL_PIXEL_RGBA8_PREMULTIPLIED;
-      } else {
-        pixType = SMOL_PIXEL_RGBA8_UNASSOCIATED;
+    } else if (pixsize == 2) {
+      auto res = stbir_resize_uint16_generic(
+          (uint16_t *)input.payload.imageValue.data, w, h, w * c * 2,
+          (uint16_t *)&_bytes.front(), _width, _height, _width * c * 2, c,
+          c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
+          STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
+      if (res == 0) {
+        throw ActivationError("Failed to resize image!");
+      }
+    } else if (pixsize == 4) {
+      auto res = stbir_resize_float_generic(
+          (float *)input.payload.imageValue.data, w, h, w * c * 4,
+          (float *)&_bytes.front(), _width, _height, _width * c * 4, c,
+          c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
+          STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR, nullptr);
+      if (res == 0) {
+        throw ActivationError("Failed to resize image!");
       }
     }
-
-    if (pixType == SMOL_PIXEL_MAX) {
-      throw ActivationError("Invalid pixel format.");
-    }
-
-    smol_scale_simple(pixType, (const uint32_t *)input.payload.imageValue.data,
-                      w, h, w * c, pixType, (uint32_t *)&_bytes.front(),
-                      uint32_t(_width), uint32_t(_height),
-                      uint32_t(_width) * c);
 
     return Var(&_bytes.front(), uint16_t(_width), uint16_t(_height),
                input.payload.imageValue.channels,
@@ -369,8 +369,8 @@ struct Resize {
 
 private:
   std::vector<uint8_t> _bytes;
-  int32_t _width{32};
-  int32_t _height{32};
+  int _width{32};
+  int _height{32};
 };
 
 void registerBlocks() {
