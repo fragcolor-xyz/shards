@@ -90,11 +90,11 @@ void loadExternalBlocks(std::string from) {
       auto ext = p.path().extension();
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
-        auto dllstr = p.path().wstring();
+        auto dllstr = p.path().string();
         LOG(INFO) << "Loading external dll: " << filename
                   << " path: " << dllstr;
 #if _WIN32
-        auto handle = LoadLibraryExW(dllstr.c_str(), NULL,
+        auto handle = LoadLibraryExA(dllstr.c_str(), NULL,
                                      LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!handle) {
           LOG(ERROR) << "LoadLibrary failed, error: " << GetLastError();
