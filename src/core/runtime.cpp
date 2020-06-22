@@ -668,6 +668,11 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 throwException(const char *msg) {
   throw CBException(msg);
 }
+
+[[noreturn]] __attribute__((noreturn)) static void
+throwActivationError(const char *msg) {
+  throw ActivationError(msg);
+}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
@@ -727,6 +732,8 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result.throwException = &chainblocks::throwException;
+
+  result.throwActivationError = &chainblocks::throwActivationError;
 
   result.suspend = [](CBContext *context, double seconds) {
     return chainblocks::suspend(context, seconds);

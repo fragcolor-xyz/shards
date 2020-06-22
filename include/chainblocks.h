@@ -825,8 +825,6 @@ typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 typedef void(__cdecl *CBThrowException)(const char *errorText)
     __attribute__((noreturn));
 
-typedef void(__cdecl *CBThrowExceptionSimple)() __attribute__((noreturn));
-
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
 typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                               double seconds);
@@ -954,6 +952,8 @@ struct CBCore {
   // before calling any of those make sure to release
   // and call destructors manually!
   CBThrowException throwException;
+  // this error is bypassable using (Maybe) block
+  CBThrowException throwActivationError;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
 

@@ -106,6 +106,10 @@ public:
     sCore._core.throwException(errorText);
   }
 
+  [[noreturn]] static void throwActivationError(const char *errorText) {
+    sCore._core.throwActivationError(errorText);
+  }
+
   static CBChainState suspend(CBContext *context, double seconds) {
     return sCore._core.suspend(context, seconds);
   }
