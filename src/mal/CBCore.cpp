@@ -1382,6 +1382,13 @@ BUILTIN("sleep") {
   return mal::nilValue();
 }
 
+BUILTIN("OverrideRootPath") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  chainblocks::Globals::RootPath = value->ref();
+  return mal::nilValue();
+}
+
 BUILTIN("Path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
