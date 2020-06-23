@@ -17,7 +17,7 @@ String PRINT(malValuePtr ast);
 static void installFunctions(malEnvPtr env);
 //  Installs functions, macros and constants implemented in MAL.
 
-static void makeArgv(malEnvPtr env, int argc, char* argv[]);
+static void makeArgv(malEnvPtr env, int argc, const char* argv[]);
 static String safeRep(const String& input, malEnvPtr env, bool *failed = nullptr);
 static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
@@ -41,7 +41,7 @@ malValuePtr maleval(const char* str, malEnvPtr env) {
     return EVAL(READ(str), env);
 }
 
-int malmain(int argc, char* argv[])
+int malmain(int argc, const char* argv[])
 {
     malEnvPtr replEnv(new malEnv());
 
@@ -90,7 +90,7 @@ int malmain(int argc, char* argv[])
 
 #ifndef NO_MAL_MAIN
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
     return malmain(argc, argv);
 }
@@ -119,7 +119,7 @@ static String safeRep(const String& input, malEnvPtr env, bool *failed)
     };
 }
 
-static void makeArgv(malEnvPtr env, int argc, char* argv[])
+static void makeArgv(malEnvPtr env, int argc, const char* argv[])
 {
     malValueVec* args = new malValueVec();
     for (int i = 0; i < argc; i++) {
