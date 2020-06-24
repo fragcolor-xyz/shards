@@ -865,8 +865,8 @@ template <> struct hash<CBVar> {
 
     static CBCore core{};
     if (!core.registerBlock) {
-      auto res = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core);
-      assert(res);
+      if (!chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core))
+        throw std::runtime_error("chainblocksInterface failed!");
     }
 
     auto res = hash<int>()(int(var.valueType));
