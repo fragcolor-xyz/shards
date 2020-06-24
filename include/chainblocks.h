@@ -1011,7 +1011,8 @@ struct CBCore {
   CBSetRootPath setRootPath;
 };
 
-typedef struct CBCore(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
+typedef CBBool(__cdecl *CBChainblocksInterface)(uint32_t abi_version,
+                                                struct CBCore *core);
 
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
@@ -1034,7 +1035,8 @@ typedef struct CBCore(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #if defined(__cplusplus)
 extern "C" {
 #endif
-EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version);
+EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
+                                             struct CBCore *core);
 #if defined(__cplusplus)
 };
 #endif

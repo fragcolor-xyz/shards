@@ -862,7 +862,11 @@ template <> struct hash<CBVar> {
     using std::hash;
     using std::size_t;
     using std::string;
-    const static CBCore core = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
+
+    static CBCore core{};
+    if (!core.registerBlock) {
+      assert(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core));
+    }
 
     auto res = hash<int>()(int(var.valueType));
     switch (var.valueType) {

@@ -680,95 +680,97 @@ void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
 #endif
 
 extern "C" {
-EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
+EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
+                                             CBCore *result) {
   // Load everything we know if we did not yet!
   chainblocks::registerCoreBlocks();
 
-  CBCore result{};
-
   if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
     LOG(ERROR) << "A plugin requested an invalid ABI version.";
-    return result;
+    return false;
   }
 
-  result.registerBlock = [](const char *fullName,
-                            CBBlockConstructor constructor) {
+  result->registerBlock = [](const char *fullName,
+                             CBBlockConstructor constructor) {
+    LOG(INFO) << "Registering external block: " << fullName;
     chainblocks::registerBlock(fullName, constructor);
   };
 
-  result.registerObjectType = [](int32_t vendorId, int32_t typeId,
-                                 CBObjectInfo info) {
+  result->registerObjectType = [](int32_t vendorId, int32_t typeId,
+                                  CBObjectInfo info) {
     chainblocks::registerObjectType(vendorId, typeId, info);
   };
 
-  result.registerEnumType = [](int32_t vendorId, int32_t typeId,
-                               CBEnumInfo info) {
+  result->registerEnumType = [](int32_t vendorId, int32_t typeId,
+                                CBEnumInfo info) {
     chainblocks::registerEnumType(vendorId, typeId, info);
   };
 
-  result.registerRunLoopCallback = [](const char *eventName,
-                                      CBCallback callback) {
+  result->registerRunLoopCallback = [](const char *eventName,
+                                       CBCallback callback) {
     chainblocks::registerRunLoopCallback(eventName, callback);
   };
 
-  result.registerExitCallback = [](const char *eventName, CBCallback callback) {
+  result->registerExitCallback = [](const char *eventName,
+                                    CBCallback callback) {
     chainblocks::registerExitCallback(eventName, callback);
   };
 
-  result.unregisterRunLoopCallback = [](const char *eventName) {
+  result->unregisterRunLoopCallback = [](const char *eventName) {
     chainblocks::unregisterRunLoopCallback(eventName);
   };
 
-  result.unregisterExitCallback = [](const char *eventName) {
+  result->unregisterExitCallback = [](const char *eventName) {
     chainblocks::unregisterExitCallback(eventName);
   };
 
-  result.referenceVariable = [](CBContext *context, const char *name) {
+  result->referenceVariable = [](CBContext *context, const char *name) {
     return chainblocks::referenceVariable(context, name);
   };
 
-  result.releaseVariable = [](CBVar *variable) {
+  result->releaseVariable = [](CBVar *variable) {
     return chainblocks::releaseVariable(variable);
   };
 
-  result.throwException = &chainblocks::throwException;
+  result->throwException = &chainblocks::throwException;
 
-  result.throwActivationError = &chainblocks::throwActivationError;
+  result->throwActivationError = &chainblocks::throwActivationError;
 
-  result.suspend = [](CBContext *context, double seconds) {
+  result->suspend = [](CBContext *context, double seconds) {
     return chainblocks::suspend(context, seconds);
   };
 
-  result.cloneVar = [](CBVar *dst, const CBVar *src) {
+  result->cloneVar = [](CBVar *dst, const CBVar *src) {
     chainblocks::cloneVar(*dst, *src);
   };
 
-  result.destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
+  result->destroyVar = [](CBVar *var) { chainblocks::destroyVar(*var); };
 
 #define CB_ARRAY_IMPL(_arr_, _val_, _name_)                                    \
-  result._name_##Free = [](_arr_ *seq) { chainblocks::arrayFree(*seq); };      \
+  result->_name_##Free = [](_arr_ *seq) { chainblocks::arrayFree(*seq); };     \
                                                                                \
-  result._name_##Resize = [](_arr_ *seq, uint32_t size) {                      \
+  result->_name_##Resize = [](_arr_ *seq, uint32_t size) {                     \
     chainblocks::arrayResize(*seq, size);                                      \
   };                                                                           \
                                                                                \
-  result._name_##Push = [](_arr_ *seq, const _val_ *value) {                   \
+  result->_name_##Push = [](_arr_ *seq, const _val_ *value) {                  \
     chainblocks::arrayPush(*seq, *value);                                      \
   };                                                                           \
                                                                                \
-  result._name_##Insert = [](_arr_ *seq, uint32_t index, const _val_ *value) { \
+  result->_name_##Insert = [](_arr_ *seq, uint32_t index,                      \
+                              const _val_ *value) {                            \
     chainblocks::arrayInsert(*seq, index, *value);                             \
   };                                                                           \
                                                                                \
-  result._name_##Pop = [](_arr_ *seq) {                                        \
+  result->_name_##Pop = [](_arr_ *seq) {                                       \
     return chainblocks::arrayPop<_arr_, _val_>(*seq);                          \
   };                                                                           \
                                                                                \
-  result._name_##FastDelete = [](_arr_ *seq, uint32_t index) {                 \
+  result->_name_##FastDelete = [](_arr_ *seq, uint32_t index) {                \
     chainblocks::arrayDelFast(*seq, index);                                    \
   };                                                                           \
                                                                                \
-  result._name_##SlowDelete = [](_arr_ *seq, uint32_t index) {                 \
+  result->_name_##SlowDelete = [](_arr_ *seq, uint32_t index) {                \
     chainblocks::arrayDel(*seq, index);                                        \
   }
 
@@ -779,39 +781,39 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
 
-  result.tableNew = []() {
+  result->tableNew = []() {
     CBTable res;
     res.api = &chainblocks::Globals::TableInterface;
     res.opaque = new chainblocks::CBMap();
     return res;
   };
 
-  result.validateChain = [](CBChain *chain, CBValidationCallback callback,
-                            void *userData, CBInstanceData data) {
+  result->validateChain = [](CBChain *chain, CBValidationCallback callback,
+                             void *userData, CBInstanceData data) {
     return composeChain(chain, callback, userData, data);
   };
 
-  result.runChain = [](CBChain *chain, CBContext *context, CBVar input) {
+  result->runChain = [](CBChain *chain, CBContext *context, CBVar input) {
     return chainblocks::runSubChain(chain, context, input);
   };
 
-  result.validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
-                             void *userData, CBInstanceData data) {
+  result->validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
+                              void *userData, CBInstanceData data) {
     return composeChain(blocks, callback, userData, data);
   };
 
-  result.validateSetParam = [](CBlock *block, int index, CBVar param,
-                               CBValidationCallback callback, void *userData) {
+  result->validateSetParam = [](CBlock *block, int index, CBVar param,
+                                CBValidationCallback callback, void *userData) {
     return validateSetParam(block, index, param, callback, userData);
   };
 
-  result.runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
-                        CBVar *output, const CBBool handleReturn) {
+  result->runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
+                         CBVar *output, const CBBool handleReturn) {
     return chainblocks::activateBlocks(blocks, context, input, *output,
                                        handleReturn);
   };
 
-  result.getChainInfo = [](CBChainRef chainref) {
+  result->getChainInfo = [](CBChainRef chainref) {
     auto sc = CBChain::sharedFromRef(chainref);
     auto chain = sc.get();
     CBChainInfo info{chain->name.c_str(),
@@ -822,14 +824,14 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return info;
   };
 
-  result.log = [](const char *msg) { LOG(INFO) << msg; };
+  result->log = [](const char *msg) { LOG(INFO) << msg; };
 
-  result.createBlock = [](const char *name) {
+  result->createBlock = [](const char *name) {
     return chainblocks::createBlock(name);
   };
 
-  result.createChain = [](const char *name, CBlocks blocks, bool looped,
-                          bool unsafe) {
+  result->createChain = [](const char *name, CBlocks blocks, bool looped,
+                           bool unsafe) {
     auto chain = CBChain::make(name);
     chain->looped = looped;
     chain->unsafe = unsafe;
@@ -839,23 +841,23 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
     return chain->newRef();
   };
 
-  result.destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
+  result->destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
 
-  result.createNode = []() {
+  result->createNode = []() {
     return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
   };
 
-  result.destroyNode = [](CBNodeRef node) {
+  result->destroyNode = [](CBNodeRef node) {
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
     delete snode;
   };
 
-  result.schedule = [](CBNodeRef node, CBChainRef chain) {
+  result->schedule = [](CBNodeRef node, CBChainRef chain) {
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
     (*snode)->schedule(CBChain::sharedFromRef(chain));
   };
 
-  result.tick = [](CBNodeRef node) {
+  result->tick = [](CBNodeRef node) {
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
     (*snode)->tick();
     if ((*snode)->empty())
@@ -864,17 +866,17 @@ EXPORTED struct CBCore __cdecl chainblocksInterface(uint32_t abi_version) {
       return true;
   };
 
-  result.sleep = [](double seconds, bool runCallbacks) {
+  result->sleep = [](double seconds, bool runCallbacks) {
     chainblocks::sleep(seconds, runCallbacks);
   };
 
-  result.getRootPath = []() { return chainblocks::Globals::RootPath.c_str(); };
+  result->getRootPath = []() { return chainblocks::Globals::RootPath.c_str(); };
 
-  result.setRootPath = [](const char *p) {
+  result->setRootPath = [](const char *p) {
     chainblocks::Globals::RootPath = p;
   };
 
-  return result;
+  return true;
 }
 };
 
