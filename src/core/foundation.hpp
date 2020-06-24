@@ -29,6 +29,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <list>
 #include <set>
 #include <type_traits>
+#include <unordered_set>
 #include <variant>
 
 #include "blockwrapper.hpp"

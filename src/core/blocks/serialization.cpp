@@ -273,7 +273,7 @@ struct LoadImage : public FileBase {
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
-    } else if (_bpp == BPP::f32) {
+    } else {
       _output.payload.imageValue.data =
           (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
       if (!_output.payload.imageValue.data) {

@@ -48,7 +48,7 @@ int malmain(int argc, const char* argv[])
     auto exePath = std::filesystem::path(argv[0]).parent_path().string();
     auto scriptPath = exePath;
     if (argc > 1) {
-        scriptPath = std::filesystem::absolute(std::filesystem::path(argv[1])).parent_path().string();
+        scriptPath = std::filesystem::absolute(std::filesystem::absolute(std::filesystem::path(argv[1])).parent_path()).string();
     }
 
     malinit(replEnv, exePath.c_str(), scriptPath.c_str());
