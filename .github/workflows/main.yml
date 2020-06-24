@@ -61,7 +61,7 @@ jobs:
       with:
         msystem: MINGW64
         release: false
-    - run: msys2do ./build-win.sh Release
+    - run: msys2 ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win64
@@ -77,7 +77,7 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-    - run: msys2do ./build-win32.sh Release
+    - run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
@@ -93,7 +93,7 @@ jobs:
       with:
         msystem: MINGW64
         release: false
-    - run: msys2do ./build-win.sh Debug
+    - run: msys2 ./build-win.sh Debug
 
   ciWindowsDbg32:
     runs-on: windows-latest
@@ -105,7 +105,7 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-    - run: msys2do ./build-win32.sh Debug
+    - run: msys2 ./build-win32.sh Debug
 
   ciMacDbg:
     runs-on: macos-latest
