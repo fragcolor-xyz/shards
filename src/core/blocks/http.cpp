@@ -112,7 +112,8 @@ struct Client {
 
   void connect(CBContext *context, AsyncOp<InternalCore> &op) {
     try {
-      op.sidechain(Tasks, [&]() {
+      auto &tasks = _taskManager();
+      op.sidechain(tasks, [&]() {
         if (ssl) {
           // Set SNI Hostname (many hosts need this to handshake
           // successfully)
@@ -176,11 +177,7 @@ struct Client {
   }
 
 protected:
-#if 1
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
-#else
-  static inline tf::Executor Tasks{1};
-#endif
+  Shared<tf::Executor> _taskManager;
 
   ParamVar port{Var("443")};
   ParamVar host{Var("www.example.com")};
@@ -213,7 +210,8 @@ struct Get final : public Client {
   void request(CBContext *context, AsyncOp<InternalCore> &op,
                const CBVar &input) override {
     try {
-      op.sidechain(Tasks, [&]() {
+      auto &tasks = _taskManager();
+      op.sidechain(tasks, [&]() {
         vars.clear();
         vars.append(target.get().payload.stringValue);
         if (input.valueType == Table) {
@@ -259,7 +257,8 @@ struct Post final : public Client {
   void request(CBContext *context, AsyncOp<InternalCore> &op,
                const CBVar &input) override {
     try {
-      op.sidechain(Tasks, [&]() {
+      auto &tasks = _taskManager();
+      op.sidechain(tasks, [&]() {
         vars.clear();
         if (input.valueType == Table) {
           ForEach(input.payload.tableValue, [&](auto key, auto &value) {

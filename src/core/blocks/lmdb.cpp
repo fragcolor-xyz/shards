@@ -20,11 +20,7 @@ struct Env {
     }                                                                          \
   }
 
-  void init() {
-    if (_init)
-      return;
-    _init = true;
-
+  Env() {
     CHECKED(mdb_env_create(&_env));
 
     CHECKED(mdb_env_set_maxreaders(_env, maxReaders));
@@ -47,15 +43,19 @@ struct Env {
 
     // we sync every global "sleep" only!
     registerRunLoopCallback("cb.lmdb.sync", []() {
-      static const Env &env{Singleton<Env>::value};
-      CHECKED(mdb_env_sync(env._env, 1));
+      Shared<Env> _sharedEnv;
+      CHECKED(mdb_env_sync(_sharedEnv()._env, 1));
     });
+  }
+
+  ~Env() {
+    unregisterRunLoopCallback("cb.lmdb.sync");
+    mdb_env_close(_env);
   }
 
   operator MDB_env *() { return _env; }
 
 private:
-  bool _init = false;
   MDB_env *_env;
 };
 
@@ -64,9 +64,7 @@ struct Base {
 
   CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  Env &env{Singleton<Env>::value};
-
-  void setup() { env.init(); };
+  Shared<Env> _sharedEnv;
 
   CBParametersInfo parameters() { return _params; }
 
@@ -109,7 +107,7 @@ struct Get : public Base {
       mdb_txn_reset(_txn);
       CHECKED(mdb_txn_renew(_txn));
     } else {
-      CHECKED(mdb_txn_begin(env, nullptr, MDB_RDONLY, &_txn));
+      CHECKED(mdb_txn_begin(_sharedEnv(), nullptr, MDB_RDONLY, &_txn));
     }
 
     MDB_dbi dbi;
@@ -169,7 +167,7 @@ template <unsigned int PUT_FLAGS> struct PutBase : public Base {
     const CBVar &cbkey = _key.get();
 
     MDB_txn *txn;
-    CHECKED(mdb_txn_begin(env, nullptr, 0, &txn));
+    CHECKED(mdb_txn_begin(_sharedEnv(), nullptr, 0, &txn));
 
     MDB_dbi dbi;
     CHECKED(mdb_dbi_open(txn, nullptr, 0, &dbi));

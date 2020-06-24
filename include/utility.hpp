@@ -8,6 +8,7 @@
 #include <future>
 #include <magic_enum.hpp>
 #include <memory>
+#include <mutex>
 #include <nameof.hpp>
 #include <string>
 #include <vector>
@@ -39,7 +40,10 @@ public:
 
   T &operator()() {
     if (!_tp) {
+      // create
       _tp = new T();
+      // lock now since _ptrs is shared
+      std::unique_lock<std::mutex> lock(_m);
       // store thread local location
       _ptrs.push_back(&_tp);
     }
@@ -48,9 +52,15 @@ public:
   }
 
 private:
-  void addRef() { _refs++; }
+  void addRef() {
+    std::unique_lock<std::mutex> lock(_m);
+
+    _refs++;
+  }
 
   void decRef() {
+    std::unique_lock<std::mutex> lock(_m);
+
     _refs--;
 
     if (_refs == 0) {
@@ -64,12 +74,49 @@ private:
     }
   }
 
+  static inline std::mutex _m;
   static inline uint64_t _refs = 0;
   static inline thread_local T *_tp = nullptr;
   static inline std::vector<T **> _ptrs;
 };
 
-template <typename T> struct Singleton { static inline T value{}; };
+template <typename T> class Shared {
+public:
+  Shared() { addRef(); }
+
+  ~Shared() { decRef(); }
+
+  T &operator()() { return *_tp; }
+
+private:
+  void addRef() {
+    std::unique_lock<std::mutex> lock(_m);
+
+    if (_refs == 0) {
+      assert(!_tp);
+      _tp = new T();
+    }
+
+    _refs++;
+  }
+
+  void decRef() {
+    std::unique_lock<std::mutex> lock(_m);
+
+    _refs--;
+
+    if (_refs == 0) {
+      // delete the internal object
+      delete _tp;
+      // null the thread local
+      _tp = nullptr;
+    }
+  }
+
+  static inline std::mutex _m;
+  static inline uint64_t _refs = 0;
+  static inline T *_tp = nullptr;
+};
 
 template <class CB_CORE> class TParamVar {
 private:

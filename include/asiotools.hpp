@@ -72,8 +72,10 @@ public:
       _io_context.stop();
     });
 
-    // wait thread exit
-    _io_thread.join();
+    if (_io_thread.joinable()) {
+      // wait thread exit
+      _io_thread.join();
+    }
   }
 
   boost::asio::io_context &operator()() { return _io_context; }

@@ -460,9 +460,10 @@ struct Await : public BaseSubFlow {
 #ifndef __EMSCRIPTEN__
       // avoid nesting, if we are alrady inside a worker
       // run normally
-      if (Tasks.this_worker_id() == -1) {
+      auto &tasks = _taskManager();
+      if (tasks.this_worker_id() == -1) {
         AsyncOp<InternalCore> op(context);
-        op.sidechain(Tasks,
+        op.sidechain(tasks,
                      [&]() { _blocks.activate(context, input, output); });
       } else
 #endif
@@ -475,7 +476,7 @@ struct Await : public BaseSubFlow {
 
 private:
 #ifndef __EMSCRIPTEN__
-  tf::Executor &Tasks{Singleton<tf::Executor>::value};
+  Shared<tf::Executor> _taskManager;
 #endif
 };
 
