@@ -858,14 +858,15 @@ template <> struct hash<CBExposedTypeInfo> {
         hash<std::remove_const<                                                \
             std::remove_reference<decltype(__val__)>::type>::type>()(__val__)
 template <> struct hash<CBVar> {
-  static inline CBCore core{};
   std::size_t operator()(const CBVar &var) const {
     using std::hash;
     using std::size_t;
     using std::string;
 
+    static CBCore core{};
     if (!core.registerBlock) {
-      assert(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core));
+      auto res = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core);
+      assert(res);
     }
 
     auto res = hash<int>()(int(var.valueType));
