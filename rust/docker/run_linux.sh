@@ -33,10 +33,10 @@ ninja cbl && ninja cb_shared
 # ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/kdtree.clj
 
-mkdir -p rust/target/debug
-cp libcb_shared.so rust/target/debug/
+mkdir -p ../rust/target/debug
+cp libcb_shared.so ../rust/target/debug/
 
-cd rust
+cd ../rust
 
 cargo test
 # cargo test --features "blocks"
