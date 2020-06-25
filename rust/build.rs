@@ -1,14 +1,18 @@
 extern crate bindgen;
+use std::env::var;
 
 fn main() {
-    println!("cargo:rustc-link-search=../chainblocks/build");
+    let chainblocks_dir = var("CHAINBLOCKS_DIR").unwrap();
+
+    println!("cargo:rustc-link-search={}/build", chainblocks_dir);
     
     // Tell cargo to invalidate the built crate whenever the wrapper changes
-    println!("cargo:rerun-if-changed=../chainblocks/include/chainblocks.h");
+    println!("cargo:rerun-if-changed={}/include/chainblocks.h", chainblocks_dir);
+
+    let header_path = chainblocks_dir + "/include/chainblocks.h";
 
     let bindings = bindgen::Builder::default()
-        .header("../chainblocks/include/chainblocks.h")
-        .clang_arg("-I../chainblocks/deps/stb")
+        .header(header_path)
         .clang_arg("-DCB_NO_ANON")
         .clang_arg("-DCB_USE_ENUMS")
         .derive_default(true)
