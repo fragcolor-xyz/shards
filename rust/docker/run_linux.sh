@@ -3,6 +3,8 @@
 # fail on errors
 set -e
 
+export CHAINBLOCKS_DIR=`pwd`
+
 # snappy
 # cd deps/snappy
 # mkdir build
