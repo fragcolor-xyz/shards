@@ -3,16 +3,6 @@
 # fail on errors
 set -e
 
-# pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
-
-cd chainblocks
-
-# # bimg
-# cd deps/bimg/
-# export MINGW=/d/a/_temp/msys/msys64/mingw64 # chainblocks/setup-msys2, needed by bimg
-# make mingw-gcc-release64 > /dev/null 2>&1
-# cd ../../
-
 # snappy
 # cd deps/snappy
 # mkdir build
@@ -43,10 +33,10 @@ ninja cbl && ninja cb_shared
 # ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/kdtree.clj
 
-mkdir -p ../../chainblocks-rs/target/debug
-cp libcb_shared.so ../../chainblocks-rs/target/debug/
+mkdir -p rust/target/debug
+cp libcb_shared.so rust/target/debug/
 
-cd ../../chainblocks-rs/
+cd rust
 
 cargo test
 # cargo test --features "blocks"
