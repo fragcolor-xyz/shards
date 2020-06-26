@@ -374,13 +374,176 @@ if(NOT BUILD_CORE_ONLY)
     )
 
   if(WIN32)
-    add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
+    add_compile_definitions(
+      BGFX_CONFIG_RENDERER_DIRECT3D11 
+      SDL_VIDEO_OPENGL_EGL=0 
+      SDL_RENDER_DISABLED=1
+      )
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/mingw
-      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/include/SDL2
+      ${CHAINBLOCKS_DIR}/deps/SDL/include
       )
-    set(PLATFORM_SOURCES 
+    set(PLATFORM_SOURCES
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_atomic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_spinlock.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/directsound/SDL_directsound.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/disk/SDL_diskaudio.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/dummy/SDL_dummyaudio.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audio.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiocvt.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiodev.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiotypecvt.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_mixer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_wave.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/winmm/SDL_winmm.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi_win32.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_windows.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_xinput.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/cpuinfo/SDL_cpuinfo.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/dynapi/SDL_dynapi.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_clipboardevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_displayevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_dropevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_events.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_gesture.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_keyboard.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_mouse.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_quit.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_touch.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_windowevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/file/SDL_rwops.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/windows/SDL_sysfilesystem.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/dummy/SDL_syshaptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/SDL_haptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_dinputhaptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_windowshaptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_xinputhaptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/windows/hid.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/dummy/SDL_sysjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapijoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_gamecube.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_ps4.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_rumble.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_switch.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360w.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xboxone.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/SDL_gamecontroller.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/SDL_joystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/virtual/SDL_virtualjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_dinputjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_mmjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_rawinputjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_windowsjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_windows_gaming_input.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_xinputjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_atan2.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_exp.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_fmod.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_log.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_log10.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_pow.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_rem_pio2.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_sqrt.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_cos.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_rem_pio2.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_sin.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_tan.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_atan.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_copysign.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_cos.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_fabs.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_floor.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_scalbn.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_sin.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_tan.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/windows/SDL_sysloadso.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/SDL_locale.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/windows/SDL_syslocale.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/SDL_power.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/windows/SDL_syspower.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d11/SDL_shaders_d3d11.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_render_d3d.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d11/SDL_render_d3d11.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_shaders_d3d.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_render_gl.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_shaders_gl.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_d3dmath.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_render.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_yuv_sw.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendfillrect.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendline.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendpoint.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_drawline.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_drawpoint.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_render_sw.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_rotate.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_assert.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_dataqueue.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_error.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_hints.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_log.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/dummy/SDL_dummysensor.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/SDL_sensor.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/windows/SDL_windowssensor.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_getenv.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_iconv.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_malloc.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_qsort.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_stdlib.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_string.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_strtokr.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/SDL_syscond.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/SDL_thread.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_sysmutex.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_syssem.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systhread.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systls.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/SDL_timer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/windows/SDL_systimer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullframebuffer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullvideo.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_0.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_1.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_A.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_auto.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_copy.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_N.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_slow.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_bmp.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_clipboard.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_egl.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_fillrect.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_pixels.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_rect.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_RLEaccel.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_shape.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_stretch.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_surface.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_video.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_vulkan_utils.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_yuv.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsclipboard.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsevents.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsframebuffer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowskeyboard.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmessagebox.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmodes.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmouse.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsopengl.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsopengles.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsshape.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsvideo.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsvulkan.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowswindow.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/yuv2rgb/yuv_rgb.c
+      
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+      
       ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
       )
 
@@ -391,14 +554,12 @@ if(NOT BUILD_CORE_ONLY)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
       # 64 bits
       set(CBLP_PLATFORM_LIBS
-        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/x86_64-w64-mingw32/lib/libSDL2.a
 	      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	      )
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
       # 32 bits
       set(CBLP_PLATFORM_LIBS
-        ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/i686-w64-mingw32/lib/libSDL2.a
 	      ${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	      )
@@ -407,7 +568,7 @@ if(NOT BUILD_CORE_ONLY)
     add_compile_definitions(BGFX_CONFIG_RENDERER_METAL)
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/osx
-      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/include
+      ${CHAINBLOCKS_DIR}/deps/SDL/include
       )
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
@@ -415,7 +576,6 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      ${CHAINBLOCKS_DIR}/external/SDL2-2.0.10/build/libSDL2.a
       ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -liconv
       "-framework Foundation"
