@@ -395,13 +395,13 @@ struct Var : public CBVar {
   explicit Var(const char *src, size_t len = 0) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src;
-    payload.stringLen = len;
+    payload.stringLen = uint32_t(len);
   }
 
   explicit Var(const std::string &src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src.c_str();
-    payload.stringLen = src.length();
+    payload.stringLen = uint32_t(src.length());
   }
 
   explicit Var(CBTable &src) : CBVar() {
@@ -416,14 +416,14 @@ struct Var : public CBVar {
 
   explicit Var(std::vector<CBVar> &vectorRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.len = vectorRef.size();
+    payload.seqValue.len = uint32_t(vectorRef.size());
     payload.seqValue.elements =
         payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }
 
   explicit Var(std::vector<Var> &vectorRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.len = vectorRef.size();
+    payload.seqValue.len = uint32_t(vectorRef.size());
     payload.seqValue.elements =
         payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
   }

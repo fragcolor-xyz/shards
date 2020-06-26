@@ -222,7 +222,7 @@ struct Read {
     if (_binary) {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
-      return Var(&_buffer.front(), _buffer.size());
+      return Var(&_buffer.front(), uint32_t(_buffer.size()));
     } else {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
