@@ -397,7 +397,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/dummy/*.c
     ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/*.c
     ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/*.c
     ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/*.c
     ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/dummy/*.c
     ${CHAINBLOCKS_DIR}/deps/SDL/src/video/*.c
@@ -478,6 +477,7 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_render_gl.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_shaders_gl.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/windows/SDL_windowssensor.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/SDL_syscond.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_sysmutex.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_syssem.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systhread.c
@@ -521,19 +521,56 @@ if(NOT BUILD_CORE_ONLY)
 	      )
     endif()
   elseif(APPLE)
-    add_compile_definitions(BGFX_CONFIG_RENDERER_METAL)
+    file(GLOB SDL-extra-sources 
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.m
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
+      )
+    add_compile_definitions(
+      BGFX_CONFIG_RENDERER_METAL
+      SDL_VIDEO_DRIVER_COCOA=1
+      SDL_VIDEO_OPENGL_EGL=0
+      )
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/osx
       ${CHAINBLOCKS_DIR}/deps/SDL/include
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/hidapi
       )
     set(PLATFORM_SOURCES
+      ${SDL-sources}
+      ${SDL-extra-sources}
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_atomic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_spinlock.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/dynapi/SDL_dynapi.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/unix/SDL_systimer.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/disk/SDL_diskaudio.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/mac/hid.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapijoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_gamecube.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_ps4.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_rumble.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_switch.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360w.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xboxone.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/virtual/SDL_virtualjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/darwin/SDL_sysjoystick.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/darwin/SDL_syshaptic.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/yuv2rgb/yuv_rgb.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/macosx/SDL_syspower.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/cocoa/SDL_sysfilesystem.m
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/dlopen/SDL_sysloadso.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/SDL_locale.c
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/macosx/SDL_syslocale.m
+      ${CHAINBLOCKS_DIR}/deps/SDL/src/file/cocoa/SDL_rwopsbundlesupport.m
+
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
       ${CHAINBLOCKS_DIR}/src/extra/bgfx.mm
       )
 
     set(CBLP_PLATFORM_LIBS
       ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
-      -liconv
       "-framework Foundation"
       "-framework Cocoa"
       "-framework CoreAudio"
