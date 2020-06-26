@@ -377,6 +377,35 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/snappy/build32
     )
 
+  set(SDL-source-patterns
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/cpuinfo/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/events/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/file/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/power/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/render/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/dummy/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/video/*.c
+    ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/*.c
+  )
+
+  file(GLOB SDL-sources ${SDL-source-patterns})
+
   if(WIN32)
     add_compile_definitions(
       BGFX_CONFIG_RENDERER_DIRECT3D11 
@@ -387,43 +416,22 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/include
       )
     set(PLATFORM_SOURCES
+      ${SDL-sources}
       ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_atomic.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_spinlock.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/directsound/SDL_directsound.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/disk/SDL_diskaudio.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/dummy/SDL_dummyaudio.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audio.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiocvt.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiodev.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_audiotypecvt.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_mixer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/SDL_wave.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/winmm/SDL_winmm.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi_win32.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_windows.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_xinput.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/cpuinfo/SDL_cpuinfo.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/dynapi/SDL_dynapi.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_clipboardevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_displayevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_dropevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_events.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_gesture.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_keyboard.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_mouse.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_quit.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_touch.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/events/SDL_windowevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/file/SDL_rwops.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/windows/SDL_sysfilesystem.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/dummy/SDL_syshaptic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/SDL_haptic.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_dinputhaptic.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_windowshaptic.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_xinputhaptic.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/windows/hid.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/dummy/SDL_sysjoystick.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapijoystick.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_gamecube.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_ps4.c
@@ -432,8 +440,6 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360w.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xboxone.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/SDL_gamecontroller.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/SDL_joystick.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/virtual/SDL_virtualjoystick.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_dinputjoystick.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_mmjoystick.c
@@ -464,7 +470,6 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/windows/SDL_sysloadso.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/SDL_locale.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/windows/SDL_syslocale.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/SDL_power.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/power/windows/SDL_syspower.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d11/SDL_shaders_d3d11.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_render_d3d.c
@@ -472,64 +477,12 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_shaders_d3d.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_render_gl.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_shaders_gl.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_d3dmath.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_render.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/SDL_yuv_sw.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendfillrect.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendline.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_blendpoint.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_drawline.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_drawpoint.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_render_sw.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/SDL_rotate.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_assert.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_dataqueue.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_error.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_hints.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/SDL_log.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/dummy/SDL_dummysensor.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/SDL_sensor.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/windows/SDL_windowssensor.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_getenv.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_iconv.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_malloc.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_qsort.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_stdlib.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_string.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/SDL_strtokr.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/SDL_syscond.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/SDL_thread.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_sysmutex.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_syssem.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systhread.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systls.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/SDL_timer.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/windows/SDL_systimer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullframebuffer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/SDL_nullvideo.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_0.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_1.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_A.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_auto.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_copy.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_N.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_blit_slow.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_bmp.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_clipboard.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_egl.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_fillrect.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_pixels.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_rect.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_RLEaccel.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_shape.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_stretch.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_surface.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_video.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_vulkan_utils.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/SDL_yuv.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsclipboard.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsevents.c
       ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsframebuffer.c
@@ -599,6 +552,8 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
       )
     set(PLATFORM_SOURCES
+      
+
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
       )
 
@@ -737,4 +692,3 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
-
