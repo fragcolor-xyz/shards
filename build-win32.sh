@@ -13,13 +13,6 @@ cmake -G Ninja ..
 ninja
 cd ../../../
 
-# SDL
-mkdir external
-cd external
-wget -O sdl.tar.gz https://www.libsdl.org/release/SDL2-devel-2.0.10-mingw.tar.gz
-tar xzf sdl.tar.gz
-cd ../
-
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..
