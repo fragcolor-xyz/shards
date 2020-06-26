@@ -359,7 +359,11 @@ include_directories(
   )
 
 if(NOT BUILD_CORE_ONLY)
-  add_compile_definitions(CB_WITH_EXTRAS BIMG_DECODE_ENABLE=0)
+  add_compile_definitions(
+    CB_WITH_EXTRAS 
+    BIMG_DECODE_ENABLE=0
+    SDL_RENDER_DISABLED=1
+    )
 
   include_directories(
     ${CHAINBLOCKS_DIR}/deps/bx/include
@@ -377,7 +381,6 @@ if(NOT BUILD_CORE_ONLY)
     add_compile_definitions(
       BGFX_CONFIG_RENDERER_DIRECT3D11 
       SDL_VIDEO_OPENGL_EGL=0 
-      SDL_RENDER_DISABLED=1
       )
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/mingw
