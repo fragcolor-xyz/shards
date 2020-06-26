@@ -203,8 +203,13 @@ struct MainWindow : public BaseWindow {
 
       bgfx::Init initInfo{};
 #ifdef __APPLE__
+#ifdef SDL_VIDEO_DRIVER_UIKIT
+      auto wnd = winInfo.info.uikit.window;
+      _sysWnd = cbSetupMetalLayer(wnd);
+#else
       auto wnd = winInfo.info.cocoa.window;
       _sysWnd = cbSetupMetalLayer(wnd);
+#endif
 #elif defined(_WIN32)
       _sysWnd = winInfo.info.win.window;
 #elif defined(__linux__)
