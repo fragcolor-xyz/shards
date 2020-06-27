@@ -4,6 +4,7 @@
 
 project("chainblocks")
 cmake_minimum_required(VERSION 3.14)
+include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -583,24 +584,33 @@ if(NOT BUILD_CORE_ONLY)
       )
   elseif(LINUX)
     add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
+
+    ExternalProject_Add(sdl_a
+      GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
+      GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libsdl.a
+      )
+
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/sdl_a/include/SDL2)
+
+    add_library(libsdl STATIC IMPORTED GLOBAL)
+    add_dependencies(libsdl sdl_a)
+    set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
+
     include_directories(
-      /usr/include/SDL2
       ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
       )
     set(PLATFORM_SOURCES
-      
-
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
       )
 
     set(CBLP_PLATFORM_LIBS
-      -lSDL2
       -lX11
       -lGL
       )
   endif()
-
-  include(ExternalProject)
   
   ExternalProject_Add(snappy_a
     GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
@@ -717,6 +727,13 @@ if(NOT BUILD_CORE_ONLY)
   target_link_libraries(cb_static libsnappy)
   add_dependencies(cb_shared snappy_a)
   target_link_libraries(cb_shared libsnappy)
+
+  if(LINUX)
+    add_dependencies(cb_static sdl_a)
+    target_link_libraries(cb_static libsdl)
+    add_dependencies(cb_shared sdl_a)
+    target_link_libraries(cb_shared libsdl)
+  endif()
 endif()
 
 ### mal
