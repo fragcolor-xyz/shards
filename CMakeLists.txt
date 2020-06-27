@@ -523,9 +523,15 @@ if(NOT BUILD_CORE_ONLY)
       )
     add_compile_definitions(
       BGFX_CONFIG_RENDERER_METAL
-      SDL_VIDEO_DRIVER_COCOA=1
       SDL_VIDEO_OPENGL_EGL=0
       )
+
+    if(IOS)
+      add_compile_definitions(SDL_VIDEO_DRIVER_UIKIT=1)
+    else()
+      add_compile_definitions(SDL_VIDEO_DRIVER_COCOA=1)
+    endif()
+
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/osx
       ${CHAINBLOCKS_DIR}/deps/SDL/include
