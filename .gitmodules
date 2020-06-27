@@ -31,9 +31,6 @@
 [submodule "boost-context"]
 	path = deps/boost-context
 	url = https://github.com/chainblocks/context.git
-[submodule "snappy"]
-	path = deps/snappy
-	url = https://github.com/chainblocks/snappy.git
 [submodule "cpp-taskflow"]
 	path = deps/cpp-taskflow
 	url = https://github.com/chainblocks/cpp-taskflow.git
