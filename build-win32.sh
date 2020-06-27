@@ -5,14 +5,6 @@ set -e
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget mingw-w64-i686-python
 
-# snappy
-cd deps/snappy
-mkdir build32
-cd build32
-cmake -G Ninja ..
-ninja
-cd ../../../
-
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..

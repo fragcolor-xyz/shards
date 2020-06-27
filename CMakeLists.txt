@@ -258,7 +258,6 @@ set(
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/deps/replxx/include
-  -I${CHAINBLOCKS_DIR}/deps/snappy
   -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   -I${CHAINBLOCKS_DIR}/deps/stb
@@ -341,7 +340,6 @@ endif()
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/replxx/include
-  ${CHAINBLOCKS_DIR}/deps/snappy
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   ${CHAINBLOCKS_DIR}/deps/stb
@@ -373,8 +371,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/imgui_club/imgui_memory_editor
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
-    ${CHAINBLOCKS_DIR}/deps/snappy/build
-    ${CHAINBLOCKS_DIR}/deps/snappy/build32
     )
 
   set(SDL-source-patterns
@@ -510,13 +506,11 @@ if(NOT BUILD_CORE_ONLY)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
       # 64 bits
       set(CBLP_PLATFORM_LIBS
-	      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	      )
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
       # 32 bits
       set(CBLP_PLATFORM_LIBS
-	      ${CHAINBLOCKS_DIR}/deps/snappy/build32/libsnappy.a
         ${CBLP_PLATFORM_LIBS}
 	      )
     endif()
@@ -570,7 +564,6 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       "-framework Foundation"
       "-framework Cocoa"
       "-framework CoreAudio"
@@ -595,12 +588,27 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      ${CHAINBLOCKS_DIR}/deps/snappy/build/libsnappy.a
       -lSDL2
       -lX11
       -lGL
       )
   endif()
+
+  include(ExternalProject)
+  
+  ExternalProject_Add(snappy_a
+    GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+    GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
+    )
+
+  include_directories(${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
+
+  add_library(libsnappy STATIC IMPORTED GLOBAL)
+  add_dependencies(libsnappy snappy_a)
+  set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
 
   set(CB_EXTRAS
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
@@ -694,10 +702,16 @@ add_library(
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-add_dependencies(cb_shared format)
 target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 ###
 ###
+
+if(NOT BUILD_CORE_ONLY)
+  add_dependencies(cb_static snappy_a)
+  target_link_libraries(cb_static libsnappy)
+  add_dependencies(cb_shared snappy_a)
+  target_link_libraries(cb_shared libsnappy)
+endif()
 
 ### mal
 add_executable(
