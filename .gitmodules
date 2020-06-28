@@ -49,3 +49,6 @@
 [submodule "deps/SDL"]
 	path = deps/SDL
 	url = https://github.com/chainblocks/SDL.git
+[submodule "deps/NumCpp"]
+	path = deps/NumCpp
+	url = https://github.com/chainblocks/NumCpp.git
