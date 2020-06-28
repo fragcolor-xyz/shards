@@ -402,100 +402,33 @@ if(NOT BUILD_CORE_ONLY)
   file(GLOB SDL-sources ${SDL-source-patterns})
 
   if(WIN32)
-    add_compile_definitions(
-      BGFX_CONFIG_RENDERER_DIRECT3D11 
-      SDL_VIDEO_OPENGL_EGL=0 
-      )
+    set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2-static.a)
+  else()
+    set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
+  endif()
+
+  ExternalProject_Add(sdl_a
+    GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
+    GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+    BUILD_BYPRODUCTS ${libsdlfile}
+  )
+
+  add_library(libsdl STATIC IMPORTED GLOBAL)
+  set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${libsdlfile})
+  add_dependencies(libsdl sdl_a)
+
+  if(WIN32)
+    add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
+
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/mingw
-      ${CHAINBLOCKS_DIR}/deps/SDL/include
+      ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/include/SDL2
       )
+
     set(PLATFORM_SOURCES
-      ${SDL-sources}
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_atomic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_spinlock.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/directsound/SDL_directsound.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/disk/SDL_diskaudio.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/winmm/SDL_winmm.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/wasapi/SDL_wasapi_win32.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_windows.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/core/windows/SDL_xinput.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/dynapi/SDL_dynapi.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/windows/SDL_sysfilesystem.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_dinputhaptic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_windowshaptic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/windows/SDL_xinputhaptic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/windows/hid.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapijoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_gamecube.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_ps4.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_rumble.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_switch.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360w.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xboxone.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/virtual/SDL_virtualjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_dinputjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_mmjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_rawinputjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_windowsjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_windows_gaming_input.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/windows/SDL_xinputjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_atan2.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_exp.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_fmod.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_log.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_log10.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_pow.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_rem_pio2.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/e_sqrt.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_cos.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_rem_pio2.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_sin.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/k_tan.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_atan.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_copysign.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_cos.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_fabs.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_floor.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_scalbn.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_sin.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/libm/s_tan.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/windows/SDL_sysloadso.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/SDL_locale.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/windows/SDL_syslocale.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/windows/SDL_syspower.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d11/SDL_shaders_d3d11.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_render_d3d.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d11/SDL_render_d3d11.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/direct3d/SDL_shaders_d3d.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_render_gl.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/render/opengl/SDL_shaders_gl.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/windows/SDL_windowssensor.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/generic/SDL_syscond.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_sysmutex.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_syssem.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systhread.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/windows/SDL_systls.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/windows/SDL_systimer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsclipboard.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsevents.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsframebuffer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowskeyboard.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmessagebox.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmodes.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsmouse.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsopengl.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsopengles.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsshape.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsvideo.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowsvulkan.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/windows/SDL_windowswindow.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/yuv2rgb/yuv_rgb.c
-      
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
-      
       ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
       )
 
@@ -515,10 +448,7 @@ if(NOT BUILD_CORE_ONLY)
 	      )
     endif()
   elseif(APPLE)  
-    add_compile_definitions(
-      BGFX_CONFIG_RENDERER_METAL
-      SDL_VIDEO_OPENGL_EGL=0
-      )
+    add_compile_definitions(BGFX_CONFIG_RENDERER_METAL SDL_VIDEO_OPENGL_EGL=0)
 
     if(IOS)
       file(GLOB SDL-extra-sources 
@@ -616,23 +546,11 @@ if(NOT BUILD_CORE_ONLY)
   elseif(LINUX)
     add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
 
-    ExternalProject_Add(sdl_a
-      GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
-      GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
-      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libsdl.a
-      )
-
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/sdl_a/include/SDL2)
-
-    add_library(libsdl STATIC IMPORTED GLOBAL)
-    add_dependencies(libsdl sdl_a)
-    set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
-
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
+      ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/include/SDL2
       )
+      
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
       )
@@ -729,7 +647,7 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS
 ###
 
 if(NOT BUILD_CORE_ONLY)
-  if(LINUX)
+  if(LINUX OR WIN32)
     add_dependencies(cb_static sdl_a)
     target_link_libraries(cb_static libsdl)
     add_dependencies(cb_shared sdl_a)
