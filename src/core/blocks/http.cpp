@@ -1,3 +1,4 @@
+#ifndef CB_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -308,3 +309,10 @@ void registerBlocks() {
 }
 } // namespace Http
 } // namespace chainblocks
+#else
+namespace chainblocks {
+namespace Http {
+void registerBlocks() {}
+} // namespace Http
+} // namespace chainblocks
+#endif

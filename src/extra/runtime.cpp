@@ -18,16 +18,11 @@ namespace ImGui {
 extern void registerImGuiBlocks();
 }
 
-namespace Snappy {
-extern void registerBlocks();
-}
-
 void cbInitExtras() {
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
-  chainblocks::Snappy::registerBlocks();
 }
 }; // namespace chainblocks

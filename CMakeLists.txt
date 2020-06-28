@@ -240,7 +240,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/desktop.hpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.capture.win.hpp
-  ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
@@ -515,21 +514,29 @@ if(NOT BUILD_CORE_ONLY)
         ${CBLP_PLATFORM_LIBS}
 	      )
     endif()
-  elseif(APPLE)
-    file(GLOB SDL-extra-sources 
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.m
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
-      )
+  elseif(APPLE)  
     add_compile_definitions(
       BGFX_CONFIG_RENDERER_METAL
       SDL_VIDEO_OPENGL_EGL=0
       )
 
     if(IOS)
-      add_compile_definitions(SDL_VIDEO_DRIVER_UIKIT=1)
+      file(GLOB SDL-extra-sources 
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/uikit/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/power/uikit/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/coremotion/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/iphoneos/*.m
+        )
+      add_compile_definitions(SDL_VIDEO_DRIVER_UIKIT=1 CB_NO_HTTP_BLOCKS=1 SDL_MAIN_HANDLED=1)
     else()
+      file(GLOB SDL-extra-sources 
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.c
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
+        ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
+        )
       add_compile_definitions(SDL_VIDEO_DRIVER_COCOA=1)
     endif()
 
@@ -538,6 +545,7 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/include
       ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/hidapi
       )
+
     set(PLATFORM_SOURCES
       ${SDL-sources}
       ${SDL-extra-sources}
@@ -570,18 +578,41 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/src/extra/bgfx.mm
       )
 
+    if(IOS)
+      set(PLATFORM_SOURCES 
+        ${PLATFORM_SOURCES}
+        ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
+        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
+        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
+      )
+    endif()
+
     set(CBLP_PLATFORM_LIBS
       "-framework Foundation"
-      "-framework Cocoa"
       "-framework CoreAudio"
       "-framework AudioToolbox"
       "-framework CoreVideo"
-      "-framework ForceFeedback"
       "-framework IOKit"
-      "-framework Carbon"
       "-framework QuartzCore"
       "-framework Metal"
       )
+    
+    if(IOS)
+      set(CBLP_PLATFORM_LIBS
+          ${CBLP_PLATFORM_LIBS}
+          "-framework AVFoundation"
+          "-framework GameController"
+          "-framework CoreMotion" 
+          "-framework CoreGraphics"     
+          "-framework UIKit")
+    else()
+       set(CBLP_PLATFORM_LIBS
+          ${CBLP_PLATFORM_LIBS}
+          "-framework Cocoa"
+          "-framework Carbon"
+          "-framework ForceFeedback")
+    endif()
   elseif(LINUX)
     add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
 
@@ -611,26 +642,11 @@ if(NOT BUILD_CORE_ONLY)
       -lGL
       )
   endif()
-  
-  ExternalProject_Add(snappy_a
-    GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
-    GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
-    )
-
-  include_directories(${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
-
-  add_library(libsnappy STATIC IMPORTED GLOBAL)
-  add_dependencies(libsnappy snappy_a)
-  set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
 
   set(CB_EXTRAS
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
-    ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image_gnf.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
@@ -639,16 +655,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${PLATFORM_SOURCES}
-    )
-endif()
-
-if(IOS)
-  set(CB_EXTRAS
-    ${CB_EXTRAS}
-    ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
-    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
-    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
-    ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
     )
 endif()
 
@@ -723,11 +729,6 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS
 ###
 
 if(NOT BUILD_CORE_ONLY)
-  add_dependencies(cb_static snappy_a)
-  target_link_libraries(cb_static libsnappy)
-  add_dependencies(cb_shared snappy_a)
-  target_link_libraries(cb_shared libsnappy)
-
   if(LINUX)
     add_dependencies(cb_static sdl_a)
     target_link_libraries(cb_static libsdl)
