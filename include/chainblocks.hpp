@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace chainblocks {
@@ -440,6 +441,79 @@ struct Var : public CBVar {
     payload.seqValue.len = N;
   }
 };
+
+// used to explicitly specialize, hinting compiler
+// mostly used internally for math blocks
+
+#define CB_PAYLOAD_MATH_OPS(CBPAYLOAD_TYPE, __item__)                          \
+  CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
+  inline CBPAYLOAD_TYPE operator+(const CBPAYLOAD_TYPE &b) const {             \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ + b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  inline CBPAYLOAD_TYPE operator-(const CBPAYLOAD_TYPE &b) const {             \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ - b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  inline CBPAYLOAD_TYPE operator*(const CBPAYLOAD_TYPE &b) const {             \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ * b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  inline CBPAYLOAD_TYPE operator/(const CBPAYLOAD_TYPE &b) const {             \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ / b.__item__;                                      \
+    return res;                                                                \
+  }
+
+#define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
+  CBPAYLOAD_TYPE(int i) {                                                      \
+    using t = decltype(__item__);                                              \
+    __item__ = t(i);                                                           \
+  }                                                                            \
+  inline bool operator<=(const CBPAYLOAD_TYPE &b) const {                      \
+    return __item__ <= b.__item__;                                             \
+  }
+
+struct IntVarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(IntVarPayload, intValue);
+  CB_PAYLOAD_MATH_OPS_SIMPLE(IntVarPayload, intValue);
+};
+struct Int2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int2VarPayload, int2Value);
+};
+struct Int3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int3VarPayload, int3Value);
+};
+struct Int4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int4VarPayload, int4Value);
+};
+struct Int8VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int8VarPayload, int8Value);
+};
+struct Int16VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int16VarPayload, int16Value);
+};
+struct FloatVarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(FloatVarPayload, floatValue);
+  CB_PAYLOAD_MATH_OPS_SIMPLE(FloatVarPayload, floatValue);
+};
+struct Float2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float2VarPayload, float2Value);
+};
+struct Float3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float3VarPayload, float3Value);
+};
+struct Float4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
+};
+
+using VarPayload =
+    std::variant<IntVarPayload, Int2VarPayload, Int3VarPayload, Int4VarPayload,
+                 Int8VarPayload, Int16VarPayload, FloatVarPayload,
+                 Float2VarPayload, Float3VarPayload, Float4VarPayload>;
 
 inline void ForEach(const CBTable &table,
                     std::function<void(const char *, CBVar &)> &&f) {
