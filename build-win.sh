@@ -17,7 +17,6 @@ ninja cbl
 ./cbl ../src/tests/network.clj
 ./cbl ../src/tests/struct.clj
 ./cbl ../src/tests/flows.clj
-./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/kdtree.clj
 ./cbl ../src/tests/channels.clj
 PYTHONHOME=/c/msys64/mingw64 ./cbl ../src/tests/pytest.clj
