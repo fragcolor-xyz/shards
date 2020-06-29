@@ -649,9 +649,9 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS
 if(NOT BUILD_CORE_ONLY)
   if(LINUX OR WIN32)
     add_dependencies(cb_static sdl_a)
-    target_link_libraries(cb_static libsdl)
     add_dependencies(cb_shared sdl_a)
     target_link_libraries(cb_shared libsdl)
+    set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 endif()
 
