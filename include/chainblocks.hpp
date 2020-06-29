@@ -262,7 +262,11 @@ struct Parameters {
     using t = decltype(__item__);                                              \
     __item__ = t(i);                                                           \
   }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(ssize_t i) {                             \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(uint32_t i) {                            \
+    using t = decltype(__item__);                                              \
+    __item__ = t(i);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(uint64_t i) {                            \
     using t = decltype(__item__);                                              \
     __item__ = t(i);                                                           \
   }                                                                            \
