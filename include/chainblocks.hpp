@@ -186,7 +186,263 @@ struct Parameters {
   }
 };
 
+// used to explicitly specialize, hinting compiler
+// mostly used internally for math blocks
+#define CB_PAYLOAD_MATH_OPS(CBPAYLOAD_TYPE, __item__)                          \
+  CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator+(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ + b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator-(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ - b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator*(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ * b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator/(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ / b.__item__;                                      \
+    return res;                                                                \
+  }
+
+#define CB_PAYLOAD_MATH_OPS_INT(CBPAYLOAD_TYPE, __item__)                      \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator^(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ ^ b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator&(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ & b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator|(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ | b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator%(const CBPAYLOAD_TYPE &b)       \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ % b.__item__;                                      \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator<<(const CBPAYLOAD_TYPE &b)      \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ << b.__item__;                                     \
+    return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE operator>>(const CBPAYLOAD_TYPE &b)      \
+      const {                                                                  \
+    CBPAYLOAD_TYPE res;                                                        \
+    res.__item__ = __item__ >> b.__item__;                                     \
+    return res;                                                                \
+  }
+
+#define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(int32_t i) {                             \
+    using t = decltype(__item__);                                              \
+    __item__ = t(i);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(int64_t i) {                             \
+    using t = decltype(__item__);                                              \
+    __item__ = t(i);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(ssize_t i) {                             \
+    using t = decltype(__item__);                                              \
+    __item__ = t(i);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(float f) {                               \
+    using t = decltype(__item__);                                              \
+    __item__ = t(f);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE(double f) {                              \
+    using t = decltype(__item__);                                              \
+    __item__ = t(f);                                                           \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator<=(const CBPAYLOAD_TYPE &b) const {        \
+    return __item__ <= b.__item__;                                             \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator>=(const CBPAYLOAD_TYPE &b) const {        \
+    return __item__ >= b.__item__;                                             \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator==(const CBPAYLOAD_TYPE &b) const {        \
+    return __item__ == b.__item__;                                             \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator!=(const CBPAYLOAD_TYPE &b) const {        \
+    return __item__ != b.__item__;                                             \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator>(const CBPAYLOAD_TYPE &b) const {         \
+    return __item__ > b.__item__;                                              \
+  }                                                                            \
+  ALWAYS_INLINE inline bool operator<(const CBPAYLOAD_TYPE &b) const {         \
+    return __item__ < b.__item__;                                              \
+  }
+
+struct IntVarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(IntVarPayload, intValue);
+  CB_PAYLOAD_MATH_OPS_SIMPLE(IntVarPayload, intValue);
+  CB_PAYLOAD_MATH_OPS_INT(IntVarPayload, intValue);
+};
+struct Int2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int2VarPayload, int2Value);
+  CB_PAYLOAD_MATH_OPS_INT(Int2VarPayload, int2Value);
+};
+struct Int3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int3VarPayload, int3Value);
+  CB_PAYLOAD_MATH_OPS_INT(Int3VarPayload, int3Value);
+};
+struct Int4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int4VarPayload, int4Value);
+  CB_PAYLOAD_MATH_OPS_INT(Int4VarPayload, int4Value);
+};
+struct Int8VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int8VarPayload, int8Value);
+  CB_PAYLOAD_MATH_OPS_INT(Int8VarPayload, int8Value);
+};
+struct Int16VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Int16VarPayload, int16Value);
+  CB_PAYLOAD_MATH_OPS_INT(Int16VarPayload, int16Value);
+};
+struct FloatVarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(FloatVarPayload, floatValue);
+  CB_PAYLOAD_MATH_OPS_SIMPLE(FloatVarPayload, floatValue);
+};
+struct Float2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float2VarPayload, float2Value);
+};
+struct Float3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float3VarPayload, float3Value);
+};
+struct Float4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
+};
+
 struct Var : public CBVar {
+  Var(const IntVarPayload &p) : CBVar() {
+    this->valueType = CBType::Int;
+    this->payload.intValue = p.intValue;
+  }
+
+  Var &operator=(const IntVarPayload &p) {
+    this->valueType = CBType::Int;
+    this->payload.intValue = p.intValue;
+    return *this;
+  }
+
+  Var(const Int2VarPayload &p) : CBVar() {
+    this->valueType = CBType::Int2;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Int2VarPayload &p) {
+    this->valueType = CBType::Int2;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Int3VarPayload &p) : CBVar() {
+    this->valueType = CBType::Int3;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Int3VarPayload &p) {
+    this->valueType = CBType::Int3;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Int4VarPayload &p) : CBVar() {
+    this->valueType = CBType::Int4;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Int4VarPayload &p) {
+    this->valueType = CBType::Int4;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Int8VarPayload &p) : CBVar() {
+    this->valueType = CBType::Int8;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Int8VarPayload &p) {
+    this->valueType = CBType::Int8;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Int16VarPayload &p) : CBVar() {
+    this->valueType = CBType::Int16;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Int16VarPayload &p) {
+    this->valueType = CBType::Int16;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const FloatVarPayload &p) : CBVar() {
+    this->valueType = CBType::Float;
+    this->payload.floatValue = p.floatValue;
+  }
+
+  Var &operator=(const FloatVarPayload &p) {
+    this->valueType = CBType::Float;
+    this->payload.floatValue = p.floatValue;
+    return *this;
+  }
+
+  Var(const Float2VarPayload &p) : CBVar() {
+    this->valueType = CBType::Float2;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Float2VarPayload &p) {
+    this->valueType = CBType::Float2;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Float3VarPayload &p) : CBVar() {
+    this->valueType = CBType::Float3;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Float3VarPayload &p) {
+    this->valueType = CBType::Float3;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
+  Var(const Float4VarPayload &p) : CBVar() {
+    this->valueType = CBType::Float4;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+  }
+
+  Var &operator=(const Float4VarPayload &p) {
+    this->valueType = CBType::Float4;
+    memcpy(&this->payload, &p, sizeof(CBVarPayload));
+    return *this;
+  }
+
   constexpr Var() : CBVar() {}
 
   explicit Var(const CBVar &other) {
@@ -440,74 +696,6 @@ struct Var : public CBVar {
     payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
     payload.seqValue.len = N;
   }
-};
-
-// used to explicitly specialize, hinting compiler
-// mostly used internally for math blocks
-
-#define CB_PAYLOAD_MATH_OPS(CBPAYLOAD_TYPE, __item__)                          \
-  CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
-  inline CBPAYLOAD_TYPE operator+(const CBPAYLOAD_TYPE &b) const {             \
-    CBPAYLOAD_TYPE res;                                                        \
-    res.__item__ = __item__ + b.__item__;                                      \
-    return res;                                                                \
-  }                                                                            \
-  inline CBPAYLOAD_TYPE operator-(const CBPAYLOAD_TYPE &b) const {             \
-    CBPAYLOAD_TYPE res;                                                        \
-    res.__item__ = __item__ - b.__item__;                                      \
-    return res;                                                                \
-  }                                                                            \
-  inline CBPAYLOAD_TYPE operator*(const CBPAYLOAD_TYPE &b) const {             \
-    CBPAYLOAD_TYPE res;                                                        \
-    res.__item__ = __item__ * b.__item__;                                      \
-    return res;                                                                \
-  }                                                                            \
-  inline CBPAYLOAD_TYPE operator/(const CBPAYLOAD_TYPE &b) const {             \
-    CBPAYLOAD_TYPE res;                                                        \
-    res.__item__ = __item__ / b.__item__;                                      \
-    return res;                                                                \
-  }
-
-#define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
-  CBPAYLOAD_TYPE(int i) {                                                      \
-    using t = decltype(__item__);                                              \
-    __item__ = t(i);                                                           \
-  }                                                                            \
-  inline bool operator<=(const CBPAYLOAD_TYPE &b) const {                      \
-    return __item__ <= b.__item__;                                             \
-  }
-
-struct IntVarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(IntVarPayload, intValue);
-  CB_PAYLOAD_MATH_OPS_SIMPLE(IntVarPayload, intValue);
-};
-struct Int2VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Int2VarPayload, int2Value);
-};
-struct Int3VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Int3VarPayload, int3Value);
-};
-struct Int4VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Int4VarPayload, int4Value);
-};
-struct Int8VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Int8VarPayload, int8Value);
-};
-struct Int16VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Int16VarPayload, int16Value);
-};
-struct FloatVarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(FloatVarPayload, floatValue);
-  CB_PAYLOAD_MATH_OPS_SIMPLE(FloatVarPayload, floatValue);
-};
-struct Float2VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Float2VarPayload, float2Value);
-};
-struct Float3VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Float3VarPayload, float3Value);
-};
-struct Float4VarPayload : public CBVarPayload {
-  CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
 };
 
 using VarPayload =
