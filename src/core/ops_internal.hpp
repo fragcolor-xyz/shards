@@ -32,8 +32,8 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Array:
     os << "Array: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.arrayValue)
-       << " size: " << std::dec << var.payload.arrayLen
+       << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements)
+       << " size: " << std::dec << var.payload.arrayValue.len
        << " of: " << type2Name(var.innerType);
     break;
   case Enum:

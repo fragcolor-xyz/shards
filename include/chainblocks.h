@@ -149,6 +149,8 @@ typedef void *CBArray;
 // Forward declarations
 
 struct CBVarPayload;
+CB_ARRAY_DECL(CBPayloadArray, struct CBVarPayload);
+
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
@@ -589,13 +591,7 @@ struct CBVarPayload {
       uint32_t bytesCapacity;
     };
 
-    struct {
-      struct CBVarPayload *arrayValue;
-      uint32_t arrayLen;
-      // this is mostly used internal
-      // useful when serializing, recycling memory
-      uint32_t arrayCapacity;
-    };
+    CBPayloadArray arrayValue;
   };
 } __attribute__((aligned(16)));
 

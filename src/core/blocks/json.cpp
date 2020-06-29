@@ -174,10 +174,10 @@ void to_json(json &j, const CBVar &var) {
   }
   case Array: {
     std::vector<uint8_t> buffer;
-    buffer.resize(var.payload.arrayLen * sizeof(CBVarPayload));
-    if (var.payload.arrayLen > 0)
-      memcpy(&buffer[0], var.payload.arrayValue,
-             var.payload.arrayLen * sizeof(CBVarPayload));
+    buffer.resize(var.payload.arrayValue.len * sizeof(CBVarPayload));
+    if (var.payload.arrayValue.len > 0)
+      memcpy(&buffer[0], &var.payload.arrayValue.elements[0],
+             var.payload.arrayValue.len * sizeof(CBVarPayload));
     j = json{{"type", valType},
              {"inner", magic_enum::enum_name(var.innerType)},
              {"data", buffer}};
@@ -420,9 +420,9 @@ void from_json(const json &j, CBVar &var) {
     var.valueType = Array;
     var.innerType = innerType.value();
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
-    var.payload.arrayValue =
-        new CBVarPayload[buffer.size() / sizeof(CBVarPayload)];
-    memcpy(var.payload.arrayValue, &buffer[0], buffer.size());
+    auto len = buffer.size() / sizeof(CBVarPayload);
+    chainblocks::arrayResize(var.payload.arrayValue, len);
+    memcpy(&var.payload.arrayValue.elements[0], &buffer[0], buffer.size());
     break;
   }
   case Enum: {
