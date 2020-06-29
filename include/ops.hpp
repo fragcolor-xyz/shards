@@ -321,11 +321,11 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
             memcmp(a.payload.bytesValue, b.payload.bytesValue,
                    a.payload.bytesSize) == 0);
   case CBType::Array:
-    return a.payload.arrayLen == b.payload.arrayLen &&
+    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
            a.innerType == b.innerType &&
-           (a.payload.arrayValue == b.payload.arrayValue ||
-            memcmp(a.payload.arrayValue, b.payload.arrayValue,
-                   a.payload.arrayLen * sizeof(CBVarPayload)) == 0);
+           (a.payload.arrayValue.elements == b.payload.arrayValue.elements ||
+            memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
+                   a.payload.arrayValue.len * sizeof(CBVarPayload)) == 0);
   }
 
   return false;
@@ -499,10 +499,10 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) < 0;
   case Array:
-    return a.payload.arrayLen == b.payload.arrayLen &&
+    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
            a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue, b.payload.arrayValue,
-                  a.payload.arrayLen * sizeof(CBVarPayload)) < 0;
+           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
+                  a.payload.arrayValue.len * sizeof(CBVarPayload)) < 0;
   case Image:
   case Chain:
   case Block:
@@ -684,10 +684,10 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) <= 0;
   case Array:
-    return a.payload.arrayLen == b.payload.arrayLen &&
+    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
            a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue, b.payload.arrayValue,
-                  a.payload.arrayLen * sizeof(CBVarPayload)) <= 0;
+           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
+                  a.payload.arrayValue.len * sizeof(CBVarPayload)) <= 0;
   case Image:
   case Chain:
   case Block:
@@ -968,8 +968,8 @@ template <> struct hash<CBVar> {
     } break;
     case Array: {
       res = res ^ hash<int>()(int(var.innerType));
-      std::string_view buf((char *)var.payload.arrayValue,
-                           var.payload.arrayLen * sizeof(CBVarPayload));
+      std::string_view buf((char *)var.payload.arrayValue.elements,
+                           var.payload.arrayValue.len * sizeof(CBVarPayload));
       res = res ^ hash<std::string_view>()(buf);
     } break;
     case String:

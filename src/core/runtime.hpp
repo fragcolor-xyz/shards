@@ -779,7 +779,7 @@ struct Serialization {
       delete[] output.payload.bytesValue;
       break;
     case CBType::Array:
-      delete[] output.payload.arrayValue;
+      chainblocks::arrayFree(output.payload.arrayValue);
       break;
     case CBType::Path:
     case CBType::String:
@@ -921,27 +921,11 @@ struct Serialization {
     }
     case CBType::Array: {
       read((uint8_t *)&output.innerType, sizeof(output.innerType));
-
-      auto availArray = recycle ? output.payload.arrayCapacity : 0;
-      read((uint8_t *)&output.payload.arrayLen,
-           sizeof(output.payload.arrayLen));
-
-      if (availArray > 0 && availArray < output.payload.arrayLen) {
-        // not enough space, ideally realloc, but for now just delete
-        delete[] output.payload.arrayValue;
-        // and re alloc
-        output.payload.arrayValue = new CBVarPayload[output.payload.arrayLen];
-      } else if (availArray == 0) {
-        // just alloc
-        output.payload.arrayValue = new CBVarPayload[output.payload.arrayLen];
-      } // else got enough space to recycle!
-
-      // record actualSize for further recycling usage
-      output.payload.arrayCapacity =
-          std::max(availArray, output.payload.arrayLen);
-
-      read((uint8_t *)output.payload.arrayValue,
-           output.payload.arrayLen * sizeof(CBVarPayload));
+      uint32_t len;
+      read((uint8_t *)&len, sizeof(uint32_t));
+      chainblocks::arrayResize(output.payload.arrayValue, len);
+      read((uint8_t *)&output.payload.arrayValue.elements[0],
+           len * sizeof(CBVarPayload));
       break;
     }
     case CBType::Path:
@@ -1234,16 +1218,15 @@ struct Serialization {
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
       total += input.payload.bytesSize;
       break;
-    case CBType::Array:
+    case CBType::Array: {
       write((const uint8_t *)&input.innerType, sizeof(input.innerType));
       total += sizeof(input.innerType);
-      write((const uint8_t *)&input.payload.arrayLen,
-            sizeof(input.payload.arrayLen));
-      total += sizeof(input.payload.arrayLen);
-      write((const uint8_t *)input.payload.arrayValue,
-            input.payload.arrayLen * sizeof(CBVarPayload));
-      total += input.payload.arrayLen * sizeof(CBVarPayload);
-      break;
+      write((const uint8_t *)&input.payload.arrayValue.len, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      auto size = input.payload.arrayValue.len * sizeof(CBVarPayload);
+      write((const uint8_t *)&input.payload.arrayValue.elements[0], size);
+      total += size;
+    } break;
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {

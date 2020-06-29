@@ -805,9 +805,9 @@ struct ToBytes {
       break;
     }
     case CBType::Array: {
-      _buffer.resize(input.payload.arrayLen * sizeof(CBVarPayload));
-      memcpy(&_buffer.front(), input.payload.arrayValue,
-             input.payload.arrayLen * sizeof(CBVarPayload));
+      _buffer.resize(input.payload.arrayValue.len * sizeof(CBVarPayload));
+      memcpy(&_buffer.front(), input.payload.arrayValue.elements,
+             input.payload.arrayValue.len * sizeof(CBVarPayload));
       break;
     }
     case CBType::Path:

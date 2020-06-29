@@ -1907,22 +1907,22 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
            src.payload.bytesSize);
   } break;
   case CBType::Array: {
-    if (dst.valueType != Array ||
-        dst.payload.arrayCapacity < src.payload.arrayLen) {
+    size_t srcLen = src.payload.arrayValue.len;
+
+    // try our best to re-use memory
+    if (dst.valueType != Array) {
       destroyVar(dst);
-      dst.valueType = CBType::Array;
-      dst.payload.arrayValue = new CBVarPayload[src.payload.arrayLen];
-      dst.payload.arrayCapacity = src.payload.arrayLen;
+      dst.valueType = Array;
     }
 
-    dst.payload.arrayLen = src.payload.arrayLen;
-    dst.innerType = src.innerType;
-
-    if (dst.payload.arrayValue == src.payload.arrayValue)
+    if (src.payload.arrayValue.elements == dst.payload.arrayValue.elements)
       return;
 
-    memcpy((void *)dst.payload.arrayValue, (void *)src.payload.arrayValue,
-           src.payload.arrayLen * sizeof(CBVarPayload));
+    dst.innerType = src.innerType;
+    chainblocks::arrayResize(dst.payload.arrayValue, srcLen);
+    // array holds only blittables and is packed so a single memcpy is enough
+    memcpy(&dst.payload.arrayValue.elements[0],
+           &src.payload.arrayValue.elements[0], sizeof(CBVarPayload) * srcLen);
   } break;
   case CBType::Chain:
     if (dst != src) {

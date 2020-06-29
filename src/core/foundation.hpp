@@ -584,7 +584,7 @@ inline void destroyVar(CBVar &var) {
     delete[] var.payload.bytesValue;
     break;
   case CBType::Array:
-    delete[] var.payload.arrayValue;
+    arrayFree(var.payload.arrayValue);
     break;
   case Object:
     if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
