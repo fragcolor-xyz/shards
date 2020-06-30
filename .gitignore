@@ -34,3 +34,4 @@ Cargo.lock
 **/*.rs.bk
 
 /src/chainblocksc.rs
+rust/src/chainblocksc.rs
