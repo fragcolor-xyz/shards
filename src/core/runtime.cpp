@@ -830,15 +830,34 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return chainblocks::createBlock(name);
   };
 
-  result->createChain = [](const char *name, CBlocks blocks, bool looped,
-                           bool unsafe) {
-    auto chain = CBChain::make(name);
-    chain->looped = looped;
-    chain->unsafe = unsafe;
-    for (uint32_t i = 0; i < blocks.len; i++) {
-      chain->addBlock(blocks.elements[i]);
-    }
+  result->createChain = []() {
+    auto chain = CBChain::make();
     return chain->newRef();
+  };
+
+  result->setChainName = [](CBChainRef chainref, const char *name) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->name = name;
+  };
+
+  result->setChainLooped = [](CBChainRef chainref, CBBool looped) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->looped = looped;
+  };
+
+  result->setChainUnsafe = [](CBChainRef chainref, CBBool unsafe) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->unsafe = unsafe;
+  };
+
+  result->addBlock = [](CBChainRef chainref, CBlockPtr blk) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->addBlock(blk);
+  };
+
+  result->removeBlock = [](CBChainRef chainref, CBlockPtr blk) {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->removeBlock(blk);
   };
 
   result->destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };

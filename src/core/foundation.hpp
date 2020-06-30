@@ -121,6 +121,10 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
     return std::shared_ptr<CBChain>(new CBChain(chain_name));
   }
 
+  static std::shared_ptr<CBChain> make() {
+    return std::shared_ptr<CBChain>(new CBChain());
+  }
+
   static std::shared_ptr<CBChain> *makePtr(std::string_view chain_name) {
     return new std::shared_ptr<CBChain>(new CBChain(chain_name));
   }
@@ -238,6 +242,8 @@ private:
   CBChain(std::string_view chain_name) : name(chain_name) {
     LOG(TRACE) << "CBChain() " << name;
   }
+
+  CBChain() { LOG(TRACE) << "CBChain() (no name)"; }
 
   void reset();
 };

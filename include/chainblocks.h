@@ -868,8 +868,12 @@ typedef void(__cdecl *CBLog)(const char *msg);
 
 typedef struct CBlock *(__cdecl *CBCreateBlock)(const char *name);
 
-typedef CBChainRef(__cdecl *CBCreateChain)(const char *name, CBlocks blocks,
-                                           CBBool looped, CBBool unsafe);
+typedef CBChainRef(__cdecl *CBCreateChain)();
+typedef void(__cdecl *CBSetChainName)(CBChainRef chain, const char *name);
+typedef void(__cdecl *CBSetChainLooped)(CBChainRef chain, CBBool looped);
+typedef void(__cdecl *CBSetChainUnsafe)(CBChainRef chain, CBBool unsafe);
+typedef void(__cdecl *CBAddBlock)(CBChainRef chain, CBlockPtr block);
+typedef void(__cdecl *CBRemBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
 
 typedef CBNodeRef(__cdecl *CBCreateNode)();
@@ -993,6 +997,11 @@ struct CBCore {
   CBValidateSetParam validateSetParam;
 
   CBCreateChain createChain;
+  CBSetChainName setChainName;
+  CBSetChainLooped setChainLooped;
+  CBSetChainUnsafe setChainUnsafe;
+  CBAddBlock addBlock;
+  CBRemBlock removeBlock;
   CBDestroyChain destroyChain;
 
   // Chain scheduling
