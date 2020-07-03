@@ -52,7 +52,7 @@ inline std::string pr_str(document &doc, std::string &s) { return s; }
 
 template <class T> inline std::string pr_str(document &doc, T &list) {
   std::string s;
-  for (auto &item : list) {
+  BOOST_FOREACH (auto &item, list) {
     if (s.size() > 0) {
       s += " ";
     }
@@ -63,7 +63,7 @@ template <class T> inline std::string pr_str(document &doc, T &list) {
 
 inline std::string pr_str(document &doc, form::FormWrapperMap &map) {
   std::string s;
-  for (auto &item : map) {
+  BOOST_FOREACH (auto &item, map) {
     if (s.size() > 0) {
       s += " ";
     }
@@ -91,13 +91,11 @@ inline std::string pr_str(document &doc, form::Form form) {
                doc, std::get<std::vector<form::FormWrapper>>(form)) +
            "]";
   case form::MAP:
-    return "{" +
-           pr_str(doc, *std::get<std::shared_ptr<form::FormWrapperMap>>(form)) +
-           "}";
+    return "{" + pr_str(doc, std::get<form::FormWrapperMap>(form)) + "}";
   case form::SET:
     return "#{" +
-           pr_str<form::FormWrapperSet>(
-               doc, *std::get<std::shared_ptr<form::FormWrapperSet>>(form)) +
+           pr_str<form::FormWrapperSet>(doc,
+                                        std::get<form::FormWrapperSet>(form)) +
            "}";
   }
   return "";
