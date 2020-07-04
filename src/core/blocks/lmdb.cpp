@@ -20,7 +20,24 @@ struct Env {
     }                                                                          \
   }
 
-  Env() {
+  Env() {}
+
+  ~Env() {
+    if (_env) {
+      unregisterRunLoopCallback("cb.lmdb.sync");
+      mdb_env_close(_env);
+    }
+  }
+
+  operator MDB_env *() {
+    if (!_env) {
+      lazyInit();
+    }
+    return _env;
+  }
+
+private:
+  void lazyInit() {
     CHECKED(mdb_env_create(&_env));
 
     CHECKED(mdb_env_set_maxreaders(_env, maxReaders));
@@ -48,15 +65,7 @@ struct Env {
     });
   }
 
-  ~Env() {
-    unregisterRunLoopCallback("cb.lmdb.sync");
-    mdb_env_close(_env);
-  }
-
-  operator MDB_env *() { return _env; }
-
-private:
-  MDB_env *_env;
+  MDB_env *_env{nullptr};
 };
 
 struct Base {
