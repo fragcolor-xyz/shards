@@ -7,8 +7,9 @@
 
 (do
   (call2 2 3 4)
-  '(call2 5 5 5)
-  )
+  '(call2 5 5 5))
 
-(let [a 10 b [3 4 11]] (first b))
-("Hello world")
+(let [a 10
+      b [3 4 11]]
+  (first b))
+;; ("Hello world")

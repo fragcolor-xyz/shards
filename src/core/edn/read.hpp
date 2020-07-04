@@ -3,14 +3,15 @@
 #ifndef CB_LSP_READ_HPP
 #define CB_LSP_READ_HPP
 
+#include <boost/container/map.hpp>
+#include <boost/container/set.hpp>
+#include <boost/foreach.hpp>
 #include <cstdint>
 #include <list>
 #include <map>
 #include <regex>
 #include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -64,6 +65,10 @@ struct Token {
   bool operator==(const Token &t) const {
     return (value == t.value) && (type == t.type);
   }
+
+  bool operator<(const Token &t) const {
+    return (value < t.value) || (type < t.type);
+  }
 };
 
 } // namespace token
@@ -81,29 +86,26 @@ struct Special {
   bool operator==(const Special &re) const {
     return (!message.compare(re.message)) && (token == re.token);
   }
+
+  bool operator<(const Special &re) const {
+    return (message < re.message) || (token < re.token);
+  }
 };
 
 struct FormWrapper;
-class FormWrapperHash;
-class FormWrapperEquality;
 
-using FormWrapperMap = std::unordered_map<FormWrapper, FormWrapper,
-                                          FormWrapperHash, FormWrapperEquality>;
-using FormWrapperSet =
-    std::unordered_set<FormWrapper, FormWrapperHash, FormWrapperEquality>;
+using FormWrapperMap = boost::container::map<FormWrapper, FormWrapper>;
+using FormWrapperSet = boost::container::set<FormWrapper>;
 
-using Form = std::variant<
-    Special, token::Token, std::list<FormWrapper>, std::vector<FormWrapper>,
-    // maps and sets must be stored with a layer of indirection
-    // to satisfy the type syetem.
-    // their content needs to be hashable
-    // and that isn't implemented until later...
-    std::shared_ptr<FormWrapperMap>, std::shared_ptr<FormWrapperSet>>;
+using Form =
+    std::variant<Special, token::Token, std::list<FormWrapper>,
+                 std::vector<FormWrapper>, FormWrapperMap, FormWrapperSet>;
 
 enum Type { SPECIAL, TOKEN, LIST, VECTOR, MAP, SET };
 
 std::size_t hash(const FormWrapper &fw);
 bool equals(const FormWrapper &fw1, const FormWrapper &fw2);
+bool isLess(const FormWrapper &fw1, const FormWrapper &fw2);
 
 } // namespace form
 
@@ -207,18 +209,7 @@ struct FormWrapper {
   FormWrapper(Form f) : form(f) {}
 
   bool operator==(const FormWrapper &fw) const { return equals(*this, fw); }
-};
-
-class FormWrapperHash {
-public:
-  std::size_t operator()(const FormWrapper &fw) const { return hash(fw); }
-};
-
-class FormWrapperEquality {
-public:
-  bool operator()(const FormWrapper &fw1, const FormWrapper &fw2) const {
-    return equals(fw1, fw2);
-  }
+  bool operator<(const FormWrapper &fw) const { return isLess(*this, fw); }
 };
 
 template <class T> inline std::size_t hash(T list) {
@@ -231,9 +222,7 @@ template <class T> inline std::size_t hash(T list) {
 
 inline std::size_t hash(FormWrapperSet set) {
   std::vector<std::size_t> hashes;
-  for (auto item : set) {
-    hashes.push_back(hash(item));
-  }
+  BOOST_FOREACH (auto &item, set) { hashes.push_back(hash(item)); }
 
   std::sort(hashes.begin(), hashes.end());
 
@@ -246,7 +235,7 @@ inline std::size_t hash(FormWrapperSet set) {
 
 inline std::size_t hash(FormWrapperMap map) {
   std::vector<std::size_t> hashes;
-  for (auto item : map) {
+  BOOST_FOREACH (auto &item, map) {
     std::size_t hash = 0;
     hash_combine(hash, item.first, item.second);
     hashes.push_back(hash);
@@ -274,16 +263,91 @@ inline std::size_t hash(const FormWrapper &fw) {
     return hash<std::vector<FormWrapper>>(
         std::get<std::vector<FormWrapper>>(fw.form));
   case MAP:
-    return hash(*std::get<std::shared_ptr<FormWrapperMap>>(fw.form));
+    return hash(std::get<FormWrapperMap>(fw.form));
   case SET:
-    return hash(*std::get<std::shared_ptr<FormWrapperSet>>(fw.form));
+    return hash(std::get<FormWrapperSet>(fw.form));
   }
   return 0;
 }
 
 inline bool equals(const FormWrapper &fw1, const FormWrapper &fw2) {
-  // TODO: equality checking probably shouldn't rely on hashes
-  return hash(fw1) == hash(fw2);
+  if (fw1.form.index() != fw2.form.index())
+    return false;
+
+  switch (fw1.form.index()) {
+  case SPECIAL: {
+    auto &a = std::get<form::Special>(fw1.form);
+    auto &b = std::get<form::Special>(fw2.form);
+    return a == b;
+  }
+  case TOKEN: {
+    auto &a = std::get<token::Token>(fw1.form);
+    auto &b = std::get<token::Token>(fw2.form);
+    return a == b;
+  }
+  case LIST: {
+    auto &a = std::get<std::list<FormWrapper>>(fw1.form);
+    auto &b = std::get<std::list<FormWrapper>>(fw2.form);
+    return a == b;
+  }
+  case VECTOR: {
+    auto &a = std::get<std::vector<FormWrapper>>(fw1.form);
+    auto &b = std::get<std::vector<FormWrapper>>(fw2.form);
+    return a == b;
+  }
+  case MAP: {
+    auto &a = std::get<FormWrapperMap>(fw1.form);
+    auto &b = std::get<FormWrapperMap>(fw2.form);
+    return a == b;
+  }
+  case SET: {
+    auto &a = std::get<FormWrapperSet>(fw1.form);
+    auto &b = std::get<FormWrapperSet>(fw2.form);
+    return a == b;
+  }
+  default:
+    return false;
+  }
+}
+
+inline bool isLess(const FormWrapper &fw1, const FormWrapper &fw2) {
+  if (fw1.form.index() < fw2.form.index())
+    return true;
+
+  switch (fw1.form.index()) {
+  case SPECIAL: {
+    auto &a = std::get<form::Special>(fw1.form);
+    auto &b = std::get<form::Special>(fw2.form);
+    return a < b;
+  }
+  case TOKEN: {
+    auto &a = std::get<token::Token>(fw1.form);
+    auto &b = std::get<token::Token>(fw2.form);
+    return a < b;
+  }
+  case LIST: {
+    auto &a = std::get<std::list<FormWrapper>>(fw1.form);
+    auto &b = std::get<std::list<FormWrapper>>(fw2.form);
+    return a < b;
+  }
+  case VECTOR: {
+    auto &a = std::get<std::vector<FormWrapper>>(fw1.form);
+    auto &b = std::get<std::vector<FormWrapper>>(fw2.form);
+    return a < b;
+  }
+  case MAP: {
+    auto &a = std::get<FormWrapperMap>(fw1.form);
+    auto &b = std::get<FormWrapperMap>(fw2.form);
+    return a < b;
+  }
+  case SET: {
+    auto &a = std::get<FormWrapperSet>(fw1.form);
+    auto &b = std::get<FormWrapperSet>(fw2.form);
+    return a < b;
+  }
+  default:
+    return true;
+  }
 }
 
 } // namespace form
@@ -323,8 +387,8 @@ inline form::Form list_to_vector(const std::list<form::FormWrapper> list) {
 }
 
 inline form::Form list_to_map(const std::list<form::FormWrapper> list) {
-  auto m = std::make_shared<form::FormWrapperMap>(form::FormWrapperMap{});
-  form::FormWrapperMap::const_iterator map_it = m->begin();
+  form::FormWrapperMap m;
+  form::FormWrapperMap::const_iterator map_it = m.begin();
   std::list<form::FormWrapper>::const_iterator list_it = list.begin();
   while (list_it != list.end()) {
     auto key = *list_it;
@@ -335,17 +399,17 @@ inline form::Form list_to_map(const std::list<form::FormWrapper> list) {
     } else {
       auto val = *list_it;
       ++list_it;
-      m->insert(map_it, std::pair(key, val));
+      m.insert(map_it, std::pair(key, val));
     }
   }
   return m;
 }
 
 inline form::Form list_to_set(const std::list<form::FormWrapper> list) {
-  auto s = std::make_shared<form::FormWrapperSet>(form::FormWrapperSet{});
-  form::FormWrapperSet::const_iterator it = s->begin();
+  form::FormWrapperSet s;
+  form::FormWrapperSet::const_iterator it = s.begin();
   for (auto item : list) {
-    s->insert(it, item);
+    s.insert(it, item);
   }
   return s;
 }
