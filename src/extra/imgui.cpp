@@ -1448,29 +1448,35 @@ struct Image : public Base {
 };
 
 struct Plot : public Base {
+  static inline Types Plottable{
+      {CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
+
   BlocksVar _blocks;
   std::string _title;
-  std::string _fullTitle;
+  std::string _fullTitle{"##" +
+                         std::to_string(reinterpret_cast<uintptr_t>(this))};
   std::string _xlabel;
   std::string _ylabel;
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Title", "The title of the window to create.",
+      ParamsInfo::Param("Title", "The title of the plot to create.",
                         CoreInfo::StringType),
       ParamsInfo::Param("Contents", "The blocks describing this plot.",
                         CoreInfo::BlocksOrNone),
       ParamsInfo::Param("XLabel", "The X axis label.", CoreInfo::StringType),
       ParamsInfo::Param("YLabel", "The Y axis label.", CoreInfo::StringType));
 
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      _blocks = value;
-      break;
-    case 1:
       _title = value.payload.stringValue;
       _fullTitle =
           _title + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      break;
+    case 1:
+      _blocks = value;
       break;
     case 2:
       _xlabel = value.payload.stringValue;
@@ -1485,9 +1491,9 @@ struct Plot : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
-    case 1:
       return Var(_title);
+    case 1:
+      return _blocks;
     case 2:
       return Var(_xlabel);
     case 3:
@@ -1497,15 +1503,105 @@ struct Plot : public Base {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *context) { _blocks.warmup(context); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
-    ImPlot::BeginPlot(_fullTitle.c_str(),
-                      _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
-                      _ylabel.size() > 0 ? _ylabel.c_str() : nullptr);
-    DEFER(ImPlot::EndPlot());
+    if (ImPlot::BeginPlot(_fullTitle.c_str(),
+                          _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
+                          _ylabel.size() > 0 ? _ylabel.c_str() : nullptr)) {
+      DEFER(ImPlot::EndPlot());
 
-    CBVar output{};
-    activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
+      CBVar output{};
+      activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
+    }
 
+    return input;
+  }
+};
+
+struct PlottableBase : Base {
+  std::string _label;
+  std::string _fullLabel{"##" +
+                         std::to_string(reinterpret_cast<uintptr_t>(this))};
+  enum class Kind { unknown, xAndIndex, xAndY };
+  Kind _kind{};
+
+  static CBTypesInfo inputTypes() { return Plot::Plottable; }
+  static CBTypesInfo outputTypes() { return Plot::Plottable; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
+      "Label", "The label of the line to plot.", CoreInfo::StringType));
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _label = value.payload.stringValue;
+      _fullLabel =
+          _label + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    assert(data.inputType.basicType == Seq);
+    if (data.inputType.seqTypes.len != 1 ||
+        (data.inputType.seqTypes.elements[0].basicType != Float &&
+         data.inputType.seqTypes.elements[0].basicType != Float2)) {
+      throw ComposeError("Expected either a Float or Float2 sequence.");
+    }
+
+    if (data.inputType.seqTypes.elements[0].basicType == Float)
+      _kind = Kind::xAndIndex;
+    else
+      _kind = Kind::xAndY;
+
+    return data.inputType;
+  }
+};
+
+struct PlotLine : public PlottableBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (_kind == Kind::xAndY) {
+      ImPlot::PlotLine(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
+                               seq.elements[idx].payload.float2Value[1]);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    } else if (_kind == Kind::xAndIndex) {
+      ImPlot::PlotLine(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(double(idx),
+                               seq.elements[idx].payload.floatValue);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    }
     return input;
   }
 };
@@ -1542,6 +1638,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.TextInput", TextInput);
   REGISTER_CBLOCK("ImGui.Image", Image);
   REGISTER_CBLOCK("ImGui.Plot", Plot);
+  REGISTER_CBLOCK("ImGui.PlotLine", PlotLine);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

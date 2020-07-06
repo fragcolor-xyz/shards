@@ -60,7 +60,10 @@
                                                        (ImGui.Text)
 
                                                        (ImGui.Float3Drag)
-                                                       (ImGui.Text)))))
+                                                       (ImGui.Text)
+                                                       (ImGui.Plot "Plot"
+                                                                   #((Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
+                                                                     (ImGui.PlotLine)))))))
 
                                 (ImGui.Button "Push me!" (-->
                                                           (Msg "Action!")))
