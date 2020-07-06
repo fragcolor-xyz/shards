@@ -353,7 +353,6 @@ include_directories(
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/deps/pdqsort
-  ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
   )
 
 if(NOT BUILD_CORE_ONLY)
@@ -371,6 +370,9 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/imgui_club/imgui_memory_editor
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
+    ${CHAINBLOCKS_DIR}/deps/implot
+    ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
     )
 
   set(SDL-source-patterns
@@ -572,6 +574,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
+    ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${PLATFORM_SOURCES}
     )
 endif()

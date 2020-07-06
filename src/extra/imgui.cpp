@@ -5,6 +5,7 @@
 #include "bgfx.hpp"
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
+#include <implot.h>
 
 using namespace chainblocks;
 
@@ -1446,6 +1447,69 @@ struct Image : public Base {
   }
 };
 
+struct Plot : public Base {
+  BlocksVar _blocks;
+  std::string _title;
+  std::string _fullTitle;
+  std::string _xlabel;
+  std::string _ylabel;
+
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Title", "The title of the window to create.",
+                        CoreInfo::StringType),
+      ParamsInfo::Param("Contents", "The blocks describing this plot.",
+                        CoreInfo::BlocksOrNone),
+      ParamsInfo::Param("XLabel", "The X axis label.", CoreInfo::StringType),
+      ParamsInfo::Param("YLabel", "The Y axis label.", CoreInfo::StringType));
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _blocks = value;
+      break;
+    case 1:
+      _title = value.payload.stringValue;
+      _fullTitle =
+          _title + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      break;
+    case 2:
+      _xlabel = value.payload.stringValue;
+      break;
+      _ylabel = value.payload.stringValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    case 1:
+      return Var(_title);
+    case 2:
+      return Var(_xlabel);
+    case 3:
+      return Var(_ylabel);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ImPlot::BeginPlot(_fullTitle.c_str(),
+                      _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
+                      _ylabel.size() > 0 ? _ylabel.c_str() : nullptr);
+    DEFER(ImPlot::EndPlot());
+
+    CBVar output{};
+    activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
+
+    return input;
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Style", Style);
   REGISTER_CBLOCK("ImGui.Window", Window);
@@ -1477,6 +1541,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Float4Drag", Float4Drag);
   REGISTER_CBLOCK("ImGui.TextInput", TextInput);
   REGISTER_CBLOCK("ImGui.Image", Image);
+  REGISTER_CBLOCK("ImGui.Plot", Plot);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
