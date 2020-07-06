@@ -5,13 +5,11 @@
    "Producer"
    ;; :Looped
    (Repeat
-    (-->
-     "A message"
-     (Produce "a")
-     (Log "Produced: "))
+    #("A message"
+      (Produce "a")
+      (Log "Produced: "))
     10)
-   (Complete "a")
-   ))
+   (Complete "a")))
 
 (def consumer1
   (Chain
@@ -37,14 +35,12 @@
    "Producer"
    ;; :Looped
    (Repeat
-    (-->
-     "A message"
-     (Broadcast "b" :NoCopy!! true)
-     (Log "Broadcasted: ")
-     (Pause 0.1))
+    #("A message"
+      (Broadcast "b" :NoCopy!! true)
+      (Log "Broadcasted: ")
+      (Pause 0.1))
     10)
-   (Complete "b")
-   ))
+   (Complete "b")))
 
 (defn consumers [x]
   (Chain

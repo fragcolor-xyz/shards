@@ -35,7 +35,7 @@
                                 (ImGui.Image (Float2 0.1 0.1))
 
                                 (ImGui.ChildWindow :Border true :Contents
-                                                   ~[(ImGui.TreeNode
+                                                   #((ImGui.TreeNode
                                                       "Node1"
                                                       (-->
                                                        "Node text..."
@@ -60,7 +60,7 @@
                                                        (ImGui.Text)
 
                                                        (ImGui.Float3Drag)
-                                                       (ImGui.Text)))])
+                                                       (ImGui.Text)))))
 
                                 (ImGui.Button "Push me!" (-->
                                                           (Msg "Action!")))
@@ -72,9 +72,8 @@
                                                           (Msg "Action!")) ImGuiButton.ArrowUp)
                                 (Cond [(--> (Is true)) (--> (Msg "yeah..."))])
                                 (ImGui.ChildWindow :Border true :Width 100 :Height 100 :Contents
-                                                   ~[(ToBytes)
-                                                     (ImGui.HexViewer)])
-                                ))
+                                                   #((ToBytes)
+                                                     (ImGui.HexViewer)))))
                  (BGFX.Draw)))
 
 (run Root 0.02)

@@ -21,7 +21,7 @@
    (Msg "Running tests!")
 
    true
-   (Cond [~[(Is true)] ~[(Msg "Cond was true!!") false]
+   (Cond [#((Is true)) #((Msg "Cond was true!!") false)
           (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is false true)
    (Log)
@@ -902,3 +902,5 @@
 
 (schedule Root fileReader)
 (if (run Root 0.001 100) nil (throw "Root tick failed"))
+
+(prn "Done")

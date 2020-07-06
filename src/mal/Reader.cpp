@@ -14,6 +14,7 @@ static const Regex closeRegex("[\\)\\]}]");
 static const Regex whitespaceRegex("[\\s,]+|;.*");
 static const Regex tokenRegexes[] = {
     Regex("~@"),
+    Regex("#\\("),
     Regex("[\\[\\]{}()'`~^@]"),
     Regex("\"(?:\\\\.|[^\\\\\"])*\""),
     Regex("[^\\s\\[\\]{}('\"`,;)]+"),
@@ -142,20 +143,24 @@ static malValuePtr readForm(Tokeniser& tokeniser)
         std::unique_ptr<malValueVec> items(new malValueVec);
         readList(tokeniser, items.get(), ")");
         return mal::list(items.release());
-    }
-    if (token == "[") {
+    } else if (token == "[") {
         tokeniser.next();
         std::unique_ptr<malValueVec> items(new malValueVec);
         readList(tokeniser, items.get(), "]");
         return mal::vector(items.release());
-    }
-    if (token == "{") {
+    } else if (token == "#(") {
+        tokeniser.next();
+        std::unique_ptr<malValueVec> items(new malValueVec);
+        readList(tokeniser, items.get(), ")");
+        return mal::list(mal::symbol("chainify"), mal::vector(items.release()));
+    } else if (token == "{") {
         tokeniser.next();
         malValueVec items;
         readList(tokeniser, &items, "}");
         return mal::hash(items.begin(), items.end(), false);
+    } else {
+        return readAtom(tokeniser);
     }
-    return readAtom(tokeniser);
 }
 
 static malValuePtr readAtom(Tokeniser& tokeniser)
