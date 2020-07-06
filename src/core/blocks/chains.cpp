@@ -289,7 +289,9 @@ struct ChainBase {
 };
 
 struct WaitChain : public ChainBase {
-  OwnedVar _output{};
+  // we don't need OwnedVar here
+  // we keep the chain referenced!
+  CBVar _output{};
   CBExposedTypeInfo _requiredChain{};
 
   void cleanup() {
