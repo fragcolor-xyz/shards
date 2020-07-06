@@ -374,7 +374,7 @@ struct WaitChain : public ChainBase {
       if (passthrough) {
         return input;
       } else {
-        // ownedvar, will clone
+        // no clone
         _output = chain->finishedOutput;
         return _output;
       }
