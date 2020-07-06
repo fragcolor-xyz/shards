@@ -511,8 +511,9 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 }
 
 inline bool isRunning(CBChain *chain) {
-  return chain->state >= CBChain::State::Starting &&
-         chain->state <= CBChain::State::IterationEnded;
+  const auto state = chain->state.load(); // atomic
+  return state >= CBChain::State::Starting &&
+         state <= CBChain::State::IterationEnded;
 }
 
 inline bool tick(CBChain *chain, CBVar rootInput = {}) {
