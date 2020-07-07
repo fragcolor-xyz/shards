@@ -1447,7 +1447,24 @@ struct Image : public Base {
   }
 };
 
+struct PlotContext {
+  PlotContext() {
+    context = ImPlot::createContext();
+    ImPlot::setGlobalContext(context);
+  }
+
+  ~PlotContext() {
+    ImPlot::setGlobalContext(nullptr);
+    ImPlot::destroyContext(context);
+  }
+
+private:
+  ImPlot::ImPlotContext *context{nullptr};
+};
+
 struct Plot : public Base {
+  Shared<PlotContext> _context{};
+
   static inline Types Plottable{
       {CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
 
