@@ -575,6 +575,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
+    # ${CHAINBLOCKS_DIR}/deps/implot/implot_demo.cpp
     ${PLATFORM_SOURCES}
     )
 endif()

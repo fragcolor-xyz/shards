@@ -1530,6 +1530,9 @@ struct Plot : public Base {
   void warmup(CBContext *context) { _blocks.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    // bool wopen = true;
+    // ImPlot::ShowDemoWindow(&wopen);
+
     if (ImPlot::BeginPlot(_fullTitle.c_str(),
                           _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
                           _ylabel.size() > 0 ? _ylabel.c_str() : nullptr)) {
@@ -1623,6 +1626,33 @@ struct PlotLine : public PlottableBase {
   }
 };
 
+struct PlotDigital : public PlottableBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (_kind == Kind::xAndY) {
+      ImPlot::PlotDigital(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
+                               seq.elements[idx].payload.float2Value[1]);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    } else if (_kind == Kind::xAndIndex) {
+      ImPlot::PlotDigital(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(double(idx),
+                               seq.elements[idx].payload.floatValue);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    }
+    return input;
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Style", Style);
   REGISTER_CBLOCK("ImGui.Window", Window);
@@ -1656,6 +1686,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Image", Image);
   REGISTER_CBLOCK("ImGui.Plot", Plot);
   REGISTER_CBLOCK("ImGui.PlotLine", PlotLine);
+  REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
