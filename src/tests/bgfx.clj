@@ -69,6 +69,11 @@
                                                                      (ImGui.PlotScatter)
                                                                      (Math.Add (Float2 5 3))
                                                                      (ImGui.PlotBars)
+                                                                     
+                                                                    ;;  (Float4 244.57 245.55 243.00 244.68) >> .candles
+                                                                    ;;  (Float4 246.70 246.79 245.30 246.05) >> .candles
+                                                                    ;;  .candles
+                                                                    ;;  (ImGui.PlotCandles)
                                                                      ))))))
 
                                 (ImGui.Button "Push me!" (-->

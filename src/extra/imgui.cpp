@@ -1552,14 +1552,18 @@ struct PlottableBase : Base {
                          std::to_string(reinterpret_cast<uintptr_t>(this))};
   enum class Kind { unknown, xAndIndex, xAndY };
   Kind _kind{};
+  CBVar _color{};
 
   static CBTypesInfo inputTypes() { return Plot::Plottable; }
   static CBTypesInfo outputTypes() { return Plot::Plottable; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
-
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Label", "The label of the line to plot.", CoreInfo::StringType));
+  static constexpr int nparams = 2;
+  static inline Parameters params{
+      {"Label", "The plot's label.", {CoreInfo::StringType}},
+      {"Color",
+       "The plot's color.",
+       {CoreInfo::NoneType, CoreInfo::ColorType}}};
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -1567,6 +1571,9 @@ struct PlottableBase : Base {
       _label = value.payload.stringValue;
       _fullLabel =
           _label + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      break;
+    case 1:
+      _color = value;
       break;
     default:
       break;
@@ -1577,6 +1584,8 @@ struct PlottableBase : Base {
     switch (index) {
     case 0:
       return Var(_label);
+    case 1:
+      return _color;
     default:
       return Var::Empty;
     }
@@ -1597,10 +1606,27 @@ struct PlottableBase : Base {
 
     return data.inputType;
   }
+
+  void applyModifiers() {
+    if (_color.valueType == CBType::Color) {
+      ImPlot::PushStyleColor(ImPlotCol_Line,
+                             Style::color2Vec4(_color.payload.colorValue));
+      ImPlot::PushStyleColor(ImPlotCol_Fill,
+                             Style::color2Vec4(_color.payload.colorValue));
+    }
+  }
+
+  void popModifiers() {
+    if (_color.valueType == CBType::Color) {
+      ImPlot::PopStyleColor(2);
+    }
+  }
 };
 
 struct PlotLine : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    PlottableBase::applyModifiers();
+    DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
       ImPlot::PlotLine(
           _fullLabel.c_str(),
@@ -1628,6 +1654,8 @@ struct PlotLine : public PlottableBase {
 
 struct PlotDigital : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    PlottableBase::applyModifiers();
+    DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
       ImPlot::PlotDigital(
           _fullLabel.c_str(),
@@ -1655,6 +1683,8 @@ struct PlotDigital : public PlottableBase {
 
 struct PlotScatter : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    PlottableBase::applyModifiers();
+    DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
       ImPlot::PlotScatter(
           _fullLabel.c_str(),
@@ -1690,20 +1720,21 @@ struct PlotBars : public PlottableBase {
   PlotBarsProc _plot = &ImPlot::PlotBars;
 
   static inline Parameters params{
-      {"Width", "The width of each bar", {CoreInfo::FloatType}},
-      {"Horizontal",
-       "If the bar should be horiziontal rather than vertical",
-       {CoreInfo::BoolType}},
+      PlottableBase::params,
+      {{"Width", "The width of each bar", {CoreInfo::FloatType}},
+       {"Horizontal",
+        "If the bar should be horiziontal rather than vertical",
+        {CoreInfo::BoolType}}},
   };
 
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
-    case 0:
+    case PlottableBase::nparams + 1:
       _width = value.payload.floatValue;
       break;
-    case 1:
+    case PlottableBase::nparams + 2:
       _horizontal = value.payload.boolValue;
       if (_horizontal) {
         _plot = &ImPlot::PlotBarsH;
@@ -1712,23 +1743,25 @@ struct PlotBars : public PlottableBase {
       }
       break;
     default:
-      break;
+      PlottableBase::setParam(index, value);
     }
   }
 
   CBVar getParam(int index) {
     switch (index) {
-    case 0:
+    case PlottableBase::nparams + 1:
       return Var(_width);
-    case 1:
+    case PlottableBase::nparams + 2:
       return Var(_horizontal);
       break;
     default:
-      return Var::Empty;
+      return PlottableBase::getParam(index);
     }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    PlottableBase::applyModifiers();
+    DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
       _plot(
           _fullLabel.c_str(),
@@ -1753,6 +1786,110 @@ struct PlotBars : public PlottableBase {
     return input;
   }
 };
+
+// struct PlotCandles : public PlottableBase {
+//   std::string _rname;
+//   std::string _rSname;
+//   std::string _gname;
+//   std::string _gSname;
+
+//   static CBTypesInfo inputTypes() { return CoreInfo::Float4SeqType; }
+//   static CBTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }
+
+//   std::vector<double> _gi;
+//   std::vector<double> _go;
+//   std::vector<double> _gh;
+//   std::vector<double> _gl;
+//   std::vector<double> _gc;
+//   std::vector<double> _ri;
+//   std::vector<double> _ro;
+//   std::vector<double> _rh;
+//   std::vector<double> _rl;
+//   std::vector<double> _rc;
+
+//   CBTypeInfo compose(const CBInstanceData &data) {
+//     assert(data.inputType.basicType == Seq);
+//     if (data.inputType.seqTypes.len != 1 ||
+//         data.inputType.seqTypes.elements[0].basicType != Float4) {
+//       throw ComposeError("Expected a Float4 (OHLC) sequence.");
+//     }
+
+//     return data.inputType;
+//   }
+
+//   CBVar activate(CBContext *context, const CBVar &input) {
+//     // OHLC
+//     // Need to separate green and red candles
+
+//     _rname.clear();
+//     _rname.append(_fullLabel);
+//     _rname.append("r");
+//     _gname.clear();
+//     _gname.append(_fullLabel);
+//     _gname.append("g");
+
+//     _rSname.clear();
+//     _rSname.append(_fullLabel);
+//     _rSname.append("rs");
+//     _gSname.clear();
+//     _gSname.append(_fullLabel);
+//     _gSname.append("gs");
+
+//     _gi.clear();
+//     _go.clear();
+//     _gh.clear();
+//     _gl.clear();
+//     _gc.clear();
+//     _ri.clear();
+//     _ro.clear();
+//     _rh.clear();
+//     _rl.clear();
+//     _rc.clear();
+
+//     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+//       const auto candle = input.payload.seqValue.elements[i];
+//       if (candle.payload.float4Value[3] > candle.payload.float4Value[0]) {
+//         _gi.emplace_back(i);
+//         _go.emplace_back(candle.payload.float4Value[0]);
+//         _gh.emplace_back(candle.payload.float4Value[1]);
+//         _gl.emplace_back(candle.payload.float4Value[2]);
+//         _gc.emplace_back(candle.payload.float4Value[3]);
+//       } else {
+//         _ri.emplace_back(i);
+//         _ro.emplace_back(candle.payload.float4Value[0]);
+//         _rh.emplace_back(candle.payload.float4Value[1]);
+//         _rl.emplace_back(candle.payload.float4Value[2]);
+//         _rc.emplace_back(candle.payload.float4Value[3]);
+//       }
+//     }
+
+//     // reds
+//     const auto rsize = _rc.size();
+//     if (rsize > 0) {
+//       ImPlot::PushStyleColor(ImPlotCol_Fill,
+//                              Style::color2Vec4({255, 0, 0, 255}));
+//       // body
+//       ImPlot::PlotErrorBars(_rname.c_str(), &_ri[0], &_rc[0], &_ro[0], rsize);
+//       // shadow
+//       ImPlot::PlotErrorBars(_rSname.c_str(), &_ri[0], &_rl[0], &_rh[0], rsize);
+//       ImPlot::PopStyleColor(1);
+//     }
+
+//     // greens
+//     const auto gsize = _gc.size();
+//     if (gsize > 0) {
+//       ImPlot::PushStyleColor(ImPlotCol_Fill,
+//                              Style::color2Vec4({0, 255, 0, 255}));
+//       // body
+//       ImPlot::PlotErrorBars(_gname.c_str(), &_gi[0], &_go[0], &_gc[0], gsize);
+//       // shadow
+//       ImPlot::PlotErrorBars(_gSname.c_str(), &_gi[0], &_gl[0], &_gh[0], gsize);
+//       ImPlot::PopStyleColor(1);
+//     }
+
+//     return input;
+//   }
+// };
 
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Style", Style);
@@ -1790,6 +1927,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
   REGISTER_CBLOCK("ImGui.PlotScatter", PlotScatter);
   REGISTER_CBLOCK("ImGui.PlotBars", PlotBars);
+  // REGISTER_CBLOCK("ImGui.PlotCandles", PlotCandles);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
