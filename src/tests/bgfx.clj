@@ -64,8 +64,12 @@
                                                        (ImGui.Plot "Plot"
                                                                    #((Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
                                                                      (ImGui.PlotLine)
-                                                                    ;;  (Math.Add (Float2 -10 -10))
-                                                                     (ImGui.PlotDigital)))))))
+                                                                     (ImGui.PlotDigital)
+                                                                     (Math.Add (Float2 -10 -10))
+                                                                     (ImGui.PlotScatter)
+                                                                     (Math.Add (Float2 5 3))
+                                                                     (ImGui.PlotBars)
+                                                                     ))))))
 
                                 (ImGui.Button "Push me!" (-->
                                                           (Msg "Action!")))

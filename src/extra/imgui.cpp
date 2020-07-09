@@ -1653,6 +1653,107 @@ struct PlotDigital : public PlottableBase {
   }
 };
 
+struct PlotScatter : public PlottableBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (_kind == Kind::xAndY) {
+      ImPlot::PlotScatter(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
+                               seq.elements[idx].payload.float2Value[1]);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    } else if (_kind == Kind::xAndIndex) {
+      ImPlot::PlotScatter(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(double(idx),
+                               seq.elements[idx].payload.floatValue);
+          },
+          (void *)&input, int(input.payload.seqValue.len), 0);
+    }
+    return input;
+  }
+};
+
+struct PlotBars : public PlottableBase {
+  typedef void (*PlotBarsProc)(const char *label_id,
+                               ImPlotPoint (*getter)(void *data, int idx),
+                               void *data, int count, double width, int offset);
+
+  double _width = 0.67;
+  bool _horizontal = false;
+  PlotBarsProc _plot = &ImPlot::PlotBars;
+
+  static inline Parameters params{
+      {"Width", "The width of each bar", {CoreInfo::FloatType}},
+      {"Horizontal",
+       "If the bar should be horiziontal rather than vertical",
+       {CoreInfo::BoolType}},
+  };
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _width = value.payload.floatValue;
+      break;
+    case 1:
+      _horizontal = value.payload.boolValue;
+      if (_horizontal) {
+        _plot = &ImPlot::PlotBarsH;
+      } else {
+        _plot = &ImPlot::PlotBars;
+      }
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_width);
+    case 1:
+      return Var(_horizontal);
+      break;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (_kind == Kind::xAndY) {
+      _plot(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
+                               seq.elements[idx].payload.float2Value[1]);
+          },
+          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+    } else if (_kind == Kind::xAndIndex) {
+      _plot(
+          _fullLabel.c_str(),
+          [](void *data, int idx) {
+            auto input = reinterpret_cast<CBVar *>(data);
+            auto seq = input->payload.seqValue;
+            return ImPlotPoint(double(idx),
+                               seq.elements[idx].payload.floatValue);
+          },
+          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+    }
+    return input;
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Style", Style);
   REGISTER_CBLOCK("ImGui.Window", Window);
@@ -1687,6 +1788,8 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.Plot", Plot);
   REGISTER_CBLOCK("ImGui.PlotLine", PlotLine);
   REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
+  REGISTER_CBLOCK("ImGui.PlotScatter", PlotScatter);
+  REGISTER_CBLOCK("ImGui.PlotBars", PlotBars);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
