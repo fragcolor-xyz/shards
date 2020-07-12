@@ -126,7 +126,7 @@ else()
   endif()
 endif()
 
-add_compile_options(-ffast-math -funroll-loops -Wno-multichar)
+add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
 if(X86 AND NOT EMSCRIPTEN)
   if(NOT FORCE_CORE2)

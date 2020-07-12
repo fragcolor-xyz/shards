@@ -73,6 +73,8 @@ struct CoreInfo {
 
   static inline Types IntOrFloat{{IntType, FloatType}};
 
+  static inline Types FloatOrFloatSeq{{FloatType, FloatSeqType}};
+
   static inline Types NoneIntOrFloat{{NoneType, IntType, FloatType}};
 
   static inline Types Indexables{{Int2Type, Int3Type, Int4Type, Int8Type,

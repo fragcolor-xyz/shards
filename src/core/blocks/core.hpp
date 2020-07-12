@@ -428,6 +428,52 @@ struct IsValidNumber {
   }
 };
 
+struct NaNTo0 {
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatOrFloatSeq; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatOrFloatSeq; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.basicType == Float) {
+      data.block->activate = static_cast<CBActivateProc>(
+          [](CBlock *b, CBContext *ctx, const CBVar *v) {
+            auto blk = reinterpret_cast<BlockWrapper<NaNTo0> *>(b)->block;
+            return blk.activateSingle(ctx, *v);
+          });
+    } else {
+      data.block->activate = static_cast<CBActivateProc>(
+          [](CBlock *b, CBContext *ctx, const CBVar *v) {
+            auto blk = reinterpret_cast<BlockWrapper<NaNTo0> *>(b)->block;
+            return blk.activateSeq(ctx, *v);
+          });
+    }
+    return data.inputType;
+  }
+
+  CBVar activateSingle(CBContext *context, const CBVar &input) {
+    if (std::isnan(input.payload.floatValue)) {
+      return Var(0);
+    } else {
+      return input;
+    }
+  }
+
+  CBVar activateSeq(CBContext *context, const CBVar &input) {
+    // violate const.. edit in place
+    auto violatedInput = const_cast<CBVar &>(input);
+    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+      auto val = violatedInput.payload.seqValue.elements[i];
+      if (std::isnan(val.payload.floatValue)) {
+        violatedInput.payload.seqValue.elements[i].payload.floatValue = 0.0;
+      }
+    }
+    return input;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Unexpected code path");
+  }
+};
+
 struct VariableBase {
   CBVar *_target = nullptr;
   CBVar *_cell = nullptr;
