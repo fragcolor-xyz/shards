@@ -509,6 +509,21 @@ void callExitCallbacks() {
   }
 }
 
+void setSharedVariable(const char *name, const CBVar &value) {
+  std::scoped_lock lock(Globals::SharedVarsMutex);
+  Globals::SharedVars.emplace(name, value);
+}
+
+void unsetSharedVariable(const char *name) {
+  std::scoped_lock lock(Globals::SharedVarsMutex);
+  Globals::SharedVars.erase(name);
+}
+
+CBVar getSharedVariable(const char *name) {
+  std::scoped_lock lock(Globals::SharedVarsMutex);
+  return Globals::SharedVars[name];
+}
+
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   auto node = ctx->main->node.lock();
   assert(node);
@@ -730,6 +745,18 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
 
   result->releaseVariable = [](CBVar *variable) {
     return chainblocks::releaseVariable(variable);
+  };
+
+  result->setSharedVariable = [](const char *name, CBVar var) {
+    chainblocks::setSharedVariable(name, var);
+  };
+
+  result->unsetSharedVariable = [](const char *name) {
+    chainblocks::unsetSharedVariable(name);
+  };
+
+  result->getSharedVariable = [](const char *name) {
+    return chainblocks::getSharedVariable(name);
   };
 
   result->throwException = &chainblocks::throwException;

@@ -27,6 +27,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <cassert>
 #include <deque>
 #include <list>
+#include <mutex>
 #include <set>
 #include <type_traits>
 #include <unordered_set>
@@ -83,6 +84,9 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
+void setSharedVariable(const char *name, const CBVar &value);
+void unsetSharedVariable(const char *name);
+CBVar getSharedVariable(const char *name);
 CBChainState suspend(CBContext *context, double seconds);
 void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
@@ -259,6 +263,9 @@ using CBMapIt = std::unordered_map<
                                         16>>::iterator;
 
 struct Globals {
+  static inline std::mutex SharedVarsMutex;
+  static inline CBMap SharedVars;
+
   static inline std::unordered_map<std::string_view, CBBlockConstructor>
       BlocksRegister;
   static inline std::unordered_map<std::string_view, std::string_view>

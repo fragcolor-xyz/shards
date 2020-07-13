@@ -136,7 +136,8 @@ struct MainWindow : public BaseWindow {
       imguiDestroy();
       bgfx::shutdown();
       unregisterRunLoopCallback("fragcolor.bgfx.ospump");
-      SDL_DestroyWindow(_window);
+      if (_window)
+        SDL_DestroyWindow(_window);
       SDL_Quit();
       _window = nullptr;
       _sysWnd = nullptr;
@@ -187,34 +188,45 @@ struct MainWindow : public BaseWindow {
         }
       });
 
-      SDL_SysWMinfo winInfo{};
-      SDL_version sdlVer{};
-      Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
-      _window =
-          SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                           SDL_WINDOWPOS_CENTERED, _width, _height, flags);
-      SDL_VERSION(&sdlVer);
-      winInfo.version = sdlVer;
-      if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-        throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+      bgfx::Init initInfo{};
+
+      // try to see if global native window is set
+      auto nativeWnd = getSharedVariable("fragcolor.bgfx.nativewindow");
+      if (nativeWnd.valueType == Object &&
+          nativeWnd.payload.objectVendorId == FragCC &&
+          nativeWnd.payload.objectTypeId == BgfxNativeWindowCC) {
+        _sysWnd = decltype(_sysWnd)(nativeWnd.payload.objectValue);
+      } else {
+        SDL_SysWMinfo winInfo{};
+        SDL_version sdlVer{};
+        Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
+        _window =
+            SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
+                             SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+        SDL_VERSION(&sdlVer);
+        winInfo.version = sdlVer;
+        if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
+          throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+        }
+
+#ifdef __APPLE__
+#ifdef SDL_VIDEO_DRIVER_UIKIT
+        auto wnd = winInfo.info.uikit.window;
+        _sysWnd = cbSetupMetalLayer(wnd);
+#else
+        auto wnd = winInfo.info.cocoa.window;
+        _sysWnd = cbSetupMetalLayer(wnd);
+#endif
+#elif defined(_WIN32)
+        _sysWnd = winInfo.info.win.window;
+#elif defined(__linux__)
+        _sysWnd = (void *)winInfo.info.x11.window;
+#endif
       }
+
       // Ensure clicks will happen even from out of focus!
       SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
-      bgfx::Init initInfo{};
-#ifdef __APPLE__
-#ifdef SDL_VIDEO_DRIVER_UIKIT
-      auto wnd = winInfo.info.uikit.window;
-      _sysWnd = cbSetupMetalLayer(wnd);
-#else
-      auto wnd = winInfo.info.cocoa.window;
-      _sysWnd = cbSetupMetalLayer(wnd);
-#endif
-#elif defined(_WIN32)
-      _sysWnd = winInfo.info.win.window;
-#elif defined(__linux__)
-      _sysWnd = (void *)winInfo.info.x11.window;
-#endif
       initInfo.platformData.nwh = _sysWnd;
 
       initInfo.resolution.width = _width;
