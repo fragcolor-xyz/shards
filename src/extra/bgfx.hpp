@@ -12,6 +12,13 @@ using namespace chainblocks;
 namespace BGFX {
 constexpr uint32_t BgfxTextureHandleCC = 'bgfT';
 constexpr uint32_t BgfxContextCC = 'bgfx';
+constexpr uint32_t BgfxNativeWindowCC = 'bgfW';
+
+struct NativeWindow {
+  static inline Type Info{
+      {CBType::Object,
+       {.object = {.vendorId = FragCC, .typeId = BgfxNativeWindowCC}}}};
+};
 
 struct Context {
   static inline Type Info{
