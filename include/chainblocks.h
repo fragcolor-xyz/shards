@@ -815,13 +815,10 @@ typedef void(__cdecl *CBUnregisterExitCallback)(const char *eventName);
 
 typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
                                                      const char *name);
+typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain,
+                                                          const char *name);
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
-
-typedef void(__cdecl *CBSetSharedVariable)(const char *name,
-                                           struct CBVar value);
-typedef void(__cdecl *CBUnsetSharedVariable)(const char *name);
-typedef struct CBVar(__cdecl *CBGetSharedVariable)(const char *name);
 
 typedef void(__cdecl *CBThrowException)(const char *errorText)
     __attribute__((noreturn));
@@ -950,12 +947,8 @@ struct CBCore {
 
   // To be used within blocks, to manipulate variables
   CBReferenceVariable referenceVariable;
+  CBReferenceChainVariable referenceChainVariable;
   CBReleaseVariable releaseVariable;
-
-  // A quite unsafe way to set shared stuff, (interlocked but not ref counted!)
-  CBSetSharedVariable setSharedVariable;
-  CBUnsetSharedVariable unsetSharedVariable;
-  CBGetSharedVariable getSharedVariable;
 
   // Can be used to propagate block errors
   // assume [[noreturn]]

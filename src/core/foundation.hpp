@@ -263,9 +263,6 @@ using CBMapIt = std::unordered_map<
                                         16>>::iterator;
 
 struct Globals {
-  static inline std::mutex SharedVarsMutex;
-  static inline CBMap SharedVars;
-
   static inline std::unordered_map<std::string_view, CBBlockConstructor>
       BlocksRegister;
   static inline std::unordered_map<std::string_view, std::string_view>

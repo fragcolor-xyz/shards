@@ -70,6 +70,7 @@ struct BaseWindow : public Base {
   SDL_Window *_window = nullptr;
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
+  CBVar *_nativeWnd = nullptr;
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -150,6 +151,7 @@ struct MainWindow : public BaseWindow {
         memset(_sdlWinVar, 0x0, sizeof(CBVar));
         _sdlWinVar = nullptr;
       }
+
       if (_bgfxCtx) {
         if (_bgfxCtx->refcount > 1) {
           throw CBException(
@@ -158,6 +160,7 @@ struct MainWindow : public BaseWindow {
         memset(_bgfxCtx, 0x0, sizeof(CBVar));
         _bgfxCtx = nullptr;
       }
+
       if (_imguiCtx) {
         if (_imguiCtx->refcount > 1) {
           throw CBException(
@@ -166,6 +169,8 @@ struct MainWindow : public BaseWindow {
         memset(_imguiCtx, 0x0, sizeof(CBVar));
         _imguiCtx = nullptr;
       }
+
+      releaseVariable(_nativeWnd);
 
       _initDone = false;
       _wheelScroll = 0;
@@ -191,11 +196,11 @@ struct MainWindow : public BaseWindow {
       bgfx::Init initInfo{};
 
       // try to see if global native window is set
-      auto nativeWnd = getSharedVariable("fragcolor.bgfx.nativewindow");
-      if (nativeWnd.valueType == Object &&
-          nativeWnd.payload.objectVendorId == FragCC &&
-          nativeWnd.payload.objectTypeId == BgfxNativeWindowCC) {
-        _sysWnd = decltype(_sysWnd)(nativeWnd.payload.objectValue);
+      _nativeWnd = referenceVariable(context, "fragcolor.bgfx.nativewindow");
+      if (_nativeWnd->valueType == Object &&
+          _nativeWnd->payload.objectVendorId == FragCC &&
+          _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
+        _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
       } else {
         SDL_SysWMinfo winInfo{};
         SDL_version sdlVer{};
@@ -223,6 +228,11 @@ struct MainWindow : public BaseWindow {
         _sysWnd = (void *)winInfo.info.x11.window;
 #endif
       }
+
+      _nativeWnd->valueType = Object;
+      _nativeWnd->payload.objectValue = _sysWnd;
+      _nativeWnd->payload.objectVendorId = FragCC;
+      _nativeWnd->payload.objectTypeId = BgfxNativeWindowCC;
 
       // Ensure clicks will happen even from out of focus!
       SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");

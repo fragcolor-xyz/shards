@@ -44,6 +44,7 @@ pub static mut Core: CBCore = CBCore {
     registerExitCallback: None,
     unregisterExitCallback: None,
     referenceVariable: None,
+    referenceChainVariable: None,
     releaseVariable: None,
     throwException: None,
     throwActivationError: None,
