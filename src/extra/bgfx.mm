@@ -11,6 +11,7 @@
 
 namespace BGFX {
 void *cbSetupMetalLayer(void *wnd) {
+  @autoreleasepool {
 #ifdef SDL_VIDEO_DRIVER_UIKIT
   UIWindow *window = (UIWindow*)wnd;
   UIView *contentView = [[window rootViewController] view];
@@ -25,5 +26,6 @@ void *cbSetupMetalLayer(void *wnd) {
   [contentView setLayer:res];
   return res;
 #endif
+  }
 }
 }
