@@ -1011,6 +1011,7 @@ struct CBCore {
   CBCreateNode createNode;
   CBDestroyNode destroyNode;
   CBSchedule schedule;
+  CBSchedule unschedule;
   CBTick tick; // returns false if all chains are done!
   CBSleep sleep;
 

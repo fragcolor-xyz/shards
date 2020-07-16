@@ -888,6 +888,11 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     (*snode)->schedule(CBChain::sharedFromRef(chain));
   };
 
+  result->unschedule = [](CBNodeRef node, CBChainRef chain) {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->remove(CBChain::sharedFromRef(chain));
+  };
+
   result->tick = [](CBNodeRef node) {
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
     (*snode)->tick();
