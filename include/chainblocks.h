@@ -929,7 +929,7 @@ struct CBLoggingOptions {
 
 typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 
-typedef void(__cdecl *CBSetLoggingOptions)(CBLoggingOptions options);
+typedef void(__cdecl *CBSetLoggingOptions)(struct CBLoggingOptions options);
 
 struct CBCore {
   // Adds a block to the runtime database
