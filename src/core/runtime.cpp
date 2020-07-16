@@ -110,6 +110,8 @@ void loadExternalBlocks(std::string from) {
   }
 }
 
+el::Configurations LogsDefaultConf;
+
 void registerCoreBlocks() {
   if (globalRegisterDone)
     return;
@@ -133,11 +135,10 @@ void registerCoreBlocks() {
   }
 #endif
 
-  el::Configurations defaultConf;
-  defaultConf.setToDefault();
-  defaultConf.setGlobally(el::ConfigurationType::Format,
-                          "[%datetime %level %thread] %msg");
-  el::Loggers::reconfigureLogger("default", defaultConf);
+  LogsDefaultConf.setToDefault();
+  LogsDefaultConf.setGlobally(el::ConfigurationType::Format,
+                              "[%datetime %level %thread] %msg");
+  el::Loggers::reconfigureAllLoggers(LogsDefaultConf);
 
   // at this point we might have some auto magical static linked block already
   // keep them stored here and re-register them
@@ -837,6 +838,12 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
   };
 
   result->log = [](const char *msg) { LOG(INFO) << msg; };
+
+  result->setLoggingOptions = [](CBLoggingOptions options) {
+    chainblocks::LogsDefaultConf.setGlobally(
+        el::ConfigurationType::MaxLogFileSize, std::to_string(options.maxSize));
+    el::Loggers::reconfigureAllLoggers(chainblocks::LogsDefaultConf);
+  };
 
   result->createBlock = [](const char *name) {
     return chainblocks::createBlock(name);

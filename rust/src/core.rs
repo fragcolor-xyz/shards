@@ -101,6 +101,7 @@ pub static mut Core: CBCore = CBCore {
     runBlocks: None,
     getChainInfo: None,
     log: None,
+    setLoggingOptions: None,
     createBlock: None,
     createChain: None,
     setChainName: None,

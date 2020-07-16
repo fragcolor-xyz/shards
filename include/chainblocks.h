@@ -923,7 +923,13 @@ struct CBChainInfo {
   const CBlocks blocks;
 };
 
+struct CBLoggingOptions {
+  uint32_t maxSize;
+};
+
 typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
+
+typedef void(__cdecl *CBSetLoggingOptions)(CBLoggingOptions options);
 
 struct CBCore {
   // Adds a block to the runtime database
@@ -994,6 +1000,7 @@ struct CBCore {
 
   // Logging
   CBLog log;
+  CBSetLoggingOptions setLoggingOptions;
 
   // Chain creation
   CBCreateBlock createBlock;
