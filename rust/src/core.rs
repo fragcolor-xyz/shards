@@ -112,6 +112,7 @@ pub static mut Core: CBCore = CBCore {
     createNode: None,
     destroyNode: None,
     schedule: None,
+    unschedule: None,
     tick: None,
     sleep: None,
     getRootPath: None,
