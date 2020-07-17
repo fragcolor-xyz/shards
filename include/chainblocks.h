@@ -835,14 +835,6 @@ typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void(__cdecl *CBDestroyVar)(struct CBVar *var);
 
-typedef struct CBValidationResult(__cdecl *CBValidateChain)(
-    struct CBChain *chain, CBValidationCallback callback, void *userData,
-    struct CBInstanceData data);
-
-typedef struct CBRunChainOutput(__cdecl *CBRunChain)(struct CBChain *chain,
-                                                     struct CBContext *context,
-                                                     struct CBVar input);
-
 typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index,
                                             struct CBVar param,
                                             CBValidationCallback callback,
@@ -877,6 +869,13 @@ typedef void(__cdecl *CBSetChainUnsafe)(CBChainRef chain, CBBool unsafe);
 typedef void(__cdecl *CBAddBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBRemBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
+typedef struct CBVar(__cdecl *CBStopChain)(CBChainRef chain);
+typedef struct CBValidationResult(__cdecl *CBValidateChain)(
+    CBChainRef chain, CBValidationCallback callback, void *userData,
+    struct CBInstanceData data);
+typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain,
+                                                     struct CBContext *context,
+                                                     struct CBVar input);
 
 typedef CBNodeRef(__cdecl *CBCreateNode)();
 typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
@@ -917,10 +916,11 @@ typedef void(__cdecl *CBSetRootPath)(const char *);
 
 struct CBChainInfo {
   const char *name;
-  bool looped;
-  bool unsafe;
+  CBBool looped;
+  CBBool unsafe;
   const struct CBChain *chain;
   const CBlocks blocks;
+  CBBool isRunning;
 };
 
 struct CBLoggingOptions {
@@ -992,11 +992,8 @@ struct CBCore {
   CBTableNew tableNew;
 
   // Utility to use blocks within blocks
-  CBValidateChain validateChain;
-  CBRunChain runChain;
   CBValidateBlocks validateBlocks;
   CBRunBlocks runBlocks;
-  CBGetChainInfo getChainInfo;
 
   // Logging
   CBLog log;
@@ -1013,6 +1010,10 @@ struct CBCore {
   CBAddBlock addBlock;
   CBRemBlock removeBlock;
   CBDestroyChain destroyChain;
+  CBStopChain stopChain; // must destroyVar once done
+  CBValidateChain validateChain;
+  CBRunChain runChain;
+  CBGetChainInfo getChainInfo;
 
   // Chain scheduling
   CBCreateNode createNode;

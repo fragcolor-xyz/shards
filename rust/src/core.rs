@@ -110,6 +110,7 @@ pub static mut Core: CBCore = CBCore {
     addBlock: None,
     removeBlock: None,
     destroyChain: None,
+    stopChain: None,
     createNode: None,
     destroyNode: None,
     schedule: None,

@@ -801,13 +801,15 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return res;
   };
 
-  result->validateChain = [](CBChain *chain, CBValidationCallback callback,
+  result->validateChain = [](CBChainRef chain, CBValidationCallback callback,
                              void *userData, CBInstanceData data) {
-    return composeChain(chain, callback, userData, data);
+    auto sc = CBChain::sharedFromRef(chain);
+    return composeChain(sc.get(), callback, userData, data);
   };
 
-  result->runChain = [](CBChain *chain, CBContext *context, CBVar input) {
-    return chainblocks::runSubChain(chain, context, input);
+  result->runChain = [](CBChainRef chain, CBContext *context, CBVar input) {
+    auto sc = CBChain::sharedFromRef(chain);
+    return chainblocks::runSubChain(sc.get(), context, input);
   };
 
   result->validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
@@ -833,7 +835,8 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
                      chain->looped,
                      chain->unsafe,
                      chain,
-                     {&chain->blocks[0], uint32_t(chain->blocks.size()), 0}};
+                     {&chain->blocks[0], uint32_t(chain->blocks.size()), 0},
+                     chainblocks::isRunning(chain)};
     return info;
   };
 
@@ -878,6 +881,17 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     auto sc = CBChain::sharedFromRef(chainref);
     sc->removeBlock(blk);
   };
+
+  result->destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
+
+  result->stopChain = [](CBChainRef chain) {
+    auto sc = CBChain::sharedFromRef(chain);
+    CBVar output{};
+    chainblocks::stop(sc.get(), &output);
+    return output;
+  };
+
+  result->destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
 
   result->destroyChain = [](CBChainRef chain) { CBChain::deleteRef(chain); };
 
