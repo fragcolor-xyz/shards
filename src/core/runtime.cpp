@@ -72,6 +72,10 @@ namespace Http {
 extern void registerBlocks();
 }
 
+namespace WS {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -179,6 +183,7 @@ void registerCoreBlocks() {
   registerNetworkBlocks();
   Python::registerBlocks();
   Http::registerBlocks();
+  WS::registerBlocks();
 #endif
 
   // Enums are auto registered we need to propagate them to observers

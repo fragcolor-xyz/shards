@@ -71,6 +71,9 @@ struct Client {
     static Parameters params{{"Host",
                               "The remote host address or IP.",
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
+                             {"Target",
+                              "The remote host target path.",
+                              {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Port",
                               "The remote host port.",
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
@@ -129,8 +132,9 @@ struct Client {
           }
         }
 
-        resolved = resolver.resolve(host.get().payload.stringValue,
-                                    port.get().payload.stringValue);
+        tcp::resolver resolver{ioc};
+        auto resolved = resolver.resolve(host.get().payload.stringValue,
+                                         port.get().payload.stringValue);
 
         // Make the connection on the IP address we get from a lookup
         beast::get_lowest_layer(stream).connect(resolved);
@@ -160,7 +164,12 @@ struct Client {
     connected = false;
   }
 
-  void cleanup() { resetStream(); }
+  void cleanup() {
+    resetStream();
+    port.cleanup();
+    host.cleanup();
+    target.cleanup();
+  }
 
   void warmup(CBContext *ctx) {
     port.warmup(ctx);
@@ -197,10 +206,7 @@ protected:
   ssl::context ctx{ssl::context::tlsv12_client};
 
   // These objects perform our I/O
-  tcp::resolver resolver{ioc};
   beast::ssl_stream<beast::tcp_stream> stream{ioc, ctx};
-
-  tcp::resolver::results_type resolved;
 
   // This buffer is used for reading and must be persisted
   beast::flat_buffer buffer;
