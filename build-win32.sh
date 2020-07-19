@@ -23,3 +23,4 @@ ninja cbl
 ./cbl ../src/tests/lmdb.clj
 ./cbl ../src/tests/genetic.clj
 ./cbl ../src/tests/http.clj
+./cbl ../src/tests/snappy.clj
