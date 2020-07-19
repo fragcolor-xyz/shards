@@ -16,7 +16,8 @@
   (Log)
   (Get "compressed")
   (Snappy.Decompress)
-  (BytesToString)
+  (ExpectString)
+  (Assert.Is "Compressing this string is the test, Compressing this string is the test" true)
   (Log)))
 
 (tick Root)

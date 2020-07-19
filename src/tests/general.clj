@@ -468,9 +468,11 @@
 
    "Hello Pandas"
    (ToBytes)
-   (BytesToInt8)
-   (Assert.Is [72 101 108 108 111 32 80 97 110 100 97 115 0] true)
+   (FromBytes)
+   (ExpectString)
+   (Assert.Is  "Hello Pandas" true)
    (Log)
+   (Const [72 101 108 108 111 32 80 97 110 100 97 115 0])
    (Math.Xor [77 78 77 11 16])
    (Assert.Is [5 43 33 103 127 109 30 44 101 116 44 61 77] true)
    (Log)
@@ -486,8 +488,6 @@
 
    (Const [1 2 3 4 5])
    (Set "pretest")
-   (ToBytes)
-   (BytesToInt64)
    (Assert.Is [1 2 3 4 5] true)
 
    0 (PrependTo .pretest)

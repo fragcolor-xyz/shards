@@ -200,6 +200,63 @@ struct ReadFile : public FileBase {
   }
 };
 
+struct ToBytes {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  Serialization serial;
+  std::vector<uint8_t> _buffer;
+
+  void cleanup() { _buffer.clear(); }
+
+  struct Writer {
+    std::vector<uint8_t> &_buffer;
+    Writer(std::vector<uint8_t> &stream) : _buffer(stream) {}
+    void operator()(const uint8_t *buf, size_t size) {
+      _buffer.insert(_buffer.end(), buf, buf + size);
+    }
+  };
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Writer s(_buffer);
+    _buffer.clear();
+    serial.reset();
+    serial.serialize(input, s);
+    return Var(&_buffer.front(), _buffer.size());
+  }
+};
+
+struct FromBytes {
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  Serialization serial;
+  CBVar _output{};
+
+  void destroy() { Serialization::varFree(_output); }
+
+  struct Reader {
+    const CBVar &_bytesVar;
+    size_t _offset;
+    Reader(const CBVar &var) : _bytesVar(var), _offset(0) {}
+    void operator()(uint8_t *buf, size_t size) {
+      if (_bytesVar.payload.bytesSize < _offset + size) {
+        throw ActivationError("FromBytes buffer underrun");
+      }
+
+      memcpy(buf, _bytesVar.payload.bytesValue + _offset, size);
+      _offset += size;
+    }
+  };
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Reader r(input);
+    serial.reset();
+    serial.deserialize(r, _output);
+    return _output;
+  }
+};
+
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
   static inline EnumInfo<BPP> BPPEnum{"BPP", 'sink', 'ibpp'};
@@ -335,5 +392,7 @@ void registerSerializationBlocks() {
   REGISTER_CBLOCK("ReadFile", ReadFile);
   REGISTER_CBLOCK("LoadImage", LoadImage);
   REGISTER_CBLOCK("WritePNG", WritePNG);
+  REGISTER_CBLOCK("FromBytes", FromBytes);
+  REGISTER_CBLOCK("ToBytes", ToBytes);
 }
 }; // namespace chainblocks
