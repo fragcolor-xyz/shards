@@ -565,7 +565,7 @@ if(NOT BUILD_CORE_ONLY)
       )
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS)
+  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
     ExternalProject_Add(snappy_a
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
@@ -682,7 +682,7 @@ if(NOT BUILD_CORE_ONLY)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS)
+  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
     add_dependencies(cb_static snappy_a)
     target_link_libraries(cb_static libsnappy)
     add_dependencies(cb_shared snappy_a)
