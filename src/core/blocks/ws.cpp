@@ -39,7 +39,10 @@ struct Client {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Host",
+    static Parameters params{{"Name",
+                              "The name of this websocket instance.",
+                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                             {"Host",
                               "The remote host address or IP.",
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Target",
@@ -57,15 +60,18 @@ struct Client {
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
-      host = value;
+      name = value.payload.stringValue;
       break;
     case 1:
-      target = value;
+      host = value;
       break;
     case 2:
-      port = value;
+      target = value;
       break;
     case 3:
+      port = value;
+      break;
+    case 4:
       ssl = value.payload.boolValue;
       break;
     default:
@@ -76,12 +82,14 @@ struct Client {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return host;
+      return Var(name);
     case 1:
-      return target;
+      return host;
     case 2:
-      return port;
+      return target;
     case 3:
+      return port;
+    case 4:
       return Var(ssl);
     default:
       return {};
@@ -98,17 +106,17 @@ struct Client {
                                          port.get().payload.stringValue);
 
         // Make the connection on the IP address we get from a lookup
-        auto ep = net::connect(get_lowest_layer(ws), resolved);
+        auto ep = net::connect(get_lowest_layer(*ws), resolved);
         std::string h = host.get().payload.stringValue;
         h += ':' + std::to_string(ep.port());
 
         if (ssl) {
           // Perform the SSL handshake
-          ws.next_layer().handshake(ssl::stream_base::client);
+          ws->next_layer().handshake(ssl::stream_base::client);
         }
 
         // Set a decorator to change the User-Agent of the handshake
-        ws.set_option(
+        ws->set_option(
             websocket::stream_base::decorator([](websocket::request_type &req) {
               req.set(http::field::user_agent,
                       std::string(BOOST_BEAST_VERSION_STRING) +
@@ -116,7 +124,7 @@ struct Client {
             }));
 
         // Perform the websocket handshake
-        ws.handshake(h, target.get().payload.stringValue);
+        ws->handshake(h, target.get().payload.stringValue);
 
         connected = true;
       });
@@ -129,23 +137,36 @@ struct Client {
   }
 
   void cleanup() {
-    if (connected)
-      ws.close(websocket::close_code::normal);
-
     port.cleanup();
     host.cleanup();
     target.cleanup();
+
+    if (socket) {
+      releaseVariable(socket);
+      if (socket->refcount == 0) {
+        if (ws->is_open()) {
+          LOG(DEBUG) << "Closing WebSocket";
+          ws->close(websocket::close_code::normal);
+        }
+      }
+      socket = nullptr;
+    }
   }
 
   void warmup(CBContext *ctx) {
     port.warmup(ctx);
     host.warmup(ctx);
     target.warmup(ctx);
+
+    socket = referenceVariable(ctx, name.c_str());
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!connected) {
       connect(context);
+      socket->payload.objectVendorId = FragCC;
+      socket->payload.objectTypeId = WebSocketCC;
+      socket->payload.objectValue = &ws;
     }
 
     return input;
@@ -154,12 +175,14 @@ struct Client {
 protected:
   Shared<tf::Executor> _taskManager;
 
+  std::string name;
   ParamVar port{Var("443")};
   ParamVar host{Var("www.example.com")};
   ParamVar target{Var("/")};
   bool ssl = true;
 
   bool connected = false;
+  CBVar *socket;
 
   // The io_context is required for all I/O
   net::io_context ioc;
@@ -168,7 +191,14 @@ protected:
   ssl::context ctx{ssl::context::tlsv12_client};
 
   // These objects perform our I/O
-  websocket::stream<beast::ssl_stream<tcp::socket>> ws{ioc, ctx};
+  using Socket = websocket::stream<beast::ssl_stream<tcp::socket>>;
+  std::shared_ptr<Socket> ws{new Socket(ioc, ctx), [](auto s) {
+                               if (s->is_open()) {
+                                 LOG(DEBUG) << "Closing WebSocket";
+                                 s->close(websocket::close_code::normal);
+                               }
+                               delete s;
+                             }};
 };
 
 void registerBlocks() { REGISTER_CBLOCK("WebSocket.Client", Client); }
