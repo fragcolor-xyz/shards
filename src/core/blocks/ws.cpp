@@ -163,7 +163,7 @@ protected:
   websocket::stream<beast::ssl_stream<tcp::socket>> ws{ioc, ctx};
 };
 
-void registerBlocks() { REGISTER_CBLOCK("WS.Client", Client); }
+void registerBlocks() { REGISTER_CBLOCK("WebSocket.Client", Client); }
 } // namespace WS
 } // namespace chainblocks
 #else
