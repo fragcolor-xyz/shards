@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
+/* Copyright © 2019-2020 Giovanni Petrantoni */
+
 #ifndef CB_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
@@ -20,7 +23,7 @@ namespace http = beast::http;   // from <boost/beast/http.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
 namespace ssl = net::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-                                //
+
 #include <cctype>
 #include <iomanip>
 #include <sstream>
@@ -143,7 +146,6 @@ struct Client {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
       LOG(WARNING) << "Http connection failed: " << ex.what();
-      suspend(context, 0.5);
       throw ActivationError("Http connection failed.");
     }
   }
@@ -245,10 +247,7 @@ struct Get final : public Client {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
       LOG(WARNING) << "Http request failed: " << ex.what();
-
       resetStream();
-
-      suspend(context, 0.5);
       throw ActivationError("Http request failed.");
     }
   }
@@ -294,10 +293,7 @@ struct Post final : public Client {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
       LOG(ERROR) << "Http request failed: " << ex.what();
-
       resetStream();
-
-      suspend(context, 0.5);
       throw ActivationError("Http request failed.");
     }
   }
