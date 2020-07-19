@@ -9,16 +9,16 @@
   (Pack "i32 i32 f32")
   (Set "bytes")
   (Log)
-  (BytesToInt32)
-  (Take 1)
-  (Assert.Is 20 true)
-  (Get "bytes")
-  (BytesToFloat32)
-  (Take 2)
-  (Assert.Is 3.14 true)
+  
   (Get "bytes")
   (Unpack "i32 i32 f32")
   (Log)
+  (ExpectSeq) &> .bseq
+  (Take 1)
+  (ExpectInt)
+  (Assert.Is 20 true)
+  .bseq (Take 2)
+  (Assert.Is 3.14 true)
 
   (Const ["Hello structured data" 2])
   (Pack "s i32")
