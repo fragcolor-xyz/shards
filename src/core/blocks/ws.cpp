@@ -26,6 +26,14 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 namespace chainblocks {
 namespace WS {
+constexpr uint32_t WebSocketCC = 'webs';
+
+struct Common {
+  static inline Type WebSocket{
+      {CBType::Object,
+       {.object = {.vendorId = FragCC, .typeId = WebSocketCC}}}};
+};
+
 struct Client {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
