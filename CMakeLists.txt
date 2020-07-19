@@ -249,6 +249,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   )
 
 #### Header paths for tidy
@@ -563,7 +564,28 @@ if(NOT BUILD_CORE_ONLY)
       )
   endif()
 
+  if(NOT CB_NO_SNAPPY_BLOCKS)
+    ExternalProject_Add(snappy_a
+      GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+      GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
+      )
+
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
+
+    add_library(libsnappy STATIC IMPORTED GLOBAL)
+    add_dependencies(libsnappy snappy_a)
+    set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
+    
+    set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp)
+  else()
+    add_compile_definitions(CB_NO_SNAPPY_BLOCKS=1)
+  endif()
+
   set(CB_EXTRAS
+    ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -657,6 +679,13 @@ if(NOT BUILD_CORE_ONLY)
     target_link_libraries(cb_shared libsdl)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
+endif()
+
+if(NOT CB_NO_SNAPPY_BLOCKS)
+  add_dependencies(cb_static snappy_a)
+  target_link_libraries(cb_static libsnappy)
+  add_dependencies(cb_shared snappy_a)
+  target_link_libraries(cb_shared libsnappy)
 endif()
 
 ### mal
