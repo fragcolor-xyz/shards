@@ -3,7 +3,7 @@
 (def test
   (Chain
    "ws-test"
-   (WS.Client "echo.websocket.org")))
+   (WebSocket.Client "echo.websocket.org")))
 
 (schedule Root test)
 (run Root 0.1)
