@@ -139,6 +139,8 @@ jobs:
         ./cbl ../src/tests/genetic.clj
         ./cbl ../src/tests/imaging.clj
         ./cbl ../src/tests/http.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/ws.clj
 
   ciMacRel:
     runs-on: macos-latest
@@ -172,6 +174,8 @@ jobs:
         ./cbl ../src/tests/genetic.clj
         ./cbl ../src/tests/imaging.clj
         ./cbl ../src/tests/http.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/ws.clj
   
   rustBuild:
     name: Rust check
