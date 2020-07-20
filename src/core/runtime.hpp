@@ -965,16 +965,22 @@ struct Serialization {
       break;
     }
     case CBType::Table: {
-      CBMap *map;
+      CBMap *map = nullptr;
+
       if (recycle) {
         if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
           map = (CBMap *)output.payload.tableValue.opaque;
           map->clear();
         } else {
-          map = new CBMap();
-          output.payload.tableValue.api = &Globals::TableInterface;
-          output.payload.tableValue.opaque = map;
+          varFree(output);
+          output.valueType = nextType;
         }
+      }
+
+      if (!map) {
+        map = new CBMap();
+        output.payload.tableValue.api = &Globals::TableInterface;
+        output.payload.tableValue.opaque = map;
       }
 
       uint64_t len;
@@ -984,9 +990,9 @@ struct Serialization {
         uint32_t klen;
         read((uint8_t *)&klen, sizeof(uint32_t));
         keyBuf.resize(klen + 1);
-        read((uint8_t *)keyBuf.c_str(), len);
+        read((uint8_t *)keyBuf.c_str(), klen);
         const_cast<char *>(keyBuf.c_str())[klen] = 0;
-        auto dst = (*map)[keyBuf.c_str()];
+        auto &dst = (*map)[keyBuf];
         deserialize(read, dst);
       }
       break;

@@ -71,7 +71,7 @@ struct Client {
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Port",
                               "The remote host port.",
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                              {CoreInfo::IntType, CoreInfo::IntVarType}},
                              {"Secure",
                               "If the connection should be secured.",
                               {CoreInfo::BoolType}}};
@@ -124,8 +124,9 @@ struct Client {
       op.sidechain(tasks, [&]() {
         boost::asio::io_context ioc;
         tcp::resolver resolver{ioc};
-        auto resolved = resolver.resolve(host.get().payload.stringValue,
-                                         port.get().payload.stringValue);
+        auto resolved =
+            resolver.resolve(host.get().payload.stringValue,
+                             std::to_string(port.get().payload.intValue));
 
         // Make the connection on the IP address we get from a lookup
         auto ep = net::connect(get_lowest_layer(ws->get()), resolved);
@@ -203,7 +204,7 @@ protected:
   Shared<tf::Executor> _taskManager;
 
   std::string name;
-  ParamVar port{Var("443")};
+  ParamVar port{Var(443)};
   ParamVar host{Var("echo.websocket.org")};
   ParamVar target{Var("/")};
   bool ssl = true;

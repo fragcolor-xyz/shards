@@ -76,7 +76,7 @@ struct Client {
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Port",
                               "The remote host port.",
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                              {CoreInfo::IntType, CoreInfo::IntVarType}},
                              {"Secure",
                               "If the connection should be secured.",
                               {CoreInfo::BoolType}}};
@@ -133,8 +133,9 @@ struct Client {
         }
 
         tcp::resolver resolver{ioc};
-        auto resolved = resolver.resolve(host.get().payload.stringValue,
-                                         port.get().payload.stringValue);
+        auto resolved =
+            resolver.resolve(host.get().payload.stringValue,
+                             std::to_string(port.get().payload.intValue));
 
         // Make the connection on the IP address we get from a lookup
         beast::get_lowest_layer(stream).connect(resolved);
@@ -191,7 +192,7 @@ struct Client {
 protected:
   Shared<tf::Executor> _taskManager;
 
-  ParamVar port{Var("443")};
+  ParamVar port{Var(443)};
   ParamVar host{Var("www.example.com")};
   ParamVar target{Var("/")};
   std::string vars;
