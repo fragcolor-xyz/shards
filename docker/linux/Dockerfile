@@ -1,6 +1,9 @@
-FROM archlinux/base
+FROM ubuntu:20.04
 
-RUN pacman -Syu --noconfirm && pacman -S --noconfirm base-devel git cmake wget clang ninja boost valgrind
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y update
+RUN apt-get -y install tzdata
+RUN apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev valgrind xorg-dev libdbus-1-dev libssl-dev
 
 ARG USER_ID=1000
 
