@@ -21,6 +21,7 @@ namespace net = boost::asio;            // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
+#include "asiotools.hpp"
 #include "chainblocks.hpp"
 #include "shared.hpp"
 
@@ -32,6 +33,26 @@ struct Common {
   static inline Type WebSocket{
       {CBType::Object,
        {.object = {.vendorId = FragCC, .typeId = WebSocketCC}}}};
+
+  static inline Type WebSocketVar{
+      {CBType::ContextVar, {.contextVarTypes = WebSocket}}};
+};
+
+struct Socket {
+  Asio::IOContext asioCtx{};
+  ssl::context ctx{ssl::context::tlsv12_client};
+  websocket::stream<beast::ssl_stream<tcp::socket>> socket{asioCtx(), ctx};
+
+  void close() {
+    if (socket.is_open()) {
+      LOG(DEBUG) << "Closing WebSocket";
+      socket.close(websocket::close_code::normal);
+    }
+  }
+
+  ~Socket() { close(); }
+
+  websocket::stream<beast::ssl_stream<tcp::socket>> &get() { return socket; }
 };
 
 struct Client {
@@ -41,7 +62,7 @@ struct Client {
   static CBParametersInfo parameters() {
     static Parameters params{{"Name",
                               "The name of this websocket instance.",
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
+                              {CoreInfo::StringType}},
                              {"Host",
                               "The remote host address or IP.",
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
@@ -101,38 +122,41 @@ struct Client {
     try {
       auto &tasks = _taskManager();
       op.sidechain(tasks, [&]() {
+        boost::asio::io_context ioc;
         tcp::resolver resolver{ioc};
         auto resolved = resolver.resolve(host.get().payload.stringValue,
                                          port.get().payload.stringValue);
 
         // Make the connection on the IP address we get from a lookup
-        auto ep = net::connect(get_lowest_layer(*ws), resolved);
+        auto ep = net::connect(get_lowest_layer(ws->get()), resolved);
         std::string h = host.get().payload.stringValue;
         h += ':' + std::to_string(ep.port());
 
         if (ssl) {
           // Perform the SSL handshake
-          ws->next_layer().handshake(ssl::stream_base::client);
+          ws->get().next_layer().handshake(ssl::stream_base::client);
         }
 
         // Set a decorator to change the User-Agent of the handshake
-        ws->set_option(
+        ws->get().set_option(
             websocket::stream_base::decorator([](websocket::request_type &req) {
               req.set(http::field::user_agent,
                       std::string(BOOST_BEAST_VERSION_STRING) +
                           " websocket-client-coro");
             }));
 
+        LOG(DEBUG) << "WebSocket handshake with: " << h;
+
         // Perform the websocket handshake
-        ws->handshake(h, target.get().payload.stringValue);
+        ws->get().handshake(h, target.get().payload.stringValue);
 
         connected = true;
       });
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(WARNING) << "Http connection failed: " << ex.what();
-      throw ActivationError("Http connection failed.");
+      LOG(WARNING) << "WebSocket connection failed: " << ex.what();
+      throw ActivationError("WebSocket connection failed.");
     }
   }
 
@@ -144,10 +168,7 @@ struct Client {
     if (socket) {
       releaseVariable(socket);
       if (socket->refcount == 0) {
-        if (ws->is_open()) {
-          LOG(DEBUG) << "Closing WebSocket";
-          ws->close(websocket::close_code::normal);
-        }
+        ws->close();
       }
       socket = nullptr;
     }
@@ -159,6 +180,12 @@ struct Client {
     target.warmup(ctx);
 
     socket = referenceVariable(ctx, name.c_str());
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    _expInfo = CBExposedTypeInfo{name.c_str(), "The exposed websocket.",
+                                 Common::WebSocket};
+    return CBExposedTypesInfo{&_expInfo, 1, 0};
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -177,31 +204,132 @@ protected:
 
   std::string name;
   ParamVar port{Var("443")};
-  ParamVar host{Var("www.example.com")};
+  ParamVar host{Var("echo.websocket.org")};
   ParamVar target{Var("/")};
   bool ssl = true;
+
+  CBExposedTypeInfo _expInfo{};
 
   bool connected = false;
   CBVar *socket;
 
-  // The io_context is required for all I/O
-  net::io_context ioc;
-
-  // The SSL context is required, and holds certificates
-  ssl::context ctx{ssl::context::tlsv12_client};
-
   // These objects perform our I/O
-  using Socket = websocket::stream<beast::ssl_stream<tcp::socket>>;
-  std::shared_ptr<Socket> ws{new Socket(ioc, ctx), [](auto s) {
-                               if (s->is_open()) {
-                                 LOG(DEBUG) << "Closing WebSocket";
-                                 s->close(websocket::close_code::normal);
-                               }
-                               delete s;
-                             }};
+  std::shared_ptr<Socket> ws = std::make_shared<Socket>();
 };
 
-void registerBlocks() { REGISTER_CBLOCK("WebSocket.Client", Client); }
+struct User {
+  std::shared_ptr<Socket> _ws;
+  ParamVar _wsVar{};
+  CBExposedTypeInfo _expInfo{};
+
+  static CBParametersInfo parameters() {
+    static Parameters params{
+        {"Socket", "The websocket instance variable.", {Common::WebSocketVar}}};
+    return params;
+  }
+
+  void setParam(int index, CBVar value) { _wsVar = value; }
+
+  CBVar getParam(int index) { return _wsVar; }
+
+  void cleanup() {
+    _wsVar.cleanup();
+    _ws = nullptr;
+  }
+
+  void warmup(CBContext *context) { _wsVar.warmup(context); }
+
+  void ensureSocket() {
+    if (_ws == nullptr)
+      _ws = *reinterpret_cast<std::shared_ptr<Socket> *>(
+          _wsVar.get().payload.objectValue);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_wsVar.isVariable()) {
+      _expInfo = CBExposedTypeInfo{
+          _wsVar.variableName(), "The required websocket.", Common::WebSocket};
+    } else {
+      throw ComposeError("No websocket specified.");
+    }
+    return CBExposedTypesInfo{&_expInfo, 1, 0};
+  }
+};
+
+struct WriteString : public User {
+  Shared<tf::Executor> _taskManager;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ensureSocket();
+
+    std::string_view payload{};
+
+    if (input.payload.stringLen > 0) {
+      payload =
+          std::string_view(input.payload.stringValue, input.payload.stringLen);
+    } else {
+      payload = std::string_view(input.payload.stringValue);
+    }
+
+    AsyncOp<InternalCore> op(context);
+    try {
+      auto &tasks = _taskManager();
+      op.sidechain(tasks, [&]() { _ws->get().write(net::buffer(payload)); });
+    } catch (std::exception &ex) {
+      // TODO some exceptions could be left unhandled
+      // or anyway should be fatal
+      LOG(WARNING) << "WebSocket write failed: " << ex.what();
+      throw ActivationError("WebSocket write failed.");
+    }
+
+    return input;
+  }
+};
+
+struct ReadString : public User {
+  beast::flat_buffer _buffer;
+  std::string _output;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ensureSocket();
+
+    _buffer.clear();
+
+    bool done = false;
+    boost::system::error_code done_err{};
+    _ws->get().async_read(_buffer, [&done, &done_err](auto err, auto size) {
+      done_err = err;
+      done = true;
+    });
+
+    while (!done) {
+      suspend(context, 0);
+    }
+
+    if (done_err.failed()) {
+      auto errorMsg = done_err.message();
+      throw ActivationError(errorMsg);
+    }
+
+    _output.clear();
+    const auto data = _buffer.data();
+    _output.reserve(data.size());
+    _output.append(static_cast<char const *>(data.data()), data.size());
+    return Var(_output);
+  }
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("WebSocket.Client", Client);
+  REGISTER_CBLOCK("WebSocket.WriteString", WriteString);
+  REGISTER_CBLOCK("WebSocket.ReadString", ReadString);
+}
 } // namespace WS
 } // namespace chainblocks
 #else
