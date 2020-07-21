@@ -198,7 +198,7 @@ mod dummy_block {
         fn outputTypes(&mut self) -> &Types {
             &self.outputTypes
         }
-        fn activate(&mut self, context: &CBContext, _input: &Var) -> Var {
+        fn activate(&mut self, context: &CBContext, _input: &Var) -> Result<Var, &str> {
             log("Dummy - activate: Ok!");
             let mut x: String = "Before...".to_string();
             log(&x);
@@ -206,7 +206,7 @@ mod dummy_block {
             x.push_str(" - and After!");
             log(&x);
             log("Dummy - activate: Resumed!");
-            return Var::default();
+            Ok(Var::default())
         }
 
         fn registerName() -> &'static str {

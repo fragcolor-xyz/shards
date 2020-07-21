@@ -1,3 +1,4 @@
+use crate::core::abortChain;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 use crate::chainblocksc::CBContext;
@@ -21,6 +22,7 @@ use crate::types::Types;
 use crate::types::ValidationResult;
 use crate::types::Var;
 use std::ffi::CString;
+use std::result::Result;
 
 pub trait Block {
     fn registerName() -> &'static str;
@@ -64,7 +66,7 @@ pub trait Block {
     }
 
     fn warmup(&mut self, _context: &Context) {}
-    fn activate(&mut self, context: &Context, input: &Var) -> Var;
+    fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
     fn cleanup(&mut self) {}
 
     fn hasMutate() -> bool {
@@ -150,7 +152,13 @@ unsafe extern "C" fn cblock_activate<T: Block>(
     arg3: *const CBVar,
 ) -> CBVar {
     let blk = arg1 as *mut BlockWrapper<T>;
-    (*blk).block.activate(&(*arg2), &(*arg3))
+    match (*blk).block.activate(&(*arg2), &(*arg3)) {
+        Ok(value) => value,
+        Err(error) => {
+            abortChain(&(*arg2), error);
+            Var::default()
+        }
+    }
 }
 
 unsafe extern "C" fn cblock_mutate<T: Block>(arg1: *mut CBlock, arg2: Table) {

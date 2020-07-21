@@ -823,6 +823,9 @@ typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 typedef void(__cdecl *CBThrowException)(const char *errorText)
     __attribute__((noreturn));
 
+typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
+                                    const char *errorText);
+
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
 typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                               double seconds);
@@ -965,6 +968,9 @@ struct CBCore {
   CBThrowException throwActivationError;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
+  // To be used within blocks, to abort the chain
+  // after this call you should return immediately from activate
+  CBAbortChain abortChain;
 
   // Utility to deal with CBVars
   CBCloneVar cloneVar;

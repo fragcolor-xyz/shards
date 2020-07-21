@@ -48,6 +48,7 @@ pub static mut Core: CBCore = CBCore {
     releaseVariable: None,
     throwException: None,
     throwActivationError: None,
+    abortChain: None,
     suspend: None,
     cloneVar: None,
     destroyVar: None,
@@ -180,6 +181,15 @@ pub fn suspend(context: &CBContext, seconds: f64) {
     unsafe {
         let ctx = context as *const CBContext as *mut CBContext;
         Core.suspend.unwrap()(ctx, seconds);
+    }
+}
+
+#[inline(always)]
+pub fn abortChain(context: &CBContext, message: &str) {
+    let cmsg = CString::new(message).unwrap();
+    unsafe {
+        let ctx = context as *const CBContext as *mut CBContext;
+        Core.abortChain.unwrap()(ctx, cmsg.as_ptr());
     }
 }
 

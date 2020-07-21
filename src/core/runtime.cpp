@@ -630,6 +630,9 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
           context->continueFlow();
         return CBChainState::Return;
       case CBChainState::Stop:
+        if (context->failed()) {
+          throw ActivationError(context->getErrorMessage());
+        }
       case CBChainState::Restart:
         return context->getState();
       case CBChainState::Rebase:
@@ -661,6 +664,9 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
           context->continueFlow();
         return CBChainState::Return;
       case CBChainState::Stop:
+        if (context->failed()) {
+          throw ActivationError(context->getErrorMessage());
+        }
       case CBChainState::Restart:
         return context->getState();
       case CBChainState::Rebase:
@@ -756,6 +762,10 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
 
   result->suspend = [](CBContext *context, double seconds) {
     return chainblocks::suspend(context, seconds);
+  };
+
+  result->abortChain = [](CBContext *context, const char *message) {
+    context->cancelFlow(message);
   };
 
   result->cloneVar = [](CBVar *dst, const CBVar *src) {
@@ -1625,7 +1635,6 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   memset(&chain->previousOutput, 0x0, sizeof(CBVar));
   chain->state = CBChain::State::Iterating;
   chain->context = context;
-  // Todo on exit
   DEFER({ chain->state = CBChain::State::IterationEnded; });
 
   auto input = chainInput;
@@ -1639,6 +1648,9 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
           return {context->getFlowStorage(), Restarted};
         }
         case CBChainState::Stop: {
+          if (context->failed()) {
+            throw ActivationError(context->getErrorMessage());
+          }
           return {context->getFlowStorage(), Stopped};
         }
         case CBChainState::Rebase:

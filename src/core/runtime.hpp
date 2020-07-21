@@ -101,6 +101,12 @@ struct CBContext {
     flowStorage = lastValue;
   }
 
+  void cancelFlow(std::string_view message) {
+    state = CBChainState::Stop;
+    errorMessage = message;
+    hasError = true;
+  }
+
   constexpr void rebaseFlow() { state = CBChainState::Rebase; }
 
   constexpr void continueFlow() { state = CBChainState::Continue; }
@@ -113,6 +119,10 @@ struct CBContext {
 
   constexpr bool shouldStop() const { return state == CBChainState::Stop; }
 
+  constexpr bool failed() const { return hasError; }
+
+  constexpr const std::string &getErrorMessage() { return errorMessage; }
+
   constexpr CBChainState getState() const { return state; }
 
   constexpr CBVar getFlowStorage() const { return flowStorage; }
@@ -122,6 +132,8 @@ private:
   // Used when flow is stopped/restart/return
   // to store the previous result
   CBVar flowStorage{};
+  bool hasError{false};
+  std::string errorMessage;
 };
 
 #include "blocks/core.hpp"
