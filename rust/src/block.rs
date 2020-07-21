@@ -48,8 +48,8 @@ pub trait Block {
     fn hasCompose() -> bool {
         false
     }
-    fn compose(&mut self, _data: &InstanceData) -> Type {
-        Type::default()
+    fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+        Ok(Type::default())
     }
 
     fn hasComposed() -> bool {
@@ -65,7 +65,7 @@ pub trait Block {
         Var::default()
     }
 
-    fn warmup(&mut self, _context: &Context) {}
+    fn warmup(&mut self, _context: &Context) -> Result<(), &str> { Ok(()) }
     fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
     fn cleanup(&mut self) {}
 
@@ -143,7 +143,9 @@ unsafe extern "C" fn cblock_destroy<T: Block>(arg1: *mut CBlock) {
 
 unsafe extern "C" fn cblock_warmup<T: Block>(arg1: *mut CBlock, arg2: *mut CBContext) {
     let blk = arg1 as *mut BlockWrapper<T>;
-    (*blk).block.warmup(&(*arg2));
+    if let Err(error) = (*blk).block.warmup(&(*arg2)) {
+        abortChain(&(*arg2), error);
+    }
 }
 
 unsafe extern "C" fn cblock_activate<T: Block>(
@@ -194,7 +196,14 @@ unsafe extern "C" fn cblock_compose<T: Block>(
     data: CBInstanceData,
 ) -> CBTypeInfo {
     let blk = arg1 as *mut BlockWrapper<T>;
-    (*blk).block.compose(&data)
+    match (*blk).block.compose(&data) {
+        Ok(output) => output,
+        Err(error) => {
+            let cmsg = CString::new(error).unwrap();
+            data.reportError.unwrap()(data.privateContext, cmsg.as_ptr(), false);
+            CBTypeInfo::default()
+        }
+    }
 }
 
 unsafe extern "C" fn cblock_composed<T: Block>(

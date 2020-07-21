@@ -1047,7 +1047,6 @@ struct ValidationContext {
 
   CBTypeInfo previousOutputType{};
   CBTypeInfo originalInputType{};
-  std::vector<CBTypeInfo> stackTypes;
 
   CBlock *bottom{};
   CBlock *next{};
@@ -1095,6 +1094,20 @@ void validateConnection(ValidationContext &ctx) {
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
+
+    struct ComposeContext {
+      std::string externalError;
+      bool externalFailure = false;
+      bool warning = false;
+    } externalCtx;
+    data.privateContext = &externalCtx;
+    data.reportError = [](auto ctx, auto message, auto warningOnly) {
+      auto cctx = reinterpret_cast<ComposeContext *>(ctx);
+      cctx->externalError = message;
+      cctx->externalFailure = true;
+      cctx->warning = warningOnly;
+    };
+
     // Pass all we got in the context!
     // TODO caching, this is repeated many times
     // anyway won't influence run perf
@@ -1103,15 +1116,24 @@ void validateConnection(ValidationContext &ctx) {
         chainblocks::arrayPush(data.shared, type);
       }
     }
-    for (auto &info : ctx.stackTypes) {
-      chainblocks::arrayPush(data.stack, info);
-    }
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
 
-    chainblocks::arrayFree(data.stack);
+    if (externalCtx.externalFailure) {
+      if (externalCtx.warning) {
+        externalCtx.externalError.insert(0, "Chain compose warning: ");
+        ctx.cb(ctx.bottom, externalCtx.externalError.c_str(), true,
+               ctx.userData);
+      } else {
+        externalCtx.externalError.insert(0,
+                                         "Chain compose failed with error: ");
+        ctx.cb(ctx.bottom, externalCtx.externalError.c_str(), false,
+               ctx.userData);
+      }
+    }
+
     chainblocks::arrayFree(data.shared);
   } else {
     // Short-cut if it's just one type and not any type
@@ -1308,10 +1330,6 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
   ctx.cb = callback;
   ctx.chain = data.chain;
   ctx.userData = userData;
-
-  for (uint32_t i = 0; i < data.stack.len; i++) {
-    ctx.stackTypes.push_back(data.stack.elements[i]);
-  }
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -2107,6 +2125,8 @@ void CBChain::warmup(CBContext *context) {
       try {
         if (blk->warmup)
           blk->warmup(blk, context);
+        if (context->failed())
+          throw chainblocks::CBException(context->getErrorMessage());
       } catch (const std::exception &e) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));

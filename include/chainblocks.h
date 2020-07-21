@@ -629,6 +629,10 @@ struct CBRunChainOutput {
   enum CBRunChainOutputState state;
 } __attribute__((aligned(16)));
 
+typedef void(__cdecl *CBComposeError)(void *privateContext,
+                                      const char *errorText,
+                                      CBBool warningOnly);
+
 struct CBInstanceData {
   // Used to optimize activations,
   // replacing function pointers during compose
@@ -639,10 +643,15 @@ struct CBInstanceData {
 
   // Info related to our activation
   struct CBTypeInfo inputType;
-  CBTypesInfo stack;
   CBExposedTypesInfo shared;
+
   // basically what the next block can get as input
   struct CBTypesInfo outputTypes;
+
+  // Use this to report compose errors (or warnings)
+  CBComposeError reportError;
+  // Reserved to use and pass with reportError
+  void *privateContext;
 };
 
 typedef struct CBlock *(__cdecl *CBBlockConstructor)();
