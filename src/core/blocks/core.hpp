@@ -373,7 +373,7 @@ struct Stop {
     return data.inputType;
   }
 
-  void composed(const CBChain *chain, const CBValidationResult *result) {
+  void composed(const CBChain *chain, const CBComposeResult *result) {
     if (_inputType != result->outputType) {
       throw ComposeError(
           "Stop input and chain output type mismatch, Stop "
@@ -2515,7 +2515,7 @@ struct Repeat {
 struct Once {
   BlocksVar _blks;
   ExposedInfo _requiredInfo{};
-  CBValidationResult _validation{};
+  CBComposeResult _validation{};
   bool done = false;
 
   void cleanup() {

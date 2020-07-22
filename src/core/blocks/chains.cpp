@@ -94,7 +94,7 @@ struct ChainBase {
   bool doneOnce{false};
   bool passthrough{false};
   RunChainMode mode{RunChainMode::Inline};
-  CBValidationResult chainValidation{};
+  CBComposeResult chainValidation{};
 
   void destroy() {
     chainblocks::arrayFree(chainValidation.exposedInfo);

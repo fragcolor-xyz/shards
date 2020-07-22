@@ -47,21 +47,19 @@ private:
   CBTypeInfo _info;
 };
 
-[[nodiscard]] CBValidationResult
-composeChain(const std::vector<CBlock *> &chain, CBValidationCallback callback,
-             void *userData, CBInstanceData data, bool globalsOnly);
-[[nodiscard]] CBValidationResult composeChain(const CBlocks chain,
-                                              CBValidationCallback callback,
-                                              void *userData,
-                                              CBInstanceData data);
-[[nodiscard]] CBValidationResult composeChain(const CBSeq chain,
-                                              CBValidationCallback callback,
-                                              void *userData,
-                                              CBInstanceData data);
-[[nodiscard]] CBValidationResult composeChain(const CBChain *chain,
-                                              CBValidationCallback callback,
-                                              void *userData,
-                                              CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data,
+                                           bool globalsOnly);
+[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);

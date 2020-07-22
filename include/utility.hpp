@@ -204,7 +204,7 @@ private:
   CBVar _blocksParam{}; // param cache
   CBlocks _blocks{};    // var wrapper we pass to validate and activate
   std::vector<CBlockPtr> _blocksArray; // blocks actual storage
-  CBValidationResult _chainValidation{};
+  CBComposeResult _chainValidation{};
 
   void destroy() {
     for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
@@ -267,12 +267,12 @@ public:
 
   operator CBVar() const { return _blocksParam; }
 
-  CBValidationResult compose(const CBInstanceData &data) {
+  CBComposeResult compose(const CBInstanceData &data) {
     // Free any previous result!
     CB_CORE::expTypesFree(_chainValidation.exposedInfo);
     CB_CORE::expTypesFree(_chainValidation.requiredInfo);
 
-    _chainValidation = CB_CORE::validateBlocks(
+    _chainValidation = CB_CORE::composeBlocks(
         _blocks,
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
@@ -280,7 +280,7 @@ public:
             auto msg =
                 "Error during inner chain validation: " + std::string(errorTxt);
             CB_CORE::log(msg.c_str());
-            CB_CORE::throwException("Failed inner chain validation.");
+            throw chainblocks::ComposeError("Failed inner chain validation.");
           } else {
             auto msg = "Warning during inner chain validation: " +
                        std::string(errorTxt);

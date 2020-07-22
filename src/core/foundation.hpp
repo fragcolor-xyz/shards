@@ -68,9 +68,8 @@ struct CBCoro {
 
 #define TRACE_LINE LOG(TRACE) << "#trace#"
 
-CBValidationResult composeChain(const CBlocks chain,
-                                CBValidationCallback callback, void *userData,
-                                CBInstanceData data);
+CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
+                             void *userData, CBInstanceData data);
 
 namespace chainblocks {
 constexpr uint32_t FragCC = 'sink'; // 1718772071
@@ -650,10 +649,6 @@ struct InternalCore {
 
   static void expTypesFree(CBExposedTypesInfo &arr) { arrayFree(arr); }
 
-  [[noreturn]] static void throwException(const char *msg) {
-    throw chainblocks::CBException(msg);
-  }
-
   static void log(const char *msg) { LOG(INFO) << msg; }
 
   static void registerEnumType(int32_t vendorId, int32_t enumId,
@@ -661,10 +656,9 @@ struct InternalCore {
     chainblocks::registerEnumType(vendorId, enumId, info);
   }
 
-  static CBValidationResult validateBlocks(CBlocks blocks,
-                                           CBValidationCallback callback,
-                                           void *userData,
-                                           CBInstanceData data) {
+  static CBComposeResult composeBlocks(CBlocks blocks,
+                                       CBValidationCallback callback,
+                                       void *userData, CBInstanceData data) {
     return composeChain(blocks, callback, userData, data);
   }
 

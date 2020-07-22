@@ -169,9 +169,8 @@ template <class T> struct BlockWrapper {
 
     // composed
     if constexpr (has_composed<T>::value) {
-      result->composed =
-          static_cast<CBComposedProc>([](CBlock *b, const CBChain *chain,
-                                         const CBValidationResult *result) {
+      result->composed = static_cast<CBComposedProc>(
+          [](CBlock *b, const CBChain *chain, const CBComposeResult *result) {
             reinterpret_cast<BlockWrapper<T> *>(b)->block.composed(chain,
                                                                    result);
           });

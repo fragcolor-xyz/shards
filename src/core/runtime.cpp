@@ -683,16 +683,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
   }
   return CBChainState::Continue;
 }
-
-[[noreturn]] __attribute__((noreturn)) static void
-throwException(const char *msg) {
-  throw CBException(msg);
-}
-
-[[noreturn]] __attribute__((noreturn)) static void
-throwActivationError(const char *msg) {
-  throw ActivationError(msg);
-}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
@@ -756,10 +746,6 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return chainblocks::releaseVariable(variable);
   };
 
-  result->throwException = &chainblocks::throwException;
-
-  result->throwActivationError = &chainblocks::throwActivationError;
-
   result->suspend = [](CBContext *context, double seconds) {
     return chainblocks::suspend(context, seconds);
   };
@@ -816,10 +802,25 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return res;
   };
 
-  result->validateChain = [](CBChainRef chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data) {
+  result->composeChain = [](CBChainRef chain, CBValidationCallback callback,
+                            void *userData, CBInstanceData data) {
     auto sc = CBChain::sharedFromRef(chain);
-    return composeChain(sc.get(), callback, userData, data);
+    try {
+      return composeChain(sc.get(), callback, userData, data);
+    } catch (const std::exception &e) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp = chainblocks::Var(e.what());
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    } catch (...) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp =
+          chainblocks::Var("foreign exception failure during composeChain");
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    }
   };
 
   result->runChain = [](CBChainRef chain, CBContext *context, CBVar input) {
@@ -827,9 +828,24 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return chainblocks::runSubChain(sc.get(), context, input);
   };
 
-  result->validateBlocks = [](CBlocks blocks, CBValidationCallback callback,
-                              void *userData, CBInstanceData data) {
-    return composeChain(blocks, callback, userData, data);
+  result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
+                             void *userData, CBInstanceData data) {
+    try {
+      return composeChain(blocks, callback, userData, data);
+    } catch (const std::exception &e) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp = chainblocks::Var(e.what());
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    } catch (...) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp =
+          chainblocks::Var("foreign exception failure during composeChain");
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    }
   };
 
   result->validateSetParam = [](CBlock *block, int index, CBVar param,
@@ -839,8 +855,16 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
 
   result->runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
                          CBVar *output, const CBBool handleReturn) {
-    return chainblocks::activateBlocks(blocks, context, input, *output,
-                                       handleReturn);
+    try {
+      return chainblocks::activateBlocks(blocks, context, input, *output,
+                                         handleReturn);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+      return CBChainState::Stop;
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during runBlocks");
+      return CBChainState::Stop;
+    }
   };
 
   result->getChainInfo = [](CBChainRef chainref) {
@@ -1321,9 +1345,9 @@ void validateConnection(ValidationContext &ctx) {
   }
 }
 
-CBValidationResult composeChain(const std::vector<CBlock *> &chain,
-                                CBValidationCallback callback, void *userData,
-                                CBInstanceData data, bool globalsOnly) {
+CBComposeResult composeChain(const std::vector<CBlock *> &chain,
+                             CBValidationCallback callback, void *userData,
+                             CBInstanceData data, bool globalsOnly) {
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1362,7 +1386,7 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
     }
   }
 
-  CBValidationResult result = {ctx.previousOutputType};
+  CBComposeResult result = {ctx.previousOutputType};
 
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
@@ -1387,9 +1411,9 @@ CBValidationResult composeChain(const std::vector<CBlock *> &chain,
   return result;
 }
 
-CBValidationResult composeChain(const CBChain *chain,
-                                CBValidationCallback callback, void *userData,
-                                CBInstanceData data) {
+CBComposeResult composeChain(const CBChain *chain,
+                             CBValidationCallback callback, void *userData,
+                             CBInstanceData data) {
   // settle input type of chain before compose
   if (chain->blocks.size() > 0) {
     // If first block is a plain None, mark this chain has None input
@@ -1424,9 +1448,8 @@ CBValidationResult composeChain(const CBChain *chain,
   return res;
 }
 
-CBValidationResult composeChain(const CBlocks chain,
-                                CBValidationCallback callback, void *userData,
-                                CBInstanceData data) {
+CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
+                             void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
@@ -1434,9 +1457,8 @@ CBValidationResult composeChain(const CBlocks chain,
   return composeChain(blocks, callback, userData, data, false);
 }
 
-CBValidationResult composeChain(const CBSeq chain,
-                                CBValidationCallback callback, void *userData,
-                                CBInstanceData data) {
+CBComposeResult composeChain(const CBSeq chain, CBValidationCallback callback,
+                             void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i].payload.blockValue);

@@ -490,15 +490,6 @@ struct CBExposedTypeInfo {
   struct CBChain *scope;
 };
 
-struct CBValidationResult {
-  struct CBTypeInfo outputType;
-  CBExposedTypesInfo exposedInfo;
-  CBExposedTypesInfo requiredInfo;
-  // used when the last block of the flow is
-  // Restart/Stop/Return etc
-  bool flowStopper;
-};
-
 struct CBFlow {
   struct CBChain *chain;
 };
@@ -629,6 +620,22 @@ struct CBRunChainOutput {
   enum CBRunChainOutputState state;
 } __attribute__((aligned(16)));
 
+struct CBComposeResult {
+  struct CBTypeInfo outputType;
+
+  // Allow external blocks to fail
+  // Internally we use exceptions
+  CBBool failed;
+  struct CBVar failureMessage; // destroyVar after use if failed
+
+  CBExposedTypesInfo exposedInfo;
+  CBExposedTypesInfo requiredInfo;
+
+  // used when the last block of the flow is
+  // Restart/Stop/Return etc
+  bool flowStopper;
+};
+
 typedef void(__cdecl *CBComposeError)(void *privateContext,
                                       const char *errorText,
                                       CBBool warningOnly);
@@ -679,7 +686,7 @@ typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
 
 typedef void(__cdecl *CBComposedProc)(struct CBlock *,
                                       const struct CBChain *chain,
-                                      const struct CBValidationResult *data);
+                                      const struct CBComposeResult *data);
 
 // The core of the block processing, avoid syscalls here
 typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
@@ -829,9 +836,6 @@ typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain,
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
-typedef void(__cdecl *CBThrowException)(const char *errorText)
-    __attribute__((noreturn));
-
 typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
                                     const char *errorText);
 
@@ -852,7 +856,7 @@ typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index,
                                             CBValidationCallback callback,
                                             void *userData);
 
-typedef struct CBValidationResult(__cdecl *CBValidateBlocks)(
+typedef struct CBComposeResult(__cdecl *CBComposeBlocks)(
     CBlocks blocks, CBValidationCallback callback, void *userData,
     struct CBInstanceData data);
 
@@ -882,7 +886,7 @@ typedef void(__cdecl *CBAddBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBRemBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
 typedef struct CBVar(__cdecl *CBStopChain)(CBChainRef chain);
-typedef struct CBValidationResult(__cdecl *CBValidateChain)(
+typedef struct CBComposeResult(__cdecl *CBComposeChain)(
     CBChainRef chain, CBValidationCallback callback, void *userData,
     struct CBInstanceData data);
 typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain,
@@ -968,13 +972,6 @@ struct CBCore {
   CBReferenceChainVariable referenceChainVariable;
   CBReleaseVariable releaseVariable;
 
-  // Can be used to propagate block errors
-  // assume [[noreturn]]
-  // before calling any of those make sure to release
-  // and call destructors manually!
-  CBThrowException throwException;
-  // this error is bypassable using (Maybe) block
-  CBThrowException throwActivationError;
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
   // To be used within blocks, to abort the chain
@@ -1007,7 +1004,7 @@ struct CBCore {
   CBTableNew tableNew;
 
   // Utility to use blocks within blocks
-  CBValidateBlocks validateBlocks;
+  CBComposeBlocks composeBlocks;
   CBRunBlocks runBlocks;
 
   // Logging
@@ -1026,7 +1023,7 @@ struct CBCore {
   CBRemBlock removeBlock;
   CBDestroyChain destroyChain;
   CBStopChain stopChain; // must destroyVar once done
-  CBValidateChain validateChain;
+  CBComposeChain composeChain;
   CBRunChain runChain;
   CBGetChainInfo getChainInfo;
 

@@ -23,7 +23,7 @@ struct SocketData {
 
 struct NetworkBase {
   BlocksVar _blks{};
-  CBValidationResult _validation{};
+  CBComposeResult _validation{};
 
   static inline Type SocketInfo{
       {CBType::Object, {.object = {.vendorId = FragCC, .typeId = SocketCC}}}};

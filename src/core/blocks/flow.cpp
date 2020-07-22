@@ -30,7 +30,7 @@ struct Cond {
   std::vector<std::vector<CBlock *>> _actions;
   bool _passthrough = true;
   bool _threading = false;
-  CBValidationResult _chainValidation{};
+  CBComposeResult _chainValidation{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -365,7 +365,7 @@ struct BaseSubFlow {
 
 protected:
   BlocksVar _blocks{};
-  CBValidationResult _composition{};
+  CBComposeResult _composition{};
   static inline Parameters _params{
       {"Blocks", "The blocks to activate.", {CoreInfo::BlocksOrNone}}};
 };
@@ -390,7 +390,7 @@ struct Maybe : public BaseSubFlow {
   CBTypeInfo compose(const CBInstanceData &data) {
     // exposed stuff should be balanced
     // and output should the same
-    CBValidationResult elseComp{};
+    CBComposeResult elseComp{};
     if (_elseBlks) {
       elseComp = _elseBlks.compose(data);
     }
@@ -486,7 +486,7 @@ private:
 struct ExposerFlow {
   template <typename... Validations> void merge(Validations... vals) {
     constexpr int size = sizeof...(vals);
-    std::array<CBValidationResult, size> v{vals...};
+    std::array<CBComposeResult, size> v{vals...};
     IterableExposedInfo master(v[0].exposedInfo);
     for (size_t i = 1; i < v.size(); i++) {
       IterableExposedInfo sub(v[i].exposedInfo);
@@ -506,7 +506,7 @@ struct ExposerFlow {
   }
 
   CBExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
-  CBValidationResult _composition{};
+  CBComposeResult _composition{};
 };
 
 template <bool COND> struct When {

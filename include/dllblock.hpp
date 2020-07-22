@@ -102,14 +102,6 @@ public:
     return sCore._core.releaseVariable(variable);
   }
 
-  [[noreturn]] static void throwException(const char *errorText) {
-    sCore._core.throwException(errorText);
-  }
-
-  [[noreturn]] static void throwActivationError(const char *errorText) {
-    sCore._core.throwActivationError(errorText);
-  }
-
   static CBChainState suspend(CBContext *context, double seconds) {
     return sCore._core.suspend(context, seconds);
   }
@@ -155,10 +147,10 @@ public:
   CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 
-  static CBValidationResult validateChain(CBChain *chain,
-                                          CBValidationCallback callback,
-                                          void *userData, CBInstanceData data) {
-    return sCore._core.validateChain(chain, callback, userData, data);
+  static CBComposeResult composeChain(CBChain *chain,
+                                      CBValidationCallback callback,
+                                      void *userData, CBInstanceData data) {
+    return sCore._core.composeChain(chain, callback, userData, data);
   }
 
   static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
@@ -166,11 +158,10 @@ public:
     return sCore._core.runChain(chain, context, input);
   }
 
-  static CBValidationResult validateBlocks(CBlocks blocks,
-                                           CBValidationCallback callback,
-                                           void *userData,
-                                           CBInstanceData data) {
-    return sCore._core.validateBlocks(blocks, callback, userData, data);
+  static CBComposeResult composeBlocks(CBlocks blocks,
+                                       CBValidationCallback callback,
+                                       void *userData, CBInstanceData data) {
+    return sCore._core.composeBlocks(blocks, callback, userData, data);
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
