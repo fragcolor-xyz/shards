@@ -46,8 +46,6 @@ pub static mut Core: CBCore = CBCore {
     referenceVariable: None,
     referenceChainVariable: None,
     releaseVariable: None,
-    throwException: None,
-    throwActivationError: None,
     abortChain: None,
     suspend: None,
     cloneVar: None,

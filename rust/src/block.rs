@@ -19,7 +19,7 @@ use crate::types::Parameters;
 use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
-use crate::types::ValidationResult;
+use crate::types::ComposeResult;
 use crate::types::Var;
 use std::ffi::CString;
 use std::result::Result;
@@ -55,7 +55,7 @@ pub trait Block {
     fn hasComposed() -> bool {
         false
     }
-    fn composed(&mut self, _chain: &Chain, _results: &ValidationResult) {}
+    fn composed(&mut self, _chain: &Chain, _results: &ComposeResult) {}
 
     fn parameters(&mut self) -> Option<&Parameters> {
         None
@@ -209,7 +209,7 @@ unsafe extern "C" fn cblock_compose<T: Block>(
 unsafe extern "C" fn cblock_composed<T: Block>(
     arg1: *mut CBlock,
     chain: *const Chain,
-    results: *const ValidationResult,
+    results: *const ComposeResult,
 ) {
     let blk = arg1 as *mut BlockWrapper<T>;
     (*blk).block.composed(&(*chain), &(*results));

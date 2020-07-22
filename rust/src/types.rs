@@ -1,7 +1,7 @@
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBChain;
-use crate::chainblocksc::CBValidationResult;
+use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBlocks;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
@@ -38,7 +38,7 @@ pub type String = CBString;
 pub type InstanceData = CBInstanceData;
 pub type Table = CBTable;
 pub type Chain = CBChain;
-pub type ValidationResult = CBValidationResult;
+pub type ComposeResult = CBComposeResult;
 
 /*
 CBTypeInfo & co
