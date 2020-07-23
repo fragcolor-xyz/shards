@@ -46,7 +46,12 @@ struct Socket {
   void close() {
     if (socket.is_open()) {
       LOG(DEBUG) << "Closing WebSocket";
-      socket.close(websocket::close_code::normal);
+      try {
+        socket.close(websocket::close_code::normal);
+      } catch (const std::exception &ex) {
+        LOG(WARNING) << "Ignored an exception during WebSocket close: "
+                     << ex.what();
+      }
     }
   }
 
@@ -153,7 +158,7 @@ struct Client {
 
         connected = true;
       });
-    } catch (std::exception &ex) {
+    } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
       LOG(WARNING) << "WebSocket connection failed: " << ex.what();
@@ -279,7 +284,7 @@ struct WriteString : public User {
     try {
       auto &tasks = _taskManager();
       op.sidechain(tasks, [&]() { _ws->get().write(net::buffer(payload)); });
-    } catch (std::exception &ex) {
+    } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
       LOG(WARNING) << "WebSocket write failed: " << ex.what();
