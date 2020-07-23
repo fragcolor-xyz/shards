@@ -530,7 +530,26 @@ impl TryFrom<&Var> for CString {
             unsafe {
                 let cstr =
                     CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
-                Ok(CString::from(cstr))
+                // we need to do this to own the string, this is kinda a burden tho
+                Ok(CString::new(cstr.to_str().unwrap()).unwrap())
+            }
+        }
+    }
+}
+
+impl TryFrom<&Var> for &CStr {
+    type Error = &'static str;
+
+    #[inline(always)]
+    fn try_from(var: &Var) -> Result<Self, Self::Error> {
+        if var.valueType != CBType_String
+            && var.valueType != CBType_Path
+            && var.valueType != CBType_ContextVar
+        {
+            Err("Expected String, Path or ContextVar variable, but casting failed.")
+        } else {
+            unsafe {
+                Ok(CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8))
             }
         }
     }
