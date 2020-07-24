@@ -207,7 +207,7 @@
    (Log)
 
   ; big ints
-   18 (BigNumber.Exp10) (BigNumber.ToFloat) (Log "bignum to float")
+   18 (BigInt.Exp10) (BigInt.ToFloat) (Log "bignum to float")
 
    (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
    (Math.Multiply (Float 2.0))

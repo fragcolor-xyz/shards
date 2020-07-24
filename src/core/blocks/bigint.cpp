@@ -10,16 +10,28 @@
 using namespace boost::multiprecision;
 
 namespace chainblocks {
-namespace BigNumber {
-struct ToBigNumber {
+namespace BigInt {
+struct ToBigInt {
   std::vector<uint8_t> _buffer;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static inline Types InputTypes{CoreInfo::IntType, CoreInfo::StringType};
+  static CBTypesInfo inputTypes() { return InputTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _buffer.clear();
-    cpp_int bi = input.payload.intValue;
+    cpp_int bi;
+    switch (input.valueType) {
+    case Int: {
+      bi = input.payload.intValue;
+    } break;
+    case String: {
+      bi = cpp_int(input.payload.stringValue);
+    } break;
+    default: {
+      throw ActivationError("Invalid input type");
+    }
+    }
     export_bits(bi, std::back_inserter(_buffer), 8);
     return Var(&_buffer.front(), _buffer.size());
   }
@@ -42,12 +54,11 @@ struct Exp10 {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _buffer.clear();
     cpp_int bi = input.payload.intValue;
-    cpp_dec_float_50 bf(bi);
-    auto bfexp10 = exp(log10(bf));
-    cpp_int ri(bfexp10);
-    export_bits(ri, std::back_inserter(_buffer), 8);
+    cpp_dec_float_100 bf(bi);
+    bf = pow(cpp_dec_float_100(10), bf);
+    bi = cpp_int(bf);
+    export_bits(bi, std::back_inserter(_buffer), 8);
     return Var(&_buffer.front(), _buffer.size());
   }
 };
@@ -60,17 +71,15 @@ struct ToFloat {
     cpp_int bi;
     import_bits(bi, input.payload.bytesValue,
                 input.payload.bytesValue + input.payload.bytesSize);
-    LOG(DEBUG) << "ToFloat input: " << bi;
-    cpp_dec_float_50 bf(bi);
-    LOG(DEBUG) << "ToFloat to float: " << bf;
+    cpp_dec_float_100 bf(bi);
     return Var(bi.convert_to<double>());
   }
 }; // shiftedBy(Exp10)
 
 void registerBlocks() {
-  REGISTER_CBLOCK("BigNumber", ToBigNumber);
-  REGISTER_CBLOCK("BigNumber.Exp10", Exp10);
-  REGISTER_CBLOCK("BigNumber.ToFloat", ToFloat);
+  REGISTER_CBLOCK("BigInt", ToBigInt);
+  REGISTER_CBLOCK("BigInt.Exp10", Exp10);
+  REGISTER_CBLOCK("BigInt.ToFloat", ToFloat);
 }
-} // namespace BigNumber
+} // namespace BigInt
 } // namespace chainblocks

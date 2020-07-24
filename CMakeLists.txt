@@ -251,7 +251,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/bignumber.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   )
 
 #### Header paths for tidy
@@ -629,7 +629,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/bignumber.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CB_EXTRAS}
   )
 

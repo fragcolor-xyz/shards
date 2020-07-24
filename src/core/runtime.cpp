@@ -77,7 +77,7 @@ namespace WS {
 extern void registerBlocks();
 }
 
-namespace BigNumber {
+namespace BigInt {
 extern void registerBlocks();
 }
 
@@ -178,7 +178,7 @@ void registerCoreBlocks() {
   channels::registerBlocks();
   Random::registerBlocks();
   Imaging::registerBlocks();
-  BigNumber::registerBlocks();
+  BigInt::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
