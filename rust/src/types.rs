@@ -1,8 +1,5 @@
-use crate::chainblocksc::CBlockPtr;
-use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBComposeResult;
-use crate::chainblocksc::CBlocks;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
 use crate::chainblocksc::CBExposedTypesInfo;
@@ -11,20 +8,24 @@ use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
 use crate::chainblocksc::CBSeq;
 use crate::chainblocksc::CBString;
+use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBType_Bool;
 use crate::chainblocksc::CBType_ContextVar;
 use crate::chainblocksc::CBType_Float;
 use crate::chainblocksc::CBType_Int;
+use crate::chainblocksc::CBType_None;
 use crate::chainblocksc::CBType_Path;
 use crate::chainblocksc::CBType_Seq;
 use crate::chainblocksc::CBType_String;
 use crate::chainblocksc::CBTypesInfo;
 use crate::chainblocksc::CBVar;
-use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBVarPayload;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_2;
+use crate::chainblocksc::CBlock;
+use crate::chainblocksc::CBlockPtr;
+use crate::chainblocksc::CBlocks;
 use crate::core::Core;
 use std::convert::TryFrom;
 use std::convert::TryInto;
@@ -92,7 +93,7 @@ impl ExposedInfo {
             isMutable: false,
             isTableEntry: false,
             global: false,
-            scope: core::ptr::null_mut()
+            scope: core::ptr::null_mut(),
         };
         ExposedInfo(res)
     }
@@ -201,7 +202,9 @@ impl From<&Parameters> for CBParametersInfo {
 }
 
 impl From<CBParametersInfo> for &[CBParameterInfo] {
-    fn from(_: CBParametersInfo) -> Self { unimplemented!() }
+    fn from(_: CBParametersInfo) -> Self {
+        unimplemented!()
+    }
 }
 
 /*
@@ -357,14 +360,12 @@ var_from!(i64, intValue, CBType_Int);
 var_from!(f64, floatValue, CBType_Float);
 
 impl From<CBlockPtr> for Var {
-     #[inline(always)]
+    #[inline(always)]
     fn from(v: CBlockPtr) -> Self {
         CBVar {
             valueType: CBType_String,
             payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    blockValue: v
-                },
+                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { blockValue: v },
             },
             ..Default::default()
         }
@@ -460,6 +461,17 @@ impl From<Option<&CString>> for Var {
     }
 }
 
+impl From<()> for Var {
+    #[inline(always)]
+    fn from(_: ()) -> Self {
+        let res = CBVar {
+            valueType: CBType_None,
+            ..Default::default()
+        };
+        res
+    }
+}
+
 impl From<&Vec<Var>> for Var {
     #[inline(always)]
     fn from(vec: &Vec<Var>) -> Self {
@@ -549,7 +561,9 @@ impl TryFrom<&Var> for &CStr {
             Err("Expected String, Path or ContextVar variable, but casting failed.")
         } else {
             unsafe {
-                Ok(CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8))
+                Ok(CStr::from_ptr(
+                    var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                ))
             }
         }
     }
