@@ -15,7 +15,7 @@
   .args (Take 0)
   (Math.Add .adder-y)))
 
-(def! testChain 
+(def! testChain
   (Chain
    "namedChain"
    (Msg "Running tests!")
@@ -205,6 +205,9 @@
 
    (Color 2 2 2 255)
    (Log)
+
+  ; big ints
+   18 (BigNumber.Exp10) (BigNumber.ToFloat) (Log "bignum to float")
 
    (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
    (Math.Multiply (Float 2.0))
@@ -712,7 +715,7 @@
               (Log)))))
    (Log)
    (Assert.Is 634 true)
-   
+
    ; utf8 testing
    "在庫なし"
    (Assert.Is "在庫なし" true)

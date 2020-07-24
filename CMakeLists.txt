@@ -96,7 +96,7 @@ else()
   endif()
 endif()
 
-if(FORCE_USE_LLD)
+if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
 endif()
 
@@ -251,6 +251,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/bignumber.cpp
   )
 
 #### Header paths for tidy
@@ -628,6 +629,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/bignumber.cpp
   ${CB_EXTRAS}
   )
 
