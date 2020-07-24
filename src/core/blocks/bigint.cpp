@@ -64,15 +64,36 @@ struct Exp10 {
 };
 
 struct ToFloat {
+  int64_t _shift{0};
+
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  CBParametersInfo parameters() {
+    static Parameters params{
+        {"ShiftedBy",
+         "The shift is of the decimal point, i.e. of powers of ten, and is to "
+         "the left if n is negative or to the right if n is positive.",
+         {CoreInfo::IntType}}};
+    return params;
+  }
+
+  void setParam(int index, CBVar value) { _shift = value.payload.intValue; }
+
+  CBVar getParam(int index) { return Var(_shift); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi;
     import_bits(bi, input.payload.bytesValue,
                 input.payload.bytesValue + input.payload.bytesSize);
     cpp_dec_float_100 bf(bi);
-    return Var(bi.convert_to<double>());
+
+    cpp_dec_float_100 bshift(_shift);
+    bshift = pow(cpp_dec_float_100(10), bshift);
+
+    auto bres = bf * bshift;
+
+    return Var(bres.convert_to<double>());
   }
 }; // shiftedBy(Exp10)
 
