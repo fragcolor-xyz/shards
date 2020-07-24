@@ -40,6 +40,11 @@ pub type InstanceData = CBInstanceData;
 pub type Table = CBTable;
 pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
+pub type Block = CBlock;
+
+unsafe impl Send for Var {}
+unsafe impl Send for Context {}
+unsafe impl Send for Block {}
 
 /*
 CBTypeInfo & co
@@ -633,6 +638,24 @@ impl TryFrom<&Var> for &[Var] {
 
     #[inline(always)]
     fn try_from(var: &Var) -> Result<Self, Self::Error> {
+        if var.valueType != CBType_Seq {
+            Err("Expected Float variable, but casting failed.")
+        } else {
+            unsafe {
+                let elems = var.payload.__bindgen_anon_1.seqValue.elements;
+                let len = var.payload.__bindgen_anon_1.seqValue.len;
+                let res = std::slice::from_raw_parts(elems, len as usize);
+                Ok(res)
+            }
+        }
+    }
+}
+
+impl TryFrom<Var> for &[Var] {
+    type Error = &'static str;
+
+    #[inline(always)]
+    fn try_from(var: Var) -> Result<Self, Self::Error> {
         if var.valueType != CBType_Seq {
             Err("Expected Float variable, but casting failed.")
         } else {

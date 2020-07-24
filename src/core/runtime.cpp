@@ -5,6 +5,7 @@
 
 #include "runtime.hpp"
 #include "blocks/shared.hpp"
+#include "utility.hpp"
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
@@ -970,6 +971,29 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
 
   result->setRootPath = [](const char *p) {
     chainblocks::Globals::RootPath = p;
+  };
+
+  struct AsyncActivate {
+    CBAsyncActivateProc proc;
+    void *userData;
+    chainblocks::Shared<tf::Executor> taskManager;
+  };
+
+  result->createAsyncActivate = [](auto data, auto call) {
+    return (void *)(new AsyncActivate{call, data, {}});
+  };
+
+  result->runAsyncActivate = [](auto handle, auto context) {
+    auto data = reinterpret_cast<AsyncActivate *>(handle);
+    chainblocks::AsyncOp<chainblocks::InternalCore> op(context);
+    return op.sidechain<CBVar>(data->taskManager(), [&]() {
+      return data->proc(context, data->userData);
+    });
+  };
+
+  result->destroyAsyncActivate = [](auto handle) {
+    auto data = reinterpret_cast<AsyncActivate *>(handle);
+    delete data;
   };
 
   return true;

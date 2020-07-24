@@ -1,16 +1,19 @@
-use std::os::raw::c_char;
-use crate::chainblocksc::CBBool;
+#![macro_use]
+
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::chainblocksInterface;
+use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBCore;
 use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
 use crate::types::Var;
+use core::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::os::raw::c_char;
 
 const ABI_VERSION: u32 = 0x20200101;
 
@@ -118,6 +121,9 @@ pub static mut Core: CBCore = CBCore {
     sleep: None,
     getRootPath: None,
     setRootPath: None,
+    createAsyncActivate: None,
+    runAsyncActivate: None,
+    destroyAsyncActivate: None,
 };
 
 static mut init_done: bool = false;
@@ -126,7 +132,9 @@ unsafe fn initInternal() {
     let exe = Library::open_self().ok().unwrap();
 
     let exefun = exe
-        .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>("chainblocksInterface")
+        .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>(
+            "chainblocksInterface",
+        )
         .ok();
     if exefun.is_some() {
         let fun = exefun.unwrap();
@@ -138,7 +146,9 @@ unsafe fn initInternal() {
     } else {
         let lib = try_load_dlls().unwrap();
         let fun = lib
-            .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>("chainblocksInterface")
+            .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>(
+                "chainblocksInterface",
+            )
             .unwrap();
         let res = fun(ABI_VERSION, &mut Core);
         if !res {
@@ -165,6 +175,19 @@ pub fn log(s: &str) {
     unsafe {
         Core.log.unwrap()(clog.as_ptr());
     }
+}
+
+#[macro_export]
+macro_rules! cblog {
+    ($text:expr, $($arg:ident),*) => {
+        let mut buf = vec![];
+        write!(&mut buf, $text, $($arg),*).unwrap();
+        log(str::from_utf8(&buf).unwrap());
+    };
+
+    ($text:expr) => {
+        log($text);
+    };
 }
 
 #[inline(always)]
@@ -194,7 +217,10 @@ pub fn abortChain(context: &CBContext, message: &str) {
 #[inline(always)]
 pub fn registerBlock<T: Default + Block>() {
     unsafe {
-        Core.registerBlock.unwrap()(T::registerName().as_ptr() as *const c_char , Some(cblock_construct::<T>));
+        Core.registerBlock.unwrap()(
+            T::registerName().as_ptr() as *const c_char,
+            Some(cblock_construct::<T>),
+        );
     }
 }
 
@@ -237,7 +263,7 @@ pub fn referenceVariable(context: &CBContext, name: CBString) -> &CBVar {
 }
 
 pub fn releaseMutVariable(var: &mut CBVar) {
-     unsafe {
+    unsafe {
         let v = var as *mut CBVar;
         Core.releaseVariable.unwrap()(v);
     }
@@ -247,5 +273,34 @@ pub fn releaseVariable(var: &CBVar) {
     unsafe {
         let v = var as *const CBVar as *mut CBVar;
         Core.releaseVariable.unwrap()(v);
+    }
+}
+
+unsafe extern "C" fn asyncActivateCCall<'a>(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
+    let trait_obj_ref: &mut &mut dyn FnMut() -> Result<CBVar, &'a str> = { &mut *(arg2 as *mut _) };
+    match trait_obj_ref() {
+        Ok(value) => value,
+        Err(error) => {
+            abortChain(&(*context), error);
+            Var::default()
+        }
+    }
+}
+
+pub fn asyncActivate<'a, F>(context: &CBContext, f: F) -> CBVar
+where
+    // The closure takes an `i32` and returns an `i32`.
+    F: FnMut() -> Result<CBVar, &'a str>,
+{
+    unsafe {
+        let ctx = context as *const CBContext as *mut CBContext;
+        let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'a str> = &f;
+        let trait_obj_ref = &mut trait_obj;
+        let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
+        let handle =
+            Core.createAsyncActivate.unwrap()(closure_pointer_pointer, Some(asyncActivateCCall));
+        let res = Core.runAsyncActivate.unwrap()(handle, ctx);
+        Core.destroyAsyncActivate.unwrap()(handle);
+        res
     }
 }

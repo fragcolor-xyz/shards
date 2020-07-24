@@ -35,3 +35,4 @@ Cargo.lock
 
 /src/chainblocksc.rs
 rust/src/chainblocksc.rs
+test.txt

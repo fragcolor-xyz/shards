@@ -142,6 +142,7 @@ mod cb_static {
 
 // --features "dummy"
 // #[cfg(any(test, feature = "dummy"))]
+#[macro_use]
 mod dummy_block {
     // run with: RUST_BACKTRACE=1 cargo test -- --nocapture
 
@@ -169,6 +170,7 @@ mod dummy_block {
     use crate::types::Var;
     use std::ffi::CStr;
     use std::ffi::CString;
+    use crate::cblog;
 
     struct DummyBlock {
         inputTypes: Types,
@@ -260,6 +262,6 @@ mod dummy_block {
 
         let _v: ClonedVar = a.into();
 
-        log("Hello chainblocks-rs");
+        cblog!("Hello chainblocks-rs");
     }
 }
