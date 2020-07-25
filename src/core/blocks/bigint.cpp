@@ -201,4 +201,10 @@ void registerBlocks() {
 } // namespace BigInt
 } // namespace chainblocks
 
+#else
+namespace chainblocks {
+namespace BigInt {
+void registerBlocks() {}
+} // namespace BigInt
+} // namespace chainblocks
 #endif
