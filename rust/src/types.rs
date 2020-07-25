@@ -11,6 +11,7 @@ use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBType_Bool;
+use crate::chainblocksc::CBType_Bytes;
 use crate::chainblocksc::CBType_ContextVar;
 use crate::chainblocksc::CBType_Float;
 use crate::chainblocksc::CBType_Int;
@@ -216,12 +217,12 @@ impl From<CBParametersInfo> for &[CBParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
-    use crate::chainblocksc::CBType_Bytes;
-use crate::chainblocksc::CBTypeInfo;
+    use crate::chainblocksc::CBTypeInfo;
     use crate::chainblocksc::CBTypeInfo_Details;
     use crate::chainblocksc::CBType_Any;
     use crate::chainblocksc::CBType_Block;
     use crate::chainblocksc::CBType_Bool;
+    use crate::chainblocksc::CBType_Bytes;
     use crate::chainblocksc::CBType_Chain;
     use crate::chainblocksc::CBType_Float;
     use crate::chainblocksc::CBType_Int;
@@ -581,16 +582,14 @@ impl TryFrom<&Var> for &[u8] {
 
     #[inline(always)]
     fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-        {
-            Err("Expected String, Path or ContextVar variable, but casting failed.")
+        if var.valueType != CBType_Bytes {
+            Err("Expected Bytes, but casting failed.")
         } else {
             unsafe {
-                let cstr =
-                    CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
-                Ok(cstr.to_bytes())
+                Ok(core::slice::from_raw_parts_mut(
+                    var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+                    var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+                ))
             }
         }
     }
