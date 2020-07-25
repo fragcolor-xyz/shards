@@ -207,7 +207,14 @@
    (Log)
 
   ; big ints
-   18 (BigInt.Exp10) (BigInt.ToFloat -18) (Log "bignum to float") (Assert.Is 1.0 true)
+   1000 (BigInt) (BigInt.Shift :By 18) >= .1000x1e18
+   (BigInt.ToString) (Log "bigint")
+   .1000x1e18 (BigInt.ToFloat :ShiftedBy -18) (Log "bigint as shifted float")
+   (Assert.Is 1000.0 true)
+   "500000000000000000000" (BigInt) >= .500x1e18 (BigInt.ToFloat :ShiftedBy -18)
+   (Assert.Is 500.0 true)
+   .1000x1e18 (BigInt.Subtract .500x1e18) (BigInt.ToFloat :ShiftedBy -18) 
+   (Assert.Is 500.0 true)
 
    (Const [(Float 1) (Float 2) (Float 3) (Float 4)])
    (Math.Multiply (Float 2.0))
