@@ -216,7 +216,8 @@ impl From<CBParametersInfo> for &[CBParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
-    use crate::chainblocksc::CBTypeInfo;
+    use crate::chainblocksc::CBType_Bytes;
+use crate::chainblocksc::CBTypeInfo;
     use crate::chainblocksc::CBTypeInfo_Details;
     use crate::chainblocksc::CBType_Any;
     use crate::chainblocksc::CBType_Block;
@@ -278,6 +279,7 @@ pub mod common_type {
 
     cbtype!(make_any, CBType_Any, any, anys, any_seq);
     cbtype!(make_string, CBType_String, string, strings, string_seq);
+    cbtype!(make_bytes, CBType_Bytes, bytes, bytezs, bytes_seq);
     cbtype!(make_int, CBType_Int, int, ints, int_seq);
     cbtype!(make_float, CBType_Float, float, floats, float_seq);
     cbtype!(make_bool, CBType_Bool, bool, bools, bool_seq);
