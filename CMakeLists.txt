@@ -633,6 +633,15 @@ set(RUNTIME_SRC
   ${CB_EXTRAS}
   )
 
+if(NOT CB_NO_BIGINT_BLOCKS)
+  set(
+    RUNTIME_SRC 
+    ${RUNTIME_SRC}
+    ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp)
+else()
+  add_compile_definitions(CB_NO_BIGINT_BLOCKS=1)
+endif()
+
 if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC

@@ -25,3 +25,4 @@ ninja cbl
 ./cbl ../src/tests/http.clj
 ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/ws.clj
+./cbl ../src/tests/bigint.clj

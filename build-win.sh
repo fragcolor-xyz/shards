@@ -25,3 +25,4 @@ PYTHONHOME=/c/msys64/mingw64 ./cbl ../src/tests/pytest.clj
 ./cbl ../src/tests/http.clj
 ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/ws.clj
+./cbl ../src/tests/bigint.clj

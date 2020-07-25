@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+#ifndef CB_NO_BIGINT_BLOCKS
+
 #include "chainblocks.hpp"
 #include "shared.hpp"
 
@@ -198,3 +200,5 @@ void registerBlocks() {
 }
 } // namespace BigInt
 } // namespace chainblocks
+
+#endif
