@@ -186,6 +186,7 @@ struct Evolve {
 
       _sortedPopulation.clear();
       _population.clear();
+      _exec = nullptr;
     }
   }
 
