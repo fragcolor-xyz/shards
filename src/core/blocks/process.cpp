@@ -47,7 +47,7 @@ struct Exec {
     }
 
     while (cmd.running()) {
-      if(suspend(ctx, 0) != CBChainState::Continue) {
+      if (suspend(ctx, 0) != CBChainState::Continue) {
         cmd.terminate();
         return Var::Empty;
       }
