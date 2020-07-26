@@ -69,6 +69,7 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(Block);
   CB_CORE_TYPE_DEF(Bytes);
   CB_CORE_TYPE_DEF(String);
+  CB_CORE_TYPE_DEF(Path);
   CB_CORE_TYPE_DEF(Image);
 
   static inline Types IntOrFloat{{IntType, FloatType}};

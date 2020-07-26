@@ -31,6 +31,11 @@ using Duration = std::chrono::duration<double>;
 #include <time.h>
 #endif
 
+#define CB_SUSPEND(_ctx_, _secs_)                                              \
+  const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_);             \
+  if (_suspend_state != CBChainState::Continue)                                \
+  return Var::Empty
+
 void freeDerivedInfo(CBTypeInfo info);
 CBTypeInfo deriveTypeInfo(const CBVar &value);
 

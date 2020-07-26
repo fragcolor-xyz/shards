@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2020 Giovanni Petrantoni */
+/* Copyright ï¿½ 2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
 #include <atomic>
@@ -360,7 +360,7 @@ struct Consume : public Consumers {
             return Var::Empty;
           }
         }
-        suspend(context, 0);
+        CB_SUSPEND(context, 0);
       }
 
       // keep for recycling
@@ -434,7 +434,7 @@ struct Listen : public Consumers {
             return Var::Empty;
           }
         }
-        suspend(context, 0);
+        CB_SUSPEND(context, 0);
       }
 
       // keep for recycling

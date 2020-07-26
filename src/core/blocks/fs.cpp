@@ -2,9 +2,9 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
-#include <filesystem>
+#include <ghc/filesystem.hpp>
 
-namespace fs = std::filesystem;
+namespace fs = ghc::filesystem;
 
 namespace chainblocks {
 namespace FS {

@@ -16,7 +16,7 @@
 #ifndef __EMSCRIPTEN__
 #include <boost/process/environment.hpp>
 #endif
-#include <filesystem>
+#include <ghc/filesystem.hpp>
 #include <set>
 #include <thread>
 
@@ -69,7 +69,7 @@ typedef RefCountedPtr<malCBVar> malCBVarPtr;
 void registerKeywords(malEnvPtr env);
 malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg);
 
-namespace fs = std::filesystem;
+namespace fs = ghc::filesystem;
 
 namespace chainblocks {
 CBlock *createBlockInnerCall();
@@ -410,7 +410,7 @@ struct ChainFileWatcher {
     node = data.chain->node;
     worker = std::thread([this] {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
-      auto localRoot = std::filesystem::path(path).string();
+      auto localRoot = ghc::filesystem::path(path).string();
       malEnvPtr rootEnv(new malEnv());
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
 
@@ -1541,10 +1541,10 @@ BUILTIN("import") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  auto filepath = std::filesystem::path(value->value());
+  auto filepath = ghc::filesystem::path(value->value());
   auto currentPath = malpath();
   if (currentPath.size() > 0 && filepath.is_relative()) {
-    filepath = std::filesystem::path(currentPath) / filepath;
+    filepath = ghc::filesystem::path(currentPath) / filepath;
   }
 
   auto lib_name_str = filepath.string();

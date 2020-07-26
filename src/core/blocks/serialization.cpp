@@ -5,8 +5,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "shared.hpp"
-#include <filesystem>
 #include <future>
+#include <ghc/filesystem.hpp>
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <string>
@@ -61,19 +61,19 @@ struct FileBase {
     _currentFileName = _filename.get();
 
     // if absolute we are fine to begin with
-    std::filesystem::path fp(filename);
+    ghc::filesystem::path fp(filename);
     if (fp.is_absolute()) {
       if (checkExists) {
-        return std::filesystem::exists(fp);
+        return ghc::filesystem::exists(fp);
       } else {
         return true;
       }
     } else {
       // check if script root path is populated if so use it
-      std::filesystem::path cp(Globals::RootPath);
-      if (std::filesystem::exists(cp)) {
+      ghc::filesystem::path cp(Globals::RootPath);
+      if (ghc::filesystem::exists(cp)) {
         auto fullpath = cp / filename;
-        if (checkExists && !std::filesystem::exists(fullpath)) {
+        if (checkExists && !ghc::filesystem::exists(fullpath)) {
           return false;
         }
         filename = fullpath.string();

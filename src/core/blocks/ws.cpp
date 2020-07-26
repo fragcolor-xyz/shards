@@ -315,7 +315,7 @@ struct ReadString : public User {
     });
 
     while (!done) {
-      suspend(context, 0);
+      CB_SUSPEND(context, 0);
     }
 
     if (done_err.failed()) {

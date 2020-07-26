@@ -2,7 +2,7 @@
 #define CB_PYTHON_HPP
 
 #include "shared.hpp"
-#include <filesystem>
+#include <ghc/filesystem.hpp>
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
@@ -976,22 +976,22 @@ struct Py {
 
     Context ctx(_ts);
 
+    namespace fs = ghc::filesystem;
+
     auto scriptName = _scriptName;
     std::replace(scriptName.begin(), scriptName.end(), '.', '/');
-    std::filesystem::path scriptPath(scriptName);
+    fs::path scriptPath(scriptName);
 
     if (Globals::RootPath.size() > 0) {
-      std::filesystem::path cbpath(Globals::RootPath);
-      auto absRoot =
-          std::filesystem::absolute(cbpath / scriptPath.parent_path());
+      fs::path cbpath(Globals::RootPath);
+      auto absRoot = fs::absolute(cbpath / scriptPath.parent_path());
       absRoot.make_preferred();
       auto pyAbsRoot = Env::string(absRoot.string().c_str());
       auto path = Env::_sysGetObj("path");
       Env::_listAppend(path, pyAbsRoot.get());
     }
 
-    auto absRoot = std::filesystem::absolute(std::filesystem::current_path() /
-                                             scriptPath.parent_path());
+    auto absRoot = fs::absolute(fs::current_path() / scriptPath.parent_path());
     absRoot.make_preferred();
     auto pyAbsRoot = Env::string(absRoot.string().c_str());
     auto path = Env::_sysGetObj("path");
