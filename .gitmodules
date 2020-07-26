@@ -55,3 +55,6 @@
 [submodule "deps/filesystem"]
 	path = deps/filesystem
 	url = https://github.com/chainblocks/filesystem.git
+[submodule "deps/libbacktrace"]
+	path = deps/libbacktrace
+	url = https://github.com/chainblocks/libbacktrace.git
