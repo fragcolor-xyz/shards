@@ -5,9 +5,6 @@
 
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
-#include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/containers/string.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
 #include <cstdlib>
 
 using namespace chainblocks;
@@ -130,79 +127,6 @@ struct ResizeWindowBase : public WinOpBase {
     }
     return res;
   }
-};
-
-typedef boost::interprocess::allocator<
-    char, boost::interprocess::managed_shared_memory::segment_manager>
-    ShmemAllocator;
-typedef boost::interprocess::basic_string<char, std::char_traits<char>,
-                                          ShmemAllocator>
-    SharedString;
-
-struct InjectHookBase : public WinOpBase {
-  static inline boost::interprocess::managed_shared_memory *SharedMemory =
-      nullptr;
-  static void ensureSharedMemory() {
-    std::string memName;
-#ifdef _WIN32
-    memName = getenv("USERNAME");
-#else
-    memName = getenv("USER");
-#endif
-    memName += "_Desktop.InjectHook.Memory";
-    // We do this cos we cannot create a static inline object by default,
-    // cos will conflict with loaded dll
-    if (!SharedMemory) {
-      SharedMemory = new boost::interprocess::managed_shared_memory(
-          boost::interprocess::open_or_create, memName.c_str(), 1048576);
-    }
-  }
-
-  static std::string getRemoteCode(std::string &codeId) {
-    std::string memName;
-#ifdef _WIN32
-    memName = getenv("USERNAME");
-#else
-    memName = getenv("USER");
-#endif
-    memName += "_Desktop.InjectHook.Memory";
-
-    boost::interprocess::managed_shared_memory segment(
-        boost::interprocess::open_only, memName.c_str());
-    const ShmemAllocator alloc_inst(segment.get_segment_manager());
-    auto code =
-        segment.find_or_construct<SharedString>(codeId.c_str())(alloc_inst);
-    if (code->size() > 0) {
-      return std::string(code->c_str());
-    } else {
-      return "";
-    }
-  }
-
-  static void setRemoteCode(std::string &codeId, std::string &codeStr) {
-    ensureSharedMemory();
-    const ShmemAllocator alloc_inst(SharedMemory->get_segment_manager());
-    SharedMemory->find_or_construct<SharedString>(codeId.c_str())(
-        codeStr.c_str(), alloc_inst);
-  }
-
-  static void deleteRemoteCode(std::string &codeId) {
-    ensureSharedMemory();
-    SharedMemory->destroy<SharedString>(codeId.c_str());
-  }
-
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Code", "The code to load and run once hooked.", CoreInfo::StringType));
-
-  std::string _code;
-
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
-
-  virtual void setParam(int index, CBVar value) {
-    _code = value.payload.stringValue;
-  }
-
-  CBVar getParam(int index) { return Var(_code); }
 };
 
 struct MoveWindowBase : public WinOpBase {

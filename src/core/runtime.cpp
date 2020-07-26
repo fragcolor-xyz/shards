@@ -9,7 +9,7 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <filesystem>
+#include <ghc/filesystem.hpp>
 #include <string.h>
 #include <unordered_set>
 
@@ -88,7 +88,7 @@ extern void cbInitExtras();
 static bool globalRegisterDone = false;
 
 void loadExternalBlocks(std::string from) {
-  namespace fs = std::filesystem;
+  namespace fs = ghc::filesystem;
   auto root = fs::path(from);
   auto pluginPath = root / "cblocks";
   if (!fs::exists(pluginPath))
@@ -130,14 +130,15 @@ void registerCoreBlocks() {
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
+  namespace fs = ghc::filesystem;
   if (Globals::ExePath.size() > 0) {
-    auto pluginPath = std::filesystem::absolute(Globals::ExePath) / "cblocks";
+    auto pluginPath = fs::absolute(Globals::ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
     LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
     AddDllDirectory(pluginPathStr.c_str());
   }
   if (Globals::RootPath.size() > 0) {
-    auto pluginPath = std::filesystem::absolute(Globals::RootPath) / "cblocks";
+    auto pluginPath = fs::absolute(Globals::RootPath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
     LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
     AddDllDirectory(pluginPathStr.c_str());

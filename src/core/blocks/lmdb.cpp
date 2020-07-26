@@ -2,7 +2,7 @@
 #define CB_LMDB_HPP
 
 #include "shared.hpp"
-#include <filesystem>
+#include <ghc/filesystem.hpp>
 #include <lmdb.h>
 
 namespace chainblocks {
@@ -45,15 +45,16 @@ private:
 
     unsigned int flags = MDB_NOTLS | MDB_NOSYNC | MDB_NOSUBDIR;
 
-    std::filesystem::path dbPath("cbdb.bin");
+    namespace fs = ghc::filesystem;
+
+    fs::path dbPath("cbdb.bin");
     if (Globals::RootPath.size() > 0) {
-      std::filesystem::path cbpath(Globals::RootPath);
-      auto abspath = std::filesystem::absolute(cbpath / dbPath);
+      fs::path cbpath(Globals::RootPath);
+      auto abspath = fs::absolute(cbpath / dbPath);
       abspath.make_preferred();
       CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 0664));
     } else {
-      auto abspath =
-          std::filesystem::absolute(std::filesystem::current_path() / dbPath);
+      auto abspath = fs::absolute(fs::current_path() / dbPath);
       abspath.make_preferred();
       CHECKED(mdb_env_open(_env, abspath.string().c_str(), flags, 0664));
     }

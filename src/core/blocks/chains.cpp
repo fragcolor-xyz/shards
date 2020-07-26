@@ -368,7 +368,7 @@ struct WaitChain : public ChainBase {
         doneOnce = true;
 
       while (isRunning(chain.get())) {
-        suspend(context, 0);
+        CB_SUSPEND(context, 0);
       }
 
       if (passthrough) {
@@ -1067,7 +1067,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
         if (state == std::future_status::ready)
           break;
 
-        chainblocks::suspend(context, 0);
+        CB_SUSPEND(context, 0);
       }
 
       // This should throw if we had exceptions

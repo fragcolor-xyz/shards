@@ -201,6 +201,7 @@ pub fn sleep(seconds: f64) {
 pub fn suspend(context: &CBContext, seconds: f64) {
     unsafe {
         let ctx = context as *const CBContext as *mut CBContext;
+        // TODO return error if should not continue!!
         Core.suspend.unwrap()(ctx, seconds);
     }
 }
