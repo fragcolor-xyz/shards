@@ -703,6 +703,12 @@ if(NOT BUILD_CORE_ONLY)
   endif()
 endif()
 
+if(USE_LIBBACKTRACE)
+  set(EXTRA_LIBS ${EXTRA_LIBS} ${CHAINBLOCKS_DIR}/deps/libbacktrace/build/lib/libbacktrace.a)
+  add_compile_definitions(BOOST_STACKTRACE_USE_BACKTRACE)
+  include_directories(${CHAINBLOCKS_DIR}/deps/libbacktrace/build/include)
+endif()
+
 ### mal
 add_executable(
   cbl
