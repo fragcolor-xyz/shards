@@ -145,7 +145,4 @@
 
 (schedule Root evolveme)
 (run Root 0.1)
-(def Root nil)
-(def evolveme nil)
-(def fitness nil)
 (prn "Done 3")
