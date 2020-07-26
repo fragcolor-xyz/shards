@@ -52,3 +52,6 @@
 [submodule "deps/implot"]
 	path = deps/implot
 	url = https://github.com/chainblocks/implot.git
+[submodule "deps/filesystem"]
+	path = deps/filesystem
+	url = https://github.com/chainblocks/filesystem.git
