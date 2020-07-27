@@ -702,7 +702,7 @@ CBVar postAndSuspendWaiting(CBContext *context,
   CBVar res{};
   std::atomic_bool complete = false;
 
-  boost::asio::post(chainblocks::SharedThreadPool, [&]() {
+  boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
     try {
       res = func();
       complete = true;
@@ -733,7 +733,7 @@ void dispatchAndSuspendWaiting(CBContext *context, std::function<void()> func) {
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
-  boost::asio::post(chainblocks::SharedThreadPool, [&]() {
+  boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
     try {
       func();
       complete = true;
