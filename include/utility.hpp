@@ -88,7 +88,10 @@ public:
 
   T &operator()() {
     if (!_tp) {
-      _tp = new T();
+      std::unique_lock<std::mutex> lock(_m);
+      // check again as another thread might have locked
+      if(!_tp) 
+        _tp = new T();
     }
 
     return *_tp;
