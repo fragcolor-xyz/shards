@@ -722,7 +722,7 @@ CBVar postAndSuspendWaiting(CBContext *context,
     } catch (const std::exception &e) {
       context->cancelFlow(e.what());
     } catch (...) {
-      context->cancelFlow("foreign exception failure during composeChain");
+      context->cancelFlow("foreign exception failure");
     }
   }
 
