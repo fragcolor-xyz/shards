@@ -455,29 +455,12 @@ struct Await : public BaseSubFlow {
   CBVar getParam(int index) { return _blocks; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar output{};
-    if (likely(_blocks)) {
-#ifndef __EMSCRIPTEN__
-      // avoid nesting, if we are alrady inside a worker
-      // run normally
-      auto &tasks = _taskManager();
-      if (tasks.this_worker_id() == -1) {
-        AsyncOp<InternalCore> op(context);
-        op.sidechain(tasks,
-                     [&]() { _blocks.activate(context, input, output); });
-      } else
-#endif
-      {
-        _blocks.activate(context, input, output);
-      }
-    }
-    return output;
+    return postAndSuspendWaiting(context, [&] {
+      CBVar output{};
+      _blocks.activate(context, input, output);
+      return output;
+    });
   }
-
-private:
-#ifndef __EMSCRIPTEN__
-  Shared<tf::Executor> _taskManager;
-#endif
 };
 
 // Not used actually

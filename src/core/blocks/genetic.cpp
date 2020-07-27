@@ -191,8 +191,7 @@ struct Evolve {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-    return op.sidechain<CBVar>(*_exec, [&]() {
+    return postAndSuspendWaiting(context, [&]() {
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes

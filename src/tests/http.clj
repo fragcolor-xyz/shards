@@ -23,9 +23,7 @@
    (ExpectTable)
    (Take "id")
    (Assert.Is 101 true)
-   (Log)
-
-   ))
+   (Log)))
 
 (schedule Root test)
 (run Root 0.1)

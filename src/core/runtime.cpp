@@ -3,8 +3,11 @@
 
 #define STB_DS_IMPLEMENTATION 1
 
-#include "runtime.hpp"
+// must go first
+#include <boost/asio.hpp>
+
 #include "blocks/shared.hpp"
+#include "runtime.hpp"
 #include "utility.hpp"
 #include <boost/stacktrace.hpp>
 #include <csignal>
@@ -690,6 +693,64 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
   }
   return CBChainState::Continue;
 }
+
+static inline boost::asio::thread_pool SharedThreadPool{};
+
+CBVar postAndSuspendWaiting(CBContext *context,
+                            std::function<CBVar()> func) noexcept {
+  std::exception_ptr exp = nullptr;
+  CBVar res{};
+  std::atomic_bool complete = false;
+
+  boost::asio::post(chainblocks::SharedThreadPool, [&]() {
+    try {
+      res = func();
+      complete = true;
+    } catch (...) {
+      exp = std::current_exception();
+    }
+  });
+
+  while (!complete) {
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+      break;
+  }
+
+  if (exp) {
+    try {
+      std::rethrow_exception(exp);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during composeChain");
+    }
+  }
+
+  return res;
+}
+
+void dispatchAndSuspendWaiting(CBContext *context, std::function<void()> func) {
+  std::exception_ptr exp = nullptr;
+  std::atomic_bool complete = false;
+
+  boost::asio::post(chainblocks::SharedThreadPool, [&]() {
+    try {
+      func();
+      complete = true;
+    } catch (...) {
+      exp = std::current_exception();
+    }
+  });
+
+  while (!complete) {
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+      break;
+  }
+
+  if (exp) {
+    std::rethrow_exception(exp);
+  }
+}
 }; // namespace chainblocks
 
 #ifndef OVERRIDE_REGISTER_ALL_BLOCKS
@@ -982,19 +1043,16 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
   struct AsyncActivate {
     CBAsyncActivateProc proc;
     void *userData;
-    chainblocks::Shared<tf::Executor> taskManager;
   };
 
   result->createAsyncActivate = [](auto data, auto call) {
-    return (void *)(new AsyncActivate{call, data, {}});
+    return (void *)(new AsyncActivate{call, data});
   };
 
   result->runAsyncActivate = [](auto handle, auto context) {
     auto data = reinterpret_cast<AsyncActivate *>(handle);
-    chainblocks::AsyncOp<chainblocks::InternalCore> op(context);
-    return op.sidechain<CBVar>(data->taskManager(), [&]() {
-      return data->proc(context, data->userData);
-    });
+    return chainblocks::postAndSuspendWaiting(
+        context, [&] { return data->proc(context, data->userData); });
   };
 
   result->destroyAsyncActivate = [](auto handle) {
