@@ -86,16 +86,17 @@ public:
 
   ~Shared() { decRef(); }
 
-  T &operator()() { return *_tp; }
+  T &operator()() {
+    if (!_tp) {
+      _tp = new T();
+    }
+
+    return *_tp;
+  }
 
 private:
   void addRef() {
     std::unique_lock<std::mutex> lock(_m);
-
-    if (_refs == 0) {
-      assert(!_tp);
-      _tp = new T();
-    }
 
     _refs++;
   }
@@ -105,7 +106,7 @@ private:
 
     _refs--;
 
-    if (_refs == 0) {
+    if (_refs == 0 && _tp) {
       // delete the internal object
       delete _tp;
       // null the thread local
