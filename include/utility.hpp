@@ -386,7 +386,7 @@ template <class CB_CORE> struct AsyncOp {
     fut.get();
   }
 
-  template <class Function> void sidechain(tf::Executor &exec, Function f) {
+  template <class Function> void sidechain(tf::Executor &exec, Function &&f) {
     tf::Taskflow flow;
     std::exception_ptr p = nullptr;
 
@@ -423,7 +423,7 @@ template <class CB_CORE> struct AsyncOp {
   }
 
   template <typename Result, class Function>
-  Result sidechain(tf::Executor &exec, Function f) {
+  Result sidechain(tf::Executor &exec, Function &&f) {
     tf::Taskflow flow;
     std::exception_ptr p = nullptr;
     Result res;
