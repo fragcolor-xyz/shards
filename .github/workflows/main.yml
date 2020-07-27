@@ -48,7 +48,7 @@ jobs:
     - uses: msys2/setup-msys2@v1
       with:
         msystem: MINGW64
-        release: false
+        release: true
     - run: msys2 ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -64,7 +64,7 @@ jobs:
     - uses: msys2/setup-msys2@v1
       with:
         msystem: MINGW32
-        release: false
+        release: true
     - run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -80,7 +80,7 @@ jobs:
     - uses: msys2/setup-msys2@v1
       with:
         msystem: MINGW64
-        release: false
+        release: true
     - run: msys2 ./build-win.sh Debug
 
   ciWindowsDbg32:
@@ -92,7 +92,7 @@ jobs:
     - uses: msys2/setup-msys2@v1
       with:
         msystem: MINGW32
-        release: false
+        release: true
     - run: msys2 ./build-win32.sh Debug
 
   ciMacDbg:
