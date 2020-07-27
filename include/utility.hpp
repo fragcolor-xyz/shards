@@ -13,10 +13,6 @@
 #include <string>
 #include <vector>
 
-#ifndef __EMSCRIPTEN__
-#include <taskflow/taskflow.hpp>
-#endif
-
 namespace chainblocks {
 // SFINAE tests
 #define CB_HAS_MEMBER_TEST(_name_)                                             \
@@ -339,108 +335,6 @@ template <class Function> struct Defer {
 #define DEFER_DEF(uniq, body)                                                  \
   ::chainblocks::Defer DEFER_NAME(uniq)([&]() { body; })
 #define DEFER(body) DEFER_DEF(__LINE__, body)
-
-#ifndef __EMSCRIPTEN__
-template <class CB_CORE> struct AsyncOp {
-  AsyncOp(CBContext *context) : _context(context) {}
-
-  CBVar operator()(std::future<CBVar> &fut) {
-    while (true) {
-      auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
-        break;
-    }
-    // This should also throw if we had exceptions
-    return fut.get();
-  }
-
-  void operator()(std::future<void> &fut) {
-    while (true) {
-      auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
-        break;
-    }
-    // This should also throw if we had exceptions
-    fut.get();
-  }
-
-  template <class Function> void sidechain(tf::Executor &exec, Function &&f) {
-    tf::Taskflow flow;
-    std::exception_ptr p = nullptr;
-
-    // wrap into a call to catch exceptions
-    auto call = [&]() {
-      try {
-        f();
-      } catch (...) {
-        p = std::current_exception();
-      }
-    };
-
-    flow.emplace(call);
-    auto fut = exec.run(flow);
-    // ensure flow runs
-    // to ensure determinism and no leakage
-    DEFER({
-      if (fut.valid())
-        fut.wait();
-    });
-
-    while (true) {
-      auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
-        break;
-    }
-
-    if (p)
-      std::rethrow_exception(p);
-  }
-
-  template <typename Result, class Function>
-  Result sidechain(tf::Executor &exec, Function &&f) {
-    tf::Taskflow flow;
-    std::exception_ptr p = nullptr;
-    Result res;
-
-    // wrap into a call to catch exceptions
-    auto call = [&]() {
-      try {
-        res = f();
-      } catch (...) {
-        p = std::current_exception();
-      }
-    };
-
-    flow.emplace(call);
-    auto fut = exec.run(flow);
-
-    // ensure flow runs
-    // to ensure determinism and no leakage
-    DEFER({
-      if (fut.valid())
-        fut.wait();
-    });
-
-    while (true) {
-      auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
-        break;
-    }
-
-    if (p)
-      std::rethrow_exception(p);
-
-    return res;
-  }
-
-private:
-  CBContext *_context;
-};
-#endif
 }; // namespace chainblocks
 
 #endif

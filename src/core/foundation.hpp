@@ -102,7 +102,9 @@ void unregisterExitCallback(std::string_view eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
-
+CBVar postAndSuspendWaiting(CBContext *context,
+                            std::function<CBVar()> func) noexcept;
+void dispatchAndSuspendWaiting(CBContext *context, std::function<void()> func);
 struct RuntimeObserver {
   virtual void registerBlock(const char *fullName,
                              CBBlockConstructor constructor) {}

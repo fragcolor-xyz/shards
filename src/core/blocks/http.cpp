@@ -117,10 +117,9 @@ struct Client {
     }
   }
 
-  void connect(CBContext *context, AsyncOp<InternalCore> &op) {
+  void connect(CBContext *context) {
     try {
-      auto &tasks = _taskManager();
-      op.sidechain(tasks, [&]() {
+      dispatchAndSuspendWaiting(context, [&]() {
         if (ssl) {
           // Set SNI Hostname (many hosts need this to handshake
           // successfully)
@@ -155,8 +154,7 @@ struct Client {
     }
   }
 
-  virtual void request(CBContext *context, AsyncOp<InternalCore> &op,
-                       const CBVar &input) = 0;
+  virtual void request(CBContext *context, const CBVar &input) = 0;
 
   void resetStream() {
     beast::error_code ec;
@@ -179,12 +177,10 @@ struct Client {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    AsyncOp<InternalCore> op(context);
-
     if (!connected)
-      connect(context, op);
+      connect(context);
 
-    request(context, op, input);
+    request(context, input);
 
     return Var(res.body());
   }
@@ -217,11 +213,9 @@ protected:
 };
 
 struct Get final : public Client {
-  void request(CBContext *context, AsyncOp<InternalCore> &op,
-               const CBVar &input) override {
+  void request(CBContext *context, const CBVar &input) override {
     try {
-      auto &tasks = _taskManager();
-      op.sidechain(tasks, [&]() {
+      dispatchAndSuspendWaiting(context, [&]() {
         vars.clear();
         vars.append(target.get().payload.stringValue);
         if (input.valueType == Table) {
@@ -261,11 +255,9 @@ struct Get final : public Client {
 };
 
 struct Post final : public Client {
-  void request(CBContext *context, AsyncOp<InternalCore> &op,
-               const CBVar &input) override {
+  void request(CBContext *context, const CBVar &input) override {
     try {
-      auto &tasks = _taskManager();
-      op.sidechain(tasks, [&]() {
+      dispatchAndSuspendWaiting(context, [&]() {
         vars.clear();
         if (input.valueType == Table) {
           ForEach(input.payload.tableValue, [&](auto key, auto &value) {

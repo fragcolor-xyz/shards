@@ -123,10 +123,8 @@ struct Client {
   }
 
   void connect(CBContext *context) {
-    AsyncOp<InternalCore> op(context);
     try {
-      auto &tasks = _taskManager();
-      op.sidechain(tasks, [&]() {
+      dispatchAndSuspendWaiting(context, [&] {
         boost::asio::io_context ioc;
         tcp::resolver resolver{ioc};
         auto resolved =
@@ -206,8 +204,6 @@ struct Client {
   }
 
 protected:
-  Shared<tf::Executor> _taskManager;
-
   std::string name;
   ParamVar port{Var(443)};
   ParamVar host{Var("echo.websocket.org")};
@@ -263,8 +259,6 @@ struct User {
 };
 
 struct WriteString : public User {
-  Shared<tf::Executor> _taskManager;
-
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -280,10 +274,9 @@ struct WriteString : public User {
       payload = std::string_view(input.payload.stringValue);
     }
 
-    AsyncOp<InternalCore> op(context);
     try {
-      auto &tasks = _taskManager();
-      op.sidechain(tasks, [&]() { _ws->get().write(net::buffer(payload)); });
+      dispatchAndSuspendWaiting(
+          context, [&]() { _ws->get().write(net::buffer(payload)); });
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
