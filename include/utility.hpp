@@ -361,9 +361,12 @@ template <class CB_CORE> struct AsyncOp {
   CBVar operator()(std::future<CBVar> &fut) {
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
+      if (state == std::future_status::ready)
         break;
+      // notice right now we cannot really abort a chain (suspend returns `don't
+      // continue`) this would set flow out of scope...
+      // TODO fix this
+      CB_CORE::suspend(_context, 0);
     }
     // This should also throw if we had exceptions
     return fut.get();
@@ -446,9 +449,12 @@ template <class CB_CORE> struct AsyncOp {
 
     while (true) {
       auto state = fut.wait_for(std::chrono::seconds(0));
-      if (state == std::future_status::ready ||
-          CB_CORE::suspend(_context, 0) != CBChainState::Continue)
+      if (state == std::future_status::ready)
         break;
+      // notice right now we cannot really abort a chain (suspend returns `don't
+      // continue`) this would set flow out of scope...
+      // TODO fix this
+      CB_CORE::suspend(_context, 0);
     }
 
     if (p)
