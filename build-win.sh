@@ -45,7 +45,7 @@ echo "Running test: lmdb"
 echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"
-gdb --ex "catch throw" --ex run --ex bt --ex quit --args ./cbl ../src/tests/http.clj
+./cbl ../src/tests/http.clj
 echo "Running test: snappy"
 ./cbl ../src/tests/snappy.clj
 echo "Running test: ws"
