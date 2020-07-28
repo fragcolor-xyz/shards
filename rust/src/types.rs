@@ -24,6 +24,7 @@ use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBVarPayload;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_2;
+use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_4;
 use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlocks;
@@ -36,7 +37,6 @@ use std::ffi::CString;
 pub type Context = CBContext;
 pub type Var = CBVar;
 pub type Type = CBTypeInfo;
-pub type String = CBString;
 pub type InstanceData = CBInstanceData;
 pub type Table = CBTable;
 pub type Chain = CBChain;
@@ -299,12 +299,16 @@ pub struct ClonedVar(pub Var);
 #[repr(transparent)] // force it same size of original
 pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
-impl From<Var> for ClonedVar {
-    fn from(v: Var) -> Self {
+impl<T> From<T> for ClonedVar
+where
+    T: Into<Var>,
+{
+    fn from(v: T) -> Self {
+        let vt: Var = v.into();
         let res = ClonedVar(Var::default());
         unsafe {
             let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = &v as *const CBVar;
+            let sv = &vt as *const CBVar;
             Core.cloneVar.unwrap()(rv, sv);
         }
         res
@@ -330,6 +334,34 @@ impl From<Vec<Var>> for ClonedVar {
         unsafe {
             let rv = &res.0 as *const CBVar as *mut CBVar;
             let sv = &tmp as *const CBVar;
+            Core.cloneVar.unwrap()(rv, sv);
+        }
+        res
+    }
+}
+
+impl From<std::string::String> for ClonedVar {
+    fn from(v: std::string::String) -> Self {
+        let cstr = CString::new(v).unwrap();
+        let tmp = Var::from(&cstr);
+        let res = ClonedVar(Var::default());
+        unsafe {
+            let rv = &res.0 as *const CBVar as *mut CBVar;
+            let sv = &tmp as *const CBVar;
+            Core.cloneVar.unwrap()(rv, sv);
+        }
+        res
+    }
+}
+
+impl From<&[ClonedVar]> for ClonedVar {
+    fn from(vec: &[ClonedVar]) -> Self {
+        let res = ClonedVar(Var::default());
+        unsafe {
+            let src: &[Var] = std::mem::transmute(vec);
+            let vsrc: Var = src.into();
+            let rv = &res.0 as *const CBVar as *mut CBVar;
+            let sv = &vsrc as *const CBVar;
             Core.cloneVar.unwrap()(rv, sv);
         }
         res
@@ -402,7 +434,7 @@ impl From<CBString> for Var {
 impl From<&'static str> for Var {
     #[inline(always)]
     fn from(v: &'static str) -> Self {
-        let res = CBVar {
+        CBVar {
             valueType: CBType_String,
             payload: CBVarPayload {
                 __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
@@ -414,15 +446,14 @@ impl From<&'static str> for Var {
                 },
             },
             ..Default::default()
-        };
-        res
+        }
     }
 }
 
 impl From<&CStr> for Var {
     #[inline(always)]
     fn from(v: &CStr) -> Self {
-        let res = CBVar {
+        CBVar {
             valueType: CBType_String,
             payload: CBVarPayload {
                 __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
@@ -434,8 +465,7 @@ impl From<&CStr> for Var {
                 },
             },
             ..Default::default()
-        };
-        res
+        }
     }
 }
 
@@ -472,18 +502,17 @@ impl From<Option<&CString>> for Var {
 impl From<()> for Var {
     #[inline(always)]
     fn from(_: ()) -> Self {
-        let res = CBVar {
+        CBVar {
             valueType: CBType_None,
             ..Default::default()
-        };
-        res
+        }
     }
 }
 
 impl From<&Vec<Var>> for Var {
     #[inline(always)]
     fn from(vec: &Vec<Var>) -> Self {
-        let res = CBVar {
+        CBVar {
             valueType: CBType_Seq,
             payload: CBVarPayload {
                 __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
@@ -495,8 +524,45 @@ impl From<&Vec<Var>> for Var {
                 },
             },
             ..Default::default()
-        };
-        res
+        }
+    }
+}
+
+impl From<&[Var]> for Var {
+    #[inline(always)]
+    fn from(vec: &[Var]) -> Self {
+        CBVar {
+            valueType: CBType_Seq,
+            payload: CBVarPayload {
+                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+                    seqValue: CBSeq {
+                        elements: vec.as_ptr() as *mut CBVar,
+                        len: vec.len() as u32,
+                        cap: 0,
+                    },
+                },
+            },
+            ..Default::default()
+        }
+    }
+}
+
+impl From<&[u8]> for Var {
+    #[inline(always)]
+    fn from(vec: &[u8]) -> Self {
+        CBVar {
+            valueType: CBType_Bytes,
+            payload: CBVarPayload {
+                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+                    __bindgen_anon_4: CBVarPayload__bindgen_ty_1__bindgen_ty_4 {
+                        bytesValue: vec.as_ptr() as *mut u8,
+                        bytesSize: vec.len() as u32,
+                        bytesCapacity: 0,
+                    },
+                },
+            },
+            ..Default::default()
+        }
     }
 }
 
