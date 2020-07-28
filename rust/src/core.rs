@@ -121,9 +121,7 @@ pub static mut Core: CBCore = CBCore {
     sleep: None,
     getRootPath: None,
     setRootPath: None,
-    createAsyncActivate: None,
-    runAsyncActivate: None,
-    destroyAsyncActivate: None,
+    asyncActivate: None,
 };
 
 static mut init_done: bool = false;
@@ -298,10 +296,6 @@ where
         let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'a str> = &f;
         let trait_obj_ref = &mut trait_obj;
         let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
-        let handle =
-            Core.createAsyncActivate.unwrap()(closure_pointer_pointer, Some(asyncActivateCCall));
-        let res = Core.runAsyncActivate.unwrap()(handle, ctx);
-        Core.destroyAsyncActivate.unwrap()(handle);
-        res
+        Core.asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(asyncActivateCCall))
     }
 }

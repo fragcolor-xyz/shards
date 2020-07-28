@@ -455,7 +455,7 @@ struct Await : public BaseSubFlow {
   CBVar getParam(int index) { return _blocks; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return postAndSuspendWaiting(context, [&] {
+    return awaitne(context, [&] {
       CBVar output{};
       _blocks.activate(context, input, output);
       return output;

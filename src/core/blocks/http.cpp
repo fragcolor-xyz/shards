@@ -119,7 +119,7 @@ struct Client {
 
   void connect(CBContext *context) {
     try {
-      dispatchAndSuspendWaiting(context, [&]() {
+      await(context, [&]() {
         if (ssl) {
           // Set SNI Hostname (many hosts need this to handshake
           // successfully)
@@ -215,7 +215,7 @@ protected:
 struct Get final : public Client {
   void request(CBContext *context, const CBVar &input) override {
     try {
-      dispatchAndSuspendWaiting(context, [&]() {
+      await(context, [&]() {
         vars.clear();
         vars.append(target.get().payload.stringValue);
         if (input.valueType == Table) {
@@ -257,7 +257,7 @@ struct Get final : public Client {
 struct Post final : public Client {
   void request(CBContext *context, const CBVar &input) override {
     try {
-      dispatchAndSuspendWaiting(context, [&]() {
+      await(context, [&]() {
         vars.clear();
         if (input.valueType == Table) {
           ForEach(input.payload.tableValue, [&](auto key, auto &value) {

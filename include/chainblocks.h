@@ -930,14 +930,12 @@ typedef struct CBTable(__cdecl *CBTableNew)();
 typedef const char *(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(const char *);
 
-typedef void *CBAsyncHandle;
 typedef struct CBVar(__cdecl *CBAsyncActivateProc)(struct CBContext *context,
                                                    void *userData);
-typedef CBAsyncHandle(__cdecl *CBCreateAsyncActivate)(void *userData,
-                                                      CBAsyncActivateProc call);
-typedef struct CBVar(__cdecl *CBRunAsyncActivate)(CBAsyncHandle handle,
-                                                  struct CBContext *context);
-typedef void(__cdecl *CBDestroyAsyncActivate)(CBAsyncHandle handle);
+
+typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
+                                                  void *userData,
+                                                  CBAsyncActivateProc call);
 
 struct CBChainInfo {
   const char *name;
@@ -1049,9 +1047,7 @@ struct CBCore {
   CBSetRootPath setRootPath;
 
   // async execution
-  CBCreateAsyncActivate createAsyncActivate;
-  CBRunAsyncActivate runAsyncActivate;
-  CBDestroyAsyncActivate destroyAsyncActivate;
+  CBRunAsyncActivate asyncActivate;
 };
 
 typedef CBBool(__cdecl *CBChainblocksInterface)(uint32_t abi_version,

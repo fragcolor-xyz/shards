@@ -696,8 +696,7 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 
 static inline boost::asio::thread_pool SharedThreadPool{};
 
-CBVar postAndSuspendWaiting(CBContext *context,
-                            std::function<CBVar()> func) noexcept {
+CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
   std::exception_ptr exp = nullptr;
   CBVar res{};
   std::atomic_bool complete = false;
@@ -729,7 +728,7 @@ CBVar postAndSuspendWaiting(CBContext *context,
   return res;
 }
 
-void dispatchAndSuspendWaiting(CBContext *context, std::function<void()> func) {
+void await(CBContext *context, std::function<void()> func) {
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
@@ -1040,24 +1039,8 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     chainblocks::Globals::RootPath = p;
   };
 
-  struct AsyncActivate {
-    CBAsyncActivateProc proc;
-    void *userData;
-  };
-
-  result->createAsyncActivate = [](auto data, auto call) {
-    return (void *)(new AsyncActivate{call, data});
-  };
-
-  result->runAsyncActivate = [](auto handle, auto context) {
-    auto data = reinterpret_cast<AsyncActivate *>(handle);
-    return chainblocks::postAndSuspendWaiting(
-        context, [&] { return data->proc(context, data->userData); });
-  };
-
-  result->destroyAsyncActivate = [](auto handle) {
-    auto data = reinterpret_cast<AsyncActivate *>(handle);
-    delete data;
+  result->asyncActivate = [](auto context, auto data, auto call) {
+    return chainblocks::awaitne(context, [&] { return call(context, data); });
   };
 
   return true;

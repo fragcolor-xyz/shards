@@ -191,7 +191,7 @@ struct Evolve {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return postAndSuspendWaiting(context, [&]() {
+    return awaitne(context, [&]() {
       // Init on the first run!
       // We reuse those chains for every era
       // Only the DNA changes

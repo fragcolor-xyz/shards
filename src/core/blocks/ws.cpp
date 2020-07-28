@@ -124,7 +124,7 @@ struct Client {
 
   void connect(CBContext *context) {
     try {
-      dispatchAndSuspendWaiting(context, [&] {
+      await(context, [&] {
         boost::asio::io_context ioc;
         tcp::resolver resolver{ioc};
         auto resolved =
@@ -275,8 +275,7 @@ struct WriteString : public User {
     }
 
     try {
-      dispatchAndSuspendWaiting(
-          context, [&]() { _ws->get().write(net::buffer(payload)); });
+      await(context, [&]() { _ws->get().write(net::buffer(payload)); });
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
