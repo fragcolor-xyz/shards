@@ -97,6 +97,7 @@ impl ExposedInfo {
             name: cname.into_raw(),
             help: chelp,
             isMutable: false,
+            isProtected: false,
             isTableEntry: false,
             global: false,
             scope: core::ptr::null_mut(),
