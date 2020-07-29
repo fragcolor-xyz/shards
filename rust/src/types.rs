@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBContext;
@@ -864,26 +865,17 @@ impl ParamVar {
         // avoid overwrite refcount
         assert_ne!(self.pointee, std::ptr::null_mut());
         unsafe {
-            (*self.pointee).payload = value.payload;
-            (*self.pointee).valueType = value.valueType;
-            (*self.pointee).innerType = value.innerType;
-            (*self.pointee).flags = value.flags;
-            (*self.pointee).__bindgen_anon_1 = value.__bindgen_anon_1;
+            let rc = (*self.pointee).refcount;
+            (*self.pointee) = value;
+            (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u8);
+            (*self.pointee).refcount = rc;
         }
     }
 
     pub fn get(&mut self) -> Var {
         // avoid reading refcount
         assert_ne!(self.pointee, std::ptr::null_mut());
-        let mut res = Var::default();
-        unsafe {
-            res.payload = (*self.pointee).payload;
-            res.valueType = (*self.pointee).valueType;
-            res.innerType = (*self.pointee).innerType;
-            res.flags = (*self.pointee).flags;
-            res.__bindgen_anon_1 = (*self.pointee).__bindgen_anon_1;
-        }
-        res
+        unsafe { *self.pointee }
     }
 
     pub fn setParam(&mut self, value: &Var) {
@@ -900,6 +892,7 @@ impl ParamVar {
 
     pub fn setName(&mut self, name: &str) {
         self.parameter = name.into();
+        self.parameter.0.valueType = CBType_ContextVar;
     }
 }
 
