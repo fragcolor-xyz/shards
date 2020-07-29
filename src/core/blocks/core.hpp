@@ -546,14 +546,14 @@ struct SetBase : public VariableBase {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
         if (_isTable && !reference.isTableEntry) {
-          throw CBException("Set/Ref/Update, variable was not a table: " +
-                            _name);
+          throw ComposeError("Set/Ref/Update, variable was not a table: " +
+                             _name);
         } else if (!_isTable && reference.isTableEntry) {
-          throw CBException("Set/Ref/Update, variable was a table: " + _name);
+          throw ComposeError("Set/Ref/Update, variable was a table: " + _name);
         } else if (!_isTable && data.inputType != reference.exposedType) {
-          throw CBException("Set/Ref/Update, variable already set as another "
-                            "type: " +
-                            _name);
+          throw ComposeError("Set/Ref/Update, variable already set as another "
+                             "type: " +
+                             _name);
         }
         if (!_isTable && warnIfExists) {
           LOG(INFO)
@@ -562,8 +562,12 @@ struct SetBase : public VariableBase {
               << _name;
         }
         if (!reference.isMutable) {
-          throw CBException(
-              "Set/Ref/Update, attempted to write a immutable variable.");
+          throw ComposeError(
+              "Set/Ref/Update, attempted to write an immutable variable.");
+        }
+        if (reference.isProtected) {
+          throw ComposeError(
+              "Set/Ref/Update, attempted to write a protected variable.");
         }
       }
     }
@@ -866,6 +870,11 @@ struct Get : public VariableBase {
               return CoreInfo::AnyType;
             }
           }
+
+          if (data.shared.elements[i].isProtected) {
+            throw ComposeError("Get (" + _name +
+                               "): Cannot Get, variable is protected.");
+          }
         }
       }
       if (_defaultValue.valueType != None) {
@@ -881,10 +890,15 @@ struct Get : public VariableBase {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
         if (strcmp(_name.c_str(), cv.name) == 0) {
+          if (cv.isProtected) {
+            throw ComposeError("Get (" + _name +
+                               "): Cannot Get, variable is protected.");
+          }
           return cv.exposedType;
         }
       }
     }
+
     if (_defaultValue.valueType != None) {
       freeDerivedInfo(_defaultType);
       _defaultType = deriveTypeInfo(_defaultValue);

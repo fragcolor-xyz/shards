@@ -472,9 +472,13 @@ struct CBExposedTypeInfo {
 
   // the following are actually used only when exposing.
 
-  // generally those are from internal blocks like Set, means they can change in
-  // place
+  // generally those are from internal blocks like Set
+  // means they can change in-place
   CBBool isMutable;
+
+  // a protected variable is ignored by Get/Set etc.
+  // can only be used directly as reference from params
+  CBBool isProtected;
 
   // if isTableEntry is true:
   // `name` will be the name of the table variable

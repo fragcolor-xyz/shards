@@ -23,7 +23,6 @@ struct SocketData {
 
 struct NetworkBase {
   BlocksVar _blks{};
-  CBComposeResult _validation{};
 
   static inline Type SocketInfo{
       {CBType::Object, {.object = {.vendorId = FragCC, .typeId = SocketCC}}}};
@@ -53,8 +52,6 @@ struct NetworkBase {
                         CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
-
-  CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   static void setup() {
     if (_io_context_refc == 0) {
@@ -129,8 +126,8 @@ struct NetworkBase {
     auto endpointInfo = ExposedInfo::Variable(
         "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
     chainblocks::arrayPush(data.shared, endpointInfo);
-    _validation = _blks.compose(data);
-    return _validation.outputType;
+    _blks.compose(data);
+    return data.inputType;
   }
 
   void setParam(int index, CBVar value) {
@@ -314,7 +311,6 @@ RUNTIME_BLOCK_setParam(Server);
 RUNTIME_BLOCK_getParam(Server);
 RUNTIME_BLOCK_activate(Server);
 RUNTIME_BLOCK_compose(Server);
-RUNTIME_BLOCK_exposedVariables(Server);
 RUNTIME_BLOCK_END(Server);
 
 struct Client : public NetworkBase {
@@ -406,14 +402,6 @@ struct Client : public NetworkBase {
     return input;
   }
 
-  CBExposedTypesInfo exposedVariables() {
-    _exposedInfo = ExposedInfo(
-        ExposedInfo(NetworkBase::exposedVariables()),
-        ExposedInfo::Variable("Network.Socket", "The current client socket.",
-                              CBTypeInfo(SocketInfo)));
-    return CBExposedTypesInfo(_exposedInfo);
-  }
-
   udp::endpoint _server;
 };
 
@@ -430,7 +418,6 @@ RUNTIME_BLOCK_setParam(Client);
 RUNTIME_BLOCK_getParam(Client);
 RUNTIME_BLOCK_activate(Client);
 RUNTIME_BLOCK_compose(Client);
-RUNTIME_BLOCK_exposedVariables(Client);
 RUNTIME_BLOCK_END(Client);
 
 struct Send {

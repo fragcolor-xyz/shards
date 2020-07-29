@@ -189,6 +189,7 @@ struct Client {
   CBExposedTypesInfo exposedVariables() {
     _expInfo = CBExposedTypeInfo{name.c_str(), "The exposed websocket.",
                                  Common::WebSocket};
+    _expInfo.isProtected = true;
     return CBExposedTypesInfo{&_expInfo, 1, 0};
   }
 
