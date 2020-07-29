@@ -6,16 +6,20 @@ use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
 use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
+use crate::chainblocksc::CBPointer;
 use crate::chainblocksc::CBSeq;
 use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBTypeInfo;
+use crate::chainblocksc::CBTypeInfo_Details;
+use crate::chainblocksc::CBTypeInfo_Details_Object;
 use crate::chainblocksc::CBType_Bool;
 use crate::chainblocksc::CBType_Bytes;
 use crate::chainblocksc::CBType_ContextVar;
 use crate::chainblocksc::CBType_Float;
 use crate::chainblocksc::CBType_Int;
 use crate::chainblocksc::CBType_None;
+use crate::chainblocksc::CBType_Object;
 use crate::chainblocksc::CBType_Path;
 use crate::chainblocksc::CBType_Seq;
 use crate::chainblocksc::CBType_String;
@@ -23,6 +27,7 @@ use crate::chainblocksc::CBTypesInfo;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBVarPayload;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
+use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_1;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_2;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_4;
 use crate::chainblocksc::CBlock;
@@ -33,6 +38,7 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::sync::Arc;
 
 pub type Context = CBContext;
 pub type Var = CBVar;
@@ -58,6 +64,16 @@ pub type Types = Vec<Type>;
 
 impl From<&Types> for CBTypesInfo {
     fn from(types: &Types) -> Self {
+        CBTypesInfo {
+            elements: types.as_ptr() as *mut CBTypeInfo,
+            len: types.len() as u32,
+            cap: 0,
+        }
+    }
+}
+
+impl From<&[Type]> for CBTypesInfo {
+    fn from(types: &[Type]) -> Self {
         CBTypesInfo {
             elements: types.as_ptr() as *mut CBTypeInfo,
             len: types.len() as u32,
@@ -138,7 +154,7 @@ impl From<&ExposedTypes> for CBExposedTypesInfo {
 /*
 CBParameterInfo & co
  */
-pub struct ParameterInfo(CBParameterInfo);
+pub struct ParameterInfo(pub CBParameterInfo);
 
 impl ParameterInfo {
     fn new(name: &str, types: Types) -> Self {
@@ -290,6 +306,33 @@ pub mod common_type {
     cbtype!(make_path, CBType_Path, path, paths, path_seq);
 }
 
+impl Type {
+    pub const fn context_variable(types: &[Type]) -> Type {
+        Type {
+            basicType: CBType_ContextVar,
+            details: CBTypeInfo_Details {
+                contextVarTypes: CBTypesInfo {
+                    elements: types.as_ptr() as *mut CBTypeInfo,
+                    len: types.len() as u32,
+                    cap: 0,
+                },
+            },
+        }
+    }
+
+    pub const fn object(vendorId: i32, typeId: i32) -> Type {
+        Type {
+            basicType: CBType_Object,
+            details: CBTypeInfo_Details {
+                object: CBTypeInfo_Details_Object {
+                    vendorId: vendorId,
+                    typeId: typeId,
+                },
+            },
+        }
+    }
+}
+
 /*
 CBVar utility
  */
@@ -432,9 +475,9 @@ impl From<CBString> for Var {
     }
 }
 
-impl From<&'static str> for Var {
+impl<'a> From<&'a str> for Var {
     #[inline(always)]
-    fn from(v: &'static str) -> Self {
+    fn from(v: &'a str) -> Self {
         CBVar {
             valueType: CBType_String,
             payload: CBVarPayload {
@@ -563,6 +606,43 @@ impl From<&[u8]> for Var {
                 },
             },
             ..Default::default()
+        }
+    }
+}
+
+impl Var {
+    pub fn new_object<T>(obj: &Arc<T>, info: &Type) -> Var {
+        unsafe {
+            Var {
+                valueType: CBType_Object,
+                payload: CBVarPayload {
+                    __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
+                            objectValue: obj as *const Arc<T> as *mut Arc<T> as CBPointer,
+                            objectVendorId: info.details.object.vendorId,
+                            objectTypeId: info.details.object.typeId,
+                        },
+                    },
+                },
+                ..Default::default()
+            }
+        }
+    }
+
+    pub fn into_object<'a, T>(var: &'a Var, info: &'a Type) -> Result<Arc<T>, &'a str> {
+        unsafe {
+            if var.valueType != CBType_Object
+                || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+                    != info.details.object.vendorId
+                || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+                    != info.details.object.typeId
+            {
+                Err("Failed to cast Var into custom Arc<T> object")
+            } else {
+                let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Arc<T>;
+                let at = (*aptr).clone();
+                Ok(at)
+            }
         }
     }
 }
@@ -734,5 +814,79 @@ impl TryFrom<Var> for &[Var] {
                 Ok(res)
             }
         }
+    }
+}
+
+pub struct ParamVar {
+    parameter: ClonedVar,
+    pointee: *mut Var,
+}
+
+impl ParamVar {
+    pub fn new(initial_value: Var) -> ParamVar {
+        ParamVar {
+            parameter: initial_value.into(),
+            pointee: std::ptr::null_mut(),
+        }
+    }
+
+    pub fn cleanup(&mut self) {
+        unsafe {
+            if self.parameter.0.valueType == CBType_ContextVar {
+                Core.releaseVariable.unwrap()(self.pointee);
+            }
+            self.pointee = std::ptr::null_mut();
+        }
+    }
+
+    pub fn warmup(&mut self, context: &Context) {
+        if self.parameter.0.valueType == CBType_ContextVar {
+            assert_eq!(self.pointee, std::ptr::null_mut());
+            unsafe {
+                let ctx = context as *const CBContext as *mut CBContext;
+                self.pointee = Core.referenceVariable.unwrap()(
+                    ctx,
+                    self.parameter
+                        .0
+                        .payload
+                        .__bindgen_anon_1
+                        .__bindgen_anon_2
+                        .stringValue,
+                );
+            }
+        } else {
+            self.pointee = &mut self.parameter.0 as *mut Var;
+        }
+        assert_ne!(self.pointee, std::ptr::null_mut());
+    }
+
+    pub fn as_mut<'a>(&mut self) -> &'a mut Var {
+        unsafe { self.pointee.as_mut().unwrap() }
+    }
+
+    pub fn as_ref<'a>(&mut self) -> &'a Var {
+        unsafe { self.pointee.as_ref().unwrap() }
+    }
+
+    pub fn setParam(&mut self, value: &Var) {
+        self.parameter = value.into();
+    }
+
+    pub fn getParam(&mut self) -> Var {
+        self.parameter.0
+    }
+
+    pub fn isVariable(&mut self) -> bool {
+        self.parameter.0.valueType == CBType_ContextVar
+    }
+
+    pub fn setName(&mut self, name: &str) {
+        self.parameter = name.into();
+    }
+}
+
+impl Drop for ParamVar {
+    fn drop(&mut self) {
+        self.cleanup();
     }
 }

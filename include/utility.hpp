@@ -122,7 +122,6 @@ template <class CB_CORE> class TParamVar {
 private:
   CBVar _v{};
   CBVar *_cp = nullptr;
-  CBSeq *_stack = nullptr;
 
 public:
   TParamVar() {}
