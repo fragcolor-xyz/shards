@@ -795,7 +795,8 @@ inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b);
 
 inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
   if (strcmp(a.name, b.name) != 0 || a.exposedType != b.exposedType ||
-      a.isMutable != b.isMutable)
+      a.isMutable != b.isMutable || a.isProtected != b.isProtected ||
+      a.global != b.global)
     return false;
   return true;
 }
@@ -847,7 +848,9 @@ template <> struct hash<CBExposedTypeInfo> {
     auto res = hash<string>()(typeInfo.name);
     res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
+    res = res ^ hash<int>()(typeInfo.isProtected);
     res = res ^ hash<int>()(typeInfo.isTableEntry);
+    res = res ^ hash<int>()(typeInfo.global);
     return res;
   }
 };

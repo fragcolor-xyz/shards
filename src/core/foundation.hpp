@@ -812,7 +812,8 @@ struct ExposedInfo {
   static CBExposedTypeInfo Variable(const char *name, const char *help,
                                     CBTypeInfo type, bool isMutable = false,
                                     bool isTableField = false) {
-    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField, false};
+    CBExposedTypeInfo res = {name,  help,         type, isMutable,
+                             false, isTableField, false};
     return res;
   }
 
@@ -820,7 +821,8 @@ struct ExposedInfo {
                                           CBTypeInfo type,
                                           bool isMutable = false,
                                           bool isTableField = false) {
-    CBExposedTypeInfo res = {name, help, type, isMutable, isTableField, true};
+    CBExposedTypeInfo res = {name,  help,         type, isMutable,
+                             false, isTableField, true};
     return res;
   }
 

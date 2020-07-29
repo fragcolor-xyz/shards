@@ -336,12 +336,8 @@ struct WaitChain : public ChainBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (chainref.isVariable()) {
-      _requiredChain = CBExposedTypeInfo{chainref.variableName(),
-                                         "The chain to run.",
-                                         CoreInfo::ChainType,
-                                         false,
-                                         false,
-                                         false};
+      _requiredChain = CBExposedTypeInfo{
+          chainref.variableName(), "The chain to run.", CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
@@ -426,12 +422,8 @@ struct StopChain : public ChainBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (chainref.isVariable()) {
-      _requiredChain = CBExposedTypeInfo{chainref.variableName(),
-                                         "The chain to run.",
-                                         CoreInfo::ChainType,
-                                         false,
-                                         false,
-                                         false};
+      _requiredChain = CBExposedTypeInfo{
+          chainref.variableName(), "The chain to run.", CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
@@ -1000,12 +992,8 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
   CBExposedTypesInfo requiredVariables() {
     if (_chain.isVariable()) {
-      _requiredChain = CBExposedTypeInfo{_chain.variableName(),
-                                         "The chain to run.",
-                                         CoreInfo::ChainType,
-                                         false,
-                                         false,
-                                         false};
+      _requiredChain = CBExposedTypeInfo{
+          _chain.variableName(), "The chain to run.", CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
