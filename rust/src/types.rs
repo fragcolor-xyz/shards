@@ -629,7 +629,7 @@ impl Var {
         }
     }
 
-    pub fn into_object<'a, T>(var: &'a Var, info: &'a Type) -> Result<Arc<T>, &'a str> {
+    pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Arc<T>, &'a str> {
         unsafe {
             if var.valueType != CBType_Object
                 || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -860,12 +860,30 @@ impl ParamVar {
         assert_ne!(self.pointee, std::ptr::null_mut());
     }
 
-    pub fn as_mut<'a>(&mut self) -> &'a mut Var {
-        unsafe { self.pointee.as_mut().unwrap() }
+    pub fn set(&mut self, value: Var) {
+        // avoid overwrite refcount
+        assert_ne!(self.pointee, std::ptr::null_mut());
+        unsafe {
+            (*self.pointee).payload = value.payload;
+            (*self.pointee).valueType = value.valueType;
+            (*self.pointee).innerType = value.innerType;
+            (*self.pointee).flags = value.flags;
+            (*self.pointee).__bindgen_anon_1 = value.__bindgen_anon_1;
+        }
     }
 
-    pub fn as_ref<'a>(&mut self) -> &'a Var {
-        unsafe { self.pointee.as_ref().unwrap() }
+    pub fn get(&mut self) -> Var {
+        // avoid reading refcount
+        assert_ne!(self.pointee, std::ptr::null_mut());
+        let mut res = Var::default();
+        unsafe {
+            res.payload = (*self.pointee).payload;
+            res.valueType = (*self.pointee).valueType;
+            res.innerType = (*self.pointee).innerType;
+            res.flags = (*self.pointee).flags;
+            res.__bindgen_anon_1 = (*self.pointee).__bindgen_anon_1;
+        }
+        res
     }
 
     pub fn setParam(&mut self, value: &Var) {
