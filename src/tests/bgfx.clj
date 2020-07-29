@@ -74,7 +74,8 @@
                                                                     ;;  (Float4 246.70 246.79 245.30 246.05) >> .candles
                                                                     ;;  .candles
                                                                     ;;  (ImGui.PlotCandles)
-                                                                     ))))))
+                                                                     ))
+                                                       ))))
 
                                 (ImGui.Button "Push me!" (-->
                                                           (Msg "Action!")))

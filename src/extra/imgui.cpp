@@ -1527,7 +1527,10 @@ struct Plot : public Base {
 
   void cleanup() { _blocks.cleanup(); }
 
-  void warmup(CBContext *context) { _blocks.warmup(context); }
+  void warmup(CBContext *context) {
+    _context();
+    _blocks.warmup(context);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // bool wopen = true;
