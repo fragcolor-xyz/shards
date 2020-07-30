@@ -149,6 +149,13 @@ struct Client {
                           " websocket-client-coro");
             }));
 
+        websocket::stream_base::timeout timeouts{
+            std::chrono::seconds(30), // handshake timeout
+            std::chrono::seconds(30), // idle timeout
+            true                      // send ping at half idle timeout
+        };
+        ws->get().set_option(timeouts);
+
         LOG(DEBUG) << "WebSocket handshake with: " << h;
 
         // Perform the websocket handshake
@@ -171,10 +178,9 @@ struct Client {
 
     if (socket) {
       releaseVariable(socket);
-      if (socket->refcount == 0) {
-        ws->close();
-      }
+      ws = nullptr;
       socket = nullptr;
+      connected = false;
     }
   }
 
@@ -183,6 +189,7 @@ struct Client {
     host.warmup(ctx);
     target.warmup(ctx);
 
+    ws = std::make_shared<Socket>();
     socket = referenceVariable(ctx, name.c_str());
   }
 
@@ -217,7 +224,7 @@ protected:
   CBVar *socket;
 
   // These objects perform our I/O
-  std::shared_ptr<Socket> ws = std::make_shared<Socket>();
+  std::shared_ptr<Socket> ws{nullptr};
 };
 
 struct User {
