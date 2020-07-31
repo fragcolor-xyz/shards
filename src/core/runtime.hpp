@@ -1004,9 +1004,8 @@ struct Serialization {
       for (uint64_t i = 0; i < len; i++) {
         uint32_t klen;
         read((uint8_t *)&klen, sizeof(uint32_t));
-        keyBuf.resize(klen + 1);
+        keyBuf.resize(klen);
         read((uint8_t *)keyBuf.c_str(), klen);
-        const_cast<char *>(keyBuf.c_str())[klen] = 0;
         auto &dst = (*map)[keyBuf];
         deserialize(read, dst);
       }
