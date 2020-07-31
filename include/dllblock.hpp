@@ -147,13 +147,13 @@ public:
   CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 
-  static CBComposeResult composeChain(CBChain *chain,
+  static CBComposeResult composeChain(CBChainRef chain,
                                       CBValidationCallback callback,
                                       void *userData, CBInstanceData data) {
     return sCore._core.composeChain(chain, callback, userData, data);
   }
 
-  static CBRunChainOutput runChain(CBChain *chain, CBContext *context,
+  static CBRunChainOutput runChain(CBChainRef chain, CBContext *context,
                                    CBVar input) {
     return sCore._core.runChain(chain, context, input);
   }
