@@ -722,10 +722,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   void terminate() {
-    // stop all visited
-    // ensures all sub/inner chains are stopped
-    for (auto &[chain, _] : visitedChains) {
-      chainblocks::stop(chain);
+    for (auto chain : scheduled) {
+      chainblocks::stop(chain.get());
       chain->node.reset();
     }
 
