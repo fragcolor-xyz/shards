@@ -447,7 +447,8 @@ RUNTIME_BLOCK_END(ToString);
 
 struct ToHex {
   VarStringStream stream;
-  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType};
+  static CBTypesInfo inputTypes() { return toHexTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     stream.tryWriteHex(input);

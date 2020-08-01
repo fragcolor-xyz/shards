@@ -26,9 +26,11 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <atomic>
 #include <cassert>
 #include <deque>
+#include <iomanip>
 #include <list>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
@@ -872,6 +874,11 @@ struct VarStringStream {
       std::ostream stream(&cache);
       if (var.valueType == Int) {
         stream << "0x" << std::hex << var.payload.intValue << std::dec;
+      } else if (var.valueType == Bytes) {
+        stream << std::hex;
+        for (uint32_t i = 0; i < var.payload.bytesSize; i++)
+          stream << std::setw(2) << std::setfill('0')
+                 << (int)var.payload.bytesValue[i];
       } else {
         stream << var;
       }

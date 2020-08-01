@@ -109,9 +109,9 @@ struct ParameterInfo {
   Types _types;
 
   ParameterInfo(const char *name, const char *help, Types types)
-      : _name(name), _help(help), _types(std::move(types)) {}
+      : _name(name), _help(help), _types(types) {}
   ParameterInfo(const char *name, Types types)
-      : _name(name), _help(""), _types(std::move(types)) {}
+      : _name(name), _help(""), _types(types) {}
 
   operator CBParameterInfo() {
     CBParameterInfo res{_name, _help, _types};
