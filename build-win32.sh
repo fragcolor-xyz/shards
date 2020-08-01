@@ -40,8 +40,6 @@ echo "Running test: channels"
 ./cbl ../src/tests/channels.clj
 # echo "Running test: pytest"
 # PYTHONHOME=/c/msys64/mingw64 ./cbl ../src/tests/pytest.clj
-echo "Running test: lmdb"
-./cbl ../src/tests/lmdb.clj
 echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"
