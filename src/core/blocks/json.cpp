@@ -557,37 +557,122 @@ void from_json(const json &j, CBChainRef &chainref) {
 
 namespace chainblocks {
 struct ToJson {
-  int64_t _indent = 0;
   std::string _output;
+  int64_t _indent = 0;
+  bool _pure{true};
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Indent", "How many spaces to use as json prettify indent.",
-      CoreInfo::IntType));
+  static CBParametersInfo parameters() {
+    static Parameters params{{"Pure",
+                              "If the input string is generic pure json rather "
+                              "then chainblocks flavored json.",
+                              {CoreInfo::BoolType}},
+                             {"Indent",
+                              "How many spaces to use as json prettify indent.",
+                              {CoreInfo::IntType}}};
+    return params;
+  }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _pure = value.payload.boolValue;
+    else
+      _indent = value.payload.intValue;
+  }
 
-  void setParam(int index, CBVar value) { _indent = value.payload.intValue; }
-
-  CBVar getParam(int index) { return Var(_indent); }
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Var(_pure);
+    else
+      return Var(_indent);
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  void anyDump(json &j, const CBVar &input) {
+    switch (input.valueType) {
+    case Table: {
+      std::unordered_map<std::string, json> table;
+      auto &tab = input.payload.tableValue;
+      ForEach(tab, [&](auto key, auto val) {
+        json sj{};
+        anyDump(sj, val);
+        table.emplace(key, sj);
+      });
+      j = table;
+    } break;
+    case Seq: {
+      std::vector<json> array;
+      auto &seq = input.payload.seqValue;
+      for (uint32_t i = 0; i < seq.len; i++) {
+        json js{};
+        anyDump(js, seq.elements[i]);
+        array.emplace_back(js);
+      }
+      j = array;
+    } break;
+    case String: {
+      j = input.payload.stringValue;
+    } break;
+    case Int: {
+      j = input.payload.intValue;
+    } break;
+    case Float: {
+      j = input.payload.floatValue;
+    } break;
+    case Bool: {
+      j = input.payload.boolValue;
+    } break;
+    case None: {
+      j = nullptr;
+    } break;
+    default: {
+      LOG(ERROR) << "Unexpected type for pure JSON conversion: "
+                 << type2Name(input.valueType);
+      throw ActivationError("Type not supported for pure JSON conversion");
+    }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
-    json j = input;
-    if (_indent == 0)
-      _output = j.dump();
-    else
-      _output = j.dump(_indent);
+    if (!_pure) {
+      json j = input;
+      if (_indent == 0)
+        _output = j.dump();
+      else
+        _output = j.dump(_indent);
+    } else {
+      json j{};
+      anyDump(j, input);
+      if (_indent == 0)
+        _output = j.dump();
+      else
+        _output = j.dump(_indent);
+    }
     return Var(_output);
   }
 };
 
 struct FromJson {
   CBVar _output{};
+  bool _pure{true};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() {
+    static Parameters params{{"Pure",
+                              "If the input string is generic pure json rather "
+                              "then chainblocks flavored json.",
+                              {CoreInfo::BoolType}}};
+    return params;
+  }
+
+  void setParam(int index, CBVar value) { _pure = value.payload.boolValue; }
+
+  CBVar getParam(int index) { return Var(_pure); }
 
   void cleanup() { _releaseMemory(_output); }
 
@@ -629,13 +714,13 @@ struct FromJson {
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
     json j = json::parse(input.payload.stringValue);
-    try {
-      _output = j.get<CBVar>();
-    } catch (json::exception &ex) {
-      // Parsing as CBVar failed, try some generic value parsing
-      // Filling Seq + Tables
+
+    if (_pure) {
       anyParse(j, _output);
+    } else {
+      _output = j.get<CBVar>();
     }
+
     return _output;
   }
 };
