@@ -172,6 +172,10 @@ public:
 
   static void log(const char *msg) { sCore._core.log(msg); }
 
+  static void abortChain(CBContext *context, const char *msg) {
+    sCore._core.abortChain(context, msg);
+  }
+
   static const char *rootPath() { return sCore._core.getRootPath(); }
 
 private:
