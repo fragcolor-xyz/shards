@@ -227,7 +227,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
@@ -269,7 +268,6 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/json/include
   -I${CHAINBLOCKS_DIR}/deps/magic_enum/include
   -I${CHAINBLOCKS_DIR}/deps/nameof/include
-  -I${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   -I${CHAINBLOCKS_DIR}/deps/pdqsort
   -I${CHAINBLOCKS_DIR}/deps/filesystem/include
@@ -352,7 +350,6 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/magic_enum/include
   ${CHAINBLOCKS_DIR}/deps/nameof/include
   ${CHAINBLOCKS_DIR}/deps/kcp
-  ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb
   ${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   ${CHAINBLOCKS_DIR}/include
   ${CHAINBLOCKS_DIR}/src/core
@@ -648,9 +645,6 @@ if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
-    ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/mdb.c
-    ${CHAINBLOCKS_DIR}/deps/lmdb/libraries/liblmdb/midl.c
-    ${CHAINBLOCKS_DIR}/src/core/blocks/lmdb.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp

@@ -56,10 +56,6 @@ namespace Python {
 extern void registerBlocks();
 }
 
-namespace LMDB {
-extern void registerBlocks();
-}
-
 namespace Genetic {
 extern void registerBlocks();
 }
@@ -187,7 +183,6 @@ void registerCoreBlocks() {
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
   registerFSBlocks();
-  LMDB::registerBlocks();
   registerProcessBlocks();
   Genetic::registerBlocks();
   registerNetworkBlocks();
