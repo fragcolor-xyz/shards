@@ -1624,10 +1624,18 @@ struct PlottableBase : Base {
       ImPlot::PopStyleColor(2);
     }
   }
+
+  static bool isInputValid(const CBVar &input) {
+    // prevent division by zero
+    return !(input.valueType == Seq && input.payload.seqValue.len == 0);
+  }
 };
 
 struct PlotLine : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!isInputValid(input))
+      return input;
+
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
@@ -1657,6 +1665,9 @@ struct PlotLine : public PlottableBase {
 
 struct PlotDigital : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!isInputValid(input))
+      return input;
+
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
@@ -1686,6 +1697,9 @@ struct PlotDigital : public PlottableBase {
 
 struct PlotScatter : public PlottableBase {
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!isInputValid(input))
+      return input;
+
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
@@ -1763,6 +1777,9 @@ struct PlotBars : public PlottableBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!isInputValid(input))
+      return input;
+
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
