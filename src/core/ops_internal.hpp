@@ -46,71 +46,87 @@ inline MAKE_LOGGABLE(CBVar, var, os) {
     os << var.payload.intValue;
     break;
   case Int2:
+    os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.int2Value[i];
       else
         os << ", " << var.payload.int2Value[i];
     }
+    os << ")";
     break;
   case Int3:
+    os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.int3Value[i];
       else
         os << ", " << var.payload.int3Value[i];
     }
+    os << ")";
     break;
   case Int4:
+    os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.int4Value[i];
       else
         os << ", " << var.payload.int4Value[i];
     }
+    os << ")";
     break;
   case Int8:
+    os << "(";
     for (auto i = 0; i < 8; i++) {
       if (i == 0)
         os << var.payload.int8Value[i];
       else
         os << ", " << var.payload.int8Value[i];
     }
+    os << ")";
     break;
   case Int16:
+    os << "(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
         os << var.payload.int16Value[i];
       else
         os << ", " << var.payload.int16Value[i];
     }
+    os << ")";
     break;
   case Float:
     os << var.payload.floatValue;
     break;
   case Float2:
+    os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.float2Value[i];
       else
         os << ", " << var.payload.float2Value[i];
     }
+    os << ")";
     break;
   case Float3:
+    os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.float3Value[i];
       else
         os << ", " << var.payload.float3Value[i];
     }
+    os << ")";
     break;
   case Float4:
+    os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.float4Value[i];
       else
         os << ", " << var.payload.float4Value[i];
     }
+    os << ")";
     break;
   case Color:
     os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g)
