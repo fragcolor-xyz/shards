@@ -350,6 +350,12 @@ using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
                   &Core::expTypesFree, &Core::expTypesPush>;
 
+template <typename E> class EnumInfo : public TEnumInfo<Core, E> {
+public:
+  EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
+      : TEnumInfo<Core, E>(name, vendorId, enumId) {}
+};
+
 inline void registerBlock(const char *fullName, CBBlockConstructor constructor,
                           std::string_view _) {
   Core::registerBlock(fullName, constructor);
