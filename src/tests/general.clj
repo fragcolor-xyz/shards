@@ -523,20 +523,20 @@
    (Log)
 
    (Get "text1")
-   (ToJson)
+   (ToJson :Pure false)
    (Log)
    (Assert.Is "{\"type\":\"String\",\"value\":\"The result is: Hello world, this is a string\"}" true)
-   (FromJson)
+   (FromJson :Pure false)
    (ExpectString)
    (Assert.Is "The result is: Hello world, this is a string" true)
 
    (Get "unsortedList2Copy")
-   (ToJson)
+   (ToJson :Pure false)
    (Log)
    (Assert.Is "{\"type\":\"Seq\",\"values\":[{\"type\":\"Int\",\"value\":0},{\"type\":\"Int\",\"value\":1},{\"type\":\"Int\",\"value\":1},{\"type\":\"Int\",\"value\":2}]}" true)
 
    (Get "tab1new")
-   (ToJson)
+   (ToJson :Pure false)
    (Log)
    (Assert.Is "{\"type\":\"Table\",\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":\"Seq\",\"values\":[{\"type\":\"Int\",\"value\":12},{\"type\":\"Int\",\"value\":22},{\"type\":\"Int\",\"value\":32}]}}]}" true)
 
