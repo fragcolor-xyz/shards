@@ -1474,16 +1474,30 @@ struct Plot : public Base {
                          std::to_string(reinterpret_cast<uintptr_t>(this))};
   std::string _xlabel;
   std::string _ylabel;
+  ParamVar _xlimits{}, _ylimits{};
+  ParamVar _lockx{Var(false)}, _locky{Var(false)};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Title", "The title of the plot to create.",
-                        CoreInfo::StringType),
-      ParamsInfo::Param("Contents", "The blocks describing this plot.",
-                        CoreInfo::BlocksOrNone),
-      ParamsInfo::Param("XLabel", "The X axis label.", CoreInfo::StringType),
-      ParamsInfo::Param("YLabel", "The Y axis label.", CoreInfo::StringType));
+  static inline Parameters params{
+      {"Title", "The title of the plot to create.", {CoreInfo::StringType}},
+      {"Contents",
+       "The blocks describing this plot.",
+       {CoreInfo::BlocksOrNone}},
+      {"X_Label", "The X axis label.", {CoreInfo::StringType}},
+      {"Y_Label", "The Y axis label.", {CoreInfo::StringType}},
+      {"X_Limits",
+       "The X axis limits.",
+       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Y_Limits",
+       "The Y axis limits.",
+       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Lock_X",
+       "If the X axis should be locked into its limits.",
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Lock_Y",
+       "If the Y axis should be locked into its limits.",
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -1498,7 +1512,20 @@ struct Plot : public Base {
     case 2:
       _xlabel = value.payload.stringValue;
       break;
+    case 3:
       _ylabel = value.payload.stringValue;
+      break;
+    case 4:
+      _xlimits = value;
+      break;
+    case 5:
+      _ylimits = value;
+      break;
+    case 6:
+      _lockx = value;
+      break;
+    case 7:
+      _locky = value;
       break;
     default:
       break;
@@ -1515,6 +1542,14 @@ struct Plot : public Base {
       return Var(_xlabel);
     case 3:
       return Var(_ylabel);
+    case 4:
+      return _xlimits;
+    case 5:
+      return _ylimits;
+    case 6:
+      return _lockx;
+    case 7:
+      return _locky;
     default:
       return Var::Empty;
     }
@@ -1525,16 +1560,39 @@ struct Plot : public Base {
     return data.inputType;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() {
+    _blocks.cleanup();
+    _xlimits.cleanup();
+    _ylimits.cleanup();
+    _lockx.cleanup();
+    _locky.cleanup();
+  }
 
   void warmup(CBContext *context) {
     _context();
     _blocks.warmup(context);
+    _xlimits.warmup(context);
+    _ylimits.warmup(context);
+    _lockx.warmup(context);
+    _locky.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // bool wopen = true;
-    // ImPlot::ShowDemoWindow(&wopen);
+    if (_xlimits.get().valueType == Float2) {
+      auto limitx = _xlimits.get().payload.float2Value[0];
+      auto limity = _xlimits.get().payload.float2Value[1];
+      auto locked = _lockx.get().payload.boolValue;
+      ImPlot::SetNextPlotLimitsX(limitx, limity,
+                                 locked ? ImGuiCond_Always : ImGuiCond_Once);
+    }
+
+    if (_ylimits.get().valueType == Float2) {
+      auto limitx = _ylimits.get().payload.float2Value[0];
+      auto limity = _ylimits.get().payload.float2Value[1];
+      auto locked = _locky.get().payload.boolValue;
+      ImPlot::SetNextPlotLimitsY(limitx, limity,
+                                 locked ? ImGuiCond_Always : ImGuiCond_Once);
+    }
 
     if (ImPlot::BeginPlot(_fullTitle.c_str(),
                           _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
