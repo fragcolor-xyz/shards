@@ -468,6 +468,8 @@
 
    "Hello Pandas"
    (ToBytes)
+   (ToBase64) (Log "base64")
+   (FromBase64)
    (FromBytes)
    (ExpectString)
    (Assert.Is  "Hello Pandas" true)

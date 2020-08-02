@@ -68,18 +68,23 @@ struct Client {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Host",
-                              "The remote host address or IP.",
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
-                             {"Target",
-                              "The remote host target path.",
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
-                             {"Port",
-                              "The remote host port.",
-                              {CoreInfo::IntType, CoreInfo::IntVarType}},
-                             {"Secure",
-                              "If the connection should be secured.",
-                              {CoreInfo::BoolType}}};
+    static Parameters params{
+        {"Host",
+         "The remote host address or IP.",
+         {CoreInfo::StringType, CoreInfo::StringVarType}},
+        {"Target",
+         "The remote host target path.",
+         {CoreInfo::StringType, CoreInfo::StringVarType}},
+        {"Port",
+         "The remote host port.",
+         {CoreInfo::IntType, CoreInfo::IntVarType}},
+        {"Secure",
+         "If the connection should be secured.",
+         {CoreInfo::BoolType}},
+        {"Headers",
+         "The headers to attach to this request.",
+         {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
+          CoreInfo::NoneType}}};
     return params;
   }
 
@@ -97,6 +102,9 @@ struct Client {
     case 3:
       ssl = value.payload.boolValue;
       break;
+    case 4:
+      headers = value;
+      break;
     default:
       break;
     }
@@ -112,6 +120,8 @@ struct Client {
       return port;
     case 3:
       return Var(ssl);
+    case 4:
+      return headers;
     default:
       return {};
     }
@@ -168,12 +178,14 @@ struct Client {
     port.cleanup();
     host.cleanup();
     target.cleanup();
+    headers.cleanup();
   }
 
   void warmup(CBContext *ctx) {
     port.warmup(ctx);
     host.warmup(ctx);
     target.warmup(ctx);
+    headers.warmup(ctx);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -186,11 +198,10 @@ struct Client {
   }
 
 protected:
-  Shared<tf::Executor> _taskManager;
-
   ParamVar port{Var(443)};
   ParamVar host{Var("www.example.com")};
   ParamVar target{Var("/")};
+  ParamVar headers{};
   std::string vars;
   bool ssl = true;
 
@@ -238,6 +249,14 @@ struct Get final : public Client {
         req.set(http::field::host, host.get().payload.stringValue);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
+        // add custom headers
+        if (headers.get().valueType == Table) {
+          auto htab = headers.get().payload.tableValue;
+          ForEach(htab, [&](auto key, auto &value) {
+            req.set(key, value.payload.stringValue);
+          });
+        }
+
         // Send the HTTP request to the remote host
         http::write(stream, req);
 
@@ -280,6 +299,16 @@ struct Post final : public Client {
         req.set(http::field::host, host.get().payload.stringValue);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         req.set(http::field::content_type, "application/x-www-form-urlencoded");
+
+        // add custom headers
+        if (headers.get().valueType == Table) {
+          auto htab = headers.get().payload.tableValue;
+          ForEach(htab, [&](auto key, auto &value) {
+            req.set(key, value.payload.stringValue);
+          });
+        }
+
+        // add the body of the post
         req.body() = vars;
 
         // Send the HTTP request to the remote host

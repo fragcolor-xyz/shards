@@ -2,6 +2,7 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
+#include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
 
 namespace chainblocks {
@@ -565,6 +566,39 @@ template <Type &ET> struct ExpectXComplex {
   }
 };
 
+struct ToBase64 {
+  std::string output;
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    output.clear();
+    auto req =
+        boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
+    output.resize(req);
+    auto written = boost::beast::detail::base64::encode(
+        output.data(), input.payload.bytesValue, input.payload.bytesSize);
+    output.resize(written);
+    return Var(output);
+  }
+};
+
+struct FromBase64 {
+  std::vector<uint8_t> output;
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    output.clear();
+    auto len = input.payload.stringLen > 0 ? input.payload.stringLen
+                                           : strlen(input.payload.stringValue);
+    auto req = boost::beast::detail::base64::decoded_size(len);
+    output.resize(req);
+    auto [written, _] = boost::beast::detail::base64::decode(
+        output.data(), input.payload.stringValue, len);
+    output.resize(written);
+    return Var(output.data(), output.size());
+  }
+};
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -605,5 +639,8 @@ void registerCastingBlocks() {
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
+
+  REGISTER_CBLOCK("ToBase64", ToBase64);
+  REGISTER_CBLOCK("FromBase64", FromBase64);
 }
 }; // namespace chainblocks

@@ -46,9 +46,11 @@ struct CoreInfo {
       {CBType::Table, {.table = {.types = _cbtype_##Type}}}};                  \
   static inline Type _cbtype_##VarType{                                        \
       {CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};              \
-  static inline Type _cbtype_##VarSeqType {                                    \
+  static inline Type _cbtype_##VarSeqType{                                     \
+      {CBType::ContextVar, {.contextVarTypes = _cbtype_##SeqType}}};           \
+  static inline Type _cbtype_##VarTableType {                                  \
     {                                                                          \
-      CBType::ContextVar, { .contextVarTypes = _cbtype_##SeqType }             \
+      CBType::ContextVar, { .contextVarTypes = _cbtype_##TableType }           \
     }                                                                          \
   }
 
@@ -152,6 +154,6 @@ struct CoreInfo {
 
   static inline Types IntOrIntVar{{IntType, IntVarType}};
 };
-}
+} // namespace chainblocks
 
 #endif

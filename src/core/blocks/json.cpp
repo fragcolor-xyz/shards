@@ -595,7 +595,7 @@ struct ToJson {
     case Table: {
       std::unordered_map<std::string, json> table;
       auto &tab = input.payload.tableValue;
-      ForEach(tab, [&](auto key, auto val) {
+      ForEach(tab, [&](auto key, auto &val) {
         json sj{};
         anyDump(sj, val);
         table.emplace(key, sj);
