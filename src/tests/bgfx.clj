@@ -68,14 +68,11 @@
                                                                      (Math.Add (Float2 -10 -10))
                                                                      (ImGui.PlotScatter)
                                                                      (Math.Add (Float2 5 3))
-                                                                     (ImGui.PlotBars)
-                                                                     
-                                                                    ;;  (Float4 244.57 245.55 243.00 244.68) >> .candles
-                                                                    ;;  (Float4 246.70 246.79 245.30 246.05) >> .candles
-                                                                    ;;  .candles
-                                                                    ;;  (ImGui.PlotCandles)
-                                                                     ))
-                                                       ))))
+                                                                     (ImGui.PlotBars))
+                                                                   :X_Limits (Float2 -10 10)
+                                                                   :Y_Limits (Float2 -10 10)
+                                                                   :Lock_X false
+                                                                   :Lock_Y true)))))
 
                                 (ImGui.Button "Push me!" (-->
                                                           (Msg "Action!")))
@@ -91,4 +88,5 @@
                                                      (ImGui.HexViewer)))))
                  (BGFX.Draw)))
 
-(run Root 0.02 100)
+;; (run Root 0.02 100)
+(run Root 0.02)
