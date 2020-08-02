@@ -59,34 +59,28 @@ namespace chainblocks {
 namespace Http {
 struct Client {
   constexpr static int version = 11;
+  static inline Types InTypes{CoreInfo::NoneType, CoreInfo::StringTableType};
+  static inline Parameters params{
+      {"Host",
+       "The remote host address or IP.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Target",
+       "The remote host target path.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Port",
+       "The remote host port.",
+       {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}},
+      {"Headers",
+       "The headers to attach to this request.",
+       {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
+        CoreInfo::NoneType}}};
 
-  static CBTypesInfo inputTypes() {
-    static Types t{CoreInfo::NoneType, CoreInfo::StringTableType};
-    return t;
-  }
+  static CBTypesInfo inputTypes() { return InTypes; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static CBParametersInfo parameters() {
-    static Parameters params{
-        {"Host",
-         "The remote host address or IP.",
-         {CoreInfo::StringType, CoreInfo::StringVarType}},
-        {"Target",
-         "The remote host target path.",
-         {CoreInfo::StringType, CoreInfo::StringVarType}},
-        {"Port",
-         "The remote host port.",
-         {CoreInfo::IntType, CoreInfo::IntVarType}},
-        {"Secure",
-         "If the connection should be secured.",
-         {CoreInfo::BoolType}},
-        {"Headers",
-         "The headers to attach to this request.",
-         {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
-          CoreInfo::NoneType}}};
-    return params;
-  }
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -133,7 +127,7 @@ struct Client {
         if (ssl) {
           // Set SNI Hostname (many hosts need this to handshake
           // successfully)
-          if (!SSL_set_tlsext_host_name(stream.native_handle(),
+          if (!SSL_set_tlsext_host_name(secure_stream.native_handle(),
                                         host.get().payload.stringValue)) {
             beast::error_code ec{static_cast<int>(::ERR_get_error()),
                                  net::error::get_ssl_category()};
@@ -146,12 +140,14 @@ struct Client {
             resolver.resolve(host.get().payload.stringValue,
                              std::to_string(port.get().payload.intValue));
 
-        // Make the connection on the IP address we get from a lookup
-        beast::get_lowest_layer(stream).connect(resolved);
-
         if (ssl) {
+          // Make the connection on the IP address we get from a lookup
+          beast::get_lowest_layer(secure_stream).connect(resolved);
           // Perform the SSL handshake
-          stream.handshake(ssl::stream_base::client);
+          secure_stream.handshake(ssl::stream_base::client);
+        } else {
+          // Make the connection on the IP address we get from a lookup
+          unsecure_stream.connect(resolved);
         }
 
         connected = true;
@@ -168,8 +164,9 @@ struct Client {
 
   void resetStream() {
     beast::error_code ec;
-    stream.shutdown(ec);
-    stream = beast::ssl_stream<beast::tcp_stream>(ioc, ctx);
+    secure_stream.shutdown(ec);
+    unsecure_stream.close();
+    secure_stream = beast::ssl_stream<beast::tcp_stream>(ioc, ctx);
     connected = false;
   }
 
@@ -186,6 +183,10 @@ struct Client {
     host.warmup(ctx);
     target.warmup(ctx);
     headers.warmup(ctx);
+
+    beast::get_lowest_layer(secure_stream)
+        .expires_after(std::chrono::seconds(30));
+    unsecure_stream.expires_after(std::chrono::seconds(30));
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -214,7 +215,8 @@ protected:
   ssl::context ctx{ssl::context::tlsv12_client};
 
   // These objects perform our I/O
-  beast::ssl_stream<beast::tcp_stream> stream{ioc, ctx};
+  beast::ssl_stream<beast::tcp_stream> secure_stream{ioc, ctx};
+  beast::tcp_stream unsecure_stream{ioc};
 
   // This buffer is used for reading and must be persisted
   beast::flat_buffer buffer;
@@ -257,11 +259,19 @@ struct Get final : public Client {
           });
         }
 
-        // Send the HTTP request to the remote host
-        http::write(stream, req);
+        if (ssl) {
+          // Send the HTTP request to the remote host
+          http::write(secure_stream, req);
 
-        // Receive the HTTP response
-        http::read(stream, buffer, res);
+          // Receive the HTTP response
+          http::read(secure_stream, buffer, res);
+        } else {
+          // Send the HTTP request to the remote host
+          http::write(unsecure_stream, req);
+
+          // Receive the HTTP response
+          http::read(unsecure_stream, buffer, res);
+        }
       });
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled
@@ -311,11 +321,19 @@ struct Post final : public Client {
         // add the body of the post
         req.body() = vars;
 
-        // Send the HTTP request to the remote host
-        http::write(stream, req);
+        if (ssl) {
+          // Send the HTTP request to the remote host
+          http::write(secure_stream, req);
 
-        // Receive the HTTP response
-        http::read(stream, buffer, res);
+          // Receive the HTTP response
+          http::read(secure_stream, buffer, res);
+        } else {
+          // Send the HTTP request to the remote host
+          http::write(unsecure_stream, req);
+
+          // Receive the HTTP response
+          http::read(unsecure_stream, buffer, res);
+        }
       });
     } catch (std::exception &ex) {
       // TODO some exceptions could be left unhandled

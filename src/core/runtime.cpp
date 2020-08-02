@@ -699,10 +699,10 @@ CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
   boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
     try {
       res = func();
-      complete = true;
     } catch (...) {
       exp = std::current_exception();
     }
+    complete = true;
   });
 
   while (!complete) {
@@ -730,10 +730,10 @@ void await(CBContext *context, std::function<void()> func) {
   boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
     try {
       func();
-      complete = true;
     } catch (...) {
       exp = std::current_exception();
     }
+    complete = true;
   });
 
   while (!complete) {

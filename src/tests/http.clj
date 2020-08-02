@@ -23,7 +23,15 @@
    (ExpectTable)
    (Take "id")
    (Assert.Is 101 true)
-   (Log)))
+   (Log)
+   
+  ;;  nil (Http.Get "localhost" "/" :Port 8000 :Secure false)
+  ;;  (Log)
+   ))
 
+(schedule Root test)
+(run Root 0.1)
+
+; test reusing sockets/streams
 (schedule Root test)
 (run Root 0.1)
