@@ -45,7 +45,7 @@ jobs:
     - uses: actions/checkout@v1
     - run: |
         git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v1
+    - uses: chainblocks/setup-msys2@v1
       with:
         msystem: MINGW64
         release: true
@@ -61,7 +61,7 @@ jobs:
     - uses: actions/checkout@v1
     - run: |
         git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v1
+    - uses: chainblocks/setup-msys2@v1
       with:
         msystem: MINGW32
         release: true
@@ -77,7 +77,7 @@ jobs:
     - uses: actions/checkout@v1
     - run: |
         git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v1
+    - uses: chainblocks/setup-msys2@v1
       with:
         msystem: MINGW64
         release: true
@@ -89,7 +89,7 @@ jobs:
     - uses: actions/checkout@v1
     - run: |
         git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v1
+    - uses: chainblocks/setup-msys2@v1
       with:
         msystem: MINGW32
         release: true
