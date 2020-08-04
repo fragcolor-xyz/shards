@@ -1,4 +1,4 @@
-use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
+use std::rc::Rc;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBContext;
@@ -34,12 +34,12 @@ use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_4;
 use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlocks;
+use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
 use crate::core::Core;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::sync::Arc;
 
 pub type Context = CBContext;
 pub type Var = CBVar;
@@ -618,14 +618,14 @@ impl Var {
         v
     }
 
-    pub fn new_object<T>(obj: &Arc<T>, info: &Type) -> Var {
+    pub fn new_object<T>(obj: &Rc<T>, info: &Type) -> Var {
         unsafe {
             Var {
                 valueType: CBType_Object,
                 payload: CBVarPayload {
                     __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
                         __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
-                            objectValue: obj as *const Arc<T> as *mut Arc<T> as CBPointer,
+                            objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
                             objectVendorId: info.details.object.vendorId,
                             objectTypeId: info.details.object.typeId,
                         },
@@ -636,7 +636,7 @@ impl Var {
         }
     }
 
-    pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Arc<T>, &'a str> {
+    pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
         unsafe {
             if var.valueType != CBType_Object
                 || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -644,13 +644,20 @@ impl Var {
                 || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
                     != info.details.object.typeId
             {
-                Err("Failed to cast Var into custom Arc<T> object")
+                Err("Failed to cast Var into custom Rc<T> object")
             } else {
-                let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Arc<T>;
+                let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
                 let at = (*aptr).clone();
                 Ok(at)
             }
         }
+    }
+
+    pub fn unsafe_mut<'a, T>(obj: &Rc<T>) -> &mut T {
+        // this looks unsafe but CB gives some garantees within chains!
+        let p = Rc::as_ptr(obj);
+        let mp = p as *mut T;
+        unsafe { &mut *mp }
     }
 
     pub fn push<T: Into<Var>>(&mut self, _val: T) {
@@ -659,6 +666,10 @@ impl Var {
 
     pub fn try_push<T: TryInto<Var>>(&mut self, _val: T) {
         unimplemented!();
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.valueType == CBType_None
     }
 }
 
