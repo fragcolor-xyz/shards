@@ -27,7 +27,7 @@ inline bool hasLib(const char *lib_name) {
   }
   return true;
 #elif defined(__linux__) || defined(__APPLE__)
-  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
+  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
   if (mod == 0)
     return false;
   return true;
@@ -47,7 +47,7 @@ inline void *dynLoad(const char *lib_name, const char *sym_name) {
 
   return (void *)GetProcAddress(mod, sym_name);
 #elif defined(__linux__) || defined(__APPLE__)
-  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_GLOBAL | RTLD_NODELETE);
+  void *mod = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL | RTLD_NODELETE);
   if (mod == 0)
     return 0;
   void *sym = dlsym(mod, sym_name);

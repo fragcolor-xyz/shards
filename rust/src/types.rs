@@ -612,6 +612,12 @@ impl From<&[u8]> for Var {
 }
 
 impl Var {
+    pub fn context_variable(name: &'static str) -> Var {
+        let mut v: Var = name.into();
+        v.valueType = CBType_ContextVar;
+        v
+    }
+
     pub fn new_object<T>(obj: &Arc<T>, info: &Type) -> Var {
         unsafe {
             Var {
@@ -645,6 +651,14 @@ impl Var {
                 Ok(at)
             }
         }
+    }
+
+    pub fn push<T: Into<Var>>(&mut self, _val: T) {
+        unimplemented!();
+    }
+
+    pub fn try_push<T: TryInto<Var>>(&mut self, _val: T) {
+        unimplemented!();
     }
 }
 
