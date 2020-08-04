@@ -15,10 +15,10 @@ enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
   typedef EnumInfo<RunChainMode> RunChainModeInfo;
-  static inline RunChainModeInfo runChainModeInfo{"RunChainMode", 'sink',
+  static inline RunChainModeInfo runChainModeInfo{"RunChainMode", CoreCC,
                                                   'runC'};
   static inline Type ModeType{
-      {CBType::Enum, {.enumeration = {.vendorId = 'sink', .typeId = 'runC'}}}};
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
 
   static inline Types ChainTypes{
       {CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};
@@ -731,7 +731,7 @@ struct RunChain : public BaseRunner {
     case 2:
       return Var(passthrough);
     case 3:
-      return Var::Enum(mode, 'sink', 'runC');
+      return Var::Enum(mode, CoreCC, 'runC');
     default:
       break;
     }
@@ -807,7 +807,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     case 1:
       return Var(once);
     case 2:
-      return Var::Enum(mode, 'sink', 'runC');
+      return Var::Enum(mode, CoreCC, 'runC');
     default:
       break;
     }
@@ -885,7 +885,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   CBVar getParam(int index) {
     if (index == 0) {
       if (_provider) {
-        return Var::Object(_provider, 'sink', 'chnp');
+        return Var::Object(_provider, CoreCC, 'chnp');
       } else {
         return Var();
       }

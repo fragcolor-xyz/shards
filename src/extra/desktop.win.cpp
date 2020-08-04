@@ -85,12 +85,12 @@ public:
       }
     }
 
-    return Var::Object(_window, FragCC, windowCC);
+    return Var::Object(_window, CoreCC, windowCC);
   }
 };
 
 static HWND AsHWND(const CBVar &var) {
-  if (var.valueType == Object && var.payload.objectVendorId == FragCC &&
+  if (var.valueType == Object && var.payload.objectVendorId == CoreCC &&
       var.payload.objectTypeId == windowCC) {
     return reinterpret_cast<HWND>(var.payload.objectValue);
   }

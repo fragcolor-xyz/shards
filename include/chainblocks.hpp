@@ -14,6 +14,8 @@
 #include <vector>
 
 namespace chainblocks {
+constexpr uint32_t CoreCC = 'sink'; // 1936289387
+
 class CBException : public std::exception {
 public:
   explicit CBException(std::string_view msg) : errorMessage(msg) {}
@@ -726,7 +728,7 @@ class ChainProvider {
 public:
   static inline Type NoneType{{CBType::None}};
   static inline Type ProviderType{
-      {CBType::Object, {.object = {.vendorId = 'sink', .typeId = 'chnp'}}}};
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = 'chnp'}}}};
   static inline Types ProviderOrNone{{ProviderType, NoneType}};
 
   ChainProvider() {
@@ -773,7 +775,7 @@ public:
   operator CBVar() {
     CBVar res{};
     res.valueType = Object;
-    res.payload.objectVendorId = 'sink';
+    res.payload.objectVendorId = CoreCC;
     res.payload.objectTypeId = 'chnp';
     res.payload.objectValue = &_provider;
     return res;

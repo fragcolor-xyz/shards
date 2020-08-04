@@ -541,12 +541,12 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  static inline EnumInfo<MeanKind> _meanEnum{"Mean", 'sink', 'mean'};
+  static inline EnumInfo<MeanKind> _meanEnum{"Mean", CoreCC, 'mean'};
 
   static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
   static CBParametersInfo parameters() {
-    static Type kind{{CBType::Enum, {.enumeration = {'sink', 'mean'}}}};
+    static Type kind{{CBType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
     static Parameters params{
         {"Kind", "The kind of Pythagorean means.", {kind}}};
     return params;
@@ -556,7 +556,7 @@ struct Mean {
     mean = MeanKind(value.payload.enumValue);
   }
 
-  CBVar getParam(int index) { return Var::Enum(mean, 'sink', 'mean'); }
+  CBVar getParam(int index) { return Var::Enum(mean, CoreCC, 'mean'); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     switch (mean) {

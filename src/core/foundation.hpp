@@ -74,8 +74,6 @@ CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
                              void *userData, CBInstanceData data);
 
 namespace chainblocks {
-constexpr uint32_t FragCC = 'sink'; // 1718772071
-
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn = false);

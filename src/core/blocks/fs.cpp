@@ -311,9 +311,9 @@ struct Write {
 
 struct Copy {
   enum class OverBehavior { Fail, Skip, Overwrite, Update };
-  static inline EnumInfo<OverBehavior> OverWEnum{"IfExists", 'sink', 'fsow'};
+  static inline EnumInfo<OverBehavior> OverWEnum{"IfExists", CoreCC, 'fsow'};
   static inline Type OverWEnumType{
-      {CBType::Enum, {.enumeration = {'sink', 'fsow'}}}};
+      {CBType::Enum, {.enumeration = {CoreCC, 'fsow'}}}};
 
   ParamVar _destination{};
   OverBehavior _overwrite{OverBehavior::Fail};
@@ -346,7 +346,7 @@ struct Copy {
     case 0:
       return _destination;
     case 1:
-      return Var::Enum(_overwrite, 'sink', 'fsow');
+      return Var::Enum(_overwrite, CoreCC, 'fsow');
     default:
       return Var::Empty;
     }

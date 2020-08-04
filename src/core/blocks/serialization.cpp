@@ -259,9 +259,9 @@ struct FromBytes {
 
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
-  static inline EnumInfo<BPP> BPPEnum{"BPP", 'sink', 'ibpp'};
+  static inline EnumInfo<BPP> BPPEnum{"BPP", CoreCC, 'ibpp'};
   static inline Type BPPEnumInfo{
-      {CBType::Enum, {.enumeration = {'sink', 'ibpp'}}}};
+      {CBType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
@@ -287,7 +287,7 @@ struct LoadImage : public FileBase {
   CBVar getParam(int index) {
     switch (index) {
     case 1:
-      return Var::Enum(_bpp, 'sink', 'ibpp');
+      return Var::Enum(_bpp, CoreCC, 'ibpp');
     default:
       return FileBase::getParam(index);
     }

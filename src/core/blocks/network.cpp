@@ -25,7 +25,7 @@ struct NetworkBase {
   BlocksVar _blks{};
 
   static inline Type SocketInfo{
-      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = SocketCC}}}};
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = SocketCC}}}};
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
@@ -199,7 +199,7 @@ struct NetworkBase {
     }
     auto rc = _socketVar->refcount;
     auto rcflag = _socketVar->flags & CBVAR_FLAGS_REF_COUNTED;
-    *_socketVar = Var::Object(&_socket, FragCC, SocketCC);
+    *_socketVar = Var::Object(&_socket, CoreCC, SocketCC);
     _socketVar->refcount = rc;
     _socketVar->flags |= rcflag;
   }
@@ -440,7 +440,7 @@ struct Send {
     if (!_socketVar) {
       _socketVar = referenceVariable(context, "Network.Socket");
     }
-    assert(_socketVar->payload.objectVendorId == FragCC);
+    assert(_socketVar->payload.objectVendorId == CoreCC);
     assert(_socketVar->payload.objectTypeId == SocketCC);
     return reinterpret_cast<SocketData *>(_socketVar->payload.objectValue);
   }

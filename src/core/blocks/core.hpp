@@ -14,9 +14,9 @@
 
 namespace chainblocks {
 struct CoreInfo2 {
-  static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", 'sink', 'type'};
+  static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", CoreCC, 'type'};
   static inline Type BasicTypesType{
-      {CBType::Enum, {.enumeration = {'sink', 'type'}}}};
+      {CBType::Enum, {.enumeration = {CoreCC, 'type'}}}};
   static inline Type BasicTypesSeqType{
       {CBType::Seq, {.seqTypes = BasicTypesType}}};
   static inline Types BasicTypesTypes{{BasicTypesType, BasicTypesSeqType}};
@@ -1259,7 +1259,7 @@ struct Push : public SeqBase {
 };
 
 struct Sequence : public SeqBase {
-  ParamVar _types{Var::Enum(BasicTypes::Any, 'sink', 'type')};
+  ParamVar _types{Var::Enum(BasicTypes::Any, CoreCC, 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 

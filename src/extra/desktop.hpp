@@ -14,7 +14,7 @@ constexpr uint32_t windowCC = 'hwnd';
 
 struct Globals {
   static inline Type windowType{
-      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
   static inline Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
 };
 

@@ -32,7 +32,7 @@ constexpr uint32_t WebSocketCC = 'webs';
 struct Common {
   static inline Type WebSocket{
       {CBType::Object,
-       {.object = {.vendorId = FragCC, .typeId = WebSocketCC}}}};
+       {.object = {.vendorId = CoreCC, .typeId = WebSocketCC}}}};
 
   static inline Type WebSocketVar{
       {CBType::ContextVar, {.contextVarTypes = WebSocket}}};
@@ -203,7 +203,7 @@ struct Client {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!connected) {
       connect(context);
-      socket->payload.objectVendorId = FragCC;
+      socket->payload.objectVendorId = CoreCC;
       socket->payload.objectTypeId = WebSocketCC;
       socket->payload.objectValue = &ws;
     }

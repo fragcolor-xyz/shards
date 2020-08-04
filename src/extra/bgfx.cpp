@@ -22,7 +22,7 @@ constexpr uint32_t windowCC = 'hwnd';
 
 struct BaseConsumer : public Base {
   static inline Type windowType{
-      {CBType::Object, {.object = {.vendorId = FragCC, .typeId = windowCC}}}};
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
 
   static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
       "BGFX.Context", "The BGFX Context.", Context::Info));
@@ -198,7 +198,7 @@ struct MainWindow : public BaseWindow {
       // try to see if global native window is set
       _nativeWnd = referenceVariable(context, "fragcolor.bgfx.nativewindow");
       if (_nativeWnd->valueType == Object &&
-          _nativeWnd->payload.objectVendorId == FragCC &&
+          _nativeWnd->payload.objectVendorId == CoreCC &&
           _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
         _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
       } else {
@@ -231,7 +231,7 @@ struct MainWindow : public BaseWindow {
 
       _nativeWnd->valueType = Object;
       _nativeWnd->payload.objectValue = _sysWnd;
-      _nativeWnd->payload.objectVendorId = FragCC;
+      _nativeWnd->payload.objectVendorId = CoreCC;
       _nativeWnd->payload.objectTypeId = BgfxNativeWindowCC;
 
       // Ensure clicks will happen even from out of focus!
@@ -292,9 +292,9 @@ struct MainWindow : public BaseWindow {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // Set them always as they might override each other during the chain
-    *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
-    *_bgfxCtx = Var::Object(&_bgfx_context, FragCC, BgfxContextCC);
-    *_imguiCtx = Var::Object(&_imgui_context, FragCC,
+    *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
+    *_bgfxCtx = Var::Object(&_bgfx_context, CoreCC, BgfxContextCC);
+    *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
                              chainblocks::ImGui::ImGuiContextCC);
 
     // Touch view 0
@@ -423,8 +423,8 @@ CBVar activate(CBContext *context, const CBVar &input) {
   }
 
   // Set them always as they might override each other during the chain
-  *_sdlWinVar = Var::Object(_sysWnd, FragCC, windowCC);
-  *_imguiCtx = Var::Object(&_imgui_context, FragCC,
+  *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
+  *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
                            chainblocks::ImGui::ImGuiContextCC);
 
   // Touch view 0
@@ -610,7 +610,7 @@ struct Texture2D : public BaseConsumer {
     bgfx::updateTexture2D(_texture.handle, 0, 0, 0, 0, _texture.width,
                           _texture.height, mem);
 
-    return Var::Object(&_texture, FragCC, BgfxTextureHandleCC);
+    return Var::Object(&_texture, CoreCC, BgfxTextureHandleCC);
   }
 };
 

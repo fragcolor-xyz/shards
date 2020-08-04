@@ -17,13 +17,13 @@ constexpr uint32_t BgfxNativeWindowCC = 'bgfW';
 struct NativeWindow {
   static inline Type Info{
       {CBType::Object,
-       {.object = {.vendorId = FragCC, .typeId = BgfxNativeWindowCC}}}};
+       {.object = {.vendorId = CoreCC, .typeId = BgfxNativeWindowCC}}}};
 };
 
 struct Context {
   static inline Type Info{
       {CBType::Object,
-       {.object = {.vendorId = FragCC, .typeId = BgfxContextCC}}}};
+       {.object = {.vendorId = CoreCC, .typeId = BgfxContextCC}}}};
 
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
@@ -32,7 +32,7 @@ struct Context {
 struct Texture {
   static inline Type TextureHandleType{
       {CBType::Object,
-       {.object = {.vendorId = FragCC, .typeId = BgfxTextureHandleCC}}}};
+       {.object = {.vendorId = CoreCC, .typeId = BgfxTextureHandleCC}}}};
 
   bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
   uint16_t width = 0;
