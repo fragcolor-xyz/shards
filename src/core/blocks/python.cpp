@@ -1,8 +1,15 @@
 #ifndef CB_PYTHON_HPP
 #define CB_PYTHON_HPP
 
+// must be on top
+#ifndef __kernel_entry
+#define __kernel_entry
+#endif
+#include <boost/process.hpp>
+
 #include "shared.hpp"
 #include <ghc/filesystem.hpp>
+#include <nlohmann/json.hpp>
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
@@ -313,10 +320,31 @@ struct Env {
     LOG(TRACE) << "Py frame initialized";
   }
 
+  static inline std::vector<std::string> Path;
+
   static void init() {
-    // On mac you might need
-    // LD_LIBRARY_PATH=/usr/local/Frameworks/Python.framework/Versions/3.7/lib
-    // lldb = settings set target.env-vars
+    try {
+      // let's hack and find python paths...
+      boost::process::ipstream opipe;
+      boost::process::child cmd("python -c \"import sys; print(sys.path)\"",
+                                boost::process::std_out > opipe);
+      cmd.join();
+      if (cmd.exit_code() == 0) {
+        std::stringstream ss;
+        auto s = opipe.rdbuf();
+        ss << s;
+        auto paths_str = ss.str();
+        std::replace(paths_str.begin(), paths_str.end(), '\'', '\"');
+        auto jpaths = nlohmann::json::parse(paths_str);
+        std::vector<std::string> paths = jpaths;
+        for (auto &path : paths) {
+          LOG(DEBUG) << "PY PATH: " << path;
+        }
+        Path = paths;
+      }
+    } catch (const std::exception &ex) {
+      LOG(DEBUG) << "Error while probing python " << ex.what();
+    }
 
     static const auto version_patterns = {"3.9", "39", "3.8", "38",
                                           "3.7", "37", "3",   ""};
@@ -978,6 +1006,13 @@ struct Py {
 
     Context ctx(_ts);
 
+    auto path = Env::_sysGetObj("path");
+    // fix sys.path
+    for (auto &item : Env::Path) {
+      auto pyp = Env::string(item.c_str());
+      Env::_listAppend(path, pyp.get());
+    }
+
     namespace fs = ghc::filesystem;
 
     auto scriptName = _scriptName;
@@ -989,14 +1024,12 @@ struct Py {
       auto absRoot = fs::absolute(cbpath / scriptPath.parent_path());
       absRoot.make_preferred();
       auto pyAbsRoot = Env::string(absRoot.string().c_str());
-      auto path = Env::_sysGetObj("path");
       Env::_listAppend(path, pyAbsRoot.get());
     }
 
     auto absRoot = fs::absolute(fs::current_path() / scriptPath.parent_path());
     absRoot.make_preferred();
     auto pyAbsRoot = Env::string(absRoot.string().c_str());
-    auto path = Env::_sysGetObj("path");
     Env::_listAppend(path, pyAbsRoot.get());
 
     auto moduleName = scriptPath.stem().string();
