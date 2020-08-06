@@ -450,9 +450,48 @@ macro_rules! var_from {
     };
 }
 
+macro_rules! var_from_into {
+    ($type:ident, $varfield:ident, $cbtype:expr) => {
+        impl From<$type> for Var {
+            #[inline(always)]
+            fn from(v: $type) -> Self {
+                CBVar {
+                    valueType: $cbtype,
+                    payload: CBVarPayload {
+                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { $varfield: v.into() },
+                    },
+                    ..Default::default()
+                }
+            }
+        }
+    };
+}
+
+macro_rules! var_try_from {
+    ($type:ident, $varfield:ident, $cbtype:expr) => {
+        impl TryFrom<$type> for Var {
+            type Error = &'static str;
+            
+            #[inline(always)]
+            fn try_from(v: $type) -> Result<Self, Self::Error> {
+                Ok(CBVar {
+                    valueType: $cbtype,
+                    payload: CBVarPayload {
+                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { $varfield: v.try_into().or_else(|_| Err("Conversion failed, value out of range"))? },
+                    },
+                    ..Default::default()
+                })
+            }
+        }
+    };
+}
+
 var_from!(bool, boolValue, CBType_Bool);
 var_from!(i64, intValue, CBType_Int);
+var_from_into!(i32, intValue, CBType_Int);
+var_try_from!(usize, intValue, CBType_Int);
 var_from!(f64, floatValue, CBType_Float);
+var_from_into!(f32, floatValue, CBType_Float);
 
 impl From<CBlockPtr> for Var {
     #[inline(always)]
@@ -681,6 +720,10 @@ impl Var {
     pub fn is_none(&self) -> bool {
         self.valueType == CBType_None
     }
+
+    pub fn is_path(&self) -> bool {
+        self.valueType == CBType_Path
+    }
 }
 
 impl TryFrom<&Var> for CBString {
@@ -808,6 +851,25 @@ impl TryFrom<&Var> for i64 {
             Err("Expected Int variable, but casting failed.")
         } else {
             unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
+        }
+    }
+}
+
+impl TryFrom<&Var> for usize {
+    type Error = &'static str;
+
+    #[inline(always)]
+    fn try_from(var: &Var) -> Result<Self, Self::Error> {
+        if var.valueType != CBType_Int {
+            Err("Expected Int variable, but casting failed.")
+        } else {
+            unsafe {
+                var.payload
+                    .__bindgen_anon_1
+                    .intValue
+                    .try_into()
+                    .or_else(|_| Err("Int conversion failed, likely out of range (usize)"))
+            }
         }
     }
 }
