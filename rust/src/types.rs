@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBContext;
@@ -40,6 +39,7 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::rc::Rc;
 
 pub type Context = CBContext;
 pub type Var = CBVar;
@@ -242,6 +242,7 @@ pub mod common_type {
     use crate::chainblocksc::CBType_Bool;
     use crate::chainblocksc::CBType_Bytes;
     use crate::chainblocksc::CBType_Chain;
+    use crate::chainblocksc::CBType_ContextVar;
     use crate::chainblocksc::CBType_Float;
     use crate::chainblocksc::CBType_Int;
     use crate::chainblocksc::CBType_None;
@@ -272,7 +273,7 @@ pub mod common_type {
     pub static none: CBTypeInfo = make_none();
 
     macro_rules! cbtype {
-        ($fname:ident, $type:expr, $name:ident, $names:ident, $name_seq:ident) => {
+        ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident) => {
             const fn $fname() -> CBTypeInfo {
                 let mut res = base_info();
                 res.basicType = $type;
@@ -281,13 +282,22 @@ pub mod common_type {
 
             pub static $name: CBTypeInfo = $fname();
 
-            pub static $name_seq: &'static [CBTypeInfo] = &[$name];
-
             pub static $names: CBTypeInfo = CBTypeInfo {
                 basicType: CBType_Seq,
                 details: CBTypeInfo_Details {
                     seqTypes: CBTypesInfo {
-                        elements: $name_seq.as_ptr() as *mut CBTypeInfo,
+                        elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+                        len: 1,
+                        cap: 0,
+                    },
+                },
+            };
+
+            pub static $name_var: CBTypeInfo = CBTypeInfo {
+                basicType: CBType_ContextVar,
+                details: CBTypeInfo_Details {
+                    contextVarTypes: CBTypesInfo {
+                        elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
                         len: 1,
                         cap: 0,
                     },
@@ -296,15 +306,15 @@ pub mod common_type {
         };
     }
 
-    cbtype!(make_any, CBType_Any, any, anys, any_seq);
-    cbtype!(make_string, CBType_String, string, strings, string_seq);
-    cbtype!(make_bytes, CBType_Bytes, bytes, bytezs, bytes_seq);
-    cbtype!(make_int, CBType_Int, int, ints, int_seq);
-    cbtype!(make_float, CBType_Float, float, floats, float_seq);
-    cbtype!(make_bool, CBType_Bool, bool, bools, bool_seq);
-    cbtype!(make_block, CBType_Block, block, blocks, block_seq);
-    cbtype!(make_chain, CBType_Chain, chain, chains, chain_seq);
-    cbtype!(make_path, CBType_Path, path, paths, path_seq);
+    cbtype!(make_any, CBType_Any, any, anys, any_var);
+    cbtype!(make_string, CBType_String, string, strings, string_var);
+    cbtype!(make_bytes, CBType_Bytes, bytes, bytezs, bytes_var);
+    cbtype!(make_int, CBType_Int, int, ints, int_var);
+    cbtype!(make_float, CBType_Float, float, floats, float_var);
+    cbtype!(make_bool, CBType_Bool, bool, bools, bool_var);
+    cbtype!(make_block, CBType_Block, block, blocks, block_var);
+    cbtype!(make_chain, CBType_Chain, chain, chains, chain_var);
+    cbtype!(make_path, CBType_Path, path, paths, path_var);
 }
 
 impl Type {
@@ -745,6 +755,27 @@ impl TryFrom<&Var> for &CStr {
                 Ok(CStr::from_ptr(
                     var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
                 ))
+            }
+        }
+    }
+}
+
+impl TryFrom<&Var> for Option<CString> {
+    type Error = &'static str;
+
+    #[inline(always)]
+    fn try_from(var: &Var) -> Result<Self, Self::Error> {
+        if var.valueType != CBType_String
+            && var.valueType != CBType_Path
+            && var.valueType != CBType_ContextVar
+            && var.valueType != CBType_None
+        {
+            Err("Expected None, String, Path or ContextVar variable, but casting failed.")
+        } else {
+            if var.is_none() {
+                Ok(None)
+            } else {
+                Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
             }
         }
     }
