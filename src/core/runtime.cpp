@@ -812,6 +812,8 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return chainblocks::suspend(context, seconds);
   };
 
+  result->getState = [](CBContext *context) { return context->getState(); };
+
   result->abortChain = [](CBContext *context, const char *message) {
     context->cancelFlow(message);
   };

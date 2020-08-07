@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBContext;
@@ -37,6 +38,11 @@ use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlocks;
 use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
+use crate::chainblocksc::CBChainState_Continue;
+use crate::chainblocksc::CBChainState_Return;
+use crate::chainblocksc::CBChainState_Rebase;
+use crate::chainblocksc::CBChainState_Restart;
+use crate::chainblocksc::CBChainState_Stop;
 use crate::core::cloneVar;
 use crate::core::Core;
 use core::mem::transmute;
@@ -55,6 +61,28 @@ pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
+
+#[derive(PartialEq)]
+pub enum ChainState {
+  Continue,
+  Return,
+  Rebase,
+  Restart,
+  Stop
+}
+
+impl From<CBChainState> for ChainState {
+  fn from(state: CBChainState) -> Self {
+    match state {
+      CBChainState_Continue => ChainState::Continue,
+      CBChainState_Return => ChainState::Return,
+      CBChainState_Rebase => ChainState::Rebase,
+      CBChainState_Restart => ChainState::Restart,
+      CBChainState_Stop => ChainState::Stop,
+      _ => unreachable!()
+    }
+  }
+}
 
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}

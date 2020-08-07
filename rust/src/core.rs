@@ -1,5 +1,7 @@
 #![macro_use]
 
+use crate::types::ChainState;
+use crate::chainblocksc::CBChainState;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::chainblocksInterface;
@@ -51,6 +53,7 @@ pub static mut Core: CBCore = CBCore {
   releaseVariable: None,
   abortChain: None,
   suspend: None,
+  getState: None,
   cloneVar: None,
   destroyVar: None,
   seqFree: None,
@@ -196,11 +199,18 @@ pub fn sleep(seconds: f64) {
 }
 
 #[inline(always)]
-pub fn suspend(context: &CBContext, seconds: f64) {
+pub fn suspend(context: &CBContext, seconds: f64) -> ChainState {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    // TODO return error if should not continue!!
-    Core.suspend.unwrap()(ctx, seconds);
+    Core.suspend.unwrap()(ctx, seconds).into()
+  }
+}
+
+#[inline(always)]
+pub fn getState(context: &CBContext) -> ChainState {
+  unsafe {
+    let ctx = context as *const CBContext as *mut CBContext;
+    Core.getState.unwrap()(ctx).into()
   }
 }
 

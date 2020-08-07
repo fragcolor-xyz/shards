@@ -846,9 +846,11 @@ typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
 typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                               double seconds);
+typedef enum CBChainState(__cdecl *CBGetState)(struct CBContext *context);
 #else
 typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
                                          double seconds);
+typedef CBChainState(__cdecl *CBGetState)(struct CBContext *context);
 #endif
 
 typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
@@ -985,6 +987,7 @@ struct CBCore {
 
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
+  CBGetState getState;
   // To be used within blocks, to abort the chain
   // after this call you should return immediately from activate
   CBAbortChain abortChain;
