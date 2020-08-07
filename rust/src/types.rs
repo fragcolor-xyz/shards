@@ -54,6 +54,7 @@ pub type InstanceData = CBInstanceData;
 pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
+pub type ExposedInfo = CBExposedTypeInfo;
 
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}
@@ -107,40 +108,66 @@ unsafe fn internal_drop_types(types: CBTypesInfo) {
 /*
 CBExposedTypeInfo & co
 */
-#[repr(transparent)]
-pub struct ExposedInfo(CBExposedTypeInfo);
 
 impl ExposedInfo {
-  fn new(name: &str, ctype: CBTypeInfo) -> Self {
-    let cname = CString::new(name).unwrap();
+  pub fn new(name: &CString, ctype: CBTypeInfo) -> Self {
     let chelp = core::ptr::null();
-    let res = CBExposedTypeInfo {
+    CBExposedTypeInfo {
       exposedType: ctype,
-      name: cname.into_raw(),
+      name: name.as_ptr(),
       help: chelp,
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
       global: false,
       scope: core::ptr::null_mut(),
-    };
-    ExposedInfo(res)
-  }
-}
-
-impl Drop for ExposedInfo {
-  fn drop(&mut self) {
-    if self.0.name != core::ptr::null() {
-      unsafe {
-        let cname = CString::from_raw(self.0.name as *mut i8);
-        drop(cname);
-      }
     }
-    if self.0.help != core::ptr::null() {
-      unsafe {
-        let chelp = CString::from_raw(self.0.help as *mut i8);
-        drop(chelp);
-      }
+  }
+
+  pub fn new_with_help(name: &CString, help: &CString, ctype: CBTypeInfo) -> Self {
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: name.as_ptr(),
+      help: help.as_ptr(),
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
+    }
+  }
+
+  pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
+    let cname = name.as_ptr() as *const i8;
+    let chelp = core::ptr::null();
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: cname,
+      help: chelp,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
+    }
+  }
+
+  pub const fn new_static_with_help(
+    name: &'static str,
+    help: &'static str,
+    ctype: CBTypeInfo,
+  ) -> Self {
+    let cname = name.as_ptr() as *const i8;
+    let chelp = help.as_ptr() as *const i8;
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: cname,
+      help: chelp,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
     }
   }
 }
@@ -967,8 +994,8 @@ impl TryFrom<Var> for &[Var] {
 }
 
 pub struct ParamVar {
-  parameter: ClonedVar,
-  pointee: *mut Var,
+  pub parameter: ClonedVar,
+  pub pointee: *mut Var,
 }
 
 impl ParamVar {
@@ -1116,7 +1143,7 @@ impl Seq {
   pub const fn new() -> Seq {
     Seq {
       s: CBSeq {
-        elements: std::ptr::null_mut(),
+        elements: core::ptr::null_mut(),
         len: 0,
         cap: 0,
       },
