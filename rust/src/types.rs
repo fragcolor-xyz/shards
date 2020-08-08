@@ -92,6 +92,8 @@ unsafe impl Send for Block {}
 CBTypeInfo & co
 */
 unsafe impl std::marker::Sync for CBTypeInfo {}
+unsafe impl std::marker::Sync for CBParameterInfo {}
+unsafe impl std::marker::Sync for CBStrings {}
 
 // Todo CBTypeInfo proper wrapper Type with helpers
 
