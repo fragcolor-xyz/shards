@@ -1,16 +1,16 @@
 #![macro_use]
 
-use crate::types::ChainState;
-use crate::chainblocksc::CBChainState;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::chainblocksInterface;
 use crate::chainblocksc::CBBool;
+use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBCore;
 use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
+use crate::types::ChainState;
 use crate::types::Var;
 use core::ffi::c_void;
 use std::ffi::CStr;
@@ -285,7 +285,7 @@ pub fn releaseVariable(var: &CBVar) {
   }
 }
 
-unsafe extern "C" fn asyncActivateCCall<'a>(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
+unsafe extern "C" fn do_blocking_c_call<'a>(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
   let trait_obj_ref: &mut &mut dyn FnMut() -> Result<CBVar, &'a str> = { &mut *(arg2 as *mut _) };
   match trait_obj_ref() {
     Ok(value) => value,
@@ -296,9 +296,8 @@ unsafe extern "C" fn asyncActivateCCall<'a>(context: *mut CBContext, arg2: *mut 
   }
 }
 
-pub fn asyncActivate<'a, F>(context: &CBContext, f: F) -> CBVar
+pub fn do_blocking<'a, F>(context: &CBContext, f: F) -> CBVar
 where
-  // The closure takes an `i32` and returns an `i32`.
   F: FnMut() -> Result<CBVar, &'a str>,
 {
   unsafe {
@@ -306,6 +305,51 @@ where
     let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'a str> = &f;
     let trait_obj_ref = &mut trait_obj;
     let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
-    Core.asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(asyncActivateCCall))
+    Core.asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call))
+  }
+}
+
+struct AsyncCallData<'a, T, F: FnMut(&mut T, &CBContext, &CBVar) -> Result<CBVar, &'a str>> {
+  caller: *mut T,
+  input: *const CBVar,
+  call: F,
+}
+
+unsafe extern "C" fn activate_blocking_c_call<
+  'a,
+  C: 'a,
+  F: FnMut(&mut C, &CBContext, &CBVar) -> Result<CBVar, &'a str>,
+>(
+  context: *mut CBContext,
+  arg2: *mut c_void,
+) -> CBVar {
+  let data = arg2 as *mut AsyncCallData<C, F>;
+  match ((*data).call)(&mut *(*data).caller, &*context, &*(*data).input) {
+    Ok(value) => value,
+    Err(error) => {
+      abortChain(&(*context), error);
+      Var::default()
+    }
+  }
+}
+
+pub fn activate_blocking<'a, C, F>(
+  caller: &'a mut C,
+  context: &'a CBContext,
+  input: &'a CBVar,
+  f: F,
+) -> CBVar
+where
+  F: FnMut(&mut C, &CBContext, &CBVar) -> Result<CBVar, &'a str>,
+{
+  unsafe {
+    let data = AsyncCallData {
+      caller: caller as *mut C,
+      input: input as *const CBVar,
+      call: f,
+    };
+    let ctx = context as *const CBContext as *mut CBContext;
+    let data_ptr = &data as *const AsyncCallData<C, F> as *mut AsyncCallData<C, F> as *mut c_void;
+    Core.asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<C, F>))
   }
 }
