@@ -173,9 +173,8 @@ pub fn init() {
 
 #[inline(always)]
 pub fn log(s: &str) {
-  let clog = CString::new(s).unwrap();
   unsafe {
-    Core.log.unwrap()(clog.as_ptr());
+    Core.log.unwrap()(s.as_ptr() as *const i8);
   }
 }
 
@@ -183,12 +182,12 @@ pub fn log(s: &str) {
 macro_rules! cblog {
     ($text:expr, $($arg:ident),*) => {
         let mut buf = vec![];
-        write!(&mut buf, $text, $($arg),*).unwrap();
+        write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
         log(str::from_utf8(&buf).unwrap());
     };
 
     ($text:expr) => {
-        log($text);
+        log(concat!($text, "\0"));
     };
 }
 

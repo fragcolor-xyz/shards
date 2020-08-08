@@ -1,5 +1,10 @@
-use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBChain;
+use crate::chainblocksc::CBChainState;
+use crate::chainblocksc::CBChainState_Continue;
+use crate::chainblocksc::CBChainState_Rebase;
+use crate::chainblocksc::CBChainState_Restart;
+use crate::chainblocksc::CBChainState_Return;
+use crate::chainblocksc::CBChainState_Stop;
 use crate::chainblocksc::CBComposeResult;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
@@ -38,11 +43,6 @@ use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlocks;
 use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
-use crate::chainblocksc::CBChainState_Continue;
-use crate::chainblocksc::CBChainState_Return;
-use crate::chainblocksc::CBChainState_Rebase;
-use crate::chainblocksc::CBChainState_Restart;
-use crate::chainblocksc::CBChainState_Stop;
 use crate::core::cloneVar;
 use crate::core::Core;
 use core::mem::transmute;
@@ -52,6 +52,13 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::rc::Rc;
+
+#[macro_export]
+macro_rules! cstr {
+  ($text:expr) => {
+    concat!($text, "\0")
+  };
+}
 
 pub type Context = CBContext;
 pub type Var = CBVar;
@@ -68,7 +75,7 @@ pub enum ChainState {
   Return,
   Rebase,
   Restart,
-  Stop
+  Stop,
 }
 
 impl From<CBChainState> for ChainState {
@@ -79,7 +86,7 @@ impl From<CBChainState> for ChainState {
       CBChainState_Rebase => ChainState::Rebase,
       CBChainState_Restart => ChainState::Restart,
       CBChainState_Stop => ChainState::Stop,
-      _ => unreachable!()
+      _ => unreachable!(),
     }
   }
 }
