@@ -1,5 +1,6 @@
 #![macro_use]
 
+use crate::types::Context;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::chainblocksInterface;
@@ -309,22 +310,22 @@ where
   }
 }
 
-struct AsyncCallData<'a, T, F: FnMut(&mut T, &CBContext, &CBVar) -> Result<CBVar, &'a str>> {
-  caller: *mut T,
-  input: *const CBVar,
-  call: F,
+pub trait BlockingBlock {
+  fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
 }
 
-unsafe extern "C" fn activate_blocking_c_call<
-  'a,
-  C: 'a,
-  F: FnMut(&mut C, &CBContext, &CBVar) -> Result<CBVar, &'a str>,
->(
+struct AsyncCallData<T: BlockingBlock> {
+  caller: *mut T,
+  input: *const CBVar,
+}
+
+unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
   context: *mut CBContext,
   arg2: *mut c_void,
 ) -> CBVar {
-  let data = arg2 as *mut AsyncCallData<C, F>;
-  match ((*data).call)(&mut *(*data).caller, &*context, &*(*data).input) {
+  let data = arg2 as *mut AsyncCallData<T>;
+  let res = (*(*data).caller).activate_blocking(&*context, &*(*data).input);
+  match res {
     Ok(value) => value,
     Err(error) => {
       abortChain(&(*context), error);
@@ -333,23 +334,21 @@ unsafe extern "C" fn activate_blocking_c_call<
   }
 }
 
-pub fn activate_blocking<'a, C, F>(
-  caller: &'a mut C,
+pub fn activate_blocking<'a, T>(
+  caller: &'a mut T,
   context: &'a CBContext,
-  input: &'a CBVar,
-  f: F,
+  input: &'a CBVar
 ) -> CBVar
 where
-  F: FnMut(&mut C, &CBContext, &CBVar) -> Result<CBVar, &'a str>,
+  T: BlockingBlock,
 {
   unsafe {
     let data = AsyncCallData {
-      caller: caller as *mut C,
+      caller: caller as *mut T,
       input: input as *const CBVar,
-      call: f,
     };
     let ctx = context as *const CBContext as *mut CBContext;
-    let data_ptr = &data as *const AsyncCallData<C, F> as *mut AsyncCallData<C, F> as *mut c_void;
-    Core.asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<C, F>))
+    let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
+    Core.asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
   }
 }
