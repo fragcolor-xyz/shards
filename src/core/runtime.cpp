@@ -1046,9 +1046,7 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
-  if (receiverType.basicType == Any ||
-      // receiver is a none type input block basically
-      (!isParameter && receiverType.basicType == None))
+  if (receiverType.basicType == Any)
     return true;
 
   if (inputType.basicType != receiverType.basicType) {
@@ -1121,6 +1119,21 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
           return false;
         }
       }
+      if (atypes == 0) {
+        // assume this as an Any
+        auto matched = false;
+        CBTypeInfo anyType{{CBType::Any}};
+        for (uint32_t y = 0; y < btypes; y++) {
+          auto btype = receiverType.table.types.elements[y];
+          if (matchTypes(anyType, btype, isParameter, strict)) {
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          return false;
+        }
+      }
     }
     break;
   }
@@ -1154,11 +1167,16 @@ void validateConnection(ValidationContext &ctx) {
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
   auto inputMatches = false;
   // validate our generic input
-  for (uint32_t i = 0; inputInfos.len > i; i++) {
-    auto &inputInfo = inputInfos.elements[i];
-    if (matchTypes(previousOutput, inputInfo, false, true)) {
-      inputMatches = true;
-      break;
+  if (inputInfos.len == 1 && inputInfos.elements[0].basicType == None) {
+    // in this case a None always matches
+    inputMatches = true;
+  } else {
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      if (matchTypes(previousOutput, inputInfo, false, true)) {
+        inputMatches = true;
+        break;
+      }
     }
   }
 
@@ -1229,10 +1247,19 @@ void validateConnection(ValidationContext &ctx) {
     chainblocks::arrayFree(data.shared);
   } else {
     // Short-cut if it's just one type and not any type
-    // Any type tho means keep previous output type!
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
-    if (outputTypes.len == 1 && outputTypes.elements[0].basicType != Any) {
-      ctx.previousOutputType = outputTypes.elements[0];
+    if (outputTypes.len == 1) {
+      if (outputTypes.elements[0].basicType != Any) {
+        ctx.previousOutputType = outputTypes.elements[0];
+      } else {
+        // Any type tho means keep previous output type!
+        // Unless we require a specific input type, in that case
+        // We assume we are not a passthru block
+        auto inputTypes = ctx.bottom->inputTypes(ctx.bottom);
+        if (inputTypes.len == 1 && inputTypes.elements[0].basicType != Any) {
+          ctx.previousOutputType = outputTypes.elements[0];
+        }
+      }
     }
   }
 

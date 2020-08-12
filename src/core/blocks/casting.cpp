@@ -568,16 +568,28 @@ template <Type &ET> struct ExpectXComplex {
 
 struct ToBase64 {
   std::string output;
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static inline Types _inputTypes{{CoreInfo::BytesType, CoreInfo::StringType}};
+  static CBTypesInfo inputTypes() { return _inputTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     output.clear();
-    auto req =
-        boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
-    output.resize(req);
-    auto written = boost::beast::detail::base64::encode(
-        output.data(), input.payload.bytesValue, input.payload.bytesSize);
-    output.resize(written);
+    if (input.valueType == Bytes) {
+      auto req =
+          boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
+      output.resize(req);
+      auto written = boost::beast::detail::base64::encode(
+          output.data(), input.payload.bytesValue, input.payload.bytesSize);
+      output.resize(written);
+    } else {
+      const auto len = input.payload.stringLen > 0
+                           ? input.payload.stringLen
+                           : strlen(input.payload.stringValue);
+      auto req = boost::beast::detail::base64::encoded_size(len);
+      output.resize(req);
+      auto written = boost::beast::detail::base64::encode(
+          output.data(), input.payload.stringValue, len);
+      output.resize(written);
+    }
     return Var(output);
   }
 };

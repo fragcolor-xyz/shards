@@ -284,6 +284,17 @@ struct Get final : public Client {
 };
 
 struct Post final : public Client {
+  static inline Types PostInTypes{CoreInfo::NoneType, CoreInfo::StringTableType,
+                                  CoreInfo::StringType};
+
+  static CBTypesInfo inputTypes() { return PostInTypes; }
+
+  static const char *help() {
+    return "If the input is a table it will default to "
+           "application/x-www-form-urlencoded, if it's a string will be "
+           "application/json instead";
+  }
+
   void request(CBContext *context, const CBVar &input) override {
     try {
       await(context, [&]() {
@@ -297,6 +308,8 @@ struct Post final : public Client {
           });
           if (vars.size() > 0)
             vars.resize(vars.size() - 1);
+        } else if (input.valueType == String) {
+          vars.append(input.payload.stringValue);
         }
 
         buffer.clear();
@@ -308,7 +321,12 @@ struct Post final : public Client {
             http::verb::post, target.get().payload.stringValue, version};
         req.set(http::field::host, host.get().payload.stringValue);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-        req.set(http::field::content_type, "application/x-www-form-urlencoded");
+        if (input.valueType == Table) {
+          req.set(http::field::content_type,
+                  "application/x-www-form-urlencoded");
+        } else if (input.valueType == String) {
+          req.set(http::field::content_type, "application/json");
+        }
 
         // add custom headers
         if (headers.get().valueType == Table) {
@@ -320,6 +338,7 @@ struct Post final : public Client {
 
         // add the body of the post
         req.body() = vars;
+        req.prepare_payload();
 
         if (ssl) {
           // Send the HTTP request to the remote host
