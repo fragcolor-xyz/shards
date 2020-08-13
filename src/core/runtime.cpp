@@ -1122,7 +1122,7 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       if (atypes == 0) {
         // assume this as an Any
         auto matched = false;
-        CBTypeInfo anyType{{CBType::Any}};
+        CBTypeInfo anyType{CBType::Any};
         for (uint32_t y = 0; y < btypes; y++) {
           auto btype = receiverType.table.types.elements[y];
           if (matchTypes(anyType, btype, isParameter, strict)) {
