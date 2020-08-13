@@ -1706,6 +1706,11 @@ void CBChain::reset() {
     n->visitedChains.erase(this);
   }
   node.reset();
+
+  if (stack_mem) {
+    ::operator delete[](stack_mem, std::align_val_t{16});
+    stack_mem = nullptr;
+  }
 }
 
 namespace chainblocks {

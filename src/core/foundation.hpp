@@ -40,6 +40,9 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+// TODO make it into a run-time param
+#define CB_STACK_SIZE 128 * 1024
+
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
@@ -119,6 +122,30 @@ inline void destroyVar(CBVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 } // namespace chainblocks
+
+struct CBStackAllocator {
+  uint8_t *mem{nullptr};
+
+  boost::context::stack_context allocate() {
+    // mem = new (std::align_val_t{16}) uint8_t[size];
+    constexpr auto size = CB_STACK_SIZE;
+    boost::context::stack_context ctx;
+    ctx.size = size;
+    ctx.sp = mem + size;
+#if defined(BOOST_USE_VALGRIND)
+    ctx.valgrind_stack_id = VALGRIND_STACK_REGISTER(ctx.sp, mem);
+#endif
+    return ctx;
+  }
+
+  void deallocate(boost::context::stack_context &sctx) {
+#if defined(BOOST_USE_VALGRIND)
+    VALGRIND_STACK_DEREGISTER(sctx.valgrind_stack_id);
+#endif
+    // auto *vp = static_cast<uint8_t *>(sctx.sp) - sctx.size;
+    // ::operator delete[](vp, std::align_val_t{16});
+  }
+};
 
 struct CBChain : public std::enable_shared_from_this<CBChain> {
   static std::shared_ptr<CBChain> make(std::string_view chain_name) {
@@ -213,6 +240,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
                      boost::alignment::aligned_allocator<
                          std::pair<const std::string, CBVar>, 16>>
       variables;
+
+  // this is the eventual coroutine stack memory buffer
+  uint8_t *stack_mem{nullptr};
 
   static std::shared_ptr<CBChain> sharedFromRef(CBChainRef ref) {
     return *reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
