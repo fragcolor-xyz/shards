@@ -12,6 +12,7 @@
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 
+#include "asiotools.hpp"
 #include "blockwrapper.hpp"
 #include "chainblocks.hpp"
 #include "shared.hpp"
@@ -364,9 +365,141 @@ struct Post final : public Client {
   }
 };
 
+struct Server {
+  static inline Parameters params{
+      {"Endpoint",
+       "The URL from where your service can be accessed by a client.",
+       {CoreInfo::StringType}},
+      {"Port", "The port this service will use.", {CoreInfo::IntType}},
+      {"Handler",
+       "The chain that will be spawned and handle a remote request.",
+       {CoreInfo::ChainType}},
+      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  // bypass
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void setParam(int idx, CBVar val) {
+    switch (idx) {
+    case 0:
+      _endpoint = val.payload.stringValue;
+      break;
+    case 1:
+      _port = uint16_t(val.payload.intValue);
+      break;
+    case 2: {
+      _handlerMaster = val;
+      _pool.reset(new ChainDoppelgangerPool(_handlerMaster.payload.chainValue));
+    } break;
+    case 3:
+      _secure = val.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int idx) {
+    switch (idx) {
+    case 0:
+      return Var(_endpoint);
+    case 1:
+      return Var(int(_port));
+    case 2:
+      return _handlerMaster;
+    case 3:
+      return Var(_secure);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    const IterableExposedInfo shared(data.shared);
+    // copy shared
+    _sharedCopy = shared;
+    return data.inputType;
+  }
+
+  struct Peer {
+    Peer(tcp::socket &socket, std::shared_ptr<CBChain> chain)
+        : chain(chain), socket(std::move(socket)) {}
+
+    std::shared_ptr<CBChain> chain;
+    tcp::socket socket;
+  };
+
+  // "Loop" forever accepting new connections.
+  void accept_once() {
+    _acceptor->async_accept(*_socket, [&](beast::error_code ec) {
+      if (!ec) {
+        Peer peer{*_socket, _pool->acquire(_composer)};
+      }
+      accept_once();
+    });
+  }
+
+  void warmup(CBContext *context) {
+    auto addr = net::ip::make_address(_endpoint);
+    _acceptor.reset(new tcp::acceptor(_ioc()(), {addr, _port}));
+    _socket.reset(new tcp::socket(_ioc()()));
+    // start accepting
+    accept_once();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) { return input; }
+
+  struct Composer {
+    Server &server;
+    CBContext *context;
+
+    void compose(CBChain *chain) {
+      CBInstanceData data{};
+      data.inputType = CoreInfo::StringType;
+      data.shared = server._sharedCopy;
+      data.chain = context->chainStack.back();
+      chain->node = context->main->node;
+      auto res = composeChain(
+          chain,
+          [](const struct CBlock *errorBlock, const char *errorTxt,
+             CBBool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              LOG(ERROR) << errorTxt;
+              throw ActivationError("Http.Server handler chain compose failed");
+            } else {
+              LOG(WARNING) << errorTxt;
+            }
+          },
+          nullptr, data);
+      arrayFree(res.exposedInfo);
+      arrayFree(res.requiredInfo);
+    }
+  };
+
+  bool _secure{true};
+  uint16_t _port{443};
+  std::string _endpoint{"0.0.0.0"};
+  OwnedVar _handlerMaster{};
+  std::unique_ptr<ChainDoppelgangerPool> _pool;
+  IterableExposedInfo _sharedCopy;
+  Composer _composer{*this};
+
+  // The io_context is required for all I/O
+  ThreadShared<Asio::IOContext> _ioc;
+  std::unique_ptr<tcp::socket> _socket;
+  std::unique_ptr<tcp::acceptor> _acceptor;
+
+  // The SSL context is required, and holds certificates
+  ssl::context _secure_ctx{ssl::context::tlsv12};
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Post", Post);
+  REGISTER_CBLOCK("Http.Server", Server);
 }
 } // namespace Http
 } // namespace chainblocks

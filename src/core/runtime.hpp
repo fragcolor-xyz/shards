@@ -1444,6 +1444,59 @@ struct Serialization {
     return total;
   }
 };
+
+struct ChainDoppelgangerPool {
+  ChainDoppelgangerPool(CBChainRef master) {
+    auto vchain = Var(master);
+    std::stringstream stream;
+    Writer w(stream);
+    Serialization serializer;
+    serializer.serialize(vchain, w);
+    _chainStr = stream.str();
+  }
+
+  template <class Composer>
+  std::shared_ptr<CBChain> acquire(Composer &composer) {
+    if (_avail.size() == 0) {
+      Serialization serializer;
+      std::stringstream stream(_chainStr);
+      Reader r(stream);
+      CBVar vchain{};
+      serializer.deserialize(r, vchain);
+      auto chain = CBChain::sharedFromRef(vchain.payload.chainValue);
+      auto fresh = _pool.emplace_back(chain);
+      composer.compose(fresh.get());
+      return fresh;
+    } else {
+      auto res = _avail.back();
+      _avail.pop_back();
+      return res;
+    }
+  }
+
+  void release(std::shared_ptr<CBChain> chain) { _avail.emplace_back(chain); }
+
+private:
+  struct Writer {
+    std::stringstream &stream;
+    Writer(std::stringstream &stream) : stream(stream) {}
+    void operator()(const uint8_t *buf, size_t size) {
+      stream.write((const char *)buf, size);
+    }
+  };
+
+  struct Reader {
+    std::stringstream &stream;
+    Reader(std::stringstream &stream) : stream(stream) {}
+    void operator()(uint8_t *buf, size_t size) {
+      stream.read((char *)buf, size);
+    }
+  };
+
+  std::deque<std::shared_ptr<CBChain>> _pool;
+  std::vector<std::shared_ptr<CBChain>> _avail;
+  std::string _chainStr;
+};
 } // namespace chainblocks
 
 #endif

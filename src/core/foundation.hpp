@@ -127,7 +127,6 @@ struct CBStackAllocator {
   uint8_t *mem{nullptr};
 
   boost::context::stack_context allocate() {
-    // mem = new (std::align_val_t{16}) uint8_t[size];
     constexpr auto size = CB_STACK_SIZE;
     boost::context::stack_context ctx;
     ctx.size = size;
@@ -142,8 +141,6 @@ struct CBStackAllocator {
 #if defined(BOOST_USE_VALGRIND)
     VALGRIND_STACK_DEREGISTER(sctx.valgrind_stack_id);
 #endif
-    // auto *vp = static_cast<uint8_t *>(sctx.sp) - sctx.size;
-    // ::operator delete[](vp, std::align_val_t{16});
   }
 };
 

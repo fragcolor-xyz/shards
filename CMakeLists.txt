@@ -166,7 +166,7 @@ endif()
 ### libs
 if(WIN32)
   set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
-  set(EXTRA_LIBS -lws2_32)
+  set(EXTRA_LIBS -lws2_32 -lmswsock)
 elseif(APPLE)
   if(NOT IOS)
     set(BOOST_LIBS -lboost_context-mt -lssl -lcrypto)
