@@ -633,6 +633,11 @@ struct Var : public CBVar {
     payload.seqValue = seq;
   }
 
+  explicit Var(CBChainRef chain) : CBVar() {
+    valueType = CBType::Chain;
+    payload.chainValue = chain;
+  }
+
   explicit Var(const std::shared_ptr<CBChain> &chain) : CBVar() {
     // INTERNAL USE ONLY, ABI LIKELY NOT COMPATIBLE!
     valueType = CBType::Chain;

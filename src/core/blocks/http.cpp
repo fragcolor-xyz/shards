@@ -26,6 +26,7 @@ namespace ssl = net::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include <cctype>
+#include <deque>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -425,29 +426,36 @@ struct Server {
   }
 
   struct Peer {
-    Peer(tcp::socket &socket, std::shared_ptr<CBChain> chain)
-        : chain(chain), socket(std::move(socket)) {}
-
+    Peer(const std::shared_ptr<CBChain> &chain, net::io_context &ctx)
+        : chain(chain), socket(ctx) {}
     std::shared_ptr<CBChain> chain;
     tcp::socket socket;
   };
 
   // "Loop" forever accepting new connections.
-  void accept_once() {
-    _acceptor->async_accept(*_socket, [&](beast::error_code ec) {
-      if (!ec) {
-        Peer peer{*_socket, _pool->acquire(_composer)};
-      }
-      accept_once();
-    });
+  void accept_once(CBContext *context) {
+    auto *peer = &_peers.emplace_back(_pool->acquire(_composer), _ioc()());
+    _acceptor->async_accept(
+        peer->socket, [context, peer, this](beast::error_code ec) {
+          if (!ec) {
+            auto node = context->main->node.lock();
+            if (node)
+              node->schedule(peer->chain, Var::Empty, false);
+          }
+          accept_once(context);
+        });
   }
 
   void warmup(CBContext *context) {
+    if (!_pool) {
+      throw ComposeError("Peer chains pool not valid!");
+    }
+
     auto addr = net::ip::make_address(_endpoint);
     _acceptor.reset(new tcp::acceptor(_ioc()(), {addr, _port}));
-    _socket.reset(new tcp::socket(_ioc()()));
+    _composer.context = context;
     // start accepting
-    accept_once();
+    accept_once(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) { return input; }
@@ -489,7 +497,7 @@ struct Server {
 
   // The io_context is required for all I/O
   ThreadShared<Asio::IOContext> _ioc;
-  std::unique_ptr<tcp::socket> _socket;
+  std::deque<Peer> _peers;
   std::unique_ptr<tcp::acceptor> _acceptor;
 
   // The SSL context is required, and holds certificates
