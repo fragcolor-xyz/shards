@@ -365,12 +365,18 @@ struct Post final : public Client {
   }
 };
 
-struct Peer {
+struct Peer : public std::enable_shared_from_this<Peer> {
+  static constexpr uint32_t PeerCC = 'httP';
+  static inline Type Info{
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
+
   std::shared_ptr<CBChain> chain;
   std::shared_ptr<tcp::socket> socket;
-  beast::flat_buffer buffer{8192};
-  http::request<http::dynamic_body> request;
-  http::response<http::dynamic_body> response;
+};
+
+struct PeerError {
+  beast::error_code ec;
+  Peer *peer;
 };
 
 struct Server {
@@ -430,13 +436,22 @@ struct Server {
   // "Loop" forever accepting new connections.
   void accept_once(CBContext *context) {
     auto peer = _pool->acquire(_composer);
+    peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(
         *peer->socket, [context, peer, this](beast::error_code ec) {
           if (!ec) {
             auto node = context->main->node.lock();
-            if (node)
+            if (node) {
+              peer->chain->variables["Http.Server.Socket"] =
+                  Var::Object(peer.get(), CoreCC, Peer::PeerCC);
               node->schedule(peer->chain, Var::Empty, false);
+            } else {
+              _pool->release(peer);
+            }
+          } else {
+            _pool->release(peer);
           }
+          // continue accepting the next
           accept_once(context);
         });
   }
@@ -446,7 +461,7 @@ struct Server {
       throw ComposeError("Peer chains pool not valid!");
     }
 
-    _ioc.reset({});
+    _ioc.reset(new net::io_context());
     auto addr = net::ip::make_address(_endpoint);
     _acceptor.reset(new tcp::acceptor(*_ioc, {addr, _port}));
     _composer.context = context;
@@ -455,7 +470,13 @@ struct Server {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _ioc->poll();
+    try {
+      _ioc->poll();
+    } catch (PeerError pe) {
+      LOG(INFO) << "Http request error: " << pe.ec.message();
+      stop(pe.peer->chain.get());
+      _pool->release(pe.peer->shared_from_this());
+    }
     return input;
   }
 
@@ -486,7 +507,6 @@ struct Server {
     }
   };
 
-  bool _secure{true};
   uint16_t _port{7070};
   std::string _endpoint{"0.0.0.0"};
   OwnedVar _handlerMaster{};
@@ -500,10 +520,116 @@ struct Server {
   std::unique_ptr<tcp::acceptor> _acceptor;
 };
 
+struct Read {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringTableType; }
+
+  void warmup(CBContext *context) {
+    _peerVar = referenceVariable(context, "Http.Server.Socket");
+  }
+
+  void cleanup() {
+    releaseVariable(_peerVar);
+    _peerVar = nullptr;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
+
+    bool done = false;
+    request.clear();
+    buffer.clear();
+    http::async_read(*peer->socket, buffer, request,
+                     [&](beast::error_code ec, std::size_t nbytes) {
+                       if (ec) {
+                         throw PeerError{ec, peer};
+                       }
+                       done = true;
+                     });
+
+    while (!done) {
+      CB_SUSPEND(context, 0.0);
+    }
+
+    switch (request.method()) {
+    case http::verb::get:
+      _output["method"] = Var("GET", 3);
+      break;
+    case http::verb::post:
+      _output["method"] = Var("POST", 4);
+      break;
+    case http::verb::put:
+      _output["method"] = Var("PUT", 3);
+      break;
+    case http::verb::delete_:
+      _output["method"] = Var("DELETE", 6);
+      break;
+    default:
+      throw ActivationError("Unsupported HTTP method.");
+    }
+
+    auto target = request.target();
+    _output["target"] = Var(target.data(), target.size());
+
+    _output["body"] = Var(request.body());
+
+    auto res = CBVar();
+    res.valueType = Table;
+    res.payload.tableValue.opaque = &_output;
+    res.payload.tableValue.api = &Globals::TableInterface;
+    return res;
+  }
+
+  CBVar *_peerVar{nullptr};
+  CBMap _output;
+  beast::flat_buffer buffer{8192};
+  http::request<http::string_body> request;
+};
+
+struct Response {
+  static inline Types PostInTypes{CoreInfo::NoneType, CoreInfo::StringTableType,
+                                  CoreInfo::StringType};
+
+  static CBTypesInfo inputTypes() { return PostInTypes; }
+  static CBTypesInfo outputTypes() { return PostInTypes; }
+
+  void warmup(CBContext *context) {
+    _peerVar = referenceVariable(context, "Http.Server.Socket");
+  }
+
+  void cleanup() {
+    releaseVariable(_peerVar);
+    _peerVar = nullptr;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
+    response.clear();
+
+    response.result(http::status::not_found);
+    response.set(http::field::content_type, "text/plain");
+    response.body() = "File not found\r\n";
+    response.prepare_payload();
+
+    http::async_write(*peer->socket, response,
+                      [&](beast::error_code ec, std::size_t nbytes) {
+                        if (ec) {
+                          throw PeerError{ec, peer};
+                        }
+                      });
+    return input;
+  }
+
+  CBVar *_peerVar{nullptr};
+  http::response<http::string_body> response;
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Post", Post);
   REGISTER_CBLOCK("Http.Server", Server);
+  REGISTER_CBLOCK("Http.Read", Read);
+  REGISTER_CBLOCK("Http.Response", Response);
 }
 } // namespace Http
 } // namespace chainblocks

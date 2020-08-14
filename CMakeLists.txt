@@ -98,6 +98,8 @@ endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
+  SET(CMAKE_AR llvm-ar)
+  SET(CMAKE_RANLIB llvm-ranlib)
 endif()
 
 if(PROFILE_GPROF)

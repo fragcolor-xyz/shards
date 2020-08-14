@@ -1463,7 +1463,7 @@ template <typename T> struct ChainDoppelgangerPool {
       CBVar vchain{};
       serializer.deserialize(r, vchain);
       auto chain = CBChain::sharedFromRef(vchain.payload.chainValue);
-      auto fresh = std::make_shared<T>();
+      auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->chain = chain;
       composer.compose(chain.get());
       return fresh;
@@ -1474,7 +1474,7 @@ template <typename T> struct ChainDoppelgangerPool {
     }
   }
 
-  void release(std::tuple<T> chain) { _avail.emplace_back(chain); }
+  void release(std::shared_ptr<T> chain) { _avail.emplace_back(chain); }
 
 private:
   struct Writer {
@@ -1493,6 +1493,10 @@ private:
     }
   };
 
+  // keep our pool in a deque in order to keep them alive
+  // so users don't have to worry about lifetime
+  // just release when possible
+  std::deque<std::shared_ptr<T>> _pool;
   std::vector<std::shared_ptr<T>> _avail;
   std::string _chainStr;
 };
