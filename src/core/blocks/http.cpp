@@ -587,31 +587,64 @@ struct Read {
 };
 
 struct Response {
-  static inline Types PostInTypes{CoreInfo::NoneType, CoreInfo::StringTableType,
-                                  CoreInfo::StringType};
+  static inline Types PostInTypes{CoreInfo::StringType};
 
   static CBTypesInfo inputTypes() { return PostInTypes; }
   static CBTypesInfo outputTypes() { return PostInTypes; }
 
+  static inline Parameters params{
+      {"Status", "The HTTP status code to return.", {CoreInfo::IntType}},
+      {"Headers",
+       "The headers to attach to this request.",
+       {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
+        CoreInfo::NoneType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    if (index == 0)
+      _status = http::status(value.payload.intValue);
+    else
+      _headers = value;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return Var(int64_t(_status));
+    else
+      return _headers;
+  }
+
   void warmup(CBContext *context) {
+    _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
   }
 
   void cleanup() {
+    _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
-    response.clear();
+    _response.clear();
 
-    response.result(http::status::not_found);
-    response.set(http::field::content_type, "text/plain");
-    response.body() = "File not found\r\n";
-    response.prepare_payload();
+    _response.result(_status);
+    _response.set(http::field::content_type, "application/json");
+    _response.body() = input.payload.stringValue;
 
-    http::async_write(*peer->socket, response,
+    // add custom headers
+    if (_headers.get().valueType == Table) {
+      auto htab = _headers.get().payload.tableValue;
+      ForEach(htab, [&](auto key, auto &value) {
+        _response.set(key, value.payload.stringValue);
+      });
+    }
+
+    _response.prepare_payload();
+
+    http::async_write(*peer->socket, _response,
                       [&](beast::error_code ec, std::size_t nbytes) {
                         if (ec) {
                           throw PeerError{ec, peer};
@@ -620,8 +653,10 @@ struct Response {
     return input;
   }
 
+  http::status _status{200};
   CBVar *_peerVar{nullptr};
-  http::response<http::string_body> response;
+  ParamVar _headers{};
+  http::response<http::string_body> _response;
 };
 
 void registerBlocks() {

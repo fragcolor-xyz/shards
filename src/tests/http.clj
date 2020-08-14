@@ -39,3 +39,24 @@
 ; test reusing sockets/streams
 (schedule Root test)
 (run Root 0.1)
+
+;; (def server-handler
+;;   (Chain
+;;    "server-handler"
+;;    :Looped
+;;    (Msg "handled")
+;;    (Http.Read)
+;;    (Log)
+;;    1 >> .r
+;;    2 >> .r
+;;    3 >> .r
+;;    .r (ToJson) (Http.Response)))
+
+;; (def test-server
+;;   (Chain
+;;    "test"
+;;    :Looped
+;;    (Http.Server :Handler server-handler)))
+
+;; (schedule Root test-server)
+;; (run Root 0.1)
