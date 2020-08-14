@@ -12,7 +12,6 @@
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 
-#include "asiotools.hpp"
 #include "blockwrapper.hpp"
 #include "chainblocks.hpp"
 #include "shared.hpp"
@@ -366,6 +365,14 @@ struct Post final : public Client {
   }
 };
 
+struct Peer {
+  std::shared_ptr<CBChain> chain;
+  std::shared_ptr<tcp::socket> socket;
+  beast::flat_buffer buffer{8192};
+  http::request<http::dynamic_body> request;
+  http::response<http::dynamic_body> response;
+};
+
 struct Server {
   static inline Parameters params{
       {"Endpoint",
@@ -374,8 +381,7 @@ struct Server {
       {"Port", "The port this service will use.", {CoreInfo::IntType}},
       {"Handler",
        "The chain that will be spawned and handle a remote request.",
-       {CoreInfo::ChainType}},
-      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}}};
+       {CoreInfo::ChainType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -393,11 +399,9 @@ struct Server {
       break;
     case 2: {
       _handlerMaster = val;
-      _pool.reset(new ChainDoppelgangerPool(_handlerMaster.payload.chainValue));
+      _pool.reset(
+          new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
     } break;
-    case 3:
-      _secure = val.payload.boolValue;
-      break;
     default:
       break;
     }
@@ -411,8 +415,6 @@ struct Server {
       return Var(int(_port));
     case 2:
       return _handlerMaster;
-    case 3:
-      return Var(_secure);
     default:
       return Var::Empty;
     }
@@ -425,18 +427,11 @@ struct Server {
     return data.inputType;
   }
 
-  struct Peer {
-    Peer(const std::shared_ptr<CBChain> &chain, net::io_context &ctx)
-        : chain(chain), socket(ctx) {}
-    std::shared_ptr<CBChain> chain;
-    tcp::socket socket;
-  };
-
   // "Loop" forever accepting new connections.
   void accept_once(CBContext *context) {
-    auto *peer = &_peers.emplace_back(_pool->acquire(_composer), _ioc()());
+    auto peer = _pool->acquire(_composer);
     _acceptor->async_accept(
-        peer->socket, [context, peer, this](beast::error_code ec) {
+        *peer->socket, [context, peer, this](beast::error_code ec) {
           if (!ec) {
             auto node = context->main->node.lock();
             if (node)
@@ -451,14 +446,18 @@ struct Server {
       throw ComposeError("Peer chains pool not valid!");
     }
 
+    _ioc.reset({});
     auto addr = net::ip::make_address(_endpoint);
-    _acceptor.reset(new tcp::acceptor(_ioc()(), {addr, _port}));
+    _acceptor.reset(new tcp::acceptor(*_ioc, {addr, _port}));
     _composer.context = context;
     // start accepting
     accept_once(context);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return input; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _ioc->poll();
+    return input;
+  }
 
   struct Composer {
     Server &server;
@@ -488,20 +487,17 @@ struct Server {
   };
 
   bool _secure{true};
-  uint16_t _port{443};
+  uint16_t _port{7070};
   std::string _endpoint{"0.0.0.0"};
   OwnedVar _handlerMaster{};
-  std::unique_ptr<ChainDoppelgangerPool> _pool;
+  std::unique_ptr<ChainDoppelgangerPool<Peer>> _pool;
   IterableExposedInfo _sharedCopy;
   Composer _composer{*this};
 
   // The io_context is required for all I/O
-  ThreadShared<Asio::IOContext> _ioc;
+  std::unique_ptr<net::io_context> _ioc;
   std::deque<Peer> _peers;
   std::unique_ptr<tcp::acceptor> _acceptor;
-
-  // The SSL context is required, and holds certificates
-  ssl::context _secure_ctx{ssl::context::tlsv12};
 };
 
 void registerBlocks() {

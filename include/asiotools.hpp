@@ -40,6 +40,7 @@ public:
   void forfeit(T *o) { _empty_queue.push(o); }
 };
 
+// DEPRECATED/NOT USEFUL, just call .poll() on io_context
 class IOContext {
 private:
   boost::asio::io_context _io_context;
