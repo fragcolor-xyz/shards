@@ -1493,7 +1493,6 @@ private:
     }
   };
 
-  std::deque<std::shared_ptr<T>> _pool;
   std::vector<std::shared_ptr<T>> _avail;
   std::string _chainStr;
 };
