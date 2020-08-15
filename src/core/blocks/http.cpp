@@ -284,7 +284,7 @@ struct Get final : public Client {
   }
 };
 
-struct Post final : public Client {
+template <http::verb VERB> struct PostLike final : public Client {
   static inline Types PostInTypes{CoreInfo::NoneType, CoreInfo::StringTableType,
                                   CoreInfo::StringType};
 
@@ -319,7 +319,7 @@ struct Post final : public Client {
 
         // Set up an HTTP GET request message
         http::request<http::string_body> req{
-            http::verb::post, target.get().payload.stringValue, version};
+            VERB, target.get().payload.stringValue, version};
         req.set(http::field::host, host.get().payload.stringValue);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         if (input.valueType == Table) {
@@ -364,6 +364,9 @@ struct Post final : public Client {
     }
   }
 };
+
+using Post = PostLike<http::verb::post>;
+using Put = PostLike<http::verb::put>;
 
 struct Peer : public std::enable_shared_from_this<Peer> {
   static constexpr uint32_t PeerCC = 'httP';
@@ -662,6 +665,7 @@ struct Response {
 void registerBlocks() {
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Post", Post);
+  REGISTER_CBLOCK("Http.Put", Put);
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);
   REGISTER_CBLOCK("Http.Response", Response);
