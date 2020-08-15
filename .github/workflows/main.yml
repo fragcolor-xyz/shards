@@ -25,7 +25,17 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+        docker run --name chainblocks -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+        mkdir build
+        docker cp chainblocks:/home/tester/test/build/cbl ./build/cbl
+    - uses: chainblocks/Publish-Docker-Github-Action@master
+      name: Upload to dockerhub
+      with:
+        name: fragcolor/chainblocks
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        dockerfile: docker/linux/Dockerfile-runtime
+        tags: "latest"
 
   ciLinuxValgrind:
     runs-on: ubuntu-latest
