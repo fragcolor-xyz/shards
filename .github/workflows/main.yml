@@ -35,7 +35,7 @@ jobs:
       run: |
         docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
         mkdir build
-        docker cp chainblocks:/home/tester/test/build/cbl ./build/cbl
+        docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
     - uses: chainblocks/Publish-Docker-Github-Action@master
       name: Build and upload to hub runtime image
       with:
