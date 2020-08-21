@@ -400,7 +400,10 @@ struct Maybe : public BaseSubFlow {
     else
       _composition = {};
 
-    if (!elseComp.flowStopper &&
+    const auto nextIsNone = data.outputTypes.len == 1 &&
+                            data.outputTypes.elements[0].basicType == None;
+
+    if (!nextIsNone && !elseComp.flowStopper &&
         _composition.outputType != elseComp.outputType) {
       throw ComposeError(
           "Maybe: output types mismatch between the two possible flows!");
@@ -525,7 +528,10 @@ template <bool COND> struct When {
 
     auto ares = _action.compose(data);
 
-    if (!ares.flowStopper && !_passth) {
+    const auto nextIsNone = data.outputTypes.len == 1 &&
+                            data.outputTypes.elements[0].basicType == None;
+
+    if (!nextIsNone && !ares.flowStopper && !_passth) {
       if (cres.outputType != data.inputType) {
         throw ComposeError("When Passthrough is false but action output type "
                            "does not match input type.");
@@ -614,7 +620,10 @@ struct IfBlock {
     const auto tres = _then.compose(data);
     const auto eres = _else.compose(data);
 
-    if (!tres.flowStopper && !eres.flowStopper && !_passth) {
+    const auto nextIsNone = data.outputTypes.len == 1 &&
+                            data.outputTypes.elements[0].basicType == None;
+
+    if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
         throw ComposeError("If - Passthrough is false but action output types "
                            "do not match.");
