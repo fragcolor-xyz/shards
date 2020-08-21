@@ -19,6 +19,18 @@
   (Chain
    "namedChain"
    (Msg "Running tests!")
+   
+   false
+   (Match [true ~["Yes"]
+           false ~["No"]]
+          :Passthrough false)
+   (Assert.Is "No" true)
+   
+   false
+   (Match [true ~["Yes"]
+           nil ~["No"]]
+          :Passthrough false)
+   (Assert.Is "No" true)
 
    true
    (Cond [#((Is true)) #((Msg "Cond was true!!") false)

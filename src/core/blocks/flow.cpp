@@ -672,6 +672,135 @@ private:
   bool _passth = false;
 };
 
+struct Match {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Cases",
+       "The cases to match the input against, a nil/None case will match "
+       "anything.",
+       {CoreInfo::AnySeqType}},
+      {"Passthrough",
+       "The input of this block will be the output. (default: true)",
+       {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0: {
+      auto counter = value.payload.seqValue.len;
+      if (counter % 2)
+        throw CBException("Cond: first parameter must contain a sequence of "
+                          "pairs [condition to check & action to perform if "
+                          "check passed (true)].");
+      _cases.resize(counter / 2);
+      _actions.resize(counter / 2);
+      _full.resize(counter);
+      auto idx = 0;
+      for (uint32_t i = 0; i < counter; i += 2) {
+        _cases[idx] = value.payload.seqValue.elements[i];
+        _actions[idx] = value.payload.seqValue.elements[i + 1];
+        _full[i] = _cases[idx];
+        _full[i + 1] = _actions[idx];
+        idx++;
+      }
+      _ncases = int(counter);
+    } break;
+    case 1:
+      _pass = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_full);
+    case 1:
+      return Var(_pass);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    for (auto &case_ : _cases) {
+      if (case_.valueType != None &&
+          case_.valueType != data.inputType.basicType) {
+        // must compare deeply
+        ToTypeInfo cinfo(case_);
+        if (cinfo != data.inputType) {
+          throw ComposeError(
+              "Match: each case must match the input type!, found a mismatch.");
+        }
+      }
+    }
+
+    CBTypeInfo firstOutput{};
+    bool first = true;
+    for (auto &action : _actions) {
+      const auto cres = action.compose(data);
+      if (!_pass) {
+        // must evaluate output types and enforce they match between each case,
+        // unless flow stopper
+        if (first) {
+          firstOutput = cres.outputType;
+          first = false;
+        } else {
+          if (!cres.flowStopper) {
+            if (cres.outputType != firstOutput) {
+              throw ComposeError("Match: when not Passthrough output types "
+                                 "must match between cases.");
+            }
+          }
+        }
+      }
+    }
+
+    return _pass ? data.inputType : firstOutput;
+  }
+
+  void warmup(CBContext *context) {
+    for (auto &action : _actions) {
+      action.warmup(context);
+    }
+  }
+
+  void cleanup() {
+    for (auto &action : _actions) {
+      action.cleanup();
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar finalOutput{};
+    bool matched = false;
+    for (auto i = 0; i < _ncases; i++) {
+      auto &case_ = _cases[i];
+      auto &action = _actions[i];
+      if (case_ == input || case_.valueType == None) {
+        action.activate(context, input, finalOutput);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      throw ActivationError(
+          "Failed to match input, no matching case is present.");
+    }
+    return _pass ? input : finalOutput;
+  }
+
+  std::vector<OwnedVar> _cases;
+  std::vector<BlocksVar> _actions;
+  std::vector<CBVar> _full;
+  int _ncases = 0;
+  bool _pass = true;
+};
+
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
   REGISTER_CBLOCK("Maybe", Maybe);
@@ -679,5 +808,6 @@ void registerFlowBlocks() {
   REGISTER_CBLOCK("When", When<true>);
   REGISTER_CBLOCK("WhenNot", When<false>);
   REGISTER_CBLOCK("If", IfBlock);
+  REGISTER_CBLOCK("Match", Match);
 }
 }; // namespace chainblocks
