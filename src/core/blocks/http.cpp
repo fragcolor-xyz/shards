@@ -384,13 +384,13 @@ struct PeerError {
 
 struct Server {
   static inline Parameters params{
+      {"Handler",
+       "The chain that will be spawned and handle a remote request.",
+       {CoreInfo::ChainType}},
       {"Endpoint",
        "The URL from where your service can be accessed by a client.",
        {CoreInfo::StringType}},
-      {"Port", "The port this service will use.", {CoreInfo::IntType}},
-      {"Handler",
-       "The chain that will be spawned and handle a remote request.",
-       {CoreInfo::ChainType}}};
+      {"Port", "The port this service will use.", {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -400,17 +400,17 @@ struct Server {
 
   void setParam(int idx, CBVar val) {
     switch (idx) {
-    case 0:
-      _endpoint = val.payload.stringValue;
-      break;
-    case 1:
-      _port = uint16_t(val.payload.intValue);
-      break;
-    case 2: {
+    case 0: {
       _handlerMaster = val;
       _pool.reset(
           new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
     } break;
+    case 1:
+      _endpoint = val.payload.stringValue;
+      break;
+    case 2:
+      _port = uint16_t(val.payload.intValue);
+      break;
     default:
       break;
     }
@@ -419,11 +419,11 @@ struct Server {
   CBVar getParam(int idx) {
     switch (idx) {
     case 0:
-      return Var(_endpoint);
-    case 1:
-      return Var(int(_port));
-    case 2:
       return _handlerMaster;
+    case 1:
+      return Var(_endpoint);
+    case 2:
+      return Var(int(_port));
     default:
       return Var::Empty;
     }

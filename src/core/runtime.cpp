@@ -1703,11 +1703,14 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
       if (validateSetParam(block, index, value.payload.seqValue.elements[i],
                            callback, userData)) {
         return true;
+      } else {
+        return false;
       }
     }
   }
 
-  std::string err("Parameter not accepting this kind of variable");
+  std::string err("Parameter not accepting this kind of variable (" +
+                  type2Name(value.valueType) + ")");
   callback(block, err.c_str(), false, userData);
 
   return false;
