@@ -1794,6 +1794,8 @@ void error_handler(int err_sig) {
 }
 
 void installSignalHandlers() {
+  std::signal(SIGINT, &error_handler);
+  std::signal(SIGTERM, &error_handler);
   std::signal(SIGFPE, &error_handler);
   std::signal(SIGILL, &error_handler);
   std::signal(SIGABRT, &error_handler);
