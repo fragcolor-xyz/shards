@@ -52,8 +52,6 @@ public:
 CBlock *createBlock(std::string_view name);
 
 struct Type {
-  CBTypeInfo _type;
-
   Type() : _type({CBType::None}) {}
 
   Type(CBTypeInfo type) : _type(type) {}
@@ -74,6 +72,15 @@ struct Type {
   }
 
   operator CBTypeInfo() { return _type; }
+
+  static Type SeqOf(CBTypesInfo types) {
+    Type res;
+    res._type = {CBType::Seq, {.seqTypes = types}};
+    return res;
+  }
+
+private:
+  CBTypeInfo _type;
 };
 
 struct Types {

@@ -151,6 +151,13 @@
       (--> false))
   (Assert.IsNot true false)
 
+  (Const ["A" "B" "C"])
+  (TryMany (Chain "print-stuff" (Log) "Ok"))
+  (Assert.Is ["Ok" "Ok" "Ok"] false)
+  (Const ["A" "B" "C"])
+  (TryMany (Chain "print-stuff" (Log)) :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" false)
+
   (Msg "Done")))
 
 (run Root 0.1)

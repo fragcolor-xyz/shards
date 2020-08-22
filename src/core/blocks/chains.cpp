@@ -1070,6 +1070,227 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   }
 };
 
+enum class WaitUntil {
+  FirstSuccess, // will wait until the first success and stop any other pending
+                // operation
+  AllSuccess, // will wait untill all complete will stop and fail on any failure
+  SomeSuccess // will wait until all complete but won't fail if some of the
+              // chains failed
+};
+
+struct ManyChain : public std::enable_shared_from_this<ManyChain> {
+  uint32_t index;
+  std::shared_ptr<CBChain> chain;
+};
+
+struct TryMany : public ChainBase {
+  typedef EnumInfo<WaitUntil> WaitUntilInfo;
+  static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
+  static inline Type WaitUntilType{
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  static inline Parameters _params{
+      {"Chain", "The chain to spawn and try to run many times concurrently.",
+       ChainBase::ChainVarTypes},
+      {"Policy",
+       "The execution policy in terms of chains success.",
+       {WaitUntilType}}};
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chainref = value;
+      break;
+    case 1:
+      _policy = WaitUntil(value.payload.enumValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return chainref;
+    case 1:
+      return Var::Enum(_policy, CoreCC, 'tryM');
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    ChainBase::compose(data); // discard the result, we do our thing here
+
+    _pool.reset(new ChainDoppelgangerPool<ManyChain>(CBChain::weakRef(chain)));
+
+    const IterableExposedInfo shared(data.shared);
+    // copy shared
+    _sharedCopy = shared;
+
+    // copy single input type
+    if (data.inputType.seqTypes.len != 1) {
+      throw ComposeError("Expected a homogenous sequence as input");
+    } else {
+      _inputType = data.inputType.seqTypes.elements[0];
+    }
+
+    if (_policy == WaitUntil::FirstSuccess) {
+      // single result
+      return chain->outputType;
+    } else {
+      // seq result
+      _outputTypes = Types({chain->outputType});
+      _outputSeqType = Type::SeqOf(_outputTypes);
+      return _outputSeqType;
+    }
+  }
+
+  struct Composer {
+    TryMany &server;
+    CBContext *context;
+
+    void compose(CBChain *chain) {
+      CBInstanceData data{};
+      data.inputType = server._inputType;
+      data.shared = server._sharedCopy;
+      data.chain = context->chainStack.back();
+      chain->node = context->main->node;
+      auto res = composeChain(
+          chain,
+          [](const struct CBlock *errorBlock, const char *errorTxt,
+             CBBool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              LOG(ERROR) << errorTxt;
+              throw ActivationError("Http.Server handler chain compose failed");
+            } else {
+              LOG(WARNING) << errorTxt;
+            }
+          },
+          nullptr, data);
+      arrayFree(res.exposedInfo);
+      arrayFree(res.requiredInfo);
+    }
+  } _composer{*this};
+
+  void warmup(CBContext *context) { _composer.context = context; }
+
+  void cleanup() {
+    _outputs.resize(_maxSize);
+    for (auto &v : _outputs) {
+      destroyVar(v);
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // schedule many
+    auto node = context->main->node.lock();
+
+    std::vector<std::shared_ptr<ManyChain>> chains(input.payload.seqValue.len);
+    // stop chains in any case if we exit this call
+    DEFER({
+      for (auto &cref : chains) {
+        stop(cref->chain.get());
+        _pool->release(cref);
+      }
+    });
+
+    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+      chains[i] = _pool->acquire(_composer);
+      chains[i]->index = i;
+    }
+
+    auto nchains = chains.size();
+
+    // cleanup outputs, store max size tho for cleanup
+    _maxSize = std::max(_maxSize, _outputs.size());
+    _outputs.clear();
+
+    // wait according to policy
+    while (true) {
+      const auto _suspend_state = chainblocks::suspend(context, 0);
+      if (unlikely(_suspend_state != CBChainState::Continue)) {
+        return Var::Empty;
+      } else {
+        // advance our chains and check
+        for (auto it = chains.begin(); it != chains.end();) {
+          auto &cref = *it;
+
+          // Prepare and start if no callc was called
+          if (!cref->chain->coro) {
+            cref->chain->node = context->main->node;
+            // Notice we don't share our flow!
+            // let the chain create one by passing null
+            chainblocks::prepare(cref->chain.get(), nullptr);
+            chainblocks::start(cref->chain.get(),
+                               input.payload.seqValue.elements[cref->index]);
+          }
+
+          // Tick the chain on the flow that this chain created
+          chainblocks::tick(cref->chain->context->flow->chain,
+                            input.payload.seqValue.elements[cref->index]);
+
+          if (!isRunning(cref->chain.get())) {
+            if (cref->chain->state == CBChain::State::Ended) {
+              if (_policy == WaitUntil::FirstSuccess) {
+                // success, next call clones, make sure to destroy
+                _outputs.resize(1);
+                stop(cref->chain.get(), &_outputs[0]);
+                // short-circuit, defer will take care of cleaning up
+                return _outputs[0];
+              } else {
+                CBVar output{};
+                stop(cref->chain.get(), &output);
+                _outputs.emplace_back(output);
+                it = chains.erase(it);
+              }
+            } else {
+              // remove failed chains
+              it = chains.erase(it);
+            }
+          } else {
+            ++it;
+          }
+        }
+
+        if (chains.size() == 0) {
+          auto osize = _outputs.size();
+          if (unlikely(osize == 0)) {
+            throw ActivationError("TryMany, failed all chains!");
+          } else {
+            // all ended let's apply policy here
+            if (_policy == WaitUntil::SomeSuccess) {
+              return Var(_outputs);
+            } else {
+              assert(_policy == WaitUntil::AllSuccess);
+              if (nchains == osize) {
+                return Var(_outputs);
+              } else {
+                throw ActivationError("TryMany, failed some chains!");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  WaitUntil _policy{WaitUntil::AllSuccess};
+  std::unique_ptr<ChainDoppelgangerPool<ManyChain>> _pool;
+  IterableExposedInfo _sharedCopy;
+  Type _outputSeqType;
+  Types _outputTypes;
+  CBTypeInfo _inputType{};
+  std::vector<CBVar> _outputs;
+  size_t _maxSize{0};
+};
+
 void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
@@ -1079,5 +1300,6 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
   REGISTER_CBLOCK("Recur", Recur);
+  REGISTER_CBLOCK("TryMany", TryMany);
 }
 }; // namespace chainblocks
