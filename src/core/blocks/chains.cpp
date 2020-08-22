@@ -1135,10 +1135,12 @@ struct TryMany : public ChainBase {
     _sharedCopy = shared;
 
     // copy single input type
-    if (data.inputType.seqTypes.len != 1) {
+    if (data.inputType.seqTypes.len > 1) {
       throw ComposeError("Expected a homogenous sequence as input");
-    } else {
+    } else if (data.inputType.seqTypes.len == 1) {
       _inputType = data.inputType.seqTypes.elements[0];
+    } else {
+      _inputType = CoreInfo::AnyType;
     }
 
     if (_policy == WaitUntil::FirstSuccess) {
