@@ -700,7 +700,7 @@ struct Ref : public SetBase {
     // so if we detect refcount > 1, we except signaling a dangling reference
     if (_target) {
       if (_target->refcount > 1) {
-        throw CBException("Ref - detected a dangling reference.");
+        throw CBException("Ref - detected a dangling reference: " + _name);
       }
       memset(_target, 0x0, sizeof(CBVar));
       _target = nullptr;
