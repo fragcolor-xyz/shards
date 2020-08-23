@@ -606,12 +606,12 @@
    (Log)
 
    "baz.dat"
-   (Regex.Match "([a-z]+)\\.([a-z]+)")
+   (Regex.Match #"([a-z]+)\.([a-z]+)")
    (Log)
    (Assert.Is ["baz.dat" "baz" "dat"] true)
 
    "Quick brown fox"
-   (Regex.Replace "a|e|i|o|u" "[$&]")
+   (Regex.Replace #"a|e|i|o|u" "[$&]")
    (Log)
    (Assert.Is "Q[u][i]ck br[o]wn f[o]x" true)
 
