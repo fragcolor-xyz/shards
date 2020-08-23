@@ -1536,7 +1536,8 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
     auto &last = chain.back();
     if (strcmp(last->name(last), "Restart") == 0 ||
         strcmp(last->name(last), "Stop") == 0 ||
-        strcmp(last->name(last), "Return") == 0) {
+        strcmp(last->name(last), "Return") == 0 ||
+        strcmp(last->name(last), "Fail") == 0) {
       result.flowStopper = true;
     }
   }

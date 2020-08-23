@@ -20,6 +20,9 @@
    "namedChain"
    (Msg "Running tests!")
    
+   (Const #"\sHello")
+   (Log)
+   
    false
    (Match [true ~["Yes"]
            false ~["No"]]

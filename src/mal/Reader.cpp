@@ -17,6 +17,7 @@ static const Regex tokenRegexes[] = {
     Regex("#\\("),
     Regex("[\\[\\]{}()'`~^@]"),
     Regex("\"(?:\\\\.|[^\\\\\"])*\""),
+    Regex("#\"(?:\\\\.|[^\\\\\"])*\""),
     Regex("[^\\s\\[\\]{}('\"`,;)]+"),
 };
 
@@ -135,8 +136,7 @@ static malValuePtr readForm(Tokeniser& tokeniser)
     MAL_CHECK(!tokeniser.eof(), "expected form, got EOF");
     String token = tokeniser.peek();
 
-    MAL_CHECK(!std::regex_match(token, closeRegex),
-            "unexpected '%s'", token.c_str());
+    MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s'", token.c_str());
 
     if (token == "(") {
         tokeniser.next();
@@ -191,6 +191,10 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     
     if (token[0] == '"') {
         return mal::string(unescape(token));
+    }
+
+    if (token[0] == '#' && token[1] == '"') {
+        return mal::string(token.substr(2, token.length() - 3));
     }
     
     if (token[0] == ':') {

@@ -420,6 +420,15 @@ struct Return {
   }
 };
 
+struct Fail {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    context->cancelFlow(input.payload.stringValue);
+    return input;
+  }
+};
+
 struct IsValidNumber {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -2593,6 +2602,7 @@ RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);
 RUNTIME_CORE_BLOCK_TYPE(Stop);
+RUNTIME_CORE_BLOCK_TYPE(Fail);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);
 RUNTIME_CORE_BLOCK_TYPE(IsValidNumber);
