@@ -1449,17 +1449,17 @@ struct Image : public Base {
 
 struct PlotContext {
   PlotContext() {
-    context = ImPlot::createContext();
-    ImPlot::setGlobalContext(context);
+    context = ImPlot::CreateContext();
+    ImPlot::SetCurrentContext(context);
   }
 
   ~PlotContext() {
-    ImPlot::setGlobalContext(nullptr);
-    ImPlot::destroyContext(context);
+    ImPlot::SetCurrentContext(nullptr);
+    ImPlot::DestroyContext(context);
   }
 
 private:
-  ImPlot::ImPlotContext *context{nullptr};
+  ImPlotContext *context{nullptr};
 };
 
 struct Plot : public Base {
