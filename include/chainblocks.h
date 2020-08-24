@@ -943,6 +943,8 @@ typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
                                                   void *userData,
                                                   CBAsyncActivateProc call);
 
+typedef CBStrings(__cdecl *CBGetBlocks)();
+
 struct CBChainInfo {
   const char *name;
   CBBool looped;
@@ -960,7 +962,7 @@ typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 
 typedef void(__cdecl *CBSetLoggingOptions)(struct CBLoggingOptions options);
 
-struct CBCore {
+typedef struct _CBCore {
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
   // Adds a custom object type to the runtime database
@@ -1055,10 +1057,9 @@ struct CBCore {
 
   // async execution
   CBRunAsyncActivate asyncActivate;
-};
+} CBCore;
 
-typedef CBBool(__cdecl *CBChainblocksInterface)(uint32_t abi_version,
-                                                struct CBCore *core);
+typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
@@ -1081,8 +1082,7 @@ typedef CBBool(__cdecl *CBChainblocksInterface)(uint32_t abi_version,
 #if defined(__cplusplus)
 extern "C" {
 #endif
-EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
-                                             struct CBCore *core);
+EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version);
 #if defined(__cplusplus)
 };
 #endif
