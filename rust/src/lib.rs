@@ -242,7 +242,7 @@ mod dummy_block {
 
     let blkname = CString::new("Dummy").expect("CString failed...");
     unsafe {
-      let cblk = Core.createBlock.unwrap()(blkname.as_ptr());
+      let cblk = (*Core).createBlock.unwrap()(blkname.as_ptr());
       (*cblk).setup.unwrap()(cblk);
       (*cblk).destroy.unwrap()(cblk);
     }
