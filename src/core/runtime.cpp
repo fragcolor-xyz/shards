@@ -760,21 +760,30 @@ void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
     }                                                                          \
   }
 
+bool cb_current_interface_loaded{false};
+CBCore cb_current_interface{};
+
 extern "C" {
-EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
-                                             CBCore *result) {
+EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
+  // for now we ignore abi_version
+  if (cb_current_interface_loaded)
+    return &cb_current_interface;
+
   // Load everything we know if we did not yet!
   try {
     chainblocks::registerCoreBlocks();
   } catch (const std::exception &ex) {
     LOG(ERROR) << "Failed to register core blocks, error: " << ex.what();
-    return false;
+    return nullptr;
   }
 
   if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
     LOG(ERROR) << "A plugin requested an invalid ABI version.";
-    return false;
+    return nullptr;
   }
+
+  auto result = &cb_current_interface;
+  cb_current_interface_loaded = true;
 
   result->registerBlock = [](const char *fullName,
                              CBBlockConstructor constructor) noexcept {
@@ -1078,7 +1087,7 @@ EXPORTED CBBool __cdecl chainblocksInterface(uint32_t abi_version,
     return chainblocks::awaitne(context, [&] { return call(context, data); });
   };
 
-  return true;
+  return result;
 }
 };
 

@@ -41,92 +41,7 @@ fn try_load_dlls() -> Option<Library> {
 
 pub static mut CBDLL: Option<Library> = None;
 
-pub static mut Core: CBCore = CBCore {
-  registerBlock: None,
-  registerObjectType: None,
-  registerEnumType: None,
-  registerRunLoopCallback: None,
-  unregisterRunLoopCallback: None,
-  registerExitCallback: None,
-  unregisterExitCallback: None,
-  referenceVariable: None,
-  referenceChainVariable: None,
-  releaseVariable: None,
-  abortChain: None,
-  suspend: None,
-  getState: None,
-  cloneVar: None,
-  destroyVar: None,
-  seqFree: None,
-  seqPush: None,
-  seqInsert: None,
-  seqPop: None,
-  seqResize: None,
-  seqFastDelete: None,
-  seqSlowDelete: None,
-  typesFree: None,
-  typesPush: None,
-  typesInsert: None,
-  typesPop: None,
-  typesResize: None,
-  typesFastDelete: None,
-  typesSlowDelete: None,
-  paramsFree: None,
-  paramsPush: None,
-  paramsInsert: None,
-  paramsPop: None,
-  paramsResize: None,
-  paramsFastDelete: None,
-  paramsSlowDelete: None,
-  blocksFree: None,
-  blocksPush: None,
-  blocksInsert: None,
-  blocksPop: None,
-  blocksResize: None,
-  blocksFastDelete: None,
-  blocksSlowDelete: None,
-  expTypesFree: None,
-  expTypesPush: None,
-  expTypesInsert: None,
-  expTypesPop: None,
-  expTypesResize: None,
-  expTypesFastDelete: None,
-  expTypesSlowDelete: None,
-  stringsFree: None,
-  stringsPush: None,
-  stringsInsert: None,
-  stringsPop: None,
-  stringsResize: None,
-  stringsFastDelete: None,
-  stringsSlowDelete: None,
-  tableNew: None,
-  composeChain: None,
-  validateSetParam: None,
-  runChain: None,
-  composeBlocks: None,
-  runBlocks: None,
-  getChainInfo: None,
-  log: None,
-  setLoggingOptions: None,
-  createBlock: None,
-  createChain: None,
-  setChainName: None,
-  setChainLooped: None,
-  setChainUnsafe: None,
-  addBlock: None,
-  removeBlock: None,
-  destroyChain: None,
-  stopChain: None,
-  createNode: None,
-  destroyNode: None,
-  schedule: None,
-  unschedule: None,
-  tick: None,
-  sleep: None,
-  getRootPath: None,
-  setRootPath: None,
-  asyncActivate: None,
-};
+pub static mut Core: *mut CBCore = core::ptr::null_mut();
 
 static mut init_done: bool = false;
 
@@ -134,26 +49,26 @@ unsafe fn initInternal() {
   let exe = Library::open_self().ok().unwrap();
 
   let exefun = exe
-    .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>(
+    .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>(
       "chainblocksInterface",
     )
     .ok();
   if exefun.is_some() {
     let fun = exefun.unwrap();
-    let res = fun(ABI_VERSION, &mut Core);
-    if !res {
+    Core = fun(ABI_VERSION);
+    if Core == core::ptr::null_mut() {
       panic!("Failed to aquire chainblocks interface, version not compatible.");
     }
     log("chainblocks-rs attached! (exe)");
   } else {
     let lib = try_load_dlls().unwrap();
     let fun = lib
-      .symbol::<unsafe extern "C" fn(abi_version: u32, pcore: *mut CBCore) -> CBBool>(
+      .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>(
         "chainblocksInterface",
       )
       .unwrap();
-    let res = fun(ABI_VERSION, &mut Core);
-    if !res {
+    Core = fun(ABI_VERSION);
+    if Core == core::ptr::null_mut() {
       panic!("Failed to aquire chainblocks interface, version not compatible.");
     }
     CBDLL = Some(lib);
@@ -174,7 +89,7 @@ pub fn init() {
 #[inline(always)]
 pub fn log(s: &str) {
   unsafe {
-    Core.log.unwrap()(s.as_ptr() as *const i8);
+    (*Core).log.unwrap()(s.as_ptr() as *const i8);
   }
 }
 
@@ -194,7 +109,7 @@ macro_rules! cblog {
 #[inline(always)]
 pub fn sleep(seconds: f64) {
   unsafe {
-    Core.sleep.unwrap()(seconds, true);
+    (*Core).sleep.unwrap()(seconds, true);
   }
 }
 
@@ -202,7 +117,7 @@ pub fn sleep(seconds: f64) {
 pub fn suspend(context: &CBContext, seconds: f64) -> ChainState {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    Core.suspend.unwrap()(ctx, seconds).into()
+    (*Core).suspend.unwrap()(ctx, seconds).into()
   }
 }
 
@@ -210,7 +125,7 @@ pub fn suspend(context: &CBContext, seconds: f64) -> ChainState {
 pub fn getState(context: &CBContext) -> ChainState {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    Core.getState.unwrap()(ctx).into()
+    (*Core).getState.unwrap()(ctx).into()
   }
 }
 
@@ -219,14 +134,14 @@ pub fn abortChain(context: &CBContext, message: &str) {
   let cmsg = CString::new(message).unwrap();
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    Core.abortChain.unwrap()(ctx, cmsg.as_ptr());
+    (*Core).abortChain.unwrap()(ctx, cmsg.as_ptr());
   }
 }
 
 #[inline(always)]
 pub fn registerBlock<T: Default + Block>() {
   unsafe {
-    Core.registerBlock.unwrap()(
+    (*Core).registerBlock.unwrap()(
       T::registerName().as_ptr() as *const c_char,
       Some(cblock_construct::<T>),
     );
@@ -236,7 +151,7 @@ pub fn registerBlock<T: Default + Block>() {
 #[inline(always)]
 pub fn getRootPath() -> &'static str {
   unsafe {
-    CStr::from_ptr(Core.getRootPath.unwrap()())
+    CStr::from_ptr((*Core).getRootPath.unwrap()())
       .to_str()
       .unwrap()
   }
@@ -245,20 +160,20 @@ pub fn getRootPath() -> &'static str {
 #[inline(always)]
 pub fn createBlock(name: &str) -> CBlockPtr {
   let cname = CString::new(name).unwrap();
-  unsafe { Core.createBlock.unwrap()(cname.as_ptr()) }
+  unsafe { (*Core).createBlock.unwrap()(cname.as_ptr()) }
 }
 
 #[inline(always)]
 pub fn cloneVar(dst: &mut Var, src: &Var) {
   unsafe {
-    Core.cloneVar.unwrap()(dst, src);
+    (*Core).cloneVar.unwrap()(dst, src);
   }
 }
 
 pub fn referenceMutVariable(context: &CBContext, name: CBString) -> &mut CBVar {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    let cbptr = Core.referenceVariable.unwrap()(ctx, name);
+    let cbptr = (*Core).referenceVariable.unwrap()(ctx, name);
     cbptr.as_mut().unwrap()
   }
 }
@@ -266,7 +181,7 @@ pub fn referenceMutVariable(context: &CBContext, name: CBString) -> &mut CBVar {
 pub fn referenceVariable(context: &CBContext, name: CBString) -> &CBVar {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    let cbptr = Core.referenceVariable.unwrap()(ctx, name);
+    let cbptr = (*Core).referenceVariable.unwrap()(ctx, name);
     cbptr.as_mut().unwrap()
   }
 }
@@ -274,14 +189,14 @@ pub fn referenceVariable(context: &CBContext, name: CBString) -> &CBVar {
 pub fn releaseMutVariable(var: &mut CBVar) {
   unsafe {
     let v = var as *mut CBVar;
-    Core.releaseVariable.unwrap()(v);
+    (*Core).releaseVariable.unwrap()(v);
   }
 }
 
 pub fn releaseVariable(var: &CBVar) {
   unsafe {
     let v = var as *const CBVar as *mut CBVar;
-    Core.releaseVariable.unwrap()(v);
+    (*Core).releaseVariable.unwrap()(v);
   }
 }
 
@@ -305,7 +220,7 @@ where
     let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'a str> = &f;
     let trait_obj_ref = &mut trait_obj;
     let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
-    Core.asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call))
+    (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call))
   }
 }
 
@@ -348,6 +263,6 @@ where
     };
     let ctx = context as *const CBContext as *mut CBContext;
     let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
-    Core.asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
+    (*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
   }
 }

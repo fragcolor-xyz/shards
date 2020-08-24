@@ -453,7 +453,7 @@ where
     unsafe {
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = &vt as *const CBVar;
-      Core.cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
   }
@@ -465,7 +465,7 @@ impl From<&Var> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = v as *const CBVar;
-      Core.cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
   }
@@ -478,7 +478,7 @@ impl From<Vec<Var>> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = &tmp as *const CBVar;
-      Core.cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
   }
@@ -492,7 +492,7 @@ impl From<std::string::String> for ClonedVar {
     unsafe {
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = &tmp as *const CBVar;
-      Core.cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
   }
@@ -506,7 +506,7 @@ impl From<&[ClonedVar]> for ClonedVar {
       let vsrc: Var = src.into();
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = &vsrc as *const CBVar;
-      Core.cloneVar.unwrap()(rv, sv);
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
   }
@@ -517,7 +517,7 @@ impl Drop for ClonedVar {
   fn drop(&mut self) {
     unsafe {
       let rv = &self.0 as *const CBVar as *mut CBVar;
-      Core.destroyVar.unwrap()(rv);
+      (*Core).destroyVar.unwrap()(rv);
     }
   }
 }
@@ -1046,7 +1046,7 @@ impl ParamVar {
   pub fn cleanup(&mut self) {
     unsafe {
       if self.parameter.0.valueType == CBType_ContextVar {
-        Core.releaseVariable.unwrap()(self.pointee);
+        (*Core).releaseVariable.unwrap()(self.pointee);
       }
       self.pointee = std::ptr::null_mut();
     }
@@ -1057,7 +1057,7 @@ impl ParamVar {
       assert_eq!(self.pointee, std::ptr::null_mut());
       unsafe {
         let ctx = context as *const CBContext as *mut CBContext;
-        self.pointee = Core.referenceVariable.unwrap()(
+        self.pointee = (*Core).referenceVariable.unwrap()(
           ctx,
           self
             .parameter
@@ -1126,7 +1126,7 @@ impl Drop for Seq {
   fn drop(&mut self) {
     if self.owned {
       unsafe {
-        Core.seqFree.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+        (*Core).seqFree.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
       }
     }
   }
@@ -1193,7 +1193,7 @@ impl Seq {
     let mut tmp = CBVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
-      Core.seqPush.unwrap()(&self.s as *const CBSeq as *mut CBSeq, &tmp);
+      (*Core).seqPush.unwrap()(&self.s as *const CBSeq as *mut CBSeq, &tmp);
     }
   }
 
@@ -1202,7 +1202,7 @@ impl Seq {
     let mut tmp = CBVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
-      Core.seqInsert.unwrap()(
+      (*Core).seqInsert.unwrap()(
         &self.s as *const CBSeq as *mut CBSeq,
         index.try_into().unwrap(),
         &tmp,
@@ -1217,7 +1217,7 @@ impl Seq {
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
       if self.len() > 0 {
-        let v = Core.seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+        let v = (*Core).seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
         Some(transmute(v))
       } else {
         None
@@ -1227,7 +1227,7 @@ impl Seq {
 
   pub fn clear(&mut self) {
     unsafe {
-      Core.seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
+      (*Core).seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
     }
   }
 }
@@ -1276,7 +1276,7 @@ impl Table {
   pub fn new() -> Table {
     unsafe {
       Table {
-        t: Core.tableNew.unwrap()(),
+        t: (*Core).tableNew.unwrap()(),
         owned: true,
       }
     }

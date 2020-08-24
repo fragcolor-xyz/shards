@@ -866,11 +866,9 @@ template <> struct hash<CBVar> {
     using std::size_t;
     using std::string;
 
-    static CBCore core{};
-    if (!core.registerBlock) {
-      if (!chainblocksInterface(CHAINBLOCKS_CURRENT_ABI, &core))
-        throw std::runtime_error("chainblocksInterface failed!");
-    }
+    static CBCore *core = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
+    if (!core)
+      throw std::runtime_error("chainblocksInterface failed!");
 
     auto res = hash<int>()(int(var.valueType));
     switch (var.valueType) {
@@ -943,7 +941,7 @@ template <> struct hash<CBVar> {
       MAGIC_HASH(var.payload.colorValue.a);
       break;
     case Chain: {
-      auto chainInfo = core.getChainInfo(var.payload.chainValue);
+      auto chainInfo = core->getChainInfo(var.payload.chainValue);
       std::string_view buf(chainInfo.name);
       res = res ^ hash<std::string_view>()(buf);
       MAGIC_HASH(chainInfo.looped);

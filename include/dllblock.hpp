@@ -26,7 +26,7 @@ namespace chainblocks {
 extern void registerBlocks();
 
 struct CoreLoader {
-  CBCore _core;
+  CBCore *_core{nullptr};
 
   CoreLoader() {
     CBChainblocksInterface ifaceproc;
@@ -54,9 +54,9 @@ struct CoreLoader {
 #endif
     }
     assert(ifaceproc);
-    auto success = ifaceproc(CHAINBLOCKS_CURRENT_ABI, &_core);
-    assert(success);
-    _core.log("loading external blocks...");
+    _core = ifaceproc(CHAINBLOCKS_CURRENT_ABI);
+    assert(_core);
+    _core->log("loading external blocks...");
     registerBlocks();
   }
 };
@@ -65,80 +65,80 @@ class Core {
 public:
   static void registerBlock(const char *fullName,
                             CBBlockConstructor constructor) {
-    sCore._core.registerBlock(fullName, constructor);
+    sCore._core->registerBlock(fullName, constructor);
   }
 
   static void registerObjectType(int32_t vendorId, int32_t typeId,
                                  CBObjectInfo info) {
-    sCore._core.registerObjectType(vendorId, typeId, info);
+    sCore._core->registerObjectType(vendorId, typeId, info);
   }
 
   static void registerEnumType(int32_t vendorId, int32_t typeId,
                                CBEnumInfo info) {
-    sCore._core.registerEnumType(vendorId, typeId, info);
+    sCore._core->registerEnumType(vendorId, typeId, info);
   }
 
   static void registerRunLoopCallback(const char *eventName,
                                       CBCallback callback) {
-    sCore._core.registerRunLoopCallback(eventName, callback);
+    sCore._core->registerRunLoopCallback(eventName, callback);
   }
 
   static void registerExitCallback(const char *eventName, CBCallback callback) {
-    sCore._core.registerExitCallback(eventName, callback);
+    sCore._core->registerExitCallback(eventName, callback);
   }
 
   static void unregisterRunLoopCallback(const char *eventName) {
-    sCore._core.unregisterRunLoopCallback(eventName);
+    sCore._core->unregisterRunLoopCallback(eventName);
   }
 
   static void unregisterExitCallback(const char *eventName) {
-    sCore._core.unregisterExitCallback(eventName);
+    sCore._core->unregisterExitCallback(eventName);
   }
 
   static CBVar *referenceVariable(CBContext *context, const char *name) {
-    return sCore._core.referenceVariable(context, name);
+    return sCore._core->referenceVariable(context, name);
   }
 
   static void releaseVariable(CBVar *variable) {
-    return sCore._core.releaseVariable(variable);
+    return sCore._core->releaseVariable(variable);
   }
 
   static CBChainState suspend(CBContext *context, double seconds) {
-    return sCore._core.suspend(context, seconds);
+    return sCore._core->suspend(context, seconds);
   }
 
   static void cloneVar(CBVar &dst, const CBVar &src) {
-    sCore._core.cloneVar(&dst, &src);
+    sCore._core->cloneVar(&dst, &src);
   }
 
-  static void destroyVar(CBVar &var) { sCore._core.destroyVar(&var); }
+  static void destroyVar(CBVar &var) { sCore._core->destroyVar(&var); }
 
 #define CB_ARRAY_INTERFACE(_arr_, _val_, _short_)                              \
-  static void _short_##Free(_arr_ &seq) { sCore._core._short_##Free(&seq); };  \
+  static void _short_##Free(_arr_ &seq) { sCore._core->_short_##Free(&seq); };  \
                                                                                \
   static void _short_##Resize(_arr_ &seq, uint64_t size) {                     \
-    sCore._core._short_##Resize(&seq, size);                                   \
+    sCore._core->_short_##Resize(&seq, size);                                   \
   };                                                                           \
                                                                                \
   static void _short_##Push(_arr_ &seq, const _val_ &value) {                  \
-    sCore._core._short_##Push(&seq, &value);                                   \
+    sCore._core->_short_##Push(&seq, &value);                                   \
   };                                                                           \
                                                                                \
   static void _short_##Insert(_arr_ &seq, uint64_t index,                      \
                               const _val_ &value) {                            \
-    sCore._core._short_##Insert(&seq, index, &value);                          \
+    sCore._core->_short_##Insert(&seq, index, &value);                          \
   };                                                                           \
                                                                                \
   static _val_ _short_##Pop(_arr_ &seq) {                                      \
-    return sCore._core._short_##Pop(&seq);                                     \
+    return sCore._core->_short_##Pop(&seq);                                     \
   };                                                                           \
                                                                                \
   static void _short_##FastDelete(_arr_ &seq, uint64_t index) {                \
-    sCore._core._short_##FastDelete(&seq, index);                              \
+    sCore._core->_short_##FastDelete(&seq, index);                              \
   };                                                                           \
                                                                                \
   static void _short_##SlowDelete(_arr_ &seq, uint64_t index) {                \
-    sCore._core._short_##SlowDelete(&seq, index);                              \
+    sCore._core->_short_##SlowDelete(&seq, index);                              \
   }
 
   CB_ARRAY_INTERFACE(CBSeq, CBVar, seq);
@@ -151,33 +151,33 @@ public:
   static CBComposeResult composeChain(CBChainRef chain,
                                       CBValidationCallback callback,
                                       void *userData, CBInstanceData data) {
-    return sCore._core.composeChain(chain, callback, userData, data);
+    return sCore._core->composeChain(chain, callback, userData, data);
   }
 
   static CBRunChainOutput runChain(CBChainRef chain, CBContext *context,
                                    CBVar input) {
-    return sCore._core.runChain(chain, context, input);
+    return sCore._core->runChain(chain, context, input);
   }
 
   static CBComposeResult composeBlocks(CBlocks blocks,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
-    return sCore._core.composeBlocks(blocks, callback, userData, data);
+    return sCore._core->composeBlocks(blocks, callback, userData, data);
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
                                 CBVar *output,
                                 const bool handleReturn = false) {
-    return sCore._core.runBlocks(blocks, context, input, output, handleReturn);
+    return sCore._core->runBlocks(blocks, context, input, output, handleReturn);
   }
 
-  static void log(const char *msg) { sCore._core.log(msg); }
+  static void log(const char *msg) { sCore._core->log(msg); }
 
   static void abortChain(CBContext *context, const char *msg) {
-    sCore._core.abortChain(context, msg);
+    sCore._core->abortChain(context, msg);
   }
 
-  static const char *rootPath() { return sCore._core.getRootPath(); }
+  static const char *rootPath() { return sCore._core->getRootPath(); }
 
 private:
   static inline CoreLoader sCore{};
