@@ -1057,6 +1057,9 @@ typedef struct _CBCore {
 
   // async execution
   CBRunAsyncActivate asyncActivate;
+
+  // Blocks discovery (free after use, only the array, not the strings)
+  CBGetBlocks getBlocks;
 } CBCore;
 
 typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);

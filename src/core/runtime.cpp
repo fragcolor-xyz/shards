@@ -689,14 +689,16 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
   return CBChainState::Continue;
 }
 
-static inline boost::asio::thread_pool SharedThreadPool{};
+// Lazy and also avoid windows Loader (Dead)Lock
+// https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
+Shared<boost::asio::thread_pool> SharedThreadPool{};
 
 CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
   std::exception_ptr exp = nullptr;
   CBVar res{};
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
+  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
     try {
       res = func();
     } catch (...) {
@@ -727,7 +729,7 @@ void await(CBContext *context, std::function<void()> func) {
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(chainblocks::SharedThreadPool, [&]() {
+  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
     try {
       func();
     } catch (...) {
@@ -1085,6 +1087,14 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->asyncActivate = [](auto context, auto data, auto call) {
     return chainblocks::awaitne(context, [&] { return call(context, data); });
+  };
+
+  result->getBlocks = []() {
+    CBStrings s{};
+    for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
+      chainblocks::arrayPush(s, name.data());
+    }
+    return s;
   };
 
   return result;
