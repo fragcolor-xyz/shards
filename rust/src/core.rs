@@ -1,6 +1,6 @@
 #![macro_use]
 
-use crate::types::Context;
+use crate::chainblocksc::CBStrings;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::chainblocksInterface;
@@ -12,11 +12,14 @@ use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
 use crate::types::ChainState;
+use crate::types::Context;
 use crate::types::Var;
 use core::ffi::c_void;
+use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
+use std::slice;
 
 const ABI_VERSION: u32 = 0x20200101;
 
@@ -49,9 +52,7 @@ unsafe fn initInternal() {
   let exe = Library::open_self().ok().unwrap();
 
   let exefun = exe
-    .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>(
-      "chainblocksInterface",
-    )
+    .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
     .ok();
   if exefun.is_some() {
     let fun = exefun.unwrap();
@@ -63,9 +64,7 @@ unsafe fn initInternal() {
   } else {
     let lib = try_load_dlls().unwrap();
     let fun = lib
-      .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>(
-        "chainblocksInterface",
-      )
+      .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
       .unwrap();
     Core = fun(ABI_VERSION);
     if Core == core::ptr::null_mut() {
@@ -145,6 +144,20 @@ pub fn registerBlock<T: Default + Block>() {
       T::registerName().as_ptr() as *const c_char,
       Some(cblock_construct::<T>),
     );
+  }
+}
+
+pub fn getBlocks() -> Vec<&'static CStr> {
+  unsafe {
+    let block_names = (*Core).getBlocks.unwrap()();
+    let mut res = Vec::new();
+    let len = block_names.len;
+    let slice = slice::from_raw_parts(block_names.elements, len.try_into().unwrap());
+    for name in slice.iter() {
+      res.push(CStr::from_ptr(*name));
+    }
+    (*Core).stringsFree.unwrap()(&block_names as *const CBStrings as *mut CBStrings);
+    res
   }
 }
 
@@ -251,7 +264,7 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
 pub fn activate_blocking<'a, T>(
   caller: &'a mut T,
   context: &'a CBContext,
-  input: &'a CBVar
+  input: &'a CBVar,
 ) -> CBVar
 where
   T: BlockingBlock,
