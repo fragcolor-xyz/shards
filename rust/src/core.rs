@@ -1,5 +1,6 @@
 #![macro_use]
 
+use crate::types::ParameterInfoView;
 use crate::chainblocksc::CBStrings;
 use crate::block::cblock_construct;
 use crate::block::Block;
@@ -171,9 +172,19 @@ pub fn getRootPath() -> &'static str {
 }
 
 #[inline(always)]
-pub fn createBlock(name: &str) -> CBlockPtr {
+pub fn createBlockPtr(name: &str) -> CBlockPtr {
   let cname = CString::new(name).unwrap();
   unsafe { (*Core).createBlock.unwrap()(cname.as_ptr()) }
+}
+
+#[inline(always)]
+pub fn createBlock(name: &str) -> BlockInstance {
+  let cname = CString::new(name).unwrap();
+  unsafe {
+    BlockInstance {
+      ptr: (*Core).createBlock.unwrap()(cname.as_ptr()),
+    }
+  }
 }
 
 #[inline(always)]
@@ -277,5 +288,33 @@ where
     let ctx = context as *const CBContext as *mut CBContext;
     let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
     (*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
+  }
+}
+
+pub struct BlockInstance {
+  ptr: CBlockPtr
+}
+
+impl Drop for BlockInstance {
+  fn drop(&mut self) { 
+    unsafe {
+      if !(*self.ptr).owned {
+        (*self.ptr).destroy.unwrap()(self.ptr);
+      }
+    }
+  }
+}
+
+impl BlockInstance {
+  pub fn parameters(self) -> Vec<ParameterInfoView> {
+    let mut res = Vec::new();
+    unsafe {
+      let params = (*self.ptr).parameters.unwrap()(self.ptr);
+      let slice = slice::from_raw_parts(params.elements, params.len.try_into().unwrap());
+      for info in slice.iter() {
+        res.push(ParameterInfoView(*info));
+      }
+    }
+    res
   }
 }

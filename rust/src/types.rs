@@ -225,6 +225,7 @@ impl From<&ExposedTypes> for CBExposedTypesInfo {
 CBParameterInfo & co
  */
 pub struct ParameterInfo(pub CBParameterInfo);
+pub struct ParameterInfoView(pub CBParameterInfo);
 
 impl ParameterInfo {
   fn new(name: &str, types: Types) -> Self {

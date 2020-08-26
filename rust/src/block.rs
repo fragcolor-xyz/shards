@@ -1,9 +1,12 @@
-use crate::chainblocksc::CBTable;
+use crate::types::ParameterInfoView;
+use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
+use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
 use crate::chainblocksc::CBSeq;
+use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBTypesInfo;
 use crate::chainblocksc::CBVar;
@@ -20,10 +23,12 @@ use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
+use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::result::Result;
+use std::slice;
 
 pub trait Block {
   fn registerName() -> &'static str;

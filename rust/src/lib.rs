@@ -54,7 +54,7 @@ macro_rules! blocks {
 
     // (BlockName)
     (@block $block:ident) => {{
-        let blk = $crate::core::createBlock(stringify!($block));
+        let blk = $crate::core::createBlockPtr(stringify!($block));
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
@@ -64,7 +64,7 @@ macro_rules! blocks {
     // (BlockName :ParamName ParamVar ...)
     (@block $block:ident $(:$pname:tt $param:tt) *) => {{
         let blkname = stringify!($block);
-        let blk = $crate::core::createBlock(blkname);
+        let blk = $crate::core::createBlockPtr(blkname);
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
@@ -100,7 +100,7 @@ macro_rules! blocks {
 
     // (BlockName ParamVar ...)
     (@block $block:ident $($param:tt) *) => {{
-        let blk = $crate::core::createBlock(stringify!($block));
+        let blk = $crate::core::createBlockPtr(stringify!($block));
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
