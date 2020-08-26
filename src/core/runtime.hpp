@@ -704,17 +704,21 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   template <class Observer>
   bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
-    _runningFlows = _flows;
-    for (auto &flow : _runningFlows) {
-      observer.before_tick(flow->chain);
-      chainblocks::tick(flow->chain, input);
-      if (!chainblocks::isRunning(flow->chain)) {
-        observer.before_stop(flow->chain);
-        if (!chainblocks::stop(flow->chain)) {
-          noErrors = false;
+    if (chainblocks::Globals::SigIntTerm > 0) {
+      terminate();
+    } else {
+      _runningFlows = _flows;
+      for (auto &flow : _runningFlows) {
+        observer.before_tick(flow->chain);
+        chainblocks::tick(flow->chain, input);
+        if (!chainblocks::isRunning(flow->chain)) {
+          observer.before_stop(flow->chain);
+          if (!chainblocks::stop(flow->chain)) {
+            noErrors = false;
+          }
+          _flows.remove(flow);
+          flow->chain->node.reset();
         }
-        _flows.remove(flow);
-        flow->chain->node.reset();
       }
     }
     return noErrors;

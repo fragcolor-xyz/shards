@@ -1784,7 +1784,9 @@ void error_handler(int err_sig) {
   case SIGINT:
   case SIGTERM:
     LOG(INFO) << "Exiting due to INT/TERM signal";
-    std::exit(0);
+    chainblocks::Globals::SigIntTerm++;
+    if (chainblocks::Globals::SigIntTerm > 5)
+      std::exit(-1);
     break;
   case SIGFPE:
     LOG(ERROR) << "Fatal SIGFPE";
