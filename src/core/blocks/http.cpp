@@ -12,11 +12,9 @@
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 
-#include "blockwrapper.hpp"
 #include "chainblocks.hpp"
 #include "shared.hpp"
-#include <exception>
-#include <taskflow/taskflow.hpp>
+#include <ghc/filesystem.hpp>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
@@ -598,7 +596,7 @@ struct Response {
   static inline Parameters params{
       {"Status", "The HTTP status code to return.", {CoreInfo::IntType}},
       {"Headers",
-       "The headers to attach to this request.",
+       "The headers to attach to this response.",
        {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
         CoreInfo::NoneType}}};
 
@@ -662,6 +660,144 @@ struct Response {
   http::response<http::string_body> _response;
 };
 
+struct SendFile {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static inline Parameters params{
+      {"Headers",
+       "The headers to attach to this response.",
+       {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
+        CoreInfo::NoneType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) { _headers = value; }
+
+  CBVar getParam(int index) { return _headers; }
+
+  void warmup(CBContext *context) {
+    _headers.warmup(context);
+    _peerVar = referenceVariable(context, "Http.Server.Socket");
+  }
+
+  void cleanup() {
+    _headers.cleanup();
+    releaseVariable(_peerVar);
+    _peerVar = nullptr;
+  }
+
+  static boost::beast::string_view mime_type(boost::beast::string_view path) {
+    using boost::beast::iequals;
+    auto const ext = [&path] {
+      auto const pos = path.rfind(".");
+      if (pos == boost::beast::string_view::npos)
+        return boost::beast::string_view{};
+      return path.substr(pos);
+    }();
+    if (iequals(ext, ".htm"))
+      return "text/html";
+    if (iequals(ext, ".html"))
+      return "text/html";
+    if (iequals(ext, ".php"))
+      return "text/html";
+    if (iequals(ext, ".css"))
+      return "text/css";
+    if (iequals(ext, ".txt"))
+      return "text/plain";
+    if (iequals(ext, ".js"))
+      return "application/javascript";
+    if (iequals(ext, ".json"))
+      return "application/json";
+    if (iequals(ext, ".xml"))
+      return "application/xml";
+    if (iequals(ext, ".swf"))
+      return "application/x-shockwave-flash";
+    if (iequals(ext, ".flv"))
+      return "video/x-flv";
+    if (iequals(ext, ".png"))
+      return "image/png";
+    if (iequals(ext, ".jpe"))
+      return "image/jpeg";
+    if (iequals(ext, ".jpeg"))
+      return "image/jpeg";
+    if (iequals(ext, ".jpg"))
+      return "image/jpeg";
+    if (iequals(ext, ".gif"))
+      return "image/gif";
+    if (iequals(ext, ".bmp"))
+      return "image/bmp";
+    if (iequals(ext, ".ico"))
+      return "image/vnd.microsoft.icon";
+    if (iequals(ext, ".tiff"))
+      return "image/tiff";
+    if (iequals(ext, ".tif"))
+      return "image/tiff";
+    if (iequals(ext, ".svg"))
+      return "image/svg+xml";
+    if (iequals(ext, ".svgz"))
+      return "image/svg+xml";
+    return "application/text";
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
+    _response.clear();
+
+    ghc::filesystem::path p{Globals::RootPath};
+    p += input.payload.stringValue;
+
+    http::file_body::value_type file;
+    boost::beast::error_code ec;
+    auto pstr = p.generic_u8string();
+    file.open(pstr.c_str(), boost::beast::file_mode::read, ec);
+    if (unlikely(bool(ec))) {
+      _404_response.clear();
+      _404_response.result(http::status::not_found);
+      _404_response.body() = "File not found.";
+      _404_response.prepare_payload();
+
+      http::async_write(*peer->socket, _404_response,
+                        [&](beast::error_code ec, std::size_t nbytes) {
+                          if (ec) {
+                            throw PeerError{ec, peer};
+                          }
+                        });
+
+      return input;
+    } else {
+      _response.result(http::status::ok);
+      _response.set(http::field::content_type,
+                    mime_type(input.payload.stringValue));
+      _response.body() = std::move(file);
+
+      // add custom headers
+      if (_headers.get().valueType == Table) {
+        auto htab = _headers.get().payload.tableValue;
+        ForEach(htab, [&](auto key, auto &value) {
+          _response.set(key, value.payload.stringValue);
+        });
+      }
+
+      _response.prepare_payload();
+
+      http::async_write(*peer->socket, _response,
+                        [&](beast::error_code ec, std::size_t nbytes) {
+                          if (ec) {
+                            throw PeerError{ec, peer};
+                          }
+                        });
+      return input;
+    }
+  }
+
+  http::status _status{200};
+  CBVar *_peerVar{nullptr};
+  ParamVar _headers{};
+  http::response<http::file_body> _response;
+  http::response<http::string_body> _404_response;
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Post", Post);
@@ -669,6 +805,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);
   REGISTER_CBLOCK("Http.Response", Response);
+  REGISTER_CBLOCK("Http.SendFile", SendFile);
 }
 } // namespace Http
 } // namespace chainblocks
