@@ -184,16 +184,11 @@ jobs:
         ./cbl ../src/tests/bigint.clj
   
   rustBuild:
+    needs: ciLinuxRel
     name: Rust check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Fetch chainblocks core
-        run: |
-          git submodule update --init --recursive
-      - name: Build tester image
-        run: |
-          docker build -f rust/docker/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` --build-arg JOB_ID=$CI_JOB_ID .
       - name: Test
         run: |
-          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "sh rust/docker/run_linux.sh"
+          docker run --rm -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "sh rust/docker/run_linux.sh"
