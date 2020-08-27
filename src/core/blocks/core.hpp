@@ -2536,31 +2536,49 @@ struct Repeat {
 };
 
 struct Once {
+  struct ProcessClock {
+    decltype(std::chrono::high_resolution_clock::now()) Start;
+    ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
+  } _clock;
+
   BlocksVar _blks;
   ExposedInfo _requiredInfo{};
   CBComposeResult _validation{};
-  bool done = false;
+  bool _done{false};
+  bool _repeat{false};
+  double _repeatTime{0.0};
+  CBlock *self{nullptr};
 
   void cleanup() {
     _blks.cleanup();
-    done = false;
+    _done = false;
+    if (self)
+      self->inlineBlockId = NotInline;
   }
 
   void warmup(CBContext *ctx) { _blks.warmup(ctx); }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Action", "The blocks to repeat.", CoreInfo::Blocks));
+  static inline Parameters params{
+      {"Action", "The blocks to execute.", {CoreInfo::Blocks}},
+      {"Every",
+       "The number of seconds to wait until repeating the action, if 0 the "
+       "action will happen only once per chain flow execution.",
+       {CoreInfo::FloatType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, CBVar value) {
     switch (index) {
     case 0:
       _blks = value;
+      break;
+    case 1:
+      _repeatTime = value.payload.floatValue;
+      _repeat = _repeatTime != 0.0;
       break;
     default:
       break;
@@ -2571,6 +2589,8 @@ struct Once {
     switch (index) {
     case 0:
       return _blks;
+    case 1:
+      return Var(_repeatTime);
     default:
       break;
     }
@@ -2578,19 +2598,37 @@ struct Once {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    self = data.block;
     _validation = _blks.compose(data);
     return data.inputType;
   }
 
   CBExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
-  FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!done)) {
-      done = true;
+  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
+    if (_repeat) {
+      // monitor and reset timer if expired
+      auto tnow = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> t(_repeatTime);
+      auto dt = tnow - _clock.Start;
+      if (dt > t) {
+        _done = false;
+      }
+    }
+
+    if (unlikely(!_done)) {
+      _done = true;
       CBVar repeatOutput{};
       CBVar blks = _blks;
       activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
+      if (!_repeat) {
+        // let's cheat in this case and stop triggering this call
+        self->inlineBlockId = NoopBlock;
+      } else {
+        _clock.Start = std::chrono::high_resolution_clock::now();
+      }
     }
+
     return input;
   }
 };
