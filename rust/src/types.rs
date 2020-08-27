@@ -949,6 +949,27 @@ impl TryFrom<&Var> for i64 {
   }
 }
 
+impl TryFrom<&Var> for u64 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe {
+        let u = var
+          .payload
+          .__bindgen_anon_1
+          .intValue
+          .try_into()
+          .or_else(|_| Err("i64 -> u64 conversion failed, possible overflow."))?;
+        Ok(u)
+      }
+    }
+  }
+}
+
 impl TryFrom<&Var> for usize {
   type Error = &'static str;
 
