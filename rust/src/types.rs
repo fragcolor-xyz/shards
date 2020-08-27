@@ -820,6 +820,10 @@ impl Var {
   pub fn is_path(&self) -> bool {
     self.valueType == CBType_Path
   }
+
+  pub fn as_ref(&self) -> &Self {
+    &self
+  }
 }
 
 impl TryFrom<&Var> for CBString {
@@ -931,6 +935,24 @@ impl TryFrom<&Var> for &[u8] {
           var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
           var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
         ))
+      }
+    }
+  }
+}
+
+impl TryFrom<&Var> for &str {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String {
+      Err("Expected String, but casting failed.")
+    } else {
+      unsafe {
+        let cstr = CStr::from_ptr(
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+        );
+        cstr.to_str().or_else(|_| Err("UTF8 string conversion failed!"))
       }
     }
   }
@@ -1129,7 +1151,11 @@ impl ParamVar {
     self.parameter = name.into();
     self.parameter.0.valueType = CBType_ContextVar;
   }
-}
+
+  pub fn getName(&mut self) -> *const i8 {
+    (&self.parameter.0).try_into().unwrap()
+  }
+ }
 
 impl Drop for ParamVar {
   fn drop(&mut self) {
