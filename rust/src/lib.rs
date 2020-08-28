@@ -253,8 +253,8 @@ mod dummy_block {
       (*cblk).destroy.unwrap()(cblk);
     }
 
-    let svar1: Var = "Hello".into();
-    let svar2: Var = "Hello".into();
+    let svar1: Var = "Hello\0".into();
+    let svar2: Var = "Hello\0".into();
     let svar3: Var = 10.into();
     let sstr1: &str = svar1.as_ref().try_into().unwrap();
     assert_eq!("Hello", sstr1);
