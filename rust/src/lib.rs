@@ -9,6 +9,11 @@
 #[macro_use]
 extern crate ctor;
 
+extern crate libc;
+
+#[macro_use]
+extern crate approx;
+
 pub mod block;
 #[cfg(feature = "blocks")]
 pub mod blocks;
@@ -171,6 +176,7 @@ mod dummy_block {
   use crate::types::Var;
   use std::ffi::CStr;
   use std::ffi::CString;
+  use std::convert::TryInto;
 
   struct DummyBlock {
     inputTypes: Types,
@@ -246,6 +252,14 @@ mod dummy_block {
       (*cblk).setup.unwrap()(cblk);
       (*cblk).destroy.unwrap()(cblk);
     }
+
+    let svar1: Var = "Hello".into();
+    let svar2: Var = "Hello".into();
+    let svar3: Var = 10.into();
+    let sstr1: &str = svar1.as_ref().try_into().unwrap();
+    assert_eq!("Hello", sstr1);
+    assert!(svar1 == svar2);
+    assert!(svar1 != svar3);
 
     let a = Var::from(10);
     let mut b = Var::from(true);

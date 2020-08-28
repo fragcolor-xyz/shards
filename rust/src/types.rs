@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBChainState_Continue;
@@ -21,11 +22,26 @@ use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBTypeInfo_Details;
 use crate::chainblocksc::CBTypeInfo_Details_Object;
 use crate::chainblocksc::CBTypeInfo_Details_Table;
+use crate::chainblocksc::CBType_Any;
+use crate::chainblocksc::CBType_Array;
+use crate::chainblocksc::CBType_Block;
 use crate::chainblocksc::CBType_Bool;
 use crate::chainblocksc::CBType_Bytes;
+use crate::chainblocksc::CBType_Chain;
+use crate::chainblocksc::CBType_Color;
 use crate::chainblocksc::CBType_ContextVar;
+use crate::chainblocksc::CBType_Enum;
 use crate::chainblocksc::CBType_Float;
+use crate::chainblocksc::CBType_Float2;
+use crate::chainblocksc::CBType_Float3;
+use crate::chainblocksc::CBType_Float4;
+use crate::chainblocksc::CBType_Image;
 use crate::chainblocksc::CBType_Int;
+use crate::chainblocksc::CBType_Int16;
+use crate::chainblocksc::CBType_Int2;
+use crate::chainblocksc::CBType_Int3;
+use crate::chainblocksc::CBType_Int4;
+use crate::chainblocksc::CBType_Int8;
 use crate::chainblocksc::CBType_None;
 use crate::chainblocksc::CBType_Object;
 use crate::chainblocksc::CBType_Path;
@@ -42,6 +58,8 @@ use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_4;
 use crate::chainblocksc::CBlock;
 use crate::chainblocksc::CBlockPtr;
 use crate::chainblocksc::CBlocks;
+use crate::chainblocksc::CBIMAGE_FLAGS_16BITS_INT;
+use crate::chainblocksc::CBIMAGE_FLAGS_32BITS_FLOAT;
 use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
 use crate::core::cloneVar;
 use crate::core::Core;
@@ -949,10 +967,11 @@ impl TryFrom<&Var> for &str {
       Err("Expected String, but casting failed.")
     } else {
       unsafe {
-        let cstr = CStr::from_ptr(
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
-        );
-        cstr.to_str().or_else(|_| Err("UTF8 string conversion failed!"))
+        let cstr =
+          CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8);
+        cstr
+          .to_str()
+          .or_else(|_| Err("UTF8 string conversion failed!"))
       }
     }
   }
@@ -1155,7 +1174,7 @@ impl ParamVar {
   pub fn getName(&mut self) -> *const i8 {
     (&self.parameter.0).try_into().unwrap()
   }
- }
+}
 
 impl Drop for ParamVar {
   fn drop(&mut self) {
@@ -1165,6 +1184,7 @@ impl Drop for ParamVar {
 
 // Seq / CBSeq
 
+#[derive(Clone)]
 pub struct Seq {
   s: CBSeq,
   owned: bool,
@@ -1278,6 +1298,13 @@ impl Seq {
       (*Core).seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
     }
   }
+
+  pub fn iter(&self) -> SeqIterator {
+    SeqIterator {
+      s: self.clone(),
+      i: 0,
+    }
+  }
 }
 
 impl From<&Seq> for Var {
@@ -1303,8 +1330,20 @@ impl From<Var> for Seq {
   }
 }
 
+impl From<&Var> for Seq {
+  fn from(v: &Var) -> Self {
+    unsafe {
+      Seq {
+        s: v.payload.__bindgen_anon_1.seqValue,
+        owned: false,
+      }
+    }
+  }
+}
+
 // Table / CBTable
 
+#[derive(Clone)]
 pub struct Table {
   t: CBTable,
   owned: bool,
@@ -1318,6 +1357,18 @@ impl Drop for Table {
       }
     }
   }
+}
+
+unsafe extern "C" fn table_foreach_callback(
+  key: *const ::std::os::raw::c_char,
+  value: *mut CBVar,
+  userData: *mut ::std::os::raw::c_void,
+) -> CBBool {
+  let ptrs = userData as *mut (&mut Vec<&str>, &mut Vec<Var>);
+  let cstr = CStr::from_ptr(key);
+  (*ptrs).0.push(cstr.to_str().unwrap());
+  (*ptrs).1.push(*value);
+  true // false aborts iteration
 }
 
 impl Table {
@@ -1392,11 +1443,51 @@ impl Table {
       }
     }
   }
+
+  pub fn iter(&self) -> TableIterator {
+    unsafe {
+      let mut keys = Vec::new();
+      let mut values = Vec::new();
+      let mut ptrs = (&mut keys, &mut values);
+      let cptrs = &mut ptrs as *mut (&mut Vec<&str>, &mut Vec<Var>) as *mut std::os::raw::c_void;
+      let foreach = (*self.t.api).tableForEach.unwrap();
+      foreach(self.t, Some(table_foreach_callback), cptrs);
+      TableIterator {
+        keys: keys,
+        values: values,
+        i: 0,
+      }
+    }
+  }
+}
+
+pub struct TableIterator<'a> {
+  keys: Vec<&'a str>,
+  values: Vec<Var>,
+  i: usize,
+}
+
+impl<'a> Iterator for TableIterator<'a> {
+  fn next(&mut self) -> Option<Self::Item> {
+    self.i = self.i + 1;
+    if self.i < self.keys.len() {
+      Some((self.keys[self.i], self.values[self.i]))
+    } else {
+      None
+    }
+  }
+  type Item = (&'a str, Var);
 }
 
 impl From<CBTable> for Table {
   fn from(t: CBTable) -> Self {
     Table { t: t, owned: false }
+  }
+}
+
+impl From<&Var> for Table {
+  fn from(t: &Var) -> Self {
+    unsafe { t.payload.__bindgen_anon_1.tableValue.into() }
   }
 }
 
@@ -1408,6 +1499,208 @@ impl From<&Table> for Var {
         __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { tableValue: t.t },
       },
       ..Default::default()
+    }
+  }
+}
+
+impl PartialEq for Var {
+  fn eq(&self, other: &Self) -> bool {
+    if self.valueType != other.valueType {
+      false
+    } else {
+      unsafe {
+        match self.valueType {
+          CBType_Enum => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
+              == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
+                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+          }
+          CBType_Bool => {
+            self.payload.__bindgen_anon_1.boolValue == other.payload.__bindgen_anon_1.boolValue
+          }
+          CBType_Int => {
+            self.payload.__bindgen_anon_1.intValue == other.payload.__bindgen_anon_1.intValue
+          }
+          CBType_Int2 => {
+            self.payload.__bindgen_anon_1.int2Value == other.payload.__bindgen_anon_1.int2Value
+          }
+          CBType_Int3 => {
+            self.payload.__bindgen_anon_1.int3Value == other.payload.__bindgen_anon_1.int3Value
+          }
+          CBType_Int4 => {
+            self.payload.__bindgen_anon_1.int4Value == other.payload.__bindgen_anon_1.int4Value
+          }
+          CBType_Int8 => {
+            self.payload.__bindgen_anon_1.int8Value == other.payload.__bindgen_anon_1.int8Value
+          }
+          CBType_Int16 => {
+            self.payload.__bindgen_anon_1.int16Value == other.payload.__bindgen_anon_1.int16Value
+          }
+          CBType_Float => abs_diff_eq!(
+            self.payload.__bindgen_anon_1.floatValue,
+            other.payload.__bindgen_anon_1.floatValue
+          ),
+          CBType_Float2 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float2Value[0],
+              other.payload.__bindgen_anon_1.float2Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float2Value[1],
+              other.payload.__bindgen_anon_1.float2Value[1]
+            )
+          }
+          CBType_Float3 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[0],
+              other.payload.__bindgen_anon_1.float3Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[1],
+              other.payload.__bindgen_anon_1.float3Value[1]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[2],
+              other.payload.__bindgen_anon_1.float3Value[2]
+            )
+          }
+          CBType_Float4 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[0],
+              other.payload.__bindgen_anon_1.float4Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[1],
+              other.payload.__bindgen_anon_1.float4Value[1]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[2],
+              other.payload.__bindgen_anon_1.float4Value[2]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[3],
+              other.payload.__bindgen_anon_1.float4Value[3]
+            )
+          }
+          CBType_Color => {
+            self.payload.__bindgen_anon_1.colorValue.r
+              == other.payload.__bindgen_anon_1.colorValue.r
+              && self.payload.__bindgen_anon_1.colorValue.g
+                == other.payload.__bindgen_anon_1.colorValue.g
+              && self.payload.__bindgen_anon_1.colorValue.b
+                == other.payload.__bindgen_anon_1.colorValue.b
+              && self.payload.__bindgen_anon_1.colorValue.a
+                == other.payload.__bindgen_anon_1.colorValue.a
+          }
+          CBType_Block => {
+            self.payload.__bindgen_anon_1.blockValue == other.payload.__bindgen_anon_1.blockValue
+          }
+          CBType_Bytes => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+              == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+              && (self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                || libc::memcmp(
+                  self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const libc::c_void,
+                  other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const libc::c_void,
+                  self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+                ) == 0)
+          }
+          CBType_String | CBType_Path | CBType_ContextVar => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+              == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+              || libc::strcmp(
+                self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue,
+                other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue,
+              ) == 0
+          }
+          CBType_Image => {
+            let aflags: u32 = self.payload.__bindgen_anon_1.imageValue.flags.into();
+            let bflags: u32 = other.payload.__bindgen_anon_1.imageValue.flags.into();
+            let apixsize = if (aflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
+              2
+            } else if (aflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
+              4
+            } else {
+              1
+            };
+            let bpixsize = if (bflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
+              2
+            } else if (bflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
+              4
+            } else {
+              1
+            };
+            apixsize == bpixsize
+              && self.payload.__bindgen_anon_1.imageValue.channels
+                == other.payload.__bindgen_anon_1.imageValue.channels
+              && self.payload.__bindgen_anon_1.imageValue.width
+                == other.payload.__bindgen_anon_1.imageValue.width
+              && self.payload.__bindgen_anon_1.imageValue.height
+                == other.payload.__bindgen_anon_1.imageValue.height
+              && (self.payload.__bindgen_anon_1.imageValue.data
+                == other.payload.__bindgen_anon_1.imageValue.data
+                || libc::memcmp(
+                  self.payload.__bindgen_anon_1.imageValue.data as *const libc::c_void,
+                  other.payload.__bindgen_anon_1.imageValue.data as *const libc::c_void,
+                  self.payload.__bindgen_anon_1.imageValue.channels as usize
+                    * self.payload.__bindgen_anon_1.imageValue.width as usize
+                    * self.payload.__bindgen_anon_1.imageValue.height as usize
+                    * apixsize,
+                ) == 0)
+          }
+          CBType_Seq => {
+            if self.payload.__bindgen_anon_1.seqValue.elements
+              == other.payload.__bindgen_anon_1.seqValue.elements
+            {
+              true
+            } else if self.payload.__bindgen_anon_1.seqValue.len
+              != other.payload.__bindgen_anon_1.seqValue.len
+            {
+              false
+            } else {
+              let aseq: Seq = self.into();
+              let bseq: Seq = other.into();
+              aseq.into_iter().eq(bseq.into_iter())
+            }
+          }
+          CBType_Table => {
+            let atab: Table = self.into();
+            let btab: Table = other.into();
+            atab.iter().eq(btab.iter())
+          }
+          CBType_Chain => {
+            self.payload.__bindgen_anon_1.chainValue == other.payload.__bindgen_anon_1.chainValue
+          }
+          CBType_Object => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+              == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+              && self
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .objectVendorId
+                == other
+                  .payload
+                  .__bindgen_anon_1
+                  .__bindgen_anon_1
+                  .objectVendorId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+                == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+          }
+          CBType_Array => {
+            self.payload.__bindgen_anon_1.arrayValue.len
+              == other.payload.__bindgen_anon_1.arrayValue.len
+              && self.innerType == other.innerType
+              && (self.payload.__bindgen_anon_1.arrayValue.elements
+                == other.payload.__bindgen_anon_1.arrayValue.elements
+                || libc::memcmp(
+                  self.payload.__bindgen_anon_1.arrayValue.elements as *const libc::c_void,
+                  other.payload.__bindgen_anon_1.arrayValue.elements as *const libc::c_void,
+                  self.payload.__bindgen_anon_1.arrayValue.len as usize
+                    * std::mem::size_of::<CBVarPayload>(),
+                ) == 0)
+          }
+          _ => true,
+        }
+      }
     }
   }
 }
