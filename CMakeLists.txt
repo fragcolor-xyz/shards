@@ -131,12 +131,18 @@ endif()
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
 if(X86 AND NOT EMSCRIPTEN)
-  if(NOT FORCE_CORE2)
-    # CBVars are m256 basically, so this is extremely good! (AVX!)
-    add_compile_options(-march=sandybridge)
-  else()
+  if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
     add_compile_options(-march=core2)
+  elseif(FORCE_I686)
+    # no vectors at all
+    add_compile_options(-march=i686)
+  elseif(FORCE_NATIVE)
+    # the best but low compatibility
+    add_compile_options(-march=native)
+  else()
+    # CBVars are m256 basically, so this is extremely good! (AVX!)
+    add_compile_options(-march=sandybridge)
   endif()
 endif()
 
