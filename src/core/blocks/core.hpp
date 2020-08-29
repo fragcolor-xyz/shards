@@ -1773,9 +1773,6 @@ struct Take {
       _indicesVar = nullptr;
     }
     if (_cachedSeq.elements) {
-      for (auto i = _cachedSeq.len; i > 0; i--) {
-        destroyVar(_cachedSeq.elements[i - 1]);
-      }
       chainblocks::arrayFree(_cachedSeq);
     }
   }
@@ -2175,8 +2172,11 @@ struct Slice {
       _toVar = nullptr;
     }
     if (_cachedSeq.elements) {
-      for (auto i = _cachedSeq.len; i > 0; i--) {
-        destroyVar(_cachedSeq.elements[i - 1]);
+      if(_step > 1) { 
+        // we cloned in this case
+        for (auto i = _cachedSeq.len; i > 0; i--) {
+          destroyVar(_cachedSeq.elements[i - 1]);
+        }
       }
       chainblocks::arrayFree(_cachedSeq);
     }
