@@ -1972,8 +1972,7 @@ struct Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      cloneVar(_output, input.payload.seqValue.elements[index]);
-      return _output;
+      return input.payload.seqValue.elements[index];
     } else {
       const uint32_t nindices = indices.payload.seqValue.len;
       chainblocks::arrayResize(_cachedSeq, nindices);
@@ -1983,8 +1982,7 @@ struct Take {
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        cloneVar(_cachedSeq.elements[i],
-                 input.payload.seqValue.elements[index]);
+        _cachedSeq.elements[i] = input.payload.seqValue.elements[index];
       }
       return Var(_cachedSeq);
     }
@@ -1997,8 +1995,7 @@ struct Take {
       const auto key = indices.payload.stringValue;
       const auto val =
           input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
-      cloneVar(_output, *val);
-      return _output;
+      return *val;
     } else {
       const uint32_t nkeys = indices.payload.seqValue.len;
       chainblocks::arrayResize(_cachedSeq, nkeys);
@@ -2007,7 +2004,7 @@ struct Take {
             indices.payload.seqValue.elements[i].payload.stringValue;
         const auto val = input.payload.tableValue.api->tableAt(
             input.payload.tableValue, key);
-        cloneVar(_cachedSeq.elements[i], *val);
+        _cachedSeq.elements[i] = *val;
       }
       return Var(_cachedSeq);
     }
@@ -2129,8 +2126,7 @@ struct RTake : public Take {
       if (index >= inputLen || index < 0) {
         throw OutOfRangeEx(inputLen, index);
       }
-      cloneVar(_output, input.payload.seqValue.elements[inputLen - 1 - index]);
-      return _output;
+      return input.payload.seqValue.elements[inputLen - 1 - index];
     } else {
       const uint32_t nindices = indices.payload.seqValue.len;
       chainblocks::arrayResize(_cachedSeq, nindices);
@@ -2140,8 +2136,8 @@ struct RTake : public Take {
         if (index >= inputLen || index < 0) {
           throw OutOfRangeEx(inputLen, index);
         }
-        cloneVar(_cachedSeq.elements[i],
-                 input.payload.seqValue.elements[inputLen - 1 - index]);
+        _cachedSeq.elements[i] =
+            input.payload.seqValue.elements[inputLen - 1 - index];
       }
       return Var(_cachedSeq);
     }
@@ -2156,6 +2152,7 @@ struct Slice {
                                    CoreInfo::IntType));
 
   CBSeq _cachedSeq{};
+  std::vector<uint8_t> _cachedBytes{};
   CBVar _from{Var(0)};
   CBVar *_fromVar = nullptr;
   CBVar _to{};
@@ -2185,7 +2182,9 @@ struct Slice {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType}};
+
+  static CBTypesInfo inputTypes() { return InputTypes; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -2225,6 +2224,20 @@ struct Slice {
 
     if (!valid)
       throw CBException("Slice, invalid To variable.");
+
+    if (data.inputType.basicType == Seq) {
+      data.block->activate = static_cast<CBActivateProc>(
+          [](CBlock *b, CBContext *ctx, const CBVar *v) {
+            auto blk = reinterpret_cast<BlockWrapper<Slice> *>(b)->block;
+            return blk.activateSeq(ctx, *v);
+          });
+    } else if (data.inputType.basicType == Bytes) {
+      data.block->activate = static_cast<CBActivateProc>(
+          [](CBlock *b, CBContext *ctx, const CBVar *v) {
+            auto blk = reinterpret_cast<BlockWrapper<Slice> *>(b)->block;
+            return blk.activateBytes(ctx, *v);
+          });
+    }
 
     return data.inputType;
   }
@@ -2291,7 +2304,50 @@ struct Slice {
     }
   };
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activateBytes(CBContext *context, const CBVar &input) {
+    if (_from.valueType == ContextVar && !_fromVar) {
+      _fromVar = referenceVariable(context, _from.payload.stringValue);
+    }
+    if (_to.valueType == ContextVar && !_toVar) {
+      _toVar = referenceVariable(context, _to.payload.stringValue);
+    }
+
+    const auto inputLen = input.payload.bytesSize;
+    const auto &vfrom = _fromVar ? *_fromVar : _from;
+    const auto &vto = _toVar ? *_toVar : _to;
+    auto from = vfrom.payload.intValue;
+    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
+    if (to < 0) {
+      to = inputLen + to;
+    }
+
+    if (from > to || to < 0 || to > inputLen) {
+      throw OutOfRangeEx(inputLen, from, to);
+    }
+
+    const auto len = to - from;
+    if (_step == 1) {
+      // we don't need to copy anything in this case
+      CBVar output{};
+      output.valueType = Bytes;
+      output.payload.bytesValue = &input.payload.bytesValue[from];
+      output.payload.bytesSize = len;
+      return output;
+    } else if (_step > 1) {
+      const auto actualLen = len / _step + (len % _step != 0);
+      _cachedBytes.resize(actualLen);
+      auto idx = 0;
+      for (auto i = from; i < to; i += _step) {
+        _cachedBytes[idx] = input.payload.bytesValue[i];
+        idx++;
+      }
+      return Var(&_cachedBytes.front(), actualLen);
+    } else {
+      throw ActivationError("Slice's Step must be greater then 0");
+    }
+  }
+
+  CBVar activateSeq(CBContext *context, const CBVar &input) {
     if (_from.valueType == ContextVar && !_fromVar) {
       _fromVar = referenceVariable(context, _from.payload.stringValue);
     }
@@ -2313,15 +2369,29 @@ struct Slice {
     }
 
     const auto len = to - from;
-    const auto actualLen = len / _step + (len % _step != 0);
-    chainblocks::arrayResize(_cachedSeq, actualLen);
-    auto idx = 0;
-    for (auto i = from; i < to; i += _step) {
-      cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
-      idx++;
+    if (_step == 1) {
+      // we don't need to copy anything in this case
+      CBVar output{};
+      output.valueType = Seq;
+      output.payload.seqValue.elements = &input.payload.seqValue.elements[from];
+      output.payload.seqValue.len = len;
+      return output;
+    } else if (_step > 1) {
+      const auto actualLen = len / _step + (len % _step != 0);
+      chainblocks::arrayResize(_cachedSeq, actualLen);
+      auto idx = 0;
+      for (auto i = from; i < to; i += _step) {
+        cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
+        idx++;
+      }
+      return Var(_cachedSeq);
+    } else {
+      throw ActivationError("Slice's Step must be greater then 0");
     }
+  }
 
-    return Var(_cachedSeq);
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Slice: unreachable code path");
   }
 };
 
