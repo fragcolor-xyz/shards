@@ -323,8 +323,10 @@ impl From<CBParametersInfo> for &[CBParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
+  use crate::chainblocksc::CBStrings;
   use crate::chainblocksc::CBTypeInfo;
   use crate::chainblocksc::CBTypeInfo_Details;
+  use crate::chainblocksc::CBTypeInfo_Details_Table;
   use crate::chainblocksc::CBType_Any;
   use crate::chainblocksc::CBType_Block;
   use crate::chainblocksc::CBType_Bool;
@@ -337,6 +339,7 @@ pub mod common_type {
   use crate::chainblocksc::CBType_Path;
   use crate::chainblocksc::CBType_Seq;
   use crate::chainblocksc::CBType_String;
+  use crate::chainblocksc::CBType_Table;
   use crate::chainblocksc::CBTypesInfo;
 
   const fn base_info() -> CBTypeInfo {
@@ -361,7 +364,7 @@ pub mod common_type {
   pub static none: CBTypeInfo = make_none();
 
   macro_rules! cbtype {
-    ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident) => {
+    ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $name_table:ident, $name_table_var:ident) => {
       const fn $fname() -> CBTypeInfo {
         let mut res = base_info();
         res.basicType = $type;
@@ -381,6 +384,24 @@ pub mod common_type {
         },
       };
 
+      pub static $name_table: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_Table,
+        details: CBTypeInfo_Details {
+          table: CBTypeInfo_Details_Table {
+            keys: CBStrings {
+              elements: core::ptr::null_mut(),
+              len: 0,
+              cap: 0,
+            },
+            types: CBTypesInfo {
+              elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+              len: 1,
+              cap: 0,
+            },
+          },
+        },
+      };
+
       pub static $name_var: CBTypeInfo = CBTypeInfo {
         basicType: CBType_ContextVar,
         details: CBTypeInfo_Details {
@@ -391,18 +412,101 @@ pub mod common_type {
           },
         },
       };
+
+      pub static $name_table_var: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_ContextVar,
+        details: CBTypeInfo_Details {
+          contextVarTypes: CBTypesInfo {
+            elements: &$name_table as *const CBTypeInfo as *mut CBTypeInfo,
+            len: 1,
+            cap: 0,
+          },
+        },
+      };
     };
   }
 
-  cbtype!(make_any, CBType_Any, any, anys, any_var);
-  cbtype!(make_string, CBType_String, string, strings, string_var);
-  cbtype!(make_bytes, CBType_Bytes, bytes, bytezs, bytes_var);
-  cbtype!(make_int, CBType_Int, int, ints, int_var);
-  cbtype!(make_float, CBType_Float, float, floats, float_var);
-  cbtype!(make_bool, CBType_Bool, bool, bools, bool_var);
-  cbtype!(make_block, CBType_Block, block, blocks, block_var);
-  cbtype!(make_chain, CBType_Chain, chain, chains, chain_var);
-  cbtype!(make_path, CBType_Path, path, paths, path_var);
+  cbtype!(
+    make_any,
+    CBType_Any,
+    any,
+    anys,
+    any_var,
+    any_table,
+    any_table_var
+  );
+  cbtype!(
+    make_string,
+    CBType_String,
+    string,
+    strings,
+    string_var,
+    string_table,
+    string_table_var
+  );
+  cbtype!(
+    make_bytes,
+    CBType_Bytes,
+    bytes,
+    bytezs,
+    bytes_var,
+    bytes_table,
+    bytes_table_var
+  );
+  cbtype!(
+    make_int,
+    CBType_Int,
+    int,
+    ints,
+    int_var,
+    int_table,
+    int_table_var
+  );
+  cbtype!(
+    make_float,
+    CBType_Float,
+    float,
+    floats,
+    float_var,
+    float_table,
+    float_table_var
+  );
+  cbtype!(
+    make_bool,
+    CBType_Bool,
+    bool,
+    bools,
+    bool_var,
+    bool_table,
+    bool_table_var
+  );
+  cbtype!(
+    make_block,
+    CBType_Block,
+    block,
+    blocks,
+    block_var,
+    block_table,
+    block_table_var
+  );
+  cbtype!(
+    make_chain,
+    CBType_Chain,
+    chain,
+    chains,
+    chain_var,
+    chain_table,
+    chain_table_var
+  );
+  cbtype!(
+    make_path,
+    CBType_Path,
+    path,
+    paths,
+    path_var,
+    path_table,
+    path_table_var
+  );
 }
 
 impl Type {
@@ -1207,12 +1311,13 @@ pub struct SeqIterator {
 
 impl Iterator for SeqIterator {
   fn next(&mut self) -> Option<Self::Item> {
-    self.i = self.i + 1;
-    if self.i < self.s.s.len {
+    let res = if self.i < self.s.s.len {
       unsafe { Some(*self.s.s.elements.offset(self.i.try_into().unwrap())) }
     } else {
       None
-    }
+    };
+    self.i = self.i + 1;
+    res
   }
   type Item = Var;
 }
@@ -1445,18 +1550,18 @@ impl Table {
   }
 
   pub fn iter(&self) -> TableIterator {
+    let mut keys = Vec::new();
+    let mut values = Vec::new();
     unsafe {
-      let mut keys = Vec::new();
-      let mut values = Vec::new();
       let mut ptrs = (&mut keys, &mut values);
       let cptrs = &mut ptrs as *mut (&mut Vec<&str>, &mut Vec<Var>) as *mut std::os::raw::c_void;
       let foreach = (*self.t.api).tableForEach.unwrap();
       foreach(self.t, Some(table_foreach_callback), cptrs);
-      TableIterator {
-        keys: keys,
-        values: values,
-        i: 0,
-      }
+    }
+    TableIterator {
+      keys: keys,
+      values: values,
+      i: 0,
     }
   }
 }
@@ -1469,12 +1574,13 @@ pub struct TableIterator<'a> {
 
 impl<'a> Iterator for TableIterator<'a> {
   fn next(&mut self) -> Option<Self::Item> {
-    self.i = self.i + 1;
-    if self.i < self.keys.len() {
+    let res = if self.i < self.keys.len() {
       Some((self.keys[self.i], self.values[self.i]))
     } else {
       None
-    }
+    };
+    self.i = self.i + 1;
+    res
   }
   type Item = (&'a str, Var);
 }

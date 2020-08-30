@@ -95,10 +95,11 @@ pub fn log(s: &str) {
 
 #[macro_export]
 macro_rules! cblog {
-    ($text:expr, $($arg:ident),*) => {
+    ($text:expr, $($arg:expr),*) => {
+        use std::io::Write as __stdWrite;
         let mut buf = vec![];
-        write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
-        log(str::from_utf8(&buf).unwrap());
+        ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+        log(::std::str::from_utf8(&buf).unwrap());
     };
 
     ($text:expr) => {
