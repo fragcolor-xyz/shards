@@ -713,12 +713,18 @@ struct FromJson {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _releaseMemory(_output); // release previous
-    json j = json::parse(input.payload.stringValue);
 
-    if (_pure) {
-      anyParse(j, _output);
-    } else {
-      _output = j.get<CBVar>();
+    try {
+      json j = json::parse(input.payload.stringValue);
+
+      if (_pure) {
+        anyParse(j, _output);
+      } else {
+        _output = j.get<CBVar>();
+      }
+    } catch (const json::exception &ex) {
+      // re-throw with our type to allow Maybe etc
+      throw ActivationError(ex.what());
     }
 
     return _output;
