@@ -1585,6 +1585,19 @@ BUILTIN("getenv") {
 #endif
 }
 
+BUILTIN("setenv") {
+  CHECK_ARGS_IS(2);
+#ifndef __EMSCRIPTEN__
+  ARG(malString, key);
+  ARG(malString, value);
+  auto envs = boost::this_process::environment();
+  envs[key->value()] = value->value();
+  return mal::trueValue();
+#else
+  return mal::falseValue();
+#endif
+}
+
 BUILTIN_ISA("Var?", malCBVar);
 BUILTIN_ISA("Node?", malCBNode);
 BUILTIN_ISA("Chain?", malCBChain);
