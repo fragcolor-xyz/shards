@@ -16,7 +16,8 @@ namespace BigInt {
 struct ToBigInt {
   std::vector<uint8_t> _buffer;
 
-  static inline Types InputTypes{CoreInfo::IntType, CoreInfo::StringType};
+  static inline Types InputTypes{CoreInfo::IntType, CoreInfo::FloatType,
+                                 CoreInfo::StringType};
   static CBTypesInfo inputTypes() { return InputTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -26,6 +27,9 @@ struct ToBigInt {
     switch (input.valueType) {
     case Int: {
       bi = input.payload.intValue;
+    } break;
+    case Float: {
+      bi = cpp_int(input.payload.floatValue);
     } break;
     case String: {
       bi = cpp_int(input.payload.stringValue);
@@ -80,7 +84,7 @@ struct BigOperandBase {
                   input.payload.bytesValue + input.payload.bytesSize);         \
       auto op = getOperand();                                                  \
       cpp_int bib;                                                             \
-      import_bits(bia, op.payload.bytesValue,                                  \
+      import_bits(bib, op.payload.bytesValue,                                  \
                   op.payload.bytesValue + op.payload.bytesSize);               \
       cpp_int bres = bia __OP__ bib;                                           \
       export_bits(bres, std::back_inserter(_buffer), 8);                       \
