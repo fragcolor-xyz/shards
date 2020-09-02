@@ -179,6 +179,13 @@ public:
 
   static const char *rootPath() { return sCore._core->getRootPath(); }
 
+  static CBVar asyncActivate(CBContext *context, std::function<CBVar()> f) {
+    return sCore._core->asyncActivate(context, &f, [](auto ctx, auto data) {
+      auto f = reinterpret_cast<std::function<CBVar()>*>(data);
+      return (*f)();
+    });
+  }
+
 private:
   static inline CoreLoader sCore{};
 };
