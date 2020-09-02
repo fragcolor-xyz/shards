@@ -613,8 +613,7 @@ struct SetBase : public VariableBase {
       cloneVar(*vptr, input);
 
       // use fast cell from now
-      // _cell = vptr;
-      // Disabled... cos if we use Clear will blow up up up
+      _cell = vptr;
     } else {
       // Clone will try to recyle memory and such
       cloneVar(*_target, input);
@@ -735,8 +734,7 @@ struct Ref : public SetBase {
       *vptr = input;
 
       // use fast cell from now
-      // _cell = vptr;
-      // Disabled... cos if we use Clear will blow up up up
+      _cell = vptr;
     } else {
       // use fast cell from now
       _cell = _target;
@@ -995,8 +993,7 @@ struct Get : public VariableBase {
             return _defaultValue;
           } else {
             // Pin fast cell
-            // _cell = vptr;
-            // Disabled... cos if we use Clear will blow up up up
+            _cell = vptr;
             return *vptr;
           }
         } else {
@@ -1557,8 +1554,6 @@ struct Clear : SeqUser {
       // we in that case output the same _cell with adjusted len!
       if (input.payload.seqValue.elements == _cell->payload.seqValue.elements)
         const_cast<CBVar &>(input).payload.seqValue.len = 0;
-    } else if (_cell->valueType == Table) {
-      _cell->payload.tableValue.api->tableClear(_cell->payload.tableValue);
     }
 
     return input;
