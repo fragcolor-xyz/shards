@@ -178,10 +178,6 @@
    (Count "tab11")
    (Assert.Is 2 true)
 
-   (Clear "tab11")
-   (Count "tab11")
-   (Assert.Is 0 true)
-
    "My input"
    (Dispatch inner1)
    (Assert.Is "My input" true)
