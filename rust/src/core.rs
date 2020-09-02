@@ -61,7 +61,6 @@ unsafe fn initInternal() {
     if Core == core::ptr::null_mut() {
       panic!("Failed to aquire chainblocks interface, version not compatible.");
     }
-    log("chainblocks-rs attached! (exe)");
   } else {
     let lib = try_load_dlls().unwrap();
     let fun = lib
@@ -72,7 +71,6 @@ unsafe fn initInternal() {
       panic!("Failed to aquire chainblocks interface, version not compatible.");
     }
     CBDLL = Some(lib);
-    log("chainblocks-rs attached! (dll)");
   }
   init_done = true;
 }
