@@ -613,7 +613,8 @@ struct SetBase : public VariableBase {
       cloneVar(*vptr, input);
 
       // use fast cell from now
-      _cell = vptr;
+      // _cell = vptr;
+      // Disabled... cos if we use Clear will blow up up up
     } else {
       // Clone will try to recyle memory and such
       cloneVar(*_target, input);
@@ -734,7 +735,8 @@ struct Ref : public SetBase {
       *vptr = input;
 
       // use fast cell from now
-      _cell = vptr;
+      // _cell = vptr;
+      // Disabled... cos if we use Clear will blow up up up
     } else {
       // use fast cell from now
       _cell = _target;
@@ -993,7 +995,8 @@ struct Get : public VariableBase {
             return _defaultValue;
           } else {
             // Pin fast cell
-            _cell = vptr;
+            // _cell = vptr;
+            // Disabled... cos if we use Clear will blow up up up
             return *vptr;
           }
         } else {
