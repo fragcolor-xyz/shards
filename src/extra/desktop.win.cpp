@@ -1030,6 +1030,23 @@ struct SetTimerResolution {
   }
 };
 
+struct LastInput : public LastInputBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    LASTINPUTINFO info;
+    info.cbSize = sizeof(info);
+    info.dwTime = 0;
+    if (GetLastInputInfo(&info)) {
+      auto tickCount = double(GetTickCount64());
+      auto ticks = double(info.dwTime);
+      auto diff = tickCount - ticks;
+      return Var(diff / 1000.0);
+    } else {
+      throw ActivationError("GetLastInputInfo failed");
+    }
+  }
+};
+// TODO REFACTOR
+
 RUNTIME_BLOCK(Desktop, HasWindow);
 RUNTIME_BLOCK_cleanup(HasWindow);
 RUNTIME_BLOCK_inputTypes(HasWindow);
@@ -1299,5 +1316,6 @@ void registerDesktopBlocks() {
   REGISTER_BLOCK(Desktop, MiddleClick);
   REGISTER_BLOCK(Desktop, CursorBitmap);
   REGISTER_BLOCK(Desktop, SetTimerResolution);
+  REGISTER_CBLOCK("Desktop.LastInput", LastInput);
 }
 }; // namespace Desktop

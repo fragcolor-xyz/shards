@@ -277,4 +277,10 @@ struct MousePosBase {
   void cleanup() { _window.cleanup(); }
   void warmup(CBContext *context) { _window.warmup(context); }
 };
+
+struct LastInputBase {
+  // outputs the seconds since the last input happened
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+};
 }; // namespace Desktop
