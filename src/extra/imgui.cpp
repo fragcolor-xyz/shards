@@ -1106,6 +1106,24 @@ struct Unindent : public Base {
   }
 };
 
+struct GetClipboard : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    auto contents = ::ImGui::GetClipboardText();
+    return Var(contents);
+  }
+};
+
+struct SetClipboard : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::SetClipboardText(input.payload.stringValue);
+    return input;
+  }
+};
+
 struct TreeNode : public Base {
   std::string _label;
   bool _defaultOpen = true;
@@ -1901,6 +1919,8 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
   REGISTER_CBLOCK("ImGui.PlotScatter", PlotScatter);
   REGISTER_CBLOCK("ImGui.PlotBars", PlotBars);
+  REGISTER_CBLOCK("ImGui.GetClipboard", GetClipboard);
+  REGISTER_CBLOCK("ImGui.SetClipboard", SetClipboard);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
