@@ -1111,7 +1111,10 @@ struct GetClipboard : public Base {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static CBVar activate(CBContext *context, const CBVar &input) {
     auto contents = ::ImGui::GetClipboardText();
-    return Var(contents);
+    if (contents)
+      return Var(contents);
+    else
+      return Var("");
   }
 };
 

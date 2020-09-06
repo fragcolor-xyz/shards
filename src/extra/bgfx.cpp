@@ -177,6 +177,19 @@ struct MainWindow : public BaseWindow {
     }
   }
 
+  static inline char *_clipboardContents{nullptr};
+
+  static const char *ImGui_ImplSDL2_GetClipboardText(void *) {
+    if (_clipboardContents)
+      SDL_free(_clipboardContents);
+    _clipboardContents = SDL_GetClipboardText();
+    return _clipboardContents;
+  }
+
+  static void ImGui_ImplSDL2_SetClipboardText(void *, const char *text) {
+    SDL_SetClipboardText(text);
+  }
+
   void warmup(CBContext *context) {
     if (!_initDone) {
       auto initErr = SDL_Init(SDL_INIT_EVENTS);
@@ -277,6 +290,9 @@ struct MainWindow : public BaseWindow {
       io.KeyMap[ImGuiKey_X] = SDL_SCANCODE_X;
       io.KeyMap[ImGuiKey_Y] = SDL_SCANCODE_Y;
       io.KeyMap[ImGuiKey_Z] = SDL_SCANCODE_Z;
+
+      io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
+      io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
 
       bgfx::setViewRect(0, 0, 0, _width, _height);
       bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
