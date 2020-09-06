@@ -1430,11 +1430,10 @@ void validateConnection(ValidationContext &ctx) {
       }
       auto findIt = ctx.exposed.find(name);
       if (findIt == ctx.exposed.end()) {
-        std::string err("Required required variable not found: " + name);
+        std::string err("Required variable not found: " + name);
         // Warning only, delegate compose to decide
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       } else {
-
         for (auto type : findIt->second) {
           auto exposedType = type.exposedType;
           auto requiredType = required_param.exposedType;
@@ -1453,9 +1452,34 @@ void validateConnection(ValidationContext &ctx) {
 
     if (!matching) {
       std::string err(
-          "Required required types do not match currently exposed ones: " +
-          required.first);
-      err += " exposed types:";
+          "Required types do not match currently exposed ones for variable '" +
+          required.first + "'");
+      err += " required possible types: ";
+      for (auto type : required.second) {
+        if (type.exposedType.basicType == Table &&
+            type.exposedType.table.types.elements &&
+            type.exposedType.table.keys.elements) {
+          err += "(" + type2Name(type.exposedType.basicType) + " [" +
+                 type2Name(type.exposedType.table.types.elements[0].basicType) +
+                 " " + type.exposedType.table.keys.elements[0] + "]) ";
+        } else if (type.exposedType.basicType == Seq) {
+          err += "(" + type2Name(type.exposedType.basicType) + " [";
+          for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
+            if (i < type.exposedType.seqTypes.len - 1)
+              err +=
+                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                  " ";
+            else
+              err +=
+                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
+                  " ";
+          }
+          err += "]) ";
+        } else {
+          err += type2Name(type.exposedType.basicType) + " ";
+        }
+      }
+      err += "exposed types:";
       for (const auto &info : ctx.exposed) {
         err += " (" + info.first + " [";
 
