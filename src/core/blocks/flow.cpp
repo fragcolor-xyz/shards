@@ -435,7 +435,6 @@ struct Maybe : public BaseSubFlow {
       try {
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
-        context->resetCancelFlow();
         LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
         if (_elseBlks)
           _elseBlks.activate(context, input, output);

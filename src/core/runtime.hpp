@@ -112,7 +112,6 @@ struct CBContext {
 
   void resetCancelFlow() {
     state = CBChainState::Continue;
-    errorMessage.clear();
     hasError = false;
   }
 

@@ -636,6 +636,8 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
         return CBChainState::Return;
       case CBChainState::Stop:
         if (context->failed()) {
+          // reset error since we throw
+          context->resetCancelFlow();
           throw ActivationError(context->getErrorMessage());
         }
       case CBChainState::Restart:
@@ -670,6 +672,8 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
         return CBChainState::Return;
       case CBChainState::Stop:
         if (context->failed()) {
+          // reset error since we throw
+          context->resetCancelFlow();
           throw ActivationError(context->getErrorMessage());
         }
       case CBChainState::Restart:
@@ -1878,6 +1882,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
         }
         case CBChainState::Stop: {
           if (context->failed()) {
+            // reset error since we throw
+            context->resetCancelFlow();
             throw ActivationError(context->getErrorMessage());
           }
           return {context->getFlowStorage(), Stopped};
@@ -2336,8 +2342,11 @@ void CBChain::warmup(CBContext *context) {
       try {
         if (blk->warmup)
           blk->warmup(blk, context);
-        if (context->failed())
+        if (context->failed()) {
+          // reset error since we throw
+          context->resetCancelFlow();
           throw chainblocks::CBException(context->getErrorMessage());
+        }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));
