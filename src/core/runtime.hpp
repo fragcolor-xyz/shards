@@ -110,6 +110,12 @@ struct CBContext {
     hasError = true;
   }
 
+  void resetCancelFlow() {
+    state = CBChainState::Continue;
+    errorMessage.clear();
+    hasError = false;
+  }
+
   constexpr void rebaseFlow() { state = CBChainState::Rebase; }
 
   constexpr void continueFlow() { state = CBChainState::Continue; }
