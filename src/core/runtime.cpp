@@ -622,75 +622,83 @@ CBChainState suspend(CBContext *context, double seconds) {
   return context->getState();
 }
 
-CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn) {
+template <typename T>
+ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
+                                            const CBVar &chainInput,
+                                            CBVar &output,
+                                            const bool handlesReturn) {
   auto input = chainInput;
-  for (uint32_t i = 0; i < blocks.len; i++) {
-    output = activateBlock(blocks.elements[i], context, input);
-    if (!context->shouldContinue()) {
-      switch (context->getState()) {
-      case CBChainState::Return:
-        if (handlesReturn)
+  size_t len;
+  if constexpr (std::is_same<T, CBlocks>::value ||
+                std::is_same<T, CBSeq>::value) {
+    len = blocks.len;
+  } else if constexpr (std::is_same<T, std::vector<CBlockPtr>>::value) {
+    len = blocks.size();
+  } else {
+    assert(false);
+  }
+  for (size_t i = 0; i < len; i++) {
+    CBlockPtr blk;
+    if constexpr (std::is_same<T, CBlocks>::value) {
+      blk = blocks.elements[i];
+    } else if constexpr (std::is_same<T, CBSeq>::value) {
+      blk = blocks.elements[i].payload.blockValue;
+    } else if constexpr (std::is_same<T, std::vector<CBlockPtr>>::value) {
+      blk = blocks[i];
+    } else {
+      assert(false);
+    }
+    try {
+      output = activateBlock(blk, context, input);
+      if (!context->shouldContinue()) {
+        switch (context->getState()) {
+        case CBChainState::Return:
+          if (handlesReturn)
+            context->continueFlow();
+          return CBChainState::Return;
+        case CBChainState::Stop:
+          if (context->failed()) {
+            // reset error since we throw
+            context->resetCancelFlow();
+            throw ActivationError(context->getErrorMessage());
+          }
+        case CBChainState::Restart:
+          return context->getState();
+        case CBChainState::Rebase:
+          // reset input to chain one
+          // and reset state
+          input = chainInput;
           context->continueFlow();
-        return CBChainState::Return;
-      case CBChainState::Stop:
-        if (context->failed()) {
-          // reset error since we throw
-          context->resetCancelFlow();
-          throw ActivationError(context->getErrorMessage());
+          continue;
+        case CBChainState::Continue:
+          break;
         }
-      case CBChainState::Restart:
-        return context->getState();
-      case CBChainState::Rebase:
-        // reset input to chain one
-        // and reset state
-        input = chainInput;
-        context->continueFlow();
-        continue;
-      case CBChainState::Continue:
-        break;
       }
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Block activation error, failed block: "
+                 << std::string(blk->name(blk));
+      LOG(ERROR) << e.what();
+      throw; // bubble up
+    } catch (...) {
+      LOG(ERROR) << "Block activation error (...), failed block: "
+                 << std::string(blk->name(blk));
+      throw; // bubble up
     }
     input = output;
   }
   return CBChainState::Continue;
 }
 
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn) {
+  return blocksActivation(blocks, context, chainInput, output, handlesReturn);
+}
+
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn) {
-  auto input = chainInput;
-  for (uint32_t i = 0; i < blocks.len; i++) {
-    output =
-        activateBlock(blocks.elements[i].payload.blockValue, context, input);
-    if (!context->shouldContinue()) {
-      switch (context->getState()) {
-      case CBChainState::Return:
-        if (handlesReturn)
-          context->continueFlow();
-        return CBChainState::Return;
-      case CBChainState::Stop:
-        if (context->failed()) {
-          // reset error since we throw
-          context->resetCancelFlow();
-          throw ActivationError(context->getErrorMessage());
-        }
-      case CBChainState::Restart:
-        return context->getState();
-      case CBChainState::Rebase:
-        // reset input to chain one
-        // and reset state
-        input = chainInput;
-        context->continueFlow();
-        continue;
-      case CBChainState::Continue:
-        break;
-      }
-    }
-    input = output;
-  }
-  return CBChainState::Continue;
+  return blocksActivation(blocks, context, chainInput, output, handlesReturn);
 }
 
 // Lazy and also avoid windows Loader (Dead)Lock
@@ -1870,50 +1878,32 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   chain->context = context;
   DEFER({ chain->state = CBChain::State::IterationEnded; });
 
-  auto input = chainInput;
-  for (auto blk : chain->blocks) {
-    try {
-      chain->previousOutput = activateBlock(blk, context, input);
-      if (!context->shouldContinue()) {
-        switch (context->getState()) {
-        case CBChainState::Return:
-        case CBChainState::Restart: {
-          return {context->getFlowStorage(), Restarted};
-        }
-        case CBChainState::Stop: {
-          if (context->failed()) {
-            // reset error since we throw
-            context->resetCancelFlow();
-            throw ActivationError(context->getErrorMessage());
-          }
-          return {context->getFlowStorage(), Stopped};
-        }
-        case CBChainState::Rebase:
-          // Rebase means we need to put back main input
-          input = chainInput;
-          context->continueFlow();
-          continue;
-        case CBChainState::Continue:
-          break;
-        }
-      }
+  try {
+    auto state = blocksActivation(chain->blocks, context, chainInput,
+                                  chain->previousOutput, false);
+    switch (state) {
+    case CBChainState::Return:
+    case CBChainState::Restart:
+      return {context->getFlowStorage(), Restarted};
+    case CBChainState::Stop:
+      // On failure blocksActivation throws!
+      assert(!context->failed());
+      return {context->getFlowStorage(), Stopped};
+    case CBChainState::Rebase:
+      // Handled inside blocksActivation
+      assert(false);
+    case CBChainState::Continue:
+      break;
     }
+  }
 #ifndef __EMSCRIPTEN__
-    catch (boost::context::detail::forced_unwind const &e) {
-      throw; // required for Boost Coroutine!
-    }
+  catch (boost::context::detail::forced_unwind const &e) {
+    throw; // required for Boost Coroutine!
+  }
 #endif
-    catch (const std::exception &e) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      return {chain->previousOutput, Failed};
-    } catch (...) {
-      LOG(ERROR) << "Block activation error (...), failed block: "
-                 << std::string(blk->name(blk));
-      return {chain->previousOutput, Failed};
-    }
-    input = chain->previousOutput;
+  catch (...) {
+    // blocksActivation handles error logging and such
+    return {chain->previousOutput, Failed};
   }
 
   return {chain->previousOutput, Running};
