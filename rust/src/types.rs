@@ -841,6 +841,25 @@ impl From<&Vec<Var>> for Var {
   }
 }
 
+impl From<&Vec<ClonedVar>> for Var {
+  #[inline(always)]
+  fn from(vec: &Vec<ClonedVar>) -> Self {
+    CBVar {
+      valueType: CBType_Seq,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          seqValue: CBSeq {
+            elements: vec.as_ptr() as *mut CBVar,
+            len: vec.len() as u32,
+            cap: 0,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+}
+
 impl From<&[Var]> for Var {
   #[inline(always)]
   fn from(vec: &[Var]) -> Self {
@@ -933,6 +952,10 @@ impl Var {
 
   pub fn try_push<T: TryInto<Var>>(&mut self, _val: T) {
     unimplemented!();
+  }
+
+  pub fn is_seq(&self) -> bool {
+    self.valueType == CBType_Seq
   }
 
   pub fn is_none(&self) -> bool {
