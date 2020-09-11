@@ -398,6 +398,18 @@ BUILTIN("nth")
     return seq->item(i);
 }
 
+BUILTIN("reverse")
+{
+    CHECK_ARGS_IS(1);
+    ARG(malSequence, seq);
+
+    auto rseq = new malList(std::begin(*seq), std::end(*seq));
+
+    std::reverse(std::begin(*rseq), std::end(*rseq));
+
+    return malValuePtr(rseq);
+}
+
 BUILTIN("pr-str")
 {
     return mal::string(printValues(argsBegin, argsEnd, " ", true));
