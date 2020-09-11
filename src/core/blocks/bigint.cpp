@@ -101,6 +101,50 @@ BIGINT_MATH_OP(And, &);
 BIGINT_MATH_OP(Or, |);
 BIGINT_MATH_OP(Mod, %);
 
+#define BIGINT_LOGIC_OP(__NAME__, __OP__)                                      \
+  struct __NAME__ : public BigOperandBase {                                    \
+    static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }            \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      _buffer.clear();                                                         \
+      cpp_int bia;                                                             \
+      import_bits(bia, input.payload.bytesValue,                               \
+                  input.payload.bytesValue + input.payload.bytesSize);         \
+      auto op = getOperand();                                                  \
+      cpp_int bib;                                                             \
+      import_bits(bib, op.payload.bytesValue,                                  \
+                  op.payload.bytesValue + op.payload.bytesSize);               \
+      bool bres = bia __OP__ bib;                                              \
+      return Var(bres);                                                        \
+    }                                                                          \
+  }
+
+BIGINT_LOGIC_OP(Is, ==);
+BIGINT_LOGIC_OP(IsNot, !=);
+BIGINT_LOGIC_OP(IsMore, >);
+BIGINT_LOGIC_OP(IsLess, <);
+BIGINT_LOGIC_OP(IsMoreEqual, >=);
+BIGINT_LOGIC_OP(IsLessEqual, <=);
+
+#define BIGINT_BINARY_OP(__NAME__, __OP__)                                     \
+  struct __NAME__ : public BigOperandBase {                                    \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      _buffer.clear();                                                         \
+      cpp_int bia;                                                             \
+      import_bits(bia, input.payload.bytesValue,                               \
+                  input.payload.bytesValue + input.payload.bytesSize);         \
+      auto op = getOperand();                                                  \
+      cpp_int bib;                                                             \
+      import_bits(bib, op.payload.bytesValue,                                  \
+                  op.payload.bytesValue + op.payload.bytesSize);               \
+      cpp_int bres = __OP__(bia, bib);                                         \
+      export_bits(bres, std::back_inserter(_buffer), 8);                       \
+      return Var(&_buffer.front(), _buffer.size());                            \
+    }                                                                          \
+  }
+
+BIGINT_BINARY_OP(Min, std::min);
+BIGINT_BINARY_OP(Max, std::max);
+
 struct ShiftBase {
   ParamVar _shift{Var(0)};
 
@@ -201,6 +245,14 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.Shift", Shift);
   REGISTER_CBLOCK("BigInt.ToFloat", ToFloat);
   REGISTER_CBLOCK("BigInt.ToString", ToString);
+  REGISTER_CBLOCK("BigInt.Is", Is);
+  REGISTER_CBLOCK("BigInt.IsNot", IsNot);
+  REGISTER_CBLOCK("BigInt.IsMore", IsMore);
+  REGISTER_CBLOCK("BigInt.IsLess", IsLess);
+  REGISTER_CBLOCK("BigInt.IsMoreEqual", IsMoreEqual);
+  REGISTER_CBLOCK("BigInt.IsLessEqual", IsLessEqual);
+  REGISTER_CBLOCK("BigInt.Min", Min);
+  REGISTER_CBLOCK("BigInt.Max", Max);
 }
 } // namespace BigInt
 } // namespace chainblocks
