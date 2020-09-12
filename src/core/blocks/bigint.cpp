@@ -75,6 +75,38 @@ struct BigOperandBase {
   }
 };
 
+struct RegOperandBase {
+  std::vector<uint8_t> _buffer;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBParametersInfo parameters() {
+    static Parameters params{{"Operand",
+                              "The integer operand, can be a variable",
+                              {CoreInfo::IntType, CoreInfo::IntVarType}}};
+    return params;
+  }
+
+  ParamVar _op{};
+
+  void setParam(int index, CBVar value) { _op = value; }
+
+  CBVar getParam(int index) { return _op; }
+
+  void cleanup() { _op.cleanup(); }
+
+  void warmup(CBContext *context) { _op.warmup(context); }
+
+  const CBVar &getOperand() {
+    CBVar &op = _op.get();
+    if (op.valueType == None) {
+      throw ActivationError("Operand is None, should be an integer");
+    }
+    return op;
+  }
+};
+
 #define BIGINT_MATH_OP(__NAME__, __OP__)                                       \
   struct __NAME__ : public BigOperandBase {                                    \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
@@ -144,6 +176,22 @@ BIGINT_LOGIC_OP(IsLessEqual, <=);
 
 BIGINT_BINARY_OP(Min, std::min);
 BIGINT_BINARY_OP(Max, std::max);
+
+#define BIGINT_REG_BINARY_OP(__NAME__, __OP__)                                 \
+  struct __NAME__ : public RegOperandBase {                                    \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      _buffer.clear();                                                         \
+      cpp_int bia;                                                             \
+      import_bits(bia, input.payload.bytesValue,                               \
+                  input.payload.bytesValue + input.payload.bytesSize);         \
+      auto op = getOperand();                                                  \
+      cpp_int bres = __OP__(bia, op.payload.intValue);                         \
+      export_bits(bres, std::back_inserter(_buffer), 8);                       \
+      return Var(&_buffer.front(), _buffer.size());                            \
+    }                                                                          \
+  }
+
+BIGINT_REG_BINARY_OP(Pow, pow);
 
 struct ShiftBase {
   ParamVar _shift{Var(0)};
@@ -253,6 +301,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.IsLessEqual", IsLessEqual);
   REGISTER_CBLOCK("BigInt.Min", Min);
   REGISTER_CBLOCK("BigInt.Max", Max);
+  REGISTER_CBLOCK("BigInt.Pow", Pow);
 }
 } // namespace BigInt
 } // namespace chainblocks
