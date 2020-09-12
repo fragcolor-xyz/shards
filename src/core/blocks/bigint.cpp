@@ -185,6 +185,8 @@ BIGINT_BINARY_OP(Max, std::max);
       import_bits(bia, input.payload.bytesValue,                               \
                   input.payload.bytesValue + input.payload.bytesSize);         \
       auto op = getOperand();                                                  \
+      if (op.valueType != Int)                                                 \
+        throw ActivationError("Pow operand should be an Int");                 \
       cpp_int bres = __OP__(bia, op.payload.intValue);                         \
       export_bits(bres, std::back_inserter(_buffer), 8);                       \
       return Var(&_buffer.front(), _buffer.size());                            \
