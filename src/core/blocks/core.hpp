@@ -1028,9 +1028,9 @@ struct Get : public VariableBase {
 struct Swap {
   static inline ParamsInfo swapParamsInfo =
       ParamsInfo(ParamsInfo::Param("NameA", "The name of first variable.",
-                                   CoreInfo::StringType),
+                                   CoreInfo::StringOrAnyVar),
                  ParamsInfo::Param("NameB", "The name of second variable.",
-                                   CoreInfo::StringType));
+                                   CoreInfo::StringOrAnyVar));
 
   std::string _nameA;
   std::string _nameB;
