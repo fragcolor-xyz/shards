@@ -286,7 +286,7 @@ struct Abs {
   std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi;
