@@ -289,6 +289,7 @@ struct Abs {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    _buffer.clear();
     cpp_int bi;
     import_bits(bi, input.payload.bytesValue,
                 input.payload.bytesValue + input.payload.bytesSize);
