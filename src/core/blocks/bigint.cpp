@@ -282,6 +282,24 @@ struct ToString {
   }
 };
 
+struct Abs {
+  std::vector<uint8_t> _buffer;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    cpp_int bi;
+    import_bits(bi, input.payload.bytesValue,
+                input.payload.bytesValue + input.payload.bytesSize);
+
+    cpp_int abi = abs(bi);
+
+    export_bits(abi, std::back_inserter(_buffer), 8);
+    return Var(&_buffer.front(), _buffer.size());
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("BigInt", ToBigInt);
   REGISTER_CBLOCK("BigInt.Add", Add);
@@ -304,6 +322,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.Min", Min);
   REGISTER_CBLOCK("BigInt.Max", Max);
   REGISTER_CBLOCK("BigInt.Pow", Pow);
+  REGISTER_CBLOCK("BigInt.Abs", Abs);
 }
 } // namespace BigInt
 } // namespace chainblocks
