@@ -13,6 +13,23 @@ using namespace boost::multiprecision;
 
 namespace chainblocks {
 namespace BigInt {
+inline Var to_var(const cpp_int &bi, std::vector<uint8_t> &buffer) {
+  buffer.clear();
+  buffer.emplace_back(uint8_t(bi < 0));
+  export_bits(bi, std::back_inserter(buffer), 8);
+  return Var(&buffer.front(), buffer.size());
+}
+
+inline cpp_int from_var(const CBVar &op) {
+  cpp_int bib;
+  import_bits(bib, op.payload.bytesValue + 1,
+              op.payload.bytesValue + op.payload.bytesSize);
+  auto negative = bool(op.payload.bytesValue[0]);
+  if (negative)
+    bib *= -1;
+  return bib;
+}
+
 struct ToBigInt {
   std::vector<uint8_t> _buffer;
 
@@ -22,7 +39,6 @@ struct ToBigInt {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _buffer.clear();
     cpp_int bi;
     switch (input.valueType) {
     case Int: {
@@ -38,8 +54,7 @@ struct ToBigInt {
       throw ActivationError("Invalid input type");
     }
     }
-    export_bits(bi, std::back_inserter(_buffer), 8);
-    return Var(&_buffer.front(), _buffer.size());
+    return to_var(bi, _buffer);
   }
 };
 
@@ -110,17 +125,11 @@ struct RegOperandBase {
 #define BIGINT_MATH_OP(__NAME__, __OP__)                                       \
   struct __NAME__ : public BigOperandBase {                                    \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      _buffer.clear();                                                         \
-      cpp_int bia;                                                             \
-      import_bits(bia, input.payload.bytesValue,                               \
-                  input.payload.bytesValue + input.payload.bytesSize);         \
+      cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
-      cpp_int bib;                                                             \
-      import_bits(bib, op.payload.bytesValue,                                  \
-                  op.payload.bytesValue + op.payload.bytesSize);               \
+      cpp_int bib = from_var(op);                                              \
       cpp_int bres = bia __OP__ bib;                                           \
-      export_bits(bres, std::back_inserter(_buffer), 8);                       \
-      return Var(&_buffer.front(), _buffer.size());                            \
+      return to_var(bres, _buffer);                                            \
     }                                                                          \
   }
 
@@ -137,14 +146,9 @@ BIGINT_MATH_OP(Mod, %);
   struct __NAME__ : public BigOperandBase {                                    \
     static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }            \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      _buffer.clear();                                                         \
-      cpp_int bia;                                                             \
-      import_bits(bia, input.payload.bytesValue,                               \
-                  input.payload.bytesValue + input.payload.bytesSize);         \
+      cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
-      cpp_int bib;                                                             \
-      import_bits(bib, op.payload.bytesValue,                                  \
-                  op.payload.bytesValue + op.payload.bytesSize);               \
+      cpp_int bib = from_var(op);                                              \
       bool bres = bia __OP__ bib;                                              \
       return Var(bres);                                                        \
     }                                                                          \
@@ -160,17 +164,11 @@ BIGINT_LOGIC_OP(IsLessEqual, <=);
 #define BIGINT_BINARY_OP(__NAME__, __OP__)                                     \
   struct __NAME__ : public BigOperandBase {                                    \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      _buffer.clear();                                                         \
-      cpp_int bia;                                                             \
-      import_bits(bia, input.payload.bytesValue,                               \
-                  input.payload.bytesValue + input.payload.bytesSize);         \
+      cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
-      cpp_int bib;                                                             \
-      import_bits(bib, op.payload.bytesValue,                                  \
-                  op.payload.bytesValue + op.payload.bytesSize);               \
+      cpp_int bib = from_var(op);                                              \
       cpp_int bres = __OP__(bia, bib);                                         \
-      export_bits(bres, std::back_inserter(_buffer), 8);                       \
-      return Var(&_buffer.front(), _buffer.size());                            \
+      return to_var(bres, _buffer);                                            \
     }                                                                          \
   }
 
@@ -180,16 +178,12 @@ BIGINT_BINARY_OP(Max, std::max);
 #define BIGINT_REG_BINARY_OP(__NAME__, __OP__)                                 \
   struct __NAME__ : public RegOperandBase {                                    \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
-      _buffer.clear();                                                         \
-      cpp_int bia;                                                             \
-      import_bits(bia, input.payload.bytesValue,                               \
-                  input.payload.bytesValue + input.payload.bytesSize);         \
+      cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
       if (op.valueType != Int)                                                 \
         throw ActivationError("Pow operand should be an Int");                 \
       cpp_int bres = __OP__(bia, op.payload.intValue);                         \
-      export_bits(bres, std::back_inserter(_buffer), 8);                       \
-      return Var(&_buffer.front(), _buffer.size());                            \
+      return to_var(bres, _buffer);                                            \
     }                                                                          \
   }
 
@@ -223,10 +217,7 @@ struct Shift : public ShiftBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _buffer.clear();
-    cpp_int bi;
-    import_bits(bi, input.payload.bytesValue,
-                input.payload.bytesValue + input.payload.bytesSize);
+    cpp_int bi = from_var(input);
     cpp_dec_float_100 bf(bi);
 
     cpp_dec_float_100 bshift(_shift.get().payload.intValue);
@@ -234,8 +225,7 @@ struct Shift : public ShiftBase {
 
     auto bres = cpp_int(bf * bshift);
 
-    export_bits(bres, std::back_inserter(_buffer), 8);
-    return Var(&_buffer.front(), _buffer.size());
+    return to_var(bres, _buffer);
   }
 };
 
@@ -253,9 +243,7 @@ struct ToFloat : public ShiftBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    cpp_int bi;
-    import_bits(bi, input.payload.bytesValue,
-                input.payload.bytesValue + input.payload.bytesSize);
+    cpp_int bi = from_var(input);
     cpp_dec_float_100 bf(bi);
 
     cpp_dec_float_100 bshift(_shift.get().payload.intValue);
@@ -274,9 +262,7 @@ struct ToString {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    cpp_int bi;
-    import_bits(bi, input.payload.bytesValue,
-                input.payload.bytesValue + input.payload.bytesSize);
+    cpp_int bi = from_var(input);
     _buffer = bi.str();
     return Var(_buffer);
   }
@@ -289,15 +275,9 @@ struct Abs {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _buffer.clear();
-    cpp_int bi;
-    import_bits(bi, input.payload.bytesValue,
-                input.payload.bytesValue + input.payload.bytesSize);
-
+    cpp_int bi = from_var(input);
     cpp_int abi = abs(bi);
-
-    export_bits(abi, std::back_inserter(_buffer), 8);
-    return Var(&_buffer.front(), _buffer.size());
+    return to_var(abi, _buffer);
   }
 };
 
