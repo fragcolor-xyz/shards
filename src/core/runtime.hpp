@@ -479,6 +479,10 @@ inline void start(CBChain *chain, CBVar input = {}) {
 
   chainblocks::cloneVar(chain->rootTickInput, input);
   chain->state = CBChain::State::Starting;
+
+  for (auto &call : chain->onStart) {
+    call();
+  }
 }
 
 inline bool stop(CBChain *chain, CBVar *result = nullptr) {
@@ -530,6 +534,10 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
   // Clone the results if we need them
   if (result)
     cloneVar(*result, chain->finishedOutput);
+
+  for (auto &call : chain->onStop) {
+    call();
+  }
 
   return res;
 }

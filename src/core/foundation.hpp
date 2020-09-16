@@ -269,6 +269,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
     return reinterpret_cast<CBChainRef>(res);
   }
 
+  std::vector<std::function<void()>> onStart;
+  std::vector<std::function<void()>> onStop;
+
 private:
   CBChain(std::string_view chain_name) : name(chain_name) {
     LOG(TRACE) << "CBChain() " << name;

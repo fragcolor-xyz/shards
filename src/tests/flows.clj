@@ -91,6 +91,11 @@
 ;;   0
 ;;   (Do recursiveCrash)))
 
+(def spawner
+  (Chain
+   "spawner"
+   (Spawn logicChain)))
+
 (def Loop
   (Chain
    "Loop" :Looped
@@ -157,6 +162,18 @@
   (Const ["A" "B" "C"])
   (TryMany (Chain "print-stuff" (Log)) :Policy WaitUntil.FirstSuccess)
   (Assert.Is "A" false)
+
+  -10
+  (If ~[(Do spawner) >= .ccc (WaitChain .ccc) (ExpectBool)]
+      (--> true)
+      (--> false))
+  (Assert.IsNot false false)
+
+  11
+  (If ~[(Do spawner) >= .ccc (WaitChain .ccc) (ExpectBool)]
+      (--> true)
+      (--> false))
+  (Assert.Is true false)
 
   (Msg "Done")))
 

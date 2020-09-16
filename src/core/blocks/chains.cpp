@@ -1073,9 +1073,10 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 enum class WaitUntil {
   FirstSuccess, // will wait until the first success and stop any other pending
                 // operation
-  AllSuccess, // will wait untill all complete will stop and fail on any failure
-  SomeSuccess // will wait until all complete but won't fail if some of the
-              // chains failed
+  AllSuccess,   // will wait untill all complete, will stop and fail on any
+                // failure
+  SomeSuccess   // will wait until all complete but won't fail if some of the
+                // chains failed
 };
 
 struct ManyChain : public std::enable_shared_from_this<ManyChain> {
@@ -1292,6 +1293,91 @@ struct TryMany : public ChainBase {
   size_t _maxSize{0};
 };
 
+struct Spawn : public ChainBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ChainType; }
+
+  static inline Parameters _params{
+      {"Chain", "The chain to spawn and try to run many times concurrently.",
+       ChainBase::ChainVarTypes}};
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      chainref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return chainref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    ChainBase::compose(data); // discard the result, we do our thing here
+    // chain should be populated now and such
+    _pool.reset(new ChainDoppelgangerPool<ManyChain>(CBChain::weakRef(chain)));
+
+    const IterableExposedInfo shared(data.shared);
+    // copy shared
+    _sharedCopy = shared;
+
+    _inputType = data.inputType;
+    return CoreInfo::ChainType;
+  }
+
+  struct Composer {
+    Spawn &server;
+    CBContext *context;
+
+    void compose(CBChain *chain) {
+      CBInstanceData data{};
+      data.inputType = server._inputType;
+      data.shared = server._sharedCopy;
+      data.chain = context->chainStack.back();
+      chain->node = context->main->node;
+      auto res = composeChain(
+          chain,
+          [](const struct CBlock *errorBlock, const char *errorTxt,
+             CBBool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              LOG(ERROR) << errorTxt;
+              throw ActivationError("Http.Server handler chain compose failed");
+            } else {
+              LOG(WARNING) << errorTxt;
+            }
+          },
+          nullptr, data);
+      arrayFree(res.exposedInfo);
+      arrayFree(res.requiredInfo);
+    }
+  } _composer{*this};
+
+  void warmup(CBContext *context) { _composer.context = context; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto node = context->main->node.lock();
+    auto c = _pool->acquire(_composer);
+    c->chain->onStop.clear(); // we have a fresh recycled chain here
+    c->chain->onStop.emplace_back([this, c]() { _pool->release(c); });
+    node->schedule(c->chain, input, false);
+    return Var(c->chain); // notice this is "weak"
+  }
+
+  std::unique_ptr<ChainDoppelgangerPool<ManyChain>> _pool;
+  IterableExposedInfo _sharedCopy;
+  CBTypeInfo _inputType{};
+};
+
 void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
@@ -1302,5 +1388,6 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
   REGISTER_CBLOCK("Recur", Recur);
   REGISTER_CBLOCK("TryMany", TryMany);
+  REGISTER_CBLOCK("Spawn", Spawn);
 }
 }; // namespace chainblocks
