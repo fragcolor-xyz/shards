@@ -122,6 +122,13 @@ struct RegOperandBase {
   }
 };
 
+struct UnaryBase {
+  std::vector<uint8_t> _buffer;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+};
+
 #define BIGINT_MATH_OP(__NAME__, __OP__)                                       \
   struct __NAME__ : public BigOperandBase {                                    \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
@@ -188,6 +195,17 @@ BIGINT_BINARY_OP(Max, std::max);
   }
 
 BIGINT_REG_BINARY_OP(Pow, pow);
+
+#define BIGINT_UNARY_OP(__NAME__, __OP__)                                      \
+  struct __NAME__ : public RegOperandBase {                                    \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      cpp_int bia = from_var(input);                                           \
+      cpp_int bres = __OP__(bia);                                              \
+      return to_var(bres, _buffer);                                            \
+    }                                                                          \
+  }
+
+BIGINT_UNARY_OP(Sqrt, sqrt);
 
 struct ShiftBase {
   ParamVar _shift{Var(0)};
@@ -304,6 +322,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.Max", Max);
   REGISTER_CBLOCK("BigInt.Pow", Pow);
   REGISTER_CBLOCK("BigInt.Abs", Abs);
+  REGISTER_CBLOCK("BigInt.Sqrt", Sqrt);
 }
 } // namespace BigInt
 } // namespace chainblocks
