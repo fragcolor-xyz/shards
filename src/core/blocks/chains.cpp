@@ -1368,7 +1368,11 @@ struct Spawn : public ChainBase {
     auto node = context->main->node.lock();
     auto c = _pool->acquire(_composer);
     c->chain->onStop.clear(); // we have a fresh recycled chain here
-    c->chain->onStop.emplace_back([this, c]() { _pool->release(c); });
+    std::weak_ptr<ManyChain> wc(c);
+    c->chain->onStop.emplace_back([this, wc]() {
+      if (auto c = wc.lock())
+        _pool->release(c);
+    });
     node->schedule(c->chain, input, false);
     return Var(c->chain); // notice this is "weak"
   }
