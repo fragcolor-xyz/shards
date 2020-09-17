@@ -1704,25 +1704,26 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
     break;
   }
   case Table: {
-    std::unordered_set<CBTypeInfo> types;
     auto &ta = value.payload.tableValue;
     struct iterdata {
-      std::unordered_set<CBTypeInfo> *types;
+      std::unordered_set<CBTypeInfo> types;
       CBTypeInfo *varType;
     } data;
+    data.varType = &varType;
     ta.api->tableForEach(
         ta,
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;
           auto derived = deriveTypeInfo(*value);
-          if (!data->types->count(derived)) {
+          if (!data->types.count(derived)) {
             chainblocks::arrayPush(data->varType->table.types, derived);
-            data->types->insert(derived);
+            data->types.insert(derived);
+          } else {
+            freeDerivedInfo(derived);
           }
           return true;
         },
         &data);
-
     break;
   }
   default:
