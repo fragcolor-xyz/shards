@@ -261,8 +261,8 @@ public:
 
     WITH_META(malHash);
 
-private:
     const Map m_map;
+private:
     const bool m_isEvaluated;
 };
 

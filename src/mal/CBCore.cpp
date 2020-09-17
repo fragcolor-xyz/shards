@@ -67,7 +67,7 @@ typedef RefCountedPtr<malCBNode> malCBNodePtr;
 typedef RefCountedPtr<malCBVar> malCBVarPtr;
 
 void registerKeywords(malEnvPtr env);
-malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg);
+malCBVarPtr varify(const malValuePtr &arg);
 
 namespace fs = ghc::filesystem;
 
@@ -438,7 +438,7 @@ struct ChainFileWatcher {
 
             malEnvPtr env(new malEnv(rootEnv));
             auto res = maleval(str.c_str(), env);
-            auto var = varify(nullptr, res);
+            auto var = varify(res);
             if (var->value().valueType != CBType::Chain) {
               LOG(ERROR) << "Script did not return a CBChain";
               continue;
@@ -814,6 +814,19 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
       auto blks = blockify(val);
       result.insert(result.end(), blks.begin(), blks.end());
     }
+  } else if (const malHash *v = DYNAMIC_CAST(malHash, arg)) {
+    CBVar var{};
+    chainblocks::CBMap cbMap;
+    std::vector<malCBVarPtr> vars;
+    for (auto [k, v] : v->m_map) {
+      auto cbv = varify(v);
+      vars.emplace_back(cbv);
+      cbMap[unescape(k)] = cbv->value();
+    }
+    var.valueType = Table;
+    var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
+    var.payload.tableValue.opaque = &cbMap;
+    WRAP_TO_CONST(var);
   } else {
     throw chainblocks::CBException("Invalid argument for chain");
   }
@@ -822,7 +835,7 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
 
 std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end);
 
-malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
+malCBVarPtr varify(const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     CBVar var{};
@@ -854,13 +867,32 @@ malCBVarPtr varify(malCBlock *mblk, const malValuePtr &arg) {
     std::vector<malCBVarPtr> vars;
     for (auto i = 0; i < count; i++) {
       auto val = v->item(i);
-      auto subVar = varify(mblk, val);
+      auto subVar = varify(val);
       vars.push_back(subVar);
       chainblocks::arrayPush(tmp.payload.seqValue, subVar->value());
     }
     CBVar var{};
     chainblocks::cloneVar(var, tmp);
     chainblocks::arrayFree(tmp.payload.seqValue);
+    auto mvar = new malCBVar(var, true);
+    for (auto &rvar : vars) {
+      mvar->reference(rvar.ptr());
+    }
+    return malCBVarPtr(mvar);
+  } else if (const malHash *v = DYNAMIC_CAST(malHash, arg)) {
+    chainblocks::CBMap cbMap;
+    std::vector<malCBVarPtr> vars;
+    for (auto [k, v] : v->m_map) {
+      auto cbv = varify(v);
+      vars.emplace_back(cbv);
+      cbMap[unescape(k)] = cbv->value();
+    }
+    CBVar tmp{};
+    tmp.valueType = Table;
+    tmp.payload.tableValue.api = &chainblocks::Globals::TableInterface;
+    tmp.payload.tableValue.opaque = &cbMap;
+    CBVar var{};
+    chainblocks::cloneVar(var, tmp);
     auto mvar = new malCBVar(var, true);
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
@@ -950,7 +982,7 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
                    << " block: " << block->name(block);
         throw chainblocks::CBException("Parameter not found");
       } else {
-        auto var = varify(malblock, value);
+        auto var = varify(value);
         if (!validateSetParam(block, idx, var->value(), validationCallback,
                               nullptr)) {
           LOG(ERROR) << "Failed parameter: " << paramName;
@@ -966,7 +998,7 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       LOG(ERROR) << "Keyword expected, block: " << block->name(block);
       throw chainblocks::CBException("Keyword expected");
     } else {
-      auto var = varify(malblock, arg);
+      auto var = varify(arg);
       if (!validateSetParam(block, pindex, var->value(), validationCallback,
                             nullptr)) {
         LOG(ERROR) << "Failed parameter index: " << pindex;
@@ -1620,7 +1652,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
   auto penv = (malEnvPtr *)env;
   try {
     auto res = maleval(str, *penv);
-    auto mvar = varify(nullptr, res);
+    auto mvar = varify(res);
     // hack, increase count to not loose contents...
     // TODO, improve as in the end this leaks basically
     std::size_t sh = std::hash<const char *>{}(str);

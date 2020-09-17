@@ -19,16 +19,16 @@
   (Chain
    "namedChain"
    (Msg "Running tests!")
-   
+
    (Const #"\sHello")
    (Log)
-   
+
    false
    (Match [true ~["Yes"]
            false ~["No"]]
           :Passthrough false)
    (Assert.Is "No" true)
-   
+
    false
    (Match [true ~["Yes"]
            nil ~["No"]]
@@ -229,6 +229,14 @@
 
    5 (ToFloat) (Math.Divide (Float 10))
    (Assert.Is 0.5 true)
+
+   {"key1" 10 "key2" 20} >= ; tests blockify
+   .htable1 (Take "key1") (Assert.Is 10 true)
+   .htable1 (Take "key2") (Assert.Is 20 true)
+
+   (Const {"key1" 10 "key2" 20}) >= ; tests varify
+   .htable2 (Take "key1") (Assert.Is 10 true)
+   .htable2 (Take "key2") (Assert.Is 20 true)
 
    (Int 10) (ToFloat) (Set "fx")
    (Get "fx") (Assert.Is (Float 10) true)
