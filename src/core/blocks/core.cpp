@@ -883,6 +883,12 @@ struct Erase : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     const auto &indices = _indices.get();
     if (unlikely(_isTable && _target->valueType == Table)) {
       if (indices.valueType == String) {
