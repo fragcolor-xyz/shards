@@ -827,6 +827,8 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
     var.payload.tableValue.opaque = &cbMap;
     WRAP_TO_CONST(var);
+  } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
+    return blockify(v->deref());
   } else {
     throw chainblocks::CBException("Invalid argument for chain");
   }
@@ -934,6 +936,8 @@ malCBVarPtr varify(const malValuePtr &arg) {
     auto cvar = new malCBVar(var);
     cvar->reference(v);
     return malCBVarPtr(cvar);
+  } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
+    return varify(v->deref());
   } else {
     throw chainblocks::CBException("Invalid variable");
   }
