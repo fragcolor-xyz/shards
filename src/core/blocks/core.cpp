@@ -1265,32 +1265,6 @@ RUNTIME_BLOCK_warmup(Remove);
 RUNTIME_BLOCK_compose(Remove);
 RUNTIME_BLOCK_END(Remove);
 
-// Register PrependTo
-RUNTIME_CORE_BLOCK(PrependTo);
-RUNTIME_BLOCK_cleanup(PrependTo);
-RUNTIME_BLOCK_warmup(PrependTo);
-RUNTIME_BLOCK_inputTypes(PrependTo);
-RUNTIME_BLOCK_outputTypes(PrependTo);
-RUNTIME_BLOCK_parameters(PrependTo);
-RUNTIME_BLOCK_compose(PrependTo);
-RUNTIME_BLOCK_setParam(PrependTo);
-RUNTIME_BLOCK_getParam(PrependTo);
-RUNTIME_BLOCK_activate(PrependTo);
-RUNTIME_BLOCK_END(PrependTo);
-
-// Register AppendTo
-RUNTIME_CORE_BLOCK(AppendTo);
-RUNTIME_BLOCK_cleanup(AppendTo);
-RUNTIME_BLOCK_warmup(AppendTo);
-RUNTIME_BLOCK_inputTypes(AppendTo);
-RUNTIME_BLOCK_outputTypes(AppendTo);
-RUNTIME_BLOCK_parameters(AppendTo);
-RUNTIME_BLOCK_compose(AppendTo);
-RUNTIME_BLOCK_setParam(AppendTo);
-RUNTIME_BLOCK_getParam(AppendTo);
-RUNTIME_BLOCK_activate(AppendTo);
-RUNTIME_BLOCK_END(AppendTo);
-
 LOGIC_OP_DESC(Is);
 LOGIC_OP_DESC(IsNot);
 LOGIC_OP_DESC(IsMore);
@@ -1397,8 +1371,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Repeat);
   REGISTER_CORE_BLOCK(Sort);
   REGISTER_CORE_BLOCK(Remove);
-  REGISTER_CORE_BLOCK(PrependTo);
-  REGISTER_CORE_BLOCK(AppendTo);
   REGISTER_CORE_BLOCK(Is);
   REGISTER_CORE_BLOCK(IsNot);
   REGISTER_CORE_BLOCK(IsMore);
@@ -1476,6 +1448,11 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Pause", Pause);
   REGISTER_CBLOCK("PauseMs", PauseMs);
+
+  REGISTER_CBLOCK("PrependTo", PrependTo);
+  REGISTER_CBLOCK("AppendTo", AppendTo);
+  REGISTER_CBLOCK("Cons", PrependTo);
+  REGISTER_CBLOCK("Conj", AppendTo);
 
   using PassMockBlock =
       LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
