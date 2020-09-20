@@ -807,6 +807,9 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     WRAP_TO_CONST(v->value());
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     result.emplace_back(v);
+  } else if (DYNAMIC_CAST(malVector, arg)) {
+    auto cbv = varify(arg);
+    WRAP_TO_CONST(cbv->value());
   } else if (const malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     auto count = v->count();
     for (auto i = 0; i < count; i++) {
