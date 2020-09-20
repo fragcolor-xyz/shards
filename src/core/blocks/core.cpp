@@ -956,6 +956,7 @@ struct Assoc : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    _key.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -969,7 +970,7 @@ struct Assoc : public VariableBase {
       if (_cell->valueType == Seq) {
         auto &s = _cell->payload.seqValue;
         for (uint32_t i = 0; i < n; i++) {
-          auto &idx = input.payload.seqValue.elements[(i + 0) * 2];
+          auto &idx = input.payload.seqValue.elements[(i * 2) + 0];
           if (idx.valueType != Int) {
             throw ActivationError("Expected an Int for index.");
           }
@@ -977,17 +978,17 @@ struct Assoc : public VariableBase {
           if (index >= s.len) {
             throw ActivationError("Index out of range, sequence is smaller.");
           }
-          auto &v = input.payload.seqValue.elements[(i + 1) * 2];
+          auto &v = input.payload.seqValue.elements[(i * 2) + 1];
           cloneVar(s.elements[index], v);
         }
       } else if (_cell->valueType == Table) {
         auto &t = _cell->payload.tableValue;
         for (uint32_t i = 0; i < n; i++) {
-          auto &k = input.payload.seqValue.elements[(i + 0) * 2];
+          auto &k = input.payload.seqValue.elements[(i * 2) + 0];
           if (k.valueType != String) {
             throw ActivationError("Expected a String for key.");
           }
-          auto &v = input.payload.seqValue.elements[(i + 1) * 2];
+          auto &v = input.payload.seqValue.elements[(i * 2) + 1];
           CBVar *record = t.api->tableAt(t, k.payload.stringValue);
           cloneVar(*record, v);
         }
@@ -999,11 +1000,12 @@ struct Assoc : public VariableBase {
     } else {
       if (_isTable) {
         if (_target->valueType == Table) {
+          auto &kv = _key.get();
           if (_target->payload.tableValue.api->tableContains(
-                  _target->payload.tableValue, _key.c_str())) {
+                  _target->payload.tableValue, kv.payload.stringValue)) {
             // Has it
             CBVar *vptr = _target->payload.tableValue.api->tableAt(
-                _target->payload.tableValue, _key.c_str());
+                _target->payload.tableValue, kv.payload.stringValue);
             // Pin fast cell
             _cell = vptr;
           } else {

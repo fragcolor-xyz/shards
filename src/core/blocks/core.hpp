@@ -1012,11 +1012,12 @@ struct Get : public VariableBase {
     } else {
       if (_isTable) {
         if (_target->valueType == Table) {
+          auto &kv = _key.get();
           if (_target->payload.tableValue.api->tableContains(
-                  _target->payload.tableValue, _key.c_str())) {
+                  _target->payload.tableValue, kv.payload.stringValue)) {
             // Has it
             CBVar *vptr = _target->payload.tableValue.api->tableAt(
-                _target->payload.tableValue, _key.c_str());
+                _target->payload.tableValue, kv.payload.stringValue);
 
             if (unlikely(_defaultValue.valueType != None &&
                          !defaultTypeCheck(*vptr))) {
