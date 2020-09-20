@@ -937,17 +937,49 @@ private:
 };
 
 struct Assoc : public VariableBase {
+  ExposedInfo _requiredInfo{};
+  Type _tableTypes{};
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   CBExposedTypesInfo requiredVariables() {
     if (_isTable) {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The required table.", CoreInfo::AnyTableType));
     } else {
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The required sequence.", CoreInfo::AnySeqType));
     }
+    return CBExposedTypesInfo(_requiredInfo);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _exposedInfo = {};
+
+    if (_isTable) {
+      _tableTypes = Type::TableOf(data.inputType.seqTypes);
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", _tableTypes, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", _tableTypes, true));
+      }
+    } else {
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed sequence.", data.inputType, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed sequence.", data.inputType, true));
+      }
+    }
+
+    return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(_exposedInfo);
   }
 
