@@ -487,7 +487,7 @@ struct VariableBase {
   CBVar *_target = nullptr;
   CBVar *_cell = nullptr;
   std::string _name;
-  std::string _key;
+  ParamVar _key{};
   ExposedInfo _exposedInfo{};
   bool _isTable = false;
   bool _global = false;
@@ -498,7 +498,7 @@ struct VariableBase {
       ParamsInfo::Param("Key",
                         "The key of the value to read/write from/in the table "
                         "(this variable will become a table).",
-                        CoreInfo::StringType),
+                        CoreInfo::StringStringVarOrNone),
       ParamsInfo::Param("Global",
                         "If the variable is or should be available to all "
                         "of the chains in the same node.",
@@ -512,6 +512,7 @@ struct VariableBase {
     if (_target) {
       releaseVariable(_target);
     }
+    _key.cleanup();
     _target = nullptr;
     _cell = nullptr;
   }
@@ -520,22 +521,22 @@ struct VariableBase {
     if (index == 0) {
       _name = value.payload.stringValue;
     } else if (index == 1) {
-      _key = value.payload.stringValue;
-      if (_key.size() > 0)
-        _isTable = true;
-      else
+      if (value.valueType == None) {
         _isTable = false;
+      } else {
+        _isTable = true;
+      }
+      _key = value;
     } else {
       _global = value.payload.boolValue;
     }
-    cleanup();
   }
 
   CBVar getParam(int index) {
     if (index == 0)
       return Var(_name.c_str());
     else if (index == 1)
-      return Var(_key.c_str());
+      return _key;
     else
       return Var(_global);
   }
@@ -587,6 +588,7 @@ struct SetBase : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    _key.warmup(context);
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -606,8 +608,9 @@ struct SetBase : public VariableBase {
         _target->payload.tableValue.opaque = new CBMap();
       }
 
+      auto &kv = _key.get();
       CBVar *vptr = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
+          _target->payload.tableValue, kv.payload.stringValue);
 
       // Clone will try to recyle memory and such
       cloneVar(*vptr, input);
@@ -634,11 +637,18 @@ struct Set : public SetBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      _tableContentKey = _key.c_str();
-      _tableTypeInfo =
-          CBTypeInfo{CBType::Table,
-                     {.table = {.keys = {&_tableContentKey, 1, 0},
-                                .types = {&_tableContentInfo, 1, 0}}}};
+      if (_key.isVariable()) {
+        // only add types info, we don't know keys
+        _tableTypeInfo = CBTypeInfo{
+            CBType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
+      } else {
+        CBVar kv = _key;
+        _tableContentKey = kv.payload.stringValue;
+        _tableTypeInfo =
+            CBTypeInfo{CBType::Table,
+                       {.table = {.keys = {&_tableContentKey, 1, 0},
+                                  .types = {&_tableContentInfo, 1, 0}}}};
+      }
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
             _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
@@ -674,11 +684,18 @@ struct Ref : public SetBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      _tableContentKey = _key.c_str();
-      _tableTypeInfo =
-          CBTypeInfo{CBType::Table,
-                     {.table = {.keys = {&_tableContentKey, 1, 0},
-                                .types = {&_tableContentInfo, 1, 0}}}};
+      if (_key.isVariable()) {
+        // only add types info, we don't know keys
+        _tableTypeInfo = CBTypeInfo{
+            CBType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
+      } else {
+        CBVar kv = _key;
+        _tableContentKey = kv.payload.stringValue;
+        _tableTypeInfo =
+            CBTypeInfo{CBType::Table,
+                       {.table = {.keys = {&_tableContentKey, 1, 0},
+                                  .types = {&_tableContentInfo, 1, 0}}}};
+      }
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, false, true));
     } else {
@@ -706,6 +723,7 @@ struct Ref : public SetBase {
       _target = nullptr;
     }
     _cell = nullptr;
+    _key.cleanup();
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -727,8 +745,9 @@ struct Ref : public SetBase {
         _target->payload.tableValue.opaque = new CBMap();
       }
 
+      auto &kv = _key.get();
       CBVar *vptr = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
+          _target->payload.tableValue, kv.payload.stringValue);
 
       // Notice, NO Cloning!
       *vptr = input;
@@ -766,8 +785,10 @@ struct Update : public SetBase {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
+            // if keys are populated they are not variables
+            CBVar kv = _key;
             auto &key = tableKeys.elements[y];
-            if (_key == key) {
+            if (strcmp(kv.payload.stringValue, key) == 0) {
               if (data.inputType != tableTypes.elements[y]) {
                 throw CBException(
                     "Update: error, update is changing the variable type.");
@@ -792,11 +813,18 @@ struct Update : public SetBase {
     if (_isTable) {
       // we are a table!
       _tableContentInfo = data.inputType;
-      _tableContentKey = _key.c_str();
-      _tableTypeInfo =
-          CBTypeInfo{CBType::Table,
-                     {.table = {.keys = {&_tableContentKey, 1, 0},
-                                .types = {&_tableContentInfo, 1, 0}}}};
+      if (_key.isVariable()) {
+        // only add types info, we don't know keys
+        _tableTypeInfo = CBTypeInfo{
+            CBType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
+      } else {
+        CBVar kv = _key;
+        _tableContentKey = kv.payload.stringValue;
+        _tableTypeInfo =
+            CBTypeInfo{CBType::Table,
+                       {.table = {.keys = {&_tableContentKey, 1, 0},
+                                  .types = {&_tableContentInfo, 1, 0}}}};
+      }
       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
           _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
     } else {
@@ -863,8 +891,10 @@ struct Get : public VariableBase {
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
+              // if keys are populated they are not variables
+              CBVar kv = _key;
               auto &key = tableKeys.elements[y];
-              if (strcmp(_key.c_str(), key) == 0) {
+              if (strcmp(kv.payload.stringValue, key) == 0) {
                 return tableTypes.elements[y];
               }
             }
@@ -891,9 +921,18 @@ struct Get : public VariableBase {
         _defaultType = deriveTypeInfo(_defaultValue);
         return _defaultType;
       } else {
-        throw ComposeError("Get (" + _name + "/" + _key +
-                           "): Could not infer an output type, key not found "
-                           "and no Default value provided.");
+        if (_key.isVariable()) {
+          throw ComposeError(
+              "Get (" + _name + "/" + std::string(_key.variableName()) +
+              "[variable]): Could not infer an output type, key not found "
+              "and no Default value provided.");
+        } else {
+          CBVar kv = _key;
+          throw ComposeError("Get (" + _name + "/" +
+                             std::string(kv.payload.stringValue) +
+                             "): Could not infer an output type, key not found "
+                             "and no Default value provided.");
+        }
       }
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -964,6 +1003,7 @@ struct Get : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    _key.warmup(context);
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
@@ -1100,13 +1140,16 @@ struct SeqBase : public VariableBase {
         _target->payload.tableValue.opaque = new CBMap();
       }
 
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
+      if (!_key.isVariable()) {
+        auto &kv = _key.get();
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, kv.payload.stringValue);
 
-      auto &seq = *_cell;
-      if (seq.valueType != Seq) {
-        seq.valueType = Seq;
-        seq.payload.seqValue = {};
+        auto &seq = *_cell;
+        if (seq.valueType != Seq) {
+          seq.valueType = Seq;
+          seq.payload.seqValue = {};
+        }
       }
     } else {
       if (_target->valueType != Seq) {
@@ -1124,7 +1167,7 @@ struct SeqBase : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
-
+    _key.warmup(context);
     initSeq();
   }
 
@@ -1201,7 +1244,10 @@ struct Push : public SeqBase {
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
       chainblocks::arrayPush(_tableInfo.table.types, _seqInfo);
-      chainblocks::arrayPush(_tableInfo.table.keys, _key.c_str());
+      if (!_key.isVariable()) {
+        CBVar kv = _key;
+        chainblocks::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
+      }
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
             _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
@@ -1218,7 +1264,9 @@ struct Push : public SeqBase {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
-            if (_key == tableKeys.elements[y] &&
+            // if we got key it's not a variable
+            CBVar kv = _key;
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 &&
                 tableTypes.elements[y].basicType == Seq) {
               updateTableInfo();
               return data.inputType; // found lets escape
@@ -1248,13 +1296,25 @@ struct Push : public SeqBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    assert(_cell);
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+
+      auto &seq = *_cell;
+      if (seq.valueType != Seq) {
+        seq.valueType = Seq;
+        seq.payload.seqValue = {};
+      }
+    }
+
     if (_clear && _firstPush) {
       chainblocks::arrayResize(_cell->payload.seqValue, 0);
     }
     const auto len = _cell->payload.seqValue.len;
     chainblocks::arrayResize(_cell->payload.seqValue, len + 1);
     cloneVar(_cell->payload.seqValue.elements[len], input);
+
     return input;
   }
 };
@@ -1389,7 +1449,10 @@ struct Sequence : public SeqBase {
       }
       CBTypeInfo stype{CBType::Seq, {.seqTypes = _seqTypes}};
       chainblocks::arrayPush(_tableInfo.table.types, stype);
-      chainblocks::arrayPush(_tableInfo.table.keys, _key.c_str());
+      if (!_key.isVariable()) {
+        CBVar kv = _key;
+        chainblocks::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
+      }
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
             _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
@@ -1414,9 +1477,12 @@ struct Sequence : public SeqBase {
             data.shared.elements[i].exposedType.table.types.elements) {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
-            if (_key == tableKeys.elements[y]) {
-              throw ComposeError("Sequence - Variable " + _key + " in table " +
-                                 _name + " already exists.");
+            // if here, key is not variable
+            CBVar kv = _key;
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0) {
+              throw ComposeError("Sequence - Variable " +
+                                 std::string(kv.payload.stringValue) +
+                                 " in table " + _name + " already exists.");
             }
           }
         }
@@ -1452,11 +1518,23 @@ struct Sequence : public SeqBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    assert(_cell);
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+
+      auto &seq = *_cell;
+      if (seq.valueType != Seq) {
+        seq.valueType = Seq;
+        seq.payload.seqValue = {};
+      }
+    }
+
     if (_clear) {
       auto &seq = *_cell;
       chainblocks::arrayResize(seq.payload.seqValue, 0);
     }
+
     return input;
   }
 };
@@ -1476,8 +1554,11 @@ struct SeqUser : VariableBase {
         _target->payload.tableValue.opaque = new CBMap();
       }
 
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, _key.c_str());
+      if (!_key.isVariable()) {
+        CBVar kv = _key;
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, kv.payload.stringValue);
+      }
     } else {
       _cell = _target;
     }
@@ -1490,7 +1571,7 @@ struct SeqUser : VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
-
+    _key.warmup(context);
     initSeq();
   }
 
@@ -1518,6 +1599,11 @@ struct Count : SeqUser {
     if (likely(_cell->valueType == Seq)) {
       return Var(int64_t(_cell->payload.seqValue.len));
     } else if (_cell->valueType == Table) {
+      if (unlikely(!_cell)) {
+        auto &kv = _key.get();
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, kv.payload.stringValue);
+      }
       return Var(int64_t(
           _cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
     } else if (_cell->valueType == Bytes) {
@@ -1536,6 +1622,12 @@ struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     if (likely(_cell->valueType == Seq)) {
       // notice this is fine because destroyVar will destroy .cap later
       // so we make sure we are not leaking Vars
@@ -1556,6 +1648,12 @@ struct Drop : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     if (likely(_cell->valueType == Seq)) {
       auto len = _cell->payload.seqValue.len;
       // notice this is fine because destroyVar will destroy .cap later
@@ -1581,6 +1679,12 @@ struct DropFront : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     if (likely(_cell->valueType == Seq) && _cell->payload.seqValue.len > 0) {
       auto &arr = _cell->payload.seqValue;
       chainblocks::arrayDel(arr, 0);
@@ -1614,7 +1718,9 @@ struct Pop : SeqUser {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
-            if (_key == tableKeys.elements[y] &&
+            // if here _key is not variable
+            CBVar kv = _key;
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 &&
                 tableTypes.elements[y].basicType == Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX blocks
@@ -1645,6 +1751,12 @@ struct Pop : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     if (_cell->valueType != Seq) {
       throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
@@ -1677,7 +1789,9 @@ struct PopFront : SeqUser {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
-            if (_key == tableKeys.elements[y] &&
+            // if here _key is not variable
+            CBVar kv = _key;
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 &&
                 tableTypes.elements[y].basicType == Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX blocks
@@ -1708,6 +1822,12 @@ struct PopFront : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(!_cell)) {
+      auto &kv = _key.get();
+      _cell = _target->payload.tableValue.api->tableAt(
+          _target->payload.tableValue, kv.payload.stringValue);
+    }
+
     if (_cell->valueType != Seq) {
       throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
