@@ -936,6 +936,97 @@ private:
   bool _isTable;
 };
 
+struct Assoc : public VariableBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_isTable) {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The required table.", CoreInfo::AnyTableType));
+    } else {
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+          _name.c_str(), "The required sequence.", CoreInfo::AnySeqType));
+    }
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (likely(_cell != nullptr)) {
+      if ((input.payload.seqValue.len % 2) != 0) {
+        throw ActivationError("Expected an even sized sequence as input.");
+      }
+
+      auto n = input.payload.seqValue.len / 2;
+
+      if (_cell->valueType == Seq) {
+        auto &s = _cell->payload.seqValue;
+        for (uint32_t i = 0; i < n; i++) {
+          auto &idx = input.payload.seqValue.elements[(i + 0) * 2];
+          if (idx.valueType != Int) {
+            throw ActivationError("Expected an Int for index.");
+          }
+          auto index = uint32_t(idx.payload.intValue);
+          if (index >= s.len) {
+            throw ActivationError("Index out of range, sequence is smaller.");
+          }
+          auto &v = input.payload.seqValue.elements[(i + 1) * 2];
+          cloneVar(s.elements[index], v);
+        }
+      } else if (_cell->valueType == Table) {
+        auto &t = _cell->payload.tableValue;
+        for (uint32_t i = 0; i < n; i++) {
+          auto &k = input.payload.seqValue.elements[(i + 0) * 2];
+          if (k.valueType != String) {
+            throw ActivationError("Expected a String for key.");
+          }
+          auto &v = input.payload.seqValue.elements[(i + 1) * 2];
+          CBVar *record = t.api->tableAt(t, k.payload.stringValue);
+          cloneVar(*record, v);
+        }
+      } else {
+        throw ActivationError("Expected table or sequence variable.");
+      }
+
+      return input;
+    } else {
+      if (_isTable) {
+        if (_target->valueType == Table) {
+          if (_target->payload.tableValue.api->tableContains(
+                  _target->payload.tableValue, _key.c_str())) {
+            // Has it
+            CBVar *vptr = _target->payload.tableValue.api->tableAt(
+                _target->payload.tableValue, _key.c_str());
+            // Pin fast cell
+            _cell = vptr;
+          } else {
+            throw ActivationError("Key not found in table.");
+          }
+        } else {
+          throw ActivationError("Table is empty or does not exist yet.");
+        }
+      } else {
+        if (_target->valueType == Seq) {
+          // Pin fast cell
+          _cell = _target;
+        } else {
+          throw ActivationError("Sequence is empty or does not exist yet.");
+        }
+      }
+      // recurse in, now that we have cell
+      assert(_cell);
+      return activate(context, input);
+    }
+  }
+}; // namespace chainblocks
+
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
 RUNTIME_BLOCK_destroy(Const);
@@ -1449,10 +1540,9 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Pause", Pause);
   REGISTER_CBLOCK("PauseMs", PauseMs);
 
-  REGISTER_CBLOCK("PrependTo", PrependTo);
   REGISTER_CBLOCK("AppendTo", AppendTo);
-  REGISTER_CBLOCK("Cons", PrependTo);
-  REGISTER_CBLOCK("Conj", AppendTo);
+  REGISTER_CBLOCK("PrependTo", PrependTo);
+  REGISTER_CBLOCK("Assoc", Assoc);
 
   using PassMockBlock =
       LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;

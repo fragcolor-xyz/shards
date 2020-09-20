@@ -967,59 +967,51 @@ struct Get : public VariableBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_cell != nullptr))
+    if (likely(_cell != nullptr)) {
       return *_cell;
+    } else {
+      if (_isTable) {
+        if (_target->valueType == Table) {
+          if (_target->payload.tableValue.api->tableContains(
+                  _target->payload.tableValue, _key.c_str())) {
+            // Has it
+            CBVar *vptr = _target->payload.tableValue.api->tableAt(
+                _target->payload.tableValue, _key.c_str());
 
-    // sanity check that the variable is not pristine...
-    // the setter chain might have stopped actually!
-    if (_defaultValue.valueType == None && _target->refcount == 1) {
-      throw ActivationError(
-          "Variable: " + _name +
-          " did not exist in the context and no default value "
-          "was given, likely "
-          "the Set block was in chain that already ended.");
-    }
-
-    if (_isTable) {
-      if (_target->valueType == Table) {
-        if (_target->payload.tableValue.api->tableContains(
-                _target->payload.tableValue, _key.c_str())) {
-          // Has it
-          CBVar *vptr = _target->payload.tableValue.api->tableAt(
-              _target->payload.tableValue, _key.c_str());
-
-          if (unlikely(_defaultValue.valueType != None &&
-                       !defaultTypeCheck(*vptr))) {
-            return _defaultValue;
+            if (unlikely(_defaultValue.valueType != None &&
+                         !defaultTypeCheck(*vptr))) {
+              return _defaultValue;
+            } else {
+              // Pin fast cell
+              _cell = vptr;
+              return *vptr;
+            }
           } else {
-            // Pin fast cell
-            _cell = vptr;
-            return *vptr;
+            // No record
+            if (_defaultType.basicType != None) {
+              return _defaultValue;
+            } else {
+              throw ActivationError("Get - Key not found in table.");
+            }
           }
         } else {
-          // No record
           if (_defaultType.basicType != None) {
             return _defaultValue;
           } else {
-            throw ActivationError("Get - Key not found in table.");
+            throw ActivationError(
+                "Get - Table is empty or does not exist yet.");
           }
         }
       } else {
-        if (_defaultType.basicType != None) {
+        auto &value = *_target;
+        if (unlikely(_defaultValue.valueType != None &&
+                     !defaultTypeCheck(value))) {
           return _defaultValue;
         } else {
-          throw ActivationError("Get - Table is empty or does not exist yet.");
+          // Pin fast cell
+          _cell = _target;
+          return value;
         }
-      }
-    } else {
-      auto &value = *_target;
-      if (unlikely(_defaultValue.valueType != None &&
-                   !defaultTypeCheck(value))) {
-        return _defaultValue;
-      } else {
-        // Pin fast cell
-        _cell = _target;
-        return value;
       }
     }
   }

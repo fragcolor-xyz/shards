@@ -79,6 +79,12 @@ struct Type {
     return res;
   }
 
+  static Type TableOf(CBTypesInfo types) {
+    Type res;
+    res._type = {CBType::Table, {.table = {.types = types}}};
+    return res;
+  }
+
 private:
   CBTypeInfo _type;
 };
