@@ -170,13 +170,13 @@ template <class OP> struct BinaryOperation : public BinaryBase {
                                  const CBVar &b) {
     OP op;
     if (likely(opType == Normal)) {
-      op(output, a, b);
+      op(output, a, b, this);
     } else if (opType == Seq1) {
       output.valueType = Seq;
       chainblocks::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         // notice, we use scratch _output here
-        op(_scratch, a.payload.seqValue.elements[i], b);
+        op(_scratch, a.payload.seqValue.elements[i], b, this);
         chainblocks::arrayPush(output.payload.seqValue, _scratch);
       }
     } else {
@@ -196,7 +196,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
   struct NAME##Op final {                                                      \
     ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand) {                      \
+                                  const CBVar &operand, void *) {              \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -271,7 +271,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
   struct NAME##Op {                                                            \
     ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand) {                      \
+                                  const CBVar &operand, void *) {              \
       switch (input.valueType) {                                               \
       case Int:                                                                \
         output.valueType = Int;                                                \
@@ -633,7 +633,7 @@ RUNTIME_BLOCK_TYPE(Math, Dec);
 
 struct MaxOp final {
   ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
-                                const CBVar &operand) {
+                                const CBVar &operand, void *) {
     output = std::max(input, operand);
   }
 };
@@ -641,7 +641,7 @@ using Max = BinaryOperation<MaxOp>;
 
 struct MinOp final {
   ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
-                                const CBVar &operand) {
+                                const CBVar &operand, void *) {
     output = std::min(input, operand);
   }
 };
@@ -650,7 +650,7 @@ using Min = BinaryOperation<MinOp>;
 #define MATH_BINARY_FLOAT_PROC(NAME, PROC)                                     \
   struct NAME##Op final {                                                      \
     ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand) {                      \
+                                  const CBVar &operand, void *) {              \
       switch (input.valueType) {                                               \
       case Float:                                                              \
         output.valueType = Float;                                              \

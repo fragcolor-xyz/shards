@@ -3,7 +3,7 @@
 
 #ifndef CB_NO_BIGINT_BLOCKS
 
-#include "chainblocks.hpp"
+#include "math.h"
 #include "shared.hpp"
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
@@ -57,6 +57,50 @@ struct ToBigInt {
     return to_var(bi, _buffer);
   }
 };
+
+template <typename T>
+struct BigIntBinaryOp : public ::chainblocks::Math::BinaryOperation<T> {
+  std::deque<std::vector<uint8_t>> _buffers;
+  size_t _offset{0};
+
+  static inline Types BigIntInputTypes{
+      {CoreInfo::BytesType, CoreInfo::BytesSeqType}};
+
+  static CBTypesInfo inputTypes() { return BigIntInputTypes; }
+  static CBTypesInfo outputTypes() { return BigIntInputTypes; }
+
+  CBParametersInfo parameters() {
+    static Parameters params{
+        {"Operand",
+         "The bytes variable representing the operand",
+         {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
+    return params;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _offset = 0;
+    return ::chainblocks::Math::BinaryOperation<T>::activate(context, input);
+  }
+};
+
+#define BIGINT_MATH_OP(__NAME__, __OP__)                                       \
+  struct __NAME__ : public BigIntBinaryOp<__NAME__> {                          \
+    void operator()(CBVar &output, const CBVar &input, const CBVar &operand,   \
+                    void *pself) {                                             \
+      auto self = reinterpret_cast<__NAME__ *>(pself);                         \
+      std::vector<uint8_t> *buffer = nullptr;                                  \
+      if (self->_buffers.size() <= _offset) {                                  \
+        buffer = &self->_buffers.emplace_back();                               \
+      } else {                                                                 \
+        buffer = &self->_buffers[_offset];                                     \
+      }                                                                        \
+      cpp_int bia = from_var(input);                                           \
+      cpp_int bib = from_var(operand);                                         \
+      cpp_int bres = bia __OP__ bib;                                           \
+      output = to_var(bres, *buffer);                                          \
+      _offset++;                                                               \
+    }                                                                          \
+  };
 
 struct BigOperandBase {
   std::vector<uint8_t> _buffer;
@@ -122,24 +166,6 @@ struct RegOperandBase {
   }
 };
 
-struct UnaryBase {
-  std::vector<uint8_t> _buffer;
-
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
-};
-
-#define BIGINT_MATH_OP(__NAME__, __OP__)                                       \
-  struct __NAME__ : public BigOperandBase {                                    \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      cpp_int bia = from_var(input);                                           \
-      auto op = getOperand();                                                  \
-      cpp_int bib = from_var(op);                                              \
-      cpp_int bres = bia __OP__ bib;                                           \
-      return to_var(bres, _buffer);                                            \
-    }                                                                          \
-  }
-
 BIGINT_MATH_OP(Add, +);
 BIGINT_MATH_OP(Subtract, -);
 BIGINT_MATH_OP(Multiply, *);
@@ -169,15 +195,23 @@ BIGINT_LOGIC_OP(IsMoreEqual, >=);
 BIGINT_LOGIC_OP(IsLessEqual, <=);
 
 #define BIGINT_BINARY_OP(__NAME__, __OP__)                                     \
-  struct __NAME__ : public BigOperandBase {                                    \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
+  struct __NAME__ : public BigIntBinaryOp<__NAME__> {                          \
+    void operator()(CBVar &output, const CBVar &input, const CBVar &operand,   \
+                    void *pself) {                                             \
+      auto self = reinterpret_cast<__NAME__ *>(pself);                         \
+      std::vector<uint8_t> *buffer = nullptr;                                  \
+      if (self->_buffers.size() <= _offset) {                                  \
+        buffer = &self->_buffers.emplace_back();                               \
+      } else {                                                                 \
+        buffer = &self->_buffers[_offset];                                     \
+      }                                                                        \
       cpp_int bia = from_var(input);                                           \
-      auto op = getOperand();                                                  \
-      cpp_int bib = from_var(op);                                              \
+      cpp_int bib = from_var(operand);                                         \
       cpp_int bres = __OP__(bia, bib);                                         \
-      return to_var(bres, _buffer);                                            \
+      output = to_var(bres, *buffer);                                          \
+      _offset++;                                                               \
     }                                                                          \
-  }
+  };
 
 BIGINT_BINARY_OP(Min, std::min);
 BIGINT_BINARY_OP(Max, std::max);
