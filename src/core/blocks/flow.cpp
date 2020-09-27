@@ -400,8 +400,9 @@ struct Maybe : public BaseSubFlow {
     else
       _composition = {};
 
-    const auto nextIsNone = data.outputTypes.len == 1 &&
-                            data.outputTypes.elements[0].basicType == None;
+    const auto nextIsNone = data.outputTypes.len == 0 ||
+                            (data.outputTypes.len == 1 &&
+                             data.outputTypes.elements[0].basicType == None);
 
     if (!nextIsNone && !elseComp.flowStopper &&
         _composition.outputType != elseComp.outputType) {
@@ -529,8 +530,9 @@ template <bool COND> struct When {
 
     auto ares = _action.compose(data);
 
-    const auto nextIsNone = data.outputTypes.len == 1 &&
-                            data.outputTypes.elements[0].basicType == None;
+    const auto nextIsNone = data.outputTypes.len == 0 ||
+                            (data.outputTypes.len == 1 &&
+                             data.outputTypes.elements[0].basicType == None);
 
     if (!nextIsNone && !ares.flowStopper && !_passth) {
       if (cres.outputType != data.inputType) {
@@ -621,8 +623,9 @@ struct IfBlock {
     const auto tres = _then.compose(data);
     const auto eres = _else.compose(data);
 
-    const auto nextIsNone = data.outputTypes.len == 1 &&
-                            data.outputTypes.elements[0].basicType == None;
+    const auto nextIsNone = data.outputTypes.len == 0 ||
+                            (data.outputTypes.len == 1 &&
+                             data.outputTypes.elements[0].basicType == None);
 
     if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
