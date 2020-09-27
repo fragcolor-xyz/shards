@@ -1869,6 +1869,7 @@ struct Take {
   CBVar *_indicesVar = nullptr;
   ExposedInfo _exposedInfo{};
   bool _seqOutput = false;
+  bool _tableOutput = false;
   CBVar _vectorOutput{};
   uint8_t _vectorInputLen = 0;
   uint8_t _vectorOutputLen = 0;
@@ -1943,6 +1944,8 @@ struct Take {
         }
       }
     }
+
+    _tableOutput = isTable;
 
     if (!valid)
       throw CBException("Take, invalid indices or malformed input.");
@@ -2026,11 +2029,11 @@ struct Take {
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
             _indices.payload.stringValue, "The required variables.",
-            CoreInfo::IntSeqType));
+            _tableOutput ? CoreInfo::StringSeqType : CoreInfo::IntSeqType));
       else
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_indices.payload.stringValue,
-                                  "The required variable.", CoreInfo::IntType));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _indices.payload.stringValue, "The required variable.",
+            _tableOutput ? CoreInfo::StringType : CoreInfo::IntType));
       return CBExposedTypesInfo(_exposedInfo);
     } else {
       return {};
