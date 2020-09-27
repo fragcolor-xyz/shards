@@ -378,6 +378,25 @@ BUILTIN("map")
     return  mal::list(items);
 }
 
+BUILTIN("remove")
+{
+    CHECK_ARGS_IS(2);
+    malValuePtr op = *argsBegin++; // this gets checked in APPLY
+    ARG(malSequence, source);
+
+    const int length = source->count();
+    malValueVec* items = new malValueVec();
+    auto it = source->begin();
+    for (int i = 0; i < length; i++) {
+      auto item = it + i;
+      auto bres = APPLY(op, item, item + 1);
+      if(bres == mal::falseValue())
+        items->emplace_back(*item);
+    }
+
+    return  mal::list(items);
+}
+
 BUILTIN("meta")
 {
     CHECK_ARGS_IS(1);
