@@ -365,6 +365,22 @@ struct Not {
   }
 };
 
+struct IsNone {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(input.valueType == None);
+  }
+};
+
+struct IsNotNone {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(input.valueType != None);
+  }
+};
+
 struct Stop {
   CBTypeInfo _inputType{};
 

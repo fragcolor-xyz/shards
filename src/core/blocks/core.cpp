@@ -1590,5 +1590,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Stop", Stop);
   REGISTER_CBLOCK("Fail", Fail);
   REGISTER_CBLOCK("NaNTo0", NaNTo0);
+  REGISTER_CBLOCK("IsNone", IsNone);
+  REGISTER_CBLOCK("IsNotNone", IsNotNone);
 }
 }; // namespace chainblocks
