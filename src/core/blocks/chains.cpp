@@ -97,7 +97,10 @@ struct ChainBase {
   CBComposeResult chainValidation{};
   IterableExposedInfo exposedInfo{};
 
-  void destroy() { chainblocks::arrayFree(chainValidation.requiredInfo); }
+  void destroy() {
+    chainblocks::arrayFree(chainValidation.requiredInfo);
+    chainblocks::arrayFree(chainValidation.exposedInfo);
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -107,6 +110,7 @@ struct ChainBase {
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
     chainblocks::arrayFree(chainValidation.requiredInfo);
+    chainblocks::arrayFree(chainValidation.exposedInfo);
 
     // Actualize the chain here, if we are deserialized
     // chain might already be populated!
@@ -221,7 +225,6 @@ struct ChainBase {
           exposing.begin(),
           std::remove_if(exposing.begin(), exposing.end(),
                          [](CBExposedTypeInfo &x) { return !x.global; }));
-      chainblocks::arrayFree(chainValidation.exposedInfo);
       LOG(TRACE) << "Chain " << chain->name << " composed.";
     } else {
       LOG(TRACE) << "Skipping " << chain->name << " compose.";
