@@ -184,8 +184,15 @@ struct ChainBase {
 
     auto dataCopy = data;
     dataCopy.chain = chain.get();
-    if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped)
-      dataCopy.shared = {};
+    IterableExposedInfo shared(data.shared);
+    IterableExposedInfo sharedCopy = shared;
+    if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped) {
+      // keep only globals
+      std::remove_if(sharedCopy.begin(), sharedCopy.end(),
+                     [](CBExposedTypeInfo &x) { return !x.global; });
+    }
+
+    dataCopy.shared = sharedCopy;
 
     CBTypeInfo chainOutput;
     // make sure to compose only once...
@@ -204,7 +211,7 @@ struct ChainBase {
                         << errorTxt;
             }
           },
-          this, dataCopy, true);
+          this, dataCopy);
       chain->composedHash = 1; // no need to hash properly here
       chainOutput = chainValidation.outputType;
       LOG(TRACE) << "Chain " << chain->name << " composed.";
@@ -226,7 +233,6 @@ struct ChainBase {
       chainOutput = chain->outputType;
 
       // ensure requirements match our input data
-      IterableExposedInfo shared(data.shared);
       for (auto req : chain->requiredVariables) {
         // find each in shared
         auto res = std::find_if(shared.begin(), shared.end(),
@@ -1073,8 +1079,8 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 };
 
 enum class WaitUntil {
-  FirstSuccess, // will wait until the first success and stop any other pending
-                // operation
+  FirstSuccess, // will wait until the first success and stop any other
+                // pending operation
   AllSuccess,   // will wait untill all complete, will stop and fail on any
                 // failure
   SomeSuccess   // will wait until all complete but won't fail if some of the
