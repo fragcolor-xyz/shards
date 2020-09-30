@@ -516,7 +516,7 @@ public:
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq.elements[i] = *first++;
+      _seq.elements[i] = *(first + i);
     }
   }
 
@@ -525,7 +525,7 @@ public:
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq.elements[i] = *first++;
+      _seq.elements[i] = *(first + i);
     }
   }
 
