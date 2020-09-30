@@ -636,7 +636,6 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CB_EXTRAS}
   )
@@ -661,6 +660,7 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
 else()

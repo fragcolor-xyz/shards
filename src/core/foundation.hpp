@@ -123,6 +123,7 @@ struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 } // namespace chainblocks
 
+#ifndef __EMSCRIPTEN__
 struct CBStackAllocator {
   uint8_t *mem{nullptr};
 
@@ -143,6 +144,7 @@ struct CBStackAllocator {
 #endif
   }
 };
+#endif
 
 struct CBChain : public std::enable_shared_from_this<CBChain> {
   static std::shared_ptr<CBChain> make(std::string_view chain_name) {

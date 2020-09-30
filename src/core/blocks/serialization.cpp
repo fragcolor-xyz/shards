@@ -6,11 +6,16 @@
 
 #include "shared.hpp"
 #include <future>
-#include <ghc/filesystem.hpp>
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <string>
-#include <taskflow/taskflow.hpp>
+
+#ifndef __EMSCRIPTEN__
+#include <ghc/filesystem.hpp>
+#else
+#include <filesystem>
+#define ghc std
+#endif
 
 namespace chainblocks {
 struct FileBase {

@@ -12,9 +12,15 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <ghc/filesystem.hpp>
 #include <string.h>
 #include <unordered_set>
+
+#ifndef __EMSCRIPTEN__
+#include <ghc/filesystem.hpp>
+#else
+#include <filesystem>
+#define ghc std
+#endif
 
 INITIALIZE_EASYLOGGINGPP
 

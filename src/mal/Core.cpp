@@ -6,7 +6,13 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+
+#ifndef __EMSCRIPTEN__
 #include <ghc/filesystem.hpp>
+#else
+#include <filesystem>
+#define ghc std
+#endif
 
 #define CHECK_ARGS_IS(expected) \
     checkArgsIs(name.c_str(), expected, \

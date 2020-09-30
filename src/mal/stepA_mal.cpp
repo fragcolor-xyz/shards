@@ -9,8 +9,14 @@
 #include <iostream>
 #include <memory>
 #include <cassert>
-#include <ghc/filesystem.hpp>
 #include <cstring>
+
+#ifndef __EMSCRIPTEN__
+#include <ghc/filesystem.hpp>
+#else
+#include <filesystem>
+#define ghc std
+#endif
 
 malValuePtr READ(const String& input);
 String PRINT(malValuePtr ast);

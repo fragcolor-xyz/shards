@@ -16,9 +16,15 @@
 #ifndef __EMSCRIPTEN__
 #include <boost/process/environment.hpp>
 #endif
-#include <ghc/filesystem.hpp>
 #include <set>
 #include <thread>
+
+#ifndef __EMSCRIPTEN__
+#include <ghc/filesystem.hpp>
+#else
+#include <filesystem>
+#define ghc std
+#endif
 
 #ifndef _WIN32
 #include <dlfcn.h>
