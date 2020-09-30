@@ -1,5 +1,0 @@
-build*
-external
-rust/target
-deps/json/test
-.git
