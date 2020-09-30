@@ -55,16 +55,19 @@ private:
 [[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
                                            CBValidationCallback callback,
                                            void *userData, CBInstanceData data,
-                                           bool globalsOnly);
+                                           bool globalsOnly = false);
 [[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
+                                           void *userData, CBInstanceData data,
+                                           bool globalsOnly = false);
 [[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
+                                           void *userData, CBInstanceData data,
+                                           bool globalsOnly = false);
 [[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
+                                           void *userData, CBInstanceData data,
+                                           bool globalsOnly = false);
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);

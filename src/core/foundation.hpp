@@ -73,8 +73,10 @@ struct CBCoro {
 
 #define TRACE_LINE LOG(TRACE) << "#trace#"
 
-CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data,
+                                           bool globalsOnly);
 
 namespace chainblocks {
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
@@ -693,7 +695,7 @@ struct InternalCore {
   static CBComposeResult composeBlocks(CBlocks blocks,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
-    return composeChain(blocks, callback, userData, data);
+    return composeChain(blocks, callback, userData, data, false);
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,

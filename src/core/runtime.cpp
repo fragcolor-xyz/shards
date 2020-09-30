@@ -953,7 +953,7 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
                              void *userData, CBInstanceData data) noexcept {
     try {
-      return composeChain(blocks, callback, userData, data);
+      return composeChain(blocks, callback, userData, data, false);
     } catch (const std::exception &e) {
       CBComposeResult res{};
       res.failed = true;
@@ -1608,7 +1608,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
 
 CBComposeResult composeChain(const CBChain *chain,
                              CBValidationCallback callback, void *userData,
-                             CBInstanceData data) {
+                             CBInstanceData data, bool globalsOnly) {
   // settle input type of chain before compose
   if (chain->blocks.size() > 0) {
     // If first block is a plain None, mark this chain has None input
@@ -1621,7 +1621,7 @@ CBComposeResult composeChain(const CBChain *chain,
     chain->inputType = data.inputType;
   }
 
-  auto res = composeChain(chain->blocks, callback, userData, data, true);
+  auto res = composeChain(chain->blocks, callback, userData, data, globalsOnly);
 
   // set outputtype
   chain->outputType = res.outputType;
@@ -1644,21 +1644,23 @@ CBComposeResult composeChain(const CBChain *chain,
 }
 
 CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data) {
+                             void *userData, CBInstanceData data,
+                             bool globalsOnly) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
   }
-  return composeChain(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, globalsOnly);
 }
 
 CBComposeResult composeChain(const CBSeq chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data) {
+                             void *userData, CBInstanceData data,
+                             bool globalsOnly) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i].payload.blockValue);
   }
-  return composeChain(blocks, callback, userData, data, false);
+  return composeChain(blocks, callback, userData, data, globalsOnly);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {
