@@ -95,11 +95,9 @@ struct ChainBase {
   bool passthrough{false};
   RunChainMode mode{RunChainMode::Inline};
   CBComposeResult chainValidation{};
+  IterableExposedInfo exposedInfo{};
 
-  void destroy() {
-    chainblocks::arrayFree(chainValidation.exposedInfo);
-    chainblocks::arrayFree(chainValidation.requiredInfo);
-  }
+  void destroy() { chainblocks::arrayFree(chainValidation.requiredInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -108,7 +106,6 @@ struct ChainBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
-    chainblocks::arrayFree(chainValidation.exposedInfo);
     chainblocks::arrayFree(chainValidation.requiredInfo);
 
     // Actualize the chain here, if we are deserialized
@@ -185,11 +182,15 @@ struct ChainBase {
     auto dataCopy = data;
     dataCopy.chain = chain.get();
     IterableExposedInfo shared(data.shared);
-    IterableExposedInfo sharedCopy = shared;
+    IterableExposedInfo sharedCopy;
     if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped) {
       // keep only globals
-      std::remove_if(sharedCopy.begin(), sharedCopy.end(),
-                     [](CBExposedTypeInfo &x) { return !x.global; });
+      auto end =
+          std::remove_if(shared.begin(), shared.end(),
+                         [](const CBExposedTypeInfo &x) { return !x.global; });
+      sharedCopy = IterableExposedInfo(shared.begin(), end);
+    } else {
+      sharedCopy = shared;
     }
 
     dataCopy.shared = sharedCopy;
@@ -214,6 +215,13 @@ struct ChainBase {
           this, dataCopy);
       chain->composedHash = 1; // no need to hash properly here
       chainOutput = chainValidation.outputType;
+      IterableExposedInfo exposing(chainValidation.exposedInfo);
+      // keep only globals
+      exposedInfo = IterableExposedInfo(
+          exposing.begin(),
+          std::remove_if(exposing.begin(), exposing.end(),
+                         [](CBExposedTypeInfo &x) { return !x.global; }));
+      chainblocks::arrayFree(chainValidation.exposedInfo);
       LOG(TRACE) << "Chain " << chain->name << " composed.";
     } else {
       LOG(TRACE) << "Skipping " << chain->name << " compose.";
@@ -644,7 +652,8 @@ struct BaseRunner : public ChainBase {
     // Only inline mode ensures that variables will be really avail
     // step and detach will run at different timing
     CBExposedTypesInfo empty{};
-    return mode == RunChainMode::Inline ? chainValidation.exposedInfo : empty;
+    return mode == RunChainMode::Inline ? CBExposedTypesInfo(exposedInfo)
+                                        : empty;
   }
 
   void cleanup() {
