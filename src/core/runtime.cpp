@@ -953,7 +953,7 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
                              void *userData, CBInstanceData data) noexcept {
     try {
-      return composeChain(blocks, callback, userData, data, false);
+      return composeChain(blocks, callback, userData, data);
     } catch (const std::exception &e) {
       CBComposeResult res{};
       res.failed = true;
@@ -1541,7 +1541,7 @@ void validateConnection(ValidationContext &ctx) {
 
 CBComposeResult composeChain(const std::vector<CBlock *> &chain,
                              CBValidationCallback callback, void *userData,
-                             CBInstanceData data, bool globalsOnly) {
+                             CBInstanceData data) {
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1584,8 +1584,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
 
   for (auto &exposed : ctx.exposed) {
     for (auto &type : exposed.second) {
-      if (!globalsOnly || type.global)
-        chainblocks::arrayPush(result.exposedInfo, type);
+      chainblocks::arrayPush(result.exposedInfo, type);
     }
   }
 
@@ -1608,7 +1607,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
 
 CBComposeResult composeChain(const CBChain *chain,
                              CBValidationCallback callback, void *userData,
-                             CBInstanceData data, bool globalsOnly) {
+                             CBInstanceData data) {
   // settle input type of chain before compose
   if (chain->blocks.size() > 0) {
     // If first block is a plain None, mark this chain has None input
@@ -1621,7 +1620,7 @@ CBComposeResult composeChain(const CBChain *chain,
     chain->inputType = data.inputType;
   }
 
-  auto res = composeChain(chain->blocks, callback, userData, data, globalsOnly);
+  auto res = composeChain(chain->blocks, callback, userData, data);
 
   // set outputtype
   chain->outputType = res.outputType;
@@ -1644,23 +1643,21 @@ CBComposeResult composeChain(const CBChain *chain,
 }
 
 CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data,
-                             bool globalsOnly) {
+                             void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i]);
   }
-  return composeChain(blocks, callback, userData, data, globalsOnly);
+  return composeChain(blocks, callback, userData, data);
 }
 
 CBComposeResult composeChain(const CBSeq chain, CBValidationCallback callback,
-                             void *userData, CBInstanceData data,
-                             bool globalsOnly) {
+                             void *userData, CBInstanceData data) {
   std::vector<CBlock *> blocks;
   for (uint32_t i = 0; chain.len > i; i++) {
     blocks.push_back(chain.elements[i].payload.blockValue);
   }
-  return composeChain(blocks, callback, userData, data, globalsOnly);
+  return composeChain(blocks, callback, userData, data);
 }
 
 void freeDerivedInfo(CBTypeInfo info) {

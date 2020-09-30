@@ -75,8 +75,7 @@ struct CBCoro {
 
 [[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data,
-                                           bool globalsOnly);
+                                           void *userData, CBInstanceData data);
 
 namespace chainblocks {
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
@@ -695,7 +694,7 @@ struct InternalCore {
   static CBComposeResult composeBlocks(CBlocks blocks,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
-    return composeChain(blocks, callback, userData, data, false);
+    return composeChain(blocks, callback, userData, data);
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,

@@ -54,20 +54,16 @@ private:
 
 [[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data,
-                                           bool globalsOnly = false);
+                                           void *userData, CBInstanceData data);
 [[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data,
-                                           bool globalsOnly = false);
+                                           void *userData, CBInstanceData data);
 [[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data,
-                                           bool globalsOnly = false);
+                                           void *userData, CBInstanceData data);
 [[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
                                            CBValidationCallback callback,
-                                           void *userData, CBInstanceData data,
-                                           bool globalsOnly = false);
+                                           void *userData, CBInstanceData data);
 
 bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
@@ -695,7 +691,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
                         << " input block: " << blk->name(blk);
             }
           },
-          this, data, true);
+          this, data);
       chainblocks::arrayFree(validation.exposedInfo);
       chainblocks::arrayFree(validation.requiredInfo);
       freeDerivedInfo(data.inputType);

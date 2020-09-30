@@ -191,7 +191,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, data, false);
+          this, data);
       if (validation.outputType.basicType != CBType::Bool) {
         throw ComposeError("Cond - expected Bool output from predicate blocks");
       }
@@ -218,7 +218,7 @@ struct Cond {
                         << errorTxt;
             }
           },
-          this, data, false);
+          this, data);
 
       if (first) {
         // A first valid exposedInfo array is our gold
