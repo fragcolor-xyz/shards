@@ -184,6 +184,8 @@ struct ChainBase {
 
     auto dataCopy = data;
     dataCopy.chain = chain.get();
+    if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped)
+      dataCopy.shared = {};
 
     CBTypeInfo chainOutput;
     // make sure to compose only once...
@@ -1294,6 +1296,8 @@ struct TryMany : public ChainBase {
 };
 
 struct Spawn : public ChainBase {
+  Spawn() { mode = RunChainMode::Detached; }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ChainType; }
 
