@@ -204,7 +204,7 @@ struct ChainBase {
                         << errorTxt;
             }
           },
-          this, dataCopy);
+          this, dataCopy, true);
       chain->composedHash = 1; // no need to hash properly here
       chainOutput = chainValidation.outputType;
       LOG(TRACE) << "Chain " << chain->name << " composed.";
