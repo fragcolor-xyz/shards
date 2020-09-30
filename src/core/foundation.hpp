@@ -512,12 +512,20 @@ public:
     }
   }
 
+  IterableArray(iterator first, iterator last) : _seq({}), _owned(true) {
+    size_t size = last - first;
+    arrayResize(_seq, size);
+    for (size_t i = 0; i < size; i++) {
+      _seq.elements[i] = *first++;
+    }
+  }
+
   IterableArray(const_iterator first, const_iterator last)
       : _seq({}), _owned(true) {
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
-      _seq[i] = *first++;
+      _seq.elements[i] = *first++;
     }
   }
 
