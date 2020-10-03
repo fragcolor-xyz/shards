@@ -2818,9 +2818,8 @@ struct Once {
 
     if (unlikely(!_done)) {
       _done = true;
-      CBVar repeatOutput{};
-      CBVar blks = _blks;
-      activateBlocks(blks.payload.seqValue, context, input, repeatOutput);
+      CBVar output{};
+      _blks.activate(context, input, output);
       if (!_repeat) {
         // let's cheat in this case and stop triggering this call
         self->inlineBlockId = NoopBlock;
