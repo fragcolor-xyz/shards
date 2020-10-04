@@ -1073,20 +1073,6 @@ RUNTIME_BLOCK_getParam(Const);
 RUNTIME_BLOCK_activate(Const);
 RUNTIME_BLOCK_END(Const);
 
-// Register Input
-RUNTIME_CORE_BLOCK_FACTORY(Input);
-RUNTIME_BLOCK_inputTypes(Input);
-RUNTIME_BLOCK_outputTypes(Input);
-RUNTIME_BLOCK_activate(Input);
-RUNTIME_BLOCK_END(Input);
-
-// Register SetInput
-RUNTIME_CORE_BLOCK_FACTORY(SetInput);
-RUNTIME_BLOCK_inputTypes(SetInput);
-RUNTIME_BLOCK_outputTypes(SetInput);
-RUNTIME_BLOCK_activate(SetInput);
-RUNTIME_BLOCK_END(SetInput);
-
 // Register And
 RUNTIME_CORE_BLOCK_FACTORY(And);
 RUNTIME_BLOCK_inputTypes(And);
@@ -1470,8 +1456,6 @@ CBVar exitProgramActivation(const CBVar &input) {
 
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
-  REGISTER_CORE_BLOCK(Input);
-  REGISTER_CORE_BLOCK(SetInput);
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Ref);
   REGISTER_CORE_BLOCK(Update);
@@ -1592,5 +1576,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("NaNTo0", NaNTo0);
   REGISTER_CBLOCK("IsNone", IsNone);
   REGISTER_CBLOCK("IsNotNone", IsNotNone);
+  REGISTER_CBLOCK("Input", Input);
 }
 }; // namespace chainblocks

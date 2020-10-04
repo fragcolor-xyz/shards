@@ -216,6 +216,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   std::atomic<State> state{Stopped};
 
   CBVar rootTickInput{};
+  CBVar currentInput{};
   CBVar previousOutput{};
 
   chainblocks::OwnedVar finishedOutput{};

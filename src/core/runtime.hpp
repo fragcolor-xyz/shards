@@ -200,8 +200,8 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     return cblock->block.activate(context, input);
   }
   case CoreInput: {
-    auto cblock = reinterpret_cast<chainblocks::InputRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Input> *>(blk);
+    return cblock->block.activate(context, input);
   }
   case CoreTakeSeq: {
     auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);

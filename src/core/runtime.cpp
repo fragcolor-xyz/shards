@@ -1563,17 +1563,15 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
     if (i < chsize - 1)
       ctx.next = chain[i + 1];
 
-    if (strcmp(blk->name(blk), "Input") == 0 ||
-        strcmp(blk->name(blk), "And") == 0 ||
-        strcmp(blk->name(blk), "Or") == 0) {
+    if (strcmp(blk->name(blk), "Input") == 0) {
+      // Hard code behavior for Input block and And and Or, in order to validate
+      // with actual chain input the followup
+      ctx.previousOutputType = ctx.chain->inputType;
+    } else if (strcmp(blk->name(blk), "And") == 0 ||
+               strcmp(blk->name(blk), "Or") == 0) {
       // Hard code behavior for Input block and And and Or, in order to validate
       // with actual chain input the followup
       ctx.previousOutputType = ctx.originalInputType;
-    } else if (strcmp(blk->name(blk), "SetInput") == 0) {
-      if (ctx.previousOutputType != ctx.originalInputType) {
-        throw chainblocks::CBException(
-            "SetInput input type must be the same original chain input type.");
-      }
     } else {
       ctx.bottom = blk;
       validateConnection(ctx);
@@ -1880,6 +1878,7 @@ Chain::operator std::shared_ptr<CBChain>() {
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
   memset(&chain->previousOutput, 0x0, sizeof(CBVar));
+  chain->currentInput = chainInput;
   chain->state = CBChain::State::Iterating;
   chain->context = context;
   DEFER({ chain->state = CBChain::State::IterationEnded; });

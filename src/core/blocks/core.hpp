@@ -238,19 +238,7 @@ struct Input {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    context->rebaseFlow();
-    return input;
-  }
-};
-
-struct SetInput {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    chainblocks::cloneVar(const_cast<CBChain *>(context->main)->rootTickInput,
-                          input);
-    return input;
+    return context->chainStack.back()->currentInput;
   }
 };
 
@@ -2833,8 +2821,6 @@ struct Once {
 };
 
 RUNTIME_CORE_BLOCK_TYPE(Const);
-RUNTIME_CORE_BLOCK_TYPE(Input);
-RUNTIME_CORE_BLOCK_TYPE(SetInput);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);
