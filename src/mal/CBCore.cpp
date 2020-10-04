@@ -1233,7 +1233,7 @@ BUILTIN("-->") {
     malCBlock *pblk = blk.ptr();
     vec->emplace_back(pblk);
   }
-  return malValuePtr(new malVector(vec));
+  return malValuePtr(new malList(vec));
 }
 
 BUILTIN("chainify") {
@@ -1245,7 +1245,7 @@ BUILTIN("chainify") {
     malCBlock *pblk = blk.ptr();
     vec->emplace_back(pblk);
   }
-  return malValuePtr(new malVector(vec));
+  return malValuePtr(new malList(vec));
 }
 
 BUILTIN("unquote") {
@@ -1257,7 +1257,7 @@ BUILTIN("unquote") {
     malCBlock *pblk = blk.ptr();
     vec->emplace_back(pblk);
   }
-  return malValuePtr(new malVector(vec));
+  return malValuePtr(new malList(vec));
 }
 
 BUILTIN("schedule") {
