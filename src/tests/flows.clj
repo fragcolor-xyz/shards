@@ -104,7 +104,7 @@
    (Cond
     [(--> (Is 5))
      (Stop)])
-   (SetInput)))
+   (Restart)))
 
 (schedule
  Root
