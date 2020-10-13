@@ -80,13 +80,13 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 #### Visual version - using a SwiftUI iOS app
 
-<img src="https://i.imgur.com/tzR1LJa.gif" height="500px">
+<img src="assets/ios-editor.GIF" height="500px">
 
 ### Becomes
 
 ![](assets/simple1.PNG)
 
-<img src="https://i.imgur.com/U0pZvmF.png" height="500px">
+<img src="assets/ios-imgui.PNG" height="500px">
 
 Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or Metal (iOS) surface.
 
