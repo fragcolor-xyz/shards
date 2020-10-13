@@ -80,15 +80,15 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 #### Visual version - using a SwiftUI iOS app
 
-![](https://imgur.com/a/4JMk7BK)
+<img src="https://i.imgur.com/tzR1LJa.gif" height="500px">
 
 ### Becomes
 
 ![](assets/simple1.PNG)
 
-![](https://imgur.com/a/vo3qizS)
+<img src="https://i.imgur.com/U0pZvmF.png" height="500px">
 
-Complete of a BGFX context, rendering on a DX11 (windows; in this case) surface.
+Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or Metal (iOS) surface.
 
 ## Motivation
 In all those years of software engineering I've been touching many fields including, audio, VR, physics, game engines in general but also machine learning, NNs etc... everything interesting and all but all the software I wrote didn't exactly connect to each other and connecting it would have been a big effort. I always wanted to mix things and recombine, experiment, after all I started as a musician using max/msp on my black powerbook pismo...
