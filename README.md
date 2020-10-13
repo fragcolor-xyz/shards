@@ -48,7 +48,9 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 ## TL;DR
 
-### This *(textual; visual version coming soon (tm))*
+### This
+
+#### Textual version - using a clojure like language (more in the pipeline)
 
 ```clojure
 (def action (Chain "buttonAction"
@@ -75,9 +77,16 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 (run Root 0.02)
 ```
+
+#### Visual version - using a SwiftUI iOS app
+
+![](https://imgur.com/a/4JMk7BK)
+
 ### Becomes
 
 ![](assets/simple1.PNG)
+
+![](https://imgur.com/a/vo3qizS)
 
 Complete of a BGFX context, rendering on a DX11 (windows; in this case) surface.
 
