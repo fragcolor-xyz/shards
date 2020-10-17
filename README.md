@@ -22,7 +22,7 @@ To achieve that we build a scripting tool that can be both visual and textual at
 ## Goals
 * Automation scripting for everyone
 * A universal interface to your code
-* Visual scripting without wires (similar to Apple Shortcuts)
+* Visual scripting without spaghetti (similar to Apple Shortcuts)
 * Blocks modularity allows to reuse low level code with minimal efforts between projects
 * Machine learning scripting; it's all about building graphs
 * Video game engine scripting; even for non-technical artists
@@ -30,25 +30,27 @@ To achieve that we build a scripting tool that can be both visual and textual at
   * From pseudo code to real app
   * Replace pseudo blocks with real native blocks as you go
 * One click release of a fully bundled executable app or library
-* Textual representation that can be used in genetic programming and neural networks
+* Textual representation to allow experienced programmers to use it as well
 
 ## Features
 * Clear data flow
 * Performance driven and easy to profile
 * Automatically inferred strong types
 * **SIMD** vectors as first class types
-* Strong validation and optimization ahead of run-time
+* Strong validation, composition and optimization ahead of run-time
 * Extremely easy to debug and dissect
 * Deterministic execution and performance
 * Built on top of **co-routines**, extremely easy to unleash parallelism and low syscall count
 * Support **visual editing** without spaghetti and spider webs involvement
-* Versatile textual representation (backed by **clojure/lisp** inspired [Mal](https://github.com/kanaka/mal))
+* Versatile textual representation (for now backed by a derived **clojure/lisp**)
 * Fast execution inspired by threaded code interpreters
-* Designed for hot code reloading, without any serialization due to complete decoupled data
+* Hot code reloading, without any serialization due to complete decoupled data
 
 ## TL;DR
 
-### This *(textual; visual version coming soon (tm))*
+### This
+
+#### Textual version - using a clojure like language (more in the pipeline)
 
 ```clojure
 (def action (Chain "buttonAction"
@@ -75,11 +77,20 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 (run Root 0.02)
 ```
+
+#### Visual version - using a SwiftUI iOS app
+
+*Work in progress, app source outside of this repository's scope*
+
+<img src="assets/ios-editor.GIF" height="500px">
+
 ### Becomes
 
 ![](assets/simple1.PNG)
 
-Complete of a BGFX context, rendering on a DX11 (windows; in this case) surface.
+<img src="assets/ios-imgui.PNG" height="500px">
+
+Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or Metal (iOS) surface.
 
 ## Motivation
 In all those years of software engineering I've been touching many fields including, audio, VR, physics, game engines in general but also machine learning, NNs etc... everything interesting and all but all the software I wrote didn't exactly connect to each other and connecting it would have been a big effort. I always wanted to mix things and recombine, experiment, after all I started as a musician using max/msp on my black powerbook pismo...
