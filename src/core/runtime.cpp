@@ -1812,6 +1812,8 @@ void CBChain::reset() {
     ::operator delete[](stack_mem, std::align_val_t{16});
     stack_mem = nullptr;
   }
+
+  resumer = nullptr;
 }
 
 namespace chainblocks {
@@ -2402,6 +2404,8 @@ void CBChain::cleanup(bool force) {
       n->visitedChains.erase(this);
     }
     node.reset();
+
+    resumer = nullptr;
 
     LOG(DEBUG) << "Ran cleanup on chain: " << name;
   }

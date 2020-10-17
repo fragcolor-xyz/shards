@@ -231,6 +231,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   mutable std::vector<std::string> requiredVariables;
 
   CBContext *context{nullptr};
+  CBChain *resumer{nullptr}; // used in Resume/Start blocks
 
   std::weak_ptr<CBNode> node;
 

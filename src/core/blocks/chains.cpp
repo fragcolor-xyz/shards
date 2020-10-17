@@ -477,7 +477,10 @@ struct StopChain : public ChainBase {
 };
 
 struct Resume : public ChainBase {
-  void setup() { passthrough = true; }
+  void setup() {
+    passthrough = true;
+    mode = Detached;
+  }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Chain", "The name of the chain to switch to.", ChainTypes));
@@ -488,7 +491,6 @@ struct Resume : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    passthrough = true;
     ChainBase::compose(data);
     return data.inputType;
   }
@@ -503,27 +505,39 @@ struct Resume : public ChainBase {
   // symbol, TODO maybe use CBVar refcount!
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!chain) {
-      throw ActivationError("Resume, chain not found.");
-    }
+    auto current = context->chainStack.back();
+
+    auto pchain = [&] {
+      if (!chain) {
+        if (current->resumer) {
+          return current->resumer;
+        } else {
+          throw ActivationError("Resume, chain not found.");
+        }
+      } else {
+        return chain.get();
+      }
+    }();
+    // we should be valid as this block should be dependent on current
+    pchain->resumer = current;
 
     // assign the new chain as current chain on the flow
-    context->flow->chain = chain.get();
+    context->flow->chain = pchain;
 
     // Allow to re run chains
-    if (chainblocks::hasEnded(chain.get())) {
-      chainblocks::stop(chain.get());
+    if (chainblocks::hasEnded(pchain)) {
+      chainblocks::stop(pchain);
     }
 
     // Prepare if no callc was called
-    if (!chain->coro) {
-      chain->node = context->main->node;
-      chainblocks::prepare(chain.get(), context->flow);
+    if (!pchain->coro) {
+      pchain->node = context->main->node;
+      chainblocks::prepare(pchain, context->flow);
     }
 
     // Start it if not started
-    if (!chainblocks::isRunning(chain.get())) {
-      chainblocks::start(chain.get(), input);
+    if (!chainblocks::isRunning(pchain)) {
+      chainblocks::start(pchain, input);
     }
 
     // And normally we just delegate the CBNode + CBFlow
@@ -537,25 +551,35 @@ struct Resume : public ChainBase {
 };
 
 struct Start : public Resume {
-  void setup() { passthrough = true; }
-
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!chain) {
-      throw ActivationError("Start, chain not found.");
-    }
+    auto current = context->chainStack.back();
+
+    auto pchain = [&] {
+      if (!chain) {
+        if (current->resumer) {
+          return current->resumer;
+        } else {
+          throw ActivationError("Resume, chain not found.");
+        }
+      } else {
+        return chain.get();
+      }
+    }();
+    // we should be valid as this block should be dependent on current
+    pchain->resumer = current;
 
     // assign the new chain as current chain on the flow
-    context->flow->chain = chain.get();
+    context->flow->chain = pchain;
 
     // ensure chain is not running, we start from top
-    chainblocks::stop(chain.get());
+    chainblocks::stop(pchain);
 
     // Prepare
-    chain->node = context->main->node;
-    chainblocks::prepare(chain.get(), context->flow);
+    pchain->node = context->main->node;
+    chainblocks::prepare(pchain, context->flow);
 
     // Start
-    chainblocks::start(chain.get(), input);
+    chainblocks::start(pchain, input);
 
     // And normally we just delegate the CBNode + CBFlow
     // the following will suspend this current chain
