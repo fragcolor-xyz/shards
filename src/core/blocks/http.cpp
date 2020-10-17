@@ -365,6 +365,7 @@ template <http::verb VERB> struct PostLike final : public Client {
 
 using Post = PostLike<http::verb::post>;
 using Put = PostLike<http::verb::put>;
+using Delete = PostLike<http::verb::delete_>;
 
 struct Peer : public std::enable_shared_from_this<Peer> {
   static constexpr uint32_t PeerCC = 'httP';
@@ -802,6 +803,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Post", Post);
   REGISTER_CBLOCK("Http.Put", Put);
+  REGISTER_CBLOCK("Http.Delete", Delete);
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);
   REGISTER_CBLOCK("Http.Response", Response);

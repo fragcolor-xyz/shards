@@ -537,10 +537,12 @@ CBVar *referenceChainVariable(CBChainRef chain, const char *name) {
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   auto node = ctx->main->node.lock();
   assert(node);
-  LOG(TRACE) << "Creating a global variable, chain: "
-             << ctx->chainStack.back()->name << " name: " << name;
   CBVar &v = node->variables[name];
   v.refcount++;
+  if (v.refcount == 1) {
+    LOG(TRACE) << "Creating a global variable, chain: "
+               << ctx->chainStack.back()->name << " name: " << name;
+  }
   v.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &v;
 }
