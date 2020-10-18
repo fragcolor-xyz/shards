@@ -839,7 +839,12 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
     return blockify(v->deref());
   } else {
-    throw chainblocks::CBException("Invalid argument for chain");
+    if (malValue *v = DYNAMIC_CAST(malValue, arg)) {
+      throw chainblocks::CBException("Invalid argument for chain: " +
+                                     v->print(true));
+    } else {
+      throw chainblocks::CBException("Invalid argument for chain");
+    }
   }
   return result;
 }
