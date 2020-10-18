@@ -307,6 +307,34 @@ struct ToFloat : public ShiftBase {
   }
 };
 
+struct FromFloat : public ShiftBase {
+  std::vector<uint8_t> _buffer;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBParametersInfo parameters() {
+    static Parameters params{
+        {"ShiftedBy",
+         "The shift is of the decimal point, i.e. of powers of ten, and is to "
+         "the left if n is negative or to the right if n is positive.",
+         {CoreInfo::IntType}}};
+    return params;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    cpp_dec_float_100 bi(input.payload.floatValue);
+
+    cpp_dec_float_100 bshift(_shift.get().payload.intValue);
+    bshift = pow(cpp_dec_float_100(10), bshift);
+
+    auto bres = bi * bshift;
+    cpp_int bo(bres);
+
+    return to_var(bo, _buffer);
+  }
+};
+
 struct ToString {
   std::string _buffer;
 
@@ -345,6 +373,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.Mod", Mod);
   REGISTER_CBLOCK("BigInt.Shift", Shift);
   REGISTER_CBLOCK("BigInt.ToFloat", ToFloat);
+  REGISTER_CBLOCK("BigInt.FromFloat", FromFloat);
   REGISTER_CBLOCK("BigInt.ToString", ToString);
   REGISTER_CBLOCK("BigInt.Is", Is);
   REGISTER_CBLOCK("BigInt.IsNot", IsNot);

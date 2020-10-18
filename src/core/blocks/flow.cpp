@@ -814,6 +814,40 @@ struct Match {
   bool _pass = true;
 };
 
+struct Sub {
+  BlocksVar _blocks{};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() {
+    static Parameters params{{"Blocks",
+                              "The blocks to execute in the sub flow.",
+                              {CoreInfo::BlocksOrNone}}};
+    return params;
+  }
+
+  void setParam(int index, CBVar value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar output{};
+    _blocks.activate(context, input, output);
+    return input;
+  }
+};
+
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
   REGISTER_CBLOCK("Maybe", Maybe);
@@ -822,5 +856,6 @@ void registerFlowBlocks() {
   REGISTER_CBLOCK("WhenNot", When<false>);
   REGISTER_CBLOCK("If", IfBlock);
   REGISTER_CBLOCK("Match", Match);
+  REGISTER_CBLOCK("Sub", Sub);
 }
 }; // namespace chainblocks
