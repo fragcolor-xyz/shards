@@ -1577,5 +1577,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("IsNone", IsNone);
   REGISTER_CBLOCK("IsNotNone", IsNotNone);
   REGISTER_CBLOCK("Input", Input);
+  REGISTER_CBLOCK("Comment", Comment);
 }
 }; // namespace chainblocks

@@ -313,6 +313,31 @@ struct PauseMs : public Pause {
   }
 };
 
+struct Comment {
+  std::string _comment;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Text", "The comment's text.", {CoreInfo::StringType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, CBVar value) {
+    _comment = value.payload.stringValue;
+  }
+
+  CBVar getParam(int index) { return Var(_comment); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // We are a NOOP block
+    assert(false);
+    return input;
+  }
+};
+
 struct And {
   static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }

@@ -300,6 +300,8 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (name == "Pass") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
+  } else if (name == "Comment") {
+    blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Input") {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
   } else if (name == "Sleep") {
