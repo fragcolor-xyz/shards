@@ -816,6 +816,7 @@ struct Match {
 
 struct Sub {
   BlocksVar _blocks{};
+  CBComposeResult _composition{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -833,9 +834,11 @@ struct Sub {
   CBVar getParam(int index) { return _blocks; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+    _composition = _blocks.compose(data);
     return data.inputType;
   }
+
+  CBExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
 
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
