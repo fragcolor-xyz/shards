@@ -1482,6 +1482,8 @@ template <typename T> struct ChainDoppelgangerPool {
       auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->chain = chain;
       composer.compose(chain.get());
+      fresh->chain->name =
+          fresh->chain->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {
       auto res = _avail.back();
