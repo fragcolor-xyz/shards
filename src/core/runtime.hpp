@@ -458,8 +458,7 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
       }));
 #else
   chain->coro = new CBCoro();
-  chain->coro->init(run, chain, flow);
-  chain->coro->resume();
+  run(chain, flow, chain->coro);
 #endif
 
 #ifdef CB_USE_TSAN

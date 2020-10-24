@@ -622,7 +622,7 @@ CBChainState suspend(CBContext *context, double seconds) {
 #ifndef __EMSCRIPTEN__
   context->continuation = context->continuation.resume();
 #else
-  context->continuation.yield();
+  __builtin_coro_suspend(0);
 #endif
 
 #ifdef CB_USE_TSAN
@@ -1939,6 +1939,11 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
   CBContext context(std::move(sink), chain, flow ? flow : &anonFlow);
 #else
+  __builtin_coro_id(0, nullptr, nullptr, nullptr);
+  auto coro_size = __builtin_coro_size();
+  coro->llvm_coro_buffer = new uint8_t[coro_size];
+  __builtin_coro_begin(coro->llvm_coro_buffer);
+  coro->llvm_coro_frame = __builtin_coro_frame();
   CBCoro co = *coro;
   CBContext context(std::move(co), chain, flow ? flow : &anonFlow);
 #endif
@@ -1965,7 +1970,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
   context.continuation = context.continuation.resume();
 #else
-  context.continuation.yield();
+  // __builtin_coro_suspend(0);
 #endif
 
   LOG(TRACE) << "chain " << chain->name << " starting.";
@@ -2007,7 +2012,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
 #else
-      context.continuation.yield();
+      // __builtin_coro_suspend(0);
 #endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
@@ -2033,7 +2038,7 @@ endOfChain:
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else
-  context.continuation.yield();
+  __builtin_coro_end(__builtin_coro_frame(), 0);
 #endif
 }
 

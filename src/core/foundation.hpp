@@ -50,24 +50,24 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <emscripten/fiber.h>
 struct CBCoro {
-  static constexpr int stack_size = 128 * 1024;
-  static constexpr int as_stack_size = 4096;
+  CBCoro() {
+  }
 
-  CBCoro();
-  void init(const std::function<void(CBChain *, CBFlow *, CBCoro *)> &func,
-            CBChain *chain, CBFlow *flow);
-  NO_INLINE void resume();
-  NO_INLINE void yield();
+  ~CBCoro() {
+    if(llvm_coro_buffer)
+      delete llvm_coro_buffer;
+  }
+
+  void resume() {
+    LOG(TRACE) << "EM FIBER RESUME";
+    __builtin_coro_resume(llvm_coro_frame);
+  }
 
   // compatibility with boost
   operator bool() const { return true; }
 
-  emscripten_fiber_t em_fiber;
-  std::function<void(CBChain *, CBFlow *, CBCoro *)> func;
-  CBChain *chain;
-  CBFlow *flow;
-  uint8_t asyncify_stack[as_stack_size];
-  alignas(16) uint8_t c_stack[stack_size];
+  void *llvm_coro_frame{nullptr};
+  uint8_t *llvm_coro_buffer{nullptr};
 };
 #endif
 

@@ -90,7 +90,7 @@ add_compile_options(-Wall)
 if(NOT EMSCRIPTEN)
   add_compile_definitions(ELPP_THREAD_SAFE)
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s ASYNCIFY_STACK_SIZE=1073741824 -s EXIT_RUNTIME=1")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines-ts -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s EXIT_RUNTIME=1")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=1")
   endif()
@@ -218,7 +218,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks_macros.hpp
-  ${CHAINBLOCKS_DIR}/src/core/coro.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp
@@ -667,7 +666,6 @@ else()
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
-    ${CHAINBLOCKS_DIR}/src/core/coro.cpp
     )
 endif()
 
