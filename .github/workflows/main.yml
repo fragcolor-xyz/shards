@@ -66,6 +66,7 @@ jobs:
     - uses: chainblocks/setup-msys2@v2
       with:
         msystem: MINGW64
+        release: false
     - run: msys2 ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -81,6 +82,7 @@ jobs:
     - uses: chainblocks/setup-msys2@v2
       with:
         msystem: MINGW32
+        release: false
     - run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -96,6 +98,7 @@ jobs:
     - uses: chainblocks/setup-msys2@v2
       with:
         msystem: MINGW64
+        release: false
     - run: msys2 ./build-win.sh Debug
 
   ciWindowsDbg32:
@@ -107,6 +110,7 @@ jobs:
     - uses: chainblocks/setup-msys2@v2
       with:
         msystem: MINGW32
+        release: false
     - run: msys2 ./build-win32.sh Debug
 
   ciMacDbg:
