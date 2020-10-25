@@ -280,6 +280,12 @@ void registerCoreBlocks() {
   assert(ts.cap == 0);
 #endif
 
+#ifdef __EMSCRIPTEN__
+  CBCoro coro;
+  coro.init([&]() { LOG(TRACE) << "Hmmm?"; coro.yield(); });
+  coro.resume();
+#endif
+
   // finally iterate cblock directory and load external dlls
   loadExternalBlocks(Globals::ExePath);
   if (Globals::RootPath != Globals::ExePath) {

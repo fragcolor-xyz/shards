@@ -50,12 +50,11 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <emscripten/fiber.h>
 struct CBCoro {
-  static constexpr int stack_size = 128 * 1024;
-  static constexpr int as_stack_size = 4096;
+  static constexpr int stack_size = CB_STACK_SIZE;
+  static constexpr int as_stack_size = 32770;
 
   CBCoro();
-  void init(const std::function<void(CBChain *, CBFlow *, CBCoro *)> &func,
-            CBChain *chain, CBFlow *flow);
+  void init(const std::function<void()> &func);
   NO_INLINE void resume();
   NO_INLINE void yield();
 
@@ -63,9 +62,7 @@ struct CBCoro {
   operator bool() const { return true; }
 
   emscripten_fiber_t em_fiber;
-  std::function<void(CBChain *, CBFlow *, CBCoro *)> func;
-  CBChain *chain;
-  CBFlow *flow;
+  std::function<void()> func;
   uint8_t asyncify_stack[as_stack_size];
   alignas(16) uint8_t c_stack[stack_size];
 };

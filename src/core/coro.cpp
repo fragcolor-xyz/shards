@@ -8,14 +8,12 @@ static struct Globals {
 
 #ifndef NDEBUG
     CBCoro c1;
-    c1.init(
-        [](CBChain *chain, CBFlow *flow, CBCoro *coro) {
-          LOG(TRACE) << "Inside coro";
-          coro->yield();
-          LOG(TRACE) << "Inside coro again";
-          coro->yield();
-        },
-        nullptr, nullptr);
+    c1.init([&]() {
+      LOG(TRACE) << "Inside coro";
+      c1.yield();
+      LOG(TRACE) << "Inside coro again";
+      c1.yield();
+    });
     c1.resume();
     c1.resume();
 #endif
@@ -28,18 +26,16 @@ static struct Globals {
 [[noreturn]] static void action(void *p) {
   LOG(TRACE) << "EM FIBER ACTION RUN";
   auto coro = reinterpret_cast<CBCoro *>(p);
-  coro->func(coro->chain, coro->flow, coro);
+  coro->func();
+  // If entry_func returns, the entire program will end, as if main had
+  // returned.
   throw;
 }
 
 CBCoro::CBCoro() {}
 
-void CBCoro::init(
-    const std::function<void(CBChain *, CBFlow *, CBCoro *)> &func,
-    CBChain *chain, CBFlow *flow) {
+void CBCoro::init(const std::function<void()> &func) {
   LOG(TRACE) << "EM FIBER INIT";
-  this->chain = chain;
-  this->flow = flow;
   this->func = func;
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size,
                         asyncify_stack, as_stack_size);

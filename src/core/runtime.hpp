@@ -458,7 +458,7 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
       }));
 #else
   chain->coro = new CBCoro();
-  chain->coro->init(run, chain, flow);
+  chain->coro->init([=]() { run(chain, flow, chain->coro); });
   chain->coro->resume();
 #endif
 
