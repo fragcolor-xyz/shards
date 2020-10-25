@@ -32,11 +32,10 @@ static struct Globals {
   throw;
 }
 
-CBCoro::CBCoro() {}
-
 void CBCoro::init(const std::function<void()> &func) {
   LOG(TRACE) << "EM FIBER INIT";
   this->func = func;
+  c_stack = new (std::align_val_t{16}) uint8_t[CB_STACK_SIZE];
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size,
                         asyncify_stack, as_stack_size);
 }

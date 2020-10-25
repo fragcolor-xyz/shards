@@ -29,6 +29,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <iomanip>
 #include <list>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <type_traits>
@@ -53,7 +54,11 @@ struct CBCoro {
   static constexpr int stack_size = CB_STACK_SIZE;
   static constexpr int as_stack_size = 32770;
 
-  CBCoro();
+  CBCoro() {}
+  ~CBCoro() {
+    if (c_stack)
+      ::operator delete[](c_stack, std::align_val_t{16});
+  }
   void init(const std::function<void()> &func);
   NO_INLINE void resume();
   NO_INLINE void yield();
@@ -64,7 +69,7 @@ struct CBCoro {
   emscripten_fiber_t em_fiber;
   std::function<void()> func;
   uint8_t asyncify_stack[as_stack_size];
-  alignas(16) uint8_t c_stack[stack_size];
+  uint8_t *c_stack{nullptr};
 };
 #endif
 
@@ -205,7 +210,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   std::string name;
 
-  CBCoro *coro{nullptr};
+  std::optional<CBCoro> coro;
 #ifdef CB_USE_TSAN
   void *tsan_coro{nullptr};
 #endif

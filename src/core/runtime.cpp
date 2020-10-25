@@ -282,7 +282,10 @@ void registerCoreBlocks() {
 
 #ifdef __EMSCRIPTEN__
   CBCoro coro;
-  coro.init([&]() { LOG(TRACE) << "Hmmm?"; coro.yield(); });
+  coro.init([&]() {
+    LOG(TRACE) << "Hmmm?";
+    coro.yield();
+  });
   coro.resume();
 #endif
 

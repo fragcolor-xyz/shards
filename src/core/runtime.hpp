@@ -451,14 +451,14 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
   if (!chain->stack_mem) {
     chain->stack_mem = new (std::align_val_t{16}) uint8_t[CB_STACK_SIZE];
   }
-  chain->coro = new CBCoro(boost::context::callcc(
+  chain->coro = boost::context::callcc(
       std::allocator_arg, CBStackAllocator{chain->stack_mem},
       [chain, flow](boost::context::continuation &&sink) {
         return run(chain, flow, std::move(sink));
-      }));
+      });
 #else
-  chain->coro = new CBCoro();
-  chain->coro->init([=]() { run(chain, flow, chain->coro); });
+  chain->coro.emplace();
+  chain->coro->init([=]() { run(chain, flow, &(*chain->coro)); });
   chain->coro->resume();
 #endif
 
@@ -517,8 +517,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     }
 
     // delete also the coro ptr
-    delete chain->coro;
-    chain->coro = nullptr;
+    chain->coro.reset();
   } else {
     // if we had a coro this will run inside it!
     chain->cleanup(true);
