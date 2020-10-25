@@ -41,11 +41,11 @@ void CBCoro::init(const std::function<void()> &func) {
 }
 
 NO_INLINE void CBCoro::resume() {
-  LOG(TRACE) << "EM FIBER SWAP RESUME";
+  LOG(TRACE) << "EM FIBER SWAP RESUME " << (void *)(&em_fiber);
   emscripten_fiber_swap(&Globals.main_coro, &em_fiber);
 }
 
 NO_INLINE void CBCoro::yield() {
-  LOG(TRACE) << "EM FIBER SWAP YIELD";
+  LOG(TRACE) << "EM FIBER SWAP YIELD " << (void *)(&em_fiber);
   emscripten_fiber_swap(&em_fiber, &Globals.main_coro);
 }

@@ -631,7 +631,7 @@ CBChainState suspend(CBContext *context, double seconds) {
 #ifndef __EMSCRIPTEN__
   context->continuation = context->continuation.resume();
 #else
-  context->continuation.yield();
+  context->continuation->yield();
 #endif
 
 #ifdef CB_USE_TSAN
@@ -1948,8 +1948,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
   CBContext context(std::move(sink), chain, flow ? flow : &anonFlow);
 #else
-  CBCoro co = *coro;
-  CBContext context(std::move(co), chain, flow ? flow : &anonFlow);
+  CBContext context(coro, chain, flow ? flow : &anonFlow);
 #endif
 
 #ifdef CB_USE_TSAN
@@ -1974,7 +1973,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
   context.continuation = context.continuation.resume();
 #else
-  context.continuation.yield();
+  context.continuation->yield();
 #endif
 
   LOG(TRACE) << "chain " << chain->name << " starting.";
@@ -2016,7 +2015,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
 #else
-      context.continuation.yield();
+      context.continuation->yield();
 #endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
@@ -2042,7 +2041,7 @@ endOfChain:
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else
-  context.continuation.yield();
+  context.continuation->yield();
 #endif
 }
 

@@ -69,8 +69,20 @@ bool validateSetParam(CBlock *block, int index, CBVar &value,
                       CBValidationCallback callback, void *userData);
 
 struct CBContext {
-  CBContext(CBCoro &&sink, CBChain *starter, CBFlow *flow)
-      : main(starter), flow(flow), continuation(std::move(sink)) {
+  CBContext(
+#ifndef __EMSCRIPTEN__
+      CBCoro &&sink,
+#else
+      CBCoro *coro,
+#endif
+      CBChain *starter, CBFlow *flow)
+      : main(starter), flow(flow),
+#ifndef __EMSCRIPTEN__
+        continuation(std::move(sink))
+#else
+        continuation(coro)
+#endif
+  {
     chainStack.push_back(starter);
   }
 
@@ -78,8 +90,12 @@ struct CBContext {
   CBFlow *flow;
   std::vector<CBChain *> chainStack;
 
-  // Used within the coro& stack! (suspend, etc)
+// Used within the coro& stack! (suspend, etc)
+#ifndef __EMSCRIPTEN__
   CBCoro &&continuation;
+#else
+  CBCoro *continuation{nullptr};
+#endif
   Duration next{};
 #ifdef CB_USE_TSAN
   void *tsan_handle = nullptr;
