@@ -50,11 +50,10 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <emscripten/fiber.h>
 struct CBCoro {
-  CBCoro() {
-  }
+  CBCoro() {}
 
   ~CBCoro() {
-    if(llvm_coro_buffer)
+    if (llvm_coro_buffer)
       delete llvm_coro_buffer;
   }
 
