@@ -69,7 +69,7 @@ struct BinaryBase : public Base {
           if (data.shared.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
             if (data.shared.elements[i].exposedType != data.inputType)
-              throw CBException(
+              throw ComposeError(
                   "Operation not supported between different types");
             _opType = Normal;
           } else if (data.shared.elements[i].exposedType.basicType != Seq &&
@@ -77,7 +77,7 @@ struct BinaryBase : public Base {
             if (data.inputType.seqTypes.len != 1 ||
                 data.shared.elements[i].exposedType !=
                     data.inputType.seqTypes.elements[0])
-              throw CBException(
+              throw ComposeError(
                   "Operation not supported between different types");
             _opType = Seq1;
           } else if (data.shared.elements[i].exposedType.basicType == Seq &&
@@ -85,33 +85,33 @@ struct BinaryBase : public Base {
             // TODO need to have deeper types compatibility at least
             _opType = SeqSeq;
           } else {
-            throw CBException(
+            throw ComposeError(
                 "Math broadcasting not supported between given types!");
           }
         }
       }
       if (_opType == Invalid) {
-        throw CBException("Math operand variable not found: " +
-                          std::string(operandSpec.payload.stringValue));
+        throw ComposeError("Math operand variable not found: " +
+                           std::string(operandSpec.payload.stringValue));
       }
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         if (operandSpec.valueType != data.inputType.basicType)
-          throw CBException("Operation not supported between different types");
+          throw ComposeError("Operation not supported between different types");
         _opType = Normal;
       } else if (operandSpec.valueType != Seq &&
                  data.inputType.basicType == Seq) {
         if (data.inputType.seqTypes.len != 1 ||
             operandSpec.valueType !=
                 data.inputType.seqTypes.elements[0].basicType)
-          throw CBException("Operation not supported between different types");
+          throw ComposeError("Operation not supported between different types");
         _opType = Seq1;
       } else if (operandSpec.valueType == Seq &&
                  data.inputType.basicType == Seq) {
         // TODO need to have deeper types compatibility at least
         _opType = SeqSeq;
       } else {
-        throw CBException(
+        throw ComposeError(
             "Math broadcasting not supported between given types!");
       }
     }
