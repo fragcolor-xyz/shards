@@ -1718,7 +1718,7 @@ struct PlotLine : public PlottableBase {
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
-      ImPlot::PlotLine(
+      ImPlot::PlotLineG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1728,7 +1728,7 @@ struct PlotLine : public PlottableBase {
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
-      ImPlot::PlotLine(
+      ImPlot::PlotLineG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1750,7 +1750,7 @@ struct PlotDigital : public PlottableBase {
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
-      ImPlot::PlotDigital(
+      ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1760,7 +1760,7 @@ struct PlotDigital : public PlottableBase {
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
-      ImPlot::PlotDigital(
+      ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1782,7 +1782,7 @@ struct PlotScatter : public PlottableBase {
     PlottableBase::applyModifiers();
     DEFER(PlottableBase::popModifiers());
     if (_kind == Kind::xAndY) {
-      ImPlot::PlotScatter(
+      ImPlot::PlotScatterG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1792,7 +1792,7 @@ struct PlotScatter : public PlottableBase {
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
-      ImPlot::PlotScatter(
+      ImPlot::PlotScatterG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
@@ -1813,7 +1813,7 @@ struct PlotBars : public PlottableBase {
 
   double _width = 0.67;
   bool _horizontal = false;
-  PlotBarsProc _plot = &ImPlot::PlotBars;
+  PlotBarsProc _plot = &ImPlot::PlotBarsG;
 
   static inline Parameters params{
       PlottableBase::params,
@@ -1833,9 +1833,9 @@ struct PlotBars : public PlottableBase {
     case PlottableBase::nparams + 2:
       _horizontal = value.payload.boolValue;
       if (_horizontal) {
-        _plot = &ImPlot::PlotBarsH;
+        _plot = &ImPlot::PlotBarsHG;
       } else {
-        _plot = &ImPlot::PlotBars;
+        _plot = &ImPlot::PlotBarsG;
       }
       break;
     default:
