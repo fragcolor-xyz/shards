@@ -906,9 +906,9 @@ struct Text : public Base {
       ::ImGui::PushStyleColor(ImGuiCol_Text, Style::color2Vec4(_color));
 
     if (_label.size() > 0) {
-      ::ImGui::LabelText(_label.c_str(), _text.str());
+      ::ImGui::LabelText(_label.c_str(), "%s", _text.str());
     } else {
-      ::ImGui::Text(_text.str());
+      ::ImGui::Text("%s", _text.str());
     }
 
     if (_color.valueType == Color)
