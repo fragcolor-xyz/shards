@@ -562,11 +562,10 @@ inline bool isRunning(CBChain *chain) {
          state <= CBChain::State::IterationEnded;
 }
 
-inline bool tick(CBChain *chain, CBVar rootInput = {}) {
+inline bool tick(CBChain *chain, Duration now, CBVar rootInput = {}) {
   if (!chain->context || !chain->coro || !(*chain->coro) || !(isRunning(chain)))
     return false; // check if not null and bool operator also to see if alive!
 
-  Duration now = Clock::now().time_since_epoch();
   if (now >= chain->context->next) {
     if (rootInput != Var::Empty) {
       cloneVar(chain->rootTickInput, rootInput);
@@ -734,17 +733,20 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     if (chainblocks::Globals::SigIntTerm > 0) {
       terminate();
     } else {
-      _runningFlows = _flows;
-      for (auto &flow : _runningFlows) {
+      Duration now = Clock::now().time_since_epoch();
+      for (auto it = _flows.begin(); it != _flows.end();) {
+        auto &flow = *it;
         observer.before_tick(flow->chain);
-        chainblocks::tick(flow->chain, input);
-        if (!chainblocks::isRunning(flow->chain)) {
+        chainblocks::tick(flow->chain, now, input);
+        if (unlikely(!chainblocks::isRunning(flow->chain))) {
           observer.before_stop(flow->chain);
           if (!chainblocks::stop(flow->chain)) {
             noErrors = false;
           }
-          _flows.remove(flow);
           flow->chain->node.reset();
+          it = _flows.erase(it);
+        } else {
+          ++it;
         }
       }
     }
@@ -799,7 +801,6 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
-  std::list<std::shared_ptr<CBFlow>> _runningFlows;
   CBNode() = default;
 };
 

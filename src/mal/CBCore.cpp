@@ -1320,7 +1320,8 @@ BUILTIN("tick") {
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
     auto chain = CBChain::sharedFromRef(v->value());
-    auto ticked = chainblocks::tick(chain.get());
+    Duration now = Clock::now().time_since_epoch();
+    auto ticked = chainblocks::tick(chain.get(), now);
     return mal::boolean(ticked);
   } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
     auto noErrors = v->value()->tick();
@@ -1410,7 +1411,8 @@ BUILTIN("run") {
       }
     }
   } else {
-    while (!chainblocks::tick(chain)) {
+    Duration now = Clock::now().time_since_epoch();
+    while (!chainblocks::tick(chain, now)) {
       if (dec) {
         times--;
         if (times == 0) {
@@ -1419,6 +1421,7 @@ BUILTIN("run") {
         }
       }
       chainblocks::sleep(sleepTime);
+      now = Clock::now().time_since_epoch();
     }
   }
 
