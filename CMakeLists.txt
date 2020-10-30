@@ -90,6 +90,7 @@ add_compile_options(-Wall)
 if(NOT EMSCRIPTEN)
   add_compile_definitions(ELPP_THREAD_SAFE)
 else()
+  # build with cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
   # test with node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Msg "Hello"))) (run Root 0.1))'
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s LINKABLE=1")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -192,6 +193,7 @@ elseif(APPLE)
     )
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
+  include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
 elseif(UNIX)
   set(BOOST_LIBS -lboost_context -lssl -lcrypto)
   set(EXTRA_LIBS -pthread -ldl -lrt)
@@ -351,6 +353,10 @@ if(LINUX)
   endif()
 endif()
 
+if(EMSCRIPTEN)
+  set(EXTRA_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+endif()
+
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/replxx/include
@@ -427,7 +433,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
     GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
     BUILD_BYPRODUCTS ${libsdlfile}
   )
 
@@ -560,7 +566,11 @@ if(NOT BUILD_CORE_ONLY)
           "-framework ForceFeedback")
     endif()
   elseif(LINUX)
-    add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
+    if(NOT EMSCRIPTEN)
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
+    else()
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES)  
+    endif()
 
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
@@ -582,7 +592,7 @@ if(NOT BUILD_CORE_ONLY)
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
       BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
       )
 

@@ -45,7 +45,7 @@ struct BaseWindow : public Base {
   HWND _sysWnd = nullptr;
 #elif defined(__APPLE__)
   void *_sysWnd = nullptr;
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__EMSCRIPTEN__)
   void *_sysWnd = nullptr;
 #endif
 
