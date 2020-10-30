@@ -371,56 +371,6 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::MathRShift;
   } else if (name == "Math.Abs") {
     blkp->inlineBlockId = CBInlineBlocks::MathAbs;
-  } else if (name == "Math.Exp") {
-    blkp->inlineBlockId = CBInlineBlocks::MathExp;
-  } else if (name == "Math.Exp2") {
-    blkp->inlineBlockId = CBInlineBlocks::MathExp2;
-  } else if (name == "Math.Expm1") {
-    blkp->inlineBlockId = CBInlineBlocks::MathExpm1;
-  } else if (name == "Math.Log") {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog;
-  } else if (name == "Math.Log10") {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog10;
-  } else if (name == "Math.Log2") {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog2;
-  } else if (name == "Math.Log1p") {
-    blkp->inlineBlockId = CBInlineBlocks::MathLog1p;
-  } else if (name == "Math.Sqrt") {
-    blkp->inlineBlockId = CBInlineBlocks::MathSqrt;
-  } else if (name == "Math.Cbrt") {
-    blkp->inlineBlockId = CBInlineBlocks::MathCbrt;
-  } else if (name == "Math.Sin") {
-    blkp->inlineBlockId = CBInlineBlocks::MathSin;
-  } else if (name == "Math.Cos") {
-    blkp->inlineBlockId = CBInlineBlocks::MathCos;
-  } else if (name == "Math.Tan") {
-    blkp->inlineBlockId = CBInlineBlocks::MathTan;
-  } else if (name == "Math.Asin") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAsin;
-  } else if (name == "Math.Acos") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAcos;
-  } else if (name == "Math.Atan") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAtan;
-  } else if (name == "Math.Sinh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathSinh;
-  } else if (name == "Math.Cosh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathCosh;
-  } else if (name == "Math.Tanh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathTanh;
-  } else if (name == "Math.Asinh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAsinh;
-  } else if (name == "Math.Acosh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAcosh;
-  } else if (name == "Math.Atanh") {
-    blkp->inlineBlockId = CBInlineBlocks::MathAtanh;
-  } else if (name == "Math.Erf") {
-    blkp->inlineBlockId = CBInlineBlocks::MathErf;
-  } else if (name == "Math.Erfc") {
-    blkp->inlineBlockId = CBInlineBlocks::MathErfc;
-  } else if (name == "Math.TGamma") {
-    blkp->inlineBlockId = CBInlineBlocks::MathTGamma;
-  } else if (name == "Math.LGamma") {
-    blkp->inlineBlockId = CBInlineBlocks::MathLGamma;
   } else if (name == "Math.Ceil") {
     blkp->inlineBlockId = CBInlineBlocks::MathCeil;
   } else if (name == "Math.Floor") {
@@ -1422,18 +1372,9 @@ void validateConnection(ValidationContext &ctx) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;
     } else if (previousOutput.basicType == Table) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeTable;
-    } else if (previousOutput.basicType >= Int2 &&
-               previousOutput.basicType <= Int16) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeInts;
     } else if (previousOutput.basicType >= Float2 &&
                previousOutput.basicType <= Float4) {
       ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeFloats;
-    } else if (previousOutput.basicType == Color) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeColor;
-    } else if (previousOutput.basicType == Bytes) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeBytes;
-    } else if (previousOutput.basicType == String) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeString;
     }
   }
 
