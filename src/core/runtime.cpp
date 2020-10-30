@@ -618,7 +618,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       assert(false);
     }
     try {
-      static void *dispatch_table[] = {
+      constexpr void *dispatch_table[] = {
           // see CBInlineBlocks, must match
           &&doDefault,        &&doNoopBlock,       &&doCoreConst,
           &&doCoreIs,         &&doCoreIsNot,       &&doCoreAnd,
