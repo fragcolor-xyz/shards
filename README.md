@@ -45,6 +45,7 @@ To achieve that we build a scripting tool that can be both visual and textual at
 * Versatile textual representation (for now backed by a derived **clojure/lisp**)
 * Fast execution inspired by threaded code interpreters
 * Hot code reloading, without any serialization due to complete decoupled data
+* WASM support
 
 ## TL;DR
 
