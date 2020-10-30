@@ -640,7 +640,10 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       output = blk->activate(blk, context, &input);
       goto errorCheck; // this block might use context errors
     }
-    doNoopBlock : { continue; }
+    doNoopBlock : {
+      output = input;
+      continue;
+    }
     doCoreConst : {
       auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
       output = cblock->core._value;
