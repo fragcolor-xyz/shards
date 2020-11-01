@@ -738,6 +738,8 @@ struct SendFile {
       return "image/svg+xml";
     if (iequals(ext, ".svgz"))
       return "image/svg+xml";
+    if (iequals(ext, ".wasm"))
+      return "application/wasm";
     return "application/text";
   }
 

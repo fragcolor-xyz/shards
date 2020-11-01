@@ -91,8 +91,9 @@ if(NOT EMSCRIPTEN)
   add_compile_definitions(ELPP_THREAD_SAFE)
 else()
   # build with cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+  # MinSizeRel is better for release builds
   # test with node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Msg "Hello"))) (run Root 0.1))'
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s LINKABLE=1")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s MAX_WEBGL_VERSION=2")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=1")
   endif()
