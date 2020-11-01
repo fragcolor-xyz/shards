@@ -744,6 +744,10 @@ add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+
+if(EMSCRIPTEN)
+set_target_properties(cbl PROPERTIES SUFFIX ".html")
+endif()
 ###
 
 ### our experimental edn eval
