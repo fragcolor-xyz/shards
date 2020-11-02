@@ -223,7 +223,10 @@ struct MainWindow : public BaseWindow {
       } else {
         SDL_SysWMinfo winInfo{};
         SDL_version sdlVer{};
-        Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
+        Uint32 flags = SDL_WINDOW_SHOWN;
+        // TODO: SDL_WINDOW_ALLOW_HIGHDPI
+        // TODO: SDL_WINDOW_RESIZABLE
+        // TODO: SDL_WINDOW_BORDERLESS
         _window =
             SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
                              SDL_WINDOWPOS_CENTERED, _width, _height, flags);
