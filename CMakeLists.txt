@@ -381,6 +381,7 @@ if(NOT BUILD_CORE_ONLY)
     CB_WITH_EXTRAS 
     BIMG_DECODE_ENABLE=0
     SDL_RENDER_DISABLED=1
+    BGFX_SHADERC_NO_MAIN
     )
 
   include_directories(
@@ -394,6 +395,10 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
+
+    # shader compiler related
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc
     )
 
   set(SDL-source-patterns
@@ -434,7 +439,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
     GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
     BUILD_BYPRODUCTS ${libsdlfile}
   )
 
@@ -452,6 +457,7 @@ if(NOT BUILD_CORE_ONLY)
 
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+      ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc_hlsl.cpp
       ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
       )
 
@@ -580,12 +586,36 @@ if(NOT BUILD_CORE_ONLY)
       
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
+      ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc_glsl.cpp
       )
 
     set(CBLP_PLATFORM_LIBS
       -lX11
       -lGL
       )
+
+    ExternalProject_Add(glsl-optimizer_a
+      URL     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
+      BUILD_COMMAND cmake --build . --target glsl_optimizer glcpp-library mesa
+      INSTALL_COMMAND ""
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglcpp-library.a ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a
+      )
+    
+    include_directories(
+      ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer/src/glsl
+    )
+
+    add_library(libglsloptimizer STATIC IMPORTED GLOBAL)
+    add_dependencies(libglsloptimizer glsl-optimizer_a)
+    set_target_properties(libglsloptimizer PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a)
+    add_library(libglcpp STATIC IMPORTED GLOBAL)
+    add_dependencies(libglcpp glsl-optimizer_a)
+    set_target_properties(libglcpp PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglcpp-library.a)
+    add_library(libmesa STATIC IMPORTED GLOBAL)
+    add_dependencies(libmesa glsl-optimizer_a)
+    set_target_properties(libmesa PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a)
   endif()
 
   if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
@@ -593,7 +623,7 @@ if(NOT BUILD_CORE_ONLY)
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
       BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
       )
 
@@ -622,6 +652,16 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot_items.cpp
+
+    # shader compiler
+    ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc.cpp
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp1.c
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp2.c
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp3.c
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp4.c
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp5.c
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp6.c
+
     ${PLATFORM_SOURCES}
     )
 endif()
@@ -717,6 +757,21 @@ if(NOT BUILD_CORE_ONLY)
     target_link_libraries(cb_static libsnappy)
     add_dependencies(cb_shared snappy_a)
     target_link_libraries(cb_shared libsnappy)
+  endif()
+
+  if(LINUX)
+    add_dependencies(cb_static glsl-optimizer_a)
+    target_link_libraries(cb_static libglsloptimizer)
+    add_dependencies(cb_shared glsl-optimizer_a)
+    target_link_libraries(cb_shared libglsloptimizer)
+    add_dependencies(cb_static glsl-optimizer_a)
+    target_link_libraries(cb_static libglcpp)
+    add_dependencies(cb_shared glsl-optimizer_a)
+    target_link_libraries(cb_shared libglcpp)
+    add_dependencies(cb_static glsl-optimizer_a)
+    target_link_libraries(cb_static libmesa)
+    add_dependencies(cb_shared glsl-optimizer_a)
+    target_link_libraries(cb_shared libmesa)
   endif()
 endif()
 
