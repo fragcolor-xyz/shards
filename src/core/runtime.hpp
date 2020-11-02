@@ -630,6 +630,9 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
     SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
+#elif __EMSCRIPTEN__
+    unsigned int ms = floor(seconds * 1000.0);
+    emscripten_sleep(ms);
 #else
     struct timespec delay;
     seconds += 0.5e-9; // add half epsilon
