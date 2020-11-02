@@ -7,6 +7,35 @@
 #include "SDL_syswm.h"
 #include <cstdlib>
 
+namespace bgfx {
+int compileShader(int _argc, const char *_argv[]);
+#if !defined(__linux__) && !defined(__EMSCRIPTEN__)
+bool compileGLSLShader(const Options &_options, uint32_t _version,
+                       const std::string &_code, bx::WriterI *_writer) {
+  return false;
+}
+#endif
+#ifndef _WIN32
+bool compileHLSLShader(const Options &_options, uint32_t _version,
+                       const std::string &_code, bx::WriterI *_writer) {
+  return false;
+}
+#endif
+bool compileMetalShader(const Options &_options, uint32_t _version,
+                        const std::string &_code, bx::WriterI *_writer) {
+  return false;
+}
+bool compilePSSLShader(const Options &_options, uint32_t _version,
+                       const std::string &_code, bx::WriterI *_writer) {
+  return false;
+}
+const char *getPsslPreamble() { return ""; }
+bool compileSPIRVShader(const Options &_options, uint32_t _version,
+                        const std::string &_code, bx::WriterI *_writer) {
+  return false;
+}
+} // namespace bgfx
+
 using namespace chainblocks;
 
 namespace BGFX {
@@ -317,6 +346,8 @@ struct MainWindow : public BaseWindow {
       _imguiCtx = referenceVariable(context, "ImGui.Context");
 
       _initDone = true;
+
+      bgfx::compileShader(0, nullptr);
     }
   }
 
