@@ -1,11 +1,13 @@
 #include "foundation.hpp"
 
+thread_local emscripten_fiber_t *em_local_coro{nullptr};
+
 static struct Globals {
   Globals() {
     LOG(TRACE) << "EM MAIN FIBER INIT";
     emscripten_fiber_init_from_current_context(&main_coro, asyncify_main_stack,
                                                CBCoro::as_stack_size);
-
+    em_local_coro = &main_coro;
 #ifndef NDEBUG
     CBCoro c1;
     c1.init([&]() {
@@ -42,10 +44,15 @@ void CBCoro::init(const std::function<void()> &func) {
 
 NO_INLINE void CBCoro::resume() {
   LOG(TRACE) << "EM FIBER SWAP RESUME " << (void *)(&em_fiber);
-  emscripten_fiber_swap(&Globals.main_coro, &em_fiber);
+  // from current to new
+  auto current = em_local_coro;
+  em_local_coro = &em_fiber;
+  emscripten_fiber_swap(current, &em_fiber);
 }
 
 NO_INLINE void CBCoro::yield() {
   LOG(TRACE) << "EM FIBER SWAP YIELD " << (void *)(&em_fiber);
+  // always yields to main
+  em_local_coro = &Globals.main_coro;
   emscripten_fiber_swap(&em_fiber, &Globals.main_coro);
 }
