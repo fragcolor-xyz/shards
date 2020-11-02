@@ -215,8 +215,8 @@ struct MainWindow : public BaseWindow {
           _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
         _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
         // TODO SDL_CreateWindowFrom to enable inputs etc...
-        // specially for iOS thing is that we pass context as variable, not a window object
-        // we might need 2 variables in the end
+        // specially for iOS thing is that we pass context as variable, not a
+        // window object we might need 2 variables in the end
       } else {
         SDL_SysWMinfo winInfo{};
         SDL_version sdlVer{};
@@ -243,7 +243,7 @@ struct MainWindow : public BaseWindow {
 #elif defined(__linux__)
         _sysWnd = (void *)winInfo.info.x11.windw;
 #elif defined(__EMSCRIPTEN__)
-        _sysWnd = (void*)("#canvas"); // SDL and emscripten use #canvas
+        _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
       }
 
