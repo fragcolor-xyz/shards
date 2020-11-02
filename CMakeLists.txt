@@ -439,7 +439,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
     GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
     BUILD_BYPRODUCTS ${libsdlfile}
   )
 
@@ -597,7 +597,7 @@ if(NOT BUILD_CORE_ONLY)
     ExternalProject_Add(glsl-optimizer_a
       URL     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
       BUILD_COMMAND cmake --build . --target glsl_optimizer glcpp-library mesa
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglcpp-library.a ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a
@@ -623,7 +623,7 @@ if(NOT BUILD_CORE_ONLY)
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
       BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
       )
 
