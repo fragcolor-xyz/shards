@@ -140,41 +140,44 @@ struct MainWindow : public BaseWindow {
       if (_window)
         SDL_DestroyWindow(_window);
       SDL_Quit();
-      _window = nullptr;
-      _sysWnd = nullptr;
-
-      if (_sdlWinVar) {
-        if (_sdlWinVar->refcount > 1) {
-          throw CBException(
-              "MainWindow: Found a dangling reference to BGFX.CurrentWindow.");
-        }
-        memset(_sdlWinVar, 0x0, sizeof(CBVar));
-        _sdlWinVar = nullptr;
-      }
-
-      if (_bgfxCtx) {
-        if (_bgfxCtx->refcount > 1) {
-          throw CBException(
-              "MainWindow: Found a dangling reference to BGFX.Context.");
-        }
-        memset(_bgfxCtx, 0x0, sizeof(CBVar));
-        _bgfxCtx = nullptr;
-      }
-
-      if (_imguiCtx) {
-        if (_imguiCtx->refcount > 1) {
-          throw CBException(
-              "MainWindow: Found a dangling reference to ImGui.Context.");
-        }
-        memset(_imguiCtx, 0x0, sizeof(CBVar));
-        _imguiCtx = nullptr;
-      }
-
-      releaseVariable(_nativeWnd);
-
-      _initDone = false;
-      _wheelScroll = 0;
     }
+
+    if (_sdlWinVar) {
+      if (_sdlWinVar->refcount > 1) {
+        throw CBException(
+            "MainWindow: Found a dangling reference to BGFX.CurrentWindow.");
+      }
+      memset(_sdlWinVar, 0x0, sizeof(CBVar));
+      _sdlWinVar = nullptr;
+    }
+
+    if (_bgfxCtx) {
+      if (_bgfxCtx->refcount > 1) {
+        throw CBException(
+            "MainWindow: Found a dangling reference to BGFX.Context.");
+      }
+      memset(_bgfxCtx, 0x0, sizeof(CBVar));
+      _bgfxCtx = nullptr;
+    }
+
+    if (_imguiCtx) {
+      if (_imguiCtx->refcount > 1) {
+        throw CBException(
+            "MainWindow: Found a dangling reference to ImGui.Context.");
+      }
+      memset(_imguiCtx, 0x0, sizeof(CBVar));
+      _imguiCtx = nullptr;
+    }
+
+    if (_nativeWnd) {
+      releaseVariable(_nativeWnd);
+      _nativeWnd = nullptr;
+    }
+
+    _window = nullptr;
+    _sysWnd = nullptr;
+    _initDone = false;
+    _wheelScroll = 0;
   }
 
   static inline char *_clipboardContents{nullptr};
@@ -226,9 +229,12 @@ struct MainWindow : public BaseWindow {
                              SDL_WINDOWPOS_CENTERED, _width, _height, flags);
         SDL_VERSION(&sdlVer);
         winInfo.version = sdlVer;
+
+#ifndef __EMSCRIPTEN__
         if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
           throw ActivationError("Failed to call SDL_GetWindowWMInfo");
         }
+#endif
 
 #ifdef __APPLE__
 #ifdef SDL_VIDEO_DRIVER_UIKIT
