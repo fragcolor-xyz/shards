@@ -67,6 +67,7 @@ struct CBCoro {
   operator bool() const { return true; }
 
   emscripten_fiber_t em_fiber;
+  emscripten_fiber_t *em_parent_fiber{nullptr};
   std::function<void()> func;
   uint8_t asyncify_stack[as_stack_size];
   uint8_t *c_stack{nullptr};

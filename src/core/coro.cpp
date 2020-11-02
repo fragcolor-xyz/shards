@@ -45,14 +45,15 @@ void CBCoro::init(const std::function<void()> &func) {
 NO_INLINE void CBCoro::resume() {
   LOG(TRACE) << "EM FIBER SWAP RESUME " << (void *)(&em_fiber);
   // from current to new
-  auto current = em_local_coro;
+  em_parent_fiber = em_local_coro;
   em_local_coro = &em_fiber;
-  emscripten_fiber_swap(current, &em_fiber);
+  emscripten_fiber_swap(em_parent_fiber, &em_fiber);
 }
 
 NO_INLINE void CBCoro::yield() {
   LOG(TRACE) << "EM FIBER SWAP YIELD " << (void *)(&em_fiber);
   // always yields to main
-  em_local_coro = &Globals.main_coro;
-  emscripten_fiber_swap(&em_fiber, &Globals.main_coro);
+  assert(em_parent_fiber);
+  em_local_coro = em_parent_fiber;
+  emscripten_fiber_swap(&em_fiber, em_parent_fiber);
 }
