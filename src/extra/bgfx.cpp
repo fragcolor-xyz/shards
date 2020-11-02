@@ -247,7 +247,7 @@ struct MainWindow : public BaseWindow {
 #elif defined(_WIN32)
         _sysWnd = winInfo.info.win.window;
 #elif defined(__linux__)
-        _sysWnd = (void *)winInfo.info.x11.windw;
+        _sysWnd = (void *)winInfo.info.x11.window;
 #elif defined(__EMSCRIPTEN__)
         _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
