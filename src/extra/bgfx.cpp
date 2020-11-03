@@ -346,8 +346,6 @@ struct MainWindow : public BaseWindow {
       _imguiCtx = referenceVariable(context, "ImGui.Context");
 
       _initDone = true;
-
-      bgfx::compileShader(0, nullptr);
     }
   }
 
