@@ -7,9 +7,8 @@
 #![allow(improper_ctypes)]
 
 #[macro_use]
-#[cfg(test)] extern crate ctor;
-
-extern crate libc;
+#[cfg(test)]
+extern crate ctor;
 
 #[macro_use]
 extern crate approx;

@@ -70,6 +70,7 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::rc::Rc;
+use std::slice;
 
 #[macro_export]
 macro_rules! cstr {
@@ -1736,22 +1737,37 @@ impl PartialEq for Var {
                             == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
                             && (self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
                                 == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                || libc::memcmp(
-                                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                        as *const libc::c_void,
-                                    other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                        as *const libc::c_void,
-                                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-                                        as usize,
-                                ) == 0)
+                                || {
+                                    let aslice = slice::from_raw_parts(
+                                        self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                                            as *const u8,
+                                        self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+                                            as usize,
+                                    );
+                                    let bslice = slice::from_raw_parts(
+                                        other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                                            as *const u8,
+                                        other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+                                            as usize,
+                                    );
+
+                                    aslice == bslice
+                                })
                     }
                     CBType_String | CBType_Path | CBType_ContextVar => {
                         self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
                             == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-                            || libc::strcmp(
-                                self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue,
-                                other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue,
-                            ) == 0
+                            || {
+                                let astr = CStr::from_ptr(
+                                    self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                                );
+
+                                let bstr = CStr::from_ptr(
+                                    other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                                );
+
+                                astr == bstr
+                            }
                     }
                     CBType_Image => {
                         let aflags: u32 = self.payload.__bindgen_anon_1.imageValue.flags.into();
@@ -1776,6 +1792,7 @@ impl PartialEq for Var {
                             } else {
                                 1
                             };
+
                         apixsize == bpixsize
                             && self.payload.__bindgen_anon_1.imageValue.channels
                                 == other.payload.__bindgen_anon_1.imageValue.channels
@@ -1785,16 +1802,28 @@ impl PartialEq for Var {
                                 == other.payload.__bindgen_anon_1.imageValue.height
                             && (self.payload.__bindgen_anon_1.imageValue.data
                                 == other.payload.__bindgen_anon_1.imageValue.data
-                                || libc::memcmp(
-                                    self.payload.__bindgen_anon_1.imageValue.data
-                                        as *const libc::c_void,
-                                    other.payload.__bindgen_anon_1.imageValue.data
-                                        as *const libc::c_void,
-                                    self.payload.__bindgen_anon_1.imageValue.channels as usize
-                                        * self.payload.__bindgen_anon_1.imageValue.width as usize
-                                        * self.payload.__bindgen_anon_1.imageValue.height as usize
-                                        * apixsize,
-                                ) == 0)
+                                || {
+                                    let aslice = slice::from_raw_parts(
+                                        self.payload.__bindgen_anon_1.imageValue.data,
+                                        self.payload.__bindgen_anon_1.imageValue.channels as usize
+                                            * self.payload.__bindgen_anon_1.imageValue.width
+                                                as usize
+                                            * self.payload.__bindgen_anon_1.imageValue.height
+                                                as usize
+                                            * apixsize,
+                                    );
+                                    let bslice = slice::from_raw_parts(
+                                        other.payload.__bindgen_anon_1.imageValue.data,
+                                        other.payload.__bindgen_anon_1.imageValue.channels as usize
+                                            * other.payload.__bindgen_anon_1.imageValue.width
+                                                as usize
+                                            * other.payload.__bindgen_anon_1.imageValue.height
+                                                as usize
+                                            * bpixsize,
+                                    );
+
+                                    aslice == bslice
+                                })
                     }
                     CBType_Seq => {
                         if self.payload.__bindgen_anon_1.seqValue.elements
@@ -1842,14 +1871,22 @@ impl PartialEq for Var {
                             && self.innerType == other.innerType
                             && (self.payload.__bindgen_anon_1.arrayValue.elements
                                 == other.payload.__bindgen_anon_1.arrayValue.elements
-                                || libc::memcmp(
-                                    self.payload.__bindgen_anon_1.arrayValue.elements
-                                        as *const libc::c_void,
-                                    other.payload.__bindgen_anon_1.arrayValue.elements
-                                        as *const libc::c_void,
-                                    self.payload.__bindgen_anon_1.arrayValue.len as usize
-                                        * std::mem::size_of::<CBVarPayload>(),
-                                ) == 0)
+                                || {
+                                    let aslice = slice::from_raw_parts(
+                                        self.payload.__bindgen_anon_1.arrayValue.elements
+                                            as *const u8,
+                                        self.payload.__bindgen_anon_1.arrayValue.len as usize
+                                            * std::mem::size_of::<CBVarPayload>(),
+                                    );
+                                    let bslice = slice::from_raw_parts(
+                                        other.payload.__bindgen_anon_1.arrayValue.elements
+                                            as *const u8,
+                                        other.payload.__bindgen_anon_1.arrayValue.len as usize
+                                            * std::mem::size_of::<CBVarPayload>(),
+                                    );
+
+                                    aslice == bslice
+                                })
                     }
                     _ => true,
                 }
