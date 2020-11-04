@@ -2,7 +2,6 @@
 
 use crate::block::cblock_construct;
 use crate::block::Block;
-use crate::chainblocksc::chainblocksInterface;
 use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBContext;
@@ -24,62 +23,75 @@ use std::os::raw::c_char;
 
 const ABI_VERSION: u32 = 0x20200101;
 
-extern crate dlopen;
-use dlopen::symbor::Library;
+pub static mut Core: *mut CBCore = core::ptr::null_mut();
+static mut init_done: bool = false;
 
-fn try_load_dlls() -> Option<Library> {
-    if let Ok(lib) = Library::open("libcb.dylib") {
-        Some(lib)
-    } else if let Ok(lib) = Library::open("libcb_shared.dylib") {
-        Some(lib)
-    } else if let Ok(lib) = Library::open("libcb.so") {
-        Some(lib)
-    } else if let Ok(lib) = Library::open("libcb_shared.so") {
-        Some(lib)
-    } else if let Ok(lib) = Library::open("libcb.dll") {
-        Some(lib)
-    } else {
-        None
+#[cfg(not(feature = "cb_static"))]
+mod auto_dlopen_linking {
+    extern crate dlopen;
+    use crate::chainblocksc::chainblocksInterface;
+    use crate::core::CBCore;
+    use crate::core::ABI_VERSION;
+    use crate::Core;
+    use dlopen::symbor::Library;
+
+    fn try_load_dlls() -> Option<Library> {
+        if let Ok(lib) = Library::open("libcb.dylib") {
+            Some(lib)
+        } else if let Ok(lib) = Library::open("libcb_shared.dylib") {
+            Some(lib)
+        } else if let Ok(lib) = Library::open("libcb.so") {
+            Some(lib)
+        } else if let Ok(lib) = Library::open("libcb_shared.so") {
+            Some(lib)
+        } else if let Ok(lib) = Library::open("libcb.dll") {
+            Some(lib)
+        } else {
+            None
+        }
+    }
+
+    pub static mut CBDLL: Option<Library> = None;
+
+    pub unsafe fn initInternal() {
+        let exe = Library::open_self().ok().unwrap();
+
+        let exefun = exe
+            .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
+            .ok();
+        if exefun.is_some() {
+            let fun = exefun.unwrap();
+            Core = fun(ABI_VERSION);
+            if Core == core::ptr::null_mut() {
+                panic!("Failed to aquire chainblocks interface, version not compatible.");
+            }
+        } else {
+            let lib = try_load_dlls().unwrap();
+            let fun = lib
+                .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>(
+                    "chainblocksInterface",
+                )
+                .unwrap();
+            Core = fun(ABI_VERSION);
+            if Core == core::ptr::null_mut() {
+                panic!("Failed to aquire chainblocks interface, version not compatible.");
+            }
+            CBDLL = Some(lib);
+        }
     }
 }
 
-pub static mut CBDLL: Option<Library> = None;
-
-pub static mut Core: *mut CBCore = core::ptr::null_mut();
-
-static mut init_done: bool = false;
-
-unsafe fn initInternal() {
-    let exe = Library::open_self().ok().unwrap();
-
-    let exefun = exe
-        .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
-        .ok();
-    if exefun.is_some() {
-        let fun = exefun.unwrap();
-        Core = fun(ABI_VERSION);
-        if Core == core::ptr::null_mut() {
-            panic!("Failed to aquire chainblocks interface, version not compatible.");
-        }
-    } else {
-        let lib = try_load_dlls().unwrap();
-        let fun = lib
-            .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
-            .unwrap();
-        Core = fun(ABI_VERSION);
-        if Core == core::ptr::null_mut() {
-            panic!("Failed to aquire chainblocks interface, version not compatible.");
-        }
-        CBDLL = Some(lib);
-    }
-    init_done = true;
+#[cfg(feature = "cb_static")]
+mod auto_dlopen_linking {
+    pub unsafe fn initInternal() {}
 }
 
 #[inline(always)]
 pub fn init() {
     unsafe {
         if !init_done {
-            initInternal();
+            auto_dlopen_linking::initInternal();
+            init_done = true;
         }
     }
 }
