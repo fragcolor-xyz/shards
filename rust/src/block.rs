@@ -23,12 +23,12 @@ use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use std::convert::TryInto;
+use core::convert::TryInto;
+use core::result::Result;
+use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
-use std::result::Result;
-use std::slice;
 
 pub trait Block {
     fn registerName() -> &'static str;

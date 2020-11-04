@@ -63,14 +63,14 @@ use crate::chainblocksc::CBIMAGE_FLAGS_32BITS_FLOAT;
 use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
 use crate::core::cloneVar;
 use crate::core::Core;
+use core::convert::TryFrom;
+use core::convert::TryInto;
 use core::mem::transmute;
 use core::ops::Index;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::rc::Rc;
-use std::slice;
 
 #[macro_export]
 macro_rules! cstr {
@@ -1759,11 +1759,13 @@ impl PartialEq for Var {
                             == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
                             || {
                                 let astr = CStr::from_ptr(
-                                    self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                                    self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+                                        as *mut i8,
                                 );
 
                                 let bstr = CStr::from_ptr(
-                                    other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                                    other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+                                        as *mut i8,
                                 );
 
                                 astr == bstr

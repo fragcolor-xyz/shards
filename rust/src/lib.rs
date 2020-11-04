@@ -173,7 +173,7 @@ mod dummy_block {
     use crate::types::common_type;
     use crate::types::ClonedVar;
     use crate::types::Var;
-    use std::convert::TryInto;
+    use core::convert::TryInto;
     use std::ffi::CStr;
     use std::ffi::CString;
 

@@ -15,12 +15,12 @@ use crate::types::ChainState;
 use crate::types::Context;
 use crate::types::ParameterInfoView;
 use crate::types::Var;
+use core::convert::TryInto;
 use core::ffi::c_void;
-use std::convert::TryInto;
+use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
-use std::slice;
 
 const ABI_VERSION: u32 = 0x20200101;
 
