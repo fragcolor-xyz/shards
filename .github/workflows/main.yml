@@ -6,7 +6,7 @@ jobs:
   ciLinuxDbg:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Build
       run: |
         git submodule update --init --recursive
@@ -18,7 +18,7 @@ jobs:
   ciLinuxRel:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       name: Checkout
     - name: Fetch submodules
       run: |
@@ -48,7 +48,7 @@ jobs:
   ciLinuxValgrind:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Build
       run: |
         git submodule update --init --recursive
@@ -60,7 +60,7 @@ jobs:
   ciWindowsRel:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -76,7 +76,7 @@ jobs:
   ciWindowsRel32:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -92,7 +92,7 @@ jobs:
   ciWindowsDbg:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -104,7 +104,7 @@ jobs:
   ciWindowsDbg32:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -116,7 +116,7 @@ jobs:
   ciMacDbg:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Deps
       run: |
         sudo xcode-select --switch /Applications/Xcode_11.app
@@ -151,7 +151,7 @@ jobs:
   ciMacRel:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Deps
       run: |
         sudo xcode-select --switch /Applications/Xcode_11.app
