@@ -534,7 +534,6 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/SDL/src/file/cocoa/SDL_rwopsbundlesupport.m
 
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
-      ${CHAINBLOCKS_DIR}/src/extra/bgfx.mm
       )
 
     if(IOS)

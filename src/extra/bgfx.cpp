@@ -74,6 +74,7 @@ struct BaseWindow : public Base {
   HWND _sysWnd = nullptr;
 #elif defined(__APPLE__)
   void *_sysWnd = nullptr;
+  SDL_MetalView _metalView{nullptr};
 #elif defined(__linux__) || defined(__EMSCRIPTEN__)
   void *_sysWnd = nullptr;
 #endif
@@ -166,8 +167,17 @@ struct MainWindow : public BaseWindow {
       imguiDestroy();
       bgfx::shutdown();
       unregisterRunLoopCallback("fragcolor.bgfx.ospump");
-      if (_window)
-        SDL_DestroyWindow(_window);
+    }
+
+#ifdef __APPLE__
+    if (_metalView) {
+      SDL_Metal_DestroyView(_metalView);
+      _metalView = nullptr;
+    }
+#endif
+
+    if (_window) {
+      SDL_DestroyWindow(_window);
       SDL_Quit();
     }
 
@@ -250,19 +260,24 @@ struct MainWindow : public BaseWindow {
         // specially for iOS thing is that we pass context as variable, not a
         // window object we might need 2 variables in the end
       } else {
+#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
         SDL_SysWMinfo winInfo{};
         SDL_version sdlVer{};
+#endif
         Uint32 flags = SDL_WINDOW_SHOWN;
+#ifdef __APPLE__
+        flags |= SDL_WINDOW_METAL;
+#endif
         // TODO: SDL_WINDOW_ALLOW_HIGHDPI
         // TODO: SDL_WINDOW_RESIZABLE
         // TODO: SDL_WINDOW_BORDERLESS
         _window =
             SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
                              SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+
+#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
         SDL_VERSION(&sdlVer);
         winInfo.version = sdlVer;
-
-#ifndef __EMSCRIPTEN__
         if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
           throw ActivationError("Failed to call SDL_GetWindowWMInfo");
         }
@@ -270,11 +285,11 @@ struct MainWindow : public BaseWindow {
 
 #ifdef __APPLE__
 #ifdef SDL_VIDEO_DRIVER_UIKIT
-        auto wnd = winInfo.info.uikit.window;
-        _sysWnd = cbSetupMetalLayer(wnd);
+        _metalView = SDL_Metal_CreateView(_window);
+        _sysWnd = SDL_Metal_GetLayer(_metalView);
 #else
-        auto wnd = winInfo.info.cocoa.window;
-        _sysWnd = cbSetupMetalLayer(wnd);
+        _metalView = SDL_Metal_CreateView(_window);
+        _sysWnd = SDL_Metal_GetLayer(_metalView);
 #endif
 #elif defined(_WIN32)
         _sysWnd = winInfo.info.win.window;
@@ -294,7 +309,6 @@ struct MainWindow : public BaseWindow {
       SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
       initInfo.platformData.nwh = _sysWnd;
-
       initInfo.resolution.width = _width;
       initInfo.resolution.height = _height;
       initInfo.resolution.reset = BGFX_RESET_VSYNC;
