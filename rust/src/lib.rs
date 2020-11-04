@@ -132,17 +132,17 @@ macro_rules! blocks {
     }};
 }
 
-#[cfg(feature = "cb_static")]
-mod cb_static {
-    #[link(name = "cb_static", kind = "static")]
-    extern "C" {}
-}
+// #[cfg(feature = "cb_static")]
+// mod cb_static {
+//     #[link(name = "cb_static", kind = "static")]
+//     extern "C" {}
+// }
 
-#[cfg(feature = "cb_dynamic")]
-mod cb_static {
-    #[link(name = "cb_shared", kind = "dylib")]
-    extern "C" {}
-}
+// #[cfg(feature = "cb_dynamic")]
+// mod cb_static {
+//     #[link(name = "cb_shared", kind = "dylib")]
+//     extern "C" {}
+// }
 
 // --features "dummy"
 // #[cfg(any(test, feature = "dummy"))]

@@ -27,7 +27,7 @@ pub static mut Core: *mut CBCore = core::ptr::null_mut();
 static mut init_done: bool = false;
 
 #[cfg(not(feature = "cb_static"))]
-mod auto_dlopen_linking {
+mod internal_core_init {
     extern crate dlopen;
     use crate::chainblocksc::chainblocksInterface;
     use crate::core::CBCore;
@@ -82,15 +82,25 @@ mod auto_dlopen_linking {
 }
 
 #[cfg(feature = "cb_static")]
-mod auto_dlopen_linking {
-    pub unsafe fn initInternal() {}
+mod internal_core_init {
+    use crate::Core;
+    use crate::core::ABI_VERSION;
+    use crate::core::CBCore;
+
+    extern {
+        fn chainblocksInterface(abi_version: u32) -> *mut CBCore;
+    }
+
+    pub unsafe fn initInternal() {
+        Core = chainblocksInterface(ABI_VERSION);
+    }
 }
 
 #[inline(always)]
 pub fn init() {
     unsafe {
         if !init_done {
-            auto_dlopen_linking::initInternal();
+            internal_core_init::initInternal();
             init_done = true;
         }
     }
