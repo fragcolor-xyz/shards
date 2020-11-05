@@ -16,34 +16,19 @@ jobs:
         ./emsdk install latest
         ./emsdk activate latest
         cd .. && mkdir external && cd external
-        wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
+        wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
         ninja cbl
-    # - name: Test
-    #   run: |
-    #     cd build
-    #     ./cbl ../src/tests/general.clj
-    #     ./cbl ../src/tests/variables.clj
-    #     ./cbl ../src/tests/subchains.clj
-    #     ./cbl ../src/tests/linalg.clj
-    #     ./cbl ../src/tests/loader.clj
-    #     ./cbl ../src/tests/network.clj
-    #     ./cbl ../src/tests/struct.clj
-    #     ./cbl ../src/tests/flows.clj
-    #     ./cbl ../src/tests/kdtree.clj
-    #     ./cbl ../src/tests/channels.clj
-    #     ./cbl ../src/tests/genetic.clj
-    #     ./cbl ../src/tests/imaging.clj
-    #     ./cbl ../src/tests/http.clj
-    #     ./cbl ../src/tests/snappy.clj
-    #     ./cbl ../src/tests/ws.clj
-    #     ./cbl ../src/tests/bigint.clj
+    - name: Test
+      run: |
+        cd build
+        node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello"))) (run Root 0.1))'
 
   ciLinuxDbg:
     runs-on: ubuntu-20.04
