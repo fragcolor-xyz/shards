@@ -23,7 +23,7 @@ jobs:
         ./cbl ../src/tests/general.clj 
         ./cbl ../src/tests/variables.clj 
         ./cbl ../src/tests/linalg.clj 
-        ./cbl ../src/tests/channels.clj"
+        ./cbl ../src/tests/channels.clj
     - name: CodeCov
       run: |
         lcov --capture --directory build/CMakeFiles/cb_static.dir --output-file coverage.info
