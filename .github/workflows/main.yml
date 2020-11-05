@@ -10,11 +10,14 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov
+        sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
         ./emsdk install latest
         ./emsdk activate latest
+        cd .. && mkdir external && cd external
+        wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
+        tar xzf boost_1_74_0.tar.gz
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
