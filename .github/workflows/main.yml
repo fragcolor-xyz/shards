@@ -13,11 +13,11 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` -v `pwd`/coverage:/home/chainblocks/coverage chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj && lcov --capture --directory ../build/CMakeFiles/cb_static.dir --output-file /tmp/coverage/coverage.info && genhtml /tmp/coverage/coverage.info --output-directory /tmp/coverage/output"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` -v `pwd`/coverage:/home/chainblocks/coverage chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj && lcov --capture --directory ../build/CMakeFiles/cb_static.dir --output-file /home/chainblocks/coverage/coverage.info && genhtml /home/chainblocks/coverage/coverage.info --output-directory /home/chainblocks/coverage/output"
     - uses: actions/upload-artifact@master
       with:
         name: coverage
-        path: /tmp/coverage/output
+        path: coverage/output
 
   ciLinuxRel:
     runs-on: ubuntu-latest
