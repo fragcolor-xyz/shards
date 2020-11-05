@@ -29,6 +29,13 @@ jobs:
       run: |
         cd build
         node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello"))) (run Root 0.1))'
+    - uses: actions/upload-artifact@master
+      with:
+        name: cbl-wasm
+        path: |
+          build/cbl.wasm
+          build/cbl.js
+          build/cbl.html
 
   ciLinuxDbg:
     runs-on: ubuntu-20.04
