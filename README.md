@@ -9,6 +9,7 @@
 ```
 
 ![CI](https://github.com/sinkingsugar/chainblocks/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/sinkingsugar/chainblocks/branch/master/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/sinkingsugar/chainblocks)
 
 ## Vision
 Building a programming tool for the future. 
