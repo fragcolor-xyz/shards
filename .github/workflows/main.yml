@@ -20,14 +20,28 @@ jobs:
     - name: Test
       run: |
         cd build
-        ./cbl ../src/tests/general.clj 
-        ./cbl ../src/tests/variables.clj 
-        ./cbl ../src/tests/linalg.clj 
+        ./cbl ../src/tests/general.clj
+        ./cbl ../src/tests/variables.clj
+        ./cbl ../src/tests/subchains.clj
+        ./cbl ../src/tests/linalg.clj
+        ./cbl ../src/tests/loader.clj
+        ./cbl ../src/tests/network.clj
+        ./cbl ../src/tests/struct.clj
+        ./cbl ../src/tests/flows.clj
+        ./cbl ../src/tests/kdtree.clj
         ./cbl ../src/tests/channels.clj
+        ./cbl ../src/tests/genetic.clj
+        ./cbl ../src/tests/imaging.clj
+        ./cbl ../src/tests/http.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/ws.clj
+        ./cbl ../src/tests/bigint.clj
     - name: CodeCov
       run: |
-        lcov --capture --directory build/CMakeFiles/cb_static.dir --output-file coverage.info
-        genhtml coverage/coverage.info --output-directory coverage/output
+        mkdir coverage
+        lcov --capture --directory build/CMakeFiles/cb_static.dir --output-file coverage/coverage.info
+        lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* --output-file coverage/coverage.f.info
+        genhtml coverage/coverage.f.info --output-directory coverage/output
     - uses: actions/upload-artifact@master
       with:
         name: coverage
