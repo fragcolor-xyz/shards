@@ -71,6 +71,13 @@ set(CMAKE_CXX_FLAGS_UBSAN
   FORCE)
 ### SANITIZERS
 
+if(CODE_COVERAGE)
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_compile_options(-fprofile-arcs -ftest-coverage)
+    add_link_options(-fprofile-arcs -ftest-coverage)
+  endif()
+endif()
+
 if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
   set(BASE_TESTING 1)
