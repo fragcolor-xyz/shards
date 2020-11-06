@@ -654,7 +654,8 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
   } else if constexpr (std::is_same<T, std::vector<CBlockPtr>>::value) {
     len = blocks.size();
   } else {
-    assert(false);
+    len = 0;
+    LOG(FATAL) << "Unreachable blocksActivation case";
   }
   for (size_t i = 0; i < len; i++) {
     CBlockPtr blk;
@@ -665,7 +666,8 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     } else if constexpr (std::is_same<T, std::vector<CBlockPtr>>::value) {
       blk = blocks[i];
     } else {
-      assert(false);
+      blk = nullptr;
+      LOG(FATAL) << "Unreachable blocksActivation case";
     }
     try {
       output = activateBlock(blk, context, input);
@@ -1620,8 +1622,13 @@ CBComposeResult composeChain(const CBChain *chain,
                              CBValidationCallback callback, void *userData,
                              CBInstanceData data) {
   // settle input type of chain before compose
-  if (chain->blocks.size() > 0) {
+  if (chain->blocks.size() > 0 &&
+      !std::any_of(std::execution::par, chain->blocks.begin(),
+                   chain->blocks.end(), [&](const auto &block) {
+                     return strcmp(block->name(block), "Input") == 0;
+                   })) {
     // If first block is a plain None, mark this chain has None input
+    // But make sure we have no (Input) blocks
     auto inTypes = chain->blocks[0]->inputTypes(chain->blocks[0]);
     if (inTypes.len == 1 && inTypes.elements[0].basicType == None)
       chain->inputType = CBTypeInfo{};
