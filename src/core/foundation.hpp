@@ -26,7 +26,6 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <atomic>
 #include <cassert>
 #include <deque>
-#include <execution>
 #include <iomanip>
 #include <list>
 #include <mutex>

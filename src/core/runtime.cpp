@@ -1623,8 +1623,8 @@ CBComposeResult composeChain(const CBChain *chain,
                              CBInstanceData data) {
   // settle input type of chain before compose
   if (chain->blocks.size() > 0 &&
-      !std::any_of(std::execution::par, chain->blocks.begin(),
-                   chain->blocks.end(), [&](const auto &block) {
+      !std::any_of(chain->blocks.begin(), chain->blocks.end(),
+                   [&](const auto &block) {
                      return strcmp(block->name(block), "Input") == 0;
                    })) {
     // If first block is a plain None, mark this chain has None input
