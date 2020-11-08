@@ -4,11 +4,8 @@
 #include "foundation.hpp"
 #include "shared.hpp"
 #include <chrono>
-#include <future>
 #include <memory>
-#include <mutex>
 #include <set>
-#include <thread>
 
 namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
@@ -1088,23 +1085,10 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (_chainHash == 0 || _chainHash != chain->composedHash ||
         _chainPtr != chain.get()) {
       // Compose and hash in a thread
-      auto asyncRes =
-          std::async(std::launch::async, [this, context, chainVar]() {
-            doCompose(context);
-            chain->composedHash = std::hash<CBVar>()(chainVar);
-          });
-
-      // Wait suspending!
-      while (true) {
-        auto state = asyncRes.wait_for(std::chrono::seconds(0));
-        if (state == std::future_status::ready)
-          break;
-
-        CB_SUSPEND(context, 0);
-      }
-
-      // This should throw if we had exceptions
-      asyncRes.get();
+      await(context, [this, context, chainVar]() {
+        doCompose(context);
+        chain->composedHash = std::hash<CBVar>()(chainVar);
+      });
 
       _chainHash = chain->composedHash;
       _chainPtr = chain.get();

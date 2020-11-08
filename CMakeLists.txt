@@ -100,11 +100,15 @@ else()
   # build with cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
   # MinSizeRel is better for release builds
   # test with node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Msg "Hello"))) (run Root 0.1))'
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s MAX_WEBGL_VERSION=2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=1")
   endif()
   add_compile_definitions(NO_FORCE_INLINE)
+  ## if we wanted thread support...
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1")
+  add_compile_options(-pthread)
+  add_link_options(-pthread)
 endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
@@ -755,7 +759,8 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS
 ###
 
 if(NOT BUILD_CORE_ONLY)
-  if(LINUX OR WIN32)
+  if(WIN32 OR (LINUX AND NOT EMSCRIPTEN))
+    # we link with emscripten SDL in the case of emscripten
     add_dependencies(cb_static sdl_a)
     add_dependencies(cb_shared sdl_a)
     target_link_libraries(cb_shared libsdl)
