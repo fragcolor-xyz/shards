@@ -4,7 +4,7 @@
  Root
  (Chain
   "test"
-  (LoadImage "../../assets/simple1.png") >= .baseImg
+  (LoadImage "../../assets/simple1.PNG") >= .baseImg
   (StripAlpha)
   (WritePNG "testbase.png")
   (Ref .img)
