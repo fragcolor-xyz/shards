@@ -122,6 +122,11 @@ static String safeRep(const String& input, malEnvPtr env, bool *failed)
         if(failed)
             *failed = true;
         return "Error: " + s;
+    }
+    catch (std::exception& e) {
+        if(failed)
+            *failed = true;
+        return std::string("Error: ") + e.what();
     };
 }
 

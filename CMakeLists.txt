@@ -106,8 +106,8 @@ else()
   endif()
   add_compile_definitions(NO_FORCE_INLINE)
   ## if we wanted thread support...
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1")
-  add_compile_options(-pthread)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
+  add_compile_options(-pthread -Wno-pthreads-mem-growth)
   add_link_options(-pthread)
 endif()
 
