@@ -51,6 +51,27 @@ struct Convolve {
     _yindex = 0;
   }
 
+  template <typename T>
+  void process(const CBVar &pixels, int32_t w, int32_t h, int32_t c) {
+    const int high = _radius - 1;
+    const int low = high * -1;
+    int index = 0;
+    const auto from = reinterpret_cast<T *>(pixels.payload.imageValue.data);
+    auto to = reinterpret_cast<T *>(&_bytes[0]);
+    for (int y = low; y <= high; y++) {
+      for (int x = low; x <= high; x++) {
+        const int cidxx = _xindex + x;
+        const int cidxy = _yindex + y;
+        const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
+        const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
+        const int addr = ((w * idxy) + idxx) * c;
+        for (int i = 0; i < c; i++) {
+          to[index++] = from[addr + i];
+        }
+      }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     int32_t w = int32_t(input.payload.imageValue.width);
     int32_t h = int32_t(input.payload.imageValue.height);
@@ -74,56 +95,12 @@ struct Convolve {
       }
     }
 
-    // read proper pixels at indices
-    const int high = _radius - 1;
-    const int low = high * -1;
-    int index = 0;
-
     if (pixsize == 1) {
-      for (int y = low; y <= high; y++) {
-        for (int x = low; x <= high; x++) {
-          const int cidxx = _xindex + x;
-          const int cidxy = _yindex + y;
-          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
-          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
-          const int addr = ((w * idxy) + idxx) * c;
-          for (int i = 0; i < c; i++) {
-            _bytes[index++] = input.payload.imageValue.data[addr + i];
-          }
-        }
-      }
+      process<uint8_t>(input, w, h, c);
     } else if (pixsize == 2) {
-      const auto from =
-          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
-      for (int y = low; y <= high; y++) {
-        for (int x = low; x <= high; x++) {
-          const int cidxx = _xindex + x;
-          const int cidxy = _yindex + y;
-          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
-          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
-          const int addr = ((w * idxy) + idxx) * c;
-          for (int i = 0; i < c; i++) {
-            to[index++] = from[addr + i];
-          }
-        }
-      }
+      process<uint16_t>(input, w, h, c);
     } else if (pixsize == 4) {
-      const auto from =
-          reinterpret_cast<float *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<float *>(_bytes[0]);
-      for (int y = low; y <= high; y++) {
-        for (int x = low; x <= high; x++) {
-          const int cidxx = _xindex + x;
-          const int cidxy = _yindex + y;
-          const auto idxx = std::clamp<int>(cidxx, 0, w - 1);
-          const auto idxy = std::clamp<int>(cidxy, 0, h - 1);
-          const int addr = ((w * idxy) + idxx) * c;
-          for (int i = 0; i < c; i++) {
-            to[index++] = from[addr + i];
-          }
-        }
-      }
+      process<float>(input, w, h, c);
     }
 
     // advance the scan
@@ -147,6 +124,20 @@ struct StripAlpha {
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
+  template <typename T> void process(const CBVar &input, int32_t w, int32_t h) {
+    const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+    auto to = reinterpret_cast<T *>(&_bytes[0]);
+    for (auto y = 0; y < h; y++) {
+      for (auto x = 0; x < w; x++) {
+        const auto faddr = ((w * y) + x) * 4;
+        const auto taddr = ((w * y) + x) * 3;
+        for (auto z = 0; z < 3; z++) {
+          to[taddr + z] = from[faddr + z];
+        }
+      }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.imageValue.channels < 4)
       return input; // nothing to do
@@ -165,41 +156,11 @@ struct StripAlpha {
     _bytes.resize(w * h * 3 * pixsize);
 
     if (pixsize == 1) {
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 4;
-          const auto taddr = ((w * y) + x) * 3;
-          for (auto z = 0; z < 3; z++) {
-            _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
-          }
-        }
-      }
+      process<uint8_t>(input, w, h);
     } else if (pixsize == 2) {
-      const auto from =
-          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 4;
-          const auto taddr = ((w * y) + x) * 3;
-          for (auto z = 0; z < 3; z++) {
-            to[taddr + z] = from[faddr + z];
-          }
-        }
-      }
+      process<uint16_t>(input, w, h);
     } else if (pixsize == 4) {
-      const auto from =
-          reinterpret_cast<float *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<float *>(_bytes[0]);
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 4;
-          const auto taddr = ((w * y) + x) * 3;
-          for (auto z = 0; z < 3; z++) {
-            to[taddr + z] = from[faddr + z];
-          }
-        }
-      }
+      process<float>(input, w, h);
     }
 
     return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3,
@@ -213,6 +174,22 @@ private:
 struct FillAlpha {
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  template <typename T, typename TA>
+  void process(const CBVar &input, int32_t w, int32_t h, TA alpha_value) {
+    const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+    auto to = reinterpret_cast<T *>(&_bytes[0]);
+    for (auto y = 0; y < h; y++) {
+      for (auto x = 0; x < w; x++) {
+        const auto faddr = ((w * y) + x) * 3;
+        const auto taddr = ((w * y) + x) * 4;
+        for (auto z = 0; z < 3; z++) {
+          to[taddr + z] = from[faddr + z];
+        }
+        to[taddr + 3] = alpha_value;
+      }
+    }
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.imageValue.channels == 4)
@@ -236,44 +213,11 @@ struct FillAlpha {
     _bytes.resize(w * h * 4 * pixsize);
 
     if (pixsize == 1) {
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 3;
-          const auto taddr = ((w * y) + x) * 4;
-          for (auto z = 0; z < 3; z++) {
-            _bytes[taddr + z] = input.payload.imageValue.data[faddr + z];
-          }
-          _bytes[taddr + 3] = 255;
-        }
-      }
+      process<uint8_t>(input, w, h, 255);
     } else if (pixsize == 2) {
-      const auto from =
-          reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<uint16_t *>(_bytes[0]);
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 3;
-          const auto taddr = ((w * y) + x) * 4;
-          for (auto z = 0; z < 3; z++) {
-            to[taddr + z] = from[faddr + z];
-          }
-          to[taddr + 3] = 65535;
-        }
-      }
+      process<uint16_t>(input, w, h, 65535);
     } else if (pixsize == 4) {
-      const auto from =
-          reinterpret_cast<float *>(input.payload.imageValue.data);
-      auto to = reinterpret_cast<float *>(_bytes[0]);
-      for (auto y = 0; y < h; y++) {
-        for (auto x = 0; x < w; x++) {
-          const auto faddr = ((w * y) + x) * 3;
-          const auto taddr = ((w * y) + x) * 4;
-          for (auto z = 0; z < 3; z++) {
-            to[taddr + z] = from[faddr + z];
-          }
-          to[taddr + 3] = 1.0;
-        }
-      }
+      process<float>(input, w, h, 1.0);
     }
 
     return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4,
