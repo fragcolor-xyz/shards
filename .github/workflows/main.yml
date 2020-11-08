@@ -28,7 +28,7 @@ jobs:
     - name: Test
       run: |
         cd build
-        node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello"))) (run Root 0.1))'
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") 0 (Exit))) (run Root 0.1))'
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
