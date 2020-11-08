@@ -811,6 +811,8 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     WRAP_TO_CONST(var);
   } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
     WRAP_TO_CONST(v->value());
+  } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
+    WRAP_TO_CONST(chainblocks::Var(v->value()));
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     result.emplace_back(v);
   } else if (DYNAMIC_CAST(malVector, arg)) {
