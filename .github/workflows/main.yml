@@ -70,6 +70,7 @@ jobs:
         ./cbl ../src/tests/snappy.clj
         ./cbl ../src/tests/ws.clj
         ./cbl ../src/tests/bigint.clj
+        ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
