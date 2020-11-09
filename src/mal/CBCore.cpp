@@ -418,7 +418,15 @@ struct ChainFileWatcher {
       decltype(fs::last_write_time(fs::path())) lastWrite{};
       auto localRoot = ghc::filesystem::path(path).string();
       malEnvPtr rootEnv(new malEnv());
-      malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+      try {
+        malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+      } catch (const std::exception &e) {
+        LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
+        throw e;
+      } catch (...) {
+        LOG(ERROR) << "Failed to init ChainFileWatcher.";
+        throw;
+      }
 
       while (running) {
         try {
