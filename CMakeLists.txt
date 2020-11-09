@@ -705,6 +705,8 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CB_EXTRAS}
   )
 
@@ -721,11 +723,9 @@ if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
-    ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp

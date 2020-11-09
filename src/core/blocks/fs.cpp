@@ -2,9 +2,14 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
-#include <ghc/filesystem.hpp>
 
+#ifndef __EMSCRIPTEN__
+#include <ghc/filesystem.hpp>
 namespace fs = ghc::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
 
 namespace chainblocks {
 namespace FS {

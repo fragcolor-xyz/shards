@@ -968,7 +968,11 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   // we need to hack this in as we run out of context
   CBCoro foo{};
   CBFlow flow{};
+#ifndef __EMSCRIPTEN__
   CBContext ctx(std::move(foo), chain.get(), &flow);
+#else
+  CBContext ctx(&foo, chain.get(), &flow);
+#endif
   ctx.chainStack.push_back(chain.get());
   std::for_each(
       std::begin(individual.mutants), std::end(individual.mutants),
