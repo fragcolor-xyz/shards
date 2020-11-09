@@ -648,6 +648,34 @@ if(NOT BUILD_CORE_ONLY)
     
     set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp)
     set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/snappy.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h)
+
+    ExternalProject_Add(brotli_a
+      GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
+      GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlicommon-static.a
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlidec-static.a
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlienc-static.a
+      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/include/brotli/decode.h
+      )
+
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/brotli_a/include)
+
+    add_library(libbrotlicommon-static STATIC IMPORTED GLOBAL)
+    add_dependencies(libbrotlicommon-static brotli_a)
+    set_target_properties(libbrotlicommon-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlicommon-static.a)
+
+    add_library(libbrotlidec-static STATIC IMPORTED GLOBAL)
+    add_dependencies(libbrotlidec-static brotli_a)
+    set_target_properties(libbrotlidec-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlidec-static.a)
+
+    add_library(libbrotlienc-static STATIC IMPORTED GLOBAL)
+    add_dependencies(libbrotlienc-static brotli_a)
+    set_target_properties(libbrotlienc-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/lib/libbrotlienc-static.a)
+    
+    # set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp)
+    # set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/brotli.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/include/brotli/decode.h)
   else()
     add_compile_definitions(CB_NO_SNAPPY_BLOCKS=1)
   endif()
@@ -772,6 +800,23 @@ if(NOT BUILD_CORE_ONLY)
     target_link_libraries(cb_static libsnappy)
     add_dependencies(cb_shared snappy_a)
     target_link_libraries(cb_shared libsnappy)
+  endif()
+
+  if(NOT CB_NO_BROTLI_BLOCKS AND NOT IOS)
+    add_dependencies(cb_static brotli_a)
+    target_link_libraries(cb_static libbrotlicommon-static)
+    add_dependencies(cb_shared brotli_a)
+    target_link_libraries(cb_shared libbrotlicommon-static)
+
+    add_dependencies(cb_static brotli_a)
+    target_link_libraries(cb_static libbrotlidec-static)
+    add_dependencies(cb_shared brotli_a)
+    target_link_libraries(cb_shared libbrotlidec-static)
+
+    add_dependencies(cb_static brotli_a)
+    target_link_libraries(cb_static libbrotlienc-static)
+    add_dependencies(cb_shared brotli_a)
+    target_link_libraries(cb_shared libbrotlienc-static)
   endif()
 
   if(LINUX)
