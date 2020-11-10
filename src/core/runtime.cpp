@@ -727,6 +727,9 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 Shared<boost::asio::thread_pool> SharedThreadPool{};
 
 CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  return func();
+#else
   std::exception_ptr exp = nullptr;
   CBVar res{};
   std::atomic_bool complete = false;
@@ -756,9 +759,13 @@ CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
   }
 
   return res;
+#endif
 }
 
 void await(CBContext *context, std::function<void()> func) {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  func();
+#else
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
@@ -779,6 +786,7 @@ void await(CBContext *context, std::function<void()> func) {
   if (exp) {
     std::rethrow_exception(exp);
   }
+#endif
 }
 }; // namespace chainblocks
 

@@ -107,9 +107,11 @@ else()
   endif()
   add_compile_definitions(NO_FORCE_INLINE)
   ## if we wanted thread support...
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
-  add_compile_options(-pthread -Wno-pthreads-mem-growth)
-  add_link_options(-pthread)
+  if(NOT NO_EMSCRIPTEN_PTHREADS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
+    add_compile_options(-pthread -Wno-pthreads-mem-growth)
+    add_link_options(-pthread)
+  endif()
 endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
@@ -706,7 +708,6 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CB_EXTRAS}
   )
@@ -724,6 +725,7 @@ if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
+    ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
