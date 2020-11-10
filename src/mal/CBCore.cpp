@@ -16,6 +16,7 @@
 #ifndef __EMSCRIPTEN__
 #include <boost/process/environment.hpp>
 #endif
+#include <chrono>
 #include <set>
 #include <thread>
 
@@ -405,19 +406,139 @@ struct ChainFileWatcher {
   std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
   boost::lockfree::queue<CBChain *> garbage;
   std::weak_ptr<CBNode> node;
-
+  std::string localRoot;
+  decltype(fs::last_write_time(fs::path())) lastWrite{};
+  malEnvPtr rootEnv{new malEnv()};
   CBTypeInfo inputTypeInfo;
   chainblocks::IterableExposedInfo shared;
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  decltype(std::chrono::high_resolution_clock::now()) tStart{
+      std::chrono::high_resolution_clock::now()};
+#endif
+
+  void checkOnce() {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    // check only every 2 seconds
+    auto tnow = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> dt = tnow - tStart;
+    if (dt.count() < 2.0) {
+      return;
+    }
+#endif
+
+    try {
+      fs::path p(fileName);
+      if (path.size() > 0 && p.is_relative()) {
+        // complete path with current path if any
+        p = localRoot / p;
+      }
+
+      if (!fs::exists(p)) {
+        LOG(INFO) << "A ChainLoader loaded script path does not exist: " << p;
+      } else if (fs::is_regular_file(p) &&
+                 fs::last_write_time(p) != lastWrite) {
+        // make sure to store last write time
+        // before any possible error!
+        auto writeTime = fs::last_write_time(p);
+        lastWrite = writeTime;
+
+        std::ifstream lsp(p.c_str());
+        std::string str((std::istreambuf_iterator<char>(lsp)),
+                        std::istreambuf_iterator<char>());
+
+        malEnvPtr env(new malEnv(rootEnv));
+        auto res = maleval(str.c_str(), env);
+        auto var = varify(res);
+        if (var->value().valueType != CBType::Chain) {
+          LOG(ERROR) << "Script did not return a CBChain";
+          return;
+        }
+
+        auto chainref = var->value().payload.chainValue;
+        auto chain = CBChain::sharedFromRef(chainref);
+
+        CBInstanceData data{};
+        data.inputType = inputTypeInfo;
+        data.shared = shared;
+        data.chain = chain.get();
+        data.chain->node = node;
+
+        // run validation to infertypes and specialize
+        auto chainValidation = composeChain(
+            chain.get(),
+            [](const CBlock *errorBlock, const char *errorTxt,
+               bool nonfatalWarning, void *userData) {
+              if (!nonfatalWarning) {
+                auto msg = "RunChain: failed inner chain validation, error: " +
+                           std::string(errorTxt);
+                throw chainblocks::CBException(msg);
+              } else {
+                LOG(INFO) << "RunChain: warning during inner chain validation: "
+                          << errorTxt;
+              }
+            },
+            nullptr, data);
+        chainblocks::arrayFree(chainValidation.exposedInfo);
+
+        liveChains[chain.get()] = std::make_tuple(env, res);
+
+        ChainLoadResult result = {false, "", chain.get()};
+        results.push(result);
+      }
+
+      // Collect garbage
+      if (!garbage.empty()) {
+        CBChain *gchain;
+        if (garbage.pop(gchain)) {
+          auto &data = liveChains[gchain];
+          LOG(TRACE) << "Collecting hot chain " << gchain->name
+                     << " env refcount: " << std::get<0>(data)->refCount();
+          liveChains.erase(gchain);
+        }
+      }
+
+#if !(defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__))
+      // sleep some, don't run callbacks here tho!
+      chainblocks::sleep(2.0, false);
+#endif
+    } catch (malEmptyInputException &) {
+      ChainLoadResult result = {true, "emppty input exception", nullptr};
+      results.push(result);
+    } catch (malValuePtr &mv) {
+      ChainLoadResult result = {true, mv->print(true), nullptr};
+      results.push(result);
+    } catch (MalString &s) {
+      ChainLoadResult result = {true, s, nullptr};
+      results.push(result);
+    } catch (const std::exception &e) {
+      ChainLoadResult result = {true, e.what(), nullptr};
+      results.push(result);
+    } catch (...) {
+      ChainLoadResult result = {true, "unknown error (...)", nullptr};
+      results.push(result);
+    }
+  }
 
   explicit ChainFileWatcher(std::string &file, std::string currentPath,
                             const CBInstanceData &data)
       : running(true), fileName(file), path(currentPath), results(2),
         garbage(2), inputTypeInfo(data.inputType), shared(data.shared) {
     node = data.chain->node;
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    localRoot = ghc::filesystem::path(path).string();
+    try {
+      malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
+      throw e;
+    } catch (...) {
+      LOG(ERROR) << "Failed to init ChainFileWatcher.";
+      throw;
+    }
+#else
     worker = std::thread([this] {
-      decltype(fs::last_write_time(fs::path())) lastWrite{};
-      auto localRoot = ghc::filesystem::path(path).string();
-      malEnvPtr rootEnv(new malEnv());
+      localRoot = ghc::filesystem::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
       } catch (const std::exception &e) {
@@ -429,98 +550,7 @@ struct ChainFileWatcher {
       }
 
       while (running) {
-        try {
-          fs::path p(fileName);
-          if (path.size() > 0 && p.is_relative()) {
-            // complete path with current path if any
-            p = localRoot / p;
-          }
-
-          if (!fs::exists(p)) {
-            LOG(INFO) << "A ChainLoader loaded script path does not exist: "
-                      << p;
-          } else if (fs::is_regular_file(p) &&
-                     fs::last_write_time(p) != lastWrite) {
-            // make sure to store last write time
-            // before any possible error!
-            auto writeTime = fs::last_write_time(p);
-            lastWrite = writeTime;
-
-            std::ifstream lsp(p.c_str());
-            std::string str((std::istreambuf_iterator<char>(lsp)),
-                            std::istreambuf_iterator<char>());
-
-            malEnvPtr env(new malEnv(rootEnv));
-            auto res = maleval(str.c_str(), env);
-            auto var = varify(res);
-            if (var->value().valueType != CBType::Chain) {
-              LOG(ERROR) << "Script did not return a CBChain";
-              continue;
-            }
-
-            auto chainref = var->value().payload.chainValue;
-            auto chain = CBChain::sharedFromRef(chainref);
-
-            CBInstanceData data{};
-            data.inputType = inputTypeInfo;
-            data.shared = shared;
-            data.chain = chain.get();
-            data.chain->node = node;
-
-            // run validation to infertypes and specialize
-            auto chainValidation = composeChain(
-                chain.get(),
-                [](const CBlock *errorBlock, const char *errorTxt,
-                   bool nonfatalWarning, void *userData) {
-                  if (!nonfatalWarning) {
-                    auto msg =
-                        "RunChain: failed inner chain validation, error: " +
-                        std::string(errorTxt);
-                    throw chainblocks::CBException(msg);
-                  } else {
-                    LOG(INFO)
-                        << "RunChain: warning during inner chain validation: "
-                        << errorTxt;
-                  }
-                },
-                nullptr, data);
-            chainblocks::arrayFree(chainValidation.exposedInfo);
-
-            liveChains[chain.get()] = std::make_tuple(env, res);
-
-            ChainLoadResult result = {false, "", chain.get()};
-            results.push(result);
-          }
-
-          // Collect garbage
-          if (!garbage.empty()) {
-            CBChain *gchain;
-            if (garbage.pop(gchain)) {
-              auto &data = liveChains[gchain];
-              LOG(TRACE) << "Collecting hot chain " << gchain->name
-                         << " env refcount: " << std::get<0>(data)->refCount();
-              liveChains.erase(gchain);
-            }
-          }
-
-          // sleep some, don't run callbacks here tho!
-          chainblocks::sleep(2.0, false);
-        } catch (malEmptyInputException &) {
-          ChainLoadResult result = {true, "emppty input exception", nullptr};
-          results.push(result);
-        } catch (malValuePtr &mv) {
-          ChainLoadResult result = {true, mv->print(true), nullptr};
-          results.push(result);
-        } catch (MalString &s) {
-          ChainLoadResult result = {true, s, nullptr};
-          results.push(result);
-        } catch (const std::exception &e) {
-          ChainLoadResult result = {true, e.what(), nullptr};
-          results.push(result);
-        } catch (...) {
-          ChainLoadResult result = {true, "unknown error (...)", nullptr};
-          results.push(result);
-        }
+        checkOnce();
       }
 
       // Final collect garbage before returing!
@@ -534,6 +564,7 @@ struct ChainFileWatcher {
         }
       }
     });
+#endif
   }
 
   ~ChainFileWatcher() {
@@ -568,7 +599,12 @@ public:
     _watcher.reset(new ChainFileWatcher(_filename, path, data));
   }
 
-  bool updated() override { return !_watcher->results.empty(); }
+  bool updated() override {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    _watcher->checkOnce();
+#endif
+    return !_watcher->results.empty();
+  }
 
   CBChainProviderUpdate acquire() override {
     CBChainProviderUpdate update{};
