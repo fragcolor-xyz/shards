@@ -107,7 +107,7 @@ else()
   endif()
   add_compile_definitions(NO_FORCE_INLINE)
   ## if we wanted thread support...
-  if(NOT NO_EMSCRIPTEN_PTHREADS)
+  if(EMSCRIPTEN_PTHREADS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
@@ -633,7 +633,7 @@ if(NOT BUILD_CORE_ONLY)
     set_target_properties(libmesa PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a)
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
+  if(SNAPPY_BLOCKS AND NOT IOS)
     ExternalProject_Add(snappy_a
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
@@ -770,7 +770,7 @@ if(NOT BUILD_CORE_ONLY)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
+  if(SNAPPY_BLOCKS AND NOT IOS)
     add_dependencies(cb_static snappy_a)
     target_link_libraries(cb_static libsnappy)
     add_dependencies(cb_shared snappy_a)

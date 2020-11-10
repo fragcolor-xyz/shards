@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
+// Deprecating this in favor of brotli
+// will be removed in the future!
+
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 #include <snappy.h>
