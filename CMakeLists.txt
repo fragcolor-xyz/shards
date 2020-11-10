@@ -103,12 +103,15 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=1")
+    add_compile_options(-g2 -Oz)
   endif()
   add_compile_definitions(NO_FORCE_INLINE)
   ## if we wanted thread support...
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
-  add_compile_options(-pthread -Wno-pthreads-mem-growth)
-  add_link_options(-pthread)
+  if(EMSCRIPTEN_PTHREADS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
+    add_compile_options(-pthread -Wno-pthreads-mem-growth)
+    add_link_options(-pthread)
+  endif()
 endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
@@ -630,7 +633,7 @@ if(NOT BUILD_CORE_ONLY)
     set_target_properties(libmesa PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a)
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
+  if(SNAPPY_BLOCKS AND NOT IOS)
     ExternalProject_Add(snappy_a
       GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
       GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
@@ -733,6 +736,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CB_EXTRAS}
   )
 
@@ -749,11 +753,10 @@ if(NOT EMSCRIPTEN)
   set(
     RUNTIME_SRC
     ${RUNTIME_SRC}
-    ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
+    ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
@@ -795,7 +798,7 @@ if(NOT BUILD_CORE_ONLY)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  if(NOT CB_NO_SNAPPY_BLOCKS AND NOT IOS)
+  if(SNAPPY_BLOCKS AND NOT IOS)
     add_dependencies(cb_static snappy_a)
     target_link_libraries(cb_static libsnappy)
     add_dependencies(cb_shared snappy_a)

@@ -2129,8 +2129,9 @@ struct Take {
   }
 
   CBVar activateTable(CBContext *context, const CBVar &input) {
+    // TODO, if the strings are static at compose time, make sure to cache the
+    // return value
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
-
     if (!_seqOutput) {
       const auto key = indices.payload.stringValue;
       const auto val =

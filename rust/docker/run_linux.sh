@@ -32,7 +32,6 @@ ninja cbl && ninja cb_shared
 ./cbl ../src/tests/network.clj
 ./cbl ../src/tests/struct.clj
 ./cbl ../src/tests/flows.clj
-# ./cbl ../src/tests/snappy.clj
 ./cbl ../src/tests/kdtree.clj
 
 mkdir -p ../rust/target/debug
