@@ -44,8 +44,8 @@ echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"
 ./cbl ../src/tests/http.clj
-echo "Running test: snappy"
-./cbl ../src/tests/snappy.clj
+echo "Running test: brotli"
+./cbl ../src/tests/brotli.clj
 echo "Running test: ws"
 ./cbl ../src/tests/ws.clj
 echo "Running test: bigint"
