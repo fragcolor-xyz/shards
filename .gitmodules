@@ -7,9 +7,6 @@
 [submodule "deps/easyloggingpp"]
 	path = deps/easyloggingpp
 	url = https://github.com/chainblocks/easyloggingpp.git
-[submodule "deps/SPSCQueue"]
-	path = deps/SPSCQueue
-	url = https://github.com/chainblocks/SPSCQueue.git
 [submodule "deps/bgfx"]
 	path = deps/bgfx
 	url = https://github.com/chainblocks/bgfx.git
