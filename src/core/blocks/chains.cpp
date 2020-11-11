@@ -970,6 +970,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         chain.reset(update.chain,
                     [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
+        LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
       }
     }
 

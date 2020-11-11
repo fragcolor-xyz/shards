@@ -10,7 +10,6 @@
 #undef String
 #include "../core/blocks/shared.hpp"
 #include "../core/runtime.hpp"
-#include "rigtorp/SPSCQueue.h"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
 #ifndef __EMSCRIPTEN__
@@ -393,7 +392,7 @@ private:
 
 struct ChainLoadResult {
   bool hasError;
-  std::string errorMsg;
+  const char *errorMsg;
   CBChain *chain;
 };
 
@@ -402,7 +401,7 @@ struct ChainFileWatcher {
   std::thread worker;
   std::string fileName;
   std::string path;
-  rigtorp::SPSCQueue<ChainLoadResult> results;
+  boost::lockfree::queue<ChainLoadResult> results;
   std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
   boost::lockfree::queue<CBChain *> garbage;
   std::weak_ptr<CBNode> node;
@@ -425,6 +424,7 @@ struct ChainFileWatcher {
     if (dt.count() < 2.0) {
       return;
     }
+    tStart = tnow;
 #endif
 
     try {
@@ -503,16 +503,19 @@ struct ChainFileWatcher {
       chainblocks::sleep(2.0, false);
 #endif
     } catch (malEmptyInputException &) {
-      ChainLoadResult result = {true, "emppty input exception", nullptr};
+      ChainLoadResult result = {true, "empty input exception", nullptr};
       results.push(result);
     } catch (malValuePtr &mv) {
-      ChainLoadResult result = {true, mv->print(true), nullptr};
+      LOG(ERROR) << mv->print(true);
+      ChainLoadResult result = {true, "script error", nullptr};
       results.push(result);
     } catch (MalString &s) {
-      ChainLoadResult result = {true, s, nullptr};
+      LOG(ERROR) << s;
+      ChainLoadResult result = {true, "parse error", nullptr};
       results.push(result);
     } catch (const std::exception &e) {
-      ChainLoadResult result = {true, e.what(), nullptr};
+      LOG(ERROR) << e.what();
+      ChainLoadResult result = {true, "exception", nullptr};
       results.push(result);
     } catch (...) {
       ChainLoadResult result = {true, "unknown error (...)", nullptr};
@@ -607,15 +610,19 @@ public:
   }
 
   CBChainProviderUpdate acquire() override {
+    assert(!_watcher->results.empty());
     CBChainProviderUpdate update{};
-    auto result = _watcher->results.front();
-    if (result->hasError) {
-      _errors = result->errorMsg;
-      update.error = _errors.c_str();
-    } else {
-      update.chain = result->chain;
+    ChainLoadResult result;
+    // consume all of them!
+    while (_watcher->results.pop(result)) {
+      if (result.hasError) {
+        update.chain = nullptr;
+        update.error = result.errorMsg;
+      } else {
+        update.chain = result.chain;
+        update.error = nullptr;
+      }
     }
-    _watcher->results.pop();
     return update;
   }
 
@@ -623,7 +630,6 @@ public:
 
 private:
   MalString _filename;
-  MalString _errors;
   std::unique_ptr<ChainFileWatcher> _watcher;
 };
 
