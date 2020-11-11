@@ -70,6 +70,7 @@ jobs:
         ./cbl ../src/tests/ws.clj
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
+        ./cbl ../src/tests/snappy.clj
         Xvfb :1 -screen 1 1600x1200x16&
         DISPLAY=:1 ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
@@ -216,6 +217,7 @@ jobs:
         ./cbl ../src/tests/ws.clj
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
+        ./cbl ../src/tests/snappy.clj
 
   ciMacRel:
     runs-on: macos-latest
@@ -251,6 +253,7 @@ jobs:
         ./cbl ../src/tests/ws.clj
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
+        ./cbl ../src/tests/snappy.clj
   
   rustBuild:
     needs: ciLinuxRel

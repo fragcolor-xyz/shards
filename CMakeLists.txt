@@ -634,27 +634,23 @@ if(NOT BUILD_CORE_ONLY)
     set_target_properties(libmesa PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a)
   endif()
 
-  if(SNAPPY_BLOCKS AND NOT IOS)
-    ExternalProject_Add(snappy_a
-      GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
-      GIT_TAG           f5acee902c4d2110f671455460172cb6d3bf5b73
-      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
-      )
+  ExternalProject_Add(snappy_a
+    GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+    GIT_TAG           6a2f4856a5435a49a4fd89edc93d2b3af6d05d17
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+    CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
+    )
 
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
+  include_directories(${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
 
-    add_library(libsnappy STATIC IMPORTED GLOBAL)
-    add_dependencies(libsnappy snappy_a)
-    set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
-    
-    set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp)
-    set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/snappy.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h)
-  else()
-    add_compile_definitions(CB_NO_SNAPPY_BLOCKS=1)
-  endif()
+  add_library(libsnappy STATIC IMPORTED GLOBAL)
+  add_dependencies(libsnappy snappy_a)
+  set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
+  
+  set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp)
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/snappy.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h)
 
   ExternalProject_Add(brotli_a
     GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
@@ -800,29 +796,25 @@ if(NOT BUILD_CORE_ONLY)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  if(SNAPPY_BLOCKS AND NOT IOS)
-    add_dependencies(cb_static snappy_a)
-    target_link_libraries(cb_static libsnappy)
-    add_dependencies(cb_shared snappy_a)
-    target_link_libraries(cb_shared libsnappy)
-  endif()
+  add_dependencies(cb_static snappy_a)
+  target_link_libraries(cb_static libsnappy)
+  add_dependencies(cb_shared snappy_a)
+  target_link_libraries(cb_shared libsnappy)
 
-  if(NOT CB_NO_BROTLI_BLOCKS AND NOT IOS)
-    add_dependencies(cb_static brotli_a)
-    target_link_libraries(cb_static libbrotlidec-static)
-    add_dependencies(cb_shared brotli_a)
-    target_link_libraries(cb_shared libbrotlidec-static)
+  add_dependencies(cb_static brotli_a)
+  target_link_libraries(cb_static libbrotlidec-static)
+  add_dependencies(cb_shared brotli_a)
+  target_link_libraries(cb_shared libbrotlidec-static)
 
-    add_dependencies(cb_static brotli_a)
-    target_link_libraries(cb_static libbrotlienc-static)
-    add_dependencies(cb_shared brotli_a)
-    target_link_libraries(cb_shared libbrotlienc-static)
+  add_dependencies(cb_static brotli_a)
+  target_link_libraries(cb_static libbrotlienc-static)
+  add_dependencies(cb_shared brotli_a)
+  target_link_libraries(cb_shared libbrotlienc-static)
 
-    add_dependencies(cb_static brotli_a)
-    target_link_libraries(cb_static libbrotlicommon-static)
-    add_dependencies(cb_shared brotli_a)
-    target_link_libraries(cb_shared libbrotlicommon-static)
-  endif()
+  add_dependencies(cb_static brotli_a)
+  target_link_libraries(cb_static libbrotlicommon-static)
+  add_dependencies(cb_shared brotli_a)
+  target_link_libraries(cb_shared libbrotlicommon-static)
 
   if(LINUX)
     add_dependencies(cb_static glsl-optimizer_a)
