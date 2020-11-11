@@ -3,19 +3,19 @@
 (schedule
  Root
  (Chain
-  "snappy-test"
+  "brotli-test"
   "Compressing this string is the test, Compressing this string is the test"
   (Set "string")
   (Count "string")
   (Log "length")
   (Get "string")
   (ToBytes)
-  (Snappy.Compress)
+  (Brotli.Compress)
   (Set "compressed")
   (Count "compressed")
   (Log "compressed")
   (Get "compressed")
-  (Snappy.Decompress)
+  (Brotli.Decompress)
   (FromBytes)
   (ExpectString)
   (Assert.Is "Compressing this string is the test, Compressing this string is the test" true)
