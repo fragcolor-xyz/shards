@@ -858,30 +858,24 @@ template <class T> struct BaseLoader : public BaseRunner {
 
   void cleanup() { BaseRunner::cleanup(); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  bool activateChain(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
-      return input;
+      return false;
 
-    if (!doneOnce) {
-      if (once)
-        doneOnce = true;
-
-      if (mode == RunChainMode::Detached) {
-        activateDetached(context, input);
-        return input;
-      } else if (mode == RunChainMode::Stepped) {
-        activateStepMode(context, input);
-        return input;
-      } else {
-        // Run within the root flow
-        auto runRes = runSubChain(chain.get(), context, input);
-        if (unlikely(runRes.state == Failed)) {
-          context->stopFlow(input);
-        }
-        return input;
-      }
+    if (mode == RunChainMode::Detached) {
+      activateDetached(context, input);
+      return true;
+    } else if (mode == RunChainMode::Stepped) {
+      activateStepMode(context, input);
+      return true;
     } else {
-      return input;
+      // Run within the root flow
+      auto runRes = runSubChain(chain.get(), context, input);
+      if (unlikely(runRes.state == Failed)) {
+        return false;
+      } else {
+        return true;
+      }
     }
   }
 };
@@ -910,6 +904,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBChainProvider *_provider;
+  bool _healthy{false};
 
   void setParam(int index, CBVar value) {
     if (index == 0) {
@@ -970,11 +965,15 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         chain.reset(update.chain,
                     [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
+        _healthy = true; // give a chance to the new chain
         LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
       }
     }
 
-    return BaseLoader<ChainLoader>::activate(context, input);
+    if (_healthy)
+      _healthy = BaseLoader<ChainLoader>::activateChain(context, input);
+
+    return input;
   }
 };
 
@@ -1096,7 +1095,10 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
       doWarmup(context);
     }
 
-    return BaseLoader<ChainRunner>::activate(context, input);
+    if (!BaseLoader<ChainRunner>::activateChain(context, input))
+      context->stopFlow(input);
+
+    return input;
   }
 };
 
