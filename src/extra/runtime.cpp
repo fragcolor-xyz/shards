@@ -18,11 +18,9 @@ namespace ImGui {
 extern void registerImGuiBlocks();
 }
 
-#ifndef CB_NO_SNAPPY_BLOCKS
 namespace Snappy {
 extern void registerBlocks();
 }
-#endif
 
 namespace Brotli {
 extern void registerBlocks();
@@ -34,9 +32,7 @@ void cbInitExtras() {
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
-#ifndef CB_NO_SNAPPY_BLOCKS
   Snappy::registerBlocks();
-#endif
   Brotli::registerBlocks();
 }
 }; // namespace chainblocks
