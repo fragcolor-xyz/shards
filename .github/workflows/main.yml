@@ -75,6 +75,7 @@ jobs:
       uses: chainblocks/xvfb-action@v1
       with:
         run: |
+          cd build
           ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
