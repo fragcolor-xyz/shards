@@ -809,11 +809,6 @@ if(NOT BUILD_CORE_ONLY)
 
   if(NOT CB_NO_BROTLI_BLOCKS AND NOT IOS)
     add_dependencies(cb_static brotli_a)
-    target_link_libraries(cb_static libbrotlicommon-static)
-    add_dependencies(cb_shared brotli_a)
-    target_link_libraries(cb_shared libbrotlicommon-static)
-
-    add_dependencies(cb_static brotli_a)
     target_link_libraries(cb_static libbrotlidec-static)
     add_dependencies(cb_shared brotli_a)
     target_link_libraries(cb_shared libbrotlidec-static)
@@ -822,6 +817,11 @@ if(NOT BUILD_CORE_ONLY)
     target_link_libraries(cb_static libbrotlienc-static)
     add_dependencies(cb_shared brotli_a)
     target_link_libraries(cb_shared libbrotlienc-static)
+
+    add_dependencies(cb_static brotli_a)
+    target_link_libraries(cb_static libbrotlicommon-static)
+    add_dependencies(cb_shared brotli_a)
+    target_link_libraries(cb_shared libbrotlicommon-static)
   endif()
 
   if(LINUX)
