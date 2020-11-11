@@ -13,16 +13,30 @@ namespace chainblocks {
 namespace Brotli {
 struct Compress {
   std::vector<uint8_t> _buffer;
+  int _quality{BROTLI_DEFAULT_QUALITY};
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  static inline Parameters params{
+      {"Quality",
+       "Compression quality, higher is better but slower, "
+       "valid values from 1 to 11.",
+       {CoreInfo::IntType}}};
+
+  void setParam(int index, CBVar value) {
+    _quality = int(value.payload.intValue);
+    _quality = std::clamp(_quality, 1, 11);
+  }
+
+  CBVar getParam(int index) { return Var(_quality); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto maxLen = BrotliEncoderMaxCompressedSize(input.payload.bytesSize);
     _buffer.resize(maxLen + sizeof(uint32_t));
     size_t outputLen = maxLen;
     auto res = BrotliEncoderCompress(
-        BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE,
+        _quality, BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE,
         input.payload.bytesSize, input.payload.bytesValue, &outputLen,
         &_buffer[sizeof(uint32_t)]);
     if (res != BROTLI_TRUE) {
