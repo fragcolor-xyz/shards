@@ -10,7 +10,7 @@
   (Log "length")
   (Get "string")
   (ToBytes)
-  (Brotli.Compress)
+  (Brotli.Compress :Quality 7)
   (Set "compressed")
   (Count "compressed")
   (Log "compressed")
