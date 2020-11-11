@@ -151,8 +151,13 @@ void registerCoreBlocks() {
 #endif
 
   LogsDefaultConf.setToDefault();
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  LogsDefaultConf.setGlobally(el::ConfigurationType::Format,
+                              "[%datetime %level] %msg");
+#else
   LogsDefaultConf.setGlobally(el::ConfigurationType::Format,
                               "[%datetime %level %thread] %msg");
+#endif
   el::Loggers::reconfigureAllLoggers(LogsDefaultConf);
 
   // at this point we might have some auto magical static linked block already
