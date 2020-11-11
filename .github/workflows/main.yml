@@ -71,8 +71,11 @@ jobs:
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
-        Xvfb :1 -screen 1 1600x1200x16&
-        DISPLAY=:1 ./cbl ../src/tests/bgfx.clj
+    - name: Test Headless
+      uses: chainblocks/xvfb-action@v1
+      with:
+        run: |
+          ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
