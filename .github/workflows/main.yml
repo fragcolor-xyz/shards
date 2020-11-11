@@ -74,9 +74,8 @@ jobs:
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
-        run: |
-          cd build
-          ./cbl ../src/tests/bgfx.clj
+        working-directory: ./build
+        run: ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
