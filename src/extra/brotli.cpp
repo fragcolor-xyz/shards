@@ -24,6 +24,8 @@ struct Compress {
        "valid values from 1 to 11.",
        {CoreInfo::IntType}}};
 
+  CBParametersInfo parameters() { return params; }
+
   void setParam(int index, CBVar value) {
     _quality = int(value.payload.intValue);
     _quality = std::clamp(_quality, 1, 11);
