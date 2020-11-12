@@ -73,8 +73,8 @@ set(CMAKE_CXX_FLAGS_UBSAN
 
 if(CODE_COVERAGE)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-fprofile-arcs -ftest-coverage -fkeep-inline-functions)
-    add_link_options(-fprofile-arcs -ftest-coverage)
+    add_compile_options(-fprofile-arcs -ftest-coverage -fkeep-inline-functions -fkeep-static-functions)
+    add_link_options(-fprofile-arcs -ftest-coverage -lboost_filesystem)
   endif()
 endif()
 
