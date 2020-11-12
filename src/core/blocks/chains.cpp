@@ -807,6 +807,8 @@ template <class T> struct BaseLoader : public BaseRunner {
 };
 
 struct ChainLoader : public BaseLoader<ChainLoader> {
+  BlocksVar _onReloadBlocks{};
+
   static inline Parameters params{
       {"Provider",
        "The chainblocks chain provider.",
@@ -818,7 +820,10 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
        "this chain will not pause the root; Stepped: the chain will run as a "
        "child, the root will tick the chain every activation of this block and "
        "so a child pause won't pause the root.",
-       {ModeType}}};
+       {ModeType}},
+      {"OnReload",
+       "Blocks to execute when the chain is reloaded",
+       {CoreInfo::BlocksOrNone}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -826,34 +831,54 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   bool _healthy{false};
 
   void setParam(int index, CBVar value) {
-    if (index == 0) {
+    switch (index) {
+    case 0: {
       cleanup(); // stop current
       if (value.valueType == Object) {
         _provider = (CBChainProvider *)value.payload.objectValue;
       } else {
         _provider = nullptr;
       }
-    } else {
+    } break;
+    case 1: {
       BaseLoader<ChainLoader>::setParam(index, value);
+    } break;
+    case 2: {
+      _onReloadBlocks = value;
+    } break;
+    default:
+      break;
     }
   }
 
   CBVar getParam(int index) {
-    if (index == 0) {
+    switch (index) {
+    case 0:
       if (_provider) {
         return Var::Object(_provider, CoreCC, 'chnp');
       } else {
         return Var();
       }
-    } else {
+    case 1:
       return BaseLoader<ChainLoader>::getParam(index);
+    case 2:
+      return _onReloadBlocks;
+    default: {
+      return Var::Empty;
+    }
     }
   }
 
   void cleanup() {
     BaseLoader<ChainLoader>::cleanup();
+    _onReloadBlocks.cleanup();
     if (_provider)
       _provider->reset(_provider);
+  }
+
+  void warmup(CBContext *context) {
+    BaseLoader<ChainLoader>::warmup(context);
+    _onReloadBlocks.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -886,6 +911,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         doWarmup(context);
         _healthy = true; // give a chance to the new chain
         LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
+        CBVar output{};
+        _onReloadBlocks.activate(context, Var::Empty, output);
       }
     }
 

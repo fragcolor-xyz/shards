@@ -190,10 +190,10 @@ void registerCoreBlocks() {
   Random::registerBlocks();
   Imaging::registerBlocks();
   BigInt::registerBlocks();
+  registerFSBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
-  registerFSBlocks();
   registerProcessBlocks();
   Genetic::registerBlocks();
   registerNetworkBlocks();
