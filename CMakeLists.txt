@@ -73,8 +73,8 @@ set(CMAKE_CXX_FLAGS_UBSAN
 
 if(CODE_COVERAGE)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-fprofile-arcs -ftest-coverage -fkeep-inline-functions -fkeep-static-functions)
-    add_link_options(-fprofile-arcs -ftest-coverage -lboost_filesystem)
+    add_compile_options(-fprofile-arcs -ftest-coverage -fno-inline-functions)
+    add_link_options(-fprofile-arcs -ftest-coverage)
   endif()
 endif()
 
@@ -123,11 +123,6 @@ endif()
 if(PROFILE_GPROF)
   add_compile_options(-pg -DNO_FORCE_INLINE)
   add_link_options(-pg)
-endif()
-
-if(PROFILE_COVERAGE)
-  add_compile_options(--coverage)
-  add_link_options(--coverage)
 endif()
 
 ### general
