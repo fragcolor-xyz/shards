@@ -1,8 +1,14 @@
 coverage:
   status:
     project:
-      default: # This can be anything, but it needs to exist as the name
-        # basic settings
-        target: auto
-        threshold: 1%
-        base: auto 
+      default:
+        threshold: 0.2
+        if_not_found: success
+    patch:
+      default:
+        enabled: no
+        if_not_found: success
+    changes:
+      default:
+        enabled: no
+        if_not_found: success
