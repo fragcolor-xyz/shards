@@ -100,7 +100,7 @@
   (Chain
    "root"
    "Initial input"
-   (DispatchOnce mychain)
+   (Once (Dispatch mychain))
    (Get "var1")
    (Log "var1")
    (Get "var2")
