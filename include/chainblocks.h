@@ -263,13 +263,13 @@ typedef double CBFloat2 __attribute__((vector_size(16)));
 typedef float CBFloat3 __attribute__((vector_size(16)));
 typedef float CBFloat4 __attribute__((vector_size(16)));
 
+#define NO_INLINE __attribute__((noinline))
+
 #if defined(NDEBUG) && !defined(NO_FORCE_INLINE)
 #define ALWAYS_INLINE __attribute__((always_inline))
-#define NO_INLINE __attribute__((noinline))
 #define FLATTEN __attribute__((flatten))
 #else
 #define ALWAYS_INLINE
-#define NO_INLINE
 #define FLATTEN
 #endif
 

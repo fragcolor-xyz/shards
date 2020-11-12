@@ -73,7 +73,7 @@ set(CMAKE_CXX_FLAGS_UBSAN
 
 if(CODE_COVERAGE)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-fprofile-arcs -ftest-coverage -fno-inline-functions)
+    add_compile_options(-fprofile-arcs -ftest-coverage)
     add_link_options(-fprofile-arcs -ftest-coverage)
   endif()
 endif()
@@ -228,6 +228,7 @@ set(
   ${CHAINBLOCKS_DIR}/include/common_types.hpp
   ${CHAINBLOCKS_DIR}/include/ops.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/ops_internal.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp
   ${CHAINBLOCKS_DIR}/src/core/foundation.hpp
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.hpp
@@ -712,6 +713,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${replxx-sources}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/ops_internal.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/assert.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/chains.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/logging.cpp

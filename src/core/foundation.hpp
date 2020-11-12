@@ -623,7 +623,7 @@ namespace chainblocks {
 NO_INLINE void _destroyVarSlow(CBVar &var);
 NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 
-inline void destroyVar(CBVar &var) {
+ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
   case Table:
   case Seq:
