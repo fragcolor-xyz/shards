@@ -5,7 +5,7 @@
  (Chain
   "neural"
   :Looped
-  (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 720)
+  (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
   (DispatchOnce
    (Chain
     "init"
@@ -13,7 +13,7 @@
     (BGFX.Texture2D)
     (Set "image1" :Global true)
     false (Set "checkBoxie")))
-  (ImGui.Window :Title "My ImGui" :Width 1024 :Height 720 :PosX 0 :PosY 0 :Contents
+  (ImGui.Window :Title "My ImGui" :Width 1024 :Height 1024 :PosX 0 :PosY 0 :Contents
                 (-->
                  "Hello world"   (ImGui.Text)
                  "Hello world 2" (ImGui.Text)
