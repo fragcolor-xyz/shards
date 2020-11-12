@@ -4,5 +4,5 @@ coverage:
       default: # This can be anything, but it needs to exist as the name
         # basic settings
         target: auto
-        threshold: 0%
+        threshold: 1%
         base: auto 
