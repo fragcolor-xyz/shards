@@ -6,13 +6,13 @@
   "neural"
   :Looped
   (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
-  (DispatchOnce
-   (Chain
-    "init"
-    (LoadImage "../../assets/drawing.png")
-    (BGFX.Texture2D)
-    (Set "image1" :Global true)
-    false (Set "checkBoxie")))
+  (Once (Dispatch
+         (Chain
+          "init"
+          (LoadImage "../../assets/drawing.png")
+          (BGFX.Texture2D)
+          (Set "image1" :Global true)
+          false (Set "checkBoxie"))))
   (ImGui.Window :Title "My ImGui" :Width 1024 :Height 1024 :PosX 0 :PosY 0 :Contents
                 (-->
                  "Hello world"   (ImGui.Text)
