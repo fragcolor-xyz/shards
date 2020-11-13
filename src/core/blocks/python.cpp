@@ -962,7 +962,8 @@ struct Py {
     if (index == 0) {
       // Handle here
       _scriptName = value.payload.stringValue;
-      reloadScript();
+      if (_scriptName != "")
+        reloadScript();
     } else {
       if (!Env::isCallable(_setParam)) {
         LOG(ERROR) << "Script: " << _scriptName
