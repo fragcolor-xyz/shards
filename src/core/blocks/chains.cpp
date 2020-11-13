@@ -578,9 +578,9 @@ struct Recur : public ChainBase {
     }
     // force releasing resources
     for (size_t i = 0; i < _len; i++) {
-      IterableSeq s(_storage[i]);
-      for (auto &v : s) {
-        destroyVar(v);
+      // must release on capacity
+      for (uint32_t j = 0; j < _storage[i].cap; j++) {
+        destroyVar(_storage[i].elements[j]);
       }
       arrayFree(_storage[i]);
     }
