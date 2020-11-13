@@ -811,13 +811,21 @@ template <CBType CT> struct Variable : public Base {
 
   void setParam(int index, CBVar value) {
     switch (index) {
-    case 0:
-      _label = value.payload.stringValue;
-      break;
-    case 1:
-      _variable_name = value.payload.stringValue;
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1: {
+      if (value.valueType == None) {
+        _variable_name.clear();
+      } else {
+        _variable_name = value.payload.stringValue;
+      }
       cleanup();
-      break;
+    } break;
     default:
       break;
     }
@@ -875,9 +883,13 @@ struct Text : public Base {
 
   void setParam(int index, CBVar value) {
     switch (index) {
-    case 0:
-      _label = value.payload.stringValue;
-      break;
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
     case 1:
       _color = value;
     default:

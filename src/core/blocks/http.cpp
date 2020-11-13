@@ -385,7 +385,7 @@ struct Server {
   static inline Parameters params{
       {"Handler",
        "The chain that will be spawned and handle a remote request.",
-       {CoreInfo::ChainType}},
+       {CoreInfo::ChainOrNone}},
       {"Endpoint",
        "The URL from where your service can be accessed by a client.",
        {CoreInfo::StringType}},
@@ -401,8 +401,9 @@ struct Server {
     switch (idx) {
     case 0: {
       _handlerMaster = val;
-      _pool.reset(
-          new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
+      if (_handlerMaster.valueType == CBType::Chain)
+        _pool.reset(
+            new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
     } break;
     case 1:
       _endpoint = val.payload.stringValue;
