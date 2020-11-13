@@ -461,8 +461,6 @@ struct Resume : public ChainBase {
         return chain.get();
       }
     }();
-    // we should be valid as this block should be dependent on current
-    pchain->resumer = current;
 
     // assign the new chain as current chain on the flow
     context->flow->chain = pchain;
@@ -477,6 +475,10 @@ struct Resume : public ChainBase {
       pchain->node = context->main->node;
       chainblocks::prepare(pchain, context->flow);
     }
+
+    // we should be valid as this block should be dependent on current
+    // do this here as stop/prepare might overwrite
+    pchain->resumer = current;
 
     // Start it if not started
     if (!chainblocks::isRunning(pchain)) {
@@ -508,8 +510,6 @@ struct Start : public Resume {
         return chain.get();
       }
     }();
-    // we should be valid as this block should be dependent on current
-    pchain->resumer = current;
 
     // assign the new chain as current chain on the flow
     context->flow->chain = pchain;
@@ -520,6 +520,10 @@ struct Start : public Resume {
     // Prepare
     pchain->node = context->main->node;
     chainblocks::prepare(pchain, context->flow);
+
+    // we should be valid as this block should be dependent on current
+    // do this here as stop/prepare might overwrite
+    pchain->resumer = current;
 
     // Start
     chainblocks::start(pchain, input);
