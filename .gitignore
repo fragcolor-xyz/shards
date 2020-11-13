@@ -38,3 +38,4 @@ Cargo.lock
 rust/src/chainblocksc.rs
 test.txt
 compile_commands.json
+src/tests/subchains.chain

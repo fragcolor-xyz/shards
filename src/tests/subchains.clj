@@ -32,7 +32,7 @@
   (Chain
    "jumphere2!"
    (Msg "jumped...")
-   (Resume "ticked2")))
+   (Resume)))
 
 (def stopChain
   (Chain
