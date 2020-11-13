@@ -598,6 +598,7 @@ public:
 using IterableSeq = IterableArray<CBSeq, CBVar>;
 using IterableExposedInfo =
     IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
+using IterableTypesInfo = IterableArray<CBTypesInfo, CBTypeInfo>;
 } // namespace chainblocks
 
 // needed by some c++ library
