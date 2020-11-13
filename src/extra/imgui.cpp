@@ -919,6 +919,8 @@ struct Text : public Base {
 };
 
 struct Button : public Base {
+  CBTypesInfo outputType() { return CoreInfo::BoolType; }
+
   static inline Type buttonTypeInfo{
       {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'ImGB'}}}};
 
@@ -993,7 +995,7 @@ struct Button : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blks.compose(data);
-    return data.inputType;
+    return CoreInfo::BoolType;
   }
 
   void cleanup() { _blks.cleanup(); }
