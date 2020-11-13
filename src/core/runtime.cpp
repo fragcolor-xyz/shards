@@ -1333,6 +1333,34 @@ void validateConnection(ValidationContext &ctx) {
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
+#ifndef NDEBUG
+    // do some sanity checks that also provide coverage on outputTypes
+    auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
+    chainblocks::IterableTypesInfo otypes(outputTypes);
+    auto flowStopper = [&]() {
+      if (strcmp(ctx.bottom->name(ctx.bottom), "Restart") == 0 ||
+          strcmp(ctx.bottom->name(ctx.bottom), "Stop") == 0 ||
+          strcmp(ctx.bottom->name(ctx.bottom), "Return") == 0 ||
+          strcmp(ctx.bottom->name(ctx.bottom), "Fail") == 0) {
+        return true;
+      } else {
+        return false;
+      }
+    }();
+    auto valid_block_outputTypes =
+        flowStopper ||
+        std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
+          return t.basicType == Any ||
+                 (t.basicType == Seq && t.seqTypes.len == 1 &&
+                  t.seqTypes.elements[0].basicType == Any &&
+                  ctx.previousOutputType.basicType == Seq) || // any seq
+                 (t.basicType == Seq && t.seqTypes.len == 1 &&
+                  t.seqTypes.elements[0].basicType == Any &&
+                  ctx.previousOutputType.basicType == Table) || // any table
+                 t == ctx.previousOutputType;
+        });
+    assert(valid_block_outputTypes);
+#endif
 
     if (externalCtx.externalFailure) {
       if (externalCtx.warning) {
