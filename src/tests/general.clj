@@ -819,7 +819,7 @@
    (If (Is true) :Then (Const 10) :Else (Const 20) :Passthrough false)
    (Assert.Is 20 true)
 
-   false
+   true (Not)
    (If (Is false) :Then (Const 10) :Else (Const 20) :Passthrough false)
    (Assert.Is 10 true)
 
