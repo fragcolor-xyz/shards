@@ -17,8 +17,9 @@ struct Base {
        CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
        CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
-  CBVar _scratch{};
-  OwnedVar _result{};
+  CBVar _result{};
+
+  void cleanup() { destroyVar(_result); }
 
   static CBTypesInfo inputTypes() { return MathTypes; }
 
@@ -51,7 +52,10 @@ struct BinaryBase : public Base {
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() { _operand.cleanup(); }
+  void cleanup() {
+    Base::cleanup();
+    _operand.cleanup();
+  }
 
   void warmup(CBContext *context) { _operand.warmup(context); }
 
@@ -176,8 +180,9 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       chainblocks::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         // notice, we use scratch _output here
-        op(_scratch, a.payload.seqValue.elements[i], b, this);
-        chainblocks::arrayPush(output.payload.seqValue, _scratch);
+        CBVar scratch;
+        op(scratch, a.payload.seqValue.elements[i], b, this);
+        chainblocks::arrayPush(output.payload.seqValue, scratch);
       }
     } else {
       operate(opType, output, a, b);
@@ -452,13 +457,15 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
         _result.valueType = Seq;                                               \
         chainblocks::arrayResize(_result.payload.seqValue, 0);                 \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          operate(_scratch, input.payload.seqValue.elements[i]);               \
-          chainblocks::arrayPush(_result.payload.seqValue, _scratch);          \
+          CBVar scratch;                                                       \
+          operate(scratch, input.payload.seqValue.elements[i]);                \
+          chainblocks::arrayPush(_result.payload.seqValue, scratch);           \
         }                                                                      \
         return _result;                                                        \
       } else {                                                                 \
-        operate(_scratch, input);                                              \
-        return _scratch;                                                       \
+        CBVar scratch;                                                         \
+        operate(scratch, input);                                               \
+        return scratch;                                                        \
       }                                                                        \
     }                                                                          \
   };                                                                           \

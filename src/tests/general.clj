@@ -851,7 +851,7 @@
    (Const testChain)
    (WriteFile "testChain.bin")))
 (schedule Root saveBinary)
-(if (run Root 0.001 100) nil (throw "Root tick failed"))
+(if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Node holds ref...
 (def Root (Node))
 (def saveBinary nil)
@@ -870,9 +870,11 @@
    (Assert.Is "global1" true)
    (Log)
    (Process.StackTrace)
-   (Log)))
+   (Log)
+   (ChainRunner .loadedChain :Mode RunChainMode.Detached)
+   (WaitChain .loadedChain)))
 (schedule Root loadBinary)
-(if (run Root 0.001 100) nil (throw "Root tick failed"))
+(if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Node holds ref...
 (def Root (Node))
 (def loadBinary nil)
@@ -880,7 +882,7 @@
 (prn "Doing normal run")
 
 (schedule Root testChain)
-(if (run Root 0.001 100) nil (throw "Root tick failed"))
+(if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Node holds ref...
 (def Root (Node))
 (def testChain nil)
@@ -925,6 +927,6 @@
 ))
 
 (schedule Root fileReader)
-(if (run Root 0.001 100) nil (throw "Root tick failed"))
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (prn "Done")

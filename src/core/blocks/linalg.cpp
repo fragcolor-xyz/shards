@@ -20,13 +20,15 @@ struct VectorUnaryBase : public UnaryBase {
       _result.valueType = Seq;
       chainblocks::arrayResize(_result.payload.seqValue, 0);
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        operate(_scratch, input);
-        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
+        CBVar scratch;
+        operate(scratch, input);
+        chainblocks::arrayPush(_result.payload.seqValue, scratch);
       }
       return _result;
     } else {
-      operate(_scratch, input);
-      return _scratch;
+      CBVar scratch;
+      operate(scratch, input);
+      return scratch;
     }
   }
 };
@@ -45,14 +47,16 @@ struct VectorBinaryBase : public BinaryBase {
   CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     auto &operand = _operand.get();
     if (_opType == Normal) {
-      operate(_scratch, input, operand);
-      return _scratch;
+      CBVar scratch;
+      operate(scratch, input, operand);
+      return scratch;
     } else if (_opType == Seq1) {
       _result.valueType = Seq;
       chainblocks::arrayResize(_result.payload.seqValue, 0);
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        operate(_scratch, input.payload.seqValue.elements[i], operand);
-        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
+        CBVar scratch;
+        operate(scratch, input.payload.seqValue.elements[i], operand);
+        chainblocks::arrayPush(_result.payload.seqValue, scratch);
       }
       return _result;
     } else {
@@ -61,9 +65,10 @@ struct VectorBinaryBase : public BinaryBase {
       for (uint32_t i = 0;
            i < input.payload.seqValue.len && i < operand.payload.seqValue.len;
            i++) {
-        operate(_scratch, input.payload.seqValue.elements[i],
+        CBVar scratch;
+        operate(scratch, input.payload.seqValue.elements[i],
                 operand.payload.seqValue.elements[i]);
-        chainblocks::arrayPush(_result.payload.seqValue, _scratch);
+        chainblocks::arrayPush(_result.payload.seqValue, scratch);
       }
       return _result;
     }
