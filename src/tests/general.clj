@@ -824,7 +824,7 @@
    (Assert.Is 10 true)
    
    10 (Math.LShift 2) (Math.RShift 2) (Assert.Is 10 true) 
-   (BigInt) >= .big10 ; adds bytes serialization coverage :)
+   (ToBytes) >= .b10 ; adds bytes serialization coverage :)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
