@@ -71,6 +71,7 @@ jobs:
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/failures.clj
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
