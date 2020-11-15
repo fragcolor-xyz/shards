@@ -1062,7 +1062,7 @@ struct Assoc : public VariableBase {
   }
 };
 
-struct Translate {
+struct Replace {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
   static inline Parameters params{
       {"Patterns",
@@ -1727,6 +1727,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("IsNotNone", IsNotNone);
   REGISTER_CBLOCK("Input", Input);
   REGISTER_CBLOCK("Comment", Comment);
-  REGISTER_CBLOCK("Translate", Translate);
+  REGISTER_CBLOCK("Replace", Replace);
 }
 }; // namespace chainblocks
