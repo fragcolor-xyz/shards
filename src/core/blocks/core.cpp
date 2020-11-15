@@ -4,6 +4,7 @@
 #include "../runtime.hpp"
 #include "pdqsort.h"
 #include "utility.hpp"
+#include <boost/algorithm/string.hpp>
 #include <chrono>
 
 namespace chainblocks {
@@ -1166,12 +1167,9 @@ struct Assoc : public VariableBase {
             r.payload.stringLen > 0
                 ? std::string_view(r.payload.stringValue, r.payload.stringLen)
                 : std::string_view(r.payload.stringValue);
-        const auto pos = source.find(pattern);
-        if (pos != source.npos) {
-          _stringOutput.replace(pos, pos + pattern.length(), replacement);
-        }
+        boost::replace_all(_stringOutput, pattern, replacement);
       }
-      return Var(_stringOutput, _stringOutput.length());
+      return Var(_stringOutput);
     }
 
     CBVar activate(CBContext *context, const CBVar &input) {
