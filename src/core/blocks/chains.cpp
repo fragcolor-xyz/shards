@@ -873,6 +873,11 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _onReloadBlocks.compose(data);
+    return BaseLoader<ChainLoader>::compose(data);
+  }
+
   void cleanup() {
     BaseLoader<ChainLoader>::cleanup();
     _onReloadBlocks.cleanup();
