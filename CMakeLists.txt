@@ -447,8 +447,7 @@ if(NOT BUILD_CORE_ONLY)
   endif()
 
   ExternalProject_Add(sdl_a
-    GIT_REPOSITORY    https://github.com/chainblocks/SDL.git
-    GIT_TAG           de56c2764424f884eeb83d07c19d51ff284101a6
+    URL ${CHAINBLOCKS_DIR}/deps/SDL
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
     BUILD_BYPRODUCTS ${libsdlfile}
