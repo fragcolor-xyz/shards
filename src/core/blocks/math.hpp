@@ -19,7 +19,7 @@ struct Base {
 
   CBVar _result{};
 
-  void cleanup() { destroyVar(_result); }
+  void destroy() { destroyVar(_result); }
 
   static CBTypesInfo inputTypes() { return MathTypes; }
 
@@ -52,10 +52,7 @@ struct BinaryBase : public Base {
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() {
-    Base::cleanup();
-    _operand.cleanup();
-  }
+  void cleanup() { _operand.cleanup(); }
 
   void warmup(CBContext *context) { _operand.warmup(context); }
 
@@ -141,9 +138,12 @@ struct BinaryBase : public Base {
 template <class OP> struct BinaryOperation : public BinaryBase {
   void operate(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
     if (opType == SeqSeq) {
+      if (output.valueType != Seq) {
+        destroyVar(output);
+        output.valueType = Seq;
+      }
       // TODO auto-parallelize with taskflow (should be optional)
       auto olen = b.payload.seqValue.len;
-      output.valueType = Seq;
       chainblocks::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len && olen > 0; i++) {
         const auto &sa = a.payload.seqValue.elements[i];
@@ -162,6 +162,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       if (opType == Normal && output.valueType == Seq) {
         // something changed, avoid leaking
         // this should happen only here, because compose of SeqSeq is loose
+        // we are going from an seq to a regular value, this could be expensive!
         LOG(DEBUG) << "Changing type of output during Math operation, this is "
                       "ok but potentially slow.";
         destroyVar(output);
@@ -176,7 +177,10 @@ template <class OP> struct BinaryOperation : public BinaryBase {
     if (likely(opType == Normal)) {
       op(output, a, b, this);
     } else if (opType == Seq1) {
-      output.valueType = Seq;
+      if (output.valueType != Seq) {
+        destroyVar(output);
+        output.valueType = Seq;
+      }
       chainblocks::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         // notice, we use scratch _output here
