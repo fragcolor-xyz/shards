@@ -832,6 +832,18 @@
    (Translate ["y" "x"] "a")
    (Assert.Is "a was a a." true)
 
+   [1 2 3 4 5]
+   (Translate [4 3 2 1] [5 4 3 2])
+   (Assert.Is [2 3 4 5 5] true)
+
+   [5 4 3 2 1]
+   (Translate [4 3 2 1] [5 4 3 2])
+   (Assert.Is [5 5 4 3 2] true)
+
+   [5 4 3 2 1]
+   (Translate [4 3 2 1] 0)
+   (Assert.Is [5 0 0 0 0] true)
+
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
    (Const [-0.1 -0.2 0.4])
