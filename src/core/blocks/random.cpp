@@ -1,5 +1,5 @@
-#ifndef CB_RANDOM_HPP
-#define CB_RANDOM_HPP
+/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
+/* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
 #include <random>
@@ -58,5 +58,3 @@ void registerBlocks() {
 }
 } // namespace Random
 } // namespace chainblocks
-
-#endif /* CB_RANDOM_HPP */
