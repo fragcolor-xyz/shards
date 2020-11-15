@@ -827,21 +827,21 @@
    (ToBytes) >= .b10 ; adds bytes serialization coverage (Not working)
 
    "x is a letter."
-   (Translate ["x" "is" "letter"] ["y" "was" "x"])
+   (Replace ["x" "is" "letter"] ["y" "was" "x"])
    (Assert.Is "y was a x." true)
-   (Translate ["y" "x"] "a")
+   (Replace ["y" "x"] "a")
    (Assert.Is "a was a a." true)
 
    [1 2 3 4 5]
-   (Translate [4 3 2 1] [5 4 3 2])
+   (Replace [4 3 2 1] [5 4 3 2])
    (Assert.Is [2 3 4 5 5] true)
 
    [5 4 3 2 1]
-   (Translate [4 3 2 1] [5 4 3 2])
+   (Replace [4 3 2 1] [5 4 3 2])
    (Assert.Is [5 5 4 3 2] true)
 
    [5 4 3 2 1]
-   (Translate [4 3 2 1] 0)
+   (Replace [4 3 2 1] 0)
    (Assert.Is [5 0 0 0 0] true)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
