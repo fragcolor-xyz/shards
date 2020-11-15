@@ -472,17 +472,9 @@ struct NaNTo0 {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.basicType == Float) {
-      data.block->activate = static_cast<CBActivateProc>(
-          [](CBlock *b, CBContext *ctx, const CBVar *v) {
-            auto blk = reinterpret_cast<BlockWrapper<NaNTo0> *>(b)->block;
-            return blk.activateSingle(ctx, *v);
-          });
+      OVERRIDE_ACTIVATE(data, activateSingle);
     } else {
-      data.block->activate = static_cast<CBActivateProc>(
-          [](CBlock *b, CBContext *ctx, const CBVar *v) {
-            auto blk = reinterpret_cast<BlockWrapper<NaNTo0> *>(b)->block;
-            return blk.activateSeq(ctx, *v);
-          });
+      OVERRIDE_ACTIVATE(data, activateSeq);
     }
     return data.inputType;
   }
@@ -2370,17 +2362,9 @@ struct Slice {
       throw CBException("Slice, invalid To variable.");
 
     if (data.inputType.basicType == Seq) {
-      data.block->activate = static_cast<CBActivateProc>(
-          [](CBlock *b, CBContext *ctx, const CBVar *v) {
-            auto blk = reinterpret_cast<BlockWrapper<Slice> *>(b)->block;
-            return blk.activateSeq(ctx, *v);
-          });
+      OVERRIDE_ACTIVATE(data, activateSeq);
     } else if (data.inputType.basicType == Bytes) {
-      data.block->activate = static_cast<CBActivateProc>(
-          [](CBlock *b, CBContext *ctx, const CBVar *v) {
-            auto blk = reinterpret_cast<BlockWrapper<Slice> *>(b)->block;
-            return blk.activateBytes(ctx, *v);
-          });
+      OVERRIDE_ACTIVATE(data, activateBytes);
     }
 
     return data.inputType;
