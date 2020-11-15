@@ -1082,6 +1082,7 @@ struct Translate {
   ParamVar _patterns{};
   ParamVar _replacements{};
   std::string _stringOutput;
+  OwnedVar _vectorOutput;
 
   void setParam(int index, CBVar value) {
     switch (index) {
@@ -1108,23 +1109,19 @@ struct Translate {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    if (_patterns->valueType == None) {
+      data.block->inlineBlockId = NoopBlock;
+    } else {
+      data.block->inlineBlockId = NotInline;
+    }
+
     if (data.inputType.basicType == String) {
       OVERRIDE_ACTIVATE(data, activateString);
       return CoreInfo::StringType;
     } else {
       // this should be only sequence
       OVERRIDE_ACTIVATE(data, activateSeq);
-      if (data.inputType.seqTypes.len == 1) {
-        return data.inputType.seqTypes.elements[0];
-      } else {
-        return CoreInfo::AnyType; // unknown, must use Expect blocks
-      }
-    }
-
-    if (_patterns->valueType == None) {
-      data.block->inlineBlockId = NoopBlock;
-    } else {
-      data.block->inlineBlockId = NotInline;
+      return data.inputType;
     }
   }
 
@@ -1138,7 +1135,30 @@ struct Translate {
     _replacements.cleanup();
   }
 
-  CBVar activateSeq(CBContext *context, const CBVar &input) {}
+  CBVar activateSeq(CBContext *context, const CBVar &input) {
+    _vectorOutput = input;
+    IterableSeq o(_vectorOutput);
+    const auto &patterns = _patterns.get();
+    const auto &replacements = _replacements.get();
+    if (replacements.valueType == Seq) {
+      if (patterns.payload.seqValue.len != replacements.payload.seqValue.len) {
+        throw ActivationError("Translate patterns size mismatch, must be equal "
+                              "to replacements size.");
+      }
+
+      for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
+        const auto &p = patterns.payload.seqValue.elements[i];
+        const auto &r = replacements.payload.seqValue.elements[i];
+        std::replace(o.begin(), o.end(), p, r);
+      }
+    } else {
+      for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
+        const auto &p = patterns.payload.seqValue.elements[i];
+        std::replace(o.begin(), o.end(), p, replacements);
+      }
+    }
+    return Var(_vectorOutput);
+  }
 
   CBVar activateString(CBContext *context, const CBVar &input) {
     const auto source = input.payload.stringLen > 0
