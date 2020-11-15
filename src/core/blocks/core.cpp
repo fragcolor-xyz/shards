@@ -1152,17 +1152,26 @@ struct Assoc : public VariableBase {
                               ? std::string_view(input.payload.stringValue,
                                                  input.payload.stringLen)
                               : std::string_view(input.payload.stringValue);
-      const IterableSeq patterns(_patterns);
-      const IterableSeq replacements(_replacements);
       _stringOutput.assign(source);
-      for (const auto &p : patterns) {
+      const auto &patterns = _patterns.get();
+      const auto &replacements = _replacements.get();
+      for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
+        const auto &p = patterns.payload.seqValue.elements[i];
+        const auto &r = replacements.payload.seqValue.elements[i];
         const auto pattern =
             p.payload.stringLen > 0
                 ? std::string_view(p.payload.stringValue, p.payload.stringLen)
                 : std::string_view(p.payload.stringValue);
-        if (source.find(pattern) != source.npos) {
+        const auto replacement =
+            r.payload.stringLen > 0
+                ? std::string_view(r.payload.stringValue, r.payload.stringLen)
+                : std::string_view(r.payload.stringValue);
+        const auto pos = source.find(pattern);
+        if (pos != source.npos) {
+          _stringOutput.replace(pos, pos + pattern.length(), replacement);
         }
       }
+      return Var(_stringOutput, _stringOutput.length());
     }
 
     CBVar activate(CBContext *context, const CBVar &input) {
