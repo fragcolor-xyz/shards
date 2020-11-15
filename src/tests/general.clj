@@ -822,9 +822,15 @@
    true (Not)
    (If (Is false) :Then (Const 10) :Else (Const 20) :Passthrough false)
    (Assert.Is 10 true)
-   
-   10 (Math.LShift 2) (Math.RShift 2) (Assert.Is 10 true) 
-   (ToBytes) >= .b10 ; adds bytes serialization coverage :)
+
+   10 (Math.LShift 2) (Math.RShift 2) (Assert.Is 10 true)
+   (ToBytes) >= .b10 ; adds bytes serialization coverage (Not working)
+
+   "x is a letter."
+   (Translate ["x" "is" "letter"] ["y" "was" "x"])
+   (Assert.Is "y was a x." true)
+   (Translate ["y" "x"] "a")
+   (Assert.Is "a was a a." true)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 

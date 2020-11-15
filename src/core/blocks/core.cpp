@@ -1060,102 +1060,99 @@ struct Assoc : public VariableBase {
       return activate(context, input);
     }
   }
+};
 
-  struct Transform {
-    static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
-    static inline Parameters params{
-        {"Patterns",
-         "The patterns to find.",
-         {CoreInfo::NoneType, CoreInfo::StringSeqType,
-          CoreInfo::StringVarSeqType, CoreInfo::AnyVarSeqType,
-          CoreInfo::AnySeqType}},
-        {"Replacements",
-         "The replacements to apply to the input, if a single value is "
-         "provided every match will be replaced with that single value.",
-         {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType,
-          CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
+struct Translate {
+  static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
+  static inline Parameters params{
+      {"Patterns",
+       "The patterns to find.",
+       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType,
+        CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
+      {"Replacements",
+       "The replacements to apply to the input, if a single value is "
+       "provided every match will be replaced with that single value.",
+       {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType,
+        CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
-    static CBTypesInfo inputTypes() { return inTypes; }
-    static CBTypesInfo outputTypes() { return inTypes; }
-    static CBParametersInfo parameters() { return params; }
+  static CBTypesInfo inputTypes() { return inTypes; }
+  static CBTypesInfo outputTypes() { return inTypes; }
+  static CBParametersInfo parameters() { return params; }
 
-    ParamVar _patterns{};
-    ParamVar _replacements{};
-    std::string _stringOutput;
+  ParamVar _patterns{};
+  ParamVar _replacements{};
+  std::string _stringOutput;
 
-    void setParam(int index, CBVar value) {
-      switch (index) {
-      case 0:
-        _patterns = value;
-        break;
-      case 1:
-        _replacements = value;
-        break;
-      default:
-        break;
-      }
+  void setParam(int index, CBVar value) {
+    switch (index) {
+    case 0:
+      _patterns = value;
+      break;
+    case 1:
+      _replacements = value;
+      break;
+    default:
+      break;
     }
+  }
 
-    CBVar getParam(int index) {
-      switch (index) {
-      case 0:
-        return _patterns;
-      case 1:
-        return _replacements;
-      default:
-        return Var::Empty;
-      }
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _patterns;
+    case 1:
+      return _replacements;
+    default:
+      return Var::Empty;
     }
+  }
 
-    CBTypeInfo compose(const CBInstanceData &data) {
-      if (data.inputType.basicType == String) {
-        data.block->activate = static_cast<CBActivateProc>(
-            [](CBlock *b, CBContext *ctx, const CBVar *v) {
-              auto blk = reinterpret_cast<BlockWrapper<Transform> *>(b)->block;
-              return blk.activateString(ctx, *v);
-            });
-        return CoreInfo::StringType;
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.basicType == String) {
+      OVERRIDE_ACTIVATE(data, activateString);
+      return CoreInfo::StringType;
+    } else {
+      // this should be only sequence
+      OVERRIDE_ACTIVATE(data, activateSeq);
+      if (data.inputType.seqTypes.len == 1) {
+        return data.inputType.seqTypes.elements[0];
       } else {
-        // this should be only sequence
-        data.block->activate = static_cast<CBActivateProc>(
-            [](CBlock *b, CBContext *ctx, const CBVar *v) {
-              auto blk = reinterpret_cast<BlockWrapper<Transform> *>(b)->block;
-              return blk.activateSeq(ctx, *v);
-            });
-        if (data.inputType.seqTypes.len == 1) {
-          return data.inputType.seqTypes.elements[0];
-        } else {
-          return CoreInfo::AnyType; // unknown, must use Expect blocks
-        }
-      }
-
-      if (_patterns->valueType == None) {
-        data.block->inlineBlockId = NoopBlock;
-      } else {
-        data.block->inlineBlockId = NotInline;
+        return CoreInfo::AnyType; // unknown, must use Expect blocks
       }
     }
 
-    void warmup(CBContext *context) {
-      _patterns.warmup(context);
-      _replacements.warmup(context);
+    if (_patterns->valueType == None) {
+      data.block->inlineBlockId = NoopBlock;
+    } else {
+      data.block->inlineBlockId = NotInline;
     }
+  }
 
-    void cleanup() {
-      _patterns.cleanup();
-      _replacements.cleanup();
-    }
+  void warmup(CBContext *context) {
+    _patterns.warmup(context);
+    _replacements.warmup(context);
+  }
 
-    CBVar activateSeq(CBContext *context, const CBVar &input) {}
+  void cleanup() {
+    _patterns.cleanup();
+    _replacements.cleanup();
+  }
 
-    CBVar activateString(CBContext *context, const CBVar &input) {
-      const auto source = input.payload.stringLen > 0
-                              ? std::string_view(input.payload.stringValue,
-                                                 input.payload.stringLen)
-                              : std::string_view(input.payload.stringValue);
-      _stringOutput.assign(source);
-      const auto &patterns = _patterns.get();
-      const auto &replacements = _replacements.get();
+  CBVar activateSeq(CBContext *context, const CBVar &input) {}
+
+  CBVar activateString(CBContext *context, const CBVar &input) {
+    const auto source = input.payload.stringLen > 0
+                            ? std::string_view(input.payload.stringValue,
+                                               input.payload.stringLen)
+                            : std::string_view(input.payload.stringValue);
+    _stringOutput.assign(source);
+    const auto &patterns = _patterns.get();
+    const auto &replacements = _replacements.get();
+    if (replacements.valueType == Seq) {
+      if (patterns.payload.seqValue.len != replacements.payload.seqValue.len) {
+        throw ActivationError("Translate patterns size mismatch, must be equal "
+                              "to replacements size.");
+      }
       for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
         const auto &p = patterns.payload.seqValue.elements[i];
         const auto &r = replacements.payload.seqValue.elements[i];
@@ -1169,14 +1166,29 @@ struct Assoc : public VariableBase {
                 : std::string_view(r.payload.stringValue);
         boost::replace_all(_stringOutput, pattern, replacement);
       }
-      return Var(_stringOutput);
-    }
+    } else {
+      const auto replacement =
+          replacements.payload.stringLen > 0
+              ? std::string_view(replacements.payload.stringValue,
+                                 replacements.payload.stringLen)
+              : std::string_view(replacements.payload.stringValue);
+      for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
+        const auto &p = patterns.payload.seqValue.elements[i];
+        const auto pattern =
+            p.payload.stringLen > 0
+                ? std::string_view(p.payload.stringValue, p.payload.stringLen)
+                : std::string_view(p.payload.stringValue);
 
-    CBVar activate(CBContext *context, const CBVar &input) {
-      throw ActivationError("Invalid activation function");
+        boost::replace_all(_stringOutput, pattern, replacement);
+      }
     }
-  };
-}; // namespace chainblocks
+    return Var(_stringOutput);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Invalid activation function");
+  }
+};
 
 // Register Const
 RUNTIME_CORE_BLOCK_FACTORY(Const);
@@ -1695,5 +1707,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("IsNotNone", IsNotNone);
   REGISTER_CBLOCK("Input", Input);
   REGISTER_CBLOCK("Comment", Comment);
+  REGISTER_CBLOCK("Translate", Translate);
 }
 }; // namespace chainblocks
