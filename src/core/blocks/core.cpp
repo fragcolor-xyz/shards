@@ -1029,6 +1029,9 @@ struct Assoc : public VariableBase {
         throw ActivationError("Expected table or sequence variable.");
       }
 
+      if (_isTable && _key.isVariable())
+        _cell = nullptr; // need to cleanup as it's a variable
+
       return input;
     } else {
       if (_isTable) {

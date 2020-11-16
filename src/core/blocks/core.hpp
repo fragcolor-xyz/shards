@@ -638,7 +638,9 @@ struct SetBase : public VariableBase {
       cloneVar(*vptr, input);
 
       // use fast cell from now
-      _cell = vptr;
+      // if variable we cannot do this tho!
+      if (!_key.isVariable())
+        _cell = vptr;
     } else {
       // Clone will try to recyle memory and such
       cloneVar(*_target, input);
@@ -775,7 +777,8 @@ struct Ref : public SetBase {
       *vptr = input;
 
       // use fast cell from now
-      _cell = vptr;
+      if (!_key.isVariable())
+        _cell = vptr;
     } else {
       // use fast cell from now
       _cell = _target;
@@ -1046,7 +1049,9 @@ struct Get : public VariableBase {
               return _defaultValue;
             } else {
               // Pin fast cell
-              _cell = vptr;
+              // skip if variable
+              if (!_key.isVariable())
+                _cell = vptr;
               return *vptr;
             }
           } else {
@@ -1173,6 +1178,8 @@ struct SeqBase : public VariableBase {
           seq.valueType = Seq;
           seq.payload.seqValue = {};
         }
+      } else {
+        return; // we will check during activate
       }
     } else {
       if (_target->valueType != Seq) {
@@ -1183,6 +1190,18 @@ struct SeqBase : public VariableBase {
     }
 
     assert(_cell);
+  }
+
+  void fillVariableCell() {
+    auto &kv = _key.get();
+    _cell = _target->payload.tableValue.api->tableAt(
+        _target->payload.tableValue, kv.payload.stringValue);
+
+    auto &seq = *_cell;
+    if (seq.valueType != Seq) {
+      seq.valueType = Seq;
+      seq.payload.seqValue = {};
+    }
   }
 
   void warmup(CBContext *context) {
@@ -1319,16 +1338,8 @@ struct Push : public SeqBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
-
-      auto &seq = *_cell;
-      if (seq.valueType != Seq) {
-        seq.valueType = Seq;
-        seq.payload.seqValue = {};
-      }
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (_clear && _firstPush) {
@@ -1541,16 +1552,8 @@ struct Sequence : public SeqBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
-
-      auto &seq = *_cell;
-      if (seq.valueType != Seq) {
-        seq.valueType = Seq;
-        seq.payload.seqValue = {};
-      }
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (_clear) {
@@ -1581,12 +1584,20 @@ struct SeqUser : VariableBase {
         CBVar kv = _key;
         _cell = _target->payload.tableValue.api->tableAt(
             _target->payload.tableValue, kv.payload.stringValue);
+      } else {
+        return; // checked during activate
       }
     } else {
       _cell = _target;
     }
 
     assert(_cell);
+  }
+
+  void fillVariableCell() {
+    auto &kv = _key.get();
+    _cell = _target->payload.tableValue.api->tableAt(
+        _target->payload.tableValue, kv.payload.stringValue);
   }
 
   void warmup(CBContext *context) {
@@ -1619,14 +1630,13 @@ struct Count : SeqUser {
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
+    }
+
     if (likely(_cell->valueType == Seq)) {
       return Var(int64_t(_cell->payload.seqValue.len));
     } else if (_cell->valueType == Table) {
-      if (unlikely(!_cell)) {
-        auto &kv = _key.get();
-        _cell = _target->payload.tableValue.api->tableAt(
-            _target->payload.tableValue, kv.payload.stringValue);
-      }
       return Var(int64_t(
           _cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
     } else if (_cell->valueType == Bytes) {
@@ -1645,10 +1655,8 @@ struct Clear : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (likely(_cell->valueType == Seq)) {
@@ -1671,10 +1679,8 @@ struct Drop : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (likely(_cell->valueType == Seq)) {
@@ -1702,10 +1708,8 @@ struct DropFront : SeqUser {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (likely(_cell->valueType == Seq) && _cell->payload.seqValue.len > 0) {
@@ -1774,10 +1778,8 @@ struct Pop : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (_cell->valueType != Seq) {
@@ -1845,10 +1847,8 @@ struct PopFront : SeqUser {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!_cell)) {
-      auto &kv = _key.get();
-      _cell = _target->payload.tableValue.api->tableAt(
-          _target->payload.tableValue, kv.payload.stringValue);
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     if (_cell->valueType != Seq) {
