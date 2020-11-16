@@ -576,7 +576,8 @@ struct SetBase : public VariableBase {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
-        if (_isTable && !reference.isTableEntry) {
+        if (_isTable && !reference.isTableEntry &&
+            reference.exposedType.basicType != Table) {
           throw ComposeError("Set/Ref/Update, variable was not a table: " +
                              _name);
         } else if (!_isTable && reference.isTableEntry) {

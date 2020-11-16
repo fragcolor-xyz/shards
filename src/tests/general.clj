@@ -845,6 +845,11 @@
    (Assert.Is [5 0 0 0 0] true) >= .feach_seq
    (PopFront .feach_seq)
    .feach_seq (ForEach (Assert.Is 0 true))
+   
+   {} >= .empty_table
+   "value1" (Set "empty_table" "key1")
+   (Get "empty_table" "key1")
+   (Assert.Is "value1" true)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
