@@ -134,7 +134,6 @@ struct ActionJointOp : public JointOp {
 };
 
 struct Sort : public ActionJointOp {
-
   std::vector<CBVar> _multiSortKeys;
   bool _desc = false;
 
@@ -211,15 +210,15 @@ struct Sort : public ActionJointOp {
   }
 
   struct {
-    bool operator()(CBVar &a, CBVar &b) const { return a > b; }
+    bool operator()(const CBVar &a, const CBVar &b) const { return a > b; }
   } sortAsc;
 
   struct {
-    bool operator()(CBVar &a, CBVar &b) const { return a < b; }
+    bool operator()(const CBVar &a, const CBVar &b) const { return a < b; }
   } sortDesc;
 
   struct {
-    CBVar &operator()(CBVar &a) { return a; }
+    const CBVar &operator()(const CBVar &a) { return a; }
   } noopKeyFn;
 
   struct {
@@ -227,7 +226,7 @@ struct Sort : public ActionJointOp {
     CBContext *_ctx;
     CBVar _o;
 
-    CBVar &operator()(CBVar &a) {
+    const CBVar &operator()(const CBVar &a) {
       _bu->_blks.activate(_ctx, a, _o);
       return _o;
     }
