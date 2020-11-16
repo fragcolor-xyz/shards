@@ -842,7 +842,9 @@
 
    [5 4 3 2 1]
    (Replace [4 3 2 1] 0)
-   (Assert.Is [5 0 0 0 0] true)
+   (Assert.Is [5 0 0 0 0] true) >= .feach_seq
+   (PopFront .feach_seq)
+   .feach_seq (ForEach (Assert.Is 0 true))
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
