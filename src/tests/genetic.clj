@@ -139,7 +139,7 @@
     :Population 64
     :Coroutines 8)
    (Take 1)
-   (ToJson)
+   (ToJson false)
    (Log)
    ))
 
