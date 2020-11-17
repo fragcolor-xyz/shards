@@ -610,27 +610,39 @@ struct PrependTo : public XpendTo {
 };
 
 struct ForEachBlock {
-  CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
-  CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo inputTypes() { return _types; }
 
-  CBParametersInfo parameters() { return _params; }
+  static CBTypesInfo outputTypes() { return _types; }
+
+  static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, CBVar value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    auto dataCopy = data;
-    if (data.inputType.basicType != Seq) {
-      throw ComposeError("Expected a sequence as input.");
+    if (data.inputType.basicType != Seq && data.inputType.basicType != Table) {
+      throw ComposeError(
+          "ForEach block expected a sequence or a table as input.");
     }
-    if (data.inputType.seqTypes.len == 1) {
+
+    auto dataCopy = data;
+    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
       dataCopy.inputType = data.inputType.seqTypes.elements[0];
     } else {
       dataCopy.inputType = CoreInfo::AnyType;
     }
+
     _blocks.compose(dataCopy);
+
+    if (data.inputType.basicType == Table) {
+      OVERRIDE_ACTIVATE(data, activateTable);
+    } else {
+      OVERRIDE_ACTIVATE(data, activateSeq);
+    }
+
     return data.inputType;
   }
 
@@ -638,15 +650,41 @@ struct ForEachBlock {
 
   void cleanup() { _blocks.cleanup(); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activateSeq(CBContext *context, const CBVar &input) {
     IterableSeq in(input);
     CBVar output{};
     for (auto &item : in) {
-      // handle return short circuit, assume it was for us
       auto state = _blocks.activate(context, item, output, true);
+      // handle return short circuit, assume it was for us
       if (state != CBChainState::Continue)
         break;
     }
+    return input;
+  }
+
+  std::array<OwnedVar, 2> _tableItem;
+
+  CBVar activateTable(CBContext *context, const CBVar &input) {
+    const auto &table = input.payload.tableValue;
+    bool ended = false;
+    CBVar output{};
+    ForEach(table, [&](auto key, auto &val) {
+      if (ended)
+        return;
+      _tableItem[0] = Var(key);
+      _tableItem[1] = val;
+      auto &itemref = _tableItem;
+      const auto item = Var(reinterpret_cast<std::array<CBVar, 2> &>(itemref));
+      const auto state = _blocks.activate(context, item, output, true);
+      // handle return short circuit, assume it was for us
+      if (state != CBChainState::Continue)
+        ended = true;
+    });
+    return input;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Invalid activation path");
     return input;
   }
 

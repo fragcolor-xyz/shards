@@ -850,6 +850,16 @@
    "value1" (Set "empty_table" "key1")
    (Get "empty_table" "key1")
    (Assert.Is "value1" true)
+   
+   {"a" 10
+    "b" 20
+    "c" 30}
+   (Sequence .table-to-seq)
+   (ForEach ~[>> .table-to-seq])
+   .table-to-seq
+   (Assert.Is [["a" 10]
+               ["b" 20] 
+               ["c" 30]] true)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
