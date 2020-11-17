@@ -728,7 +728,7 @@ using VarPayload =
                  Float2VarPayload, Float3VarPayload, Float4VarPayload>;
 
 inline void ForEach(const CBTable &table,
-                    std::function<void(const char *, CBVar &)> &&f) {
+                    std::function<void(const char *, CBVar &)> f) {
   table.api->tableForEach(
       table,
       [](const char *key, struct CBVar *value, void *userData) {
