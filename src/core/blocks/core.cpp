@@ -631,6 +631,8 @@ struct ForEachBlock {
     auto dataCopy = data;
     if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
       dataCopy.inputType = data.inputType.seqTypes.elements[0];
+    } else if (data.inputType.basicType == Table) {
+      dataCopy.inputType = CoreInfo::AnySeqType;
     } else {
       dataCopy.inputType = CoreInfo::AnyType;
     }

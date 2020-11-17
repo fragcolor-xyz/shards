@@ -851,15 +851,14 @@
    (Get "empty_table" "key1")
    (Assert.Is "value1" true)
    
+   0 >= .table-foreach-res
    {"a" 10
     "b" 20
     "c" 30}
-   (Sequence .table-to-seq)
-   (ForEach ~[>> .table-to-seq])
-   .table-to-seq
-   (Assert.Is [["a" 10]
-               ["b" 20] 
-               ["c" 30]] true)
+   (ForEach ~[(Take 1) (ExpectInt)
+              (Math.Add .table-foreach-res) > .table-foreach-res])
+   .table-foreach-res
+   (Assert.Is 60 true)
 
    "Hey" >= .fval (Log) >> .seq-a .seq-a (Log)
 
