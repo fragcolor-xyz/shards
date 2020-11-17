@@ -542,6 +542,8 @@
    (FS.Read)
    (Assert.Is "## The result is: Hello world, this is a string again" true)
    (Log)
+   "test.txt" (FS.Remove)
+   (Assert.Is true true)
 
    (Get "text1")
    (ToJson :Pure false)

@@ -142,6 +142,19 @@ struct IsDirectory {
   }
 };
 
+struct Remove {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    fs::path p(input.payload.stringValue);
+    if (fs::exists(p)) {
+      return Var(fs::remove(p));
+    } else {
+      return Var::False;
+    }
+  }
+};
+
 struct Filename {
   std::string _output;
   bool _noExt = false;
@@ -417,5 +430,6 @@ void registerFSBlocks() {
   REGISTER_CBLOCK("FS.IsFile", FS::IsFile);
   REGISTER_CBLOCK("FS.IsDirectory", FS::IsDirectory);
   REGISTER_CBLOCK("FS.Copy", FS::Copy);
+  REGISTER_CBLOCK("FS.Remove", FS::Remove);
 }
 }; // namespace chainblocks

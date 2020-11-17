@@ -562,6 +562,8 @@ struct AppendTo : public XpendTo {
       break;
     }
     case String: {
+      if (input.valueType != String)
+        throw ActivationError("AppendTo: expected String input");
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
@@ -573,7 +575,7 @@ struct AppendTo : public XpendTo {
       break;
     }
     default:
-      break;
+      throw ActivationError("AppendTo, case not implemented");
     }
     return input;
   }
@@ -592,6 +594,8 @@ struct PrependTo : public XpendTo {
       break;
     }
     case String: {
+      if (input.valueType != String)
+        throw ActivationError("AppendTo: expected String input");
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
@@ -603,7 +607,7 @@ struct PrependTo : public XpendTo {
       break;
     }
     default:
-      break;
+      throw ActivationError("PrependTo, case not implemented");
     }
     return input;
   }
