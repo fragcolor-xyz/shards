@@ -599,6 +599,7 @@ struct ToJson {
         json sj{};
         anyDump(sj, val);
         table.emplace(key, sj);
+        return true;
       });
       j = table;
     } break;

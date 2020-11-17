@@ -728,19 +728,17 @@ using VarPayload =
                  Float2VarPayload, Float3VarPayload, Float4VarPayload>;
 
 inline void ForEach(const CBTable &table,
-                    std::function<void(const char *, CBVar &)> f) {
+                    std::function<bool(const char *, CBVar &)> f) {
   table.api->tableForEach(
       table,
       [](const char *key, struct CBVar *value, void *userData) {
         auto pf =
             reinterpret_cast<std::function<bool(const char *, CBVar &)> *>(
                 userData);
-        (*pf)(key, *value);
-        return true;
+        return (*pf)(key, *value);
       },
       &f);
 }
-
 class ChainProvider {
   // used specially for live editing chains, from host languages
 public:

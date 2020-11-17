@@ -666,19 +666,18 @@ struct ForEachBlock {
 
   CBVar activateTable(CBContext *context, const CBVar &input) {
     const auto &table = input.payload.tableValue;
-    bool ended = false;
     CBVar output{};
     ForEach(table, [&](auto key, auto &val) {
-      if (ended)
-        return;
       _tableItem[0] = Var(key);
       _tableItem[1] = val;
       auto &itemref = _tableItem;
       const auto item = Var(reinterpret_cast<std::array<CBVar, 2> &>(itemref));
       const auto state = _blocks.activate(context, item, output, true);
       // handle return short circuit, assume it was for us
-      if (state != CBChainState::Continue)
-        ended = true;
+      if (unlikely(state != CBChainState::Continue))
+        return false;
+      else
+        return true;
     });
     return input;
   }

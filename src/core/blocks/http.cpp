@@ -237,6 +237,7 @@ struct Get final : public Client {
             vars.append("=");
             vars.append(url_encode(value.payload.stringValue));
             vars.append("&");
+            return true;
           });
           vars.resize(vars.size() - 1);
         }
@@ -255,6 +256,7 @@ struct Get final : public Client {
           auto htab = headers.get().payload.tableValue;
           ForEach(htab, [&](auto key, auto &value) {
             req.set(key, value.payload.stringValue);
+            return true;
           });
         }
 
@@ -304,6 +306,7 @@ template <http::verb VERB> struct PostLike final : public Client {
             vars.append("=");
             vars.append(url_encode(value.payload.stringValue));
             vars.append("&");
+            return true;
           });
           if (vars.size() > 0)
             vars.resize(vars.size() - 1);
@@ -332,6 +335,7 @@ template <http::verb VERB> struct PostLike final : public Client {
           auto htab = headers.get().payload.tableValue;
           ForEach(htab, [&](auto key, auto &value) {
             req.set(key, value.payload.stringValue);
+            return true;
           });
         }
 
@@ -642,6 +646,7 @@ struct Response {
       auto htab = _headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         _response.set(key, value.payload.stringValue);
+        return true;
       });
     }
 
@@ -780,6 +785,7 @@ struct SendFile {
         auto htab = _headers.get().payload.tableValue;
         ForEach(htab, [&](auto key, auto &value) {
           _response.set(key, value.payload.stringValue);
+          return true;
         });
       }
 
