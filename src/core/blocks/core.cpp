@@ -1644,6 +1644,13 @@ CBVar exitProgramActivation(const CBVar &input) {
   exit(input.payload.intValue);
 }
 
+#ifdef __EMSCRIPTEN__
+CBVar emscriptenEvalActivation(const CBVar &input) {
+  emscripten_run_script(input.payload.stringValue);
+  return input;
+}
+#endif
+
 void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Const);
   REGISTER_CORE_BLOCK(Set);
@@ -1758,6 +1765,14 @@ void registerBlocksCoreBlocks() {
       LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_CBLOCK("Pass", PassMockBlock);
   REGISTER_CBLOCK("Exit", ExitBlock);
+
+#ifdef __EMSCRIPTEN__
+  using EmscriptenEvalBlock =
+      LambdaBlock<emscriptenEvalActivation, CoreInfo::StringType,
+                  CoreInfo::StringType>;
+  // _ prefix = internal block
+  REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
+#endif
 
   REGISTER_CBLOCK("Return", Return);
   REGISTER_CBLOCK("Restart", Restart);
