@@ -522,9 +522,11 @@
    "." (FS.Iterate :Recursive false) (Log)
    (Take 4) (FS.Filename :NoExtension true) (Log)
 
-   "../src" (FS.Iterate :Recursive true) (Log)
-   (Take 4) (FS.Extension) (Log)
-
+   "../src"
+   (When (FS.IsDirectory)
+         ~[(FS.Iterate :Recursive true) (Log)
+           (Take 4) (FS.Extension) (Log)])
+    
    "The result is: "   (Set "text1")
    "Hello world, "     (AppendTo .text1)
    "this is a string"  (AppendTo .text1)
