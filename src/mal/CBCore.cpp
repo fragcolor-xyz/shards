@@ -16,15 +16,9 @@
 #include <boost/process/environment.hpp>
 #endif
 #include <chrono>
+#include <filesystem>
 #include <set>
 #include <thread>
-
-#ifndef __EMSCRIPTEN__
-#include <ghc/filesystem.hpp>
-#else
-#include <filesystem>
-#define ghc std
-#endif
 
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -75,7 +69,7 @@ typedef RefCountedPtr<malCBVar> malCBVarPtr;
 void registerKeywords(malEnvPtr env);
 malCBVarPtr varify(const malValuePtr &arg);
 
-namespace fs = ghc::filesystem;
+namespace fs = std::filesystem;
 
 namespace chainblocks {
 CBlock *createBlockInnerCall();
@@ -520,7 +514,7 @@ struct ChainFileWatcher {
         garbage(2), inputTypeInfo(data.inputType), shared(data.shared) {
     node = data.chain->node;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-    localRoot = ghc::filesystem::path(path).string();
+    localRoot = std::filesystem::path(path).string();
     try {
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
     } catch (const std::exception &e) {
@@ -532,7 +526,7 @@ struct ChainFileWatcher {
     }
 #else
     worker = std::thread([this] {
-      localRoot = ghc::filesystem::path(path).string();
+      localRoot = std::filesystem::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
       } catch (const std::exception &e) {
@@ -1641,10 +1635,10 @@ BUILTIN("import") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  auto filepath = ghc::filesystem::path(value->value());
+  auto filepath = std::filesystem::path(value->value());
   auto currentPath = malpath();
   if (currentPath.size() > 0 && filepath.is_relative()) {
-    filepath = ghc::filesystem::path(currentPath) / filepath;
+    filepath = std::filesystem::path(currentPath) / filepath;
   }
 
   auto lib_name_str = filepath.string();

@@ -10,13 +10,7 @@
 #include <memory>
 #include <cassert>
 #include <cstring>
-
-#ifndef __EMSCRIPTEN__
-#include <ghc/filesystem.hpp>
-#else
 #include <filesystem>
-#define ghc std
-#endif
 
 malValuePtr READ(const String& input);
 String PRINT(malValuePtr ast);
@@ -51,10 +45,10 @@ int malmain(int argc, const char* argv[])
 {
     malEnvPtr replEnv(new malEnv());
 
-    auto exePath = ghc::filesystem::path(argv[0]).parent_path().string();
+    auto exePath = std::filesystem::path(argv[0]).parent_path().string();
     auto scriptPath = exePath;
     if (argc > 1) {
-        scriptPath = ghc::filesystem::absolute(ghc::filesystem::absolute(ghc::filesystem::path(argv[1])).parent_path()).string();
+        scriptPath = std::filesystem::absolute(std::filesystem::absolute(std::filesystem::path(argv[1])).parent_path()).string();
     }
 
     malinit(replEnv, exePath.c_str(), scriptPath.c_str());
@@ -67,7 +61,7 @@ int malmain(int argc, const char* argv[])
             String out = safeRep(argv[2], replEnv, &failed);
             std::cout << out << "\n";
         } else {
-            auto scriptFilePath = ghc::filesystem::path(argv[1]);
+            auto scriptFilePath = std::filesystem::path(argv[1]);
             auto fileonly = scriptFilePath.filename().string();
             String filename = escape(fileonly);
             String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);

@@ -522,6 +522,9 @@
    "." (FS.Iterate :Recursive false) (Log)
    (Take 4) (FS.Filename :NoExtension true) (Log)
 
+   "./src" (FS.Iterate :Recursive true) (Log)
+   (Take 4) (FS.Extension) (Log)
+
    "The result is: "   (Set "text1")
    "Hello world, "     (AppendTo .text1)
    "this is a string"  (AppendTo .text1)
@@ -542,7 +545,25 @@
    (FS.Read)
    (Assert.Is "## The result is: Hello world, this is a string again" true)
    (Log)
-   "test.txt" (FS.Remove)
+   "test.txt"
+   (FS.IsFile)
+   (Assert.Is true true)
+   "test.txt"
+   (FS.IsDirectory)
+   (Assert.Is false true)
+   "test.txt"
+   (FS.Copy "test-copy.txt" :Behavior IfExists.Skip)
+   (FS.Copy "test-copy2.txt" :Behavior IfExists.Skip)
+   "test-copy.txt" ; overwrite test
+   (FS.Copy "test-copy2.txt" :Behavior IfExists.Overwrite)
+   "test.txt"
+   (FS.Remove)
+   (Assert.Is true true)
+   "test-copy.txt"
+   (FS.Remove)
+   (Assert.Is true true)
+   "test-copy2.txt"
+   (FS.Remove)
    (Assert.Is true true)
 
    (Get "text1")
@@ -847,12 +868,12 @@
    (Assert.Is [5 0 0 0 0] true) >= .feach_seq
    (PopFront .feach_seq)
    .feach_seq (ForEach (Assert.Is 0 true))
-   
+
    {} >= .empty_table
    "value1" (Set "empty_table" "key1")
    (Get "empty_table" "key1")
    (Assert.Is "value1" true)
-   
+
    0 >= .table-foreach-res
    {"a" 10
     "b" 20

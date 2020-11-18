@@ -12,15 +12,9 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <filesystem>
 #include <string.h>
 #include <unordered_set>
-
-#ifndef __EMSCRIPTEN__
-#include <ghc/filesystem.hpp>
-#else
-#include <filesystem>
-#define ghc std
-#endif
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -93,7 +87,7 @@ extern void cbInitExtras();
 static bool globalRegisterDone = false;
 
 void loadExternalBlocks(std::string from) {
-  namespace fs = ghc::filesystem;
+  namespace fs = std::filesystem;
   auto root = fs::path(from);
   auto pluginPath = root / "cblocks";
   if (!fs::exists(pluginPath))
@@ -135,7 +129,7 @@ void registerCoreBlocks() {
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
-  namespace fs = ghc::filesystem;
+  namespace fs = std::filesystem;
   if (Globals::ExePath.size() > 0) {
     auto pluginPath = fs::absolute(Globals::ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();

@@ -14,7 +14,7 @@
 
 #include "chainblocks.hpp"
 #include "shared.hpp"
-#include <ghc/filesystem.hpp>
+#include <filesystem>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
@@ -753,7 +753,7 @@ struct SendFile {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
 
-    ghc::filesystem::path p{Globals::RootPath};
+    std::filesystem::path p{Globals::RootPath};
     p += input.payload.stringValue;
 
     http::file_body::value_type file;

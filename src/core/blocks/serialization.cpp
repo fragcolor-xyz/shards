@@ -5,17 +5,11 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "shared.hpp"
+#include <filesystem>
 #include <future>
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <string>
-
-#ifndef __EMSCRIPTEN__
-#include <ghc/filesystem.hpp>
-#else
-#include <filesystem>
-#define ghc std
-#endif
 
 namespace chainblocks {
 struct FileBase {
@@ -66,19 +60,19 @@ struct FileBase {
     _currentFileName = _filename.get();
 
     // if absolute we are fine to begin with
-    ghc::filesystem::path fp(filename);
+    std::filesystem::path fp(filename);
     if (fp.is_absolute()) {
       if (checkExists) {
-        return ghc::filesystem::exists(fp);
+        return std::filesystem::exists(fp);
       } else {
         return true;
       }
     } else {
       // check if script root path is populated if so use it
-      ghc::filesystem::path cp(Globals::RootPath);
-      if (ghc::filesystem::exists(cp)) {
+      std::filesystem::path cp(Globals::RootPath);
+      if (std::filesystem::exists(cp)) {
         auto fullpath = cp / filename;
-        if (checkExists && !ghc::filesystem::exists(fullpath)) {
+        if (checkExists && !std::filesystem::exists(fullpath)) {
           return false;
         }
         filename = fullpath.string();
