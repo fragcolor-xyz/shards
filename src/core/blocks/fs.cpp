@@ -2,8 +2,10 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
+#include <boost/algorithm/string.hpp>
 
-#ifndef __EMSCRIPTEN__
+#ifdef WIN32
+// windows mingw has bugged copy/copyfile
 #include <ghc/filesystem.hpp>
 namespace fs = ghc::filesystem;
 #else
@@ -51,19 +53,6 @@ struct Iterate {
     }
   }
 
-#ifdef _WIN32
-  void replaceAll(std::string &str, const std::string &from,
-                  const std::string &to) {
-    if (from.empty())
-      return;
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-  }
-#endif
-
   CBVar activate(CBContext *context, const CBVar &input) {
     chainblocks::arrayResize(_storage, 0);
     _strings.clear();
@@ -75,7 +64,7 @@ struct Iterate {
         auto &path = subp.path();
         auto str = path.string();
 #ifdef _WIN32
-        replaceAll(str, "\\", "/");
+        boost::replace_all(str, "\\", "/");
 #endif
         _strings.push_back(str);
       }
@@ -86,7 +75,7 @@ struct Iterate {
         auto &path = subp.path();
         auto str = path.string();
 #ifdef _WIN32
-        replaceAll(str, "\\", "/");
+        boost::replace_all(str, "\\", "/");
 #endif
         _strings.push_back(str);
       }

@@ -6,13 +6,8 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-
-#ifndef __EMSCRIPTEN__
-#include <ghc/filesystem.hpp>
-#else
 #include <filesystem>
-#define ghc std
-#endif
+
 
 #define CHECK_ARGS_IS(expected) \
     checkArgsIs(name.c_str(), expected, \
@@ -520,10 +515,10 @@ BUILTIN("slurp")
     CHECK_ARGS_IS(1);
     ARG(malString, filename);
 
-    auto filepath = ghc::filesystem::path(filename->value());
+    auto filepath = std::filesystem::path(filename->value());
     auto currentPath = malpath();
     if(currentPath.size() > 0 && filepath.is_relative()) {
-      filepath = ghc::filesystem::path(currentPath) / filepath;
+      filepath = std::filesystem::path(currentPath) / filepath;
     }
 
     std::ifstream file(filepath.c_str(), std::ios::binary);

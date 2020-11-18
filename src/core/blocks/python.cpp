@@ -8,7 +8,7 @@
 #include <boost/process.hpp>
 
 #include "shared.hpp"
-#include <ghc/filesystem.hpp>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 
 #if defined(__linux__) || defined(__APPLE__)
@@ -1014,7 +1014,7 @@ struct Py {
       Env::_listAppend(path, pyp.get());
     }
 
-    namespace fs = ghc::filesystem;
+    namespace fs = std::filesystem;
 
     auto scriptName = _scriptName;
     std::replace(scriptName.begin(), scriptName.end(), '.', '/');
