@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <algorithm>
 
 
 #define CHECK_ARGS_IS(expected) \
