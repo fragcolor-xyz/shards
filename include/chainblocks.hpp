@@ -815,7 +815,7 @@ public:
 
     std::vector<Var> vars = {Var(params)...};
     for (size_t i = 0; i < vars.size(); i++) {
-      blk->setParam(blk, i, vars[i]);
+      blk->setParam(blk, int(i), vars[i]);
     }
 
     _blocks.push_back(blk);

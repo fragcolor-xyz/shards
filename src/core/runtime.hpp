@@ -1290,7 +1290,7 @@ struct Serialization {
     case CBType::ContextVar: {
       uint32_t len = input.payload.stringLen > 0
                          ? input.payload.stringLen
-                         : strlen(input.payload.stringValue);
+                         : uint32_t(strlen(input.payload.stringValue));
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
       write((const uint8_t *)input.payload.stringValue, len);
@@ -1371,7 +1371,7 @@ struct Serialization {
       auto blk = input.payload.blockValue;
       // name
       auto name = blk->name(blk);
-      uint32_t len = strlen(name);
+      uint32_t len = uint32_t(strlen(name));
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
       write((const uint8_t *)name, len);

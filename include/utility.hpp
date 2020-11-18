@@ -193,7 +193,7 @@ public:
       clabels.emplace_back(s.c_str());
     }
     info.labels.elements = &clabels[0];
-    info.labels.len = labels.size();
+    info.labels.len = uint32_t(labels.size());
     CB_CORE::registerEnumType(vendorId, enumId, info);
   }
 };
@@ -259,7 +259,7 @@ public:
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
     _blocks.elements = &_blocksArray[0];
-    _blocks.len = _blocksArray.size();
+    _blocks.len = uint32_t(_blocksArray.size());
 
     return _blocksParam;
   }

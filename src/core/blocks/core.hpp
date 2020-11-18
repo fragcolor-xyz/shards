@@ -2460,7 +2460,7 @@ struct Slice {
       CBVar output{};
       output.valueType = Bytes;
       output.payload.bytesValue = &input.payload.bytesValue[from];
-      output.payload.bytesSize = len;
+      output.payload.bytesSize = uint32_t(len);
       return output;
     } else if (_step > 1) {
       const auto actualLen = len / _step + (len % _step != 0);
@@ -2470,7 +2470,7 @@ struct Slice {
         _cachedBytes[idx] = input.payload.bytesValue[i];
         idx++;
       }
-      return Var(&_cachedBytes.front(), actualLen);
+      return Var(&_cachedBytes.front(), uint32_t(actualLen));
     } else {
       throw ActivationError("Slice's Step must be greater then 0");
     }
@@ -2503,11 +2503,11 @@ struct Slice {
       CBVar output{};
       output.valueType = Seq;
       output.payload.seqValue.elements = &input.payload.seqValue.elements[from];
-      output.payload.seqValue.len = len;
+      output.payload.seqValue.len = uint32_t(len);
       return output;
     } else if (_step > 1) {
       const auto actualLen = len / _step + (len % _step != 0);
-      chainblocks::arrayResize(_cachedSeq, actualLen);
+      chainblocks::arrayResize(_cachedSeq, uint32_t(actualLen));
       auto idx = 0;
       for (auto i = from; i < to; i += _step) {
         cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
@@ -2582,7 +2582,7 @@ struct Limit {
     } else {
       // Else it's a seq
       auto nindices = (uint64_t)std::max((int64_t)0, std::min(inputLen, _max));
-      chainblocks::arrayResize(_cachedResult, nindices);
+      chainblocks::arrayResize(_cachedResult, uint32_t(nindices));
       for (uint64_t i = 0; i < nindices; i++) {
         _cachedResult.elements[i] = input.payload.seqValue.elements[i];
       }
