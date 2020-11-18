@@ -620,8 +620,8 @@ struct Window : public Base {
     if (_posX.valueType == Int && _posY.valueType == Int) {
       if ((_curX != _posX.payload.intValue) ||
           (_curY != _posY.payload.intValue)) {
-        _curX = _posX.payload.intValue;
-        _curY = _posY.payload.intValue;
+        _curX = int(_posX.payload.intValue);
+        _curY = int(_posY.payload.intValue);
         ImVec2 pos = {float(_curX), float(_curY)};
         ::ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
       }
@@ -631,8 +631,8 @@ struct Window : public Base {
     if (_width.valueType == Int && _height.valueType == Int) {
       if ((_curW != _width.payload.intValue) ||
           (_curH != _height.payload.intValue)) {
-        _curW = _width.payload.intValue;
-        _curH = _height.payload.intValue;
+        _curW = int(_width.payload.intValue);
+        _curH = int(_height.payload.intValue);
         ImVec2 size = {float(_curW), float(_curH)};
         ::ImGui::SetNextWindowSize(size, ImGuiCond_Always);
       }

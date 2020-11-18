@@ -108,10 +108,10 @@ struct BaseWindow : public Base {
       _title = value.payload.stringValue;
       break;
     case 1:
-      _width = value.payload.intValue;
+      _width = int(value.payload.intValue);
       break;
     case 2:
-      _height = value.payload.intValue;
+      _height = int(value.payload.intValue);
       break;
     default:
       break;

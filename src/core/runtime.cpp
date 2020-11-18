@@ -2119,7 +2119,12 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
   memset(arr.elements + arr.len, 0x0, size);
 
-  arr.cap = min_cap;
+  if(min_cap > UINT32_MAX) {
+    // this is the case for now for many reasons, but should be just fine
+    LOG(FATAL) << "Int array overflow, we don't support more then UINT32_MAX.";
+    abort();
+  }
+  arr.cap = uint32_t(min_cap);
 }
 
 NO_INLINE void _destroyVarSlow(CBVar &var) {
@@ -2145,7 +2150,7 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
 NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   switch (src.valueType) {
   case Seq: {
-    size_t srcLen = src.payload.seqValue.len;
+    uint32_t srcLen = src.payload.seqValue.len;
 
     // try our best to re-use memory
     if (dst.valueType != Seq) {
@@ -2157,7 +2162,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       return;
 
     chainblocks::arrayResize(dst.payload.seqValue, srcLen);
-    for (size_t i = 0; i < srcLen; i++) {
+    for (uint32_t i = 0; i < srcLen; i++) {
       const auto &subsrc = src.payload.seqValue.elements[i];
       cloneVar(dst.payload.seqValue.elements[i], subsrc);
     }
@@ -2166,7 +2171,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case ContextVar:
   case String: {
     auto srcSize = src.payload.stringLen > 0 ? src.payload.stringLen
-                                             : strlen(src.payload.stringValue);
+                                             : uint32_t(strlen(src.payload.stringValue));
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
@@ -2183,7 +2188,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
            srcSize);
     ((char *)dst.payload.stringValue)[srcSize] = 0;
     // fill the optional len field
-    dst.payload.stringLen = uint32_t(srcSize);
+    dst.payload.stringLen = srcSize;
   } break;
   case Image: {
     auto spixsize = 1;
@@ -2267,7 +2272,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
            src.payload.bytesSize);
   } break;
   case CBType::Array: {
-    size_t srcLen = src.payload.arrayValue.len;
+    auto srcLen = src.payload.arrayValue.len;
 
     // try our best to re-use memory
     if (dst.valueType != Array) {

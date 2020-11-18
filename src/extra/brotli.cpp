@@ -46,7 +46,7 @@ struct Compress {
     }
     auto len = reinterpret_cast<uint32_t *>(&_buffer.front());
     *len = input.payload.bytesSize;
-    return Var((uint8_t *)&_buffer[0], int64_t(outputLen + sizeof(uint32_t)));
+    return Var((uint8_t *)&_buffer[0], uint32_t(outputLen + sizeof(uint32_t)));
   }
 };
 
@@ -67,7 +67,7 @@ struct Decompress {
       throw ActivationError("Failed to decompress");
     }
     _buffer[*len] = 0;
-    return Var((uint8_t *)&_buffer[0], int64_t(*len));
+    return Var((uint8_t *)&_buffer[0], uint32_t(*len));
   }
 };
 
