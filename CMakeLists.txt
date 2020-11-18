@@ -212,6 +212,7 @@ endif()
 if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
+  include_directories(/usr/local/include/boost)
 endif()
 ###
 
@@ -367,6 +368,8 @@ endif()
 
 if(EMSCRIPTEN)
   set(EXTRA_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+elseif(IOS)
+  set(EXTRA_CMAKE_ARGS -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
 endif()
 
 ### runtime
@@ -446,16 +449,18 @@ if(NOT BUILD_CORE_ONLY)
     set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
   endif()
 
-  ExternalProject_Add(sdl_a
-    URL ${CHAINBLOCKS_DIR}/deps/SDL
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
-    BUILD_BYPRODUCTS ${libsdlfile}
-  )
+  if(NOT IOS)
+    ExternalProject_Add(sdl_a
+      URL ${CHAINBLOCKS_DIR}/deps/SDL
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
+      BUILD_BYPRODUCTS ${libsdlfile}
+    )
 
-  add_library(libsdl STATIC IMPORTED GLOBAL)
-  set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${libsdlfile})
-  add_dependencies(libsdl sdl_a)
+    add_library(libsdl STATIC IMPORTED GLOBAL)
+    set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${libsdlfile})
+    add_dependencies(libsdl sdl_a)
+  endif()
 
   if(WIN32)
     add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
@@ -631,7 +636,7 @@ if(NOT BUILD_CORE_ONLY)
 
   ExternalProject_Add(snappy_a
     GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
-    GIT_TAG           6a2f4856a5435a49a4fd89edc93d2b3af6d05d17
+    GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
     CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
@@ -651,7 +656,8 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
     GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
+    CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
+    BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a

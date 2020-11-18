@@ -266,6 +266,22 @@ jobs:
         ./cbl ../src/tests/bigint.clj
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
+
+  ciMacIOS:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Deps
+      run: |
+        sudo xcode-select --switch /Applications/Xcode.app
+        brew install boost cmake clang-format
+    - name: Build
+      run: |
+        git submodule update --init --recursive
+        mkdir build
+        cd build
+        cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS ..
+        xcodebuild -target cb_static
   
   rustBuild:
     needs: ciLinuxRel
