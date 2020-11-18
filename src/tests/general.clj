@@ -522,7 +522,7 @@
    "." (FS.Iterate :Recursive false) (Log)
    (Take 4) (FS.Filename :NoExtension true) (Log)
 
-   "./src" (FS.Iterate :Recursive true) (Log)
+   "../src" (FS.Iterate :Recursive true) (Log)
    (Take 4) (FS.Extension) (Log)
 
    "The result is: "   (Set "text1")
