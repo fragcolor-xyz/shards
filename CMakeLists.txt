@@ -552,13 +552,25 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     if(IOS)
-      set(PLATFORM_SOURCES 
-        ${PLATFORM_SOURCES}
-        ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
-        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
-        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
-        ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
+      enable_language(ASM)
+      
+      if(X86)
+        set(PLATFORM_SOURCES 
+          ${PLATFORM_SOURCES}
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
+        )
+      else()
+        set(PLATFORM_SOURCES 
+          ${PLATFORM_SOURCES}
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_arm64_aapcs_macho_gas.S
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_arm64_aapcs_macho_gas.S
+          ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_arm64_aapcs_macho_gas.S
       )
+      endif()
     endif()
 
     set(CBLP_PLATFORM_LIBS

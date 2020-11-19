@@ -2119,7 +2119,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
   memset(arr.elements + arr.len, 0x0, size);
 
-  if(min_cap > UINT32_MAX) {
+  if (min_cap > UINT32_MAX) {
     // this is the case for now for many reasons, but should be just fine
     LOG(FATAL) << "Int array overflow, we don't support more then UINT32_MAX.";
     abort();
@@ -2170,8 +2170,9 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Path:
   case ContextVar:
   case String: {
-    auto srcSize = src.payload.stringLen > 0 ? src.payload.stringLen
-                                             : uint32_t(strlen(src.payload.stringValue));
+    auto srcSize = src.payload.stringLen > 0
+                       ? src.payload.stringLen
+                       : uint32_t(strlen(src.payload.stringValue));
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
