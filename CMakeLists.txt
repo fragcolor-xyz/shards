@@ -370,6 +370,9 @@ if(EMSCRIPTEN)
   set(EXTRA_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
 elseif(IOS)
   set(EXTRA_CMAKE_ARGS -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
+  if(X86_IOS_SIMULATOR)
+    set(EXTRA_CMAKE_BUILD_ARGS -- ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -sdk iphonesimulator)
+  endif()
 endif()
 
 ### runtime
@@ -554,7 +557,7 @@ if(NOT BUILD_CORE_ONLY)
     if(IOS)
       enable_language(ASM)
       
-      if(X86)
+      if(X86 OR X86_IOS_SIMULATOR)
         set(PLATFORM_SOURCES 
           ${PLATFORM_SOURCES}
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
@@ -651,6 +654,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
     CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+    BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
     )
@@ -669,7 +673,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
     CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
-    BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static
+    BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a

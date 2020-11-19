@@ -275,13 +275,20 @@ jobs:
       run: |
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake clang-format
-    - name: Build
+    - name: Build Device
       run: |
         git submodule update --init --recursive
         mkdir build
         cd build
         cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS ..
         xcodebuild -target cb_static
+    - name: Build Simulator x86
+      run: |
+        git submodule update --init --recursive
+        mkdir build-sim-x86
+        cd build-sim-x86
+        cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" ..
+        xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -sdk iphonesimulator -target cb_static
   
   rustBuild:
     needs: ciLinuxRel
