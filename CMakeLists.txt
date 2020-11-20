@@ -369,19 +369,21 @@ endif()
 if(EMSCRIPTEN)
   set(EXTRA_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
 elseif(IOS)
+  add_compile_definitions(CB_NO_HTTP_BLOCKS=1)
   set(EXTRA_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
   if(X86_IOS_SIMULATOR)
-    set(EXTRA_CMAKE_BUILD_ARGS -- ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -sdk iphonesimulator)
+    set(EXTRA_CMAKE_BUILD_ARGS -- -sdk iphonesimulator -arch x86_64)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
       set(EXTRA_LIBS_DIR "Debug-iphonesimulator")
     else()
       set(EXTRA_LIBS_DIR "Release-iphonesimulator")
     endif()
   else()
+    set(EXTRA_CMAKE_BUILD_ARGS -- -sdk iphoneos -arch arm64)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      set(EXTRA_LIBS_DIR "Debug-iphone")
+      set(EXTRA_LIBS_DIR "Debug-iphoneos")
     else()
-      set(EXTRA_LIBS_DIR "Release-iphone")
+      set(EXTRA_LIBS_DIR "Release-iphoneos")
     endif()
   endif()
 endif()
@@ -429,52 +431,50 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc
     )
 
-  set(SDL-source-patterns
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/cpuinfo/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/events/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/file/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/power/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/render/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/render/software/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/stdlib/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/dummy/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/video/*.c
-    ${CHAINBLOCKS_DIR}/deps/SDL/src/video/dummy/*.c
-  )
-
-  file(GLOB SDL-sources ${SDL-source-patterns})
-
   if(WIN32)
     set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2-static.a)
+  elseif(X86_IOS_SIMULATOR)
+    set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/src/sdl_a/Xcode/SDL/build/Release-iphonesimulator/libSDL2.a)
+    add_link_options(-F${CMAKE_CURRENT_BINARY_DIR}/sdl_a/src/sdl_a/Xcode/SDL/build/Release-iphonesimulator)
+  elseif(IOS)
+    set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/src/sdl_a/Xcode/SDL/build/Release-iphoneos/libSDL2.a)
+    add_link_options(-F${CMAKE_CURRENT_BINARY_DIR}/sdl_a/src/sdl_a/Xcode/SDL/build/Release-iphoneos)
   else()
     set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
   endif()
-
-  if(NOT IOS)
+  
+  if(X86_IOS_SIMULATOR)
     ExternalProject_Add(sdl_a
       URL ${CHAINBLOCKS_DIR}/deps/SDL
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
+      CONFIGURE_COMMAND ""
+      BUILD_IN_SOURCE true
+      BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -target hidapi-iOS -sdk iphonesimulator -arch x86_64
+      INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${libsdlfile}
     )
-
-    add_library(libsdl STATIC IMPORTED GLOBAL)
-    set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${libsdlfile})
-    add_dependencies(libsdl sdl_a)
+  elseif(IOS)
+    ExternalProject_Add(sdl_a
+      URL ${CHAINBLOCKS_DIR}/deps/SDL
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+      CONFIGURE_COMMAND ""
+      BUILD_IN_SOURCE true
+      BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -target hidapi-iOS -sdk iphoneos -arch arm64
+      INSTALL_COMMAND ""
+      BUILD_BYPRODUCTS ${libsdlfile}
+  )
+  else()
+    ExternalProject_Add(sdl_a
+      URL ${CHAINBLOCKS_DIR}/deps/SDL
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/sdl_a
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/sdl_a ${EXTRA_CMAKE_ARGS}
+      BUILD_BYPRODUCTS ${libsdlfile}
+    )
   endif()
+
+  add_library(libsdl STATIC IMPORTED GLOBAL)
+  set_target_properties(libsdl PROPERTIES IMPORTED_LOCATION ${libsdlfile})
+  add_dependencies(libsdl sdl_a)
 
   if(WIN32)
     add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
@@ -508,26 +508,6 @@ if(NOT BUILD_CORE_ONLY)
   elseif(APPLE)  
     add_compile_definitions(BGFX_CONFIG_RENDERER_METAL SDL_VIDEO_OPENGL_EGL=0)
 
-    if(IOS)
-      file(GLOB SDL-extra-sources 
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/uikit/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/power/uikit/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/sensor/coremotion/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/iphoneos/*.m
-        )
-      add_compile_definitions(SDL_VIDEO_DRIVER_UIKIT=1 CB_NO_HTTP_BLOCKS=1 SDL_MAIN_HANDLED=1)
-    else()
-      file(GLOB SDL-extra-sources 
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.c
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/video/cocoa/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/coreaudio/*.m
-        ${CHAINBLOCKS_DIR}/deps/SDL/src/thread/pthread/*.c
-        )
-      add_compile_definitions(SDL_VIDEO_DRIVER_COCOA=1)
-    endif()
-
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/osx
       ${CHAINBLOCKS_DIR}/deps/SDL/include
@@ -535,33 +515,6 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(PLATFORM_SOURCES
-      ${SDL-sources}
-      ${SDL-extra-sources}
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_atomic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/atomic/SDL_spinlock.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/dynapi/SDL_dynapi.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/timer/unix/SDL_systimer.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/audio/disk/SDL_diskaudio.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/hidapi/mac/hid.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapijoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_gamecube.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_ps4.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_rumble.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_switch.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xbox360w.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/hidapi/SDL_hidapi_xboxone.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/virtual/SDL_virtualjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/joystick/darwin/SDL_sysjoystick.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/haptic/darwin/SDL_syshaptic.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/video/yuv2rgb/yuv_rgb.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/power/macosx/SDL_syspower.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/filesystem/cocoa/SDL_sysfilesystem.m
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/loadso/dlopen/SDL_sysloadso.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/SDL_locale.c
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/locale/macosx/SDL_syslocale.m
-      ${CHAINBLOCKS_DIR}/deps/SDL/src/file/cocoa/SDL_rwopsbundlesupport.m
-
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.mm
       )
 
@@ -595,15 +548,18 @@ if(NOT BUILD_CORE_ONLY)
       "-framework IOKit"
       "-framework QuartzCore"
       "-framework Metal"
+      -liconv
       )
     
     if(IOS)
       set(CBLP_PLATFORM_LIBS
           ${CBLP_PLATFORM_LIBS}
+          "-framework hidapi"
           "-framework AVFoundation"
           "-framework GameController"
           "-framework CoreMotion" 
-          "-framework CoreGraphics"     
+          "-framework CoreGraphics"
+          "-framework CoreHaptics"
           "-framework UIKit")
     else()
        set(CBLP_PLATFORM_LIBS
@@ -637,7 +593,7 @@ if(NOT BUILD_CORE_ONLY)
     ExternalProject_Add(glsl-optimizer_a
       URL     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer
       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
       BUILD_COMMAND cmake --build . --target glsl_optimizer glcpp-library mesa
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a 
@@ -664,7 +620,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
     GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-    CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
     BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
@@ -687,7 +643,7 @@ if(NOT BUILD_CORE_ONLY)
     GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
     GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
-    CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
     BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
     BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
@@ -833,7 +789,7 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS
 ###
 
 if(NOT BUILD_CORE_ONLY)
-  if(WIN32 OR (LINUX AND NOT EMSCRIPTEN))
+  if(NOT EMSCRIPTEN)
     # we link with emscripten SDL in the case of emscripten
     add_dependencies(cb_static sdl_a)
     add_dependencies(cb_shared sdl_a)

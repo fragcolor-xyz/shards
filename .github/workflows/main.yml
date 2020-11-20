@@ -281,12 +281,12 @@ jobs:
         mkdir build
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS ..
-        xcodebuild -target cb_static
+        xcodebuild -target cb_static -sdk iphoneos -arch arm64
     - name: Build Simulator x86
       run: |
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
-        xcodebuild ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO -sdk iphonesimulator -target cb_static
+        xcodebuild -target cb_static -sdk iphonesimulator -arch x86_64
   
   rustBuild:
     needs: ciLinuxRel
