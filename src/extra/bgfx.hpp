@@ -57,6 +57,15 @@ struct ShaderHandle {
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxShaderHandleCC}}}};
 
+  typedef ObjectVar<ShaderHandle> VarInfo;
+  static inline VarInfo Var{"BGFX-Shader", CoreCC, BgfxShaderHandleCC};
+
   bgfx::ShaderHandle handle = BGFX_INVALID_HANDLE;
+
+  ~ShaderHandle() {
+    if (handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handle);
+    }
+  }
 };
 }; // namespace BGFX

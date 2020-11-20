@@ -701,13 +701,19 @@ struct Shader {
 
   ParamVar _code;
   std::string _currentCode;
-  std::shared_ptr<ShaderHandle> _output{};
+  ShaderHandle *_output{nullptr};
 
   void setParam(int index, CBVar value) { _code = value; }
 
   CBVar getParam(int index) { return _code; }
 
-  void cleanup() { _code.cleanup(); }
+  void cleanup() {
+    _code.cleanup();
+    if (_output) {
+      ShaderHandle::Var.Reset(_output);
+      _output = nullptr;
+    }
+  }
 
   void warmup(CBContext *context) { _code.warmup(context); }
 
@@ -740,19 +746,18 @@ struct Shader {
         // load it into bgfx runtime
         auto mem = bgfx::copy(&writer.buffer.front(), writer.buffer.size());
 
-        _output.reset(new ShaderHandle(), [](ShaderHandle *shader) {
-          if (shader->handle.idx != bgfx::kInvalidHandle) {
-            bgfx::destroy(shader->handle);
-          }
-          delete shader;
-        });
+        if (_output) {
+          ShaderHandle::Var.Reset(_output);
+        }
+        _output = ShaderHandle::Var.New();
         _output->handle = bgfx::createShader(mem);
         if (_output->handle.idx == bgfx::kInvalidHandle) {
           throw ActivationError("Failed to create shader.");
         }
       });
     }
-    return Var::Object(&_output, CoreCC, BgfxShaderHandleCC);
+
+    return ShaderHandle::Var.Get(_output);
   }
 };
 
@@ -760,5 +765,6 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("BGFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("BGFX.Draw", Draw);
   REGISTER_CBLOCK("BGFX.Texture2D", Texture2D);
+  REGISTER_CBLOCK("BGFX.Shader", Shader);
 }
 }; // namespace BGFX
