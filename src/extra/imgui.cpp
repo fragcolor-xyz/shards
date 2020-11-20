@@ -1468,15 +1468,16 @@ struct Image : public Base {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
-    auto texture =
-        *reinterpret_cast<BGFX::Texture *>(input.payload.objectValue);
+
+    auto texture = reinterpret_cast<BGFX::Texture *>(input.payload.objectValue);
+
     if (!_trueSize) {
       ImVec2 size = _size;
-      size.x *= texture.width;
-      size.y *= texture.height;
-      ::ImGui::Image(texture.handle, size);
+      size.x *= texture->width;
+      size.y *= texture->height;
+      ::ImGui::Image(texture->handle, size);
     } else {
-      ::ImGui::Image(texture.handle, _size);
+      ::ImGui::Image(texture->handle, _size);
     }
     return input;
   }

@@ -705,6 +705,11 @@ struct InternalCore {
     chainblocks::registerEnumType(vendorId, enumId, info);
   }
 
+  static void registerObjectType(int32_t vendorId, int32_t objectId,
+                                 CBObjectInfo info) {
+    chainblocks::registerObjectType(vendorId, objectId, info);
+  }
+
   static CBComposeResult composeBlocks(CBlocks blocks,
                                        CBValidationCallback callback,
                                        void *userData, CBInstanceData data) {
@@ -732,6 +737,12 @@ template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E> {
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
       : TEnumInfo<InternalCore, E>(name, vendorId, enumId) {}
+};
+
+template <typename E> class ObjectVar : public TObjectVar<InternalCore, E> {
+public:
+  ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
+      : TObjectVar<InternalCore, E>(name, vendorId, objectId) {}
 };
 
 typedef TBlocksVar<InternalCore> BlocksVar;

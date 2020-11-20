@@ -198,6 +198,65 @@ public:
   }
 };
 
+template <class CB_CORE, typename E> class TObjectVar {
+private:
+  CBObjectInfo info;
+  int32_t vendorId;
+  int32_t typeId;
+
+  struct ObjectRef {
+    E shared;
+    uint32_t refcount;
+  };
+
+public:
+  TObjectVar(const char *name, int32_t vendorId, int32_t typeId)
+      : vendorId(vendorId), typeId(typeId) {
+    info.name = name;
+    info.reference = [](CBPointer ptr) {
+      auto p = reinterpret_cast<ObjectRef *>(ptr);
+      p->refcount++;
+    };
+    info.release = [](CBPointer ptr) {
+      auto p = reinterpret_cast<ObjectRef *>(ptr);
+      p->refcount--;
+      if (p->refcount == 0) {
+        delete p;
+      }
+    };
+    CB_CORE::registerObjectType(vendorId, typeId, info);
+  }
+
+  // the following methods are generally used by the block
+  // that creates the object, that's it.
+  // other blocks use regular referenceVariable etc.
+
+  E *New() {
+    auto r = new ObjectRef();
+    r->refcount = 1;
+    return &r->shared;
+  }
+
+  void Reset(E *obj) {
+    auto r = reinterpret_cast<ObjectRef *>(obj);
+    r->refcount--;
+    if (r->refcount == 0) {
+      delete r;
+    }
+  }
+
+  CBVar Get(E *obj) {
+    CBVar res;
+    res.valueType = CBType::Object;
+    res.payload.objectValue = obj;
+    res.payload.objectVendorId = vendorId;
+    res.payload.objectTypeId = typeId;
+    res.flags = CBVAR_FLAGS_USES_OBJINFO;
+    res.objectInfo = &info;
+    return res;
+  }
+};
+
 template <class CB_CORE> class TBlocksVar {
 private:
   CBVar _blocksParam{}; // param cache

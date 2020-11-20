@@ -9,6 +9,9 @@
 
 namespace bgfx {
 int compileShader(int _argc, const char *_argv[]);
+bool compileShader(const char *_varying, const char *_comment, char *_shader,
+                   uint32_t _shaderLen, Options &_options,
+                   bx::WriterI *_writer);
 #if !defined(__linux__) && !defined(__EMSCRIPTEN__)
 bool compileGLSLShader(const Options &_options, uint32_t _version,
                        const std::string &_code, bx::WriterI *_writer) {
@@ -449,92 +452,92 @@ chainblocks::ImGui::Context _imgui_context{};
 int32_t _wheelScroll = 0;
 
 void cleanup() {
-  _imgui_context.Reset();
+_imgui_context.Reset();
 
-  if (_initDone) {
-    if (bgfx::isValid(_frameBuffer)) {
-      bgfx::destroy(_frameBuffer);
-    }
-    SDL_DestroyWindow(_window);
-    _window = nullptr;
-    _sdlWinVar = nullptr;
-    _sysWnd = nullptr;
-    _initDone = false;
-    _wheelScroll = 0;
+if (_initDone) {
+  if (bgfx::isValid(_frameBuffer)) {
+    bgfx::destroy(_frameBuffer);
   }
+  SDL_DestroyWindow(_window);
+  _window = nullptr;
+  _sdlWinVar = nullptr;
+  _sysWnd = nullptr;
+  _initDone = false;
+  _wheelScroll = 0;
+}
 }
 
 CBVar activate(CBContext *context, const CBVar &input) {
-  if (!_initDone) {
-    SDL_SysWMinfo winInfo{};
-    SDL_version sdlVer{};
-    Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
-    _window =
-        SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                         SDL_WINDOWPOS_CENTERED, _width, _height, flags);
-    SDL_VERSION(&sdlVer);
-    winInfo.version = sdlVer;
-    if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-      throw ActivationError("Failed to call SDL_GetWindowWMInfo");
-    }
+if (!_initDone) {
+  SDL_SysWMinfo winInfo{};
+  SDL_version sdlVer{};
+  Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
+  _window =
+      SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
+                       SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+  SDL_VERSION(&sdlVer);
+  winInfo.version = sdlVer;
+  if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
+    throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+  }
 
 #ifdef __APPLE__
-    _sysWnd = winInfo.info.cocoa.window;
+  _sysWnd = winInfo.info.cocoa.window;
 #elif defined(_WIN32)
-    _sysWnd = winInfo.info.win.window;
+  _sysWnd = winInfo.info.win.window;
 #endif
-    _frameBuffer = bgfx::createFrameBuffer(_sysWnd, _width, _height);
+  _frameBuffer = bgfx::createFrameBuffer(_sysWnd, _width, _height);
 
-    bgfx::setViewRect(_viewId, 0, 0, _width, _height);
-    bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                       0x303030FF, 1.0f, 0);
+  bgfx::setViewRect(_viewId, 0, 0, _width, _height);
+  bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                     0x303030FF, 1.0f, 0);
 
-    _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
-    _imguiCtx = findVariable(context, "ImGui.Context");
+  _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
+  _imguiCtx = findVariable(context, "ImGui.Context");
 
-    _initDone = true;
+  _initDone = true;
+}
+
+// Set them always as they might override each other during the chain
+*_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
+*_imguiCtx = Var::Object(&_imgui_context, CoreCC,
+                         chainblocks::ImGui::ImGuiContextCC);
+
+// Touch view 0
+bgfx::touch(_viewId);
+
+_imgui_context.Set();
+
+// Draw imgui and deal with inputs
+int32_t mouseX, mouseY;
+uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
+uint8_t imbtns = 0;
+if (mouseBtns & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+  imbtns = imbtns | IMGUI_MBUT_LEFT;
+}
+if (mouseBtns & SDL_BUTTON(SDL_BUTTON_RIGHT)) {
+  imbtns = imbtns | IMGUI_MBUT_RIGHT;
+}
+if (mouseBtns & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
+  imbtns = imbtns | IMGUI_MBUT_MIDDLE;
+}
+
+// find mouse wheel events
+for (auto &event : MainWindow::sdlEvents) {
+  if (event.type == SDL_MOUSEWHEEL) {
+    _wheelScroll += event.wheel.y;
+    // This is not needed seems.. not even on MacOS Natural On/Off
+    // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+    //   _wheelScroll += event.wheel.y;
+    // else
+    //   _wheelScroll -= event.wheel.y;
   }
+}
 
-  // Set them always as they might override each other during the chain
-  *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
-  *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
-                           chainblocks::ImGui::ImGuiContextCC);
+imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height,
+                _viewId);
 
-  // Touch view 0
-  bgfx::touch(_viewId);
-
-  _imgui_context.Set();
-
-  // Draw imgui and deal with inputs
-  int32_t mouseX, mouseY;
-  uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
-  uint8_t imbtns = 0;
-  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_LEFT)) {
-    imbtns = imbtns | IMGUI_MBUT_LEFT;
-  }
-  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_RIGHT)) {
-    imbtns = imbtns | IMGUI_MBUT_RIGHT;
-  }
-  if (mouseBtns & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
-    imbtns = imbtns | IMGUI_MBUT_MIDDLE;
-  }
-
-  // find mouse wheel events
-  for (auto &event : MainWindow::sdlEvents) {
-    if (event.type == SDL_MOUSEWHEEL) {
-      _wheelScroll += event.wheel.y;
-      // This is not needed seems.. not even on MacOS Natural On/Off
-      // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-      //   _wheelScroll += event.wheel.y;
-      // else
-      //   _wheelScroll -= event.wheel.y;
-    }
-  }
-
-  imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height,
-                  _viewId);
-
-  return input;
+return input;
 }
 };
 */
@@ -552,17 +555,13 @@ struct Draw : public BaseConsumer {
 };
 
 struct Texture2D : public BaseConsumer {
-  Texture _texture;
+  Texture *_texture{nullptr};
 
   void cleanup() {
-    if (_texture.handle.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_texture.handle);
-      _texture.handle = BGFX_INVALID_HANDLE;
+    if (_texture) {
+      Texture::Var.Reset(_texture);
+      _texture = nullptr;
     }
-    _texture.width = 0;
-    _texture.height = 0;
-    _texture.channels = 0;
-    _texture.bpp = 1;
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
@@ -579,55 +578,56 @@ struct Texture2D : public BaseConsumer {
       bpp = 4;
 
     // Upload a completely new image if sizes changed, also first activation!
-    if (input.payload.imageValue.width != _texture.width ||
-        input.payload.imageValue.height != _texture.height ||
-        input.payload.imageValue.channels != _texture.channels ||
-        bpp != _texture.bpp) {
-      if (_texture.handle.idx != bgfx::kInvalidHandle) {
-        bgfx::destroy(_texture.handle);
+    if (!_texture || input.payload.imageValue.width != _texture->width ||
+        input.payload.imageValue.height != _texture->height ||
+        input.payload.imageValue.channels != _texture->channels ||
+        bpp != _texture->bpp) {
+      if (_texture) {
+        Texture::Var.Reset(_texture);
       }
+      _texture = Texture::Var.New();
 
-      _texture.width = input.payload.imageValue.width;
-      _texture.height = input.payload.imageValue.height;
-      _texture.channels = input.payload.imageValue.channels;
-      _texture.bpp = bpp;
+      _texture->width = input.payload.imageValue.width;
+      _texture->height = input.payload.imageValue.height;
+      _texture->channels = input.payload.imageValue.channels;
+      _texture->bpp = bpp;
 
-      if (_texture.bpp == 1) {
-        switch (_texture.channels) {
+      if (_texture->bpp == 1) {
+        switch (_texture->channels) {
         case 1:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::R8);
           break;
         case 2:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RG8);
           break;
         case 3:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RGB8);
           break;
         case 4:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RGBA8);
           break;
         default:
           cbassert(false);
           break;
         }
-      } else if (_texture.bpp == 2) {
-        switch (_texture.channels) {
+      } else if (_texture->bpp == 2) {
+        switch (_texture->channels) {
         case 1:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::R16U);
           break;
         case 2:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RG16U);
           break;
         case 3:
@@ -635,24 +635,24 @@ struct Texture2D : public BaseConsumer {
                                 "RGB16, try using RGBA16 instead (FillAlpha).");
           break;
         case 4:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RGBA16U);
           break;
         default:
           cbassert(false);
           break;
         }
-      } else if (_texture.bpp == 4) {
-        switch (_texture.channels) {
+      } else if (_texture->bpp == 4) {
+        switch (_texture->channels) {
         case 1:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::R32F);
           break;
         case 2:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RG32F);
           break;
         case 3:
@@ -661,8 +661,8 @@ struct Texture2D : public BaseConsumer {
               "RGBA32F instead (FillAlpha).");
           break;
         case 4:
-          _texture.handle =
-              bgfx::createTexture2D(_texture.width, _texture.height, false, 1,
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
                                     bgfx::TextureFormat::RGBA32F);
           break;
         default:
@@ -677,13 +677,82 @@ struct Texture2D : public BaseConsumer {
     // this copy is internally managed
     auto mem =
         bgfx::copy(input.payload.imageValue.data,
-                   uint32_t(_texture.width) * uint32_t(_texture.height) *
-                       uint32_t(_texture.channels) * uint32_t(_texture.bpp));
+                   uint32_t(_texture->width) * uint32_t(_texture->height) *
+                       uint32_t(_texture->channels) * uint32_t(_texture->bpp));
 
-    bgfx::updateTexture2D(_texture.handle, 0, 0, 0, 0, _texture.width,
-                          _texture.height, mem);
+    bgfx::updateTexture2D(_texture->handle, 0, 0, 0, 0, _texture->width,
+                          _texture->height, mem);
 
-    return Var::Object(&_texture, CoreCC, BgfxTextureHandleCC);
+    return Texture::Var.Get(_texture);
+  }
+};
+
+struct Shader {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Code",
+       "The shader code string or string variable. If variable the code will "
+       "check checked on every activation for changes, if it has changed will "
+       "be reloaded.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  ParamVar _code;
+  std::string _currentCode;
+  std::shared_ptr<ShaderHandle> _output{};
+
+  void setParam(int index, CBVar value) { _code = value; }
+
+  CBVar getParam(int index) { return _code; }
+
+  void cleanup() { _code.cleanup(); }
+
+  void warmup(CBContext *context) { _code.warmup(context); }
+
+  struct Writer : bx::WriterI {
+    std::vector<uint8_t> buffer;
+    virtual ~Writer() {}
+    virtual int32_t write(const void *_data, int32_t _size, bx::Error *_err) {}
+  };
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto &code = _code.get();
+    const auto code_view =
+        code.payload.stringLen > 0
+            ? std::string_view(code.payload.stringValue, code.payload.stringLen)
+            : std::string_view(code.payload.stringValue);
+    if (_currentCode != code_view) {
+      await(context, [&]() {
+        const size_t padding = 16384; // hard-coded in shaderc.cpp
+        char *data = new char[code_view.size() + padding + 1];
+        memcpy(data, code_view.data(), code_view.size());
+        bgfx::Options options{};
+        Writer writer{};
+        if (!bgfx::compileShader(nullptr, nullptr, data, code_view.size(),
+                                 options, &writer)) {
+          // in this case we also have to free the buffer
+          delete[] data;
+          throw ActivationError("Failed to compile shader.");
+        }
+
+        // load it into bgfx runtime
+        auto mem = bgfx::copy(&writer.buffer.front(), writer.buffer.size());
+
+        _output.reset(new ShaderHandle(), [](ShaderHandle *shader) {
+          if (shader->handle.idx != bgfx::kInvalidHandle) {
+            bgfx::destroy(shader->handle);
+          }
+          delete shader;
+        });
+        _output->handle = bgfx::createShader(mem);
+        if (_output->handle.idx == bgfx::kInvalidHandle) {
+          throw ActivationError("Failed to create shader.");
+        }
+      });
+    }
+    return Var::Object(&_output, CoreCC, BgfxShaderHandleCC);
   }
 };
 

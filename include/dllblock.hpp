@@ -368,6 +368,12 @@ public:
       : TEnumInfo<Core, E>(name, vendorId, enumId) {}
 };
 
+template <typename E> class ObjectVar : public TObjectVar<Core, E> {
+public:
+  ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
+      : TObjectVar<Core, E>(name, vendorId, objectId) {}
+};
+
 inline void registerBlock(const char *fullName, CBBlockConstructor constructor,
                           std::string_view _) {
   Core::registerBlock(fullName, constructor);
