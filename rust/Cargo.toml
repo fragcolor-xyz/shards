@@ -24,6 +24,7 @@ ctor = "0.1.16"
 
 [build-dependencies]
 bindgen = "0.55.1"
+cmake = "0.1.45"
 
 [features]
 default = []
