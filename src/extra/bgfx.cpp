@@ -687,74 +687,156 @@ struct Texture2D : public BaseConsumer {
   }
 };
 
-struct Shader {
+template <char SHADER_TYPE> struct Shader {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters params{
+  static inline Parameters f_v_params{
+      {{"Varying"},
+       {"The input/output semantics to be generated."},
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
       {"Code",
        "The shader code string or string variable. If variable the code will "
        "check checked on every activation for changes, if it has changed will "
        "be reloaded.",
        {CoreInfo::StringType, CoreInfo::StringVarType}}};
-  static CBParametersInfo parameters() { return params; }
 
+  static inline Parameters c_params{
+      {"Code",
+       "The shader code string or string variable. If variable the code will "
+       "check checked on every activation for changes, if it has changed will "
+       "be reloaded.",
+       {CoreInfo::StringType, CoreInfo::StringVarType}}};
+
+  static CBParametersInfo parameters() {
+    if constexpr (SHADER_TYPE == 'c') {
+      return c_params;
+    } else {
+      return f_v_params;
+    }
+  }
+
+  ParamVar _varying;
   ParamVar _code;
+  std::string _currentVarying;
   std::string _currentCode;
   ShaderHandle *_output{nullptr};
 
-  void setParam(int index, CBVar value) { _code = value; }
+  void setParam(int index, CBVar value) {
+    if constexpr (SHADER_TYPE == 'c') {
+      switch (index) {
+      case 0:
+        _code = value;
+        break;
+      default:
+        break;
+      }
+    } else {
+      switch (index) {
+      case 0:
+        _varying = value;
+        break;
+      case 1:
+        _code = value;
+        break;
+      default:
+        break;
+      }
+    }
+  }
 
-  CBVar getParam(int index) { return _code; }
+  CBVar getParam(int index) {
+    if constexpr (SHADER_TYPE == 'c') {
+      switch (index) {
+      case 0:
+        return _code;
+      default:
+        return Var::Empty;
+      }
+    } else {
+      switch (index) {
+      case 0:
+        return _varying;
+      case 1:
+        return _code;
+      default:
+        return Var::Empty;
+      }
+    }
+  }
 
   void cleanup() {
+    _varying.cleanup();
     _code.cleanup();
+
     if (_output) {
       ShaderHandle::Var.Reset(_output);
       _output = nullptr;
     }
   }
 
-  void warmup(CBContext *context) { _code.warmup(context); }
+  void warmup(CBContext *context) {
+    _varying.warmup(context);
+    _code.warmup(context);
+  }
 
   struct Writer : bx::WriterI {
     std::vector<uint8_t> buffer;
     virtual ~Writer() {}
-    virtual int32_t write(const void *_data, int32_t _size, bx::Error *_err) {}
+    virtual int32_t write(const void *_data, int32_t _size, bx::Error *_err) {
+      assert(false);
+      return 0;
+    }
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    const auto &varying = _varying.get();
+    const auto varying_view =
+        varying.payload.stringLen > 0
+            ? std::string_view(varying.payload.stringValue,
+                               varying.payload.stringLen)
+            : std::string_view(varying.payload.stringValue);
     const auto &code = _code.get();
     const auto code_view =
         code.payload.stringLen > 0
             ? std::string_view(code.payload.stringValue, code.payload.stringLen)
             : std::string_view(code.payload.stringValue);
-    if (_currentCode != code_view) {
-      await(context, [&]() {
-        const size_t padding = 16384; // hard-coded in shaderc.cpp
-        char *data = new char[code_view.size() + padding + 1];
-        memcpy(data, code_view.data(), code_view.size());
-        bgfx::Options options{};
-        Writer writer{};
-        if (!bgfx::compileShader(nullptr, nullptr, data, code_view.size(),
-                                 options, &writer)) {
-          // in this case we also have to free the buffer
-          delete[] data;
-          throw ActivationError("Failed to compile shader.");
-        }
+    if (_currentVarying != varying_view || _currentCode != code_view) {
+      // await(context, [&]() {
+      _currentVarying = varying_view;
+      _currentCode = code_view;
 
-        // load it into bgfx runtime
-        auto mem = bgfx::copy(&writer.buffer.front(), writer.buffer.size());
+      const size_t padding = 16384; // hard-coded in shaderc.cpp
+      char *data = new char[code_view.size() + padding + 1];
+      memcpy(data, code_view.data(), code_view.size());
+      data[code_view.size()] = '\n';
+      memset(&data[code_view.size() + 1], 0x0, padding);
+      bgfx::Options options{};
+      options.shaderType = SHADER_TYPE;
+#ifdef _WIN32
+      options.platform = "windows";
+      options.profile = "s_5";
+#endif
+      Writer writer{};
+      if (!bgfx::compileShader(varying_view.data(), nullptr, data,
+                               code_view.size(), options, &writer)) {
+        // in this case we also have to free the buffer
+        delete[] data;
+        throw ActivationError("Failed to compile shader.");
+      }
 
-        if (_output) {
-          ShaderHandle::Var.Reset(_output);
-        }
-        _output = ShaderHandle::Var.New();
-        _output->handle = bgfx::createShader(mem);
-        if (_output->handle.idx == bgfx::kInvalidHandle) {
-          throw ActivationError("Failed to create shader.");
-        }
-      });
+      // load it into bgfx runtime
+      auto mem = bgfx::copy(&writer.buffer.front(), writer.buffer.size());
+
+      if (_output) {
+        ShaderHandle::Var.Reset(_output);
+      }
+      _output = ShaderHandle::Var.New();
+      _output->handle = bgfx::createShader(mem);
+      if (_output->handle.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to create shader.");
+      }
+      // });
     }
 
     return ShaderHandle::Var.Get(_output);
@@ -765,6 +847,11 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("BGFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("BGFX.Draw", Draw);
   REGISTER_CBLOCK("BGFX.Texture2D", Texture2D);
-  REGISTER_CBLOCK("BGFX.Shader", Shader);
+  using PixelShader = Shader<'f'>;
+  REGISTER_CBLOCK("BGFX.PixelShader", PixelShader);
+  using VertexShader = Shader<'v'>;
+  REGISTER_CBLOCK("BGFX.VertexShader", VertexShader);
+  using ComputeShader = Shader<'c'>;
+  REGISTER_CBLOCK("BGFX.ComputeShader", ComputeShader);
 }
 }; // namespace BGFX
