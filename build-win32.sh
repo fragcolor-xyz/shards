@@ -9,6 +9,9 @@ rustup target add i686-pc-windows-gnu
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
+# hack to keep libclang.dll correct
+export PATH=/c/msys64/mingw32/bin:$PATH
+
 # setup libbacktrace
 cd deps/libbacktrace
 mkdir build
