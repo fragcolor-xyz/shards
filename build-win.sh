@@ -7,7 +7,7 @@ rustup update
 rustup target add x86_64-pc-windows-gnu
 rustup default stable-x86_64-pc-windows-gnu
 
-pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget mingw-w64-x86_64-python
+pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
 
 # setup libbacktrace
 cd deps/libbacktrace
@@ -43,7 +43,7 @@ echo "Running test: kdtree"
 echo "Running test: channels"
 ./cbl ../src/tests/channels.clj
 echo "Running test: pytest"
-PYTHONHOME=/c/msys64/mingw64 ./cbl ../src/tests/pytest.clj
+./cbl ../src/tests/pytest.clj
 echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"
