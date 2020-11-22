@@ -16,6 +16,7 @@ cd -
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 ..
+ninja rust_blocks
 ninja cbl
 
 echo "Running test: general"
