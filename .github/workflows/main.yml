@@ -138,6 +138,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -156,6 +159,11 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: i686-pc-windows-gnu
+        override: true
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -174,6 +182,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
@@ -188,6 +199,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: i686-pc-windows-gnu
     - run: |
         git submodule update --init --recursive
     - uses: chainblocks/setup-msys2@v2
