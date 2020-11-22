@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  ciWasmDbg:
+  WASM:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -39,7 +39,7 @@ jobs:
           build/cbl.js
           build/cbl.html
 
-  ciLinuxDbg:
+  Linux-Coverage:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -92,7 +92,7 @@ jobs:
         name: coverage
         path: coverage/output
 
-  ciLinuxRel:
+  Linux-Release-Docker:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -122,7 +122,7 @@ jobs:
         dockerfile: docker/linux/Dockerfile-runtime
         tags: "latest"
 
-  ciLinuxValgrind:
+  Linux-Valgrind:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -134,7 +134,7 @@ jobs:
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
 
-  ciWindowsRel:
+  Windows-Release:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -152,7 +152,7 @@ jobs:
         name: cbl-win64
         path: build/cbl.exe
 
-  ciWindowsRel32:
+  Windows-Release-32:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -170,7 +170,7 @@ jobs:
         name: cbl-win32
         path: build/cbl.exe
 
-  ciWindowsDbg:
+  Windows-Debug:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -184,7 +184,7 @@ jobs:
         path-type: inherit
     - run: msys2 ./build-win.sh Debug
 
-  ciWindowsDbg32:
+  Windows-Debug-32:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -198,8 +198,11 @@ jobs:
         path-type: inherit
     - run: msys2 ./build-win32.sh Debug
 
-  ciMacDbg:
+  macOS:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Deps
@@ -212,7 +215,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Debug ..
+        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
         ninja rust_blocks && ninja cbl
     - name: Test
       run: |
@@ -235,44 +238,7 @@ jobs:
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
 
-  ciMacRel:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deps
-      run: |
-        sudo xcode-select --switch /Applications/Xcode.app
-        brew install boost cmake ninja clang-format
-        rustup update
-    - name: Build
-      run: |
-        git submodule update --init --recursive
-        mkdir build
-        cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release ..
-        ninja rust_blocks && ninja cbl
-    - name: Test
-      run: |
-        cd build
-        ./cbl ../src/tests/general.clj
-        ./cbl ../src/tests/variables.clj
-        ./cbl ../src/tests/subchains.clj
-        ./cbl ../src/tests/linalg.clj
-        ./cbl ../src/tests/loader.clj
-        ./cbl ../src/tests/network.clj
-        ./cbl ../src/tests/struct.clj
-        ./cbl ../src/tests/flows.clj
-        ./cbl ../src/tests/kdtree.clj
-        ./cbl ../src/tests/channels.clj
-        ./cbl ../src/tests/genetic.clj
-        ./cbl ../src/tests/imaging.clj
-        ./cbl ../src/tests/http.clj
-        ./cbl ../src/tests/ws.clj
-        ./cbl ../src/tests/bigint.clj
-        ./cbl ../src/tests/brotli.clj
-        ./cbl ../src/tests/snappy.clj
-
-  ciMacIOS:
+  iOS:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
