@@ -6,7 +6,7 @@ set -e
 url="https://static.rust-lang.org/rustup/dist/i686-pc-windows-gnu/rustup-init.exe"
 wget "$url"	
 ./rustup-init -y -v --default-toolchain stable-i686-pc-windows-gnu --default-host i686-pc-windows-gnu
-export PATH=$PATH:$USERPROFILE/.cargo/bin
+export PATH=$PATH:/c/Users/runneradmin/.cargo/bin
 rustup --version
 cargo --version
 rustc --version
