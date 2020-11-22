@@ -163,12 +163,7 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-        path-type: inherit
     - run: msys2 ./build-win32.sh Release
-    - run: |
-        cd build
-        ninja rust_blocks
-        ninja cbl
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
@@ -199,7 +194,6 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-        path-type: inherit
     - run: msys2 ./build-win32.sh Debug
 
   macOS:

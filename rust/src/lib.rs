@@ -5,6 +5,7 @@
 #![allow(unused_macros)]
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
+#![allow(improper_ctypes_definitions)]
 
 #[macro_use]
 #[cfg(test)]
