@@ -3,6 +3,9 @@
 # fail on errors
 set -e
 
+rustup update
+rustup target add i686-pc-windows-gnu
+
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget mingw-w64-i686-python
 
 # setup libbacktrace
@@ -15,9 +18,8 @@ cd -
 
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 -DRUST_BUILD_OPTIONS="--target i686-pc-windows-gnu" ..
-ninja rust_blocks
-ninja cbl
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 ..
+ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
 ./cbl ../src/tests/general.clj

@@ -3,6 +3,9 @@
 # fail on errors
 set -e
 
+rustup update
+rustup target add x86_64-pc-windows-gnu
+
 pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget mingw-w64-x86_64-python
 
 # setup libbacktrace
@@ -16,8 +19,7 @@ cd -
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 ..
-ninja rust_blocks
-ninja cbl
+ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
 ./cbl ../src/tests/general.clj
