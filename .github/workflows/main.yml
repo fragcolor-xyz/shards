@@ -18,6 +18,8 @@ jobs:
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
+        rustup update
+        rustup target add wasm32-unknown-unknown
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
@@ -45,6 +47,7 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb
+        rustup update
     - name: Build
       run: |
         mkdir build
@@ -203,6 +206,7 @@ jobs:
       run: |
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake ninja clang-format
+        rustup update
     - name: Build
       run: |
         git submodule update --init --recursive
@@ -239,6 +243,7 @@ jobs:
       run: |
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake ninja clang-format
+        rustup update
     - name: Build
       run: |
         git submodule update --init --recursive
@@ -276,6 +281,7 @@ jobs:
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake clang-format
         git submodule update --init --recursive
+        rustup update
     - name: Build Device
       run: |
         mkdir build
