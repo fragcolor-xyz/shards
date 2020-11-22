@@ -142,12 +142,11 @@ jobs:
       run: |
         git submodule update --init --recursive
         rustup update
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         release: false
+        path-type: inherit
     - run: msys2 ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -163,12 +162,11 @@ jobs:
         git submodule update --init --recursive
         rustup update
         rustup target add i686-pc-windows-gnu
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
+        path-type: inherit
     - run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -183,12 +181,11 @@ jobs:
       run: |
         git submodule update --init --recursive
         rustup update
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         release: false
+        path-type: inherit
     - run: msys2 ./build-win.sh Debug
 
   ciWindowsDbg32:
@@ -200,12 +197,11 @@ jobs:
         git submodule update --init --recursive
         rustup update
         rustup target add i686-pc-windows-gnu
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
+        path-type: inherit
     - run: msys2 ./build-win32.sh Debug
 
   ciMacDbg:
