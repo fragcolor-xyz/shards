@@ -717,10 +717,20 @@ if(NOT BUILD_CORE_ONLY)
 
   # build rust blocks
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(RUST_BUILD_SUBDIR debug)
+    if(EMSCRIPTEN)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-unknown/debug)
+      set(RUST_BUILD_OPTIONS --target=wasm32-unknown-unknown) 
+    else()
+      set(RUST_BUILD_SUBDIR debug)
+    endif()
   else()
-    set(RUST_BUILD_SUBDIR release)
-    set(RUST_BUILD_OPTIONS --release)
+    if(EMSCRIPTEN)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-unknown/release)    
+      set(RUST_BUILD_OPTIONS --release --target=wasm32-unknown-unknown) 
+    else()
+      set(RUST_BUILD_SUBDIR release)
+      set(RUST_BUILD_OPTIONS --release)
+    endif()
   endif()
 
   add_custom_target(
