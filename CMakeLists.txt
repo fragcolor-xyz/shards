@@ -1,6 +1,4 @@
-# remember to use CMAKE_EXPORT_COMPILE_COMMAND=1 with Ninja, so clang tools work out of the box
-# you need to copy the .json file in the root directory
-# also CMAKE_BUILD_TYPE=Debug or so
+# This needs a huge refactor at some point...
 
 project("chainblocks")
 cmake_minimum_required(VERSION 3.14)
@@ -656,12 +654,10 @@ if(NOT BUILD_CORE_ONLY)
   if(IOS)
     set_target_properties(libbrotlicommon-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   else()
     set_target_properties(libbrotlicommon-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   endif()
 
@@ -670,12 +666,10 @@ if(NOT BUILD_CORE_ONLY)
   if(IOS)
     set_target_properties(libbrotlidec-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   else()
     set_target_properties(libbrotlidec-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   endif()
 
@@ -684,12 +678,10 @@ if(NOT BUILD_CORE_ONLY)
   if(IOS)
     set_target_properties(libbrotlienc-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   else()
     set_target_properties(libbrotlienc-static PROPERTIES 
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
-      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
       )
   endif()
 
@@ -731,28 +723,15 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_BUILD_OPTIONS --release)
   endif()
 
-  file(GLOB_RECURSE RUST_FILES ${CHAINBLOCKS_DIR}/rust/src/*.rs)
-  
-  # add_custom_command(
-  #   OUTPUT ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
-  #   COMMAND cargo build --features cb_static ${RUST_BUILD_OPTIONS}
-  #   WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
-  #   DEPENDS ${RUST_FILES}
-  #   BYPRODUCTS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
-  # )
-  # add_custom_target(rust_blocks DEPENDS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
   add_custom_target(
     rust_blocks
     COMMAND cargo build --features cb_static ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
-    BYPRODUCTS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
   )
 
   add_library(cb_rust_static STATIC IMPORTED GLOBAL)
   set_target_properties(cb_rust_static PROPERTIES IMPORTED_LOCATION ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
   add_dependencies(cb_rust_static rust_blocks)
- 
-  # set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
 endif()
 
 add_compile_definitions(REPLXX_STATIC)
@@ -840,45 +819,44 @@ if(NOT BUILD_CORE_ONLY)
 
   if(NOT EMSCRIPTEN)
     # we link with emscripten SDL in the case of emscripten
-    add_dependencies(cb_static sdl_a)
+    add_dependencies(cb_static libsdl)
     target_link_libraries(cb_static libsdl)
-    add_dependencies(cb_shared sdl_a)
+    add_dependencies(cb_shared libsdl)
     target_link_libraries(cb_shared libsdl)
-    set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  add_dependencies(cb_static snappy_a)
+  add_dependencies(cb_static libsnappy)
   target_link_libraries(cb_static libsnappy)
-  add_dependencies(cb_shared snappy_a)
+  add_dependencies(cb_shared libsnappy)
   target_link_libraries(cb_shared libsnappy)
 
-  add_dependencies(cb_static brotli_a)
+  add_dependencies(cb_static libbrotlidec-static)
   target_link_libraries(cb_static libbrotlidec-static)
-  add_dependencies(cb_shared brotli_a)
+  add_dependencies(cb_shared libbrotlidec-static)
   target_link_libraries(cb_shared libbrotlidec-static)
 
-  add_dependencies(cb_static brotli_a)
+  add_dependencies(cb_static libbrotlienc-static)
   target_link_libraries(cb_static libbrotlienc-static)
-  add_dependencies(cb_shared brotli_a)
+  add_dependencies(cb_shared libbrotlienc-static)
   target_link_libraries(cb_shared libbrotlienc-static)
 
-  add_dependencies(cb_static brotli_a)
+  add_dependencies(cb_static libbrotlicommon-static)
   target_link_libraries(cb_static libbrotlicommon-static)
-  add_dependencies(cb_shared brotli_a)
+  add_dependencies(cb_shared libbrotlicommon-static)
   target_link_libraries(cb_shared libbrotlicommon-static)
 
   if(LINUX)
-    add_dependencies(cb_static glsl-optimizer_a)
+    add_dependencies(cb_static libglsloptimizer)
     target_link_libraries(cb_static libglsloptimizer)
-    add_dependencies(cb_shared glsl-optimizer_a)
+    add_dependencies(cb_shared libglsloptimizer)
     target_link_libraries(cb_shared libglsloptimizer)
-    add_dependencies(cb_static glsl-optimizer_a)
+    add_dependencies(cb_static libglcpp)
     target_link_libraries(cb_static libglcpp)
-    add_dependencies(cb_shared glsl-optimizer_a)
+    add_dependencies(cb_shared libglcpp)
     target_link_libraries(cb_shared libglcpp)
-    add_dependencies(cb_static glsl-optimizer_a)
+    add_dependencies(cb_static libmesa)
     target_link_libraries(cb_static libmesa)
-    add_dependencies(cb_shared glsl-optimizer_a)
+    add_dependencies(cb_shared libmesa)
     target_link_libraries(cb_shared libmesa)
   endif()
 endif()
