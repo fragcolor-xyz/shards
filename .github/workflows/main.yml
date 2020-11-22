@@ -138,11 +138,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: chainblocks/toolchain@v1
-      with:
-        toolchain: stable
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
+        rustup update
     - uses: chainblocks/setup-msys2@v2
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -159,13 +158,11 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: chainblocks/toolchain@v1
-      with:
-        toolchain: stable
-        target: i686-pc-windows-gnu
-        override: true
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
+        rustup update
+        rustup target add i686-pc-windows-gnu
     - uses: chainblocks/setup-msys2@v2
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -182,11 +179,10 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: chainblocks/toolchain@v1
-      with:
-        toolchain: stable
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
+        rustup update
     - uses: chainblocks/setup-msys2@v2
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -199,12 +195,11 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: chainblocks/toolchain@v1
-      with:
-        toolchain: stable
-        target: i686-pc-windows-gnu
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
+        rustup update
+        rustup target add i686-pc-windows-gnu
     - uses: chainblocks/setup-msys2@v2
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
