@@ -23,7 +23,7 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Makefiles -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
         make -j10 cbl
     - name: Test
       run: |
@@ -49,7 +49,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Makefiles -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
         make -j10 cbl
     - name: Test
       run: |
@@ -107,7 +107,7 @@ jobs:
         tags: "latest"
     - name: Build and Test
       run: |
-        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Makefiles -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make -j10 cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G "Unix Makefiles" -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make -j10 cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
         mkdir build
         docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
     - uses: chainblocks/Publish-Docker-Github-Action@master
@@ -129,7 +129,7 @@ jobs:
         docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
     - name: Test
       run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Makefiles -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make -j10 cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
+        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G "Unix Makefiles" -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && make -j10 cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
 
   ciWindowsRel:
     runs-on: windows-latest
@@ -208,7 +208,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Makefiles -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Debug ..
+        cmake -G "Unix Makefiles" -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Debug ..
         make -j10 cbl
     - name: Test
       run: |
@@ -244,7 +244,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Makefiles -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release ..
+        cmake -G "Unix Makefiles" -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release ..
         make -j10 cbl
     - name: Test
       run: |
