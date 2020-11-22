@@ -138,7 +138,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - uses: chainblocks/toolchain@v1
       with:
         toolchain: stable
     - run: |
@@ -159,7 +159,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - uses: chainblocks/toolchain@v1
       with:
         toolchain: stable
         target: i686-pc-windows-gnu
@@ -182,7 +182,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - uses: chainblocks/toolchain@v1
       with:
         toolchain: stable
     - run: |
@@ -199,7 +199,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
+    - uses: chainblocks/toolchain@v1
       with:
         toolchain: stable
         target: i686-pc-windows-gnu
@@ -297,6 +297,8 @@ jobs:
         brew install boost cmake clang-format
         git submodule update --init --recursive
         rustup update
+        rustup target add x86_64-apple-ios
+        rustup target add aarch64-apple-ios
     - name: Build Device
       run: |
         mkdir build
@@ -308,13 +310,3 @@ jobs:
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
         xcodebuild -target cb_static -sdk iphonesimulator -arch x86_64
-  
-  rustBuild:
-    needs: ciLinuxRel
-    name: Rust check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Test
-        run: |
-          docker run --rm -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "sh rust/docker/run_linux.sh"
