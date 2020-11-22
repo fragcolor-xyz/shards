@@ -80,12 +80,9 @@ endif()
 
 if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
-  set(BASE_TESTING 1)
 endif()
 
 if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
-  # like like: -Wl,--whole-archive -lhttp -Wl,--no-whole-archive
-  # so to trigger global init and such, of course this is not ideal when deplying (size bloat!)
   set(CHAINBLOCKS_EXTRA_LINKS "")
 endif()
 
@@ -491,7 +488,7 @@ if(NOT BUILD_CORE_ONLY)
       )
 
     set(CBLP_PLATFORM_LIBS
-      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
+      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI -lUserenv
       )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -657,25 +654,43 @@ if(NOT BUILD_CORE_ONLY)
   add_library(libbrotlicommon-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlicommon-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlicommon-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a)
+    set_target_properties(libbrotlicommon-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   else()
-    set_target_properties(libbrotlicommon-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a)
+    set_target_properties(libbrotlicommon-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   endif()
 
   add_library(libbrotlidec-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlidec-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlidec-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a)
+    set_target_properties(libbrotlidec-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   else()
-    set_target_properties(libbrotlidec-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a)
+    set_target_properties(libbrotlidec-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   endif()
 
   add_library(libbrotlienc-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlienc-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlienc-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a)
+    set_target_properties(libbrotlienc-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   else()
-    set_target_properties(libbrotlienc-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a)
+    set_target_properties(libbrotlienc-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include
+      )
   endif()
 
   set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp)
@@ -707,6 +722,37 @@ if(NOT BUILD_CORE_ONLY)
 
     ${PLATFORM_SOURCES}
     )
+
+  # build rust blocks
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(RUST_BUILD_SUBDIR debug)
+  else()
+    set(RUST_BUILD_SUBDIR release)
+    set(RUST_BUILD_OPTIONS --release)
+  endif()
+
+  file(GLOB_RECURSE RUST_FILES ${CHAINBLOCKS_DIR}/rust/src/*.rs)
+  
+  # add_custom_command(
+  #   OUTPUT ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
+  #   COMMAND cargo build --features cb_static ${RUST_BUILD_OPTIONS}
+  #   WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
+  #   DEPENDS ${RUST_FILES}
+  #   BYPRODUCTS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
+  # )
+  # add_custom_target(rust_blocks DEPENDS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
+  add_custom_target(
+    rust_blocks
+    COMMAND cargo build --features cb_static ${RUST_BUILD_OPTIONS}
+    WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
+    BYPRODUCTS ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a
+  )
+
+  add_library(cb_rust_static STATIC IMPORTED GLOBAL)
+  set_target_properties(cb_rust_static PROPERTIES IMPORTED_LOCATION ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
+  add_dependencies(cb_rust_static rust_blocks)
+ 
+  # set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
 endif()
 
 add_compile_definitions(REPLXX_STATIC)
@@ -785,13 +831,17 @@ add_library(
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
-###
-###
 
 if(NOT BUILD_CORE_ONLY)
+  add_dependencies(cb_static cb_rust_static) 
+  target_link_libraries(cb_static cb_rust_static)
+  add_dependencies(cb_shared cb_rust_static)
+  target_link_libraries(cb_shared cb_rust_static)
+
   if(NOT EMSCRIPTEN)
     # we link with emscripten SDL in the case of emscripten
     add_dependencies(cb_static sdl_a)
+    target_link_libraries(cb_static libsdl)
     add_dependencies(cb_shared sdl_a)
     target_link_libraries(cb_shared libsdl)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)

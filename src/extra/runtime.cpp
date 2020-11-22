@@ -26,6 +26,8 @@ namespace Brotli {
 extern void registerBlocks();
 }
 
+extern "C" void registerRustBlocks(CBCore *core);
+
 void cbInitExtras() {
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
@@ -34,5 +36,6 @@ void cbInitExtras() {
 #endif
   Snappy::registerBlocks();
   Brotli::registerBlocks();
+  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
 }
 }; // namespace chainblocks

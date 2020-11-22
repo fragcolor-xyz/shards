@@ -83,17 +83,7 @@ mod internal_core_init {
 
 #[cfg(feature = "cb_static")]
 mod internal_core_init {
-    use crate::core::CBCore;
-    use crate::core::ABI_VERSION;
-    use crate::Core;
-
-    extern "C" {
-        fn chainblocksInterface(abi_version: u32) -> *mut CBCore;
-    }
-
-    pub unsafe fn initInternal() {
-        Core = chainblocksInterface(ABI_VERSION);
-    }
+    pub unsafe fn initInternal() {}
 }
 
 #[inline(always)]
