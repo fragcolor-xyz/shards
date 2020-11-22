@@ -3,13 +3,11 @@
 # fail on errors
 set -e
 
-url="https://static.rust-lang.org/rustup/dist/i686-pc-windows-gnu/rustup-init.exe"
-wget "$url"	
-./rustup-init -y -v --default-toolchain stable-i686-pc-windows-gnu --default-host i686-pc-windows-gnu
-export PATH=$PATH:/c/Users/runneradmin/.cargo/bin
-rustup --version
-cargo --version
-rustc --version
+rustup update
+rustup default stable-i686-pc-windows-gnu
+
+ls -lh /c/msys64/mingw32/bin/libclang.dll
+ls -lh /c/msys64/mingw64/bin/libclang.dll
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
