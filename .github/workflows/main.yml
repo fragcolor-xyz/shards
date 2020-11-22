@@ -163,7 +163,6 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-        path-type: inherit
     - run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
@@ -195,7 +194,6 @@ jobs:
       with:
         msystem: MINGW32
         release: false
-        path-type: inherit
     - run: msys2 ./build-win32.sh Debug
 
   macOS:

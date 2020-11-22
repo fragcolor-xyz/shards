@@ -3,8 +3,13 @@
 # fail on errors
 set -e
 
-rustup update
-rustup default stable-i686-pc-windows-gnu
+url="https://static.rust-lang.org/rustup/dist/i686-pc-windows-gnu/rustup-init.exe"
+wget "$url"	
+./rustup-init -y -v --default-toolchain stable-i686-pc-windows-gnu --default-host i686-pc-windows-gnu
+export PATH=$PATH:$USERPROFILE/.cargo/bin
+rustup --version
+cargo --version
+rustc --version
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
