@@ -159,9 +159,11 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
-        cd rust
+        rustup update
+        rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
-        cargo build --features cb_static --target i686-pc-windows-gnu
+        cd rust
+        cargo build --features cb_static --release
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
