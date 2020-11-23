@@ -5,8 +5,8 @@ set -e
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
-mkdir build32
-cd build32
+mkdir build
+cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
 ninja rust_blocks && ninja cbl
 
