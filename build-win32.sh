@@ -6,7 +6,8 @@ set -e
 rustup update
 rustup default stable-i686-pc-windows-gnu
 
-export LIBCLANG_PATH=/c/msys64/mingw64/bin
+ls -lh /c/msys64/mingw32/bin/libLLVM.dll
+export LIBCLANG_PATH=/c/msys64/mingw32/bin
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
