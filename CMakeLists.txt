@@ -1,6 +1,4 @@
-# remember to use CMAKE_EXPORT_COMPILE_COMMAND=1 with Ninja, so clang tools work out of the box
-# you need to copy the .json file in the root directory
-# also CMAKE_BUILD_TYPE=Debug or so
+# This needs a huge refactor at some point...
 
 project("chainblocks")
 cmake_minimum_required(VERSION 3.14)
@@ -80,12 +78,9 @@ endif()
 
 if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
-  set(BASE_TESTING 1)
 endif()
 
 if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
-  # like like: -Wl,--whole-archive -lhttp -Wl,--no-whole-archive
-  # so to trigger global init and such, of course this is not ideal when deplying (size bloat!)
   set(CHAINBLOCKS_EXTRA_LINKS "")
 endif()
 
@@ -187,8 +182,7 @@ endif()
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
-  set(EXTRA_LIBS -lws2_32 -lmswsock)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto -lws2_32 -lmswsock)
 elseif(APPLE)
   if(NOT IOS)
     set(BOOST_LIBS -lboost_context-mt -lssl -lcrypto)
@@ -205,8 +199,7 @@ elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
 elseif(UNIX)
-  set(BOOST_LIBS -lboost_context -lssl -lcrypto)
-  set(EXTRA_LIBS -pthread -ldl -lrt)
+  set(BOOST_LIBS -lboost_context -lssl -lcrypto -pthread -ldl -lrt)
 endif()
 
 if(APPLE)
@@ -490,19 +483,19 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
       )
 
-    set(CBLP_PLATFORM_LIBS
-      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI
+    set(CB_PLATFORM_LIBS
+      -lntdll -lOle32 -lImm32 -lWinmm -lGdi32 -lVersion -lOleAut32 -lSetupAPI -lPsapi -lD3D11 -lDXGI -lUserenv
       )
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
       # 64 bits
-      set(CBLP_PLATFORM_LIBS
-        ${CBLP_PLATFORM_LIBS}
+      set(CB_PLATFORM_LIBS
+        ${CB_PLATFORM_LIBS}
 	      )
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
       # 32 bits
-      set(CBLP_PLATFORM_LIBS
-        ${CBLP_PLATFORM_LIBS}
+      set(CB_PLATFORM_LIBS
+        ${CB_PLATFORM_LIBS}
 	      )
     endif()
   elseif(APPLE)  
@@ -540,7 +533,7 @@ if(NOT BUILD_CORE_ONLY)
       endif()
     endif()
 
-    set(CBLP_PLATFORM_LIBS
+    set(CB_PLATFORM_LIBS
       "-framework Foundation"
       "-framework CoreAudio"
       "-framework AudioToolbox"
@@ -552,18 +545,19 @@ if(NOT BUILD_CORE_ONLY)
       )
     
     if(IOS)
-      set(CBLP_PLATFORM_LIBS
-          ${CBLP_PLATFORM_LIBS}
+      set(CB_PLATFORM_LIBS
+          ${CB_PLATFORM_LIBS}
           "-framework hidapi"
           "-framework AVFoundation"
           "-framework GameController"
           "-framework CoreMotion" 
           "-framework CoreGraphics"
           "-framework CoreHaptics"
+          "-framework Security"
           "-framework UIKit")
     else()
-       set(CBLP_PLATFORM_LIBS
-          ${CBLP_PLATFORM_LIBS}
+       set(CB_PLATFORM_LIBS
+          ${CB_PLATFORM_LIBS}
           "-framework Cocoa"
           "-framework Carbon"
           "-framework ForceFeedback")
@@ -585,7 +579,7 @@ if(NOT BUILD_CORE_ONLY)
       ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc_glsl.cpp
       )
 
-    set(CBLP_PLATFORM_LIBS
+    set(CB_PLATFORM_LIBS
       -lX11
       -lGL
       )
@@ -657,25 +651,37 @@ if(NOT BUILD_CORE_ONLY)
   add_library(libbrotlicommon-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlicommon-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlicommon-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a)
+    set_target_properties(libbrotlicommon-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
+      )
   else()
-    set_target_properties(libbrotlicommon-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a)
+    set_target_properties(libbrotlicommon-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
+      )
   endif()
 
   add_library(libbrotlidec-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlidec-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlidec-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a)
+    set_target_properties(libbrotlidec-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
+      )
   else()
-    set_target_properties(libbrotlidec-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a)
+    set_target_properties(libbrotlidec-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
+      )
   endif()
 
   add_library(libbrotlienc-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlienc-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlienc-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a)
+    set_target_properties(libbrotlienc-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
+      )
   else()
-    set_target_properties(libbrotlienc-static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a)
+    set_target_properties(libbrotlienc-static PROPERTIES 
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
+      )
   endif()
 
   set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp)
@@ -707,6 +713,58 @@ if(NOT BUILD_CORE_ONLY)
 
     ${PLATFORM_SOURCES}
     )
+
+  # build rust blocks
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(EMSCRIPTEN)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-unknown/debug)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=wasm32-unknown-unknown)
+    elseif(X86_IOS_SIMULATOR)
+      set(RUST_BUILD_SUBDIR x86_64-apple-ios/debug)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=x86_64-apple-ios)
+    elseif(IOS)
+      set(RUST_BUILD_SUBDIR aarch64-apple-ios/debug)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=aarch64-apple-ios)
+    elseif(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+      set(RUST_BUILD_SUBDIR i686-pc-windows-gnu/debug)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=i686-pc-windows-gnu)
+    else()
+      set(RUST_BUILD_SUBDIR debug)
+    endif()
+  else()
+    if(EMSCRIPTEN)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-unknown/release)    
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=wasm32-unknown-unknown)
+    elseif(X86_IOS_SIMULATOR)
+      set(RUST_BUILD_SUBDIR x86_64-apple-ios/release)    
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=x86_64-apple-ios)
+    elseif(IOS)
+      set(RUST_BUILD_SUBDIR aarch64-apple-ios/release)    
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=aarch64-apple-ios)
+    elseif(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+      set(RUST_BUILD_SUBDIR i686-pc-windows-gnu/release)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=i686-pc-windows-gnu)
+    else()
+      set(RUST_BUILD_SUBDIR release)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release)
+    endif()
+  endif()
+    
+  if(NOT SKIP_RUST_BINDGEN)
+    # So we got issues when building win32 and libclang...
+    # let's bindgen on win64 only and the other OSs
+    set(RUST_BINDGEN ,run_bindgen)
+  endif()
+
+  add_custom_target(
+    rust_blocks
+    COMMAND cargo build --features cb_static${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
+  )
+
+  add_library(cb_rust_static STATIC IMPORTED GLOBAL)
+  set_target_properties(cb_rust_static PROPERTIES IMPORTED_LOCATION ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
+  add_dependencies(cb_rust_static rust_blocks)
 endif()
 
 add_compile_definitions(REPLXX_STATIC)
@@ -784,52 +842,46 @@ add_library(
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
-###
-###
+target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
 
 if(NOT BUILD_CORE_ONLY)
+  add_dependencies(cb_static cb_rust_static) 
+  add_dependencies(cb_shared cb_rust_static)
+  set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
+
   if(NOT EMSCRIPTEN)
     # we link with emscripten SDL in the case of emscripten
-    add_dependencies(cb_static sdl_a)
-    add_dependencies(cb_shared sdl_a)
-    target_link_libraries(cb_shared libsdl)
+    add_dependencies(cb_static libsdl)
+    add_dependencies(cb_shared libsdl)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   endif()
 
-  add_dependencies(cb_static snappy_a)
-  target_link_libraries(cb_static libsnappy)
-  add_dependencies(cb_shared snappy_a)
-  target_link_libraries(cb_shared libsnappy)
+  add_dependencies(cb_static libsnappy)
+  add_dependencies(cb_shared libsnappy)
+  set(EXTRA_LIBS ${EXTRA_LIBS} libsnappy)
 
-  add_dependencies(cb_static brotli_a)
-  target_link_libraries(cb_static libbrotlidec-static)
-  add_dependencies(cb_shared brotli_a)
-  target_link_libraries(cb_shared libbrotlidec-static)
+  add_dependencies(cb_static libbrotlidec-static)
+  add_dependencies(cb_shared libbrotlidec-static)
+  set(EXTRA_LIBS ${EXTRA_LIBS} libbrotlidec-static)
 
-  add_dependencies(cb_static brotli_a)
-  target_link_libraries(cb_static libbrotlienc-static)
-  add_dependencies(cb_shared brotli_a)
-  target_link_libraries(cb_shared libbrotlienc-static)
+  add_dependencies(cb_static libbrotlienc-static)
+  add_dependencies(cb_shared libbrotlienc-static)
+  set(EXTRA_LIBS ${EXTRA_LIBS} libbrotlienc-static)
 
-  add_dependencies(cb_static brotli_a)
-  target_link_libraries(cb_static libbrotlicommon-static)
-  add_dependencies(cb_shared brotli_a)
-  target_link_libraries(cb_shared libbrotlicommon-static)
+  add_dependencies(cb_static libbrotlicommon-static)
+  add_dependencies(cb_shared libbrotlicommon-static)
+  set(EXTRA_LIBS ${EXTRA_LIBS} libbrotlicommon-static)
 
   if(LINUX)
-    add_dependencies(cb_static glsl-optimizer_a)
-    target_link_libraries(cb_static libglsloptimizer)
-    add_dependencies(cb_shared glsl-optimizer_a)
-    target_link_libraries(cb_shared libglsloptimizer)
-    add_dependencies(cb_static glsl-optimizer_a)
-    target_link_libraries(cb_static libglcpp)
-    add_dependencies(cb_shared glsl-optimizer_a)
-    target_link_libraries(cb_shared libglcpp)
-    add_dependencies(cb_static glsl-optimizer_a)
-    target_link_libraries(cb_static libmesa)
-    add_dependencies(cb_shared glsl-optimizer_a)
-    target_link_libraries(cb_shared libmesa)
+    add_dependencies(cb_static libglsloptimizer)
+    add_dependencies(cb_shared libglsloptimizer)
+    set(EXTRA_LIBS ${EXTRA_LIBS} libglsloptimizer)
+    add_dependencies(cb_static libglcpp)
+    add_dependencies(cb_shared libglcpp)
+    set(EXTRA_LIBS ${EXTRA_LIBS} libglcpp)
+    add_dependencies(cb_static libmesa)
+    add_dependencies(cb_shared libmesa)
+    set(EXTRA_LIBS ${EXTRA_LIBS} libmesa)
   endif()
 endif()
 
@@ -856,7 +908,7 @@ add_executable(
 add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
 
 if(EMSCRIPTEN)
 set_target_properties(cbl PROPERTIES SUFFIX ".html")
@@ -871,5 +923,5 @@ add_executable(
 add_dependencies(cbedn cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${BOOST_LIBS} ${EXTRA_LIBS} ${CBLP_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
 ###

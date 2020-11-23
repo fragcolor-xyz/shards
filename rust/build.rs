@@ -1,7 +1,10 @@
+#[cfg(feature = "run_bindgen")]
 extern crate bindgen;
-use std::env::var;
 
-fn main() {
+#[cfg(feature = "run_bindgen")]
+fn bindgen_it() {
+    use std::env::var;
+
     let chainblocks_dir = var("CHAINBLOCKS_DIR").unwrap_or("../".to_string());
 
     println!("cargo:rustc-link-search={}/build", chainblocks_dir);
@@ -26,4 +29,11 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     println!("Done processing chainblocks.h");
+}
+
+#[cfg(not(feature = "run_bindgen"))]
+fn bindgen_it() {}
+
+fn main() {
+    bindgen_it();
 }

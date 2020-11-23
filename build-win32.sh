@@ -3,20 +3,12 @@
 # fail on errors
 set -e
 
-pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget mingw-w64-i686-python
-
-# setup libbacktrace
-cd deps/libbacktrace
-mkdir build
-./configure --prefix=`pwd`/build
-make
-make install
-cd -
+pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 ..
-ninja cbl
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
+ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
 ./cbl ../src/tests/general.clj
@@ -39,7 +31,7 @@ echo "Running test: kdtree"
 echo "Running test: channels"
 ./cbl ../src/tests/channels.clj
 # echo "Running test: pytest"
-# PYTHONHOME=/c/msys64/mingw64 ./cbl ../src/tests/pytest.clj
+# ./cbl ../src/tests/pytest.clj
 echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"

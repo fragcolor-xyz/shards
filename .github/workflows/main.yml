@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  ciWasmDbg:
+  WASM:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -18,13 +18,15 @@ jobs:
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
+        rustup update
+        rustup target add wasm32-unknown-unknown
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
-        ninja cbl
+        ninja rust_blocks && ninja cbl
     - name: Test
       run: |
         cd build
@@ -37,7 +39,7 @@ jobs:
           build/cbl.js
           build/cbl.html
 
-  ciLinuxDbg:
+  Linux-Coverage:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -45,12 +47,13 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb
+        rustup update
     - name: Build
       run: |
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
-        ninja cbl
+        ninja rust_blocks && ninja cbl
     - name: Test
       run: |
         cd build
@@ -89,7 +92,7 @@ jobs:
         name: coverage
         path: coverage/output
 
-  ciLinuxRel:
+  Linux-Release-Docker:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -107,7 +110,7 @@ jobs:
         tags: "latest"
     - name: Build and Test
       run: |
-        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.clj && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
         mkdir build
         docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
     - uses: chainblocks/Publish-Docker-Github-Action@master
@@ -119,7 +122,7 @@ jobs:
         dockerfile: docker/linux/Dockerfile-runtime
         tags: "latest"
 
-  ciLinuxValgrind:
+  Linux-Valgrind:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -131,85 +134,117 @@ jobs:
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
 
-  ciWindowsRel:
+  Windows-Release:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         release: false
+        path-type: inherit
     - run: msys2 ./build-win.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win64
         path: build/cbl.exe
 
-  ciWindowsRel32:
+  Windows-Release-32:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        rustup update
+        rustup default stable-x86_64-pc-windows-gnu
+        rustup target add i686-pc-windows-gnu
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        release: false
+        path-type: inherit
+    - shell: msys2 {0}
+      name: Bindgen
+      run: |
+        cd rust
+        cargo build --features cb_static,run_bindgen
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
-    - run: msys2 ./build-win32.sh Release
+        path-type: inherit
+    - name: Build 32Bits
+      run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
         path: build/cbl.exe
 
-  ciWindowsDbg:
+  Windows-Debug:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         release: false
+        path-type: inherit
     - run: msys2 ./build-win.sh Debug
 
-  ciWindowsDbg32:
+  Windows-Debug-32:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - run: |
+    - name: Setup
+      run: |
         git submodule update --init --recursive
-    - uses: chainblocks/setup-msys2@v2
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        rustup update
+        rustup default stable-x86_64-pc-windows-gnu
+        rustup target add i686-pc-windows-gnu
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        release: false
+        path-type: inherit
+    - shell: msys2 {0}
+      name: Bindgen
+      run: |
+        cd rust
+        cargo build --features cb_static,run_bindgen
+    - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
-    - run: msys2 ./build-win32.sh Debug
+        path-type: inherit
+    - name: Build 32Bits
+      run: msys2 ./build-win32.sh Debug
 
-  ciMacDbg:
+  macOS:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Deps
       run: |
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake ninja clang-format
+        rustup update
     - name: Build
       run: |
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Debug ..
-        ninja cbl
+        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
+        ninja rust_blocks && ninja cbl
     - name: Test
       run: |
         cd build
@@ -231,43 +266,7 @@ jobs:
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
 
-  ciMacRel:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deps
-      run: |
-        sudo xcode-select --switch /Applications/Xcode.app
-        brew install boost cmake ninja clang-format
-    - name: Build
-      run: |
-        git submodule update --init --recursive
-        mkdir build
-        cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=Release ..
-        ninja cbl
-    - name: Test
-      run: |
-        cd build
-        ./cbl ../src/tests/general.clj
-        ./cbl ../src/tests/variables.clj
-        ./cbl ../src/tests/subchains.clj
-        ./cbl ../src/tests/linalg.clj
-        ./cbl ../src/tests/loader.clj
-        ./cbl ../src/tests/network.clj
-        ./cbl ../src/tests/struct.clj
-        ./cbl ../src/tests/flows.clj
-        ./cbl ../src/tests/kdtree.clj
-        ./cbl ../src/tests/channels.clj
-        ./cbl ../src/tests/genetic.clj
-        ./cbl ../src/tests/imaging.clj
-        ./cbl ../src/tests/http.clj
-        ./cbl ../src/tests/ws.clj
-        ./cbl ../src/tests/bigint.clj
-        ./cbl ../src/tests/brotli.clj
-        ./cbl ../src/tests/snappy.clj
-
-  ciMacIOS:
+  iOS:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -276,6 +275,9 @@ jobs:
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake clang-format
         git submodule update --init --recursive
+        rustup update
+        rustup target add x86_64-apple-ios
+        rustup target add aarch64-apple-ios
     - name: Build Device
       run: |
         mkdir build
@@ -287,13 +289,3 @@ jobs:
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
         xcodebuild -target cb_static -sdk iphonesimulator -arch x86_64
-  
-  rustBuild:
-    needs: ciLinuxRel
-    name: Rust check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Test
-        run: |
-          docker run --rm -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "sh rust/docker/run_linux.sh"

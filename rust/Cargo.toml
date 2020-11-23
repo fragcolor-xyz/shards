@@ -23,7 +23,7 @@ wasm-bindgen = "0.2"
 ctor = "0.1.16"
 
 [build-dependencies]
-bindgen = "0.55.1"
+bindgen = { version = "0.55.1", optional = true }
 
 [features]
 default = []
@@ -31,3 +31,4 @@ dummy = []
 blocks = ["csv"]
 cb_static = []
 cb_dynamic = []
+run_bindgen = ["bindgen"]

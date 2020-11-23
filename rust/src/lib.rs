@@ -5,6 +5,7 @@
 #![allow(unused_macros)]
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
+#![allow(improper_ctypes_definitions)]
 
 #[macro_use]
 #[cfg(test)]
@@ -22,11 +23,13 @@ pub mod types;
 
 use crate::block::Block;
 use crate::chainblocksc::CBContext;
+use crate::chainblocksc::CBCore;
 use crate::chainblocksc::CBSeq;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBTypesInfo;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlock;
+use crate::core::log;
 use crate::core::Core;
 use crate::types::Types;
 use crate::types::Var;
@@ -278,4 +281,10 @@ mod dummy_block {
 
         cblog!("Hello chainblocks-rs");
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
+    Core = core;
+    cblog!("Rust blocks initialization done.");
 }
