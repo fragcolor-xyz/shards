@@ -159,7 +159,12 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
-        $env:GITHUB_PATH="C:\msys64\mingw32\bin\;$PATH"
+        rustup update
+        rustup target add i686-pc-windows-gnu
+        $ErrorActionPreference="SilentlyContinue"
+        cd rust
+        cargo build --features cb_static --target i686-pc-windows-gnu
+        $ErrorActionPreference="Continue"
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
