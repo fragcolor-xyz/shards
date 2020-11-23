@@ -162,14 +162,15 @@ jobs:
         rustup update
         rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
-        cd rust
-        cargo build --features cb_static --release
     - uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW32
+        msystem: MINGW64
         release: false
         path-type: inherit
-    - run: msys2 ./build-win32.sh Release
+    - run: |
+        msys2 cd rust && cargo build --features cb_static --release
+        set MSYSTEM=MINGW32
+        msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
