@@ -7,7 +7,7 @@ pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i68
 
 mkdir build32
 cd build32
-cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
 ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
@@ -30,8 +30,8 @@ echo "Running test: kdtree"
 ./cbl ../src/tests/kdtree.clj
 echo "Running test: channels"
 ./cbl ../src/tests/channels.clj
-echo "Running test: pytest"
-./cbl ../src/tests/pytest.clj
+# echo "Running test: pytest"
+# ./cbl ../src/tests/pytest.clj
 echo "Running test: genetic"
 ./cbl ../src/tests/genetic.clj
 echo "Running test: http"

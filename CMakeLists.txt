@@ -749,11 +749,10 @@ if(NOT BUILD_CORE_ONLY)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release)
     endif()
   endif()
-
-  if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    
+  if(NOT SKIP_RUST_BINDGEN)
     # So we got issues when building win32 and libclang...
-    # let's bindgen on win64
-  else()
+    # let's bindgen on win64 only and the other OSs
     set(RUST_BINDGEN ,run_bindgen)
   endif()
 

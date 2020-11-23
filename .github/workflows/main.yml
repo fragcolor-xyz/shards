@@ -167,17 +167,18 @@ jobs:
         msystem: MINGW64
         release: false
         path-type: inherit
-    - name: Build 64bits
+    - shell: msys2 {0}
+      name: Bindgen
       run: |
-        msys2 ./build-win.sh Release
+        cd rust
+        cargo build --features cb_static,run_bindgen
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
         path-type: inherit
     - name: Build 32Bits
-      run: |
-        msys2 ./build-win32.sh Release
+      run: msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win32
@@ -204,12 +205,26 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
+        rustup update
+        rustup default stable-x86_64-pc-windows-gnu
+        rustup target add i686-pc-windows-gnu
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        release: false
+        path-type: inherit
+    - shell: msys2 {0}
+      name: Bindgen
+      run: |
+        cd rust
+        cargo build --features cb_static,run_bindgen
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
         path-type: inherit
-    - run: msys2 ./build-win32.sh Debug
+    - name: Build 32Bits
+      run: msys2 ./build-win32.sh Debug
 
   macOS:
     runs-on: macos-latest
