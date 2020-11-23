@@ -163,13 +163,20 @@ jobs:
         rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
     - uses: msys2/setup-msys2@v2
+      name: Build 64bits
       with:
         msystem: MINGW64
         release: false
         path-type: inherit
     - run: |
         msys2 ./build-win.sh Release
-        set MSYSTEM=MINGW32
+    - uses: msys2/setup-msys2@v2
+      name: Build 32Bits
+      with:
+        msystem: MINGW32
+        release: false
+        path-type: inherit
+    - run: |
         msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
       with:
