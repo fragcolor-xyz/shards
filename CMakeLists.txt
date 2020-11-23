@@ -750,9 +750,16 @@ if(NOT BUILD_CORE_ONLY)
     endif()
   endif()
 
+  if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    # So we got issues when building win32 and libclang...
+    # let's bindgen on win64
+  else()
+    set(RUST_BINDGEN ,run_bindgen)
+  endif()
+
   add_custom_target(
     rust_blocks
-    COMMAND cargo build --features cb_static ${RUST_BUILD_OPTIONS}
+    COMMAND cargo build --features cb_static${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
