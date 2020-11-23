@@ -168,7 +168,7 @@ jobs:
         release: false
         path-type: inherit
     - run: |
-        msys2 cd rust && cargo build --features cb_static --release
+        msys2 ./build-win.sh Release
         set MSYSTEM=MINGW32
         msys2 ./build-win32.sh Release
     - uses: actions/upload-artifact@master
