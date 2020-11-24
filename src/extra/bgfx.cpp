@@ -42,10 +42,6 @@ bool compileSPIRVShader(const Options &_options, uint32_t _version,
 using namespace chainblocks;
 
 namespace BGFX {
-#ifdef __APPLE__
-extern void *cbSetupMetalLayer(void *window);
-#endif
-
 struct Base {
   CBVar *_bgfxCtx;
 };
