@@ -1,3 +1,7 @@
+extern crate reqwest;
+
+mod http;
+
 #[cfg(test)]
 mod tests {
     #[test]

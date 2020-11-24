@@ -331,6 +331,34 @@ struct Globals {
                 break;
             }
           },
+      .tableGetIterator =
+          [](CBTable table, CBTableIterator *outIter) {
+            if (outIter == nullptr)
+              LOG(FATAL) << "tableGetIterator - outIter was nullptr";
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMapIt *mapIt =
+                reinterpret_cast<chainblocks::CBMapIt *>(outIter);
+            *mapIt = map->begin();
+          },
+      .tableNext =
+          [](CBTable table, CBTableIterator *inIter, CBString *outKey,
+             CBVar *outVar) {
+            if (inIter == nullptr)
+              LOG(FATAL) << "tableGetIterator - outIter was nullptr";
+            chainblocks::CBMap *map =
+                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMapIt *mapIt =
+                reinterpret_cast<chainblocks::CBMapIt *>(inIter);
+            if ((*mapIt) != map->end()) {
+              *outKey = (*(*mapIt)).first.c_str();
+              *outVar = (*(*mapIt)).second;
+              (*mapIt)++;
+              return true;
+            } else {
+              return false;
+            }
+          },
       .tableSize =
           [](CBTable table) {
             chainblocks::CBMap *map =

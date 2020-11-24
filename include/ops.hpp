@@ -136,44 +136,26 @@ inline bool _seqEq(const CBVar &a, const CBVar &b) {
 // recursive, likely not inlining
 inline bool _tableEq(const CBVar &a, const CBVar &b) {
   auto &ta = a.payload.tableValue;
-  auto &tb = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
     return true;
 
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  struct CmpState {
-    CBTable tb;
-    bool result;
-    bool valid;
-  } state;
-  state.tb = tb;
-  state.result = false;
-  state.valid = false;
-  ta.api->tableForEach(
-      ta,
-      [](const char *key, CBVar *value, void *data) {
-        auto state = (CmpState *)data;
-        if (!state->tb.api->tableContains(state->tb, key)) {
-          state->result = false;
-          state->valid = true;
-          return false;
-        }
-
-        auto &aval = *value;
-        auto &bval = *state->tb.api->tableAt(state->tb, key);
-        if (aval != bval) {
-          state->result = false;
-          state->valid = true;
-          return false;
-        }
-        return true;
-      },
-      &state);
-
-  if (state.valid)
-    return state.result;
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    if (v != bval) {
+      return false;
+    }
+  }
 
   return true;
 }
@@ -355,56 +337,33 @@ inline bool _seqLess(const CBVar &a, const CBVar &b) {
 // recursive, likely not inlining
 inline bool _tableLess(const CBVar &a, const CBVar &b) {
   auto &ta = a.payload.tableValue;
-  auto &tb = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
     return false;
 
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  struct CmpState {
-    CBTable ta;
-    size_t len;
-    bool result;
-    bool valid;
-  } state;
-  state.ta = ta;
-  state.len = 0;
-  state.result = false;
-  state.valid = false;
-  tb.api->tableForEach(
-      tb,
-      [](const char *key, CBVar *value, void *data) {
-        auto state = (CmpState *)data;
-        state->len++;
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  size_t len = 0;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    auto c = cmp(v, bval);
+    if (c < 0) {
+      return true;
+    } else if (c > 0) {
+      return false;
+    }
+    len++;
+  }
 
-        // if a key in tb is not in ta, ta is less
-        if (!state->ta.api->tableContains(state->ta, key)) {
-          state->result = true;
-          state->valid = true;
-          return false;
-        }
-
-        auto &bval = *value;
-        auto &aval = *state->ta.api->tableAt(state->ta, key);
-        auto c = cmp(aval, bval);
-        if (c < 0) {
-          state->result = true;
-          state->valid = true;
-          return false;
-        } else if (c > 0) {
-          state->result = false;
-          state->valid = true;
-          return false;
-        }
-        return true;
-      },
-      &state);
-
-  if (state.valid)
-    return state.result;
-
-  if (ta.api->tableSize(ta) < state.len)
+  if (ta.api->tableSize(ta) < len)
     return true;
   else
     return false;
@@ -540,56 +499,33 @@ inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
 
 inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
   auto &ta = a.payload.tableValue;
-  auto &tb = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
     return false;
 
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  struct CmpState {
-    CBTable ta;
-    size_t len;
-    bool result;
-    bool valid;
-  } state;
-  state.ta = ta;
-  state.len = 0;
-  state.result = false;
-  state.valid = false;
-  tb.api->tableForEach(
-      tb,
-      [](const char *key, CBVar *value, void *data) {
-        auto state = (CmpState *)data;
-        state->len++;
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  size_t len = 0;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    auto c = cmp(v, bval);
+    if (c < 0) {
+      return true;
+    } else if (c > 0) {
+      return false;
+    }
+    len++;
+  }
 
-        // if a key in tb is not in ta, ta is less
-        if (!state->ta.api->tableContains(state->ta, key)) {
-          state->result = true;
-          state->valid = true;
-          return false;
-        }
-
-        auto &bval = *value;
-        auto &aval = *state->ta.api->tableAt(state->ta, key);
-        auto c = cmp(aval, bval);
-        if (c < 0) {
-          state->result = true;
-          state->valid = true;
-          return false;
-        } else if (c > 0) {
-          state->result = false;
-          state->valid = true;
-          return false;
-        }
-        return true;
-      },
-      &state);
-
-  if (state.valid)
-    return state.result;
-
-  if (ta.api->tableSize(ta) <= state.len)
+  if (ta.api->tableSize(ta) <= len)
     return true;
   else
     return false;

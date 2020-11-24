@@ -187,6 +187,13 @@
    (Do inner1)
    (Assert.Is "My input 2" true)
    (Log)
+   
+   {"x" 10 "y" 20 "hello" "world"} >= .table-a
+   {"x" 10 "y" 20 "hello" "world"} >= .table-b
+   {"x" 10 "y" 20 "no" "way"} >= .table-c
+   
+   .table-a (Is .table-b) (Assert.Is true true)
+   .table-a (Is .table-c) (Assert.IsNot true true)
 
   ; b0r
    0

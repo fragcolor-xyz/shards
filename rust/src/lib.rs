@@ -14,12 +14,17 @@ extern crate ctor;
 #[macro_use]
 extern crate approx;
 
+#[macro_use]
+extern crate lazy_static;
+
+mod chainblocksc;
 pub mod block;
+pub mod core;
+#[macro_use]
+pub mod types;
+// order matters
 #[cfg(feature = "blocks")]
 pub mod blocks;
-mod chainblocksc;
-pub mod core;
-pub mod types;
 
 use crate::block::Block;
 use crate::chainblocksc::CBContext;

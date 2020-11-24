@@ -154,7 +154,8 @@ CB_ARRAY_DECL(CBPayloadArray, struct CBVarPayload);
 struct CBVar;
 CB_ARRAY_DECL(CBSeq, struct CBVar);
 
-typedef void *CBTableIterator;
+// 64 bytes should be huge and well enough space for an iterator...
+typedef char CBTableIterator[64];
 struct CBTableInterface;
 struct CBTable {
   void *opaque;
@@ -327,23 +328,29 @@ struct CBAudio {
 };
 
 // return false to abort iteration
-typedef CBBool(__cdecl *CBTableForEachCallback)(const char *key,
+typedef CBBool(__cdecl *CBTableForEachCallback)(CBString key,
                                                 struct CBVar *value,
                                                 void *userData);
 // table interface
 typedef void(__cdecl *CBTableForEach)(struct CBTable table,
                                       CBTableForEachCallback cb,
                                       void *userData);
+typedef void(__cdecl *CBTableGetIterator)(struct CBTable table,
+                                          CBTableIterator *outIter);
+typedef CBBool(__cdecl *CBTableNext)(struct CBTable table,
+                                     CBTableIterator *inIter, CBString *outKey,
+                                     struct CBVar *outValue);
 typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
-typedef CBBool(__cdecl *CBTableContains)(struct CBTable table, const char *key);
-typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table,
-                                           const char *key);
-typedef void(__cdecl *CBTableRemove)(struct CBTable table, const char *key);
+typedef CBBool(__cdecl *CBTableContains)(struct CBTable table, CBString key);
+typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table, CBString key);
+typedef void(__cdecl *CBTableRemove)(struct CBTable table, CBString key);
 typedef void(__cdecl *CBTableClear)(struct CBTable table);
 typedef void(__cdecl *CBTableFree)(struct CBTable table);
 
 struct CBTableInterface {
   CBTableForEach tableForEach;
+  CBTableGetIterator tableGetIterator;
+  CBTableNext tableNext;
   CBTableSize tableSize;
   CBTableContains tableContains;
   CBTableAt tableAt;

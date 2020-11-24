@@ -74,9 +74,9 @@ use std::rc::Rc;
 
 #[macro_export]
 macro_rules! cstr {
-    ($text:expr) => {
-        concat!($text, "\0")
-    };
+  ($text:expr) => {
+    concat!($text, "\0")
+  };
 }
 
 pub type Context = CBContext;
@@ -90,24 +90,24 @@ pub type ExposedInfo = CBExposedTypeInfo;
 
 #[derive(PartialEq)]
 pub enum ChainState {
-    Continue,
-    Return,
-    Rebase,
-    Restart,
-    Stop,
+  Continue,
+  Return,
+  Rebase,
+  Restart,
+  Stop,
 }
 
 impl From<CBChainState> for ChainState {
-    fn from(state: CBChainState) -> Self {
-        match state {
-            CBChainState_Continue => ChainState::Continue,
-            CBChainState_Return => ChainState::Return,
-            CBChainState_Rebase => ChainState::Rebase,
-            CBChainState_Restart => ChainState::Restart,
-            CBChainState_Stop => ChainState::Stop,
-            _ => unreachable!(),
-        }
+  fn from(state: CBChainState) -> Self {
+    match state {
+      CBChainState_Continue => ChainState::Continue,
+      CBChainState_Return => ChainState::Return,
+      CBChainState_Rebase => ChainState::Rebase,
+      CBChainState_Restart => ChainState::Restart,
+      CBChainState_Stop => ChainState::Stop,
+      _ => unreachable!(),
     }
+  }
 }
 
 unsafe impl Send for Var {}
@@ -126,39 +126,39 @@ unsafe impl std::marker::Sync for CBStrings {}
 pub type Types = Vec<Type>;
 
 impl From<&Types> for CBTypesInfo {
-    fn from(types: &Types) -> Self {
-        CBTypesInfo {
-            elements: types.as_ptr() as *mut CBTypeInfo,
-            len: types.len() as u32,
-            cap: 0,
-        }
+  fn from(types: &Types) -> Self {
+    CBTypesInfo {
+      elements: types.as_ptr() as *mut CBTypeInfo,
+      len: types.len() as u32,
+      cap: 0,
     }
+  }
 }
 
 impl From<&[Type]> for CBTypesInfo {
-    fn from(types: &[Type]) -> Self {
-        CBTypesInfo {
-            elements: types.as_ptr() as *mut CBTypeInfo,
-            len: types.len() as u32,
-            cap: 0,
-        }
+  fn from(types: &[Type]) -> Self {
+    CBTypesInfo {
+      elements: types.as_ptr() as *mut CBTypeInfo,
+      len: types.len() as u32,
+      cap: 0,
     }
+  }
 }
 
 fn internal_from_types(types: Types) -> CBTypesInfo {
-    let len = types.len();
-    let boxed = types.into_boxed_slice();
-    CBTypesInfo {
-        elements: Box::into_raw(boxed) as *mut CBTypeInfo,
-        len: len as u32,
-        cap: 0,
-    }
+  let len = types.len();
+  let boxed = types.into_boxed_slice();
+  CBTypesInfo {
+    elements: Box::into_raw(boxed) as *mut CBTypeInfo,
+    len: len as u32,
+    cap: 0,
+  }
 }
 
 unsafe fn internal_drop_types(types: CBTypesInfo) {
-    // use with care
-    let elems = Box::from_raw(types.elements);
-    drop(elems);
+  // use with care
+  let elems = Box::from_raw(types.elements);
+  drop(elems);
 }
 
 /*
@@ -166,78 +166,78 @@ CBExposedTypeInfo & co
 */
 
 impl ExposedInfo {
-    pub fn new(name: &CString, ctype: CBTypeInfo) -> Self {
-        let chelp = core::ptr::null();
-        CBExposedTypeInfo {
-            exposedType: ctype,
-            name: name.as_ptr(),
-            help: chelp,
-            isMutable: false,
-            isProtected: false,
-            isTableEntry: false,
-            global: false,
-            scope: core::ptr::null_mut(),
-        }
+  pub fn new(name: &CString, ctype: CBTypeInfo) -> Self {
+    let chelp = core::ptr::null();
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: name.as_ptr(),
+      help: chelp,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
     }
+  }
 
-    pub fn new_with_help(name: &CString, help: &CString, ctype: CBTypeInfo) -> Self {
-        CBExposedTypeInfo {
-            exposedType: ctype,
-            name: name.as_ptr(),
-            help: help.as_ptr(),
-            isMutable: false,
-            isProtected: false,
-            isTableEntry: false,
-            global: false,
-            scope: core::ptr::null_mut(),
-        }
+  pub fn new_with_help(name: &CString, help: &CString, ctype: CBTypeInfo) -> Self {
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: name.as_ptr(),
+      help: help.as_ptr(),
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
     }
+  }
 
-    pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
-        let cname = name.as_ptr() as *const i8;
-        let chelp = core::ptr::null();
-        CBExposedTypeInfo {
-            exposedType: ctype,
-            name: cname,
-            help: chelp,
-            isMutable: false,
-            isProtected: false,
-            isTableEntry: false,
-            global: false,
-            scope: core::ptr::null_mut(),
-        }
+  pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
+    let cname = name.as_ptr() as *const i8;
+    let chelp = core::ptr::null();
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: cname,
+      help: chelp,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
     }
+  }
 
-    pub const fn new_static_with_help(
-        name: &'static str,
-        help: &'static str,
-        ctype: CBTypeInfo,
-    ) -> Self {
-        let cname = name.as_ptr() as *const i8;
-        let chelp = help.as_ptr() as *const i8;
-        CBExposedTypeInfo {
-            exposedType: ctype,
-            name: cname,
-            help: chelp,
-            isMutable: false,
-            isProtected: false,
-            isTableEntry: false,
-            global: false,
-            scope: core::ptr::null_mut(),
-        }
+  pub const fn new_static_with_help(
+    name: &'static str,
+    help: &'static str,
+    ctype: CBTypeInfo,
+  ) -> Self {
+    let cname = name.as_ptr() as *const i8;
+    let chelp = help.as_ptr() as *const i8;
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name: cname,
+      help: chelp,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
     }
+  }
 }
 
 pub type ExposedTypes = Vec<ExposedInfo>;
 
 impl From<&ExposedTypes> for CBExposedTypesInfo {
-    fn from(vec: &ExposedTypes) -> Self {
-        CBExposedTypesInfo {
-            elements: vec.as_ptr() as *mut CBExposedTypeInfo,
-            len: vec.len() as u32,
-            cap: 0,
-        }
+  fn from(vec: &ExposedTypes) -> Self {
+    CBExposedTypesInfo {
+      elements: vec.as_ptr() as *mut CBExposedTypeInfo,
+      len: vec.len() as u32,
+      cap: 0,
     }
+  }
 }
 
 /*
@@ -247,314 +247,314 @@ pub struct ParameterInfo(pub CBParameterInfo);
 pub struct ParameterInfoView(pub CBParameterInfo);
 
 impl ParameterInfo {
-    fn new(name: &str, types: Types) -> Self {
-        let cname = CString::new(name).unwrap();
-        let chelp = core::ptr::null();
-        let res = CBParameterInfo {
-            name: cname.into_raw() as *mut i8,
-            help: chelp,
-            valueTypes: internal_from_types(types),
-        };
-        ParameterInfo(res)
-    }
+  fn new(name: &str, types: Types) -> Self {
+    let cname = CString::new(name).unwrap();
+    let chelp = core::ptr::null();
+    let res = CBParameterInfo {
+      name: cname.into_raw() as *mut i8,
+      help: chelp,
+      valueTypes: internal_from_types(types),
+    };
+    ParameterInfo(res)
+  }
 
-    fn new1(name: &str, help: &str, types: Types) -> Self {
-        let cname = CString::new(name).unwrap();
-        let chelp = CString::new(help).unwrap();
-        let res = CBParameterInfo {
-            name: cname.into_raw() as *mut i8,
-            help: chelp.into_raw() as *mut i8,
-            valueTypes: internal_from_types(types),
-        };
-        ParameterInfo(res)
-    }
+  fn new1(name: &str, help: &str, types: Types) -> Self {
+    let cname = CString::new(name).unwrap();
+    let chelp = CString::new(help).unwrap();
+    let res = CBParameterInfo {
+      name: cname.into_raw() as *mut i8,
+      help: chelp.into_raw() as *mut i8,
+      valueTypes: internal_from_types(types),
+    };
+    ParameterInfo(res)
+  }
 }
 
 impl From<(&str, Types)> for ParameterInfo {
-    fn from(v: (&str, Types)) -> ParameterInfo {
-        ParameterInfo::new(v.0, v.1)
-    }
+  fn from(v: (&str, Types)) -> ParameterInfo {
+    ParameterInfo::new(v.0, v.1)
+  }
 }
 
 impl From<(&str, &str, Types)> for ParameterInfo {
-    fn from(v: (&str, &str, Types)) -> ParameterInfo {
-        ParameterInfo::new1(v.0, v.1, v.2)
-    }
+  fn from(v: (&str, &str, Types)) -> ParameterInfo {
+    ParameterInfo::new1(v.0, v.1, v.2)
+  }
 }
 
 impl Drop for ParameterInfo {
-    fn drop(&mut self) {
-        if self.0.name != core::ptr::null() {
-            unsafe {
-                let cname = CString::from_raw(self.0.name as *mut i8);
-                drop(cname);
-            }
-        }
-        if self.0.help != core::ptr::null() {
-            unsafe {
-                let chelp = CString::from_raw(self.0.help as *mut i8);
-                drop(chelp);
-            }
-        }
-        unsafe {
-            internal_drop_types(self.0.valueTypes);
-        }
+  fn drop(&mut self) {
+    if self.0.name != core::ptr::null() {
+      unsafe {
+        let cname = CString::from_raw(self.0.name as *mut i8);
+        drop(cname);
+      }
     }
+    if self.0.help != core::ptr::null() {
+      unsafe {
+        let chelp = CString::from_raw(self.0.help as *mut i8);
+        drop(chelp);
+      }
+    }
+    unsafe {
+      internal_drop_types(self.0.valueTypes);
+    }
+  }
 }
 
 pub type Parameters = Vec<ParameterInfo>;
 
 impl From<&Parameters> for CBParametersInfo {
-    fn from(vec: &Parameters) -> Self {
-        CBParametersInfo {
-            elements: vec.as_ptr() as *mut CBParameterInfo,
-            len: vec.len() as u32,
-            cap: 0,
-        }
+  fn from(vec: &Parameters) -> Self {
+    CBParametersInfo {
+      elements: vec.as_ptr() as *mut CBParameterInfo,
+      len: vec.len() as u32,
+      cap: 0,
     }
+  }
 }
 
 impl From<CBParametersInfo> for &[CBParameterInfo] {
-    fn from(_: CBParametersInfo) -> Self {
-        unimplemented!()
-    }
+  fn from(_: CBParametersInfo) -> Self {
+    unimplemented!()
+  }
 }
 
 /*
 Static common type infos utility
 */
 pub mod common_type {
-    use crate::chainblocksc::CBStrings;
-    use crate::chainblocksc::CBTypeInfo;
-    use crate::chainblocksc::CBTypeInfo_Details;
-    use crate::chainblocksc::CBTypeInfo_Details_Table;
-    use crate::chainblocksc::CBType_Any;
-    use crate::chainblocksc::CBType_Block;
-    use crate::chainblocksc::CBType_Bool;
-    use crate::chainblocksc::CBType_Bytes;
-    use crate::chainblocksc::CBType_Chain;
-    use crate::chainblocksc::CBType_ContextVar;
-    use crate::chainblocksc::CBType_Float;
-    use crate::chainblocksc::CBType_Int;
-    use crate::chainblocksc::CBType_None;
-    use crate::chainblocksc::CBType_Path;
-    use crate::chainblocksc::CBType_Seq;
-    use crate::chainblocksc::CBType_String;
-    use crate::chainblocksc::CBType_Table;
-    use crate::chainblocksc::CBTypesInfo;
+  use crate::chainblocksc::CBStrings;
+  use crate::chainblocksc::CBTypeInfo;
+  use crate::chainblocksc::CBTypeInfo_Details;
+  use crate::chainblocksc::CBTypeInfo_Details_Table;
+  use crate::chainblocksc::CBType_Any;
+  use crate::chainblocksc::CBType_Block;
+  use crate::chainblocksc::CBType_Bool;
+  use crate::chainblocksc::CBType_Bytes;
+  use crate::chainblocksc::CBType_Chain;
+  use crate::chainblocksc::CBType_ContextVar;
+  use crate::chainblocksc::CBType_Float;
+  use crate::chainblocksc::CBType_Int;
+  use crate::chainblocksc::CBType_None;
+  use crate::chainblocksc::CBType_Path;
+  use crate::chainblocksc::CBType_Seq;
+  use crate::chainblocksc::CBType_String;
+  use crate::chainblocksc::CBType_Table;
+  use crate::chainblocksc::CBTypesInfo;
 
-    const fn base_info() -> CBTypeInfo {
-        CBTypeInfo {
-            basicType: CBType_None,
-            details: CBTypeInfo_Details {
-                seqTypes: CBTypesInfo {
-                    elements: core::ptr::null_mut(),
-                    len: 0,
-                    cap: 0,
-                },
-            },
-        }
+  const fn base_info() -> CBTypeInfo {
+    CBTypeInfo {
+      basicType: CBType_None,
+      details: CBTypeInfo_Details {
+        seqTypes: CBTypesInfo {
+          elements: core::ptr::null_mut(),
+          len: 0,
+          cap: 0,
+        },
+      },
     }
+  }
 
-    const fn make_none() -> CBTypeInfo {
+  const fn make_none() -> CBTypeInfo {
+    let mut res = base_info();
+    res.basicType = CBType_None;
+    res
+  }
+
+  pub static none: CBTypeInfo = make_none();
+
+  macro_rules! cbtype {
+    ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $name_table:ident, $name_table_var:ident) => {
+      const fn $fname() -> CBTypeInfo {
         let mut res = base_info();
-        res.basicType = CBType_None;
+        res.basicType = $type;
         res
-    }
+      }
 
-    pub static none: CBTypeInfo = make_none();
+      pub static $name: CBTypeInfo = $fname();
 
-    macro_rules! cbtype {
-        ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $name_table:ident, $name_table_var:ident) => {
-            const fn $fname() -> CBTypeInfo {
-                let mut res = base_info();
-                res.basicType = $type;
-                res
-            }
+      pub static $names: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_Seq,
+        details: CBTypeInfo_Details {
+          seqTypes: CBTypesInfo {
+            elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+            len: 1,
+            cap: 0,
+          },
+        },
+      };
 
-            pub static $name: CBTypeInfo = $fname();
+      pub static $name_table: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_Table,
+        details: CBTypeInfo_Details {
+          table: CBTypeInfo_Details_Table {
+            keys: CBStrings {
+              elements: core::ptr::null_mut(),
+              len: 0,
+              cap: 0,
+            },
+            types: CBTypesInfo {
+              elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+              len: 1,
+              cap: 0,
+            },
+          },
+        },
+      };
 
-            pub static $names: CBTypeInfo = CBTypeInfo {
-                basicType: CBType_Seq,
-                details: CBTypeInfo_Details {
-                    seqTypes: CBTypesInfo {
-                        elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
-                        len: 1,
-                        cap: 0,
-                    },
-                },
-            };
+      pub static $name_var: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_ContextVar,
+        details: CBTypeInfo_Details {
+          contextVarTypes: CBTypesInfo {
+            elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+            len: 1,
+            cap: 0,
+          },
+        },
+      };
 
-            pub static $name_table: CBTypeInfo = CBTypeInfo {
-                basicType: CBType_Table,
-                details: CBTypeInfo_Details {
-                    table: CBTypeInfo_Details_Table {
-                        keys: CBStrings {
-                            elements: core::ptr::null_mut(),
-                            len: 0,
-                            cap: 0,
-                        },
-                        types: CBTypesInfo {
-                            elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
-                            len: 1,
-                            cap: 0,
-                        },
-                    },
-                },
-            };
+      pub static $name_table_var: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_ContextVar,
+        details: CBTypeInfo_Details {
+          contextVarTypes: CBTypesInfo {
+            elements: &$name_table as *const CBTypeInfo as *mut CBTypeInfo,
+            len: 1,
+            cap: 0,
+          },
+        },
+      };
+    };
+  }
 
-            pub static $name_var: CBTypeInfo = CBTypeInfo {
-                basicType: CBType_ContextVar,
-                details: CBTypeInfo_Details {
-                    contextVarTypes: CBTypesInfo {
-                        elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
-                        len: 1,
-                        cap: 0,
-                    },
-                },
-            };
-
-            pub static $name_table_var: CBTypeInfo = CBTypeInfo {
-                basicType: CBType_ContextVar,
-                details: CBTypeInfo_Details {
-                    contextVarTypes: CBTypesInfo {
-                        elements: &$name_table as *const CBTypeInfo as *mut CBTypeInfo,
-                        len: 1,
-                        cap: 0,
-                    },
-                },
-            };
-        };
-    }
-
-    cbtype!(
-        make_any,
-        CBType_Any,
-        any,
-        anys,
-        any_var,
-        any_table,
-        any_table_var
-    );
-    cbtype!(
-        make_string,
-        CBType_String,
-        string,
-        strings,
-        string_var,
-        string_table,
-        string_table_var
-    );
-    cbtype!(
-        make_bytes,
-        CBType_Bytes,
-        bytes,
-        bytezs,
-        bytes_var,
-        bytes_table,
-        bytes_table_var
-    );
-    cbtype!(
-        make_int,
-        CBType_Int,
-        int,
-        ints,
-        int_var,
-        int_table,
-        int_table_var
-    );
-    cbtype!(
-        make_float,
-        CBType_Float,
-        float,
-        floats,
-        float_var,
-        float_table,
-        float_table_var
-    );
-    cbtype!(
-        make_bool,
-        CBType_Bool,
-        bool,
-        bools,
-        bool_var,
-        bool_table,
-        bool_table_var
-    );
-    cbtype!(
-        make_block,
-        CBType_Block,
-        block,
-        blocks,
-        block_var,
-        block_table,
-        block_table_var
-    );
-    cbtype!(
-        make_chain,
-        CBType_Chain,
-        chain,
-        chains,
-        chain_var,
-        chain_table,
-        chain_table_var
-    );
-    cbtype!(
-        make_path,
-        CBType_Path,
-        path,
-        paths,
-        path_var,
-        path_table,
-        path_table_var
-    );
+  cbtype!(
+    make_any,
+    CBType_Any,
+    any,
+    anys,
+    any_var,
+    any_table,
+    any_table_var
+  );
+  cbtype!(
+    make_string,
+    CBType_String,
+    string,
+    strings,
+    string_var,
+    string_table,
+    string_table_var
+  );
+  cbtype!(
+    make_bytes,
+    CBType_Bytes,
+    bytes,
+    bytezs,
+    bytes_var,
+    bytes_table,
+    bytes_table_var
+  );
+  cbtype!(
+    make_int,
+    CBType_Int,
+    int,
+    ints,
+    int_var,
+    int_table,
+    int_table_var
+  );
+  cbtype!(
+    make_float,
+    CBType_Float,
+    float,
+    floats,
+    float_var,
+    float_table,
+    float_table_var
+  );
+  cbtype!(
+    make_bool,
+    CBType_Bool,
+    bool,
+    bools,
+    bool_var,
+    bool_table,
+    bool_table_var
+  );
+  cbtype!(
+    make_block,
+    CBType_Block,
+    block,
+    blocks,
+    block_var,
+    block_table,
+    block_table_var
+  );
+  cbtype!(
+    make_chain,
+    CBType_Chain,
+    chain,
+    chains,
+    chain_var,
+    chain_table,
+    chain_table_var
+  );
+  cbtype!(
+    make_path,
+    CBType_Path,
+    path,
+    paths,
+    path_var,
+    path_table,
+    path_table_var
+  );
 }
 
 impl Type {
-    pub const fn context_variable(types: &[Type]) -> Type {
-        Type {
-            basicType: CBType_ContextVar,
-            details: CBTypeInfo_Details {
-                contextVarTypes: CBTypesInfo {
-                    elements: types.as_ptr() as *mut CBTypeInfo,
-                    len: types.len() as u32,
-                    cap: 0,
-                },
-            },
-        }
+  pub const fn context_variable(types: &[Type]) -> Type {
+    Type {
+      basicType: CBType_ContextVar,
+      details: CBTypeInfo_Details {
+        contextVarTypes: CBTypesInfo {
+          elements: types.as_ptr() as *mut CBTypeInfo,
+          len: types.len() as u32,
+          cap: 0,
+        },
+      },
     }
+  }
 
-    pub const fn object(vendorId: i32, typeId: i32) -> Type {
-        Type {
-            basicType: CBType_Object,
-            details: CBTypeInfo_Details {
-                object: CBTypeInfo_Details_Object {
-                    vendorId: vendorId,
-                    typeId: typeId,
-                },
-            },
-        }
+  pub const fn object(vendorId: i32, typeId: i32) -> Type {
+    Type {
+      basicType: CBType_Object,
+      details: CBTypeInfo_Details {
+        object: CBTypeInfo_Details_Object {
+          vendorId: vendorId,
+          typeId: typeId,
+        },
+      },
     }
+  }
 
-    pub const fn table(keys: &[&'static str], types: &[Type]) -> Type {
-        Type {
-            basicType: CBType_Table,
-            details: CBTypeInfo_Details {
-                table: CBTypeInfo_Details_Table {
-                    keys: CBStrings {
-                        elements: keys.as_ptr() as *mut *const i8,
-                        len: keys.len() as u32,
-                        cap: 0,
-                    },
-                    types: CBTypesInfo {
-                        elements: types.as_ptr() as *mut CBTypeInfo,
-                        len: types.len() as u32,
-                        cap: 0,
-                    },
-                },
-            },
-        }
+  pub const fn table(keys: &[&'static str], types: &[Type]) -> Type {
+    Type {
+      basicType: CBType_Table,
+      details: CBTypeInfo_Details {
+        table: CBTypeInfo_Details_Table {
+          keys: CBStrings {
+            elements: keys.as_ptr() as *mut *const i8,
+            len: keys.len() as u32,
+            cap: 0,
+          },
+          types: CBTypesInfo {
+            elements: types.as_ptr() as *mut CBTypeInfo,
+            len: types.len() as u32,
+            cap: 0,
+          },
+        },
+      },
     }
+  }
 }
 
 /*
@@ -569,140 +569,140 @@ pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
 impl<T> From<T> for ClonedVar
 where
-    T: Into<Var>,
+  T: Into<Var>,
 {
-    fn from(v: T) -> Self {
-        let vt: Var = v.into();
-        let res = ClonedVar(Var::default());
-        unsafe {
-            let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = &vt as *const CBVar;
-            (*Core).cloneVar.unwrap()(rv, sv);
-        }
-        res
+  fn from(v: T) -> Self {
+    let vt: Var = v.into();
+    let res = ClonedVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = &vt as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
 }
 
 impl From<&Var> for ClonedVar {
-    fn from(v: &Var) -> Self {
-        let res = ClonedVar(Var::default());
-        unsafe {
-            let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = v as *const CBVar;
-            (*Core).cloneVar.unwrap()(rv, sv);
-        }
-        res
+  fn from(v: &Var) -> Self {
+    let res = ClonedVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = v as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
 }
 
 impl From<Vec<Var>> for ClonedVar {
-    fn from(v: Vec<Var>) -> Self {
-        let tmp = Var::from(&v);
-        let res = ClonedVar(Var::default());
-        unsafe {
-            let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = &tmp as *const CBVar;
-            (*Core).cloneVar.unwrap()(rv, sv);
-        }
-        res
+  fn from(v: Vec<Var>) -> Self {
+    let tmp = Var::from(&v);
+    let res = ClonedVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = &tmp as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
 }
 
 impl From<std::string::String> for ClonedVar {
-    fn from(v: std::string::String) -> Self {
-        let cstr = CString::new(v).unwrap();
-        let tmp = Var::from(&cstr);
-        let res = ClonedVar(Var::default());
-        unsafe {
-            let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = &tmp as *const CBVar;
-            (*Core).cloneVar.unwrap()(rv, sv);
-        }
-        res
+  fn from(v: std::string::String) -> Self {
+    let cstr = CString::new(v).unwrap();
+    let tmp = Var::from(&cstr);
+    let res = ClonedVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = &tmp as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
 }
 
 impl From<&[ClonedVar]> for ClonedVar {
-    fn from(vec: &[ClonedVar]) -> Self {
-        let res = ClonedVar(Var::default());
-        unsafe {
-            let src: &[Var] = std::mem::transmute(vec);
-            let vsrc: Var = src.into();
-            let rv = &res.0 as *const CBVar as *mut CBVar;
-            let sv = &vsrc as *const CBVar;
-            (*Core).cloneVar.unwrap()(rv, sv);
-        }
-        res
+  fn from(vec: &[ClonedVar]) -> Self {
+    let res = ClonedVar(Var::default());
+    unsafe {
+      let src: &[Var] = std::mem::transmute(vec);
+      let vsrc: Var = src.into();
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = &vsrc as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
 }
 
 impl Drop for ClonedVar {
-    #[inline(always)]
-    fn drop(&mut self) {
-        unsafe {
-            let rv = &self.0 as *const CBVar as *mut CBVar;
-            (*Core).destroyVar.unwrap()(rv);
-        }
+  #[inline(always)]
+  fn drop(&mut self) {
+    unsafe {
+      let rv = &self.0 as *const CBVar as *mut CBVar;
+      (*Core).destroyVar.unwrap()(rv);
     }
+  }
 }
 
 macro_rules! var_from {
-    ($type:ident, $varfield:ident, $cbtype:expr) => {
-        impl From<$type> for Var {
-            #[inline(always)]
-            fn from(v: $type) -> Self {
-                CBVar {
-                    valueType: $cbtype,
-                    payload: CBVarPayload {
-                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { $varfield: v },
-                    },
-                    ..Default::default()
-                }
-            }
+  ($type:ident, $varfield:ident, $cbtype:expr) => {
+    impl From<$type> for Var {
+      #[inline(always)]
+      fn from(v: $type) -> Self {
+        CBVar {
+          valueType: $cbtype,
+          payload: CBVarPayload {
+            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { $varfield: v },
+          },
+          ..Default::default()
         }
-    };
+      }
+    }
+  };
 }
 
 macro_rules! var_from_into {
-    ($type:ident, $varfield:ident, $cbtype:expr) => {
-        impl From<$type> for Var {
-            #[inline(always)]
-            fn from(v: $type) -> Self {
-                CBVar {
-                    valueType: $cbtype,
-                    payload: CBVarPayload {
-                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                            $varfield: v.into(),
-                        },
-                    },
-                    ..Default::default()
-                }
-            }
+  ($type:ident, $varfield:ident, $cbtype:expr) => {
+    impl From<$type> for Var {
+      #[inline(always)]
+      fn from(v: $type) -> Self {
+        CBVar {
+          valueType: $cbtype,
+          payload: CBVarPayload {
+            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+              $varfield: v.into(),
+            },
+          },
+          ..Default::default()
         }
-    };
+      }
+    }
+  };
 }
 
 macro_rules! var_try_from {
-    ($type:ident, $varfield:ident, $cbtype:expr) => {
-        impl TryFrom<$type> for Var {
-            type Error = &'static str;
+  ($type:ident, $varfield:ident, $cbtype:expr) => {
+    impl TryFrom<$type> for Var {
+      type Error = &'static str;
 
-            #[inline(always)]
-            fn try_from(v: $type) -> Result<Self, Self::Error> {
-                Ok(CBVar {
-                    valueType: $cbtype,
-                    payload: CBVarPayload {
-                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                            $varfield: v
-                                .try_into()
-                                .or_else(|_| Err("Conversion failed, value out of range"))?,
-                        },
-                    },
-                    ..Default::default()
-                })
-            }
-        }
-    };
+      #[inline(always)]
+      fn try_from(v: $type) -> Result<Self, Self::Error> {
+        Ok(CBVar {
+          valueType: $cbtype,
+          payload: CBVarPayload {
+            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+              $varfield: v
+                .try_into()
+                .or_else(|_| Err("Conversion failed, value out of range"))?,
+            },
+          },
+          ..Default::default()
+        })
+      }
+    }
+  };
 }
 
 var_from!(bool, boolValue, CBType_Bool);
@@ -714,1185 +714,1159 @@ var_from!(f64, floatValue, CBType_Float);
 var_from_into!(f32, floatValue, CBType_Float);
 
 impl From<CBlockPtr> for Var {
-    #[inline(always)]
-    fn from(v: CBlockPtr) -> Self {
-        CBVar {
-            valueType: CBType_String,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { blockValue: v },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(v: CBlockPtr) -> Self {
+    CBVar {
+      valueType: CBType_String,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { blockValue: v },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<CBString> for Var {
-    #[inline(always)]
-    fn from(v: CBString) -> Self {
-        CBVar {
-            valueType: CBType_String,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-                        stringValue: v,
-                        stringLen: 0,
-                        stringCapacity: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(v: CBString) -> Self {
+    CBVar {
+      valueType: CBType_String,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+            stringValue: v,
+            stringLen: 0,
+            stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl<'a> From<&'a str> for Var {
-    #[inline(always)]
-    fn from(v: &'a str) -> Self {
-        CBVar {
-            valueType: CBType_String,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-                        stringValue: v.as_ptr() as *const i8,
-                        stringLen: v.len() as u32,
-                        stringCapacity: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(v: &'a str) -> Self {
+    CBVar {
+      valueType: CBType_String,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+            stringValue: v.as_ptr() as *const i8,
+            stringLen: v.len() as u32,
+            stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<&CStr> for Var {
-    #[inline(always)]
-    fn from(v: &CStr) -> Self {
-        CBVar {
-            valueType: CBType_String,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-                        stringValue: v.as_ptr(),
-                        stringLen: 0,
-                        stringCapacity: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(v: &CStr) -> Self {
+    CBVar {
+      valueType: CBType_String,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+            stringValue: v.as_ptr(),
+            stringLen: 0,
+            stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<&CString> for Var {
-    #[inline(always)]
-    fn from(v: &CString) -> Self {
-        CBVar {
-            valueType: CBType_String,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-                        stringValue: v.as_ptr(),
-                        stringLen: v.as_bytes().len() as u32,
-                        stringCapacity: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(v: &CString) -> Self {
+    CBVar {
+      valueType: CBType_String,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+            stringValue: v.as_ptr(),
+            stringLen: v.as_bytes().len() as u32,
+            stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<Option<&CString>> for Var {
-    #[inline(always)]
-    fn from(v: Option<&CString>) -> Self {
-        if v.is_none() {
-            Var::default()
-        } else {
-            Var::from(v.unwrap())
-        }
+  #[inline(always)]
+  fn from(v: Option<&CString>) -> Self {
+    if v.is_none() {
+      Var::default()
+    } else {
+      Var::from(v.unwrap())
     }
+  }
 }
 
 impl From<()> for Var {
-    #[inline(always)]
-    fn from(_: ()) -> Self {
-        CBVar {
-            valueType: CBType_None,
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(_: ()) -> Self {
+    CBVar {
+      valueType: CBType_None,
+      ..Default::default()
     }
+  }
 }
 
 impl From<&Vec<Var>> for Var {
-    #[inline(always)]
-    fn from(vec: &Vec<Var>) -> Self {
-        CBVar {
-            valueType: CBType_Seq,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    seqValue: CBSeq {
-                        elements: vec.as_ptr() as *mut CBVar,
-                        len: vec.len() as u32,
-                        cap: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(vec: &Vec<Var>) -> Self {
+    CBVar {
+      valueType: CBType_Seq,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          seqValue: CBSeq {
+            elements: vec.as_ptr() as *mut CBVar,
+            len: vec.len() as u32,
+            cap: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<&Vec<ClonedVar>> for Var {
-    #[inline(always)]
-    fn from(vec: &Vec<ClonedVar>) -> Self {
-        CBVar {
-            valueType: CBType_Seq,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    seqValue: CBSeq {
-                        elements: vec.as_ptr() as *mut CBVar,
-                        len: vec.len() as u32,
-                        cap: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(vec: &Vec<ClonedVar>) -> Self {
+    CBVar {
+      valueType: CBType_Seq,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          seqValue: CBSeq {
+            elements: vec.as_ptr() as *mut CBVar,
+            len: vec.len() as u32,
+            cap: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<&[Var]> for Var {
-    #[inline(always)]
-    fn from(vec: &[Var]) -> Self {
-        CBVar {
-            valueType: CBType_Seq,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    seqValue: CBSeq {
-                        elements: vec.as_ptr() as *mut CBVar,
-                        len: vec.len() as u32,
-                        cap: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(vec: &[Var]) -> Self {
+    CBVar {
+      valueType: CBType_Seq,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          seqValue: CBSeq {
+            elements: vec.as_ptr() as *mut CBVar,
+            len: vec.len() as u32,
+            cap: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<&[u8]> for Var {
-    #[inline(always)]
-    fn from(vec: &[u8]) -> Self {
-        CBVar {
-            valueType: CBType_Bytes,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                    __bindgen_anon_4: CBVarPayload__bindgen_ty_1__bindgen_ty_4 {
-                        bytesValue: vec.as_ptr() as *mut u8,
-                        bytesSize: vec.len() as u32,
-                        bytesCapacity: 0,
-                    },
-                },
-            },
-            ..Default::default()
-        }
+  #[inline(always)]
+  fn from(vec: &[u8]) -> Self {
+    CBVar {
+      valueType: CBType_Bytes,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_4: CBVarPayload__bindgen_ty_1__bindgen_ty_4 {
+            bytesValue: vec.as_ptr() as *mut u8,
+            bytesSize: vec.len() as u32,
+            bytesCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl Var {
-    pub fn context_variable(name: &'static str) -> Var {
-        let mut v: Var = name.into();
-        v.valueType = CBType_ContextVar;
-        v
-    }
+  pub fn context_variable(name: &'static str) -> Var {
+    let mut v: Var = name.into();
+    v.valueType = CBType_ContextVar;
+    v
+  }
 
-    pub fn new_object<T>(obj: &Rc<T>, info: &Type) -> Var {
-        unsafe {
-            Var {
-                valueType: CBType_Object,
-                payload: CBVarPayload {
-                    __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-                        __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
-                            objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
-                            objectVendorId: info.details.object.vendorId,
-                            objectTypeId: info.details.object.typeId,
-                        },
-                    },
-                },
-                ..Default::default()
-            }
-        }
+  pub fn new_object<T>(obj: &Rc<T>, info: &Type) -> Var {
+    unsafe {
+      Var {
+        valueType: CBType_Object,
+        payload: CBVarPayload {
+          __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+            __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
+              objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
+              objectVendorId: info.details.object.vendorId,
+              objectTypeId: info.details.object.typeId,
+            },
+          },
+        },
+        ..Default::default()
+      }
     }
+  }
 
-    pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
-        unsafe {
-            if var.valueType != CBType_Object
-                || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
-                    != info.details.object.vendorId
-                || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
-                    != info.details.object.typeId
-            {
-                Err("Failed to cast Var into custom Rc<T> object")
-            } else {
-                let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
-                let at = (*aptr).clone();
-                Ok(at)
-            }
-        }
+  pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
+    unsafe {
+      if var.valueType != CBType_Object
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+          != info.details.object.vendorId
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+      {
+        Err("Failed to cast Var into custom Rc<T> object")
+      } else {
+        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
+        let at = (*aptr).clone();
+        Ok(at)
+      }
     }
+  }
 
-    pub fn unsafe_mut<'a, T>(obj: &Rc<T>) -> &mut T {
-        // this looks unsafe but CB gives some garantees within chains!
-        let p = Rc::as_ptr(obj);
-        let mp = p as *mut T;
-        unsafe { &mut *mp }
-    }
+  pub fn unsafe_mut<'a, T>(obj: &Rc<T>) -> &mut T {
+    // this looks unsafe but CB gives some garantees within chains!
+    let p = Rc::as_ptr(obj);
+    let mp = p as *mut T;
+    unsafe { &mut *mp }
+  }
 
-    pub fn push<T: Into<Var>>(&mut self, _val: T) {
-        unimplemented!();
-    }
+  pub fn push<T: Into<Var>>(&mut self, _val: T) {
+    unimplemented!();
+  }
 
-    pub fn try_push<T: TryInto<Var>>(&mut self, _val: T) {
-        unimplemented!();
-    }
+  pub fn try_push<T: TryInto<Var>>(&mut self, _val: T) {
+    unimplemented!();
+  }
 
-    pub fn is_seq(&self) -> bool {
-        self.valueType == CBType_Seq
-    }
+  pub fn is_seq(&self) -> bool {
+    self.valueType == CBType_Seq
+  }
 
-    pub fn is_none(&self) -> bool {
-        self.valueType == CBType_None
-    }
+  pub fn is_none(&self) -> bool {
+    self.valueType == CBType_None
+  }
 
-    pub fn is_path(&self) -> bool {
-        self.valueType == CBType_Path
-    }
+  pub fn is_path(&self) -> bool {
+    self.valueType == CBType_Path
+  }
 
-    pub fn as_ref(&self) -> &Self {
-        &self
-    }
+  pub fn as_ref(&self) -> &Self {
+    &self
+  }
 }
 
 impl TryFrom<&Var> for CBString {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-        {
-            Err("Expected String, Path or ContextVar variable, but casting failed.")
-        } else {
-            unsafe { Ok(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue) }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+    {
+      Err("Expected String, Path or ContextVar variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue) }
     }
+  }
 }
 
 impl TryFrom<&Var> for std::string::String {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-        {
-            Err("Expected String, Path or ContextVar variable, but casting failed.")
-        } else {
-            unsafe {
-                let cstr =
-                    CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
-                Ok(std::string::String::from(cstr.to_str().unwrap()))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+    {
+      Err("Expected String, Path or ContextVar variable, but casting failed.")
+    } else {
+      unsafe {
+        let cstr = CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
+        Ok(std::string::String::from(cstr.to_str().unwrap()))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for CString {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-        {
-            Err("Expected String, Path or ContextVar variable, but casting failed.")
-        } else {
-            unsafe {
-                let cstr =
-                    CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
-                // we need to do this to own the string, this is kinda a burden tho
-                Ok(CString::new(cstr.to_str().unwrap()).unwrap())
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+    {
+      Err("Expected String, Path or ContextVar variable, but casting failed.")
+    } else {
+      unsafe {
+        let cstr = CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue);
+        // we need to do this to own the string, this is kinda a burden tho
+        Ok(CString::new(cstr.to_str().unwrap()).unwrap())
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for &CStr {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-        {
-            Err("Expected String, Path or ContextVar variable, but casting failed.")
-        } else {
-            unsafe {
-                Ok(CStr::from_ptr(
-                    var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
-                ))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+    {
+      Err("Expected String, Path or ContextVar variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(CStr::from_ptr(
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+        ))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for Option<CString> {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String
-            && var.valueType != CBType_Path
-            && var.valueType != CBType_ContextVar
-            && var.valueType != CBType_None
-        {
-            Err("Expected None, String, Path or ContextVar variable, but casting failed.")
-        } else {
-            if var.is_none() {
-                Ok(None)
-            } else {
-                Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+      && var.valueType != CBType_None
+    {
+      Err("Expected None, String, Path or ContextVar variable, but casting failed.")
+    } else {
+      if var.is_none() {
+        Ok(None)
+      } else {
+        Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for &[u8] {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Bytes {
-            Err("Expected Bytes, but casting failed.")
-        } else {
-            unsafe {
-                Ok(core::slice::from_raw_parts_mut(
-                    var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
-                    var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
-                ))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Bytes {
+      Err("Expected Bytes, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::slice::from_raw_parts_mut(
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+          var.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+        ))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for &str {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_String {
-            Err("Expected String, but casting failed.")
-        } else {
-            unsafe {
-                let cstr = CStr::from_ptr(
-                    var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
-                );
-                cstr.to_str()
-                    .or_else(|_| Err("UTF8 string conversion failed!"))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_String {
+      Err("Expected String, but casting failed.")
+    } else {
+      unsafe {
+        let cstr =
+          CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8);
+        cstr
+          .to_str()
+          .or_else(|_| Err("UTF8 string conversion failed!"))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for i64 {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Int {
-            Err("Expected Int variable, but casting failed.")
-        } else {
-            unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
     }
+  }
 }
 
 impl TryFrom<&Var> for u64 {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Int {
-            Err("Expected Int variable, but casting failed.")
-        } else {
-            unsafe {
-                let u = var
-                    .payload
-                    .__bindgen_anon_1
-                    .intValue
-                    .try_into()
-                    .or_else(|_| Err("i64 -> u64 conversion failed, possible overflow."))?;
-                Ok(u)
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe {
+        let u = var
+          .payload
+          .__bindgen_anon_1
+          .intValue
+          .try_into()
+          .or_else(|_| Err("i64 -> u64 conversion failed, possible overflow."))?;
+        Ok(u)
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for usize {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Int {
-            Err("Expected Int variable, but casting failed.")
-        } else {
-            unsafe {
-                var.payload
-                    .__bindgen_anon_1
-                    .intValue
-                    .try_into()
-                    .or_else(|_| Err("Int conversion failed, likely out of range (usize)"))
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe {
+        var
+          .payload
+          .__bindgen_anon_1
+          .intValue
+          .try_into()
+          .or_else(|_| Err("Int conversion failed, likely out of range (usize)"))
+      }
     }
+  }
 }
 
 impl TryFrom<&Var> for f64 {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Float {
-            Err("Expected Float variable, but casting failed.")
-        } else {
-            unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
     }
+  }
 }
 
 impl TryFrom<&Var> for bool {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Bool {
-            Err("Expected Float variable, but casting failed.")
-        } else {
-            unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Bool {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
     }
+  }
 }
 
 impl TryFrom<&Var> for &[Var] {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: &Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Seq {
-            Err("Expected Float variable, but casting failed.")
-        } else {
-            unsafe {
-                let elems = var.payload.__bindgen_anon_1.seqValue.elements;
-                let len = var.payload.__bindgen_anon_1.seqValue.len;
-                let res = std::slice::from_raw_parts(elems, len as usize);
-                Ok(res)
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Seq {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe {
+        let elems = var.payload.__bindgen_anon_1.seqValue.elements;
+        let len = var.payload.__bindgen_anon_1.seqValue.len;
+        let res = std::slice::from_raw_parts(elems, len as usize);
+        Ok(res)
+      }
     }
+  }
 }
 
 impl TryFrom<Var> for &[Var] {
-    type Error = &'static str;
+  type Error = &'static str;
 
-    #[inline(always)]
-    fn try_from(var: Var) -> Result<Self, Self::Error> {
-        if var.valueType != CBType_Seq {
-            Err("Expected Float variable, but casting failed.")
-        } else {
-            unsafe {
-                let elems = var.payload.__bindgen_anon_1.seqValue.elements;
-                let len = var.payload.__bindgen_anon_1.seqValue.len;
-                let res = std::slice::from_raw_parts(elems, len as usize);
-                Ok(res)
-            }
-        }
+  #[inline(always)]
+  fn try_from(var: Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Seq {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe {
+        let elems = var.payload.__bindgen_anon_1.seqValue.elements;
+        let len = var.payload.__bindgen_anon_1.seqValue.len;
+        let res = std::slice::from_raw_parts(elems, len as usize);
+        Ok(res)
+      }
     }
+  }
 }
 
 pub struct ParamVar {
-    pub parameter: ClonedVar,
-    pub pointee: *mut Var,
+  pub parameter: ClonedVar,
+  pub pointee: *mut Var,
 }
 
 impl ParamVar {
-    pub fn new(initial_value: Var) -> ParamVar {
-        ParamVar {
-            parameter: initial_value.into(),
-            pointee: std::ptr::null_mut(),
-        }
+  pub fn new(initial_value: Var) -> ParamVar {
+    ParamVar {
+      parameter: initial_value.into(),
+      pointee: std::ptr::null_mut(),
     }
+  }
 
-    pub fn cleanup(&mut self) {
-        unsafe {
-            if self.parameter.0.valueType == CBType_ContextVar {
-                (*Core).releaseVariable.unwrap()(self.pointee);
-            }
-            self.pointee = std::ptr::null_mut();
-        }
+  pub fn cleanup(&mut self) {
+    unsafe {
+      if self.parameter.0.valueType == CBType_ContextVar {
+        (*Core).releaseVariable.unwrap()(self.pointee);
+      }
+      self.pointee = std::ptr::null_mut();
     }
+  }
 
-    pub fn warmup(&mut self, context: &Context) {
-        if self.parameter.0.valueType == CBType_ContextVar {
-            assert_eq!(self.pointee, std::ptr::null_mut());
-            unsafe {
-                let ctx = context as *const CBContext as *mut CBContext;
-                self.pointee = (*Core).referenceVariable.unwrap()(
-                    ctx,
-                    self.parameter
-                        .0
-                        .payload
-                        .__bindgen_anon_1
-                        .__bindgen_anon_2
-                        .stringValue,
-                );
-            }
-        } else {
-            self.pointee = &mut self.parameter.0 as *mut Var;
-        }
-        assert_ne!(self.pointee, std::ptr::null_mut());
+  pub fn warmup(&mut self, context: &Context) {
+    if self.parameter.0.valueType == CBType_ContextVar {
+      assert_eq!(self.pointee, std::ptr::null_mut());
+      unsafe {
+        let ctx = context as *const CBContext as *mut CBContext;
+        self.pointee = (*Core).referenceVariable.unwrap()(
+          ctx,
+          self
+            .parameter
+            .0
+            .payload
+            .__bindgen_anon_1
+            .__bindgen_anon_2
+            .stringValue,
+        );
+      }
+    } else {
+      self.pointee = &mut self.parameter.0 as *mut Var;
     }
+    assert_ne!(self.pointee, std::ptr::null_mut());
+  }
 
-    pub fn set(&mut self, value: Var) {
-        // avoid overwrite refcount
-        assert_ne!(self.pointee, std::ptr::null_mut());
-        unsafe {
-            let rc = (*self.pointee).refcount;
-            (*self.pointee) = value;
-            (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u8);
-            (*self.pointee).refcount = rc;
-        }
+  pub fn set(&mut self, value: Var) {
+    // avoid overwrite refcount
+    assert_ne!(self.pointee, std::ptr::null_mut());
+    unsafe {
+      let rc = (*self.pointee).refcount;
+      (*self.pointee) = value;
+      (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u8);
+      (*self.pointee).refcount = rc;
     }
+  }
 
-    pub fn get(&mut self) -> Var {
-        // avoid reading refcount
-        assert_ne!(self.pointee, std::ptr::null_mut());
-        unsafe { *self.pointee }
-    }
+  pub fn get(&mut self) -> Var {
+    // avoid reading refcount
+    assert_ne!(self.pointee, std::ptr::null_mut());
+    unsafe { *self.pointee }
+  }
 
-    pub fn setParam(&mut self, value: &Var) {
-        self.parameter = value.into();
-    }
+  pub fn setParam(&mut self, value: &Var) {
+    self.parameter = value.into();
+  }
 
-    pub fn getParam(&mut self) -> Var {
-        self.parameter.0
-    }
+  pub fn getParam(&mut self) -> Var {
+    self.parameter.0
+  }
 
-    pub fn isVariable(&mut self) -> bool {
-        self.parameter.0.valueType == CBType_ContextVar
-    }
+  pub fn isVariable(&mut self) -> bool {
+    self.parameter.0.valueType == CBType_ContextVar
+  }
 
-    pub fn setName(&mut self, name: &str) {
-        self.parameter = name.into();
-        self.parameter.0.valueType = CBType_ContextVar;
-    }
+  pub fn setName(&mut self, name: &str) {
+    self.parameter = name.into();
+    self.parameter.0.valueType = CBType_ContextVar;
+  }
 
-    pub fn getName(&mut self) -> *const i8 {
-        (&self.parameter.0).try_into().unwrap()
-    }
+  pub fn getName(&mut self) -> *const i8 {
+    (&self.parameter.0).try_into().unwrap()
+  }
 }
 
 impl Drop for ParamVar {
-    fn drop(&mut self) {
-        self.cleanup();
-    }
+  fn drop(&mut self) {
+    self.cleanup();
+  }
 }
 
 // Seq / CBSeq
 
 #[derive(Clone)]
 pub struct Seq {
-    s: CBSeq,
-    owned: bool,
+  s: CBSeq,
+  owned: bool,
 }
 
 impl Drop for Seq {
-    fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                (*Core).seqFree.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
-            }
-        }
+  fn drop(&mut self) {
+    if self.owned {
+      unsafe {
+        (*Core).seqFree.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+      }
     }
+  }
 }
 
 pub struct SeqIterator {
-    s: Seq,
-    i: u32,
+  s: Seq,
+  i: u32,
 }
 
 impl Iterator for SeqIterator {
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = if self.i < self.s.s.len {
-            unsafe { Some(*self.s.s.elements.offset(self.i.try_into().unwrap())) }
-        } else {
-            None
-        };
-        self.i = self.i + 1;
-        res
-    }
-    type Item = Var;
+  fn next(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.s.s.len {
+      unsafe { Some(*self.s.s.elements.offset(self.i.try_into().unwrap())) }
+    } else {
+      None
+    };
+    self.i = self.i + 1;
+    res
+  }
+  type Item = Var;
 }
 
 impl IntoIterator for Seq {
-    fn into_iter(self) -> Self::IntoIter {
-        SeqIterator { s: self, i: 0 }
-    }
-    type Item = Var;
-    type IntoIter = SeqIterator;
+  fn into_iter(self) -> Self::IntoIter {
+    SeqIterator { s: self, i: 0 }
+  }
+  type Item = Var;
+  type IntoIter = SeqIterator;
 }
 
 impl Index<usize> for CBSeq {
-    fn index(&self, idx: usize) -> &Self::Output {
-        let idx_u32: u32 = idx.try_into().unwrap();
-        if idx_u32 < self.len {
-            unsafe { &*self.elements.offset(idx.try_into().unwrap()) }
-        } else {
-            panic!("Index out of range");
-        }
+  fn index(&self, idx: usize) -> &Self::Output {
+    let idx_u32: u32 = idx.try_into().unwrap();
+    if idx_u32 < self.len {
+      unsafe { &*self.elements.offset(idx.try_into().unwrap()) }
+    } else {
+      panic!("Index out of range");
     }
-    type Output = Var;
+  }
+  type Output = Var;
 }
 
 impl Index<usize> for Seq {
-    fn index(&self, idx: usize) -> &Self::Output {
-        &self.s[idx]
-    }
-    type Output = Var;
+  fn index(&self, idx: usize) -> &Self::Output {
+    &self.s[idx]
+  }
+  type Output = Var;
 }
 
 impl Seq {
-    pub const fn new() -> Seq {
-        Seq {
-            s: CBSeq {
-                elements: core::ptr::null_mut(),
-                len: 0,
-                cap: 0,
-            },
-            owned: true,
-        }
+  pub const fn new() -> Seq {
+    Seq {
+      s: CBSeq {
+        elements: core::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      },
+      owned: true,
     }
+  }
 
-    pub fn push(&mut self, value: Var) {
-        // we need to clone to own the memory chainblocks side
-        let mut tmp = CBVar::default();
-        cloneVar(&mut tmp, &value);
-        unsafe {
-            (*Core).seqPush.unwrap()(&self.s as *const CBSeq as *mut CBSeq, &tmp);
-        }
+  pub fn push(&mut self, value: Var) {
+    // we need to clone to own the memory chainblocks side
+    let mut tmp = CBVar::default();
+    cloneVar(&mut tmp, &value);
+    unsafe {
+      (*Core).seqPush.unwrap()(&self.s as *const CBSeq as *mut CBSeq, &tmp);
     }
+  }
 
-    pub fn insert(&mut self, index: usize, value: Var) {
-        // we need to clone to own the memory chainblocks side
-        let mut tmp = CBVar::default();
-        cloneVar(&mut tmp, &value);
-        unsafe {
-            (*Core).seqInsert.unwrap()(
-                &self.s as *const CBSeq as *mut CBSeq,
-                index.try_into().unwrap(),
-                &tmp,
-            );
-        }
+  pub fn insert(&mut self, index: usize, value: Var) {
+    // we need to clone to own the memory chainblocks side
+    let mut tmp = CBVar::default();
+    cloneVar(&mut tmp, &value);
+    unsafe {
+      (*Core).seqInsert.unwrap()(
+        &self.s as *const CBSeq as *mut CBSeq,
+        index.try_into().unwrap(),
+        &tmp,
+      );
     }
+  }
 
-    pub fn len(&self) -> usize {
-        self.s.len.try_into().unwrap()
-    }
+  pub fn len(&self) -> usize {
+    self.s.len.try_into().unwrap()
+  }
 
-    pub fn pop(&mut self) -> Option<ClonedVar> {
-        unsafe {
-            if self.len() > 0 {
-                let v = (*Core).seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
-                Some(transmute(v))
-            } else {
-                None
-            }
-        }
+  pub fn pop(&mut self) -> Option<ClonedVar> {
+    unsafe {
+      if self.len() > 0 {
+        let v = (*Core).seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+        Some(transmute(v))
+      } else {
+        None
+      }
     }
+  }
 
-    pub fn clear(&mut self) {
-        unsafe {
-            (*Core).seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
-        }
+  pub fn clear(&mut self) {
+    unsafe {
+      (*Core).seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
     }
+  }
 
-    pub fn iter(&self) -> SeqIterator {
-        SeqIterator {
-            s: self.clone(),
-            i: 0,
-        }
+  pub fn iter(&self) -> SeqIterator {
+    SeqIterator {
+      s: self.clone(),
+      i: 0,
     }
+  }
 }
 
 impl From<&Seq> for Var {
-    fn from(s: &Seq) -> Self {
-        CBVar {
-            valueType: CBType_Seq,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { seqValue: s.s },
-            },
-            ..Default::default()
-        }
+  fn from(s: &Seq) -> Self {
+    CBVar {
+      valueType: CBType_Seq,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { seqValue: s.s },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl From<Var> for Seq {
-    fn from(v: Var) -> Self {
-        unsafe {
-            Seq {
-                s: v.payload.__bindgen_anon_1.seqValue,
-                owned: false,
-            }
-        }
+  fn from(v: Var) -> Self {
+    unsafe {
+      Seq {
+        s: v.payload.__bindgen_anon_1.seqValue,
+        owned: false,
+      }
     }
+  }
 }
 
 impl From<&Var> for Seq {
-    fn from(v: &Var) -> Self {
-        unsafe {
-            Seq {
-                s: v.payload.__bindgen_anon_1.seqValue,
-                owned: false,
-            }
-        }
+  fn from(v: &Var) -> Self {
+    unsafe {
+      Seq {
+        s: v.payload.__bindgen_anon_1.seqValue,
+        owned: false,
+      }
     }
+  }
 }
 
 // Table / CBTable
 
 #[derive(Clone)]
 pub struct Table {
-    t: CBTable,
-    owned: bool,
+  t: CBTable,
+  owned: bool,
 }
 
 impl Drop for Table {
-    fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                (*self.t.api).tableFree.unwrap()(self.t);
-            }
-        }
+  fn drop(&mut self) {
+    if self.owned {
+      unsafe {
+        (*self.t.api).tableFree.unwrap()(self.t);
+      }
     }
+  }
 }
 
 unsafe extern "C" fn table_foreach_callback(
-    key: *const ::std::os::raw::c_char,
-    value: *mut CBVar,
-    userData: *mut ::std::os::raw::c_void,
+  key: *const ::std::os::raw::c_char,
+  value: *mut CBVar,
+  userData: *mut ::std::os::raw::c_void,
 ) -> CBBool {
-    let ptrs = userData as *mut (&mut Vec<&str>, &mut Vec<Var>);
-    let cstr = CStr::from_ptr(key);
-    (*ptrs).0.push(cstr.to_str().unwrap());
-    (*ptrs).1.push(*value);
-    true // false aborts iteration
+  let ptrs = userData as *mut (&mut Vec<&str>, &mut Vec<Var>);
+  let cstr = CStr::from_ptr(key);
+  (*ptrs).0.push(cstr.to_str().unwrap());
+  (*ptrs).1.push(*value);
+  true // false aborts iteration
 }
 
 impl Table {
-    pub fn new() -> Table {
-        unsafe {
-            Table {
-                t: (*Core).tableNew.unwrap()(),
-                owned: true,
-            }
-        }
+  pub fn new() -> Table {
+    unsafe {
+      Table {
+        t: (*Core).tableNew.unwrap()(),
+        owned: true,
+      }
     }
+  }
 
-    pub fn insert(&mut self, k: &CString, v: Var) -> Option<Var> {
-        unsafe {
-            let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
-            if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-                let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-                let old = *p;
-                cloneVar(&mut *p, &v);
-                Some(old)
-            } else {
-                let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-                *p = v;
-                None
-            }
-        }
+  pub fn insert(&mut self, k: &CString, v: Var) -> Option<Var> {
+    unsafe {
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        let old = *p;
+        cloneVar(&mut *p, &v);
+        Some(old)
+      } else {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        *p = v;
+        None
+      }
     }
+  }
 
-    pub fn insert_fast(&mut self, k: &CString, v: Var) {
-        unsafe {
-            let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
-            let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-            cloneVar(&mut *p, &v);
-        }
+  pub fn insert_fast(&mut self, k: &CString, v: Var) {
+    unsafe {
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      cloneVar(&mut *p, &v);
     }
+  }
 
-    pub fn insert_fast_static(&mut self, k: &'static str, v: Var) {
-        unsafe {
-            let cstr = k.as_ptr() as *const i8;
-            let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-            cloneVar(&mut *p, &v);
-        }
+  pub fn insert_fast_static(&mut self, k: &'static str, v: Var) {
+    unsafe {
+      let cstr = k.as_ptr() as *const i8;
+      let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      cloneVar(&mut *p, &v);
     }
+  }
 
-    pub fn get_mut(&self, k: &CString) -> Option<&mut Var> {
-        unsafe {
-            let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
-            if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-                let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-                Some(&mut *p)
-            } else {
-                None
-            }
-        }
+  pub fn get_mut(&self, k: &CString) -> Option<&mut Var> {
+    unsafe {
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        Some(&mut *p)
+      } else {
+        None
+      }
     }
+  }
 
-    pub fn get_mut_fast(&self, k: &CString) -> &mut Var {
-        unsafe {
-            let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
-            &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
-        }
+  pub fn get_mut_fast(&self, k: &CString) -> &mut Var {
+    unsafe {
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
+  }
 
-    pub fn get(&self, k: &CString) -> Option<&Var> {
-        unsafe {
-            let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
-            if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-                let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-                Some(&*p)
-            } else {
-                None
-            }
-        }
+  pub fn get(&self, k: &CString) -> Option<&Var> {
+    unsafe {
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        Some(&*p)
+      } else {
+        None
+      }
     }
+  }
 
-    pub fn iter(&self) -> TableIterator {
-        let mut keys = Vec::new();
-        let mut values = Vec::new();
-        unsafe {
-            let mut ptrs = (&mut keys, &mut values);
-            let cptrs =
-                &mut ptrs as *mut (&mut Vec<&str>, &mut Vec<Var>) as *mut std::os::raw::c_void;
-            let foreach = (*self.t.api).tableForEach.unwrap();
-            foreach(self.t, Some(table_foreach_callback), cptrs);
-        }
-        TableIterator {
-            keys: keys,
-            values: values,
-            i: 0,
-        }
+  pub fn iter(&self) -> TableIterator {
+    let mut keys = Vec::new();
+    let mut values = Vec::new();
+    unsafe {
+      let mut ptrs = (&mut keys, &mut values);
+      let cptrs = &mut ptrs as *mut (&mut Vec<&str>, &mut Vec<Var>) as *mut std::os::raw::c_void;
+      let foreach = (*self.t.api).tableForEach.unwrap();
+      foreach(self.t, Some(table_foreach_callback), cptrs);
     }
+    TableIterator { keys, values, i: 0 }
+  }
 }
 
 pub struct TableIterator<'a> {
-    keys: Vec<&'a str>,
-    values: Vec<Var>,
-    i: usize,
+  keys: Vec<&'a str>,
+  values: Vec<Var>,
+  i: usize,
 }
 
 impl<'a> Iterator for TableIterator<'a> {
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = if self.i < self.keys.len() {
-            Some((self.keys[self.i], self.values[self.i]))
-        } else {
-            None
-        };
-        self.i = self.i + 1;
-        res
-    }
-    type Item = (&'a str, Var);
+  fn next(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.keys.len() {
+      Some((self.keys[self.i], self.values[self.i]))
+    } else {
+      None
+    };
+    self.i += 1;
+    res
+  }
+  type Item = (&'a str, Var);
 }
 
 impl From<CBTable> for Table {
-    fn from(t: CBTable) -> Self {
-        Table { t: t, owned: false }
-    }
+  fn from(t: CBTable) -> Self {
+    Table { t, owned: false }
+  }
 }
 
-impl From<&Var> for Table {
-    fn from(t: &Var) -> Self {
-        unsafe { t.payload.__bindgen_anon_1.tableValue.into() }
+impl TryFrom<&Var> for Table {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Table {
+      Err("Expected Table, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.tableValue.into()) }
     }
+  }
 }
 
 impl From<&Table> for Var {
-    fn from(t: &Table) -> Self {
-        CBVar {
-            valueType: CBType_Table,
-            payload: CBVarPayload {
-                __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { tableValue: t.t },
-            },
-            ..Default::default()
-        }
+  fn from(t: &Table) -> Self {
+    CBVar {
+      valueType: CBType_Table,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { tableValue: t.t },
+      },
+      ..Default::default()
     }
+  }
 }
 
 impl PartialEq for Var {
-    fn eq(&self, other: &Self) -> bool {
-        if self.valueType != other.valueType {
-            false
-        } else {
-            unsafe {
-                match self.valueType {
-                    CBType_Enum => {
-                        self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
-                            == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
-                            && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
-                                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
-                            && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
-                                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
-                    }
-                    CBType_Bool => {
-                        self.payload.__bindgen_anon_1.boolValue
-                            == other.payload.__bindgen_anon_1.boolValue
-                    }
-                    CBType_Int => {
-                        self.payload.__bindgen_anon_1.intValue
-                            == other.payload.__bindgen_anon_1.intValue
-                    }
-                    CBType_Int2 => {
-                        self.payload.__bindgen_anon_1.int2Value
-                            == other.payload.__bindgen_anon_1.int2Value
-                    }
-                    CBType_Int3 => {
-                        self.payload.__bindgen_anon_1.int3Value
-                            == other.payload.__bindgen_anon_1.int3Value
-                    }
-                    CBType_Int4 => {
-                        self.payload.__bindgen_anon_1.int4Value
-                            == other.payload.__bindgen_anon_1.int4Value
-                    }
-                    CBType_Int8 => {
-                        self.payload.__bindgen_anon_1.int8Value
-                            == other.payload.__bindgen_anon_1.int8Value
-                    }
-                    CBType_Int16 => {
-                        self.payload.__bindgen_anon_1.int16Value
-                            == other.payload.__bindgen_anon_1.int16Value
-                    }
-                    CBType_Float => abs_diff_eq!(
-                        self.payload.__bindgen_anon_1.floatValue,
-                        other.payload.__bindgen_anon_1.floatValue
-                    ),
-                    CBType_Float2 => {
-                        abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float2Value[0],
-                            other.payload.__bindgen_anon_1.float2Value[0]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float2Value[1],
-                            other.payload.__bindgen_anon_1.float2Value[1]
-                        )
-                    }
-                    CBType_Float3 => {
-                        abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float3Value[0],
-                            other.payload.__bindgen_anon_1.float3Value[0]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float3Value[1],
-                            other.payload.__bindgen_anon_1.float3Value[1]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float3Value[2],
-                            other.payload.__bindgen_anon_1.float3Value[2]
-                        )
-                    }
-                    CBType_Float4 => {
-                        abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float4Value[0],
-                            other.payload.__bindgen_anon_1.float4Value[0]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float4Value[1],
-                            other.payload.__bindgen_anon_1.float4Value[1]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float4Value[2],
-                            other.payload.__bindgen_anon_1.float4Value[2]
-                        ) && abs_diff_eq!(
-                            self.payload.__bindgen_anon_1.float4Value[3],
-                            other.payload.__bindgen_anon_1.float4Value[3]
-                        )
-                    }
-                    CBType_Color => {
-                        self.payload.__bindgen_anon_1.colorValue.r
-                            == other.payload.__bindgen_anon_1.colorValue.r
-                            && self.payload.__bindgen_anon_1.colorValue.g
-                                == other.payload.__bindgen_anon_1.colorValue.g
-                            && self.payload.__bindgen_anon_1.colorValue.b
-                                == other.payload.__bindgen_anon_1.colorValue.b
-                            && self.payload.__bindgen_anon_1.colorValue.a
-                                == other.payload.__bindgen_anon_1.colorValue.a
-                    }
-                    CBType_Block => {
-                        self.payload.__bindgen_anon_1.blockValue
-                            == other.payload.__bindgen_anon_1.blockValue
-                    }
-                    CBType_Bytes => {
-                        self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-                            == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-                            && (self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                || {
-                                    let aslice = slice::from_raw_parts(
-                                        self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                            as *const u8,
-                                        self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-                                            as usize,
-                                    );
-                                    let bslice = slice::from_raw_parts(
-                                        other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                                            as *const u8,
-                                        other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-                                            as usize,
-                                    );
+  fn eq(&self, other: &Self) -> bool {
+    if self.valueType != other.valueType {
+      false
+    } else {
+      unsafe {
+        match self.valueType {
+          CBType_Enum => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
+              == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
+                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+          }
+          CBType_Bool => {
+            self.payload.__bindgen_anon_1.boolValue == other.payload.__bindgen_anon_1.boolValue
+          }
+          CBType_Int => {
+            self.payload.__bindgen_anon_1.intValue == other.payload.__bindgen_anon_1.intValue
+          }
+          CBType_Int2 => {
+            self.payload.__bindgen_anon_1.int2Value == other.payload.__bindgen_anon_1.int2Value
+          }
+          CBType_Int3 => {
+            self.payload.__bindgen_anon_1.int3Value == other.payload.__bindgen_anon_1.int3Value
+          }
+          CBType_Int4 => {
+            self.payload.__bindgen_anon_1.int4Value == other.payload.__bindgen_anon_1.int4Value
+          }
+          CBType_Int8 => {
+            self.payload.__bindgen_anon_1.int8Value == other.payload.__bindgen_anon_1.int8Value
+          }
+          CBType_Int16 => {
+            self.payload.__bindgen_anon_1.int16Value == other.payload.__bindgen_anon_1.int16Value
+          }
+          CBType_Float => abs_diff_eq!(
+            self.payload.__bindgen_anon_1.floatValue,
+            other.payload.__bindgen_anon_1.floatValue
+          ),
+          CBType_Float2 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float2Value[0],
+              other.payload.__bindgen_anon_1.float2Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float2Value[1],
+              other.payload.__bindgen_anon_1.float2Value[1]
+            )
+          }
+          CBType_Float3 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[0],
+              other.payload.__bindgen_anon_1.float3Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[1],
+              other.payload.__bindgen_anon_1.float3Value[1]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float3Value[2],
+              other.payload.__bindgen_anon_1.float3Value[2]
+            )
+          }
+          CBType_Float4 => {
+            abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[0],
+              other.payload.__bindgen_anon_1.float4Value[0]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[1],
+              other.payload.__bindgen_anon_1.float4Value[1]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[2],
+              other.payload.__bindgen_anon_1.float4Value[2]
+            ) && abs_diff_eq!(
+              self.payload.__bindgen_anon_1.float4Value[3],
+              other.payload.__bindgen_anon_1.float4Value[3]
+            )
+          }
+          CBType_Color => {
+            self.payload.__bindgen_anon_1.colorValue.r
+              == other.payload.__bindgen_anon_1.colorValue.r
+              && self.payload.__bindgen_anon_1.colorValue.g
+                == other.payload.__bindgen_anon_1.colorValue.g
+              && self.payload.__bindgen_anon_1.colorValue.b
+                == other.payload.__bindgen_anon_1.colorValue.b
+              && self.payload.__bindgen_anon_1.colorValue.a
+                == other.payload.__bindgen_anon_1.colorValue.a
+          }
+          CBType_Block => {
+            self.payload.__bindgen_anon_1.blockValue == other.payload.__bindgen_anon_1.blockValue
+          }
+          CBType_Bytes => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+              == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
+              && (self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+                || {
+                  let aslice = slice::from_raw_parts(
+                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const u8,
+                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+                  );
+                  let bslice = slice::from_raw_parts(
+                    other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const u8,
+                    other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+                  );
 
-                                    aslice == bslice
-                                })
-                    }
-                    CBType_String | CBType_Path | CBType_ContextVar => {
-                        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-                            == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-                            || {
-                                let astr = CStr::from_ptr(
-                                    self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-                                        as *mut i8,
-                                );
+                  aslice == bslice
+                })
+          }
+          CBType_String | CBType_Path | CBType_ContextVar => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+              == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
+              || {
+                let astr = CStr::from_ptr(
+                  self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                );
 
-                                let bstr = CStr::from_ptr(
-                                    other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-                                        as *mut i8,
-                                );
+                let bstr = CStr::from_ptr(
+                  other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+                );
 
-                                astr == bstr
-                            }
-                    }
-                    CBType_Image => {
-                        let aflags: u32 = self.payload.__bindgen_anon_1.imageValue.flags.into();
-                        let bflags: u32 = other.payload.__bindgen_anon_1.imageValue.flags.into();
-                        let apixsize =
-                            if (aflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
-                                2
-                            } else if (aflags & CBIMAGE_FLAGS_32BITS_FLOAT)
-                                == CBIMAGE_FLAGS_32BITS_FLOAT
-                            {
-                                4
-                            } else {
-                                1
-                            };
-                        let bpixsize =
-                            if (bflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
-                                2
-                            } else if (bflags & CBIMAGE_FLAGS_32BITS_FLOAT)
-                                == CBIMAGE_FLAGS_32BITS_FLOAT
-                            {
-                                4
-                            } else {
-                                1
-                            };
+                astr == bstr
+              }
+          }
+          CBType_Image => {
+            let aflags: u32 = self.payload.__bindgen_anon_1.imageValue.flags.into();
+            let bflags: u32 = other.payload.__bindgen_anon_1.imageValue.flags.into();
+            let apixsize = if (aflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
+              2
+            } else if (aflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
+              4
+            } else {
+              1
+            };
+            let bpixsize = if (bflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
+              2
+            } else if (bflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
+              4
+            } else {
+              1
+            };
 
-                        apixsize == bpixsize
-                            && self.payload.__bindgen_anon_1.imageValue.channels
-                                == other.payload.__bindgen_anon_1.imageValue.channels
-                            && self.payload.__bindgen_anon_1.imageValue.width
-                                == other.payload.__bindgen_anon_1.imageValue.width
-                            && self.payload.__bindgen_anon_1.imageValue.height
-                                == other.payload.__bindgen_anon_1.imageValue.height
-                            && (self.payload.__bindgen_anon_1.imageValue.data
-                                == other.payload.__bindgen_anon_1.imageValue.data
-                                || {
-                                    let aslice = slice::from_raw_parts(
-                                        self.payload.__bindgen_anon_1.imageValue.data,
-                                        self.payload.__bindgen_anon_1.imageValue.channels as usize
-                                            * self.payload.__bindgen_anon_1.imageValue.width
-                                                as usize
-                                            * self.payload.__bindgen_anon_1.imageValue.height
-                                                as usize
-                                            * apixsize,
-                                    );
-                                    let bslice = slice::from_raw_parts(
-                                        other.payload.__bindgen_anon_1.imageValue.data,
-                                        other.payload.__bindgen_anon_1.imageValue.channels as usize
-                                            * other.payload.__bindgen_anon_1.imageValue.width
-                                                as usize
-                                            * other.payload.__bindgen_anon_1.imageValue.height
-                                                as usize
-                                            * bpixsize,
-                                    );
+            apixsize == bpixsize
+              && self.payload.__bindgen_anon_1.imageValue.channels
+                == other.payload.__bindgen_anon_1.imageValue.channels
+              && self.payload.__bindgen_anon_1.imageValue.width
+                == other.payload.__bindgen_anon_1.imageValue.width
+              && self.payload.__bindgen_anon_1.imageValue.height
+                == other.payload.__bindgen_anon_1.imageValue.height
+              && (self.payload.__bindgen_anon_1.imageValue.data
+                == other.payload.__bindgen_anon_1.imageValue.data
+                || {
+                  let aslice = slice::from_raw_parts(
+                    self.payload.__bindgen_anon_1.imageValue.data,
+                    self.payload.__bindgen_anon_1.imageValue.channels as usize
+                      * self.payload.__bindgen_anon_1.imageValue.width as usize
+                      * self.payload.__bindgen_anon_1.imageValue.height as usize
+                      * apixsize,
+                  );
+                  let bslice = slice::from_raw_parts(
+                    other.payload.__bindgen_anon_1.imageValue.data,
+                    other.payload.__bindgen_anon_1.imageValue.channels as usize
+                      * other.payload.__bindgen_anon_1.imageValue.width as usize
+                      * other.payload.__bindgen_anon_1.imageValue.height as usize
+                      * bpixsize,
+                  );
 
-                                    aslice == bslice
-                                })
-                    }
-                    CBType_Seq => {
-                        if self.payload.__bindgen_anon_1.seqValue.elements
-                            == other.payload.__bindgen_anon_1.seqValue.elements
-                        {
-                            true
-                        } else if self.payload.__bindgen_anon_1.seqValue.len
-                            != other.payload.__bindgen_anon_1.seqValue.len
-                        {
-                            false
-                        } else {
-                            let aseq: Seq = self.into();
-                            let bseq: Seq = other.into();
-                            aseq.into_iter().eq(bseq.into_iter())
-                        }
-                    }
-                    CBType_Table => {
-                        let atab: Table = self.into();
-                        let btab: Table = other.into();
-                        atab.iter().eq(btab.iter())
-                    }
-                    CBType_Chain => {
-                        self.payload.__bindgen_anon_1.chainValue
-                            == other.payload.__bindgen_anon_1.chainValue
-                    }
-                    CBType_Object => {
-                        self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
-                            == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
-                            && self
-                                .payload
-                                .__bindgen_anon_1
-                                .__bindgen_anon_1
-                                .objectVendorId
-                                == other
-                                    .payload
-                                    .__bindgen_anon_1
-                                    .__bindgen_anon_1
-                                    .objectVendorId
-                            && self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
-                                == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
-                    }
-                    CBType_Array => {
-                        self.payload.__bindgen_anon_1.arrayValue.len
-                            == other.payload.__bindgen_anon_1.arrayValue.len
-                            && self.innerType == other.innerType
-                            && (self.payload.__bindgen_anon_1.arrayValue.elements
-                                == other.payload.__bindgen_anon_1.arrayValue.elements
-                                || {
-                                    let aslice = slice::from_raw_parts(
-                                        self.payload.__bindgen_anon_1.arrayValue.elements
-                                            as *const u8,
-                                        self.payload.__bindgen_anon_1.arrayValue.len as usize
-                                            * std::mem::size_of::<CBVarPayload>(),
-                                    );
-                                    let bslice = slice::from_raw_parts(
-                                        other.payload.__bindgen_anon_1.arrayValue.elements
-                                            as *const u8,
-                                        other.payload.__bindgen_anon_1.arrayValue.len as usize
-                                            * std::mem::size_of::<CBVarPayload>(),
-                                    );
-
-                                    aslice == bslice
-                                })
-                    }
-                    _ => true,
-                }
+                  aslice == bslice
+                })
+          }
+          CBType_Seq => {
+            if self.payload.__bindgen_anon_1.seqValue.elements
+              == other.payload.__bindgen_anon_1.seqValue.elements
+            {
+              true
+            } else if self.payload.__bindgen_anon_1.seqValue.len
+              != other.payload.__bindgen_anon_1.seqValue.len
+            {
+              false
+            } else {
+              let aseq: Seq = self.into();
+              let bseq: Seq = other.into();
+              aseq.into_iter().eq(bseq.into_iter())
             }
+          }
+          CBType_Table => {
+            let atab: Table = self.try_into().unwrap();
+            let btab: Table = other.try_into().unwrap();
+            atab.iter().eq(btab.iter())
+          }
+          CBType_Chain => {
+            self.payload.__bindgen_anon_1.chainValue == other.payload.__bindgen_anon_1.chainValue
+          }
+          CBType_Object => {
+            self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+              == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+              && self
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .objectVendorId
+                == other
+                  .payload
+                  .__bindgen_anon_1
+                  .__bindgen_anon_1
+                  .objectVendorId
+              && self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+                == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
+          }
+          CBType_Array => {
+            self.payload.__bindgen_anon_1.arrayValue.len
+              == other.payload.__bindgen_anon_1.arrayValue.len
+              && self.innerType == other.innerType
+              && (self.payload.__bindgen_anon_1.arrayValue.elements
+                == other.payload.__bindgen_anon_1.arrayValue.elements
+                || {
+                  let aslice = slice::from_raw_parts(
+                    self.payload.__bindgen_anon_1.arrayValue.elements as *const u8,
+                    self.payload.__bindgen_anon_1.arrayValue.len as usize
+                      * std::mem::size_of::<CBVarPayload>(),
+                  );
+                  let bslice = slice::from_raw_parts(
+                    other.payload.__bindgen_anon_1.arrayValue.elements as *const u8,
+                    other.payload.__bindgen_anon_1.arrayValue.len as usize
+                      * std::mem::size_of::<CBVarPayload>(),
+                  );
+
+                  aslice == bslice
+                })
+          }
+          _ => true,
         }
+      }
     }
+  }
 }
