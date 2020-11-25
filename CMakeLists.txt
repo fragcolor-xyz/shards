@@ -541,6 +541,7 @@ if(NOT BUILD_CORE_ONLY)
       "-framework IOKit"
       "-framework QuartzCore"
       "-framework Metal"
+      "-framework Security"
       -liconv
       )
     
@@ -553,7 +554,6 @@ if(NOT BUILD_CORE_ONLY)
           "-framework CoreMotion" 
           "-framework CoreGraphics"
           "-framework CoreHaptics"
-          "-framework Security"
           "-framework UIKit")
     else()
        set(CB_PLATFORM_LIBS
