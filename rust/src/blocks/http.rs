@@ -204,9 +204,9 @@ async fn exec_request_string_async(
 fn exec_request_string(
   request: reqwest::RequestBuilder,
 ) -> Result<std::string::String, &'static str> {
-  wasm_bindgen_futures::spawn_local(async {
-    let _ = exec_request_string_async(request).await;
-  });
+  // wasm_bindgen_futures::spawn_local(async {
+  //   let _ = exec_request_string_async(request).await;
+  // });
   Err("Not yet implemented properly")
 }
 
