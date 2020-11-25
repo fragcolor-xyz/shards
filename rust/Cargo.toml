@@ -12,8 +12,6 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 [dependencies]
 approx = "0.4.0"
 lazy_static = "1.4.0"
-futures =  "0.3.8"
-futures-util = "0.3.8"
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = "0.1.8"
@@ -21,8 +19,8 @@ reqwest = { version = "0.10", features = ["blocking"], optional = true }
 
 [target.'cfg(target_arch="wasm32")'.dependencies]
 wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4.18"
-reqwest = { version = "0.10",optional = true }
+# wasm-bindgen-futures = "0.4.18"
+# reqwest = { version = "0.10",optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"

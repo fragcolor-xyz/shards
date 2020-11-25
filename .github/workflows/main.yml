@@ -25,12 +25,12 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
-        ninja rust_blocks && ninja cbl
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        RUSTFLAGS="-C target-feature=-crt-static -L $EMSDK/upstream/emscripten/cache/wasm" ninja rust_blocks && ninja cbl
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") 0 (Exit))) (run Root 0.1))'
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm

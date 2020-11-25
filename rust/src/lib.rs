@@ -185,7 +185,7 @@ mod dummy_block {
   use std::ffi::CStr;
   use std::ffi::CString;
 
-  struct DummyBlock {
+  pub struct DummyBlock {
     inputTypes: Types,
     outputTypes: Types,
   }
@@ -198,8 +198,6 @@ mod dummy_block {
       }
     }
   }
-
-  type WDummyBlock = BlockWrapper<DummyBlock>;
 
   impl Block for DummyBlock {
     fn name(&mut self) -> &str {
@@ -214,13 +212,13 @@ mod dummy_block {
       &self.outputTypes
     }
     fn activate(&mut self, context: &CBContext, _input: &Var) -> Result<Var, &str> {
-      log("Dummy - activate: Ok!");
-      let mut x: String = "Before...".to_string();
+      log("Dummy - activate: Ok!\0");
+      let mut x: String = "Before...\0".to_string();
       log(&x);
       suspend(context, 2.0);
-      x.push_str(" - and After!");
+      x.push_str(" - and After!\0");
       log(&x);
-      log("Dummy - activate: Resumed!");
+      log("Dummy - activate: Resumed!\0");
       Ok(Var::default())
     }
 
@@ -288,10 +286,21 @@ mod dummy_block {
   }
 }
 
+
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocks")]
 #[no_mangle]
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
   blocks::http::registerBlocks();
+  cblog!("Rust blocks initialization done.");
+}
+
+#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "blocks")]
+#[no_mangle]
+pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
+  Core = core;
+  core::registerBlock::<dummy_block::DummyBlock>();
   cblog!("Rust blocks initialization done.");
 }
