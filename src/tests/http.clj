@@ -3,12 +3,23 @@
 (def test
   (Chain
    "test"
+   :Looped
                                         ; params
    1 (ToString)
    (Set .params "postId")
                                         ; GET
    .params
    (Http.Get "jsonplaceholder.typicode.com" "/comments")
+   (FromJson)
+   (ExpectSeq)
+   (Take 0)
+   (ExpectTable)
+   (Take "name")
+   (Assert.Is "id labore ex et quam laborum" true)
+   (Log)
+
+   .params
+   (Http.Get2 "https://jsonplaceholder.typicode.com/comments")
    (FromJson)
    (ExpectSeq)
    (Take 0)
@@ -24,7 +35,7 @@
    (Take "id")
    (Assert.Is 101 true)
    (Log)
-   
+
    .json
    (Http.Post "postman-echo.com" "/post")
    (Log)
@@ -34,11 +45,11 @@
    ))
 
 (schedule Root test)
-(run Root 0.1)
+(run Root 0.1 50)
 
 ; test reusing sockets/streams
 (schedule Root test)
-(run Root 0.1)
+(run Root 0.1 50)
 
 ;; (def server-handler
 ;;   (Chain

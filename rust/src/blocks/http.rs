@@ -1,6 +1,9 @@
 use crate::block::Block;
 use crate::core::do_blocking;
+use crate::core::log;
+use crate::core::registerBlock;
 use crate::types::common_type;
+use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ParamVar;
 use crate::types::Parameters;
@@ -10,13 +13,14 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use std::convert::TryInto;
+use std::ffi::CStr;
 
 lazy_static! {
   static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
   static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::string];
-  static ref PARAMETERS: Parameters = vec![
+  static ref GET_PARAMETERS: Parameters = vec![
     (
       "URL",
       "The url to request to.",
@@ -26,39 +30,65 @@ lazy_static! {
     (
       "Headers",
       "The headers to use for the request.",
-      vec![common_type::string_table, common_type::string_table_var]
+      vec![
+        common_type::none,
+        common_type::string_table,
+        common_type::string_table_var
+      ]
+    )
+      .into(),
+    (
+      "Timeout",
+      "How many seconds to wait for the request to complete.",
+      vec![common_type::int]
     )
       .into()
   ];
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+type Client = reqwest::blocking::Client;
+#[cfg(target_arch = "wasm32")]
+type Client = reqwest::Client;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn new_client() -> Client {
+  reqwest::blocking::Client::new()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn new_client() -> Client {
+  reqwest::Client::new()
+}
+
 struct Get {
-  client: reqwest::blocking::Client,
+  client: Client,
   url: ParamVar,
   headers: ParamVar,
   headers_map: HeaderMap,
+  output: ClonedVar,
+  timeout: u64,
 }
 
 impl Default for Get {
   fn default() -> Self {
     Self {
-      client: reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()
-        .unwrap(),
+      client: new_client(),
       url: ParamVar::new(cstr!("").into()),
-      headers: ParamVar::new(cstr!("").into()),
+      headers: ParamVar::new(().into()),
       headers_map: HeaderMap::new(),
+      output: ().into(),
+      timeout: 10,
     }
   }
 }
 
 impl Block for Get {
   fn registerName() -> &'static str {
-    cstr!("Http.Get")
+    cstr!("Http.Get2")
   }
   fn name(&mut self) -> &str {
-    "Http.Get"
+    "Http.Get2"
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -67,10 +97,15 @@ impl Block for Get {
   fn outputTypes(&mut self) -> &Types {
     &STR_OUTPUT_TYPE
   }
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&GET_PARAMETERS)
+  }
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.url.setParam(value),
+      1 => self.headers.setParam(value),
+      2 => self.timeout = value.try_into().expect("Integer timeout value"),
       _ => unreachable!(),
     }
   }
@@ -78,6 +113,8 @@ impl Block for Get {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.url.getParam(),
+      1 => self.headers.getParam(),
+      2 => self.timeout.try_into().expect("A valid integer in range"),
       _ => unreachable!(),
     }
   }
@@ -93,25 +130,88 @@ impl Block for Get {
     self.headers.cleanup();
     self.headers_map.clear();
   }
-
-  fn activate(&mut self, context: &Context, _: &Var) -> Result<Var, &str> {
-    let request = self.url.get();
-    let headers = self.headers.get();
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     Ok(do_blocking(context, || {
-      self.headers_map.clear();
-      let headers_table: Table = headers.as_ref().try_into()?;
-      // for (k, v) in headers_table.iter() {
-      //   self.headers_map.insert(
-      //     k,
-      //     HeaderValue::from_str(v.as_ref().try_into()?)
-      //       .or_else(|_| Err("Could not convert into HeaderValue"))?,
-      //   );
-      // }
+      let request = self.url.get();
       let request_string: &str = request.as_ref().try_into()?;
-      let response = self.client.get(request_string);
-      Ok(().into())
+      let mut request = self.client.get(request_string);
+      // request = request.timeout(Duration::from_secs(self.timeout));
+      let headers = self.headers.get();
+      if !headers.is_none() {
+        let headers_table: Table = headers.as_ref().try_into()?;
+        for (k, v) in headers_table.iter() {
+          let key: &str = k.into();
+          let hname: HeaderName = key
+            .try_into()
+            .map_err(|_| "Could not convert into HeaderName")?;
+          let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
+            .map_err(|_| "Could not convert into HeaderValue")?;
+          request = request.header(hname, hvalue);
+        }
+      }
+      if !input.is_none() {
+        let input_table: Table = input.as_ref().try_into()?;
+        for (k, v) in input_table.iter() {
+          let key: &str = k.into();
+          let value: &str = v.as_ref().try_into()?;
+          request = request.query(&[(key, value)]);
+        }
+      }
+      let response = exec_request_string(request)?;
+      self.output = response.as_str().into();
+      Ok(self.output.0)
     }))
   }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn exec_request_string(
+  request: reqwest::blocking::RequestBuilder,
+) -> Result<std::string::String, &'static str> {
+  request
+    .send()
+    .map_err(|e| {
+      cblog!("Failure details: {}", e);
+      "Failed to send the request"
+    })?
+    .text()
+    .map_err(|e| {
+      cblog!("Failure details: {}", e);
+      "Failed to decode the response"
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn exec_request_string_async(
+  request: reqwest::RequestBuilder,
+) -> Result<std::string::String, &'static str> {
+  request
+    .send()
+    .await
+    .map_err(|e| {
+      cblog!("Failure details: {}", e);
+      "Failed to send the request"
+    })?
+    .text()
+    .await
+    .map_err(|e| {
+      cblog!("Failure details: {}", e);
+      "Failed to decode the response"
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn exec_request_string(
+  request: reqwest::RequestBuilder,
+) -> Result<std::string::String, &'static str> {
+  wasm_bindgen_futures::spawn_local(async {
+    let _ = exec_request_string_async(request).await;
+  });
+  Err("Not yet implemented properly")
+}
+
+pub fn registerBlocks() {
+  registerBlock::<Get>();
 }
 
 #[cfg(test)]

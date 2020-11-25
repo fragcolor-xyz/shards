@@ -748,6 +748,11 @@ CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
       break;
   }
 
+  // TODO figure out cancellations inside parallel tasks...
+  while (!complete) {
+    std::this_thread::yield();
+  }
+
   if (exp) {
     try {
       std::rethrow_exception(exp);
@@ -781,6 +786,11 @@ void await(CBContext *context, std::function<void()> func) {
   while (!complete) {
     if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
+  }
+
+  // TODO figure out cancellations inside parallel tasks...
+  while (!complete) {
+    std::this_thread::yield();
   }
 
   if (exp) {

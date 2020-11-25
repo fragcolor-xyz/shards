@@ -18,6 +18,7 @@ use crate::chainblocksc::CBSeq;
 use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBStrings;
 use crate::chainblocksc::CBTable;
+use crate::chainblocksc::CBTableIterator;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBTypeInfo_Details;
 use crate::chainblocksc::CBTypeInfo_Details_Object;
@@ -87,6 +88,8 @@ pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
+#[derive(PartialEq)]
+pub struct String(pub CBString);
 
 #[derive(PartialEq)]
 pub enum ChainState {
@@ -529,8 +532,8 @@ impl Type {
       basicType: CBType_Object,
       details: CBTypeInfo_Details {
         object: CBTypeInfo_Details_Object {
-          vendorId: vendorId,
-          typeId: typeId,
+          vendorId,
+          typeId,
         },
       },
     }
@@ -741,6 +744,16 @@ impl From<CBString> for Var {
         },
       },
       ..Default::default()
+    }
+  }
+}
+
+impl From<String> for &str {
+  #[inline(always)]
+  fn from(v: String) -> Self {
+    unsafe {
+        let cstr = CStr::from_ptr(v.0);
+        cstr.to_str().unwrap()
     }
   }
 }
@@ -1058,12 +1071,10 @@ impl TryFrom<&Var> for Option<CString> {
       && var.valueType != CBType_None
     {
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
+    } else if var.is_none() {
+      Ok(None)
     } else {
-      if var.is_none() {
-        Ok(None)
-      } else {
-        Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
-      }
+      Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
     }
   }
 }
@@ -1500,6 +1511,12 @@ unsafe extern "C" fn table_foreach_callback(
   true // false aborts iteration
 }
 
+impl Default for Table {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl Table {
   pub fn new() -> Table {
     unsafe {
@@ -1554,7 +1571,7 @@ impl Table {
     }
   }
 
-  pub fn get_mut_fast(&self, k: &CString) -> &mut Var {
+  pub fn get_mut_fast(&mut self, k: &CString) -> &mut Var {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
       &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
@@ -1574,35 +1591,41 @@ impl Table {
   }
 
   pub fn iter(&self) -> TableIterator {
-    let mut keys = Vec::new();
-    let mut values = Vec::new();
     unsafe {
-      let mut ptrs = (&mut keys, &mut values);
-      let cptrs = &mut ptrs as *mut (&mut Vec<&str>, &mut Vec<Var>) as *mut std::os::raw::c_void;
-      let foreach = (*self.t.api).tableForEach.unwrap();
-      foreach(self.t, Some(table_foreach_callback), cptrs);
+      let it = TableIterator {
+        table: self.t,
+        citer: [0; 64],
+      };
+      (*self.t.api).tableGetIterator.unwrap()(self.t, &it.citer as *const _ as *mut _);
+      it
     }
-    TableIterator { keys, values, i: 0 }
   }
 }
 
-pub struct TableIterator<'a> {
-  keys: Vec<&'a str>,
-  values: Vec<Var>,
-  i: usize,
+pub struct TableIterator {
+  table: CBTable,
+  citer: CBTableIterator,
 }
 
-impl<'a> Iterator for TableIterator<'a> {
+impl Iterator for TableIterator {
+  type Item = (String, Var);
   fn next(&mut self) -> Option<Self::Item> {
-    let res = if self.i < self.keys.len() {
-      Some((self.keys[self.i], self.values[self.i]))
-    } else {
-      None
-    };
-    self.i += 1;
-    res
+    unsafe {
+      let k: CBString = core::ptr::null();
+      let v: CBVar = CBVar::default();
+      let hasValue = (*(self.table.api)).tableNext.unwrap()(
+        self.table,
+        &self.citer as *const _ as *mut _,
+        &k as *const _ as *mut _,
+        &v as *const _ as *mut _,
+      );
+      if hasValue {
+        Some((String(k), v))
+      } else {
+        None
+      }
+    }
   }
-  type Item = (&'a str, Var);
 }
 
 impl From<CBTable> for Table {
