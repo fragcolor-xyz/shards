@@ -288,6 +288,7 @@ mod dummy_block {
   }
 }
 
+#[cfg(feature = "blocks")]
 #[no_mangle]
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
