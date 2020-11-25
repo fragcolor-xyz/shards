@@ -162,6 +162,7 @@ jobs:
         rustup update
         rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
+        rustup target add i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
@@ -171,7 +172,7 @@ jobs:
       name: Bindgen
       run: |
         cd rust
-        cargo build --features cb_static,run_bindgen
+        cargo build --features cb_static,run_bindgen --target i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
@@ -208,6 +209,7 @@ jobs:
         rustup update
         rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
+        rustup target add i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
@@ -217,7 +219,7 @@ jobs:
       name: Bindgen
       run: |
         cd rust
-        cargo build --features cb_static,run_bindgen
+        cargo build --features cb_static,run_bindgen --target i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
