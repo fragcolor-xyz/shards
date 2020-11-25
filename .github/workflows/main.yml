@@ -28,6 +28,7 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake -DEMSCRIPTEN_PTHREADS=1 ..
+        ls -lh $EMSDK/upstream/emscripten/cache/wasm
         ninja rust_blocks && ninja cbl
     - name: Test
       run: |
