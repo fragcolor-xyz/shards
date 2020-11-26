@@ -137,8 +137,11 @@ jobs:
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
 
-  Windows-Release:
+  Windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
@@ -149,14 +152,17 @@ jobs:
         msystem: MINGW64
         release: false
         path-type: inherit
-    - run: msys2 ./build-win.sh Release
+    - run: msys2 ./build-win.sh ${{ matrix.build-type }}
     - uses: actions/upload-artifact@master
       with:
-        name: cbl-win64
+        name: cbl-win64 ${{ matrix.build-type }}
         path: build/cbl.exe
 
-  Windows-Release-32:
+  Windows-32bits:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
@@ -182,54 +188,11 @@ jobs:
         release: false
         path-type: inherit
     - name: Build 32Bits
-      run: msys2 ./build-win32.sh Release
+      run: msys2 ./build-win32.sh ${{ matrix.build-type }}
     - uses: actions/upload-artifact@master
       with:
-        name: cbl-win32
+        name: cbl-win32 ${{ matrix.build-type }}
         path: build/cbl.exe
-
-  Windows-Debug:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - run: msys2 ./build-win.sh Debug
-
-  Windows-Debug-32:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-        rustup update
-        rustup default stable-x86_64-pc-windows-gnu
-        rustup target add i686-pc-windows-gnu
-        rustup target add i686-pc-windows-msvc
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - shell: msys2 {0}
-      name: Bindgen
-      run: |
-        cd rust
-        cargo build --features cb_static,run_bindgen --target i686-pc-windows-msvc
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW32
-        release: false
-        path-type: inherit
-    - name: Build 32Bits
-      run: msys2 ./build-win32.sh Debug
 
   macOS:
     runs-on: macos-latest
