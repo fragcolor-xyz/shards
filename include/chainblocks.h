@@ -359,8 +359,6 @@ struct CBTableInterface {
   CBTableFree tableFree;
 };
 
-struct CBAllocatorInterface {};
-
 #ifdef CB_NO_ANON
 #define CB_STRUCT(_name_) struct _name_
 #define CB_UNION(_name_) union _name_
