@@ -80,10 +80,6 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
 endif()
 
-if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
-  set(CHAINBLOCKS_EXTRA_LINKS "")
-endif()
-
 add_compile_definitions(
   ELPP_DEFAULT_LOG_FILE="chainblocks.log"
   BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
@@ -105,7 +101,21 @@ else()
   if(EMSCRIPTEN_PTHREADS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
-    add_link_options(-pthread)
+    # We build with no stdlibs cos we need to hack the proper libc for rustc to link properly...
+    add_custom_target(fix_emscripten_libc
+      COMMAND cp "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc-mt.a" "${CMAKE_CURRENT_BINARY_DIR}/libc.a"
+    )
+    add_link_options(-pthread -nostdlib)
+    set(EXTRA_SYS_LIBS ${EXTRA_SYS_LIBS}
+      "${CMAKE_CURRENT_BINARY_DIR}/libc.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libcompiler_rt-mt.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc++-mt.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc++abi-mt.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libdlmalloc-mt.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libpthread-mt.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc_rt_wasm.a"
+      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libsockets-mt.a"
+      )
   endif()
 endif()
 
@@ -842,7 +852,7 @@ add_library(
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
 if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static cb_rust_static) 
@@ -908,7 +918,7 @@ add_executable(
 add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
+target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
 if(EMSCRIPTEN)
 set_target_properties(cbl PROPERTIES SUFFIX ".html")
@@ -923,5 +933,5 @@ add_executable(
 add_dependencies(cbedn cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 ###
