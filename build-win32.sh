@@ -3,11 +3,15 @@
 # fail on errors
 set -e
 
+rustup update
+rustup default stable-x86_64-pc-windows-gnu
+rustup target add i686-pc-windows-gnu
+
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..
 ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
