@@ -97,6 +97,8 @@ jobs:
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
         ninja rust_blocks && ninja cbl
     - name: Test
+      env:
+        RUST_BACKTRACE: 1
       run: |
         cd build
         ./cbl ../src/tests/general.clj
@@ -191,7 +193,10 @@ jobs:
         msystem: MINGW64
         release: false
         path-type: inherit
-    - run: msys2 ./build-win.sh ${{ matrix.build-type }}
+    - name: Build and Run
+      env:
+        RUST_BACKTRACE: 1
+      run: msys2 ./build-win.sh ${{ matrix.build-type }}
     - uses: actions/upload-artifact@master
       with:
         name: cbl-win64 ${{ matrix.build-type }}
@@ -226,7 +231,9 @@ jobs:
         msystem: MINGW32
         release: false
         path-type: inherit
-    - name: Build 32Bits
+    - name: Build 32Bits and Run
+      env:
+        RUST_BACKTRACE: 1
       run: msys2 ./build-win32.sh ${{ matrix.build-type }}
     - uses: actions/upload-artifact@master
       with:
@@ -253,6 +260,8 @@ jobs:
         cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
         ninja rust_blocks && ninja cbl
     - name: Test
+      env:
+        RUST_BACKTRACE: 1
       run: |
         cd build
         ./cbl ../src/tests/general.clj
