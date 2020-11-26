@@ -101,21 +101,7 @@ else()
   if(EMSCRIPTEN_PTHREADS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
-    # We build with no stdlibs cos we need to hack the proper libc for rustc to link properly...
-    add_custom_target(fix_emscripten_libc
-      COMMAND cp "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc-mt.a" "${CMAKE_CURRENT_BINARY_DIR}/libc.a"
-    )
-    add_link_options(-pthread -nostdlib)
-    set(EXTRA_SYS_LIBS ${EXTRA_SYS_LIBS}
-      "${CMAKE_CURRENT_BINARY_DIR}/libc.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libcompiler_rt-mt.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc++-mt.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc++abi-mt.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libdlmalloc-mt.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libpthread-mt.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libc_rt_wasm.a"
-      "$ENV{EMSDK}/upstream/emscripten/cache/wasm/libsockets-mt.a"
-      )
+    add_link_options(-pthread)
   endif()
 endif()
 

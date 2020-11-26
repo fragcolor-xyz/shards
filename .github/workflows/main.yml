@@ -23,7 +23,7 @@ jobs:
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
-        export RUSTFLAGS="-Ctarget-feature=-crt-static -L$EMSDK/upstream/emscripten/cache/wasm"
+        export RUSTFLAGS="-Ctarget-feature=-crt-static"
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
