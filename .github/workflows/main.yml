@@ -19,15 +19,15 @@ jobs:
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
         rustup update
+        rustup default nightly
         rustup target add wasm32-wasi
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
-        export RUSTFLAGS="-Ctarget-feature=-crt-static"
+        export RUSTFLAGS="-Ctarget-feature=-crt-static,+atomics,+bulk-memory"
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-        ls -lh $EMSDK/upstream/emscripten/cache/wasm
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake "-DRUST_BUILD_OPTIONS=-Zbuild-std=std,panic_abort" -DEMSCRIPTEN_PTHREADS=1 ..
         ninja rust_blocks && ninja cbl
     - name: Test
       run: |
