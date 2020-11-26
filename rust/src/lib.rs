@@ -141,7 +141,7 @@ macro_rules! blocks {
 }
 
 // --features "dummy"
-#[cfg(all(test, not(feature = "cb_static")))]
+#[cfg(any(all(test, not(feature = "cb_static")), target_arch = "wasm32"))]
 #[macro_use]
 mod dummy_block {
   // run with: RUST_BACKTRACE=1 cargo test -- --nocapture

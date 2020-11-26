@@ -757,7 +757,8 @@ if(NOT BUILD_CORE_ONLY)
 
   add_custom_target(
     rust_blocks
-    COMMAND cargo build --features cb_static,blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND 
+      cargo build --features cb_static,blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
