@@ -21,7 +21,7 @@ jobs:
         rustup update
         rustup default nightly
         rustup component add rust-src
-        rustup target add wasm32-wasi
+        rustup target add wasm32-unknown-unknown
     - name: Build
       env:
         RUSTFLAGS: -Ctarget-feature=-crt-static,+atomics,+bulk-memory
