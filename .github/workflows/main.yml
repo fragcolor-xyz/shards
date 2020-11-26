@@ -21,10 +21,9 @@ jobs:
         rustup update
         rustup target add wasm32-wasi
     - name: Build
-      env:
-        RUSTFLAGS: -Ctarget-feature=-crt-static -L$EMSDK/upstream/emscripten/cache/wasm
       run: |
         source emsdk/emsdk_env.sh
+        export RUSTFLAGS="-Ctarget-feature=-crt-static -L$EMSDK/upstream/emscripten/cache/wasm"
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
