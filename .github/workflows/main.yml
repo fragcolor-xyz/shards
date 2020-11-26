@@ -215,7 +215,7 @@ jobs:
         rustup update
         rustup default stable-x86_64-pc-windows-gnu
         rustup target add i686-pc-windows-gnu
-        $env::Path += ";C:\msys64\mingw64\bin"
+        $env:Path += ";C:\msys64\mingw64\bin"
         cd rust
         cargo build --features cb_static,run_bindgen --target i686-pc-windows-gnu
     - uses: msys2/setup-msys2@v2
