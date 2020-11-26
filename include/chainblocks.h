@@ -597,20 +597,12 @@ struct CBVarPayload {
 
 // CBVar flags
 #define CBVAR_FLAGS_NONE (0)
-#define CBVAR_FLAGS_USES_ALLOCATOR (1 << 0)
-#define CBVAR_FLAGS_USES_OBJINFO (1 << 1)
-#define CBVAR_FLAGS_REF_COUNTED (1 << 2)
+#define CBVAR_FLAGS_USES_OBJINFO (1 << 0)
+#define CBVAR_FLAGS_REF_COUNTED (1 << 1)
 
 struct CBVar {
   struct CBVarPayload payload;
-  union {
-    // currently used when dealing with Object type variables
-    // if you need (serialization & destroy) you should populate this field
-    // when CBVAR_FLAGS_USES_OBJINFO
-    struct CBObjectInfo *objectInfo;
-    // when CBVAR_FLAGS_USES_ALLOCATOR, used for IPC and such
-    struct CBAllocatorInterface *allocator;
-  };
+  struct CBObjectInfo *objectInfo;
   uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
