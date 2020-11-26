@@ -3,16 +3,13 @@
 # fail on errors
 set -e
 
-wget https://static.rust-lang.org/rustup/dist/i686-pc-windows-msvc/rustup-init.exe
-# export RUST_HOME=`pwd`/../rustup-home
-# export CARGO_HOME=`pwd`/../cargo-home
-rustup-init -y --default-host i686-pc-windows-gnu --default-toolchain i686-pc-windows-gnu
+rustup default stable-i686-pc-windows-gnu
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
 
 mkdir build
 cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
 ninja rust_blocks && ninja cbl
 
 echo "Running test: general"
