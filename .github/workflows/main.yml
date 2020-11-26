@@ -23,9 +23,10 @@ jobs:
         rustup component add rust-src
         rustup target add wasm32-wasi
     - name: Build
+      env:
+        RUSTFLAGS: -Ctarget-feature=-crt-static,+atomics,+bulk-memory
       run: |
         source emsdk/emsdk_env.sh
-        export RUSTFLAGS="-Ctarget-feature=-crt-static,+atomics,+bulk-memory"
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake "-DRUST_BUILD_OPTIONS=-Zbuild-std=std,panic_abort" -DEMSCRIPTEN_PTHREADS=1 ..
