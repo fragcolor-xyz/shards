@@ -141,7 +141,7 @@ macro_rules! blocks {
 }
 
 // --features "dummy"
-// #[cfg(any(test, feature = "dummy"))]
+#[cfg(all(test, not(feature = "cb_static")))]
 #[macro_use]
 mod dummy_block {
   // run with: RUST_BACKTRACE=1 cargo test -- --nocapture
