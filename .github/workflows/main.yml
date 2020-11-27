@@ -215,7 +215,7 @@ jobs:
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
-        release: true
+        release: false
         path-type: inherit
     - name: Build 32Bits and Run
       env:
