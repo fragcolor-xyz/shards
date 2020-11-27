@@ -1093,10 +1093,10 @@ struct Observer : public chainblocks::RuntimeObserver {
       auto param = params.elements[i];
       _env->set(":" + MalString(param.name),
                 mal::keyword(":" + MalString(param.name)));
-#ifndef NDEBUG
+// #ifndef NDEBUG
       // add coverage for parameters setting
       block->setParam(block, i, block->getParam(block, i));
-#endif
+// #endif
     }
     // define the new built-in
     MalString mname(fullName);

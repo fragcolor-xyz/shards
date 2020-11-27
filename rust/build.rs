@@ -16,16 +16,10 @@ fn bindgen_it() {
 
   let header_path = chainblocks_dir + "/include/chainblocks.h";
 
-  let mut builder = bindgen::Builder::default()
+  let bindings = bindgen::Builder::default()
     .header(header_path)
     .clang_arg("-DCB_NO_ANON")
-    .clang_arg("-DCB_USE_ENUMS");
-
-  if cfg!(target_arch = "x86") {
-    builder = builder.clang_arg("-m32");
-  }
-
-  let bindings = builder
+    .clang_arg("-DCB_USE_ENUMS")
     .derive_default(true)
     .use_core()
     .generate()
