@@ -206,7 +206,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        build-type: ["Release"]
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
