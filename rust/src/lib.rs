@@ -100,7 +100,7 @@ macro_rules! blocks {
                 if let Some(pidx) = idx {
                     let pvar = var!($param);
                     unsafe {
-                        (*blk).setParam.unwrap()(blk, pidx as i32, pvar.0);
+                        (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
                     }
                 } else {
                     panic!("Parameter not found: {} for block: {}!", param, blkname);
@@ -121,7 +121,7 @@ macro_rules! blocks {
             {
                 let pvar = var!($param);
                 unsafe {
-                    (*blk).setParam.unwrap()(blk, _pidx, pvar.0);
+                    (*blk).setParam.unwrap()(blk, _pidx, &pvar.0 as *const _);
                 }
                 _pidx += 1;
             }
