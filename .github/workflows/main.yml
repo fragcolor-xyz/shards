@@ -188,6 +188,7 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
+        rustup update
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
@@ -212,6 +213,7 @@ jobs:
     - name: Setup
       run: |
         git submodule update --init --recursive
+        rustup update
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
