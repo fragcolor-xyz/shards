@@ -29,7 +29,7 @@ struct Convolve {
       return Var(int64_t(_step));
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0) {
       _radius = int32_t(value.payload.intValue);
       if (_radius <= 0)
@@ -245,7 +245,7 @@ struct Resize {
       return Var(int64_t(_height));
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0) {
       _width = int32_t(value.payload.intValue);
     } else {

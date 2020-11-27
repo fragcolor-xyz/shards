@@ -978,9 +978,9 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->runChain = [](CBChainRef chain, CBContext *context,
-                        CBVar input) noexcept {
+                        const CBVar *input) noexcept {
     auto sc = CBChain::sharedFromRef(chain);
-    return chainblocks::runSubChain(sc.get(), context, input);
+    return chainblocks::runSubChain(sc.get(), context, *input);
   };
 
   result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
@@ -1003,16 +1003,16 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     }
   };
 
-  result->validateSetParam = [](CBlock *block, int index, CBVar param,
+  result->validateSetParam = [](CBlock *block, int index, const CBVar *param,
                                 CBValidationCallback callback,
                                 void *userData) noexcept {
-    return validateSetParam(block, index, param, callback, userData);
+    return validateSetParam(block, index, *param, callback, userData);
   };
 
-  result->runBlocks = [](CBlocks blocks, CBContext *context, CBVar input,
+  result->runBlocks = [](CBlocks blocks, CBContext *context, const CBVar *input,
                          CBVar *output, const CBBool handleReturn) noexcept {
     try {
-      return chainblocks::activateBlocks(blocks, context, input, *output,
+      return chainblocks::activateBlocks(blocks, context, *input, *output,
                                          handleReturn);
     } catch (const std::exception &e) {
       context->cancelFlow(e.what());
@@ -1801,7 +1801,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   return varType;
 }
 
-bool validateSetParam(CBlock *block, int index, CBVar &value,
+bool validateSetParam(CBlock *block, int index, const CBVar &value,
                       CBValidationCallback callback, void *userData) {
   auto params = block->parameters(block);
   if (params.len <= (uint32_t)index) {

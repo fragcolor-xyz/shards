@@ -138,12 +138,12 @@ template <class T> struct BlockWrapper {
     // setParam
     if constexpr (has_setParam<T>::value) {
       result->setParam =
-          static_cast<CBSetParamProc>([](CBlock *b, int i, CBVar v) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.setParam(i, v);
+          static_cast<CBSetParamProc>([](CBlock *b, int i, const CBVar *v) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.setParam(i, *v);
           });
     } else {
       result->setParam =
-          static_cast<CBSetParamProc>([](CBlock *b, int i, CBVar v) {});
+          static_cast<CBSetParamProc>([](CBlock *b, int i, const CBVar *v) {});
     }
 
     // getParam
@@ -223,9 +223,9 @@ template <class T> struct BlockWrapper {
     // crossover
     if constexpr (has_crossover<T>::value) {
       result->crossover = static_cast<CBCrossoverProc>(
-          [](CBlock *b, CBVar state0, CBVar state1) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.crossover(state0,
-                                                                    state1);
+          [](CBlock *b, const CBVar *state0, const CBVar *state1) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.crossover(*state0,
+                                                                    *state1);
           });
     } else {
       // crossover is optional!
@@ -245,8 +245,8 @@ template <class T> struct BlockWrapper {
     // setState
     if constexpr (has_setState<T>::value) {
       result->setState =
-          static_cast<CBSetStateProc>([](CBlock *b, CBVar state) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState(state);
+          static_cast<CBSetStateProc>([](CBlock *b, const CBVar *state) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState(*state);
           });
     } else {
       // setState is optional!
@@ -289,7 +289,7 @@ struct TSimpleBlock {
   static CBTypesInfo outputTypes() { return OutputType; }
   static CBParametersInfo parameters() { return Params; }
 
-  void setParam(int index, CBVar value) { params[index] = value; }
+  void setParam(int index, const CBVar &value) { params[index] = value; }
 
   CBVar getParam(int index) { return params[index]; }
 

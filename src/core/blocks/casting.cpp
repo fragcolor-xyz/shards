@@ -126,7 +126,7 @@ template <CBType FROMTYPE> struct ToImage {
     }
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _width = uint16_t(value.payload.intValue);

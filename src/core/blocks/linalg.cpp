@@ -492,7 +492,7 @@ struct Orthographic : VectorUnaryBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _width = double(Var(value));

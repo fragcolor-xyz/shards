@@ -32,7 +32,7 @@ struct Evolve {
   static CBTypesInfo outputTypes() { return _outputType; }
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _baseChain = value;
@@ -634,7 +634,7 @@ struct Mutant {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _block = value;
@@ -939,7 +939,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0,
       if (cb->crossover) {
         auto p0s = p0b->getState(p0b);
         auto p1s = p1b->getState(p1b);
-        cb->crossover(cb, p0s, p1s);
+        cb->crossover(cb, &p0s, &p1s);
       }
       // check if we have mutant params and cross them over
       auto &indices = cmuts->block.get()._indices;
@@ -951,11 +951,11 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0,
           if (r < 0.33) {
             // take from 0
             auto val = p0b->getParam(p0b, i);
-            cb->setParam(cb, i, val);
+            cb->setParam(cb, i, &val);
           } else if (r < 0.66) {
             // take from 1
             auto val = p1b->getParam(p1b, i);
-            cb->setParam(cb, i, val);
+            cb->setParam(cb, i, &val);
           } // else we keep
         }
       }
@@ -1023,7 +1023,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
               mutateVar(current);
             }
             mutant->setParam(
-                mutant, int(iseq.elements[rparam].payload.intValue), current);
+                mutant, int(iseq.elements[rparam].payload.intValue), &current);
           }
         }
       });
@@ -1041,7 +1041,7 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
                     mutant->resetState(mutant);
 
                   for (auto [idx, val] : info.originalParams) {
-                    mutant->setParam(mutant, idx, val);
+                    mutant->setParam(mutant, idx, &val);
                   }
                 });
 }
@@ -1057,7 +1057,7 @@ struct DBlock {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       _name = value.payload.stringValue;
@@ -1115,7 +1115,7 @@ struct DBlock {
               nullptr))
         throw CBException(
             "Failed to validate a parameter within a wrapped DBlock.");
-      _wrapped->setParam(_wrapped, int(i), _wrappedParams[i]);
+      _wrapped->setParam(_wrapped, int(i), &_wrappedParams[i]);
     }
     // and compose finally
     if (_wrapped->compose) {
@@ -1190,7 +1190,7 @@ struct DBlock {
 
   void crossover(CBVar state0, CBVar state1) {
     if (_wrapped && _wrapped->crossover)
-      _wrapped->crossover(_wrapped, state0, state1);
+      _wrapped->crossover(_wrapped, &state0, &state1);
   }
 
   CBVar getState() {
@@ -1202,7 +1202,7 @@ struct DBlock {
 
   void setState(CBVar state) {
     if (_wrapped && _wrapped->setState)
-      _wrapped->setState(_wrapped, state);
+      _wrapped->setState(_wrapped, &state);
   }
 
   void resetState() {

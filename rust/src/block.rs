@@ -243,15 +243,15 @@ unsafe extern "C" fn cblock_getParam<T: Block>(
 unsafe extern "C" fn cblock_setParam<T: Block>(
   arg1: *mut CBlock,
   arg2: ::std::os::raw::c_int,
-  arg3: CBVar,
+  arg3: *const CBVar,
 ) {
   let blk = arg1 as *mut BlockWrapper<T>;
-  (*blk).block.setParam(arg2, &arg3);
+  (*blk).block.setParam(arg2, &*arg3);
 }
 
-unsafe extern "C" fn cblock_crossover<T: Block>(arg1: *mut CBlock, s0: Var, s1: Var) {
+unsafe extern "C" fn cblock_crossover<T: Block>(arg1: *mut CBlock, s0: *const Var, s1: *const Var) {
   let blk = arg1 as *mut BlockWrapper<T>;
-  (*blk).block.crossover(&s0, &s1);
+  (*blk).block.crossover(&*s0, &*s1);
 }
 
 unsafe extern "C" fn cblock_getState<T: Block>(arg1: *mut CBlock) -> Var {
@@ -259,9 +259,9 @@ unsafe extern "C" fn cblock_getState<T: Block>(arg1: *mut CBlock) -> Var {
   (*blk).block.getState()
 }
 
-unsafe extern "C" fn cblock_setState<T: Block>(arg1: *mut CBlock, state: Var) {
+unsafe extern "C" fn cblock_setState<T: Block>(arg1: *mut CBlock, state: *const Var) {
   let blk = arg1 as *mut BlockWrapper<T>;
-  (*blk).block.setState(&state);
+  (*blk).block.setState(&*state);
 }
 
 unsafe extern "C" fn cblock_resetState<T: Block>(arg1: *mut CBlock) {

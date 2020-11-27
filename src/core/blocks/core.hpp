@@ -43,7 +43,7 @@ struct Const {
     return CBParametersInfo(constParamsInfo);
   }
 
-  void setParam(int index, CBVar value) { cloneVar(_value, value); }
+  void setParam(int index, const CBVar &value) { cloneVar(_value, value); }
 
   CBVar getParam(int index) { return _value; }
 
@@ -78,7 +78,7 @@ struct BaseOpsBin {
 
   CBParametersInfo parameters() { return CBParametersInfo(compareParamsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       cloneVar(_value, value);
@@ -257,7 +257,7 @@ struct Pause {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) { time = value; }
+  void setParam(int index, const CBVar &value) { time = value; }
 
   CBVar getParam(int index) { return time; }
 
@@ -325,7 +325,7 @@ struct Comment {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     _comment = value.payload.stringValue;
   }
 
@@ -538,7 +538,7 @@ struct VariableBase {
     _cell = nullptr;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0) {
       _name = value.payload.stringValue;
     } else if (index == 1) {
@@ -883,7 +883,7 @@ struct Get : public VariableBase {
     return CBParametersInfo(getParamsInfo);
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index <= 2)
       VariableBase::setParam(index, value);
     else if (index == 3) {
@@ -1131,7 +1131,7 @@ struct Swap {
     return CBParametersInfo(swapParamsInfo);
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _nameA = value.payload.stringValue;
     else if (index == 1) {
@@ -1244,7 +1244,7 @@ struct Push : public SeqBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index <= 2)
       VariableBase::setParam(index, value);
     else if (index == 3) {
@@ -1377,7 +1377,7 @@ struct Sequence : public SeqBase {
       chainblocks::arrayFree(_tableInfo.table.types);
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index <= 2)
       VariableBase::setParam(index, value);
     else if (index == 3) {
@@ -2062,7 +2062,7 @@ struct Take {
     }
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       cloneVar(_indices, value);
@@ -2394,7 +2394,7 @@ struct Slice {
     }
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       cloneVar(_from, value);
@@ -2564,7 +2564,9 @@ struct Limit {
     throw CBException("Limit expected a sequence as input.");
   }
 
-  void setParam(int index, CBVar value) { _max = value.payload.intValue; }
+  void setParam(int index, const CBVar &value) {
+    _max = value.payload.intValue;
+  }
 
   CBVar getParam(int index) { return Var(_max); }
 
@@ -2641,7 +2643,7 @@ struct Repeat {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _blks = value;
@@ -2770,7 +2772,7 @@ struct Once {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _blks = value;

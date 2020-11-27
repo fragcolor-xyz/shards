@@ -83,7 +83,7 @@ struct Client {
     return params;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       name = value.payload.stringValue;
@@ -238,7 +238,7 @@ struct User {
     return params;
   }
 
-  void setParam(int index, CBVar value) { _wsVar = value; }
+  void setParam(int index, const CBVar &value) { _wsVar = value; }
 
   CBVar getParam(int index) { return _wsVar; }
 

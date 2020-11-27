@@ -24,7 +24,7 @@ struct Base {
 
   CBParametersInfo parameters() { return CBParametersInfo(assertParamsInfo); }
 
-  void setParam(int index, CBVar inValue) {
+  void setParam(int index, const CBVar &inValue) {
     switch (index) {
     case 0:
       destroyVar(value);

@@ -65,7 +65,7 @@ private:
                                            CBValidationCallback callback,
                                            void *userData, CBInstanceData data);
 
-bool validateSetParam(CBlock *block, int index, CBVar &value,
+bool validateSetParam(CBlock *block, int index, const CBVar &value,
                       CBValidationCallback callback, void *userData);
 
 struct CBContext {
@@ -1114,13 +1114,13 @@ struct Serialization {
       for (uint32_t i = 0; i < params.len; i++) {
         CBVar tmp{};
         deserialize(read, tmp);
-        blk->setParam(blk, int(i), tmp);
+        blk->setParam(blk, int(i), &tmp);
         varFree(tmp);
       }
       if (blk->setState) {
         CBVar state{};
         deserialize(read, state);
-        blk->setState(blk, state);
+        blk->setState(blk, &state);
         varFree(state);
       }
       output.payload.blockValue = blk;

@@ -117,7 +117,7 @@ struct BigOperandBase {
 
   ParamVar _op{};
 
-  void setParam(int index, CBVar value) { _op = value; }
+  void setParam(int index, const CBVar &value) { _op = value; }
 
   CBVar getParam(int index) { return _op; }
 
@@ -149,7 +149,7 @@ struct RegOperandBase {
 
   ParamVar _op{};
 
-  void setParam(int index, CBVar value) { _op = value; }
+  void setParam(int index, const CBVar &value) { _op = value; }
 
   CBVar getParam(int index) { return _op; }
 
@@ -244,7 +244,7 @@ BIGINT_UNARY_OP(Sqrt, sqrt);
 struct ShiftBase {
   ParamVar _shift{Var(0)};
 
-  void setParam(int index, CBVar value) { _shift = value; }
+  void setParam(int index, const CBVar &value) { _shift = value; }
 
   CBVar getParam(int index) { return _shift; }
 

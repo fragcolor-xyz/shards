@@ -130,7 +130,7 @@ struct NetworkBase {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _addr = value;

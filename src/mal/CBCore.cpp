@@ -805,7 +805,7 @@ BUILTIN("Node") {
 #define WRAP_TO_CONST(_var_)                                                   \
   auto constBlock = chainblocks::createBlock("Const");                         \
   constBlock->setup(constBlock);                                               \
-  constBlock->setParam(constBlock, 0, _var_);                                  \
+  constBlock->setParam(constBlock, 0, &_var_);                                 \
   auto mblock = new malCBlock(constBlock);                                     \
   result.emplace_back(mblock);
 
@@ -847,7 +847,8 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
     WRAP_TO_CONST(v->value());
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
-    WRAP_TO_CONST(chainblocks::Var(v->value()));
+    auto val = chainblocks::Var(v->value());
+    WRAP_TO_CONST(val);
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     result.emplace_back(v);
   } else if (DYNAMIC_CAST(malVector, arg)) {
@@ -1043,7 +1044,7 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
           LOG(ERROR) << "Failed parameter: " << paramName;
           throw chainblocks::CBException("Parameter validation failed");
         }
-        block->setParam(block, idx, var->value());
+        block->setParam(block, idx, &var->value());
 
         // keep ref
         malblock->reference(var.ptr());
@@ -1059,7 +1060,7 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
         LOG(ERROR) << "Failed parameter index: " << pindex;
         throw chainblocks::CBException("Parameter validation failed");
       }
-      block->setParam(block, pindex, var->value());
+      block->setParam(block, pindex, &var->value());
 
       // keep ref
       malblock->reference(var.ptr());
@@ -1093,10 +1094,11 @@ struct Observer : public chainblocks::RuntimeObserver {
       auto param = params.elements[i];
       _env->set(":" + MalString(param.name),
                 mal::keyword(":" + MalString(param.name)));
-// #ifndef NDEBUG
+#ifndef NDEBUG
       // add coverage for parameters setting
-      block->setParam(block, i, block->getParam(block, i));
-// #endif
+      auto val = block->getParam(block, i);
+      block->setParam(block, i, &val);
+#endif
     }
     // define the new built-in
     MalString mname(fullName);
@@ -1131,7 +1133,7 @@ struct Observer : public chainblocks::RuntimeObserver {
 malCBlock *makeVarBlock(malCBVar *v, const char *blockName) {
   auto b = chainblocks::createBlock(blockName);
   b->setup(b);
-  b->setParam(b, 0, v->value());
+  b->setParam(b, 0, &v->value());
   auto blk = new malCBlock(b);
   return blk;
 }
@@ -1160,7 +1162,8 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         } else if (state == SetGlobal) {
           auto blk = makeVarBlock(v, "Set");
           // set :Global true
-          blk->value()->setParam(blk->value(), 2, chainblocks::Var(true));
+          auto val = chainblocks::Var(true);
+          blk->value()->setParam(blk->value(), 2, &val);
           res.emplace_back(blk);
           state = Get;
         } else if (state == Update) {
@@ -1175,7 +1178,8 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         } else if (state == PushNoClear) {
           auto blk = makeVarBlock(v, "Push");
           // set :Clear false
-          blk->value()->setParam(blk->value(), 3, chainblocks::Var(false));
+          auto val = chainblocks::Var(false);
+          blk->value()->setParam(blk->value(), 3, &val);
           res.emplace_back(blk);
           state = Get;
         } else {

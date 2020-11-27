@@ -32,7 +32,7 @@ public:
     return CBParametersInfo(windowParams);
   }
 
-  virtual void setParam(int index, CBVar value) {
+  virtual void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _winName = value.payload.stringValue;
@@ -102,7 +102,7 @@ struct ResizeWindowBase : public WinOpBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(sizeParams); }
 
-  virtual void setParam(int index, CBVar value) {
+  virtual void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _width = value.payload.intValue;
@@ -141,7 +141,7 @@ struct MoveWindowBase : public WinOpBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(posParams); }
 
-  virtual void setParam(int index, CBVar value) {
+  virtual void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _x = value.payload.intValue;
@@ -180,7 +180,7 @@ struct SetTitleBase : public WinOpBase {
 
   CBVar getParam(int index) { return Var(_title); }
 
-  virtual void setParam(int index, CBVar value) {
+  virtual void setParam(int index, const CBVar &value) {
     _title = value.payload.stringValue;
   }
 };
@@ -227,7 +227,7 @@ struct SendKeyEventBase {
     }
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (value.valueType == None) {
       _windowVarName.clear();
     } else {
@@ -270,7 +270,7 @@ struct MousePosBase {
     }
   }
 
-  void setParam(int index, CBVar value) { _window = value; }
+  void setParam(int index, const CBVar &value) { _window = value; }
 
   CBVar getParam(int index) { return _window; }
 

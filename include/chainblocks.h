@@ -635,7 +635,8 @@ typedef CBExposedTypesInfo(__cdecl *CBExposedVariablesProc)(struct CBlock *);
 typedef CBExposedTypesInfo(__cdecl *CBRequiredVariablesProc)(struct CBlock *);
 
 typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
-typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, struct CBVar);
+typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int,
+                                      const struct CBVar *);
 typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
 typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
@@ -658,12 +659,14 @@ typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 // Genetic programming optional crossover (inplace/3way) procedure
-typedef void(__cdecl *CBCrossoverProc)(struct CBlock *, struct CBVar state0,
-                                       struct CBVar state1);
+typedef void(__cdecl *CBCrossoverProc)(struct CBlock *,
+                                       const struct CBVar *state0,
+                                       const struct CBVar *state1);
 
 // Used for serialization, to deep serialize internal block state
 typedef struct CBVar(__cdecl *CBGetStateProc)(struct CBlock *);
-typedef void(__cdecl *CBSetStateProc)(struct CBlock *, struct CBVar state);
+typedef void(__cdecl *CBSetStateProc)(struct CBlock *,
+                                      const struct CBVar *state);
 typedef void(__cdecl *CBResetStateProc)(struct CBlock *);
 
 struct CBlock {
@@ -811,7 +814,7 @@ typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 typedef void(__cdecl *CBDestroyVar)(struct CBVar *var);
 
 typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index,
-                                            struct CBVar param,
+                                            const struct CBVar *param,
                                             CBValidationCallback callback,
                                             void *userData);
 
@@ -822,13 +825,13 @@ typedef struct CBComposeResult(__cdecl *CBComposeBlocks)(
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
 typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                                 struct CBContext *context,
-                                                struct CBVar input,
+                                                const struct CBVar *input,
                                                 struct CBVar *output,
                                                 const CBBool handleReturn);
 #else
 typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            struct CBContext *context,
-                                           struct CBVar input,
+                                           const struct CBVar *input,
                                            struct CBVar *output,
                                            const CBBool handleReturn);
 #endif
@@ -850,7 +853,7 @@ typedef struct CBComposeResult(__cdecl *CBComposeChain)(
     struct CBInstanceData data);
 typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain,
                                                      struct CBContext *context,
-                                                     struct CBVar input);
+                                                     const struct CBVar *input);
 
 typedef CBNodeRef(__cdecl *CBCreateNode)();
 typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
@@ -1020,10 +1023,8 @@ typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #ifdef _WIN32
 #ifdef CB_DLL_EXPORT
 #define EXPORTED __declspec(dllexport)
-#elif defined(CB_DLL_IMPORT)
-#define EXPORTED __declspec(dllimport)
 #else
-#define EXPORTED
+#define EXPORTED __declspec(dllimport)
 #endif
 #else
 #ifdef CB_DLL_EXPORT

@@ -28,7 +28,7 @@ struct FileBase {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _filename = value;
@@ -97,7 +97,7 @@ struct WriteFile : public FileBase {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 1:
       _append = value.payload.boolValue;
@@ -273,7 +273,7 @@ struct LoadImage : public FileBase {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 1:
       _bpp = BPP(value.payload.enumValue);
