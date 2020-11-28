@@ -688,8 +688,8 @@ template <char SHADER_TYPE> struct Shader {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline Parameters f_v_params{
-      {{"Varying"},
-       {"The input/output semantics to be generated."},
+      {"Varying",
+       "The input/output semantics to be generated.",
        {CoreInfo::StringType, CoreInfo::StringVarType}},
       {"Code",
        "The shader code string or string variable. If variable the code will "
