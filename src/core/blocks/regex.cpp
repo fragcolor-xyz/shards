@@ -17,7 +17,7 @@ struct Common {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _re_str = value.payload.stringValue;
@@ -99,7 +99,7 @@ struct Replace : public Common {
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 1:
       _replacement = value.payload.stringValue;

@@ -956,7 +956,7 @@ struct Py {
     return _params;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     Context ctx(_ts);
 
     if (index == 0) {

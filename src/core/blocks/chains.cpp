@@ -279,7 +279,7 @@ struct WaitChain : public ChainBase {
 
   static CBParametersInfo parameters() { return waitChainParamsInfo; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       chainref = value;
@@ -358,7 +358,7 @@ struct StopChain : public ChainBase {
 
   static CBParametersInfo parameters() { return stopChainParamsInfo; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       chainref = value;
@@ -438,7 +438,7 @@ struct Resume : public ChainBase {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) { chainref = value; }
+  void setParam(int index, const CBVar &value) { chainref = value; }
 
   CBVar getParam(int index) { return chainref; }
 
@@ -690,7 +690,7 @@ struct BaseRunner : public ChainBase {
 struct RunChain : public BaseRunner {
   static CBParametersInfo parameters() { return runChainParamsInfo; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       chainref = value;
@@ -766,7 +766,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 1:
       mode = RunChainMode(value.payload.enumValue);
@@ -834,7 +834,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   CBChainProvider *_provider;
   bool _healthy{false};
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       cleanup(); // stop current
@@ -953,7 +953,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   CBChain *_chainPtr = nullptr;
   CBExposedTypeInfo _requiredChain{};
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0) {
       _chain = value;
     } else {
@@ -1082,7 +1082,7 @@ struct TryMany : public ChainBase {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       chainref = value;
@@ -1286,7 +1286,7 @@ struct Spawn : public ChainBase {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       chainref = value;

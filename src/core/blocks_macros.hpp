@@ -32,7 +32,7 @@
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
     result->setParam = static_cast<CBSetParamProc>(                            \
-        [](CBlock *block, int index, CBVar value) {});                         \
+        [](CBlock *block, int index, const CBVar *value) {});                  \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
@@ -68,7 +68,7 @@
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
     result->setParam = static_cast<CBSetParamProc>(                            \
-        [](CBlock *block, int index, CBVar value) {});                         \
+        [](CBlock *block, int index, const CBVar *value) {});                  \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
@@ -105,7 +105,7 @@
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
     result->setParam = static_cast<CBSetParamProc>(                            \
-        [](CBlock *block, int index, CBVar value) {});                         \
+        [](CBlock *block, int index, const CBVar *value) {});                  \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
@@ -142,7 +142,7 @@
     result->parameters = static_cast<CBParametersProc>(                        \
         [](CBlock *block) { return CBParametersInfo(); });                     \
     result->setParam = static_cast<CBSetParamProc>(                            \
-        [](CBlock *block, int index, CBVar value) {});                         \
+        [](CBlock *block, int index, const CBVar *value) {});                  \
     result->getParam = static_cast<CBGetParamProc>(                            \
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
@@ -199,8 +199,8 @@
   });
 #define RUNTIME_BLOCK_setParam(_name_)                                         \
   result->setParam = static_cast<CBSetParamProc>([](CBlock *block, int index,  \
-                                                    CBVar value) {             \
-    reinterpret_cast<_name_##Runtime *>(block)->core.setParam(index, value);   \
+                                                    const CBVar *value) {      \
+    reinterpret_cast<_name_##Runtime *>(block)->core.setParam(index, *value);  \
   });
 #define RUNTIME_BLOCK_getParam(_name_)                                         \
   result->getParam = static_cast<CBGetParamProc>([](CBlock *block,             \

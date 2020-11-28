@@ -22,7 +22,7 @@ struct Log : public LoggingBase {
     return CBParametersInfo(msgParamsInfo);
   }
 
-  void setParam(int index, CBVar inValue) {
+  void setParam(int index, const CBVar &inValue) {
     switch (index) {
     case 0:
       msg = inValue.payload.stringValue;
@@ -66,7 +66,7 @@ struct Msg : public LoggingBase {
     return CBParametersInfo(msgParamsInfo);
   }
 
-  void setParam(int index, CBVar inValue) {
+  void setParam(int index, const CBVar &inValue) {
     switch (index) {
     case 0:
       msg = inValue.payload.stringValue;

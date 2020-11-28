@@ -3,7 +3,7 @@
 # fail on errors
 set -e
 
-rustup update
+# rustup update # causes issues with CI
 rustup default stable-x86_64-pc-windows-gnu
 
 pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget

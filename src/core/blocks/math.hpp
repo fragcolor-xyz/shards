@@ -130,7 +130,7 @@ struct BinaryBase : public Base {
     return {};
   }
 
-  void setParam(int index, CBVar value) { _operand = value; }
+  void setParam(int index, const CBVar &value) { _operand = value; }
 
   CBVar getParam(int index) { return _operand; }
 };
@@ -563,7 +563,7 @@ struct Mean {
     return params;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     mean = MeanKind(value.payload.enumValue);
   }
 

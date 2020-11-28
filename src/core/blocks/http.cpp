@@ -81,7 +81,7 @@ struct Client {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       host = value;
@@ -401,7 +401,7 @@ struct Server {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void setParam(int idx, CBVar val) {
+  void setParam(int idx, const CBVar &val) {
     switch (idx) {
     case 0: {
       _handlerMaster = val;
@@ -608,7 +608,7 @@ struct Response {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _status = http::status(value.payload.intValue);
     else
@@ -679,7 +679,7 @@ struct SendFile {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) { _headers = value; }
+  void setParam(int index, const CBVar &value) { _headers = value; }
 
   CBVar getParam(int index) { return _headers; }
 
