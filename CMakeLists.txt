@@ -80,10 +80,6 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
   set(CHAINBLOCKS_DIR "${CMAKE_CURRENT_LIST_DIR}")
 endif()
 
-if (NOT DEFINED CHAINBLOCKS_EXTRA_LINKS)
-  set(CHAINBLOCKS_EXTRA_LINKS "")
-endif()
-
 add_compile_definitions(
   ELPP_DEFAULT_LOG_FILE="chainblocks.log"
   BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
@@ -361,6 +357,9 @@ endif()
 
 if(EMSCRIPTEN)
   set(EXTRA_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+  if(EMSCRIPTEN_PTHREADS)
+    set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_CXX_FLAGS=-sUSE_PTHREADS=1 -DCMAKE_C_FLAGS=-sUSE_PTHREADS=1)
+  endif()
 elseif(IOS)
   add_compile_definitions(CB_NO_HTTP_BLOCKS=1)
   set(EXTRA_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
@@ -758,7 +757,8 @@ if(NOT BUILD_CORE_ONLY)
 
   add_custom_target(
     rust_blocks
-    COMMAND cargo build --features cb_static,blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND 
+      cargo build --features cb_static,blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
@@ -842,7 +842,7 @@ add_library(
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${CHAINBLOCKS_EXTRA_LINKS})
+target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
 if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static cb_rust_static) 
@@ -908,7 +908,7 @@ add_executable(
 add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
+target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
 if(EMSCRIPTEN)
 set_target_properties(cbl PROPERTIES SUFFIX ".html")
@@ -923,5 +923,5 @@ add_executable(
 add_dependencies(cbedn cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
-target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS})
+target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 ###

@@ -231,7 +231,7 @@ struct IndexOf {
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _item = value;
     else

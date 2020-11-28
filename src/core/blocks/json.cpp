@@ -477,7 +477,7 @@ void from_json(const json &j, CBVar &var) {
         for (uint32_t i = 0; blkParams.len > i; i++) {
           auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
-            blk->setParam(blk, i, value);
+            blk->setParam(blk, i, &value);
             break;
           }
         }
@@ -488,7 +488,7 @@ void from_json(const json &j, CBVar &var) {
 
     if (blk->setState) {
       auto state = j.at("state").get<CBVar>();
-      blk->setState(blk, state);
+      blk->setState(blk, &state);
       _releaseMemory(state);
     }
     break;
@@ -572,7 +572,7 @@ struct ToJson {
     return params;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _pure = value.payload.boolValue;
     else
@@ -671,7 +671,9 @@ struct FromJson {
     return params;
   }
 
-  void setParam(int index, CBVar value) { _pure = value.payload.boolValue; }
+  void setParam(int index, const CBVar &value) {
+    _pure = value.payload.boolValue;
+  }
 
   CBVar getParam(int index) { return Var(_pure); }
 

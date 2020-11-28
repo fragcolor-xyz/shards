@@ -3,6 +3,46 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  # WASM-mt:
+  #     runs-on: ubuntu-20.04
+  #     steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Setup
+  #       run: |
+  #         git submodule update --init --recursive
+  #         sudo apt-get -y install build-essential git cmake wget ninja-build
+  #         git clone https://github.com/emscripten-core/emsdk.git
+  #         cd emsdk
+  #         ./emsdk install latest
+  #         ./emsdk activate latest
+  #         cd .. && mkdir external && cd external
+  #         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
+  #         tar xzf boost_1_74_0.tar.gz
+  #         rustup update
+  #         rustup default nightly
+  #         rustup component add rust-src
+  #         rustup target add wasm32-wasi
+  #     - name: Build
+  #       env:
+  #         RUSTFLAGS: -Ctarget-feature=-crt-static,+atomics,+bulk-memory
+  #       run: |
+  #         source emsdk/emsdk_env.sh
+  #         mkdir build
+  #         cd build
+  #         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake "-DRUST_BUILD_OPTIONS=-Zbuild-std=std,panic_abort" -DEMSCRIPTEN_PTHREADS=1 ..
+  #         ninja rust_blocks && ninja cbl
+  #     - name: Test
+  #       run: |
+  #         cd build
+  #         node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
+  #     - uses: actions/upload-artifact@master
+  #       with:
+  #         name: cbl-wasm
+  #         path: |
+  #           build/cbl.wasm
+  #           build/cbl.js
+  #           build/cbl.html
+  
   WASM:
     runs-on: ubuntu-20.04
     steps:
@@ -19,18 +59,20 @@ jobs:
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
         rustup update
-        rustup target add wasm32-unknown-unknown
+        rustup target add wasm32-wasi
     - name: Build
+      env:
+        RUSTFLAGS: -Ctarget-feature=-crt-static
       run: |
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-        RUSTFLAGS="-C target-feature=-crt-static -L $EMSDK/upstream/emscripten/cache/wasm" ninja rust_blocks && ninja cbl
+        ninja rust_blocks && ninja cbl
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
+        node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
@@ -55,6 +97,8 @@ jobs:
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
         ninja rust_blocks && ninja cbl
     - name: Test
+      env:
+        RUST_BACKTRACE: 1
       run: |
         cd build
         ./cbl ../src/tests/general.clj
@@ -134,99 +178,55 @@ jobs:
       run: |
         docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/http.clj"
 
-  Windows-Release:
+  Windows:
     runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - run: msys2 ./build-win.sh Release
-    - uses: actions/upload-artifact@master
-      with:
-        name: cbl-win64
-        path: build/cbl.exe
-
-  Windows-Release-32:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
       run: |
         git submodule update --init --recursive
         rustup update
-        rustup default stable-x86_64-pc-windows-gnu
-        rustup target add i686-pc-windows-gnu
-        rustup target add i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         release: false
         path-type: inherit
-    - shell: msys2 {0}
-      name: Bindgen
-      run: |
-        cd rust
-        cargo build --features cb_static,run_bindgen --target i686-pc-windows-msvc
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW32
-        release: false
-        path-type: inherit
-    - name: Build 32Bits
-      run: msys2 ./build-win32.sh Release
+    - name: Build and Run
+      env:
+        RUST_BACKTRACE: 1
+      run: msys2 ./build-win.sh ${{ matrix.build-type }}
     - uses: actions/upload-artifact@master
       with:
-        name: cbl-win32
+        name: cbl-win64 ${{ matrix.build-type }}
         path: build/cbl.exe
 
-  Windows-Debug:
+  Windows-32bits:
     runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - run: msys2 ./build-win.sh Debug
-
-  Windows-Debug-32:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        build-type: ["Debug", "Release"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
       run: |
         git submodule update --init --recursive
         rustup update
-        rustup default stable-x86_64-pc-windows-gnu
-        rustup target add i686-pc-windows-gnu
-        rustup target add i686-pc-windows-msvc
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - shell: msys2 {0}
-      name: Bindgen
-      run: |
-        cd rust
-        cargo build --features cb_static,run_bindgen --target i686-pc-windows-msvc
     - uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW32
         release: false
         path-type: inherit
-    - name: Build 32Bits
-      run: msys2 ./build-win32.sh Debug
+    - name: Build 32Bits and Run
+      env:
+        RUST_BACKTRACE: 1
+      run: msys2 ./build-win32.sh ${{ matrix.build-type }}
+    - uses: actions/upload-artifact@master
+      with:
+        name: cbl-win32 ${{ matrix.build-type }}
+        path: build/cbl.exe
 
   macOS:
     runs-on: macos-latest
@@ -248,6 +248,8 @@ jobs:
         cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
         ninja rust_blocks && ninja cbl
     - name: Test
+      env:
+        RUST_BACKTRACE: 1
       run: |
         cd build
         ./cbl ../src/tests/general.clj

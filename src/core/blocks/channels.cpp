@@ -93,7 +93,7 @@ struct Base {
        "The amount of values to buffer before outputting them.",
        {CoreInfo::IntType}}};
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       _name = value.payload.stringValue;
@@ -293,7 +293,7 @@ struct Consumers : public Base {
 
   static CBParametersInfo parameters() { return consumerParams; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       Base::setParam(index, value);
     else

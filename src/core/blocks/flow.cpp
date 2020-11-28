@@ -92,7 +92,7 @@ struct Cond {
     chainblocks::arrayFree(_chainValidation.requiredInfo);
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       destroy();
@@ -338,7 +338,7 @@ struct BaseSubFlow {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
@@ -373,7 +373,7 @@ protected:
 struct Maybe : public BaseSubFlow {
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _blocks = value;
     else
@@ -455,7 +455,7 @@ private:
 struct Await : public BaseSubFlow {
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
@@ -503,7 +503,7 @@ template <bool COND> struct When {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _cond = value;
     else if (index == 1)
@@ -591,7 +591,7 @@ struct IfBlock {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       _cond = value;
     else if (index == 1)
@@ -699,7 +699,7 @@ struct Match {
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       auto counter = value.payload.seqValue.len;
@@ -829,7 +829,7 @@ struct Sub {
     return params;
   }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 

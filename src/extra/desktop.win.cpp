@@ -29,7 +29,7 @@ protected:
   std::vector<wchar_t> _wClass;
 
 public:
-  void setParam(int index, CBVar value) override {
+  void setParam(int index, const CBVar &value) override {
     WindowBase<HWND>::setParam(index, value);
 
     switch (index) {
@@ -306,7 +306,7 @@ struct UnsetTopmost : public WinOpBase {
 struct SetTitle : public SetTitleBase {
   std::vector<wchar_t> _wTitle;
 
-  void setParam(int index, CBVar value) override {
+  void setParam(int index, const CBVar &value) override {
     SetTitleBase::setParam(index, value);
 
     _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, 0, 0));
@@ -353,7 +353,7 @@ struct PixelBase {
     }
   }
 
-  virtual void setParam(int index, CBVar value) {
+  virtual void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       if (value.valueType == ContextVar) {
@@ -770,7 +770,7 @@ struct Tap : public MousePosBase {
 
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
     else {
@@ -882,7 +882,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
 
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
     else {

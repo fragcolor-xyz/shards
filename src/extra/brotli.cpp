@@ -26,7 +26,7 @@ struct Compress {
 
   CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     _quality = int(value.payload.intValue);
     _quality = std::clamp(_quality, 1, 11);
   }

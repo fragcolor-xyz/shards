@@ -36,7 +36,7 @@ struct Iterate {
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _recursive = bool(Var(value));
@@ -156,7 +156,7 @@ struct Filename {
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _noExt = bool(Var(value));
@@ -202,7 +202,7 @@ struct Read {
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _binary = bool(Var(value));
@@ -258,7 +258,7 @@ struct Write {
                         CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _contents = value;
@@ -337,7 +337,7 @@ struct Copy {
                         OverWEnumType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _destination = value;

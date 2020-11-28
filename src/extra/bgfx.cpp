@@ -101,7 +101,7 @@ struct BaseWindow : public Base {
   CBVar *_imguiCtx = nullptr;
   CBVar *_nativeWnd = nullptr;
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
@@ -718,7 +718,7 @@ template <char SHADER_TYPE> struct Shader {
   std::string _currentCode;
   ShaderHandle *_output{nullptr};
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if constexpr (SHADER_TYPE == 'c') {
       switch (index) {
       case 0:

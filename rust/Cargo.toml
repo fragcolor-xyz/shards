@@ -7,7 +7,7 @@ authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
 edition = "2018"
 
 [lib]
-crate-type = ["rlib", "cdylib", "staticlib"]
+crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 approx = "0.4.0"
@@ -18,9 +18,9 @@ dlopen = "0.1.8"
 reqwest = { version = "0.10", features = ["blocking"], optional = true }
 
 [target.'cfg(target_arch="wasm32")'.dependencies]
-wasm-bindgen = "0.2"
+# wasm-bindgen = "0.2"
 # wasm-bindgen-futures = "0.4.18"
-# reqwest = { version = "0.10",optional = true }
+# reqwest = { version = "0.10", optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"
@@ -33,5 +33,4 @@ default = []
 dummy = []
 blocks = ["reqwest"]
 cb_static = []
-cb_dynamic = []
 run_bindgen = ["bindgen"]

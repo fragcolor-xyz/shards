@@ -127,7 +127,7 @@ struct StructBase {
   std::vector<Desc> _members;
   size_t _size;
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     _def = value.payload.stringValue;
 
     // compile members
@@ -207,7 +207,7 @@ struct Pack : public StructBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     StructBase::setParam(index, value);
 
     // prepare our backing memory
@@ -360,7 +360,7 @@ struct Unpack : public StructBase {
     }
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     StructBase::setParam(index, value);
     // now we know what size we need
     size_t curLen = _output.len;

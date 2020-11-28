@@ -815,7 +815,7 @@ public:
 
     std::vector<Var> vars = {Var(params)...};
     for (size_t i = 0; i < vars.size(); i++) {
-      blk->setParam(blk, int(i), vars[i]);
+      blk->setParam(blk, int(i), &vars[i]);
     }
 
     _blocks.push_back(blk);
@@ -825,7 +825,8 @@ public:
   template <typename V> Chain &let(V value) {
     auto blk = createBlock("Const");
     blk->setup(blk);
-    blk->setParam(blk, 0, Var(value));
+    auto val = Var(value);
+    blk->setParam(blk, 0, &val);
     _blocks.push_back(blk);
     return *this;
   }

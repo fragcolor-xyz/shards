@@ -29,7 +29,7 @@ struct JointOp {
           "of the same length).",
           CoreInfo::AnyVarSeqType));
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       cloneVar(_inputVar, value);
@@ -152,7 +152,7 @@ struct Sort : public ActionJointOp {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
     case 1:
@@ -315,7 +315,7 @@ struct Remove : public ActionJointOp {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
     case 1:
@@ -442,7 +442,7 @@ struct Profile {
 
   CBExposedTypesInfo exposedVariables() { return _exposed; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _blocks = value;
@@ -526,7 +526,7 @@ struct XpendTo : public XPendBase {
                       std::string(_collection.variableName()));
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _collection = value;
@@ -622,7 +622,7 @@ struct ForEachBlock {
 
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
@@ -709,7 +709,7 @@ struct Map {
 
   CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
@@ -768,7 +768,7 @@ struct Reduce {
 
   CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
 
@@ -859,7 +859,7 @@ struct Erase : SeqUser {
     SeqUser::cleanup();
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     if (index == 0) {
       _indices = value;
     } else {
@@ -1129,7 +1129,7 @@ struct Replace {
   std::string _stringOutput;
   OwnedVar _vectorOutput;
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _patterns = value;

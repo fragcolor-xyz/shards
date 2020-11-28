@@ -100,7 +100,7 @@ macro_rules! blocks {
                 if let Some(pidx) = idx {
                     let pvar = var!($param);
                     unsafe {
-                        (*blk).setParam.unwrap()(blk, pidx as i32, pvar.0);
+                        (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
                     }
                 } else {
                     panic!("Parameter not found: {} for block: {}!", param, blkname);
@@ -121,7 +121,7 @@ macro_rules! blocks {
             {
                 let pvar = var!($param);
                 unsafe {
-                    (*blk).setParam.unwrap()(blk, _pidx, pvar.0);
+                    (*blk).setParam.unwrap()(blk, _pidx, &pvar.0 as *const _);
                 }
                 _pidx += 1;
             }
@@ -140,20 +140,8 @@ macro_rules! blocks {
     }};
 }
 
-// #[cfg(feature = "cb_static")]
-// mod cb_static {
-//     #[link(name = "cb_static", kind = "static")]
-//     extern "C" {}
-// }
-
-// #[cfg(feature = "cb_dynamic")]
-// mod cb_static {
-//     #[link(name = "cb_shared", kind = "dylib")]
-//     extern "C" {}
-// }
-
 // --features "dummy"
-// #[cfg(any(test, feature = "dummy"))]
+#[cfg(any(all(test, not(feature = "cb_static")), target_arch = "wasm32"))]
 #[macro_use]
 mod dummy_block {
   // run with: RUST_BACKTRACE=1 cargo test -- --nocapture

@@ -18,7 +18,7 @@ template <Type &OUTTYPE, CBType CBTYPE> struct Rand : public RandBase {
   static CBTypesInfo outputTypes() { return OUTTYPE; }
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, CBVar value) { _max = value; }
+  void setParam(int index, const CBVar &value) { _max = value; }
 
   CBVar getParam(int index) { return _max; }
 

@@ -128,7 +128,7 @@ struct Style : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _key = ImGuiStyle(value.payload.enumValue);
@@ -555,7 +555,7 @@ struct Window : public Base {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
@@ -675,7 +675,7 @@ struct ChildWindow : public Base {
     return data.inputType;
   }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _width = value;
@@ -809,7 +809,7 @@ template <CBType CT> struct Variable : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -881,7 +881,7 @@ struct Text : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -970,7 +970,7 @@ struct Button : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
@@ -1166,7 +1166,7 @@ struct TreeNode : public Base {
 
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
@@ -1441,7 +1441,7 @@ struct Image : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _size.x = value.payload.float2Value[0];
@@ -1535,7 +1535,7 @@ struct Plot : public Base {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
@@ -1662,7 +1662,7 @@ struct PlottableBase : Base {
        {CoreInfo::NoneType, CoreInfo::ColorType}}};
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
@@ -1840,7 +1840,7 @@ struct PlotBars : public PlottableBase {
 
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, CBVar value) {
+  void setParam(int index, const CBVar &value) {
     switch (index) {
     case PlottableBase::nparams + 1:
       _width = value.payload.floatValue;
