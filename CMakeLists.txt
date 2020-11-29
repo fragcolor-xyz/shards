@@ -411,7 +411,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bx/3rdparty
     ${CHAINBLOCKS_DIR}/deps/bgfx/include
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
     ${CHAINBLOCKS_DIR}/deps/imgui_club/imgui_memory_editor
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
@@ -564,7 +563,7 @@ if(NOT BUILD_CORE_ONLY)
     endif()
   elseif(LINUX)
     if(NOT EMSCRIPTEN)
-      add_compile_definitions(BGFX_CONFIG_RENDERER_VULKAN)
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
     else()
       add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES)  
     endif()
