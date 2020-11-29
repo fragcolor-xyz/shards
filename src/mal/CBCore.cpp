@@ -1696,6 +1696,16 @@ BUILTIN("setenv") {
 #endif
 }
 
+BUILTIN("hasBlock?") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  if (builtIns.find(value->value()) != builtIns.end()) {
+    return mal::trueValue();
+  } else {
+    return mal::falseValue();
+  }
+}
+
 BUILTIN_ISA("Var?", malCBVar);
 BUILTIN_ISA("Node?", malCBNode);
 BUILTIN_ISA("Chain?", malCBChain);
