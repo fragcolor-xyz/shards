@@ -403,7 +403,6 @@ if(NOT BUILD_CORE_ONLY)
     CB_WITH_EXTRAS 
     BIMG_DECODE_ENABLE=0
     SDL_RENDER_DISABLED=1
-    BGFX_SHADERC_NO_MAIN
     )
 
   include_directories(
@@ -417,10 +416,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
-
-    # shader compiler related
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp
-    ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc
     )
 
   if(WIN32)
@@ -478,7 +473,6 @@ if(NOT BUILD_CORE_ONLY)
 
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
-      ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc_hlsl.cpp
       ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
       )
 
@@ -575,38 +569,12 @@ if(NOT BUILD_CORE_ONLY)
       
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
-      ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc_glsl.cpp
       )
 
     set(CB_PLATFORM_LIBS
       -lX11
       -lGL
       )
-
-    ExternalProject_Add(glsl-optimizer_a
-      URL     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer
-      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a ${EXTRA_CMAKE_ARGS}
-      BUILD_COMMAND cmake --build . --target glsl_optimizer glcpp-library mesa
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a 
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglcpp-library.a 
-      BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a
-      )
-    
-    include_directories(
-      ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/glsl-optimizer/src/glsl
-    )
-
-    add_library(libglsloptimizer STATIC IMPORTED GLOBAL)
-    add_dependencies(libglsloptimizer glsl-optimizer_a)
-    set_target_properties(libglsloptimizer PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglsl_optimizer.a)
-    add_library(libglcpp STATIC IMPORTED GLOBAL)
-    add_dependencies(libglcpp glsl-optimizer_a)
-    set_target_properties(libglcpp PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libglcpp-library.a)
-    add_library(libmesa STATIC IMPORTED GLOBAL)
-    add_dependencies(libmesa glsl-optimizer_a)
-    set_target_properties(libmesa PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/glsl-optimizer_a/src/glsl-optimizer_a-build/libmesa.a)
   endif()
 
   ExternalProject_Add(snappy_a
@@ -700,15 +668,6 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot_items.cpp
-
-    # shader compiler
-    ${CHAINBLOCKS_DIR}/deps/bgfx/tools/shaderc/shaderc.cpp
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp1.c
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp2.c
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp3.c
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp4.c
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp5.c
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/fcpp/cpp6.c
 
     ${PLATFORM_SOURCES}
     )
@@ -871,18 +830,6 @@ if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static libbrotlicommon-static)
   add_dependencies(cb_shared libbrotlicommon-static)
   set(EXTRA_LIBS ${EXTRA_LIBS} libbrotlicommon-static)
-
-  if(LINUX)
-    add_dependencies(cb_static libglsloptimizer)
-    add_dependencies(cb_shared libglsloptimizer)
-    set(EXTRA_LIBS ${EXTRA_LIBS} libglsloptimizer)
-    add_dependencies(cb_static libglcpp)
-    add_dependencies(cb_shared libglcpp)
-    set(EXTRA_LIBS ${EXTRA_LIBS} libglcpp)
-    add_dependencies(cb_static libmesa)
-    add_dependencies(cb_shared libmesa)
-    set(EXTRA_LIBS ${EXTRA_LIBS} libmesa)
-  endif()
 endif()
 
 if(USE_LIBBACKTRACE)

@@ -6,7 +6,6 @@
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
 #include "blocks/shared.hpp"
-#include "shaderc.h"
 
 using namespace chainblocks;
 
