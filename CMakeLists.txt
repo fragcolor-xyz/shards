@@ -121,8 +121,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-static)
   endif()
-  # add_compile_options(-flto)
-  # add_link_options(-flto)
   add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
   add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
 else()
@@ -133,21 +131,32 @@ else()
   endif()
 endif()
 
+if(USE_LTO)
+  add_compile_options(-flto)
+  add_link_options(-flto)
+  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_C_FLAGS=-flto -DCMAKE_C_COMPILER=clang)
+  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_CXX_FLAGS=-flto -DCMAKE_CXX_COMPILER=clang++)
+endif()
+
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
 if(X86 AND NOT EMSCRIPTEN)
   if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
     add_compile_options(-march=core2)
+    set(RUST_ARCH "-Ctarget-cpu=core2")
   elseif(FORCE_I686)
     # no vectors at all
     add_compile_options(-march=i686)
+    set(RUST_ARCH "-Ctarget-cpu=i686")
   elseif(FORCE_NATIVE)
     # the best but low compatibility
     add_compile_options(-march=native)
+    set(RUST_ARCH "-Ctarget-cpu=native")
   else()
     # CBVars are m256 basically, so this is extremely good! (AVX!)
     add_compile_options(-march=sandybridge)
+    set(RUST_ARCH "-Ctarget-cpu=sandybridge")
   endif()
 endif()
 
@@ -714,10 +723,20 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_BINDGEN ,run_bindgen)
   endif()
 
+  if(USE_LTO)
+    set(RUST_LTO -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
+  endif()
+
+  if(UNIX)
+    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH} ${RUST_LTO})
+  else()
+    set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH} ${RUST_LTO})
+  endif()
+
   add_custom_target(
     rust_blocks
-    COMMAND 
-      cargo build --features cb_static,blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND ${RUSTFLAGS}
+    COMMAND cargo build --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 

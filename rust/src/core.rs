@@ -26,7 +26,7 @@ const ABI_VERSION: u32 = 0x20200101;
 pub static mut Core: *mut CBCore = core::ptr::null_mut();
 static mut init_done: bool = false;
 
-#[cfg(not(feature = "cb_static"))]
+#[cfg(feature = "dllblock")]
 mod internal_core_init {
   extern crate dlopen;
   use crate::chainblocksc::chainblocksInterface;
@@ -59,10 +59,9 @@ mod internal_core_init {
     let exefun = exe
       .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
       .ok();
-    if exefun.is_some() {
-      let fun = exefun.unwrap();
+    if let Some(fun) = exefun {
       Core = fun(ABI_VERSION);
-      if Core == core::ptr::null_mut() {
+      if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
     } else {
@@ -71,7 +70,7 @@ mod internal_core_init {
         .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
         .unwrap();
       Core = fun(ABI_VERSION);
-      if Core == core::ptr::null_mut() {
+      if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
       CBDLL = Some(lib);
@@ -79,7 +78,7 @@ mod internal_core_init {
   }
 }
 
-#[cfg(feature = "cb_static")]
+#[cfg(not(feature = "dllblock"))]
 mod internal_core_init {
   pub unsafe fn initInternal() {}
 }
