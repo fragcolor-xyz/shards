@@ -94,6 +94,7 @@ jobs:
         export WASISDK=`pwd`/wasi-sdk-11.0
         cd deps/bgfx
         make
+        ls
         cd .build/projects/gmake-linux
         sh ../../../build-wasi.sh
     - uses: actions/upload-artifact@master
@@ -158,7 +159,7 @@ jobs:
         path: coverage/output
 
   Linux-Release-Docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
       name: Checkout
