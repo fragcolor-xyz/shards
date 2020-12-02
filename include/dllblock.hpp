@@ -155,8 +155,8 @@ public:
   }
 
   static CBRunChainOutput runChain(CBChainRef chain, CBContext *context,
-                                   CBVar input) {
-    return sCore._core->runChain(chain, context, input);
+                                   const CBVar &input) {
+    return sCore._core->runChain(chain, context, &input);
   }
 
   static CBComposeResult composeBlocks(CBlocks blocks,
@@ -165,10 +165,11 @@ public:
     return sCore._core->composeBlocks(blocks, callback, userData, data);
   }
 
-  static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
-                                CBVar *output,
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context,
+                                const CBVar &input, CBVar &output,
                                 const bool handleReturn = false) {
-    return sCore._core->runBlocks(blocks, context, input, output, handleReturn);
+    return sCore._core->runBlocks(blocks, context, &input, &output,
+                                  handleReturn);
   }
 
   static void log(const char *msg) { sCore._core->log(msg); }

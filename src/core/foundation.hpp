@@ -744,9 +744,10 @@ struct InternalCore {
     return composeChain(blocks, callback, userData, data);
   }
 
-  static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
-                                CBVar *output, const CBBool handleReturn) {
-    return chainblocks::activateBlocks(blocks, context, input, *output,
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context,
+                                const CBVar &input, CBVar &output,
+                                const CBBool handleReturn) {
+    return chainblocks::activateBlocks(blocks, context, input, output,
                                        handleReturn);
   }
 

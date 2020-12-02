@@ -351,7 +351,7 @@ public:
 
   CBChainState activate(CBContext *context, const CBVar &input, CBVar &output,
                         const bool handleReturn = false) {
-    return CB_CORE::runBlocks(_blocks, context, input, &output, handleReturn);
+    return CB_CORE::runBlocks(_blocks, context, input, output, handleReturn);
   }
 
   operator bool() const { return _blocksArray.size() > 0; }
