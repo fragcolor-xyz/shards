@@ -132,8 +132,14 @@ else()
 endif()
 
 if(USE_LTO)
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
-  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=True)
+  ## this is nice but sets thin LTO, we don't want that
+  # set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+  # set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=True)
+  
+  add_compile_options(-flto)
+  add_link_options(-flto)
+  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_C_FLAGS=-flto)
+  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_CXX_FLAGS=-flto)
 endif()
 
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
