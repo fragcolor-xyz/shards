@@ -79,6 +79,29 @@ jobs:
           build/cbl.js
           build/cbl.html
 
+  WASI-modules:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup
+      run: |
+        git submodule update --init --recursive
+        sudo apt-get -y install build-essential 
+        wget -nv https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk-11.0-linux.tar.gz
+        tar xzf wasi-sdk-11.0-linux.tar.gz
+    - name: Build
+      run: |
+        export WASISDK=`pwd`/wasi-sdk-11.0
+        cd deps/bgfx
+        make
+        cd .build/projects/gmake-linux
+        sh ../../../build-wasi.sh
+    - uses: actions/upload-artifact@master
+      with:
+        name: wasi-modules
+        path: |
+          deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
+
   Linux-Coverage:
     runs-on: ubuntu-20.04
     steps:
