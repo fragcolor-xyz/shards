@@ -61,8 +61,6 @@ jobs:
         rustup update
         rustup target add wasm32-wasi
     - name: Build
-      env:
-        RUSTFLAGS: -Ctarget-feature=-crt-static
       run: |
         source emsdk/emsdk_env.sh
         mkdir build

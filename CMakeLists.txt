@@ -727,10 +727,14 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_LTO -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
   endif()
 
+  if(EMSCRIPTEN)
+    set(RUST_CRT -Ctarget-feature=-crt-static)
+  endif()
+
   if(UNIX)
-    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH} ${RUST_LTO})
+    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH} ${RUST_LTO} ${RUST_CRT})
   else()
-    set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH} ${RUST_LTO})
+    set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH} ${RUST_LTO} ${RUST_CRT})
   endif()
 
   add_custom_target(
