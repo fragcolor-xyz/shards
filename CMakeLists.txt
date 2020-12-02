@@ -144,19 +144,19 @@ if(X86 AND NOT EMSCRIPTEN)
   if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
     add_compile_options(-march=core2)
-    set(RUST_ARCH "-Ctarget-cpu=core2")
+    set(RUST_ARCH "-Ctarget-cpu=core2 ")
   elseif(FORCE_I686)
     # no vectors at all
     add_compile_options(-march=i686)
-    set(RUST_ARCH "-Ctarget-cpu=i686")
+    set(RUST_ARCH "-Ctarget-cpu=i686 ")
   elseif(FORCE_NATIVE)
     # the best but low compatibility
     add_compile_options(-march=native)
-    set(RUST_ARCH "-Ctarget-cpu=native")
+    set(RUST_ARCH "-Ctarget-cpu=native ")
   else()
     # CBVars are m256 basically, so this is extremely good! (AVX!)
     add_compile_options(-march=sandybridge)
-    set(RUST_ARCH "-Ctarget-cpu=sandybridge")
+    set(RUST_ARCH "-Ctarget-cpu=sandybridge ")
   endif()
 endif()
 
@@ -724,17 +724,17 @@ if(NOT BUILD_CORE_ONLY)
   endif()
 
   if(USE_LTO)
-    set(RUST_LTO -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
+    set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   endif()
 
   if(EMSCRIPTEN)
-    set(RUST_CRT -Ctarget-feature=-crt-static)
+    set(RUST_CRT "-Ctarget-feature=-crt-static ")
   endif()
 
   if(UNIX)
-    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH} ${RUST_LTO} ${RUST_CRT})
+    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH}${RUST_LTO}${RUST_CRT})
   else()
-    set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH} ${RUST_LTO} ${RUST_CRT})
+    set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH}${RUST_LTO}${RUST_CRT})
   endif()
 
   add_custom_target(
