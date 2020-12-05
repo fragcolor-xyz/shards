@@ -19,7 +19,8 @@
   (Chain
    "namedChain"
    (Msg "Running tests!")
-   (OnCleanup ~[(Msg "Finished running tests!")])
+   (OnCleanup ~[(Comment "ensure multiple blocks can run")
+                (Msg "Finished running tests!")])
 
    (Const #"\sHello")
    (Log)

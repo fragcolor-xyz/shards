@@ -373,6 +373,8 @@ struct OnCleanup {
     if (_context) {
       // cleanup might be called multiple times
       CBVar output{};
+      // we need to reset the state or only the first block will run
+      _context->resetCancelFlow();
       _blocks.activate(_context, Var::Empty, output);
       _context = nullptr;
     }

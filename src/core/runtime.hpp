@@ -75,7 +75,7 @@ struct CBContext {
 #else
       CBCoro *coro,
 #endif
-      CBChain *starter, CBFlow *flow)
+      const CBChain *starter, CBFlow *flow)
       : main(starter), flow(flow),
 #ifndef __EMSCRIPTEN__
         continuation(std::move(sink))
@@ -83,7 +83,7 @@ struct CBContext {
         continuation(coro)
 #endif
   {
-    chainStack.push_back(starter);
+    chainStack.push_back(const_cast<CBChain *>(starter));
   }
 
   const CBChain *main;
