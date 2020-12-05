@@ -18,3 +18,12 @@
 (schedule Root c)
 (run Root 0.1)
 
+; fail during cleanup, we cannot use pauses
+(def c
+  (Chain
+   "test-2"
+   (OnCleanup ~[(Pause 10.0)])))
+
+(schedule Root c)
+(run Root 0.1)
+

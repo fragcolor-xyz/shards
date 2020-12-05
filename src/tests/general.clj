@@ -19,6 +19,7 @@
   (Chain
    "namedChain"
    (Msg "Running tests!")
+   (OnCleanup ~[(Msg "Finished running tests!")])
 
    (Const #"\sHello")
    (Log)

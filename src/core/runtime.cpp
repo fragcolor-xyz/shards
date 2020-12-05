@@ -309,6 +309,8 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (name == "Pass") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
+  } else if (name == "OnCleanup") {
+    blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Comment") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Input") {
@@ -613,7 +615,9 @@ void releaseVariable(CBVar *variable) {
 }
 
 CBChainState suspend(CBContext *context, double seconds) {
-  if (!context->continuation) {
+  if (unlikely(!context->shouldContinue())) {
+    throw ActivationError("Trying to suspend a terminated context!");
+  } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
   }
 
@@ -2043,7 +2047,6 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
     context.continueFlow();
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
-    context.iterationCount++; // increatse iteration counter
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
@@ -2082,6 +2085,8 @@ endOfChain:
   chain->finishedOutput = chain->previousOutput;
 
   // run cleanup on all the blocks
+  // ensure stop state is set
+  context.stopFlow(chain->previousOutput);
   chain->cleanup(true);
 
   // Need to take care that we might have stopped the chain very early due to
@@ -2453,7 +2458,7 @@ void CBChain::cleanup(bool force) {
       catch (const std::exception &e) {
         LOG(ERROR) << "Block cleanup error, failed block: "
                    << std::string(blk->name(blk));
-        LOG(ERROR) << e.what() << '\n';
+        LOG(ERROR) << e.what();
       } catch (...) {
         LOG(ERROR) << "Block cleanup error, failed block: "
                    << std::string(blk->name(blk));

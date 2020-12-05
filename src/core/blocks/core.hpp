@@ -338,6 +338,55 @@ struct Comment {
   }
 };
 
+struct OnCleanup {
+  BlocksVar _blocks{};
+  CBContext *_context{nullptr};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Blocks",
+       "The blocks to execute on chain's cleanup. Notice that blocks that "
+       "suspend execution are not allowed.",
+       {CoreInfo::BlocksOrNone}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  void warmup(CBContext *ctx) {
+    _context = ctx;
+    _blocks.warmup(ctx);
+  }
+
+  void cleanup() {
+    // also run the blocks here!
+    if (_context) {
+      // cleanup might be called multiple times
+      CBVar output{};
+      _blocks.activate(_context, Var::Empty, output);
+      _context = nullptr;
+    }
+    // and cleanup after
+    _blocks.cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // We are a NOOP block
+    assert(false);
+    return input;
+  }
+};
+
 struct And {
   static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }

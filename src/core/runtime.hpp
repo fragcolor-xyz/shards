@@ -101,9 +101,6 @@ struct CBContext {
   void *tsan_handle = nullptr;
 #endif
 
-  // Iteration counter
-  uint64_t iterationCount = 0;
-
   constexpr void stopFlow(const CBVar &lastValue) {
     state = CBChainState::Stop;
     flowStorage = lastValue;

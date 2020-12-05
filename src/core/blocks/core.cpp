@@ -1788,5 +1788,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Input", Input);
   REGISTER_CBLOCK("Comment", Comment);
   REGISTER_CBLOCK("Replace", Replace);
+  REGISTER_CBLOCK("OnCleanup", OnCleanup);
 }
 }; // namespace chainblocks

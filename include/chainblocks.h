@@ -52,11 +52,11 @@ enum CBChainState : uint8_t {
 
 // These blocks run fully inline in the runchain threaded execution engine
 enum CBInlineBlocks : uint32_t {
+  // regular blocks
   NotInline,
-
   // special flag that will optimize and skip activate calls
   NoopBlock,
-
+  // internal "quick" inlined blocks
   CoreConst,
   CoreSleep,
   CoreInput,
