@@ -52,3 +52,6 @@
 [submodule "deps/libbacktrace"]
 	path = deps/libbacktrace
 	url = https://github.com/chainblocks/libbacktrace.git
+[submodule "deps/wasm3"]
+	path = deps/wasm3
+	url = https://github.com/sinkingsugar/wasm3.git
