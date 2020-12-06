@@ -411,6 +411,20 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/filesystem/include
   )
 
+# wasm3
+ExternalProject_Add(wasm3
+  URL ${CHAINBLOCKS_DIR}/deps/wasm3
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps
+  BUILD_IN_SOURCE True
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_WASI=simple ${EXTRA_CMAKE_ARGS}
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3/source/libm3.a
+)
+
+add_library(libwasm3 STATIC IMPORTED GLOBAL)
+set_target_properties(libwasm3 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3/source/libm3.a)
+add_dependencies(libwasm3 wasm3)
+
 if(NOT BUILD_CORE_ONLY)
   add_compile_definitions(
     CB_WITH_EXTRAS 
@@ -829,6 +843,10 @@ add_library(
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
+
+add_dependencies(cb_static libwasm3)
+add_dependencies(cb_shared libwasm3)
+set(EXTRA_LIBS ${EXTRA_LIBS} libwasm3)
 
 if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static cb_rust_static) 
