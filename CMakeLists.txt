@@ -417,6 +417,7 @@ ExternalProject_Add(wasm3
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps
   BUILD_IN_SOURCE True
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_WASI=simple ${EXTRA_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target m3
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3/source/libm3.a
 )
