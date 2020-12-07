@@ -750,10 +750,10 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_CRT "-Ctarget-feature=-crt-static ")
   endif()
 
-  if(UNIX)
-    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH}${RUST_LTO}${RUST_CRT})
-  else()
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
     set(RUSTFLAGS set RUSTFLAGS=${RUST_ARCH}${RUST_LTO}${RUST_CRT})
+  else()
+    set(RUSTFLAGS export RUSTFLAGS=${RUST_ARCH}${RUST_LTO}${RUST_CRT})
   endif()
 
   add_custom_target(
