@@ -622,9 +622,9 @@ CBChainState suspend(CBContext *context, double seconds) {
   }
 
   if (seconds <= 0) {
-    context->next = Duration(0);
+    context->next = CBDuration(0);
   } else {
-    context->next = Clock::now().time_since_epoch() + Duration(seconds);
+    context->next = CBClock::now().time_since_epoch() + CBDuration(seconds);
   }
 
 #ifdef CB_USE_TSAN
@@ -2067,7 +2067,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
     if (!chain->unsafe && chain->looped) {
       // Ensure no while(true), yield anyway every run
-      context.next = Duration(0);
+      context.next = CBDuration(0);
 #ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
 #else

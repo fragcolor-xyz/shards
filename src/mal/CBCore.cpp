@@ -1365,7 +1365,7 @@ BUILTIN("tick") {
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
     auto chain = CBChain::sharedFromRef(v->value());
-    Duration now = Clock::now().time_since_epoch();
+    CBDuration now = CBClock::now().time_since_epoch();
     auto ticked = chainblocks::tick(chain.get(), now);
     return mal::boolean(ticked);
   } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
@@ -1416,9 +1416,9 @@ BUILTIN("run") {
 
   if (node) {
     while (!node->empty()) {
-      const auto pre = Clock::now();
+      const auto pre = CBClock::now();
       const auto noErrors = node->tick();
-      const auto elapsed = Clock::now() - pre;
+      const auto elapsed = CBClock::now() - pre;
 
       // other chains might be not in error tho...
       // so return only if empty
@@ -1440,9 +1440,9 @@ BUILTIN("run") {
       if (sleepTime <= 0.0) {
         chainblocks::sleep(-1.0);
       } else {
-        Duration dsleep(sleepTime);
+        CBDuration dsleep(sleepTime);
         // remove the time we took to tick from sleep
-        Duration realSleepTime = dsleep - elapsed;
+        CBDuration realSleepTime = dsleep - elapsed;
         if (realSleepTime.count() <= 0.0) {
           // tick took too long!!!
           // warn sometimes and skip sleeping, skipping callbacks too
@@ -1456,7 +1456,7 @@ BUILTIN("run") {
       }
     }
   } else {
-    Duration now = Clock::now().time_since_epoch();
+    CBDuration now = CBClock::now().time_since_epoch();
     while (!chainblocks::tick(chain, now)) {
       if (dec) {
         times--;
@@ -1466,7 +1466,7 @@ BUILTIN("run") {
         }
       }
       chainblocks::sleep(sleepTime);
-      now = Clock::now().time_since_epoch();
+      now = CBClock::now().time_since_epoch();
     }
   }
 

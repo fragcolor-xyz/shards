@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-using Clock = std::chrono::high_resolution_clock;
-using Duration = std::chrono::duration<double>;
+using CBClock = std::chrono::high_resolution_clock;
+using CBDuration = std::chrono::duration<double>;
 
 // For sleep
 #if _WIN32
@@ -96,7 +96,7 @@ struct CBContext {
 #else
   CBCoro *continuation{nullptr};
 #endif
-  Duration next{};
+  CBDuration next{};
 #ifdef CB_USE_TSAN
   void *tsan_handle = nullptr;
 #endif
@@ -559,7 +559,7 @@ inline bool isRunning(CBChain *chain) {
          state <= CBChain::State::IterationEnded;
 }
 
-inline bool tick(CBChain *chain, Duration now, CBVar rootInput = {}) {
+inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
   if (!chain->context || !chain->coro || !(*chain->coro) || !(isRunning(chain)))
     return false; // check if not null and bool operator also to see if alive!
 
@@ -598,17 +598,17 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // Take note of how long it took and subtract from sleep time! if some time is
   // left sleep
   if (runCallbacks) {
-    Duration sleepTime(seconds);
-    auto pre = Clock::now();
+    CBDuration sleepTime(seconds);
+    auto pre = CBClock::now();
     for (auto &cbinfo : Globals::RunLoopHooks) {
       if (cbinfo.second) {
         cbinfo.second();
       }
     }
-    auto post = Clock::now();
+    auto post = CBClock::now();
 
-    Duration cbsTime = post - pre;
-    Duration realSleepTime = sleepTime - cbsTime;
+    CBDuration cbsTime = post - pre;
+    CBDuration realSleepTime = sleepTime - cbsTime;
     if (seconds != -1.0 && realSleepTime.count() > 0.0) {
       // Sleep actual time minus stuff we did in cbs
       seconds = realSleepTime.count();
@@ -733,7 +733,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     if (chainblocks::Globals::SigIntTerm > 0) {
       terminate();
     } else {
-      Duration now = Clock::now().time_since_epoch();
+      CBDuration now = CBClock::now().time_since_epoch();
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
         observer.before_tick(flow->chain);

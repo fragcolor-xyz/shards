@@ -682,7 +682,7 @@ struct BaseRunner : public ChainBase {
     }
 
     // Tick the chain on the flow that this Step chain created
-    Duration now = Clock::now().time_since_epoch();
+    CBDuration now = CBClock::now().time_since_epoch();
     chainblocks::tick(chain->context->flow->chain, now, input);
   }
 };
@@ -1215,7 +1215,7 @@ struct TryMany : public ChainBase {
           }
 
           // Tick the chain on the flow that this chain created
-          Duration now = Clock::now().time_since_epoch();
+          CBDuration now = CBClock::now().time_since_epoch();
           chainblocks::tick(cref->chain->context->flow->chain, now,
                             input.payload.seqValue.elements[cref->index]);
 
