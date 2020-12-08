@@ -3,8 +3,6 @@
 
 #include "shared.hpp"
 
-namespace Wasm {
-namespace WASI {
 // for now a carbon copy of wasm3 simple wasi
 
 #if defined(__clang__)
@@ -24,12 +22,12 @@ namespace WASI {
 
 #include "extra/wasi_core.h"
 
-#include <time.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 
 #if defined(__wasi__) || defined(__APPLE__) || defined(__ANDROID_API__) ||     \
     defined(__OpenBSD__) || defined(__linux__) || defined(__EMSCRIPTEN__)
@@ -61,6 +59,8 @@ namespace WASI {
 #define close _close
 #endif
 
+namespace Wasm {
+namespace WASI {
 typedef struct wasi_iovec_t {
   __wasi_size_t buf;
   __wasi_size_t buf_len;
