@@ -209,7 +209,7 @@ static inline int convert_clockid(__wasi_clockid_t in) { return 0; }
 
 #else // _WIN32
 
-static inline int convert_clockid(__wasi_clockid_t in) {
+static inline auto convert_clockid(__wasi_clockid_t in) {
   switch (in) {
   case __WASI_CLOCKID_MONOTONIC:
     return CLOCK_MONOTONIC;
@@ -220,7 +220,7 @@ static inline int convert_clockid(__wasi_clockid_t in) {
   case __WASI_CLOCKID_THREAD_CPUTIME_ID:
     return CLOCK_THREAD_CPUTIME_ID;
   default:
-    return -1;
+    throw std::runtime_error("Invalid clockid case");
   }
 }
 
@@ -686,7 +686,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_res_get) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  int clk = convert_clockid(wasi_clk_id);
+  auto clk = convert_clockid(wasi_clk_id);
   if (clk < 0)
     m3ApiReturn(__WASI_ERRNO_INVAL);
 
@@ -710,7 +710,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  int clk = convert_clockid(wasi_clk_id);
+  auto clk = convert_clockid(wasi_clk_id);
   if (clk < 0)
     m3ApiReturn(__WASI_ERRNO_INVAL);
 
