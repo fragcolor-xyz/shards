@@ -410,6 +410,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/src/core
   ${CHAINBLOCKS_DIR}/deps/pdqsort
   ${CHAINBLOCKS_DIR}/deps/filesystem/include
+  ${CHAINBLOCKS_DIR}/deps/wasm3/source
   )
 
 # wasm3

@@ -20,7 +20,8 @@ namespace chainblocks {
 namespace Process {
 
 struct Exec {
-  static inline CBString keys[] = {"exit_code", "std_out", "std_err"};
+  static inline CBString keys[] = {"ExitCode", "StandardOutput",
+                                   "StandardError"};
   static inline CBTypeInfo types[] = {CoreInfo::IntType, CoreInfo::StringType,
                                       CoreInfo::StringType};
   static inline Types tableType{
@@ -64,9 +65,9 @@ struct Exec {
     ss << epipe.rdbuf();
     errBuf.assign(ss.str());
 
-    map["exit_code"] = Var(cmd.exit_code());
-    map["std_out"] = Var(outBuf);
-    map["std_err"] = Var(errBuf);
+    map["ExitCode"] = Var(cmd.exit_code());
+    map["StandardOutput"] = Var(outBuf);
+    map["StandardError"] = Var(errBuf);
 
     CBVar res{};
     res.valueType = Table;
