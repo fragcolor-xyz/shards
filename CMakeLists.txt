@@ -280,6 +280,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
   )
 
 #### Header paths for tidy
@@ -795,6 +796,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
   ${CB_EXTRAS}
   )
 
