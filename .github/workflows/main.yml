@@ -89,11 +89,11 @@ jobs:
         git submodule update --init --recursive
         sudo apt-get -y update
         sudo apt-get -y install build-essential 
-        wget -nv https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk-11.0-linux.tar.gz
-        tar xzf wasi-sdk-11.0-linux.tar.gz
+        wget -nv https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk-12.0-linux.tar.gz
+        tar xzf wasi-sdk-12.0-linux.tar.gz
     - name: Build
       run: |
-        export WASISDK=`pwd`/wasi-sdk-11.0
+        export WASISDK=`pwd`/wasi-sdk-12.0
         cd deps/bgfx
         make projgen
         ls
