@@ -2,6 +2,9 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #include "shared.hpp"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 
 // for now a carbon copy of wasm3 simple wasi
 
@@ -15,7 +18,11 @@
 // defined and causes some issues with vectorcall definition
 #pragma push_macro("WIN32")
 #undef WIN32
+#include "wasm3.h"
+
 #include "m3_api_defs.h"
+#include "m3_api_libc.h"
+#include "m3_config.h"
 #include "m3_env.h"
 #include "m3_exception.h"
 #pragma pop_macro("WIN32")
@@ -59,6 +66,7 @@
 #define close _close
 #endif
 
+namespace chainblocks {
 namespace Wasm {
 namespace WASI {
 typedef struct wasi_iovec_t {
@@ -724,10 +732,8 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
 }
 
 m3ApiRawFunction(m3_wasi_unstable_proc_exit) {
-  m3ApiGetArg(uint32_t, code)
-
-      runtime->exit_code = code;
-
+  m3ApiGetArg(uint32_t, code);
+  runtime->exit_code = code;
   m3ApiTrap(m3Err_trapExit);
 }
 
@@ -859,4 +865,157 @@ _catch:
   return result;
 }
 } // namespace WASI
+
+#define CHECK_COMPOSE_ERR(_err_)                                               \
+  if (_err_ != m3Err_none) {                                                   \
+    std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": ");      \
+    _errMsg.append(_err_);                                                     \
+    throw ComposeError(_errMsg);                                               \
+  }
+
+#define CHECK_ACTIVATION_ERR(_err_)                                            \
+  if (_err_ != m3Err_none) {                                                   \
+    std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": ");      \
+    _errMsg.append(_err_);                                                     \
+    throw ActivationError(_errMsg);                                            \
+  }
+
+struct Run {
+  static constexpr CBString wasmExt = ".wasm";
+  static constexpr CBStrings wasmExts = {(const char **)&wasmExt, 1, 0};
+  static constexpr CBTypeInfo wasmFileType{
+      CBType::Path, {.path = {wasmExts, true, true, true}}};
+  static inline Type WasmFilePath{wasmFileType};
+
+  std::string _moduleName;
+  std::string _moduleFileName;
+  size_t _stackSize{64 * 1024};
+  std::string _entryPoint{"_start"};
+
+  std::shared_ptr<M3Environment> _env;
+  std::shared_ptr<M3Runtime> _runtime;
+  IM3Function _mainFunc{nullptr};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static inline Parameters params{
+      {"Module",
+       "The wasm module to run.",
+       {WasmFilePath, CoreInfo::StringType}},
+      {"EntryPoint",
+       "The entry point function to call when activating.",
+       {CoreInfo::StringType}},
+      {"StackSize",
+       "The stack size in kilobytes to use.",
+       {CoreInfo::IntType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _moduleName = value.payload.stringValue;
+      break;
+    case 1:
+      _entryPoint = value.payload.stringValue;
+      break;
+    case 2:
+      _stackSize = size_t(value.payload.intValue * 1024);
+      break;
+    default:
+      throw CBException("setParam out of range");
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_moduleName);
+    case 1:
+      return Var(_entryPoint);
+    case 2:
+      return Var(int64_t(_stackSize) / 1024);
+    default:
+      throw CBException("getParam out of range");
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // here we load the module, that's why Module parameter is not variable
+    std::filesystem::path p(_moduleName);
+    if (p.is_absolute()) {
+      if (!std::filesystem::exists(p)) {
+        throw ComposeError("Wasm module not found at the given path");
+      }
+    } else {
+      std::filesystem::path cp(Globals::RootPath);
+      if (std::filesystem::exists(cp)) {
+        p = cp / p;
+        if (!std::filesystem::exists(p)) {
+          throw ComposeError("Wasm module not found at the given path");
+        }
+      }
+    }
+
+    _moduleFileName = p.filename().string();
+
+    _env.reset(m3_NewEnvironment(), &m3_FreeEnvironment);
+    assert(_env.get());
+    _runtime.reset(m3_NewRuntime(_env.get(), _stackSize, nullptr),
+                   &m3_FreeRuntime);
+    assert(_runtime.get());
+
+    std::ifstream wasmFile(p.string(), std::ios::binary);
+    // apparently if we use std::copy we need to make sure this is set
+    wasmFile.unsetf(std::ios::skipws);
+    std::vector<uint8_t> in_bytes;
+    std::copy(std::istream_iterator<uint8_t>(wasmFile),
+              std::istream_iterator<uint8_t>(), std::back_inserter(in_bytes));
+    IM3Module pmodule; // freed by runtime
+    M3Result err =
+        m3_ParseModule(_env.get(), &pmodule, &in_bytes[0], in_bytes.size());
+    CHECK_COMPOSE_ERR(err);
+
+    err = m3_LoadModule(_runtime.get(), pmodule);
+    CHECK_COMPOSE_ERR(err);
+
+    err = m3_LinkSpecTest(_runtime->modules);
+    CHECK_COMPOSE_ERR(err);
+
+    err = WASI::m3_LinkWASI(_runtime->modules);
+    CHECK_COMPOSE_ERR(err);
+
+    err = m3_LinkLibC(_runtime->modules);
+    CHECK_COMPOSE_ERR(err);
+
+    err = m3_FindFunction(&_mainFunc, _runtime.get(), _entryPoint.c_str());
+    CHECK_COMPOSE_ERR(err);
+
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto result = [&]() {
+      if (_entryPoint == "_start") {
+        const char *args[] = {_moduleFileName.c_str()};
+        return m3_CallWithArgs(_mainFunc, 1, args);
+      } else {
+        return m3_CallWithArgs(_mainFunc, 0, nullptr);
+      }
+    }();
+    if (result == m3Err_trapExit) {
+      if (_runtime->exit_code != 0) {
+        std::string emsg("Wasm module run failed, exit code: " +
+                         std::to_string(_runtime->exit_code));
+        throw ActivationError(emsg);
+      }
+    } else {
+      CHECK_ACTIVATION_ERR(result);
+    }
+    return input;
+  }
+};
+
+void registerBlocks() { REGISTER_CBLOCK("Wasm.Run", Wasm::Run); }
+
 } // namespace Wasm
+} // namespace chainblocks

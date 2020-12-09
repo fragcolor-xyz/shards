@@ -301,6 +301,8 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   -I${CHAINBLOCKS_DIR}/deps/pdqsort
   -I${CHAINBLOCKS_DIR}/deps/filesystem/include
+  -I${CHAINBLOCKS_DIR}/deps/wasm3/source
+  -I${CHAINBLOCKS_DIR}/deps/wasm3/platforms/cpp/wasm3_cpp/include
   )
 
 ### setup clang format
@@ -411,6 +413,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/pdqsort
   ${CHAINBLOCKS_DIR}/deps/filesystem/include
   ${CHAINBLOCKS_DIR}/deps/wasm3/source
+  ${CHAINBLOCKS_DIR}/deps/wasm3/platforms/cpp/wasm3_cpp/include
   )
 
 # wasm3

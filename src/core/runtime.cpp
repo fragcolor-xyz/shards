@@ -80,6 +80,10 @@ namespace BigInt {
 extern void registerBlocks();
 }
 
+namespace Wasm {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -186,6 +190,7 @@ void registerCoreBlocks() {
   Imaging::registerBlocks();
   BigInt::registerBlocks();
   registerFSBlocks();
+  Wasm::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
