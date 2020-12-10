@@ -935,6 +935,7 @@ struct Run {
   std::string _entryPoint{"_start"};
   ParamVar _arguments{};
   std::vector<const char *> _argsArray{};
+  std::vector<uint8_t> _byteCode{};
 
   std::shared_ptr<M3Environment> _env;
   std::shared_ptr<M3Runtime> _runtime;
@@ -1023,13 +1024,13 @@ struct Run {
     std::ifstream wasmFile(p.string(), std::ios::binary);
     // apparently if we use std::copy we need to make sure this is set
     wasmFile.unsetf(std::ios::skipws);
-    std::vector<uint8_t> in_bytes;
+    _byteCode.clear();
     std::copy(std::istream_iterator<uint8_t>(wasmFile),
-              std::istream_iterator<uint8_t>(), std::back_inserter(in_bytes));
+              std::istream_iterator<uint8_t>(), std::back_inserter(_byteCode));
     IM3Module pmodule;
     // LOG(TRACE) << "Calling: m3_ParseModule";
     M3Result err =
-        m3_ParseModule(_env.get(), &pmodule, &in_bytes[0], in_bytes.size());
+        m3_ParseModule(_env.get(), &pmodule, &_byteCode[0], _byteCode.size());
     CHECK_COMPOSE_ERR(err);
 
     // LOG(TRACE) << "Calling: m3_LoadModule";
@@ -1049,20 +1050,16 @@ struct Run {
     CHECK_COMPOSE_ERR(err);
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
+  CBTypeInfo compose(const CBInstanceData &data) {
+    loadModule();
+    return data.inputType;
+  }
 
   void warmup(CBContext *context) { _arguments.warmup(context); }
 
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_mainFunc) {
-      // if we don't do the loadModule() here, wasm3 runtime fails to execute
-      // properly wasi code (test.wasm) especially if that code is executed
-      // twice in two different blocks, see wasm.clj test I am not yet sure why
-      loadModule();
-    }
-
     _argsArray.clear();
 
     // WASI modules need this
