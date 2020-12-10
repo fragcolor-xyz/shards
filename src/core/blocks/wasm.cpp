@@ -996,18 +996,14 @@ struct Run {
   void loadModule() {
     // here we load the module, that's why Module parameter is not variable
     std::filesystem::path p(_moduleName);
-    if (p.is_absolute()) {
-      if (!std::filesystem::exists(p)) {
-        throw ComposeError("Wasm module not found at the given path");
-      }
-    } else {
+    if (!p.is_absolute()) {
       std::filesystem::path cp(Globals::RootPath);
       if (std::filesystem::exists(cp)) {
         p = cp / p;
-        if (!std::filesystem::exists(p)) {
-          throw ComposeError("Wasm module not found at the given path");
-        }
       }
+    }
+    if (!std::filesystem::exists(p)) {
+      throw ComposeError("Wasm module not found at the given path");
     }
 
     _moduleFileName = p.filename().string();
@@ -1018,9 +1014,6 @@ struct Run {
                    &m3_FreeRuntime);
     assert(_runtime.get());
 
-    // LOG(TRACE) << "Wasm env: " << _env.get() << " runtime: " <<
-    // _runtime.get();
-
     std::ifstream wasmFile(p.string(), std::ios::binary);
     // apparently if we use std::copy we need to make sure this is set
     wasmFile.unsetf(std::ios::skipws);
@@ -1028,24 +1021,19 @@ struct Run {
     std::copy(std::istream_iterator<uint8_t>(wasmFile),
               std::istream_iterator<uint8_t>(), std::back_inserter(_byteCode));
     IM3Module pmodule;
-    // LOG(TRACE) << "Calling: m3_ParseModule";
     M3Result err =
         m3_ParseModule(_env.get(), &pmodule, &_byteCode[0], _byteCode.size());
     CHECK_COMPOSE_ERR(err);
 
-    // LOG(TRACE) << "Calling: m3_LoadModule";
     err = m3_LoadModule(_runtime.get(), pmodule);
     CHECK_COMPOSE_ERR(err);
 
-    // LOG(TRACE) << "Calling: m3_LinkWASI";
     err = WASI::m3_LinkWASI(_runtime->modules);
     CHECK_COMPOSE_ERR(err);
 
-    // LOG(TRACE) << "Calling: m3_LinkLibC";
     err = m3_LinkLibC(_runtime->modules);
     CHECK_COMPOSE_ERR(err);
 
-    // LOG(TRACE) << "Calling: m3_FindFunction";
     err = m3_FindFunction(&_mainFunc, _runtime.get(), _entryPoint.c_str());
     CHECK_COMPOSE_ERR(err);
   }
