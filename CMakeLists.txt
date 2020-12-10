@@ -147,22 +147,24 @@ add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multic
 if(X86 AND NOT EMSCRIPTEN)
   if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
-    add_compile_options(-march=core2)
+    set(ARCH_FLAGS -march=core2)
     set(RUST_ARCH "-Ctarget-cpu=core2 ")
   elseif(FORCE_I686)
     # no vectors at all
-    add_compile_options(-march=i686)
+    set(ARCH_FLAGS -march=i686)
     set(RUST_ARCH "-Ctarget-cpu=i686 ")
   elseif(FORCE_NATIVE)
     # the best but low compatibility
-    add_compile_options(-march=native)
+    set(ARCH_FLAGS -march=native)
     set(RUST_ARCH "-Ctarget-cpu=native ")
   else()
     # CBVars are m256 basically, so this is extremely good! (AVX!)
-    add_compile_options(-march=sandybridge)
+    set(ARCH_FLAGS -march=sandybridge)
     set(RUST_ARCH "-Ctarget-cpu=sandybridge ")
   endif()
 endif()
+
+add_compile_options(${ARCH_FLAGS})
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   # 64 bits
@@ -421,7 +423,7 @@ ExternalProject_Add(wasm3
   URL ${CHAINBLOCKS_DIR}/deps/wasm3
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps
   BUILD_IN_SOURCE True
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release ${EXTRA_CMAKE_ARGS}
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release ${EXTRA_CMAKE_ARGS} -DWASM3_ARCH_FLAGS=${ARCH_FLAGS}
   BUILD_COMMAND cmake --build . --target m3
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3/source/libm3.a
