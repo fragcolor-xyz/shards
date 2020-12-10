@@ -57,3 +57,5 @@ echo "Running test: bigint"
 ./cbl ../src/tests/bigint.clj
 echo "Running test: bgfx"
 ./cbl ../src/tests/bgfx.clj
+echo "Running test: wasm"
+./cbl ../src/tests/wasm.clj

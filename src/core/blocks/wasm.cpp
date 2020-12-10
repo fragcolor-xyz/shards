@@ -933,6 +933,8 @@ struct Run {
   std::string _moduleFileName;
   size_t _stackSize{64 * 1024};
   std::string _entryPoint{"_start"};
+  ParamVar _arguments{};
+  std::vector<const char *> _argsArray{};
 
   std::shared_ptr<M3Environment> _env;
   std::shared_ptr<M3Runtime> _runtime;
@@ -944,6 +946,10 @@ struct Run {
       {"Module",
        "The wasm module to run.",
        {WasmFilePath, CoreInfo::StringType}},
+      {"Arguments",
+       "The arguments to pass to the module main function.",
+       {CoreInfo::NoneType, CoreInfo::StringSeqType,
+        CoreInfo::StringVarSeqType}},
       {"EntryPoint",
        "The entry point function to call when activating.",
        {CoreInfo::StringType}},
@@ -958,9 +964,12 @@ struct Run {
       _moduleName = value.payload.stringValue;
       break;
     case 1:
-      _entryPoint = value.payload.stringValue;
+      _arguments = value;
       break;
     case 2:
+      _entryPoint = value.payload.stringValue;
+      break;
+    case 3:
       _stackSize = size_t(value.payload.intValue * 1024);
       break;
     default:
@@ -973,8 +982,10 @@ struct Run {
     case 0:
       return Var(_moduleName);
     case 1:
-      return Var(_entryPoint);
+      return _arguments;
     case 2:
+      return Var(_entryPoint);
+    case 3:
       return Var(int64_t(_stackSize) / 1024);
     default:
       throw CBException("getParam out of range");
@@ -1040,23 +1051,36 @@ struct Run {
 
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
-  // void warmup(CBContext *context) { loadModule(); }
+  void warmup(CBContext *context) { _arguments.warmup(context); }
+
+  void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_mainFunc) {
+      // if we don't do the loadModule() here, wasm3 runtime fails to execute
+      // properly wasi code (test.wasm) especially if that code is executed
+      // twice in two different blocks, see wasm.clj test I am not yet sure why
       loadModule();
     }
 
-    auto result = [&]() {
-      if (_entryPoint == "_start") {
-        const char *args[] = {_moduleFileName.c_str()};
-        return m3_CallWithArgs(_mainFunc, 1, args);
-      } else {
-        // const char *args[] = {"10"};
-        // return m3_CallWithArgs(_mainFunc, 1, args);
-        return m3_CallWithArgs(_mainFunc, 0, nullptr);
+    _argsArray.clear();
+
+    // WASI modules need this
+    if (_entryPoint == "_start") {
+      _argsArray.push_back(_moduleFileName.c_str());
+    }
+
+    // add any arguments we have
+    auto argsVar = _arguments.get();
+    if (argsVar.valueType == Seq) {
+      IterableSeq args(argsVar.payload.seqValue);
+      for (auto &arg : args) {
+        _argsArray.push_back(arg.payload.stringValue);
       }
-    }();
+    }
+
+    auto result = m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
+
     if (result == m3Err_trapExit) {
       if (_runtime->exit_code != 0) {
         std::string emsg("Wasm module run failed, exit code: " +
