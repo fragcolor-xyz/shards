@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <sstream>
 
 // for now a carbon copy of wasm3 simple wasi
 
@@ -60,15 +62,15 @@
 #include <NTSecAPI.h>
 #undef SystemFunction036
 #define ssize_t SSIZE_T
-
-#define open _open
-#define read _read
-#define write _write
-#define close _close
 #endif
 
 namespace chainblocks {
 namespace Wasm {
+struct PlatformData {
+  std::istringstream sin;
+  std::ostringstream sout;
+  std::ostringstream serr;
+};
 namespace WASI {
 typedef struct wasi_iovec_t {
   __wasi_size_t buf;
@@ -450,31 +452,82 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  int whence;
-  switch (wasi_whence) {
-  case __WASI_WHENCE_CUR:
-    whence = SEEK_CUR;
-    break;
-  case __WASI_WHENCE_END:
-    whence = SEEK_END;
-    break;
-  case __WASI_WHENCE_SET:
-    whence = SEEK_SET;
-    break;
-  default:
-    m3ApiReturn(__WASI_ERRNO_INVAL);
-  }
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
 
-  int64_t ret;
+  if (fd == 0) {
+    // stdio
+    std::ios::seekdir whence;
+    switch (wasi_whence) {
+    case __WASI_WHENCE_CUR:
+      whence = std::ios_base::cur;
+      break;
+    case __WASI_WHENCE_END:
+      whence = std::ios_base::end;
+      break;
+    case __WASI_WHENCE_SET:
+      whence = std::ios_base::beg;
+      break;
+    default:
+      m3ApiReturn(__WASI_ERRNO_INVAL);
+    }
+
+    pd->sin.seekg(offset, whence);
+    int64_t ret = pd->sin.tellg();
+    m3ApiWriteMem64(result, ret);
+  } else if (fd < 3) {
+    // stdout/err
+    std::ios::seekdir whence;
+    switch (wasi_whence) {
+    case __WASI_WHENCE_CUR:
+      whence = std::ios_base::cur;
+      break;
+    case __WASI_WHENCE_END:
+      whence = std::ios_base::end;
+      break;
+    case __WASI_WHENCE_SET:
+      whence = std::ios_base::beg;
+      break;
+    default:
+      m3ApiReturn(__WASI_ERRNO_INVAL);
+    }
+
+    int64_t ret;
+    if (fd == 1) {
+      pd->sout.seekp(offset, whence);
+      ret = pd->sout.tellp();
+    } else {
+      pd->serr.seekp(offset, whence);
+      ret = pd->serr.tellp();
+    }
+
+    m3ApiWriteMem64(result, ret);
+  } else {
+    int whence;
+    switch (wasi_whence) {
+    case __WASI_WHENCE_CUR:
+      whence = SEEK_CUR;
+      break;
+    case __WASI_WHENCE_END:
+      whence = SEEK_END;
+      break;
+    case __WASI_WHENCE_SET:
+      whence = SEEK_SET;
+      break;
+    default:
+      m3ApiReturn(__WASI_ERRNO_INVAL);
+    }
+
+    int64_t ret;
 #if defined(M3_COMPILER_MSVC) || defined(__MINGW32__)
-  ret = _lseeki64(fd, offset, whence);
+    ret = _lseeki64(fd, offset, whence);
 #else
-  ret = lseek(fd, offset, whence);
+    ret = lseek(fd, offset, whence);
 #endif
-  if (ret < 0) {
-    m3ApiReturn(errno_to_wasi(errno));
+    if (ret < 0) {
+      m3ApiReturn(errno_to_wasi(errno));
+    }
+    m3ApiWriteMem64(result, ret);
   }
-  m3ApiWriteMem64(result, ret);
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
 }
 
@@ -576,34 +629,56 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+
+  if (fd == 0) {
+    ssize_t res = 0;
+    for (__wasi_size_t i = 0; i < iovs_len; i++) {
+      void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
+      size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
+      if (len == 0)
+        continue;
+
+      pd->sin.read((char *)addr, len);
+      int ret = pd->sin.gcount();
+      if (ret < 0)
+        m3ApiReturn(__WASI_ERRNO_INVAL);
+      res += ret;
+      if ((size_t)ret < len)
+        break;
+    }
+    m3ApiWriteMem32(nread, res);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
+  } else {
 #if defined(HAS_IOVEC)
-  struct iovec iovs[iovs_len];
-  copy_iov_to_host(_mem, iovs, wasi_iovs, iovs_len);
+    struct iovec iovs[iovs_len];
+    copy_iov_to_host(_mem, iovs, wasi_iovs, iovs_len);
 
-  ssize_t ret = readv(fd, iovs, iovs_len);
-  if (ret < 0) {
-    m3ApiReturn(errno_to_wasi(errno));
-  }
-  m3ApiWriteMem32(nread, ret);
-  m3ApiReturn(__WASI_ERRNO_SUCCESS);
-#else
-  ssize_t res = 0;
-  for (__wasi_size_t i = 0; i < iovs_len; i++) {
-    void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
-    size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
-    if (len == 0)
-      continue;
-
-    int ret = read(fd, addr, len);
-    if (ret < 0)
+    ssize_t ret = readv(fd, iovs, iovs_len);
+    if (ret < 0) {
       m3ApiReturn(errno_to_wasi(errno));
-    res += ret;
-    if ((size_t)ret < len)
-      break;
-  }
-  m3ApiWriteMem32(nread, res);
-  m3ApiReturn(__WASI_ERRNO_SUCCESS);
+    }
+    m3ApiWriteMem32(nread, ret);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
+#else
+    ssize_t res = 0;
+    for (__wasi_size_t i = 0; i < iovs_len; i++) {
+      void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
+      size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
+      if (len == 0)
+        continue;
+
+      int ret = read(fd, addr, len);
+      if (ret < 0)
+        m3ApiReturn(errno_to_wasi(errno));
+      res += ret;
+      if ((size_t)ret < len)
+        break;
+    }
+    m3ApiWriteMem32(nread, res);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
 #endif
+  }
 }
 
 m3ApiRawFunction(m3_wasi_unstable_fd_write) {
@@ -619,34 +694,62 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+
+  if (fd == 1) {
+    ssize_t res = 0;
+    for (__wasi_size_t i = 0; i < iovs_len; i++) {
+      void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
+      size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
+      if (len == 0)
+        continue;
+      pd->sout.write((char *)addr, len);
+      res += len;
+    }
+    m3ApiWriteMem32(nwritten, res);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
+  } else if (fd == 2) {
+    ssize_t res = 0;
+    for (__wasi_size_t i = 0; i < iovs_len; i++) {
+      void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
+      size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
+      if (len == 0)
+        continue;
+      pd->serr.write((char *)addr, len);
+      res += len;
+    }
+    m3ApiWriteMem32(nwritten, res);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
+  } else {
 #if defined(HAS_IOVEC)
-  struct iovec iovs[iovs_len];
-  copy_iov_to_host(_mem, iovs, wasi_iovs, iovs_len);
+    struct iovec iovs[iovs_len];
+    copy_iov_to_host(_mem, iovs, wasi_iovs, iovs_len);
 
-  ssize_t ret = writev(fd, iovs, iovs_len);
-  if (ret < 0) {
-    m3ApiReturn(errno_to_wasi(errno));
-  }
-  m3ApiWriteMem32(nwritten, ret);
-  m3ApiReturn(__WASI_ERRNO_SUCCESS);
-#else
-  ssize_t res = 0;
-  for (__wasi_size_t i = 0; i < iovs_len; i++) {
-    void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
-    size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
-    if (len == 0)
-      continue;
-
-    int ret = write(fd, addr, len);
-    if (ret < 0)
+    ssize_t ret = writev(fd, iovs, iovs_len);
+    if (ret < 0) {
       m3ApiReturn(errno_to_wasi(errno));
-    res += ret;
-    if ((size_t)ret < len)
-      break;
-  }
-  m3ApiWriteMem32(nwritten, res);
-  m3ApiReturn(__WASI_ERRNO_SUCCESS);
+    }
+    m3ApiWriteMem32(nwritten, ret);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
+#else
+    ssize_t res = 0;
+    for (__wasi_size_t i = 0; i < iovs_len; i++) {
+      void *addr = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iovs[i].buf));
+      size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
+      if (len == 0)
+        continue;
+
+      int ret = write(fd, addr, len);
+      if (ret < 0)
+        m3ApiReturn(errno_to_wasi(errno));
+      res += ret;
+      if ((size_t)ret < len)
+        break;
+    }
+    m3ApiWriteMem32(nwritten, res);
+    m3ApiReturn(__WASI_ERRNO_SUCCESS);
 #endif
+  }
 }
 
 m3ApiRawFunction(m3_wasi_unstable_fd_close) {
@@ -940,6 +1043,8 @@ struct Run {
   std::shared_ptr<M3Environment> _env;
   std::shared_ptr<M3Runtime> _runtime;
   IM3Function _mainFunc{nullptr};
+  PlatformData _data{};
+  std::string _output;
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1010,7 +1115,7 @@ struct Run {
 
     _env.reset(m3_NewEnvironment(), &m3_FreeEnvironment);
     assert(_env.get());
-    _runtime.reset(m3_NewRuntime(_env.get(), _stackSize, nullptr),
+    _runtime.reset(m3_NewRuntime(_env.get(), _stackSize, &_data),
                    &m3_FreeRuntime);
     assert(_runtime.get());
 
@@ -1048,6 +1153,11 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    // reset streams
+    _data.sin = std::istringstream(input.payload.stringValue);
+    _data.sout = std::ostringstream();
+    _data.serr = std::ostringstream();
+
     _argsArray.clear();
 
     // WASI modules need this
@@ -1075,7 +1185,8 @@ struct Run {
     } else {
       CHECK_ACTIVATION_ERR(result);
     }
-    return input;
+    _output = _data.sout.str();
+    return Var(_output);
   }
 };
 
