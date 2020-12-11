@@ -1020,9 +1020,7 @@ _catch:
 
 #define CHECK_ACTIVATION_ERR(_err_)                                            \
   if (_err_ != m3Err_none) {                                                   \
-    std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": ");      \
-    _errMsg.append(_err_);                                                     \
-    throw ActivationError(_errMsg);                                            \
+    throw ActivationError(_err_);                                              \
   }
 
 struct Run {
@@ -1196,7 +1194,7 @@ struct Run {
       }
     } else {
       _serr.done();
-      LOG(ERROR) << _serr.str();
+      LOG(ERROR) << _serr.str() << _runtime->error_message;
       CHECK_ACTIVATION_ERR(result);
     }
 
