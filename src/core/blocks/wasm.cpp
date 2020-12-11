@@ -427,6 +427,33 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_get) {
 #endif
 }
 
+m3ApiRawFunction(m3_wasi_unstable_fd_filestat_get) {
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, fd);
+  m3ApiGetArgMem(__wasi_filestat_t *, filestat);
+
+  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_filestat_get";
+
+  if (runtime == NULL || filestat == NULL) {
+    m3ApiReturn(__WASI_ERRNO_INVAL);
+  }
+
+  struct stat s;
+  auto res = fstat(fd, &s);
+  if (res == -1) {
+    m3ApiReturn(errno_to_wasi(errno));
+  }
+
+  filestat->dev = s.st_dev;
+  filestat->atim = s.st_atime;
+  filestat->mtim = s.st_mtime;
+  filestat->ctim = s.st_ctime;
+  filestat->nlink = s.st_nlink;
+  filestat->size = s.st_size;
+
+  m3ApiReturn(__WASI_ERRNO_SUCCESS);
+}
+
 m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_set_flags) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
@@ -941,8 +968,10 @@ M3Result m3_LinkWASI(IM3Module module) {
         m3_LinkRawFunction(module, wasi, "fd_fdstat_set_flags", "i(ii)",
                            &m3_wasi_unstable_fd_fdstat_set_flags)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
-    //"fd_fdstat_set_rights", "i(iII)",  ))); _     (SuppressLookupFailure
-    //(m3_LinkRawFunction (module, wasi, "fd_filestat_get",      "i(i*)",   )));
+    //"fd_fdstat_set_rights", "i(iII)",  )));
+    _(SuppressLookupFailure(
+        m3_LinkRawFunction(module, wasi, "fd_filestat_get", "i(i*)",
+                           &m3_wasi_unstable_fd_filestat_get)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_filestat_set_size", "i(iI)",   ))); _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "fd_filestat_set_times","i(iIIi)", )));
