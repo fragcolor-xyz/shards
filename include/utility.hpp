@@ -317,8 +317,9 @@ public:
 
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
-    _blocks.elements = &_blocksArray[0];
-    _blocks.len = uint32_t(_blocksArray.size());
+    const auto nblocks = _blocksArray.size();
+    _blocks.elements = nblocks > 0 ? &_blocksArray[0] : nullptr;
+    _blocks.len = uint32_t(nblocks);
 
     return _blocksParam;
   }

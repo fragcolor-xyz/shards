@@ -1091,8 +1091,10 @@ struct DBlock {
     case 1: {
       CBVar res{};
       res.valueType = Seq;
-      res.payload.seqValue.elements = &_wrappedParams.front();
-      res.payload.seqValue.len = _wrappedParams.size();
+      const auto nparams = _wrappedParams.size();
+      res.payload.seqValue.elements =
+          nparams > 0 ? &_wrappedParams.front() : nullptr;
+      res.payload.seqValue.len = nparams;
       res.payload.seqValue.cap = 0;
       return res;
     }

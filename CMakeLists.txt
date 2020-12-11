@@ -179,9 +179,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
   if(NOT EMSCRIPTEN)
     # aggressive inlining
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-      add_compile_options(-mllvm -inline-threshold=100000)
+      set(INLINING_FLAGS -mllvm -inline-threshold=100000)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      add_compile_options(-finline-limit=100000)
+      set(INLINING_FLAGS -finline-limit=100000)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
       # using Intel C++
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -190,6 +190,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
   endif()
 endif()
 ###
+
+add_compile_options(${INLINING_FLAGS})
 
 ### libs
 if(WIN32)

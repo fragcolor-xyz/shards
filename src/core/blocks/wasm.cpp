@@ -1188,11 +1188,15 @@ struct Run {
 
     if (result == m3Err_trapExit) {
       if (_runtime->exit_code != 0) {
+        _serr.done();
+        LOG(ERROR) << _serr.str();
         std::string emsg("Wasm module run failed, exit code: " +
                          std::to_string(_runtime->exit_code));
         throw ActivationError(emsg);
       }
     } else {
+      _serr.done();
+      LOG(ERROR) << _serr.str();
       CHECK_ACTIVATION_ERR(result);
     }
 
