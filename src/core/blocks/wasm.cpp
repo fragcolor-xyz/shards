@@ -67,9 +67,9 @@
 namespace chainblocks {
 namespace Wasm {
 struct PlatformData {
-  std::istringstream sin;
-  std::ostringstream sout;
-  std::ostringstream serr;
+  std::istream *sin;
+  std::ostream *sout;
+  std::ostream *serr;
 };
 namespace WASI {
 typedef struct wasi_iovec_t {
@@ -471,8 +471,8 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
       m3ApiReturn(__WASI_ERRNO_INVAL);
     }
 
-    pd->sin.seekg(offset, whence);
-    int64_t ret = pd->sin.tellg();
+    pd->sin->seekg(offset, whence);
+    int64_t ret = pd->sin->tellg();
     m3ApiWriteMem64(result, ret);
   } else if (fd < 3) {
     // stdout/err
@@ -493,11 +493,11 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
 
     int64_t ret;
     if (fd == 1) {
-      pd->sout.seekp(offset, whence);
-      ret = pd->sout.tellp();
+      pd->sout->seekp(offset, whence);
+      ret = pd->sout->tellp();
     } else {
-      pd->serr.seekp(offset, whence);
-      ret = pd->serr.tellp();
+      pd->serr->seekp(offset, whence);
+      ret = pd->serr->tellp();
     }
 
     m3ApiWriteMem64(result, ret);
@@ -639,8 +639,8 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
       if (len == 0)
         continue;
 
-      pd->sin.read((char *)addr, len);
-      int ret = pd->sin.gcount();
+      pd->sin->read((char *)addr, len);
+      int ret = pd->sin->gcount();
       if (ret < 0)
         m3ApiReturn(__WASI_ERRNO_INVAL);
       res += ret;
@@ -703,7 +703,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
       size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
       if (len == 0)
         continue;
-      pd->sout.write((char *)addr, len);
+      pd->sout->write((char *)addr, len);
       res += len;
     }
     m3ApiWriteMem32(nwritten, res);
@@ -715,7 +715,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
       size_t len = m3ApiReadMem32(&wasi_iovs[i].buf_len);
       if (len == 0)
         continue;
-      pd->serr.write((char *)addr, len);
+      pd->serr->write((char *)addr, len);
       res += len;
     }
     m3ApiWriteMem32(nwritten, res);
@@ -1039,12 +1039,12 @@ struct Run {
   ParamVar _arguments{};
   std::vector<const char *> _argsArray{};
   std::vector<uint8_t> _byteCode{};
-
   std::shared_ptr<M3Environment> _env;
   std::shared_ptr<M3Runtime> _runtime;
   IM3Function _mainFunc{nullptr};
   PlatformData _data{};
-  std::string _output;
+  CachedStreamBuf _sout{};
+  CachedStreamBuf _serr{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1154,9 +1154,19 @@ struct Run {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // reset streams
-    _data.sin = std::istringstream(input.payload.stringValue);
-    _data.sout = std::ostringstream();
-    _data.serr = std::ostringstream();
+    _sout.reset();
+    _serr.reset();
+    std::ostream sout{&_sout};
+    std::ostream serr{&_serr};
+    StringStreamBuf sinbuf{input.payload.stringLen > 0
+                               ? std::string_view(input.payload.stringValue,
+                                                  input.payload.stringLen)
+                               : std::string_view(input.payload.stringValue)};
+    std::istream sin{&sinbuf};
+
+    _data.sin = &sin;
+    _data.serr = &serr;
+    _data.sout = &sout;
 
     _argsArray.clear();
 
@@ -1185,8 +1195,10 @@ struct Run {
     } else {
       CHECK_ACTIVATION_ERR(result);
     }
-    _output = _data.sout.str();
-    return Var(_output);
+
+    const auto len = _sout.data.size();
+    _sout.done();
+    return Var(_sout.str(), len);
   }
 };
 

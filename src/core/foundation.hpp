@@ -926,7 +926,13 @@ struct ExposedInfo {
 
 struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
+
   void reset() { data.clear(); }
+
+  std::streamsize xsputn(const char *s, std::streamsize n) override {
+    data.insert(data.end(), &s[0], s + n);
+    return n;
+  }
 
   int overflow(int c) override {
     data.push_back(static_cast<char>(c));
@@ -936,6 +942,36 @@ struct CachedStreamBuf : std::streambuf {
   void done() { data.push_back('\0'); }
 
   const char *str() { return &data[0]; }
+};
+
+struct StringStreamBuf : std::streambuf {
+  StringStreamBuf(const std::string_view &s) : data(s) {}
+
+  std::string_view data;
+  uint32_t index{0};
+  bool done{false};
+
+  std::streamsize xsgetn(char *s, std::streamsize n) override {
+    if (unlikely(done)) {
+      return 0;
+    } else if ((size_t(index) + n) > data.size()) {
+      const auto len = data.size() - index;
+      memcpy(s, &data[index], len);
+      done = true; // flag to indicate we are done
+      return len;
+    } else {
+      memcpy(s, &data[index], n);
+      index += n;
+      return n;
+    }
+  }
+
+  int underflow() override {
+    if (index >= data.size())
+      return EOF;
+
+    return data[index++];
+  }
 };
 
 struct VarStringStream {
