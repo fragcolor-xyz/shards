@@ -1061,7 +1061,7 @@ struct Run {
 
   std::string _moduleName;
   std::string _moduleFileName;
-  size_t _stackSize{64 * 1024};
+  size_t _stackSize{1024 * 1024};
   std::string _entryPoint{"_start"};
   ParamVar _arguments{};
   std::vector<const char *> _argsArray{};
