@@ -59,7 +59,7 @@ struct ShaderHandle {
   typedef ObjectVar<ShaderHandle> VarInfo;
   static inline VarInfo Var{"BGFX-Shader", CoreCC, BgfxShaderHandleCC};
 
-  bgfx::ShaderHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
 
   ~ShaderHandle() {
     if (handle.idx != bgfx::kInvalidHandle) {

@@ -651,9 +651,158 @@ struct Texture2D : public BaseConsumer {
   }
 };
 
+template <char SHADER_TYPE> struct Shader {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters f_v_params{
+      {"VertexShader",
+       "The vertex shader bytecode.",
+       {CoreInfo::BytesType, CoreInfo::BytesVarType}},
+      {"PixelShader",
+       "The pixel shader bytecode.",
+       {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
+
+  static inline Parameters c_params{
+      {"ComputeShader",
+       "The compute shader bytecode.",
+       {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
+
+  static CBParametersInfo parameters() {
+    if constexpr (SHADER_TYPE == 'c') {
+      return c_params;
+    } else {
+      return f_v_params;
+    }
+  }
+
+  ParamVar _vcode{};
+  ParamVar _pcode{};
+  ParamVar _ccode{};
+  ShaderHandle *_output{nullptr};
+
+  void setParam(int index, const CBVar &value) {
+    if constexpr (SHADER_TYPE == 'c') {
+      switch (index) {
+      case 0:
+        _ccode = value;
+        break;
+      default:
+        break;
+      }
+    } else {
+      switch (index) {
+      case 0:
+        _vcode = value;
+        break;
+      case 1:
+        _pcode = value;
+        break;
+      default:
+        break;
+      }
+    }
+  }
+
+  CBVar getParam(int index) {
+    if constexpr (SHADER_TYPE == 'c') {
+      switch (index) {
+      case 0:
+        return _ccode;
+      default:
+        return Var::Empty;
+      }
+    } else {
+      switch (index) {
+      case 0:
+        return _vcode;
+      case 1:
+        return _pcode;
+      default:
+        return Var::Empty;
+      }
+    }
+  }
+
+  void cleanup() {
+    if constexpr (SHADER_TYPE == 'c') {
+      _ccode.cleanup();
+    } else {
+      _vcode.cleanup();
+      _pcode.cleanup();
+    }
+
+    if (_output) {
+      ShaderHandle::Var.Reset(_output);
+      _output = nullptr;
+    }
+  }
+
+  void warmup(CBContext *context) {
+    if constexpr (SHADER_TYPE == 'c') {
+      _ccode.warmup(context);
+    } else {
+      _vcode.warmup(context);
+      _pcode.warmup(context);
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if constexpr (SHADER_TYPE == 'c') {
+      const auto &code = _ccode.get();
+      auto mem = bgfx::copy(code.payload.bytesValue, code.payload.bytesSize);
+      auto sh = bgfx::createShader(mem);
+      if (sh.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to load compute shader.");
+      }
+      auto ph = bgfx::createProgram(sh, true);
+      if (ph.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to create compute shader program.");
+      }
+
+      if (_output) {
+        ShaderHandle::Var.Reset(_output);
+      }
+      _output = ShaderHandle::Var.New();
+      _output->handle = ph;
+    } else {
+      const auto &vcode = _vcode.get();
+      auto vmem = bgfx::copy(vcode.payload.bytesValue, vcode.payload.bytesSize);
+      auto vsh = bgfx::createShader(vmem);
+      if (vsh.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to load vertex shader.");
+      }
+
+      const auto &pcode = _pcode.get();
+      auto pmem = bgfx::copy(pcode.payload.bytesValue, pcode.payload.bytesSize);
+      auto psh = bgfx::createShader(pmem);
+      if (psh.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to load pixel shader.");
+      }
+
+      auto ph = bgfx::createProgram(vsh, psh, true);
+      if (ph.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to create shader program.");
+      }
+
+      if (_output) {
+        ShaderHandle::Var.Reset(_output);
+      }
+      _output = ShaderHandle::Var.New();
+      _output->handle = ph;
+    }
+    return ShaderHandle::Var.Get(_output);
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("BGFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("BGFX.Draw", Draw);
   REGISTER_CBLOCK("BGFX.Texture2D", Texture2D);
+
+  using GraphicsShader = Shader<'g'>;
+  REGISTER_CBLOCK("BGFX.Shader", GraphicsShader);
+  using ComputeShader = Shader<'c'>;
+  REGISTER_CBLOCK("BGFX.ComputeShader", ComputeShader);
 }
 }; // namespace BGFX
