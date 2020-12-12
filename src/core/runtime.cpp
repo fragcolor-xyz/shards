@@ -299,6 +299,9 @@ void registerCoreBlocks() {
   if (Globals::RootPath != Globals::ExePath) {
     loadExternalBlocks(Globals::RootPath);
   }
+
+  // set root path as current directory
+  std::filesystem::current_path(Globals::RootPath);
 }
 
 CBlock *createBlock(std::string_view name) {
@@ -902,7 +905,12 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->suspend = [](CBContext *context, double seconds) noexcept {
-    return chainblocks::suspend(context, seconds);
+    try {
+      return chainblocks::suspend(context, seconds);
+    } catch (const chainblocks::ActivationError &ex) {
+      LOG(ERROR) << ex.what();
+      return CBChainState::Stop;
+    }
   };
 
   result->getState = [](CBContext *context) noexcept {
@@ -1143,6 +1151,8 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->setRootPath = [](const char *p) noexcept {
     chainblocks::Globals::RootPath = p;
+    chainblocks::loadExternalBlocks(p);
+    std::filesystem::current_path(p);
   };
 
   result->asyncActivate = [](auto context, auto data, auto call) {

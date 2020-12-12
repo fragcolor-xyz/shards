@@ -1128,12 +1128,6 @@ struct Run {
   void loadModule() {
     // here we load the module, that's why Module parameter is not variable
     std::filesystem::path p(_moduleName);
-    if (!p.is_absolute()) {
-      std::filesystem::path cp(Globals::RootPath);
-      if (std::filesystem::exists(cp)) {
-        p = cp / p;
-      }
-    }
     if (!std::filesystem::exists(p)) {
       throw ComposeError("Wasm module not found at the given path");
     }
