@@ -1217,7 +1217,7 @@ struct Run {
                          std::to_string(_runtime->exit_code));
         throw ActivationError(emsg);
       }
-    } else {
+    } else if (result) {
       _serr.done();
       _sout.done();
       LOG(INFO) << _sout.str();
