@@ -652,6 +652,9 @@ struct Texture2D : public BaseConsumer {
 };
 
 template <char SHADER_TYPE> struct Shader {
+  // TODO
+  // Require BGFX context for sanity checking
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 

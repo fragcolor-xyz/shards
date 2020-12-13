@@ -1072,6 +1072,7 @@ struct Run {
   PlatformData _data{};
   CachedStreamBuf _sout{};
   CachedStreamBuf _serr{};
+  bool _reset{false};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1080,15 +1081,18 @@ struct Run {
        "The wasm module to run.",
        {WasmFilePath, CoreInfo::StringType}},
       {"Arguments",
-       "The arguments to pass to the module main function.",
+       "The arguments to pass to the module entrypoint function.",
        {CoreInfo::NoneType, CoreInfo::StringSeqType,
         CoreInfo::StringVarSeqType}},
       {"EntryPoint",
        "The entry point function to call when activating.",
        {CoreInfo::StringType}},
-      {"StackSize",
-       "The stack size in kilobytes to use.",
-       {CoreInfo::IntType}}};
+      {"StackSize", "The stack size in kilobytes to use.", {CoreInfo::IntType}},
+      {"ResetRuntime",
+       "If the runtime should be reset every activation, altho slow this might "
+       "be useful if certain modules fail to execute properly on multiple "
+       "activations.",
+       {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
@@ -1105,6 +1109,9 @@ struct Run {
     case 3:
       _stackSize = size_t(value.payload.intValue * 1024);
       break;
+    case 4:
+      _reset = value.payload.boolValue;
+      break;
     default:
       throw CBException("setParam out of range");
     }
@@ -1120,6 +1127,8 @@ struct Run {
       return Var(_entryPoint);
     case 3:
       return Var(int64_t(_stackSize) / 1024);
+    case 4:
+      return Var(_reset);
     default:
       throw CBException("getParam out of range");
     }
@@ -1165,7 +1174,10 @@ struct Run {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    loadModule();
+    if (!_reset) {
+      // if we _reset, we do this at activation time
+      loadModule();
+    }
     return data.inputType;
   }
 
@@ -1174,6 +1186,10 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (_reset) {
+      loadModule();
+    }
+
     // reset streams
     _sout.reset();
     _serr.reset();
