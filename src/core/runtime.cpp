@@ -2419,14 +2419,14 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }
 
 uint64_t hash(const CBVar &var, bool initiator) {
-  static thread_local XXH3_state_s tHashState;
+  static thread_local XXH3_state_s tHashState{};
   static thread_local std::unordered_set<CBChain *> tHashingChains;
 
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
                 "XXH64_hash_t is not uint64_t");
 
   if (initiator) {
-    memset(&tHashState, 0, sizeof(XXH3_state_s));
+    XXH3_64bits_reset(&tHashState);
     tHashingChains.clear();
   }
 

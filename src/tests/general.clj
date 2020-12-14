@@ -189,11 +189,11 @@
    (Do inner1)
    (Assert.Is "My input 2" true)
    (Log)
-   
+
    {"x" 10 "y" 20 "hello" "world"} >= .table-a
    {"x" 10 "y" 20 "hello" "world"} >= .table-b
    {"x" 10 "y" 20 "no" "way"} >= .table-c
-   
+
    .table-a (Is .table-b) (Assert.Is true true)
    .table-a (Is .table-c) (Assert.IsNot true true)
 
@@ -535,7 +535,7 @@
    (When (FS.IsDirectory)
          ~[(FS.Iterate :Recursive true) (Log)
            (Take 4) (FS.Extension) (Log)])
-    
+
    "The result is: "   (Set "text1")
    "Hello world, "     (AppendTo .text1)
    "this is a string"  (AppendTo .text1)
@@ -869,6 +869,11 @@
    [1 2 3 4 5]
    (Replace [4 3 2 1] [5 4 3 2])
    (Assert.Is [2 3 4 5 5] true)
+   (Hash) (Log "[2 3 4 5 5] hash")
+
+   true (Hash) (Log) >= .thash
+   false (Hash) (Log) (Is .thash)
+   (Assert.IsNot true true)
 
    [5 4 3 2 1]
    (Replace [4 3 2 1] [5 4 3 2])
@@ -917,7 +922,9 @@
   (Chain
    "SaveBinary"
    (Const testChain)
-   (WriteFile "testChain.bin")))
+   (WriteFile "testChain.bin")
+   (Hash)
+   (Log "input chain hash")))
 (schedule Root saveBinary)
 (if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Node holds ref...
@@ -930,7 +937,7 @@
   (Chain
    "LoadBinary"
    (ReadFile "testChain.bin")
-   (ExpectChain) >= .loadedChain (Log)
+   (ExpectChain) >= .loadedChain (Log) (Hash) (Log "output chain hash")
    (ChainRunner .loadedChain :Mode RunChainMode.Detached)
    (WaitChain .loadedChain)
    (Assert.Is "global1" true)

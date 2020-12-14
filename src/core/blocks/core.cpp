@@ -1647,6 +1647,9 @@ CBVar unreachableActivation(const CBVar &input) { throw; }
 CBVar exitProgramActivation(const CBVar &input) {
   exit(input.payload.intValue);
 }
+CBVar hashActivation(const CBVar &input) {
+  return Var(chainblocks::hash(input));
+}
 
 #ifdef __EMSCRIPTEN__
 CBVar emscriptenEvalActivation(const CBVar &input) {
@@ -1769,6 +1772,10 @@ void registerBlocksCoreBlocks() {
       LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_CBLOCK("Pass", PassMockBlock);
   REGISTER_CBLOCK("Exit", ExitBlock);
+
+  using HasherBlock =
+      LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::IntType>;
+  REGISTER_CBLOCK("Hash", HasherBlock);
 
 #ifdef __EMSCRIPTEN__
   using EmscriptenEvalBlock =
