@@ -417,7 +417,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/pdqsort
   ${CHAINBLOCKS_DIR}/deps/filesystem/include
   ${CHAINBLOCKS_DIR}/deps/wasm3/source
-  ${CHAINBLOCKS_DIR}/deps/wasm3/platforms/cpp/wasm3_cpp/include
+  ${CHAINBLOCKS_DIR}/deps/xxhash
   )
 
 # wasm3

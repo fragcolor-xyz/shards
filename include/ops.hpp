@@ -741,6 +741,10 @@ inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
   return !(a == b);
 }
 
+namespace chainblocks {
+uint64_t hash(const CBVar &var, bool initiator = true);
+}
+
 namespace std {
 // TODO put in its own header maybe
 
