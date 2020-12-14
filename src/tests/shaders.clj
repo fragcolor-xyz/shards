@@ -11,11 +11,11 @@
    "-f" >> .shadercArgs .infile >> .shadercArgs
    "-o" >> .shadercArgs .outfile >> .shadercArgs
    "--type" >> .shadercArgs (Input) (Take 1) >> .shadercArgs
-   "-p" >> .shadercArgs "spirv" >> .shadercArgs
-   "--platform" >> .shadercArgs "windows" >> .shadercArgs
+  ;;  "-p" >> .shadercArgs "450" >> .shadercArgs
+   "--platform" >> .shadercArgs "asm.js" >> .shadercArgs
    "-i" >> .shadercArgs "../../deps/bgfx/src" >> .shadercArgs
    "--verbose" >> .shadercArgs
-   "" (Wasm.Run "../../external/shadercRelease.wasm" 
+   "" (Wasm.Run "../../external/shadercRelease.wasm"
                 .shadercArgs
                 :ResetRuntime true) (Log "shaderc")
    .outfile
@@ -24,7 +24,7 @@
 (def main
   (Chain
    "main"
-   (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
+  ;;  (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
 
    "../../deps/bgfx/examples/01-cubes/vs_cubes.sc" >> .args
    "v" >> .args
@@ -35,9 +35,10 @@
    "f" >> .args
    .args (Do loadShader) >= .pshader
 
-   (BGFX.Shader .vshader .pshader)
+  ;;  (BGFX.Shader .vshader .pshader)
 
-   (BGFX.Draw)))
+  ;;  (BGFX.Draw)
+   ))
 
 (schedule Root main)
 (run Root 0.1)
