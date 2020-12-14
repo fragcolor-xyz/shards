@@ -2418,62 +2418,16 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   }
 }
 
-uint64_t hash(const CBChain *chain) {
-  XXH3_state_s hashState{};
-
-  auto c = const_cast<CBChain *>(chain);
-
-  auto error =
-      XXH3_64bits_update(&hashState, c->name.c_str(), c->name.length());
-  assert(error == XXH_OK);
-
-  for (const auto &blk : c->blocks) {
-    auto bhash = hash(blk);
-    // hash of the hash...
-    error = XXH3_64bits_update(&hashState, &bhash, sizeof(uint64_t));
-    assert(error == XXH_OK);
-  }
-
-  return XXH3_64bits_digest(&hashState);
-}
-
-uint64_t hash(const CBlock *block) {
-  XXH3_state_s hashState{};
-
-  auto blk = const_cast<CBlock *>(block);
-
-  auto name = blk->name(blk);
-  auto error = XXH3_64bits_update(&hashState, name, strlen(name));
-  assert(error == XXH_OK);
-
-  auto params = blk->parameters(blk);
-  for (uint32_t i = 0; i < params.len; i++) {
-    auto pval = blk->getParam(blk, int(i));
-    auto hval = hash(pval);
-    // hash of the hash...
-    error = XXH3_64bits_update(&hashState, &hval, sizeof(uint64_t));
-    assert(error == XXH_OK);
-  }
-
-  if (blk->getState) {
-    auto state = blk->getState(blk);
-    auto hval = hash(state);
-    // hash of the hash...
-    error = XXH3_64bits_update(&hashState, &hval, sizeof(uint64_t));
-    assert(error == XXH_OK);
-  }
-
-  return XXH3_64bits_digest(&hashState);
-}
-
 uint64_t hash(const CBVar &var, bool initiator) {
   static thread_local XXH3_state_s tHashState;
+  static thread_local std::unordered_set<CBChain *> tHashingChains;
 
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
                 "XXH64_hash_t is not uint64_t");
 
   if (initiator) {
     memset(&tHashState, 0, sizeof(XXH3_state_s));
+    tHashingChains.clear();
   }
 
   auto error =
@@ -2541,15 +2495,38 @@ uint64_t hash(const CBVar &var, bool initiator) {
     }
   } break;
   case CBType::Block: {
-    auto blockHash = hash(var.payload.blockValue);
-    error = XXH3_64bits_update(&tHashState, &blockHash, sizeof(uint64_t));
+    auto blk = var.payload.blockValue;
+    auto name = blk->name(blk);
+    auto error = XXH3_64bits_update(&tHashState, name, strlen(name));
     assert(error == XXH_OK);
+
+    auto params = blk->parameters(blk);
+    for (uint32_t i = 0; i < params.len; i++) {
+      auto pval = blk->getParam(blk, int(i));
+      hash(pval, false);
+    }
+
+    if (blk->getState) {
+      auto state = blk->getState(blk);
+      hash(state, false);
+    }
   } break;
   case CBType::Chain: {
     auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-    auto chainHash = hash(chain.get());
-    error = XXH3_64bits_update(&tHashState, &chainHash, sizeof(uint64_t));
-    assert(error == XXH_OK);
+    if (tHashingChains.count(chain.get()) == 0) {
+      tHashingChains.insert(chain.get());
+
+      error = XXH3_64bits_update(&tHashState, chain->name.c_str(),
+                                 chain->name.length());
+      assert(error == XXH_OK);
+
+      for (auto &blk : chain->blocks) {
+        CBVar tmp;
+        tmp.valueType = CBType::Block;
+        tmp.payload.blockValue = blk;
+        hash(tmp, false);
+      }
+    }
   } break;
   case CBType::Object: {
     error = XXH3_64bits_update(&tHashState, &var.payload.objectVendorId,
