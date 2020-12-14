@@ -2520,11 +2520,26 @@ uint64_t hash(const CBVar &var, bool initiator) {
                                  chain->name.length());
       assert(error == XXH_OK);
 
+      error = XXH3_64bits_update(&tHashState, &chain->looped,
+                                 sizeof(chain->looped));
+      assert(error == XXH_OK);
+
+      error = XXH3_64bits_update(&tHashState, &chain->unsafe,
+                                 sizeof(chain->unsafe));
+      assert(error == XXH_OK);
+
       for (auto &blk : chain->blocks) {
         CBVar tmp;
         tmp.valueType = CBType::Block;
         tmp.payload.blockValue = blk;
         hash(tmp, false);
+      }
+
+      for (auto &chainVar : chain->variables) {
+        error = XXH3_64bits_update(&tHashState, chainVar.first.c_str(),
+                                   chainVar.first.length());
+        assert(error == XXH_OK);
+        hash(chainVar.second, false);
       }
     }
   } break;
@@ -2557,7 +2572,13 @@ uint64_t hash(const CBVar &var, bool initiator) {
     assert(error == XXH_OK);
   }
   }
-  return XXH3_64bits_digest(&tHashState);
+
+  if (!initiator) {
+    // in this case we don't care about the result
+    return 0;
+  } else {
+    return XXH3_64bits_digest(&tHashState);
+  }
 }
 }; // namespace chainblocks
 
