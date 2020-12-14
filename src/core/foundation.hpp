@@ -224,8 +224,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   chainblocks::OwnedVar finishedOutput{};
 
-  // those are mostly used internally in chains.cpp
-  std::size_t composedHash{};
+  uint64_t composedHash{};
   bool warmedUp{false};
   std::unordered_set<void *> chainUsers;
 

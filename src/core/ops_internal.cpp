@@ -1,8 +1,5 @@
 #include "ops_internal.hpp"
 
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-
 MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
   case EndOfBlittableTypes:
@@ -184,70 +181,4 @@ MAKE_LOGGABLE(CBVar, var, os) {
     break;
   }
   return os;
-}
-
-uint64_t chainblocks::hash(const CBVar &var, bool initiator) {
-  // once per thread, we leak this in the end but does not matter
-  static thread_local XXH3_state_t *tHashState{nullptr};
-
-  static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
-                "XXH64_hash_t is not uint64_t");
-
-  if (initiator) {
-    if (tHashState == nullptr) {
-      tHashState = XXH3_createState();
-    } else {
-      auto error = XXH3_64bits_reset(tHashState);
-      assert(error == XXH_OK);
-    }
-  } else {
-    assert(tHashState);
-  }
-
-  auto error =
-      XXH3_64bits_update(tHashState, &var.valueType, sizeof(var.valueType));
-  assert(error == XXH_OK);
-
-  switch (var.valueType) {
-  case Bytes: {
-    error = XXH3_64bits_update(tHashState, var.payload.bytesValue,
-                               size_t(var.payload.bytesSize));
-    assert(error == XXH_OK);
-  } break;
-  case Path:
-  case ContextVar:
-  case String: {
-    error = XXH3_64bits_update(tHashState, var.payload.stringValue,
-                               size_t(var.payload.stringLen > 0
-                                          ? var.payload.stringLen
-                                          : strlen(var.payload.stringValue)));
-    assert(error == XXH_OK);
-  } break;
-  case Image: {
-    error = XXH3_64bits_update(tHashState, &var.payload, sizeof(CBVarPayload));
-    assert(error == XXH_OK);
-    auto pixsize = 1;
-    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
-    error = XXH3_64bits_update(
-        tHashState, var.payload.imageValue.data,
-        size_t(var.payload.imageValue.channels * var.payload.imageValue.width *
-               var.payload.imageValue.height * pixsize));
-    assert(error == XXH_OK);
-  } break;
-  case Seq: {
-    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      hash(var.payload.seqValue.elements[i], false); // false == update
-    }
-  } break;
-  default: {
-    error = XXH3_64bits_update(tHashState, &var.payload, sizeof(CBVarPayload));
-    assert(error == XXH_OK);
-  }
-  }
-  return XXH3_64bits_digest(tHashState);
 }

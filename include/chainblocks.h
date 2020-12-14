@@ -403,6 +403,7 @@ typedef void(__cdecl *CBObjectSerializerFree)(CBPointer customHandle);
 typedef CBPointer(__cdecl *CBObjectDeserializer)(uint8_t *data, size_t len);
 typedef void(__cdecl *CBObjectReference)(CBPointer);
 typedef void(__cdecl *CBObjectRelease)(CBPointer);
+typedef uint64_t(__cdecl *CBObjectHash)(CBPointer);
 
 struct CBObjectInfo {
   const char *name;
@@ -413,6 +414,8 @@ struct CBObjectInfo {
 
   CBObjectReference reference;
   CBObjectRelease release;
+
+  CBObjectHash hash;
 };
 
 struct CBEnumInfo {

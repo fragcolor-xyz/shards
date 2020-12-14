@@ -16,6 +16,9 @@
 #include <string.h>
 #include <unordered_set>
 
+#define XXH_INLINE_ALL
+#include <xxhash.h>
+
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
@@ -2413,6 +2416,171 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   default:
     assert(false);
   }
+}
+
+uint64_t hash(const CBChain *chain) {
+  XXH3_state_s hashState{};
+
+  auto c = const_cast<CBChain *>(chain);
+
+  auto error =
+      XXH3_64bits_update(&hashState, c->name.c_str(), c->name.length());
+  assert(error == XXH_OK);
+
+  for (const auto &blk : c->blocks) {
+    auto bhash = hash(blk);
+    // hash of the hash...
+    error = XXH3_64bits_update(&hashState, &bhash, sizeof(uint64_t));
+    assert(error == XXH_OK);
+  }
+
+  return XXH3_64bits_digest(&hashState);
+}
+
+uint64_t hash(const CBlock *block) {
+  XXH3_state_s hashState{};
+
+  auto blk = const_cast<CBlock *>(block);
+
+  auto name = blk->name(blk);
+  auto error = XXH3_64bits_update(&hashState, name, strlen(name));
+  assert(error == XXH_OK);
+
+  auto params = blk->parameters(blk);
+  for (uint32_t i = 0; i < params.len; i++) {
+    auto pval = blk->getParam(blk, int(i));
+    auto hval = hash(pval);
+    // hash of the hash...
+    error = XXH3_64bits_update(&hashState, &hval, sizeof(uint64_t));
+    assert(error == XXH_OK);
+  }
+
+  if (blk->getState) {
+    auto state = blk->getState(blk);
+    auto hval = hash(state);
+    // hash of the hash...
+    error = XXH3_64bits_update(&hashState, &hval, sizeof(uint64_t));
+    assert(error == XXH_OK);
+  }
+
+  return XXH3_64bits_digest(&hashState);
+}
+
+uint64_t hash(const CBVar &var, bool initiator) {
+  static thread_local XXH3_state_s tHashState;
+
+  static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
+                "XXH64_hash_t is not uint64_t");
+
+  if (initiator) {
+    memset(&tHashState, 0, sizeof(XXH3_state_s));
+  }
+
+  auto error =
+      XXH3_64bits_update(&tHashState, &var.valueType, sizeof(var.valueType));
+  assert(error == XXH_OK);
+
+  switch (var.valueType) {
+  case CBType::Bytes: {
+    error = XXH3_64bits_update(&tHashState, var.payload.bytesValue,
+                               size_t(var.payload.bytesSize));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Path:
+  case CBType::ContextVar:
+  case CBType::String: {
+    error = XXH3_64bits_update(&tHashState, var.payload.stringValue,
+                               size_t(var.payload.stringLen > 0
+                                          ? var.payload.stringLen
+                                          : strlen(var.payload.stringValue)));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Image: {
+    error = XXH3_64bits_update(&tHashState, &var.payload, sizeof(CBVarPayload));
+    assert(error == XXH_OK);
+    auto pixsize = 1;
+    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
+      pixsize = 2;
+    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
+      pixsize = 4;
+    error = XXH3_64bits_update(
+        &tHashState, var.payload.imageValue.data,
+        size_t(var.payload.imageValue.channels * var.payload.imageValue.width *
+               var.payload.imageValue.height * pixsize));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Seq: {
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      hash(var.payload.seqValue.elements[i], false); // false == update
+    }
+  } break;
+  case CBType::Array: {
+    for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
+      CBVar tmp; // only of blittable types and hash uses just type, so no init
+                 // needed
+      tmp.valueType = var.innerType;
+      tmp.payload = var.payload.arrayValue.elements[i];
+      hash(tmp, false); // false == update
+    }
+  } break;
+  case CBType::Table: {
+    CBTableIterator it;
+    var.payload.tableValue.api->tableGetIterator(var.payload.tableValue, &it);
+    CBString key;
+    CBVar value;
+    while (true) {
+      auto valid = var.payload.tableValue.api->tableNext(var.payload.tableValue,
+                                                         &it, &key, &value);
+      if (!valid)
+        break;
+      error = XXH3_64bits_update(&tHashState, key, strlen(key));
+      assert(error == XXH_OK);
+      hash(value, false);
+    }
+  } break;
+  case CBType::Block: {
+    auto blockHash = hash(var.payload.blockValue);
+    error = XXH3_64bits_update(&tHashState, &blockHash, sizeof(uint64_t));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Chain: {
+    auto chain = CBChain::sharedFromRef(var.payload.chainValue);
+    auto chainHash = hash(chain.get());
+    error = XXH3_64bits_update(&tHashState, &chainHash, sizeof(uint64_t));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Object: {
+    error = XXH3_64bits_update(&tHashState, &var.payload.objectVendorId,
+                               sizeof(var.payload.objectVendorId));
+    assert(error == XXH_OK);
+    error = XXH3_64bits_update(&tHashState, &var.payload.objectTypeId,
+                               sizeof(var.payload.objectTypeId));
+    assert(error == XXH_OK);
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        var.objectInfo && var.objectInfo->hash) {
+      // hash of the hash...
+      auto objHash = var.objectInfo->hash(var.payload.objectValue);
+      error = XXH3_64bits_update(&tHashState, &objHash, sizeof(uint64_t));
+      assert(error == XXH_OK);
+    } else {
+      // this will be valid only within this process memory space
+      // better then nothing
+      error = XXH3_64bits_update(&tHashState, &var.payload.objectValue,
+                                 sizeof(var.payload.objectValue));
+      assert(error == XXH_OK);
+    }
+  } break;
+  case CBType::None:
+  case CBType::Any:
+    break;
+  default: {
+    error = XXH3_64bits_update(&tHashState, &var.payload, sizeof(CBVarPayload));
+    assert(error == XXH_OK);
+  }
+  }
+  return XXH3_64bits_digest(&tHashState);
 }
 }; // namespace chainblocks
 
