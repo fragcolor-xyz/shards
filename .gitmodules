@@ -55,3 +55,6 @@
 [submodule "deps/wasm3"]
 	path = deps/wasm3
 	url = https://github.com/sinkingsugar/wasm3.git
+[submodule "deps/xxHash"]
+	path = deps/xxHash
+	url = https://github.com/chainblocks/xxHash.git
