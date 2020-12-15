@@ -198,7 +198,7 @@ if(WIN32)
   set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto -lws2_32 -lmswsock -lSecur32 -lCrypt32 -lNcrypt)
 elseif(APPLE)
   if(NOT IOS)
-    set(BOOST_LIBS -lboost_context-mt -lssl -lcrypto)
+    set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
   endif()
   include_directories(
     /usr/local/include
@@ -212,7 +212,7 @@ elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
 elseif(UNIX)
-  set(BOOST_LIBS -lboost_context -lssl -lcrypto -pthread -ldl -lrt)
+  set(BOOST_LIBS -lboost_context -lboost_filesystem -lssl -lcrypto -pthread -ldl -lrt)
 endif()
 
 if(APPLE)
