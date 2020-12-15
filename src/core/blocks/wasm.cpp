@@ -1090,7 +1090,7 @@ struct Run {
       {"StackSize", "The stack size in kilobytes to use.", {CoreInfo::IntType}},
       {"ResetRuntime",
        "If the runtime should be reset every activation, altho slow this might "
-       "be useful if certain modules fail to execute properly on multiple "
+       "be useful if certain modules fail to execute properly or leak on multiple "
        "activations.",
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
