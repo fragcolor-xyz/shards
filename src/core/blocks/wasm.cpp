@@ -1090,7 +1090,8 @@ struct Run {
       {"StackSize", "The stack size in kilobytes to use.", {CoreInfo::IntType}},
       {"ResetRuntime",
        "If the runtime should be reset every activation, altho slow this might "
-       "be useful if certain modules fail to execute properly or leak on multiple "
+       "be useful if certain modules fail to execute properly or leak on "
+       "multiple "
        "activations.",
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
@@ -1186,65 +1187,68 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (_reset) {
-      loadModule();
-    }
-
-    // reset streams
-    _sout.reset();
-    _serr.reset();
-    std::ostream sout{&_sout};
-    std::ostream serr{&_serr};
-    StringStreamBuf sinbuf{input.payload.stringLen > 0
-                               ? std::string_view(input.payload.stringValue,
-                                                  input.payload.stringLen)
-                               : std::string_view(input.payload.stringValue)};
-    std::istream sin{&sinbuf};
-
-    _data.sin = &sin;
-    _data.serr = &serr;
-    _data.sout = &sout;
-
-    _argsArray.clear();
-
-    // WASI modules need this
-    if (_entryPoint == "_start") {
-      _argsArray.push_back(_moduleFileName.c_str());
-    }
-
-    // add any arguments we have
-    auto argsVar = _arguments.get();
-    if (argsVar.valueType == Seq) {
-      IterableSeq args(argsVar.payload.seqValue);
-      for (auto &arg : args) {
-        _argsArray.push_back(arg.payload.stringValue);
+    return awaitne(context, [&]() {
+      if (_reset) {
+        loadModule();
       }
-    }
 
-    auto result = m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
+      // reset streams
+      _sout.reset();
+      _serr.reset();
+      std::ostream sout{&_sout};
+      std::ostream serr{&_serr};
+      StringStreamBuf sinbuf{input.payload.stringLen > 0
+                                 ? std::string_view(input.payload.stringValue,
+                                                    input.payload.stringLen)
+                                 : std::string_view(input.payload.stringValue)};
+      std::istream sin{&sinbuf};
 
-    if (result == m3Err_trapExit) {
-      if (_runtime->exit_code != 0) {
+      _data.sin = &sin;
+      _data.serr = &serr;
+      _data.sout = &sout;
+
+      _argsArray.clear();
+
+      // WASI modules need this
+      if (_entryPoint == "_start") {
+        _argsArray.push_back(_moduleFileName.c_str());
+      }
+
+      // add any arguments we have
+      auto argsVar = _arguments.get();
+      if (argsVar.valueType == Seq) {
+        IterableSeq args(argsVar.payload.seqValue);
+        for (auto &arg : args) {
+          _argsArray.push_back(arg.payload.stringValue);
+        }
+      }
+
+      auto result =
+          m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
+
+      if (result == m3Err_trapExit) {
+        if (_runtime->exit_code != 0) {
+          _serr.done();
+          _sout.done();
+          LOG(INFO) << _sout.str();
+          LOG(ERROR) << _serr.str();
+          std::string emsg("Wasm module run failed, exit code: " +
+                           std::to_string(_runtime->exit_code));
+          throw ActivationError(emsg);
+        }
+      } else if (result) {
         _serr.done();
         _sout.done();
         LOG(INFO) << _sout.str();
         LOG(ERROR) << _serr.str();
-        std::string emsg("Wasm module run failed, exit code: " +
-                         std::to_string(_runtime->exit_code));
-        throw ActivationError(emsg);
+        LOG(ERROR) << _runtime->error_message;
+        CHECK_ACTIVATION_ERR(result);
       }
-    } else if (result) {
-      _serr.done();
-      _sout.done();
-      LOG(INFO) << _sout.str();
-      LOG(ERROR) << _serr.str();
-      LOG(ERROR) << _runtime->error_message;
-      CHECK_ACTIVATION_ERR(result);
-    }
 
-    const auto len = _sout.data.size();
-    _sout.done();
-    return Var(_sout.str(), len);
+      const auto len = _sout.data.size();
+      _sout.done();
+      return Var(_sout.str(), len);
+    });
   }
 };
 

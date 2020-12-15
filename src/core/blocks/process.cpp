@@ -78,6 +78,125 @@ struct Exec {
   }
 };
 
+struct Run {
+  std::string _moduleName;
+  ParamVar _arguments{};
+  std::string _outBuf;
+  std::string _errBuf;
+  int64_t _timeout{30};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static inline Parameters params{
+      {"Executable",
+       "The executable to run.",
+       {CoreInfo::PathType, CoreInfo::StringType}},
+      {"Arguments",
+       "The arguments to pass to the executable.",
+       {CoreInfo::NoneType, CoreInfo::StringSeqType,
+        CoreInfo::StringVarSeqType}},
+      {"Timeout",
+       "The maximum time to wait for the executable to finish in seconds.",
+       {CoreInfo::IntType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _moduleName = value.payload.stringValue;
+      break;
+    case 1:
+      _arguments = value;
+      break;
+    case 2:
+      _timeout = value.payload.intValue;
+      break;
+    default:
+      throw CBException("setParam out of range");
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_moduleName);
+    case 1:
+      return _arguments;
+    case 2:
+      return Var(_timeout);
+    default:
+      throw CBException("getParam out of range");
+    }
+  }
+
+  void warmup(CBContext *context) { _arguments.warmup(context); }
+
+  void cleanup() { _arguments.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return awaitne(context, [&]() {
+      // add any arguments we have
+      std::vector<std::string> argsArray;
+      auto argsVar = _arguments.get();
+      if (argsVar.valueType == Seq) {
+        IterableSeq args(argsVar.payload.seqValue);
+        for (auto &arg : args) {
+          argsArray.emplace_back(arg.payload.stringValue);
+        }
+      }
+
+      boost::process::ipstream opipe;
+      boost::process::ipstream epipe;
+      boost::process::opstream ipipe;
+
+      auto in = input.payload.stringLen > 0
+                    ? std::string_view(input.payload.stringValue,
+                                       input.payload.stringLen)
+                    : std::string_view(input.payload.stringValue);
+      ipipe.write(in.data(), in.length());
+
+      // try PATH first
+      auto exePath = boost::filesystem::path(_moduleName);
+      if (!boost::filesystem::exists(exePath)) {
+        // fallback to searching PATH
+        exePath = boost::process::search_path(_moduleName);
+      }
+
+      if (exePath.empty()) {
+        throw ActivationError("Executable not found.");
+      }
+
+      boost::process::child cmd(
+          exePath, argsArray, boost::process::std_out > opipe,
+          boost::process::std_err > epipe, boost::process::std_in < ipipe);
+      if (!opipe || !epipe || !ipipe) {
+        throw ActivationError("Failed to open streams for child process.");
+      }
+
+      cmd.wait_for(std::chrono::seconds(_timeout));
+
+      _outBuf.clear();
+      _errBuf.clear();
+      std::stringstream ss;
+      ss << opipe.rdbuf();
+      _outBuf.assign(ss.str());
+      ss.clear();
+      ss << epipe.rdbuf();
+      _errBuf.assign(ss.str());
+
+      if (cmd.exit_code() != 0) {
+        LOG(INFO) << _outBuf;
+        LOG(ERROR) << _errBuf;
+        std::string err("The process exited with a non-zero exit code: ");
+        err += std::to_string(cmd.exit_code());
+        throw ActivationError(err);
+      }
+
+      return Var(_outBuf);
+    });
+  }
+};
+
 struct StackTrace {
   std::string _output;
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -95,6 +214,7 @@ struct StackTrace {
 
 void registerProcessBlocks() {
   REGISTER_CBLOCK("Process.Exec", Process::Exec);
+  REGISTER_CBLOCK("Process.Run", Process::Run);
   REGISTER_CBLOCK("Process.StackTrace", Process::StackTrace);
 }
 }; // namespace chainblocks
