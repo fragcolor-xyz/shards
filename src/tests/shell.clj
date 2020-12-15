@@ -5,7 +5,7 @@
   "n"
   "" (Process.Run "echo" ["Hello world"])
   (Log)
-  (Assert.Is "Hello world" true)))
+  (Assert.Is "Hello world\n" true)))
 
 (def! dec (fn* [a] (- a 1)))
 (def! Loop (fn* [count] (do
