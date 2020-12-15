@@ -18,66 +18,6 @@
 
 namespace chainblocks {
 namespace Process {
-
-struct Exec {
-  static inline CBString keys[] = {"ExitCode", "StandardOutput",
-                                   "StandardError"};
-  static inline CBTypeInfo types[] = {CoreInfo::IntType, CoreInfo::StringType,
-                                      CoreInfo::StringType};
-  static inline Types tableType{
-      {CBType::Table,
-       {.table = {.keys = {keys, 3, 0}, .types = {types, 3, 0}}}}};
-
-  // Spawns a child runs it, waits results and outputs them!
-  std::string outBuf;
-  std::string errBuf;
-  CBMap map;
-
-  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
-
-  static CBTypesInfo outputTypes() { return tableType; }
-
-  CBVar activate(CBContext *ctx, CBVar input) {
-    boost::process::ipstream opipe;
-    boost::process::ipstream epipe;
-    boost::process::child cmd(input.payload.stringValue,
-                              boost::process::std_out > opipe,
-                              boost::process::std_err > epipe);
-    if (!opipe || !epipe) {
-      throw ActivationError("Failed to open streams for child process.");
-    }
-
-    while (cmd.running()) {
-      if (suspend(ctx, 0) != CBChainState::Continue) {
-        cmd.terminate();
-        return Var::Empty;
-      }
-    }
-
-    // Let's try to be efficient in terms of reusing memory, altho maybe the SS
-    // is not necessary, could not figure
-    outBuf.clear();
-    errBuf.clear();
-    std::stringstream ss;
-    ss << opipe.rdbuf();
-    outBuf.assign(ss.str());
-    ss.clear();
-    ss << epipe.rdbuf();
-    errBuf.assign(ss.str());
-
-    map["ExitCode"] = Var(cmd.exit_code());
-    map["StandardOutput"] = Var(outBuf);
-    map["StandardError"] = Var(errBuf);
-
-    CBVar res{};
-    res.valueType = Table;
-    res.payload.tableValue.api = &Globals::TableInterface;
-    res.payload.tableValue.opaque = &map;
-
-    return res;
-  }
-};
-
 struct Run {
   std::string _moduleName;
   ParamVar _arguments{};
@@ -190,9 +130,13 @@ struct Run {
         std::string err("The process exited with a non-zero exit code: ");
         err += std::to_string(cmd.exit_code());
         throw ActivationError(err);
+      } else {
+        if (_errBuf.size() > 0) {
+          // print anyway this stream too
+          LOG(INFO) << _errBuf;
+        }
+        return Var(_outBuf);
       }
-
-      return Var(_outBuf);
     });
   }
 };
@@ -213,7 +157,6 @@ struct StackTrace {
 }; // namespace Process
 
 void registerProcessBlocks() {
-  REGISTER_CBLOCK("Process.Exec", Process::Exec);
   REGISTER_CBLOCK("Process.Run", Process::Run);
   REGISTER_CBLOCK("Process.StackTrace", Process::StackTrace);
 }

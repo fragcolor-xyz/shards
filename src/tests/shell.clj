@@ -3,11 +3,9 @@
  n
  (Chain
   "n"
-  (Msg "command")
-  ;; "cmd /C dir"
-  ;; (Process.Exec) (Log)
-  "" (Process.Run "cmd.exe" ["/C" "dir"])
-  (Log)))
+  "" (Process.Run "echo" ["Hello world"])
+  (Log)
+  (Assert.Is "Hello world" true)))
 
 (def! dec (fn* [a] (- a 1)))
 (def! Loop (fn* [count] (do

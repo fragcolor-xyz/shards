@@ -1245,6 +1245,11 @@ struct Run {
         CHECK_ACTIVATION_ERR(result);
       }
 
+      _serr.done();
+      if (_serr.data.size() > 0) {
+        // print anyway this stream too
+        LOG(INFO) << _serr.str();
+      }
       const auto len = _sout.data.size();
       _sout.done();
       return Var(_sout.str(), len);
