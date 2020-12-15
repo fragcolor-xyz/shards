@@ -1248,7 +1248,7 @@ struct Run {
       _serr.done();
       if (_serr.data.size() > 0) {
         // print anyway this stream too
-        LOG(INFO) << _serr.str();
+        LOG(INFO) << "(stderr) " << _serr.str();
       }
       const auto len = _sout.data.size();
       _sout.done();

@@ -1,17 +1,24 @@
 (def! n (Node))
+
 (schedule
  n
  (Chain
   "n"
-  "" (Process.Run "echo" ["Hello world"])
-  (Log)
+  "" (Process.Run "echo" ["Hello world"]) (Log)
+  (Assert.Is "Hello world\n" true)
+  "" (Process.Run "echo" ["Hello world"]) (Log)
+  (Assert.Is "Hello world\n" true)
+
+  "Hello world" (Process.Run "cat" :Timeout 2) (Log)
   (Assert.Is "Hello world\n" true)))
 
-(def! dec (fn* [a] (- a 1)))
-(def! Loop (fn* [count] (do
-  (if (tick n) nil (throw "tick failed"))
-  (sleep 0.5)
-  (if (> count 0) (Loop (dec count)) nil)
-)))
+;; (def! dec (fn* [a] (- a 1)))
+;; (def! Loop (fn* [count] (do
+;;   (if (tick n) nil (throw "tick failed"))
+;;   (sleep 0.5)
+;;   (if (> count 0) (Loop (dec count)) nil)
+;; )))
 
-(Loop 5)
+;; (Loop 5)
+
+(run n 0.1)

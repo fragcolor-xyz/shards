@@ -89,12 +89,6 @@ struct Run {
       boost::process::ipstream epipe;
       boost::process::opstream ipipe;
 
-      auto in = input.payload.stringLen > 0
-                    ? std::string_view(input.payload.stringValue,
-                                       input.payload.stringLen)
-                    : std::string_view(input.payload.stringValue);
-      ipipe.write(in.data(), in.length());
-
       // try PATH first
       auto exePath = boost::filesystem::path(_moduleName);
       if (!boost::filesystem::exists(exePath)) {
@@ -103,39 +97,45 @@ struct Run {
       }
 
       if (exePath.empty()) {
-        throw ActivationError("Executable not found.");
+        throw ActivationError("Executable not found");
       }
 
       boost::process::child cmd(
           exePath, argsArray, boost::process::std_out > opipe,
           boost::process::std_err > epipe, boost::process::std_in < ipipe);
+
       if (!opipe || !epipe || !ipipe) {
-        throw ActivationError("Failed to open streams for child process.");
+        throw ActivationError("Failed to open streams for child process");
       }
 
-      cmd.wait_for(std::chrono::seconds(_timeout));
+      ipipe << input.payload.stringValue << std::endl;
+      ipipe.pipe().close(); // send EOF
 
-      _outBuf.clear();
-      _errBuf.clear();
-      std::stringstream ss;
-      ss << opipe.rdbuf();
-      _outBuf.assign(ss.str());
-      ss.clear();
-      ss << epipe.rdbuf();
-      _errBuf.assign(ss.str());
+      if (cmd.wait_for(std::chrono::seconds(_timeout))) {
+        _outBuf.clear();
+        _errBuf.clear();
+        std::stringstream ss;
+        ss << opipe.rdbuf();
+        _outBuf.assign(ss.str());
+        ss.clear();
+        ss << epipe.rdbuf();
+        _errBuf.assign(ss.str());
 
-      if (cmd.exit_code() != 0) {
-        LOG(INFO) << _outBuf;
-        LOG(ERROR) << _errBuf;
-        std::string err("The process exited with a non-zero exit code: ");
-        err += std::to_string(cmd.exit_code());
-        throw ActivationError(err);
-      } else {
-        if (_errBuf.size() > 0) {
-          // print anyway this stream too
-          LOG(INFO) << _errBuf;
+        if (cmd.exit_code() != 0) {
+          LOG(INFO) << _outBuf;
+          LOG(ERROR) << _errBuf;
+          std::string err("The process exited with a non-zero exit code: ");
+          err += std::to_string(cmd.exit_code());
+          throw ActivationError(err);
+        } else {
+          if (_errBuf.size() > 0) {
+            // print anyway this stream too
+            LOG(INFO) << "(stderr) " << _errBuf;
+          }
+          return Var(_outBuf);
         }
-        return Var(_outBuf);
+      } else {
+        throw ActivationError("Timed out");
       }
     });
   }
