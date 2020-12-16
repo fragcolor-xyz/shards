@@ -13,6 +13,7 @@ TEST_CASE("Test type2Name", "[ops]" ) {
   REQUIRE(type2Name(CBType::Enum) == "Enum");
   REQUIRE(type2Name(CBType::Bool) == "Bool");
   REQUIRE(type2Name(CBType::Bytes) == "Bytes");
+  REQUIRE(type2Name(CBType::Color) == "Color");
   REQUIRE(type2Name(CBType::Int) == "Int");
   REQUIRE(type2Name(CBType::Int2) == "Int2");
   REQUIRE(type2Name(CBType::Int3) == "Int3");
