@@ -58,3 +58,6 @@
 [submodule "deps/xxHash"]
 	path = deps/xxHash
 	url = https://github.com/chainblocks/xxHash.git
+[submodule "deps/Catch2"]
+	path = deps/Catch2
+	url = https://github.com/chainblocks/Catch2.git
