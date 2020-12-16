@@ -120,7 +120,7 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 .. 
-        ninja rust_blocks && ninja cbl
+        ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       env:
         RUST_BACKTRACE: 1
@@ -146,6 +146,7 @@ jobs:
         ./cbl ../src/tests/failures.clj
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/shell.clj
+        ./test_runtime
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:

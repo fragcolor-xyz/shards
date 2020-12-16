@@ -285,6 +285,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
+  ${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp
   )
 
 #### Header paths for tidy
@@ -929,3 +930,32 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbedn PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 ###
+
+### TESTS
+
+# wasm3
+ExternalProject_Add(catch2
+  URL ${CHAINBLOCKS_DIR}/deps/Catch2
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2Main.a
+)
+
+add_library(libCatch2 STATIC IMPORTED GLOBAL)
+set_target_properties(libCatch2 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2.a)
+add_dependencies(libCatch2 catch2)
+
+add_library(libCatch2Main STATIC IMPORTED GLOBAL)
+set_target_properties(libCatch2Main PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2Main.a)
+add_dependencies(libCatch2Main catch2)
+
+add_executable(
+  test_runtime
+  "${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp"
+  )
+add_dependencies(test_runtime libCatch2)
+add_dependencies(test_runtime libCatch2Main)
+add_dependencies(test_runtime cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/include)
+target_link_libraries(test_runtime ${CB_RUNTIME_LIBS} libCatch2 libCatch2Main ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
