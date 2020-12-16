@@ -173,7 +173,8 @@ TEST_CASE("Test operator==", "[ops]") {
     REQUIRE(s1.valueType == CBType::String);
     auto s2 = Var("Hello world");
     auto s3 = Var("Hello world 2");
-    auto s4 = Var("qwerty");
+    std::string q("qwerty");
+    auto s4 = Var(q);
     REQUIRE_THROWS(float(s4));
     REQUIRE(s1 == s2);
     REQUIRE(s1 != s3);
@@ -261,6 +262,60 @@ TEST_CASE("Test operator==", "[ops]") {
     REQUIRE(s2 >= s4);
     REQUIRE(v2 >= v4);
     REQUIRE(s2 >= s5);
+    REQUIRE(v2 >= v5);
+
+    LOG(INFO) << v1;
+  }
+
+  SECTION("Array Var") {
+    std::array<Var, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v1(s1);
+    std::array<Var, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v2(s2);
+    std::array<Var, 3> s3{Var(100), Var(200), Var(300)};
+    Var v3(s3);
+    std::array<Var, 3> s4{Var(10), Var(20), Var(30)};
+    Var v4(s4);
+    std::array<Var, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    Var v5(s5);
+    
+    REQUIRE(v1 == v2);
+    REQUIRE(v1 != v3);
+    REQUIRE(v2 != v3);
+    REQUIRE(v3 > v1);
+    REQUIRE(v1 < v3);
+    REQUIRE(v2 > v4);
+    REQUIRE(v2 > v5);
+    REQUIRE(v3 >= v1);
+    REQUIRE(v1 <= v3);
+    REQUIRE(v2 >= v4);
+    REQUIRE(v2 >= v5);
+
+    LOG(INFO) << v1;
+  }
+
+  SECTION("Array CBVar") {
+    std::array<CBVar, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v1(s1);
+    std::array<CBVar, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v2(s2);
+    std::array<CBVar, 3> s3{Var(100), Var(200), Var(300)};
+    Var v3(s3);
+    std::array<CBVar, 3> s4{Var(10), Var(20), Var(30)};
+    Var v4(s4);
+    std::array<CBVar, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    Var v5(s5);
+    
+    REQUIRE(v1 == v2);
+    REQUIRE(v1 != v3);
+    REQUIRE(v2 != v3);
+    REQUIRE(v3 > v1);
+    REQUIRE(v1 < v3);
+    REQUIRE(v2 > v4);
+    REQUIRE(v2 > v5);
+    REQUIRE(v3 >= v1);
+    REQUIRE(v1 <= v3);
+    REQUIRE(v2 >= v4);
     REQUIRE(v2 >= v5);
 
     LOG(INFO) << v1;
