@@ -63,6 +63,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(o3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << o1; // logging coverage
   }
 
   SECTION("Float") {
@@ -89,6 +90,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
   }
 
   SECTION("Float2") {
@@ -112,6 +114,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
   }
 
   SECTION("Int") {
@@ -138,6 +141,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
   }
 
   SECTION("Int2") {
@@ -161,6 +165,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
   }
 
   SECTION("String") {
@@ -169,6 +174,7 @@ TEST_CASE("Test operator==", "[ops]") {
     auto s2 = Var("Hello world");
     auto s3 = Var("Hello world 2");
     auto s4 = Var("qwerty");
+    REQUIRE_THROWS(float(s4));
     REQUIRE(s1 == s2);
     REQUIRE(s1 != s3);
     REQUIRE(s1 != s4);
@@ -181,5 +187,82 @@ TEST_CASE("Test operator==", "[ops]") {
     auto hash3 = hash(s3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << s1; // logging coverage
+  }
+
+  SECTION("Seq Var") {
+    std::vector<Var> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v1(s1);
+    std::vector<Var> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v2(s2);
+    std::vector<Var> s3{Var(100), Var(200), Var(300)};
+    Var v3(s3);
+    std::vector<Var> s4{Var(10), Var(20), Var(30)};
+    Var v4(s4);
+    std::vector<Var> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    Var v5(s5);
+    
+    REQUIRE(s1 == s2);
+    REQUIRE(v1 == v2);
+    REQUIRE(s1 != s3);
+    REQUIRE(v1 != v3);
+    REQUIRE(s2 != s3);
+    REQUIRE(v2 != v3);
+    REQUIRE(s3 > s1);
+    REQUIRE(v3 > v1);
+    REQUIRE(s1 < s3);
+    REQUIRE(v1 < v3);
+    REQUIRE(s2 > s4);
+    REQUIRE(v2 > v4);
+    REQUIRE(s2 > s5);
+    REQUIRE(v2 > v5);
+    REQUIRE(s3 >= s1);
+    REQUIRE(v3 >= v1);
+    REQUIRE(s1 <= s3);
+    REQUIRE(v1 <= v3);
+    REQUIRE(s2 >= s4);
+    REQUIRE(v2 >= v4);
+    REQUIRE(s2 >= s5);
+    REQUIRE(v2 >= v5);
+
+    LOG(INFO) << v1;
+  }
+
+  SECTION("Seq CBVar") {
+    std::vector<CBVar> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v1(s1);
+    std::vector<CBVar> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    Var v2(s2);
+    std::vector<CBVar> s3{Var(100), Var(200), Var(300)};
+    Var v3(s3);
+    std::vector<CBVar> s4{Var(10), Var(20), Var(30)};
+    Var v4(s4);
+    std::vector<CBVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    Var v5(s5);
+    
+    REQUIRE(s1 == s2);
+    REQUIRE(v1 == v2);
+    REQUIRE(s1 != s3);
+    REQUIRE(v1 != v3);
+    REQUIRE(s2 != s3);
+    REQUIRE(v2 != v3);
+    REQUIRE(s3 > s1);
+    REQUIRE(v3 > v1);
+    REQUIRE(s1 < s3);
+    REQUIRE(v1 < v3);
+    REQUIRE(s2 > s4);
+    REQUIRE(v2 > v4);
+    REQUIRE(s2 > s5);
+    REQUIRE(v2 > v5);
+    REQUIRE(s3 >= s1);
+    REQUIRE(v3 >= v1);
+    REQUIRE(s1 <= s3);
+    REQUIRE(v1 <= v3);
+    REQUIRE(s2 >= s4);
+    REQUIRE(v2 >= v4);
+    REQUIRE(s2 >= s5);
+    REQUIRE(v2 >= v5);
+
+    LOG(INFO) << v1;
   }
 }
