@@ -67,6 +67,10 @@ TEST_CASE("Test operator==", "[ops]") {
 
   SECTION("Float") {
     auto f1 = Var(10.0);
+    REQUIRE(f1.valueType == CBType::Float);
+    float ff = float(f1);
+    REQUIRE(ff == 10);
+    REQUIRE_THROWS(int(f1));
     auto f2 = Var(10.0);
     auto f3 = Var(22.0);
     auto i1 = Var(10);
@@ -89,6 +93,7 @@ TEST_CASE("Test operator==", "[ops]") {
 
   SECTION("Float2") {
     auto f1 = Var(10.0, 2.0);
+    REQUIRE(f1.valueType == CBType::Float2);
     auto f2 = Var(10.0, 2.0);
     auto f3 = Var(22.0, 2.0);
     auto i1 = Var(10);
@@ -111,6 +116,10 @@ TEST_CASE("Test operator==", "[ops]") {
 
   SECTION("Int") {
     auto f1 = Var(10);
+    REQUIRE(f1.valueType == CBType::Int);
+    int ff = int(f1);
+    REQUIRE(ff == 10);
+    REQUIRE_NOTHROW(float(f1)); // will convert to float automatically
     auto f2 = Var(10);
     auto f3 = Var(22);
     auto i1 = Var(10.0);
@@ -133,6 +142,7 @@ TEST_CASE("Test operator==", "[ops]") {
 
   SECTION("Int2") {
     auto f1 = Var(10, 2);
+    REQUIRE(f1.valueType == CBType::Int2);
     auto f2 = Var(10, 2);
     auto f3 = Var(22, 2);
     auto i1 = Var(10.0);
@@ -155,6 +165,7 @@ TEST_CASE("Test operator==", "[ops]") {
 
   SECTION("String") {
     auto s1 = Var("Hello world");
+    REQUIRE(s1.valueType == CBType::String);
     auto s2 = Var("Hello world");
     auto s3 = Var("Hello world 2");
     auto s4 = Var("qwerty");
