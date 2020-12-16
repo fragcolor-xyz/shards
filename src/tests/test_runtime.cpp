@@ -41,6 +41,9 @@ TEST_CASE("Test operator==", "[ops]") {
     auto n3 = Var(100);
     REQUIRE(n1 == n2);
     REQUIRE(n1 != n3);
+    auto hash1 = hash(n1);
+    auto hash2 = hash(n2);
+    REQUIRE(hash1 == hash2);
   }
 
   SECTION("Object") {
@@ -55,5 +58,117 @@ TEST_CASE("Test operator==", "[ops]") {
     REQUIRE(o1 != o3);
     REQUIRE(o3 != o4);
     REQUIRE(o1 != empty);
+    auto hash1 = hash(o1);
+    auto hash2 = hash(o2);
+    auto hash3 = hash(o3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+  }
+
+  SECTION("Float") {
+    auto f1 = Var(10.0);
+    auto f2 = Var(10.0);
+    auto f3 = Var(22.0);
+    auto i1 = Var(10);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE(f1 <= f3);
+    REQUIRE(f1 >= f2);
+    REQUIRE_FALSE(f1 >= f3);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f3 >= f1 and f3 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+  }
+
+  SECTION("Float2") {
+    auto f1 = Var(10.0, 2.0);
+    auto f2 = Var(10.0, 2.0);
+    auto f3 = Var(22.0, 2.0);
+    auto i1 = Var(10);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE(f1 <= f3);
+    REQUIRE(f1 >= f2);
+    REQUIRE_FALSE(f1 >= f3);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f3 >= f1 and f3 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+  }
+
+  SECTION("Int") {
+    auto f1 = Var(10);
+    auto f2 = Var(10);
+    auto f3 = Var(22);
+    auto i1 = Var(10.0);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE(f1 <= f3);
+    REQUIRE(f1 >= f2);
+    REQUIRE_FALSE(f1 >= f3);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f3 >= f1 and f3 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+  }
+
+  SECTION("Int2") {
+    auto f1 = Var(10, 2);
+    auto f2 = Var(10, 2);
+    auto f3 = Var(22, 2);
+    auto i1 = Var(10.0);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE(f1 <= f3);
+    REQUIRE(f1 >= f2);
+    REQUIRE_FALSE(f1 >= f3);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f3 >= f1 and f3 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+  }
+
+  SECTION("String") {
+    auto s1 = Var("Hello world");
+    auto s2 = Var("Hello world");
+    auto s3 = Var("Hello world 2");
+    auto s4 = Var("qwerty");
+    REQUIRE(s1 == s2);
+    REQUIRE(s1 != s3);
+    REQUIRE(s1 != s4);
+    REQUIRE(s1 < s3);
+    REQUIRE(s1 <= s3);
+    REQUIRE(s3 >= s2);
+    REQUIRE(s3 > s2);
+    auto hash1 = hash(s1);
+    auto hash2 = hash(s2);
+    auto hash3 = hash(s3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
   }
 }
