@@ -66,6 +66,26 @@ TEST_CASE("Test-Comparison", "[ops]") {
     LOG(INFO) << o1; // logging coverage
   }
 
+  SECTION("Enum") {
+    int x = 10;
+    int y = 20;
+    auto o1 = Var::Enum(x, 10, 20);
+    auto o2 = Var::Enum(x, 10, 20);
+    auto o3 = Var::Enum(y, 10, 20);
+    auto o4 = Var::Enum(y, 11, 20);
+    auto empty = Var::Empty;
+    REQUIRE(o1 == o2);
+    REQUIRE(o1 != o3);
+    REQUIRE(o3 != o4);
+    REQUIRE(o1 != empty);
+    auto hash1 = hash(o1);
+    auto hash2 = hash(o2);
+    auto hash3 = hash(o3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << o1; // logging coverage
+  }
+
   SECTION("Float") {
     auto f1 = Var(10.0);
     REQUIRE(f1.valueType == CBType::Float);
@@ -117,6 +137,31 @@ TEST_CASE("Test-Comparison", "[ops]") {
     LOG(INFO) << f1; // logging coverage
   }
 
+  SECTION("Float3") {
+    auto f1 = Var(10.0, 2.0, 3.0);
+    REQUIRE(f1.valueType == CBType::Float3);
+    auto f2 = Var(10.0, 2.0, 3.0);
+    auto f3 = Var(22.0, 2.0, 1.0);
+    auto f4 = Var(22.0, 2.0, 4.0);
+    auto i1 = Var(10);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE_FALSE(f1 <= f3);
+    REQUIRE(f1 < f4);
+    REQUIRE(f1 >= f2);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f4 >= f1 and f4 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
+  }
+
   SECTION("Int") {
     auto f1 = Var(10);
     REQUIRE(f1.valueType == CBType::Int);
@@ -160,6 +205,31 @@ TEST_CASE("Test-Comparison", "[ops]") {
     REQUIRE(f1 < f3);
     REQUIRE((f3 > f1 and f3 > f2));
     REQUIRE((f3 >= f1 and f3 >= f2));
+    auto hash1 = hash(f1);
+    auto hash2 = hash(f2);
+    auto hash3 = hash(f3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << f1; // logging coverage
+  }
+
+  SECTION("Int3") {
+    auto f1 = Var(10, 2, 3);
+    REQUIRE(f1.valueType == CBType::Int3);
+    auto f2 = Var(10, 2, 3);
+    auto f3 = Var(22, 2, 1);
+    auto f4 = Var(22, 2, 4);
+    auto i1 = Var(10);
+    REQUIRE(f1 == f2);
+    REQUIRE(f1 != f3);
+    REQUIRE(f1 != i1);
+    REQUIRE(f1 <= f2);
+    REQUIRE_FALSE(f1 <= f3);
+    REQUIRE(f1 < f4);
+    REQUIRE(f1 >= f2);
+    REQUIRE(f1 < f3);
+    REQUIRE((f3 > f1 and f3 > f2));
+    REQUIRE((f4 >= f1 and f4 >= f2));
     auto hash1 = hash(f1);
     auto hash2 = hash(f2);
     auto hash3 = hash(f3);
@@ -228,7 +298,9 @@ TEST_CASE("Test-Comparison", "[ops]") {
     REQUIRE(v1 == v2);
     REQUIRE_FALSE(v1 < v2);
     REQUIRE(v1 <= v2);
-    REQUIRE_FALSE(s1 < s2);
+    REQUIRE_FALSE(s4 <= s8);
+    REQUIRE_FALSE(v4 <= v8);
+    REQUIRE(s1 <= s2);
     REQUIRE(s1 <= s2);
     REQUIRE(s1 != s5);
     REQUIRE(v1 != v5);
