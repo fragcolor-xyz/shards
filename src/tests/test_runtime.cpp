@@ -34,7 +34,7 @@ TEST_CASE("Test type2Name", "[ops]" ) {
   REQUIRE(type2Name(CBType::Array) == "Array");
 }
 
-TEST_CASE("Test operator==", "[ops]") {
+TEST_CASE("Test-Comparison", "[ops]") {
   SECTION("None, Any, EndOfBlittableTypes") {
     auto n1 = Var::Empty;
     auto n2 = Var::Empty;
@@ -191,20 +191,49 @@ TEST_CASE("Test operator==", "[ops]") {
     LOG(INFO) << s1; // logging coverage
   }
 
-  SECTION("Seq Var") {
+  SECTION("Seq-Var") {
     std::vector<Var> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
+    REQUIRE(v1.valueType == CBType::Seq);
     std::vector<Var> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
+    REQUIRE(v2.valueType == CBType::Seq);
     std::vector<Var> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
+    REQUIRE(v3.valueType == CBType::Seq);
     std::vector<Var> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
+    REQUIRE(v4.valueType == CBType::Seq);
     std::vector<Var> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
-    
+    REQUIRE(v5.valueType == CBType::Seq);
+    std::vector<Var> s6{Var(10), Var(20), Var(30), Var(45), Var(55)};
+    Var v6(s6);
+    REQUIRE(v6.valueType == CBType::Seq);
+    std::vector<Var> s7{Var(10), Var(20), Var(30), Var(25), Var(35)};
+    Var v7(s7);
+    REQUIRE(v7.valueType == CBType::Seq);
+    std::vector<Var> s8{Var(10)};
+    Var v8(s8);
+    REQUIRE(v8.valueType == CBType::Seq);
+    std::vector<Var> s9{Var(1)};
+    Var v9(s9);
+    REQUIRE(v9.valueType == CBType::Seq);
+
+    REQUIRE_FALSE(v8 < v9);
+    REQUIRE_FALSE(v8 <= v9);
+    REQUIRE_FALSE(s8 < s9);
+    REQUIRE_FALSE(s8 <= s9);
     REQUIRE(s1 == s2);
     REQUIRE(v1 == v2);
+    REQUIRE_FALSE(v1 < v2);
+    REQUIRE(v1 <= v2);
+    REQUIRE_FALSE(s1 < s2);
+    REQUIRE(s1 <= s2);
+    REQUIRE(s1 != s5);
+    REQUIRE(v1 != v5);
+    REQUIRE(s1 != s6);
+    REQUIRE(v1 != v6);
     REQUIRE(s1 != s3);
     REQUIRE(v1 != v3);
     REQUIRE(s2 != s3);
@@ -225,21 +254,58 @@ TEST_CASE("Test operator==", "[ops]") {
     REQUIRE(v2 >= v4);
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
+    REQUIRE(v6 > v1);
+    REQUIRE(s6 > s1);
+    REQUIRE(v6 >= v1);
+    REQUIRE(s6 >= s1);
+    REQUIRE(v1 < v6);
+    REQUIRE(s1 < s6);
+    REQUIRE(v1 <= v6);
+    REQUIRE(s1 <= s6);
+    REQUIRE_FALSE(v6 < v1);
+    REQUIRE_FALSE(s6 < s1);
+    REQUIRE_FALSE(v6 <= v1);
+    REQUIRE_FALSE(s6 <= s1);
+    REQUIRE_FALSE(v1 > v6);
+    REQUIRE_FALSE(s1 > s6);
+    REQUIRE_FALSE(v1 >= v6);
+    REQUIRE_FALSE(s1 >= s6);
+    REQUIRE_FALSE(v7 > v1);
+    REQUIRE_FALSE(s7 > s1);
+    REQUIRE_FALSE(v7 >= v1);
+    REQUIRE_FALSE(s7 >= s1);
+    REQUIRE_FALSE(v1 < v7);
+    REQUIRE_FALSE(s1 < s7);
+    REQUIRE_FALSE(v1 <= v7);
+    REQUIRE_FALSE(s1 <= s7);
+    REQUIRE(v7 < v1);
+    REQUIRE(s7 < s1);
+    REQUIRE(v7 <= v1);
+    REQUIRE(s7 <= s1);
+    REQUIRE(v1 > v7);
+    REQUIRE(s1 > s7);
+    REQUIRE(v1 >= v7);
+    REQUIRE(s1 >= s7);
 
     LOG(INFO) << v1;
   }
 
-  SECTION("Seq CBVar") {
+  SECTION("Seq-CBVar") {
     std::vector<CBVar> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
+    REQUIRE(v1.valueType == CBType::Seq);
     std::vector<CBVar> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
+    REQUIRE(v2.valueType == CBType::Seq);
     std::vector<CBVar> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
+    REQUIRE(v3.valueType == CBType::Seq);
     std::vector<CBVar> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
+    REQUIRE(v4.valueType == CBType::Seq);
     std::vector<CBVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
+    REQUIRE(v5.valueType == CBType::Seq);
     
     REQUIRE(s1 == s2);
     REQUIRE(v1 == v2);
@@ -267,17 +333,22 @@ TEST_CASE("Test operator==", "[ops]") {
     LOG(INFO) << v1;
   }
 
-  SECTION("Array Var") {
+  SECTION("Array-Var") {
     std::array<Var, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
+    REQUIRE(v1.valueType == CBType::Seq);
     std::array<Var, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
+    REQUIRE(v2.valueType == CBType::Seq);
     std::array<Var, 3> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
+    REQUIRE(v3.valueType == CBType::Seq);
     std::array<Var, 3> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
+    REQUIRE(v4.valueType == CBType::Seq);
     std::array<Var, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
+    REQUIRE(v5.valueType == CBType::Seq);
     
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
@@ -294,17 +365,22 @@ TEST_CASE("Test operator==", "[ops]") {
     LOG(INFO) << v1;
   }
 
-  SECTION("Array CBVar") {
+  SECTION("Array-CBVar") {
     std::array<CBVar, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
+    REQUIRE(v1.valueType == CBType::Seq);
     std::array<CBVar, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
+    REQUIRE(v2.valueType == CBType::Seq);
     std::array<CBVar, 3> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
+    REQUIRE(v3.valueType == CBType::Seq);
     std::array<CBVar, 3> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
+    REQUIRE(v4.valueType == CBType::Seq);
     std::array<CBVar, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
+    REQUIRE(v5.valueType == CBType::Seq);
     
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
