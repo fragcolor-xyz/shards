@@ -113,53 +113,75 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     LOG(INFO) << f1; // logging coverage
   }
 
+#define CBVECTOR_TESTS                                                         \
+  REQUIRE(f1 == f2);                                                           \
+  REQUIRE(v1 == v2);                                                           \
+  REQUIRE(f1 != f3);                                                           \
+  REQUIRE(v1 != v3);                                                           \
+  REQUIRE(f1 != i1);                                                           \
+  REQUIRE(f1 <= f2);                                                           \
+  REQUIRE(v1 <= v2);                                                           \
+  REQUIRE_FALSE(f3 <= f1);                                                     \
+  REQUIRE_FALSE(v3 <= v1);                                                     \
+  REQUIRE(f1 < f4);                                                            \
+  REQUIRE(v1 < v4);                                                            \
+  REQUIRE(f1 >= f2);                                                           \
+  REQUIRE(v1 >= v2);                                                           \
+  REQUIRE(f1 < f3);                                                            \
+  REQUIRE(v1 < v3);                                                            \
+  REQUIRE((f3 > f1 and f3 > f2));                                              \
+  REQUIRE((v3 > v1 and v3 > v2));                                              \
+  REQUIRE((f4 >= f1 and f4 >= f2));                                            \
+  REQUIRE((v4 >= v1 and v4 >= v2));                                            \
+  REQUIRE_FALSE(f3 < f1);                                                      \
+  REQUIRE_FALSE(v3 < v1);                                                      \
+  auto hash1 = hash(f1);                                                       \
+  auto hash2 = hash(f2);                                                       \
+  auto hash3 = hash(f3);                                                       \
+  REQUIRE(hash1 == hash2);                                                     \
+  REQUIRE_FALSE(hash1 == hash3);                                               \
+  LOG(INFO) << f1
+
   SECTION("Float2") {
     auto f1 = Var(10.0, 2.0);
-    REQUIRE(f1.valueType == CBType::Float2);
+    std::vector<double> v1{10.0, 2.0};
     auto f2 = Var(10.0, 2.0);
+    std::vector<double> v2{10.0, 2.0};
     auto f3 = Var(22.0, 2.0);
+    std::vector<double> v3{22.0, 2.0};
+    auto f4 = Var(22.0, 2.0);
+    std::vector<double> v4{22.0, 2.0};
     auto i1 = Var(10);
-    REQUIRE(f1 == f2);
-    REQUIRE(f1 != f3);
-    REQUIRE(f1 != i1);
-    REQUIRE(f1 <= f2);
-    REQUIRE(f1 <= f3);
-    REQUIRE(f1 >= f2);
-    REQUIRE_FALSE(f1 >= f3);
-    REQUIRE(f1 < f3);
-    REQUIRE((f3 > f1 and f3 > f2));
-    REQUIRE((f3 >= f1 and f3 >= f2));
-    auto hash1 = hash(f1);
-    auto hash2 = hash(f2);
-    auto hash3 = hash(f3);
-    REQUIRE(hash1 == hash2);
-    REQUIRE_FALSE(hash1 == hash3);
-    LOG(INFO) << f1; // logging coverage
+    REQUIRE(f1.valueType == CBType::Float2);
+    CBVECTOR_TESTS;
   }
 
   SECTION("Float3") {
     auto f1 = Var(10.0, 2.0, 3.0);
-    REQUIRE(f1.valueType == CBType::Float3);
+    std::vector<float> v1{10.0, 2.0, 3.0};
     auto f2 = Var(10.0, 2.0, 3.0);
+    std::vector<float> v2{10.0, 2.0, 3.0};
     auto f3 = Var(22.0, 2.0, 1.0);
+    std::vector<float> v3{22.0, 2.0, 1.0};
     auto f4 = Var(22.0, 2.0, 4.0);
+    std::vector<float> v4{22.0, 2.0, 4.0};
     auto i1 = Var(10);
-    REQUIRE(f1 == f2);
-    REQUIRE(f1 != f3);
-    REQUIRE(f1 != i1);
-    REQUIRE(f1 <= f2);
-    REQUIRE_FALSE(f1 <= f3);
-    REQUIRE(f1 < f4);
-    REQUIRE(f1 >= f2);
-    REQUIRE(f1 < f3);
-    REQUIRE((f3 > f1 and f3 > f2));
-    REQUIRE((f4 >= f1 and f4 >= f2));
-    auto hash1 = hash(f1);
-    auto hash2 = hash(f2);
-    auto hash3 = hash(f3);
-    REQUIRE(hash1 == hash2);
-    REQUIRE_FALSE(hash1 == hash3);
-    LOG(INFO) << f1; // logging coverage
+    REQUIRE(f1.valueType == CBType::Float3);
+    CBVECTOR_TESTS;
+  }
+
+  SECTION("Float4") {
+    auto f1 = Var(10.0, 2.0, 3.0, 3.0);
+    std::vector<float> v1{10.0, 2.0, 3.0, 3.0};
+    auto f2 = Var(10.0, 2.0, 3.0, 3.0);
+    std::vector<float> v2{10.0, 2.0, 3.0, 3.0};
+    auto f3 = Var(22.0, 2.0, 1.0, 3.0);
+    std::vector<float> v3{22.0, 2.0, 1.0, 3.0};
+    auto f4 = Var(22.0, 2.0, 4.0, 3.0);
+    std::vector<float> v4{22.0, 2.0, 4.0, 3.0};
+    auto i1 = Var(10);
+    REQUIRE(f1.valueType == CBType::Float4);
+    CBVECTOR_TESTS;
   }
 
   SECTION("Int") {
@@ -191,51 +213,44 @@ TEST_CASE("CBVar-comparison", "[ops]") {
 
   SECTION("Int2") {
     auto f1 = Var(10, 2);
-    REQUIRE(f1.valueType == CBType::Int2);
+    std::vector<int64_t> v1{10, 2};
     auto f2 = Var(10, 2);
+    std::vector<int64_t> v2{10, 2};
     auto f3 = Var(22, 2);
+    std::vector<int64_t> v3{22, 2};
+    auto f4 = Var(22, 2);
+    std::vector<int64_t> v4{22, 2};
     auto i1 = Var(10.0);
-    REQUIRE(f1 == f2);
-    REQUIRE(f1 != f3);
-    REQUIRE(f1 != i1);
-    REQUIRE(f1 <= f2);
-    REQUIRE(f1 <= f3);
-    REQUIRE(f1 >= f2);
-    REQUIRE_FALSE(f1 >= f3);
-    REQUIRE(f1 < f3);
-    REQUIRE((f3 > f1 and f3 > f2));
-    REQUIRE((f3 >= f1 and f3 >= f2));
-    auto hash1 = hash(f1);
-    auto hash2 = hash(f2);
-    auto hash3 = hash(f3);
-    REQUIRE(hash1 == hash2);
-    REQUIRE_FALSE(hash1 == hash3);
-    LOG(INFO) << f1; // logging coverage
+    REQUIRE(f1.valueType == CBType::Int2);
+    CBVECTOR_TESTS;
   }
 
   SECTION("Int3") {
     auto f1 = Var(10, 2, 3);
-    REQUIRE(f1.valueType == CBType::Int3);
+    std::vector<int32_t> v1{10, 2, 3};
     auto f2 = Var(10, 2, 3);
+    std::vector<int32_t> v2{10, 2, 3};
     auto f3 = Var(22, 2, 1);
+    std::vector<int32_t> v3{22, 2, 1};
     auto f4 = Var(22, 2, 4);
+    std::vector<int32_t> v4{22, 2, 4};
     auto i1 = Var(10);
-    REQUIRE(f1 == f2);
-    REQUIRE(f1 != f3);
-    REQUIRE(f1 != i1);
-    REQUIRE(f1 <= f2);
-    REQUIRE_FALSE(f1 <= f3);
-    REQUIRE(f1 < f4);
-    REQUIRE(f1 >= f2);
-    REQUIRE(f1 < f3);
-    REQUIRE((f3 > f1 and f3 > f2));
-    REQUIRE((f4 >= f1 and f4 >= f2));
-    auto hash1 = hash(f1);
-    auto hash2 = hash(f2);
-    auto hash3 = hash(f3);
-    REQUIRE(hash1 == hash2);
-    REQUIRE_FALSE(hash1 == hash3);
-    LOG(INFO) << f1; // logging coverage
+    REQUIRE(f1.valueType == CBType::Int3);
+    CBVECTOR_TESTS;
+  }
+
+  SECTION("Int4") {
+    auto f1 = Var(10, 2, 3, 0);
+    std::vector<int32_t> v1{10, 2, 3, 0};
+    auto f2 = Var(10, 2, 3, 0);
+    std::vector<int32_t> v2{10, 2, 3, 0};
+    auto f3 = Var(22, 2, 1, 0);
+    std::vector<int32_t> v3{22, 2, 1, 0};
+    auto f4 = Var(22, 2, 4, 0);
+    std::vector<int32_t> v4{22, 2, 4, 0};
+    auto i1 = Var(10);
+    REQUIRE(f1.valueType == CBType::Int4);
+    CBVECTOR_TESTS;
   }
 
   SECTION("String") {

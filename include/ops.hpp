@@ -370,6 +370,17 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
+// avoid trying to be smart with SIMDs here
+// compiler will outsmart us likely anyway.
+#define CBVECTOR_CMP(_a_, _b_, _s_, _final_)                                   \
+  for (auto i = 0; i < _s_; i++) {                                             \
+    if (_a_[i] < _b_[i])                                                       \
+      return true;                                                             \
+    else if (_a_[i] > _b_[i])                                                  \
+      return false;                                                            \
+  }                                                                            \
+  return _final_
+
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
     return false;
@@ -386,60 +397,28 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue < b.payload.floatValue;
   case Int2: {
-    CBInt2 vec = a.payload.int2Value < b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] < 0) // -1 is true
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
   }
   case Int3: {
-    CBInt3 vec = a.payload.int3Value < b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
   }
   case Int4: {
-    CBInt4 vec = a.payload.int4Value < b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
   }
   case Int8: {
-    CBInt8 vec = a.payload.int8Value < b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
   }
   case Int16: {
-    auto vec = a.payload.int16Value < b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
   }
   case Float2: {
-    CBInt2 vec = a.payload.float2Value < b.payload.float2Value; // cast to int
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
   }
   case Float3: {
-    CBInt3 vec = a.payload.float3Value < b.payload.float3Value; // cast to int
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
   }
   case Float4: {
-    CBInt4 vec = a.payload.float4Value < b.payload.float4Value; // cast to int
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
   }
   case Color:
     return a.payload.colorValue.r < b.payload.colorValue.r ||
@@ -548,60 +527,28 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue <= b.payload.floatValue;
   case Int2: {
-    CBInt2 vec = a.payload.int2Value <= b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
   }
   case Int3: {
-    CBInt3 vec = a.payload.int3Value <= b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
   }
   case Int4: {
-    CBInt4 vec = a.payload.int4Value <= b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
   }
   case Int8: {
-    CBInt8 vec = a.payload.int8Value <= b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
   }
   case Int16: {
-    auto vec = a.payload.int16Value <= b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
   }
   case Float2: {
-    CBInt2 vec = a.payload.float2Value <= b.payload.float2Value; // cast to int
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
   }
   case Float3: {
-    CBInt3 vec = a.payload.float3Value <= b.payload.float3Value; // cast to int
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
   }
   case Float4: {
-    CBInt4 vec = a.payload.float4Value <= b.payload.float4Value; // cast to int
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
   }
   case Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r &&
@@ -639,6 +586,8 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
 
   return false;
 }
+
+#undef CBVECTOR_CMP
 
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
   return !(a == b);
