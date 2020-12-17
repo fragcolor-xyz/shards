@@ -1,3 +1,5 @@
+#include <random>
+
 #include <catch2/catch_all.hpp>
 
 #include "../../include/ops.hpp"
@@ -564,6 +566,64 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v2 >= v5);
 
     LOG(INFO) << v1;
+  }
+
+  SECTION("Bytes") {
+    std::random_device rd;
+    std::uniform_int_distribution<uint8_t> dist(0, 0x07);
+
+    std::vector<uint8_t> data1(1024);
+    for(auto &b : data1) {
+      b = dist(rd);
+    }
+    Var v1{&data1.front(), uint32_t(data1.size())};
+
+    auto data2 = data1;
+    Var v2{&data2.front(), uint32_t(data2.size())};
+
+    std::vector<uint8_t> data3(1024);
+    for(auto &b : data3) {
+      b = dist(rd);
+    }
+    Var v3{&data3.front(), uint32_t(data3.size())};
+
+    std::vector<uint8_t> data4(1050);
+    for(auto &b : data4) {
+      b = dist(rd);
+    }
+    Var v4{&data4.front(), uint32_t(data4.size())};
+
+    std::vector<uint8_t> data5(200);
+    for(auto &b : data5) {
+      b = dist(rd);
+    }
+    Var v5{&data5.front(), uint32_t(data5.size())};
+
+    REQUIRE((&data1[0]) != (&data2[0]));
+    REQUIRE(data1.size() == 1024);
+
+    REQUIRE(v1.valueType == CBType::Bytes);
+
+    REQUIRE(data1 == data2);
+    REQUIRE(v1 == v2);
+
+    REQUIRE(data1 != data3);
+    REQUIRE(v1 != v3);
+
+    REQUIRE(data1 != data3);
+    REQUIRE(v1 != v3);
+
+    REQUIRE(data1 >= data2);
+    REQUIRE(v1 >= v2);
+
+    REQUIRE_FALSE(data1 < data2);
+    REQUIRE_FALSE(v1 < v2);
+
+    REQUIRE(data1 > data5);
+    REQUIRE(v1 > v5);
+
+    REQUIRE_FALSE(data1 > data4);
+    REQUIRE_FALSE(v1 > v4);
   }
 }
 

@@ -438,7 +438,7 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Table:
     return _tableLess(a, b);
   case Bytes:
-    return a.payload.bytesSize == b.payload.bytesSize &&
+    return a.payload.bytesSize < b.payload.bytesSize ||
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) < 0;
   case Array:
@@ -564,7 +564,7 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Table:
     return _tableLessEq(a, b);
   case Bytes:
-    return a.payload.bytesSize == b.payload.bytesSize &&
+    return a.payload.bytesSize <= b.payload.bytesSize &&
            memcmp(a.payload.bytesValue, b.payload.bytesValue,
                   a.payload.bytesSize) <= 0;
   case Array:
