@@ -267,9 +267,22 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return a.payload.blockValue == b.payload.blockValue;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return a.payload.stringValue == b.payload.stringValue ||
-           strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return true;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr == bstr;
+  }
   case Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
@@ -431,8 +444,22 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.a < b.payload.colorValue.a;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return false;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr < bstr;
+  }
   case Seq:
     return _seqLess(a, b);
   case Table:
@@ -557,8 +584,22 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.a <= b.payload.colorValue.a;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return true;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr <= bstr;
+  }
   case Seq:
     return _seqLessEq(a, b);
   case Table:
