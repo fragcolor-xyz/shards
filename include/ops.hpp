@@ -446,19 +446,11 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            a.innerType == b.innerType &&
            memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
                   a.payload.arrayValue.len * sizeof(CBVarPayload)) < 0;
-  case Image:
-  case Chain:
-  case Block:
-  case Object:
-  case CBType::Any:
-  case None:
-  case EndOfBlittableTypes:
+  default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator < not supported for the given type: " +
         type2Name(a.valueType));
   }
-
-  return false;
 }
 
 inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
@@ -580,19 +572,11 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.innerType == b.innerType &&
            memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
                   a.payload.arrayValue.len * sizeof(CBVarPayload)) <= 0;
-  case Image:
-  case Chain:
-  case Block:
-  case Object:
-  case CBType::Any:
-  case None:
-  case EndOfBlittableTypes:
+  default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator <= not supported for the given type: " +
         type2Name(a.valueType));
   }
-
-  return false;
 }
 
 #undef CBVECTOR_CMP
