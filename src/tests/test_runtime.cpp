@@ -1,11 +1,11 @@
 #include <catch2/catch_all.hpp>
 
-#include "../core/runtime.hpp"
 #include "../../include/ops.hpp"
+#include "../core/runtime.hpp"
 
 using namespace chainblocks;
 
-TEST_CASE("Test type2Name", "[ops]" ) {
+TEST_CASE("Test type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(CBType::EndOfBlittableTypes));
   REQUIRE(type2Name(CBType::None) == "None");
   REQUIRE(type2Name(CBType::Any) == "Any");
@@ -378,7 +378,7 @@ TEST_CASE("Test-Comparison", "[ops]") {
     std::vector<CBVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
     REQUIRE(v5.valueType == CBType::Seq);
-    
+
     REQUIRE(s1 == s2);
     REQUIRE(v1 == v2);
     REQUIRE(s1 != s3);
@@ -421,7 +421,7 @@ TEST_CASE("Test-Comparison", "[ops]") {
     std::array<Var, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
     REQUIRE(v5.valueType == CBType::Seq);
-    
+
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
     REQUIRE(v2 != v3);
@@ -453,7 +453,7 @@ TEST_CASE("Test-Comparison", "[ops]") {
     std::array<CBVar, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
     REQUIRE(v5.valueType == CBType::Seq);
-    
+
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
     REQUIRE(v2 != v3);

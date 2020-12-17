@@ -743,7 +743,7 @@ inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
 }
 
 namespace chainblocks {
-uint64_t hash(const CBVar &var, bool initiator = true);
+uint64_t hash(const CBVar &var);
 } // namespace chainblocks
 
 namespace std {
