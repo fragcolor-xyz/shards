@@ -77,6 +77,14 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(o1 == o2);
     REQUIRE(o1 != o3);
     REQUIRE(o3 != o4);
+    REQUIRE(o1 < o3);
+    REQUIRE_THROWS(o3 < o4);
+    REQUIRE(o1 <= o3);
+    REQUIRE_THROWS(o3 <= o4);
+    REQUIRE_FALSE(o1 >= o3);
+    REQUIRE(o3 >= o1);
+    REQUIRE_THROWS(o3 >= o4);
+    REQUIRE_THROWS(o4 >= o3);
     REQUIRE(o1 != empty);
     auto hash1 = hash(o1);
     auto hash2 = hash(o2);
@@ -119,6 +127,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
   REQUIRE(f1 != f3);                                                           \
   REQUIRE(v1 != v3);                                                           \
   REQUIRE(f1 != i1);                                                           \
+  REQUIRE_THROWS(f1 < i1);                                                     \
+  REQUIRE_THROWS(f1 <= i1);                                                    \
   REQUIRE(f1 <= f2);                                                           \
   REQUIRE(v1 <= v2);                                                           \
   REQUIRE_FALSE(f3 <= f1);                                                     \

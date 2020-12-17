@@ -383,13 +383,17 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
 
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
-    return false;
+    throw chainblocks::InvalidVarTypeError(
+        "Comparison < between two different value types");
 
   switch (a.valueType) {
-  case Enum:
-    return a.payload.enumVendorId < b.payload.enumVendorId ||
-           a.payload.enumTypeId < b.payload.enumTypeId ||
-           a.payload.enumValue < b.payload.enumValue;
+  case Enum: {
+    if (a.payload.enumVendorId != b.payload.enumVendorId ||
+        a.payload.enumTypeId != b.payload.enumTypeId)
+      throw chainblocks::InvalidVarTypeError(
+          "Comparison < between two different kind of enums (vendor/type)");
+    return a.payload.enumValue < b.payload.enumValue;
+  }
   case Bool:
     return a.payload.boolValue < b.payload.boolValue;
   case Int:
@@ -513,13 +517,17 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
-    return false;
+    throw chainblocks::InvalidVarTypeError(
+        "Comparison <= between two different value types");
 
   switch (a.valueType) {
-  case Enum:
-    return a.payload.enumVendorId == b.payload.enumVendorId &&
-           a.payload.enumTypeId == b.payload.enumTypeId &&
-           a.payload.enumValue <= b.payload.enumValue;
+  case Enum: {
+    if (a.payload.enumVendorId != b.payload.enumVendorId ||
+        a.payload.enumTypeId != b.payload.enumTypeId)
+      throw chainblocks::InvalidVarTypeError(
+          "Comparison <= between two different kind of enums (vendor/type)");
+    return a.payload.enumValue <= b.payload.enumValue;
+  }
   case Bool:
     return a.payload.boolValue <= b.payload.boolValue;
   case Int:
