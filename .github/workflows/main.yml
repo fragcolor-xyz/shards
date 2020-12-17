@@ -274,7 +274,7 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-        ninja rust_blocks && ninja cbl
+        ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       env:
         RUST_BACKTRACE: 1
@@ -298,6 +298,7 @@ jobs:
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
         ./cbl ../src/tests/wasm.clj
+        ./test_runtime
 
   iOS:
     runs-on: macos-latest

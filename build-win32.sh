@@ -11,7 +11,7 @@ pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i68
 mkdir build
 cd build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DSKIP_RUST_BINDGEN=1 ..
-ninja rust_blocks && ninja cbl
+ninja rust_blocks && ninja cbl && ninja test_runtime
 
 echo "Running test: general"
 ./cbl ../src/tests/general.clj
@@ -51,3 +51,5 @@ echo "Running test: bgfx"
 ./cbl ../src/tests/bgfx.clj
 echo "Running test: wasm"
 ./cbl ../src/tests/wasm.clj
+echo "Running test_runtime"
+./test_runtime
