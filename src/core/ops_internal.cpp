@@ -82,9 +82,9 @@ MAKE_LOGGABLE(CBVar, var, os) {
     os << "(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
-        os << var.payload.int16Value[i];
+        os << int(var.payload.int16Value[i]);
       else
-        os << ", " << var.payload.int16Value[i];
+        os << ", " << int(var.payload.int16Value[i]);
     }
     os << ")";
     break;

@@ -598,6 +598,43 @@ struct Var : public CBVar {
     payload.int4Value[3] = d;
   }
 
+  explicit Var(int16_t a, int16_t b, int16_t c, int16_t d, int16_t e, int16_t f,
+               int16_t g, int16_t h)
+      : CBVar() {
+    valueType = Int8;
+    payload.int8Value[0] = a;
+    payload.int8Value[1] = b;
+    payload.int8Value[2] = c;
+    payload.int8Value[3] = d;
+    payload.int8Value[4] = e;
+    payload.int8Value[5] = f;
+    payload.int8Value[6] = g;
+    payload.int8Value[7] = h;
+  }
+
+  explicit Var(int8_t a, int8_t b, int8_t c, int8_t d, int8_t e, int8_t f,
+               int8_t g, int8_t h, int8_t i, int8_t j, int8_t k, int8_t l,
+               int8_t m, int8_t n, int8_t o, int8_t p)
+      : CBVar() {
+    valueType = Int16;
+    payload.int16Value[0] = a;
+    payload.int16Value[1] = b;
+    payload.int16Value[2] = c;
+    payload.int16Value[3] = d;
+    payload.int16Value[4] = e;
+    payload.int16Value[5] = f;
+    payload.int16Value[6] = g;
+    payload.int16Value[7] = h;
+    payload.int16Value[8] = i;
+    payload.int16Value[9] = j;
+    payload.int16Value[10] = k;
+    payload.int16Value[11] = l;
+    payload.int16Value[12] = m;
+    payload.int16Value[13] = n;
+    payload.int16Value[14] = o;
+    payload.int16Value[15] = p;
+  }
+
   explicit Var(int64_t a, int64_t b) : CBVar() {
     valueType = Int2;
     payload.int2Value[0] = a;

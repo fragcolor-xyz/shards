@@ -253,6 +253,55 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     CBVECTOR_TESTS;
   }
 
+  SECTION("Int8") {
+    auto f1 = Var(10, 2, 3, 0, 1, 2, 3, 4);
+    std::vector<int16_t> v1{10, 2, 3, 0, 1, 2, 3, 4};
+    auto f2 = Var(10, 2, 3, 0, 1, 2, 3, 4);
+    std::vector<int16_t> v2{10, 2, 3, 0, 1, 2, 3, 4};
+    auto f3 = Var(22, 2, 1, 0, 1, 2, 3, 4);
+    std::vector<int16_t> v3{22, 2, 1, 0, 1, 2, 3, 4};
+    auto f4 = Var(22, 2, 4, 0, 1, 2, 3, 4);
+    std::vector<int16_t> v4{22, 2, 4, 0, 1, 2, 3, 4};
+    auto i1 = Var(10);
+    REQUIRE(f1.valueType == CBType::Int8);
+    CBVECTOR_TESTS;
+  }
+
+  SECTION("Int16") {
+    auto f1 = Var(10, 2, 3, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2);
+    std::vector<int8_t> v1{10, 2, 3, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2};
+    auto f2 = Var(10, 2, 3, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2);
+    std::vector<int8_t> v2{10, 2, 3, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2};
+    auto f3 = Var(22, 2, 1, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2);
+    std::vector<int8_t> v3{22, 2, 1, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2};
+    auto f4 = Var(22, 2, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2);
+    std::vector<int8_t> v4{22, 2, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2};
+    auto i1 = Var(10);
+    REQUIRE(f1.valueType == CBType::Int16);
+    CBVECTOR_TESTS;
+  }
+
+#undef CBVECTOR_TESTS
+
+  SECTION("Color") {
+    auto c1 = Var(CBColor{20, 20, 20, 255});
+    auto c2 = Var(CBColor{20, 20, 20, 255});
+    auto c3 = Var(CBColor{20, 20, 20, 0});
+    REQUIRE(c1 == c2);
+    REQUIRE(c2 >= c1);
+    REQUIRE(c1 != c3);
+    REQUIRE(c1 > c3);
+    REQUIRE(c1 >= c3);
+    REQUIRE(c3 < c1);
+    REQUIRE(c3 <= c1);
+    auto hash1 = hash(c1);
+    auto hash2 = hash(c2);
+    auto hash3 = hash(c3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+    LOG(INFO) << c1;
+  }
+
   SECTION("String") {
     auto s1 = Var("Hello world");
     REQUIRE(s1.valueType == CBType::String);
