@@ -44,6 +44,27 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash1 = hash(n1);
     auto hash2 = hash(n2);
     REQUIRE(hash1 == hash2);
+    LOG(INFO) << n1; // logging coverage
+  }
+
+  SECTION("Bool") {
+    auto t = Var::True;
+    auto f = Var::False;
+    auto t1 = Var(true);
+    auto f1 = Var(false);
+    REQUIRE(t == t1);
+    REQUIRE(f == f1);
+    REQUIRE(true == bool(t1));
+    REQUIRE_FALSE(true == bool(f1));
+    REQUIRE(false == bool(f1));
+    REQUIRE(t > f);
+    REQUIRE(t >= f);
+    REQUIRE(f < t);
+    REQUIRE(f <= t);
+    auto hash1 = hash(t);
+    auto hash2 = hash(t1);
+    REQUIRE(hash1 == hash2);
+    LOG(INFO) << t; // logging coverage
   }
 
   SECTION("Object") {
@@ -57,6 +78,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(o1 == o2);
     REQUIRE(o1 != o3);
     REQUIRE(o3 != o4);
+    REQUIRE_THROWS(o3 > o4);
+    REQUIRE_THROWS(o3 >= o4);
     REQUIRE(o1 != empty);
     auto hash1 = hash(o1);
     auto hash2 = hash(o2);
