@@ -5,7 +5,7 @@
 
 using namespace chainblocks;
 
-TEST_CASE("Test type2Name", "[ops]") {
+TEST_CASE("CBType-type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(CBType::EndOfBlittableTypes));
   REQUIRE(type2Name(CBType::None) == "None");
   REQUIRE(type2Name(CBType::Any) == "Any");
@@ -34,7 +34,7 @@ TEST_CASE("Test type2Name", "[ops]") {
   REQUIRE(type2Name(CBType::Array) == "Array");
 }
 
-TEST_CASE("Test-Comparison", "[ops]") {
+TEST_CASE("CBVar-comparison", "[ops]") {
   SECTION("None, Any, EndOfBlittableTypes") {
     auto n1 = Var::Empty;
     auto n2 = Var::Empty;
@@ -468,4 +468,17 @@ TEST_CASE("Test-Comparison", "[ops]") {
 
     LOG(INFO) << v1;
   }
+}
+
+TEST_CASE("CBSet") {
+  CBSet x;
+  x.insert(Var(10));
+  x.emplace(Var("Hello Set"));
+  REQUIRE(x.size() == 2);
+  REQUIRE(x.count(Var(10)) == 1);
+  x.erase(Var(10));
+  REQUIRE(x.count(Var(10)) == 0);
+  REQUIRE(x.count(Var("Hello Set")) == 1);
+  x.erase(Var("Hello Set"));
+  REQUIRE(x.count(Var("Hello Set")) == 0);
 }

@@ -747,7 +747,12 @@ uint64_t hash(const CBVar &var);
 } // namespace chainblocks
 
 namespace std {
-// TODO put in its own header maybe
+template <> struct hash<CBVar> {
+  std::size_t operator()(const CBVar &var) const {
+    // not ideal on 32 bits as our hash is 64.. but it should be ok
+    return std::size_t(chainblocks::hash(var));
+  }
+};
 
 template <> struct hash<CBTypeInfo> {
   std::size_t operator()(const CBTypeInfo &typeInfo) const {

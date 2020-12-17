@@ -290,14 +290,16 @@ private:
 };
 
 namespace chainblocks {
+using CBSet =
+    std::unordered_set<OwnedVar, std::hash<CBVar>, std::equal_to<CBVar>,
+                       boost::alignment::aligned_allocator<OwnedVar, 16>>;
+using CBSetIt = CBSet::iterator;
+
 using CBMap = std::unordered_map<
     std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
     boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
                                         16>>;
-using CBMapIt = std::unordered_map<
-    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
-                                        16>>::iterator;
+using CBMapIt = CBMap::iterator;
 
 struct Globals {
   static inline int SigIntTerm{0};
