@@ -619,11 +619,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE_FALSE(data1 < data2);
     REQUIRE_FALSE(v1 < v2);
 
-    // REQUIRE(data1 > data5);
-    // REQUIRE(v1 > v5);
-
-    // REQUIRE_FALSE(data1 > data4);
-    // REQUIRE_FALSE(v1 > v4);
+    REQUIRE((v1 > v5) == (data1 > data5));
+    REQUIRE((v1 > v4) == (data1 > data4));
   }
 }
 
