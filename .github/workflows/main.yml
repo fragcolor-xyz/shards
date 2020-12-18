@@ -60,7 +60,7 @@ jobs:
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
         rustup update
-        rustup target add wasm32-wasi
+        rustup target add wasm32-unknown-emscripten
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
