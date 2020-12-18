@@ -66,13 +66,10 @@ jobs:
         rustup target add wasm32-unknown-emscripten
     - name: Build
       run: |
-        cd rust
-        cargo build --features run_bindgen --release --target=wasm32-unknown-emscripten
-        cd -
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DEMSCRIPTEN_PTHREADS=1 -DUSE_LTO=1 -DSKIP_RUST_BINDGEN=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DEMSCRIPTEN_PTHREADS=1 -DUSE_LTO=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |

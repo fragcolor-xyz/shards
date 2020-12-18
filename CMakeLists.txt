@@ -760,6 +760,7 @@ if(NOT BUILD_CORE_ONLY)
   if(EMSCRIPTEN)
     set(RUST_CRT "-Ctarget-feature=+atomics,+bulk-memory ")
     set(CARGO_Z "-Zbuild-std=panic_abort,std")
+    set(CARGO_NIGHT "+nightly")
   endif()
 
   if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
@@ -771,7 +772,7 @@ if(NOT BUILD_CORE_ONLY)
   add_custom_target(
     rust_blocks
     COMMAND ${RUSTFLAGS}
-    COMMAND cargo build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
