@@ -758,7 +758,7 @@ if(NOT BUILD_CORE_ONLY)
   # endif()
 
   if(EMSCRIPTEN)
-    set(RUST_CRT "-Ctarget-feature=+atomics,+bulk-memory")
+    set(RUST_CRT "-Zbuild-std -Ctarget-feature=+atomics,+bulk-memory")
   endif()
 
   if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
