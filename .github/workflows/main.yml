@@ -61,6 +61,7 @@ jobs:
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
         rustup update
+        rustup install nightly-2020-12-01
         rustup default nightly
         rustup component add rust-src --toolchain nightly
         rustup target add wasm32-unknown-emscripten
@@ -71,7 +72,7 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DEMSCRIPTEN_PTHREADS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
