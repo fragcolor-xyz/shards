@@ -64,6 +64,8 @@ jobs:
         rustup default nightly
         rustup component add rust-src --toolchain nightly
         rustup target add wasm32-unknown-emscripten
+        rustup show
+        rustup component list
     - name: Build
       run: |
         source emsdk/emsdk_env.sh
