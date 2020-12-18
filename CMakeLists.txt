@@ -757,7 +757,7 @@ if(NOT BUILD_CORE_ONLY)
   #   set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   # endif()
 
-  if(EMSCRIPTEN)
+  if(EMSCRIPTEN_PTHREADS)
     set(RUST_CRT "-Ctarget-feature=+atomics,+bulk-memory ")
     set(CARGO_Z "-Zbuild-std=panic_abort,std")
     set(CARGO_NIGHT "+nightly")
