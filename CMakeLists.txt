@@ -714,8 +714,8 @@ if(NOT BUILD_CORE_ONLY)
   # build rust blocks
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(EMSCRIPTEN)
-      set(RUST_BUILD_SUBDIR wasm32-wasi/debug)
-      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=wasm32-wasi)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-emscripten/debug)
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=wasm32-unknown-emscripten)
     elseif(X86_IOS_SIMULATOR)
       set(RUST_BUILD_SUBDIR x86_64-apple-ios/debug)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --target=x86_64-apple-ios)
@@ -730,8 +730,8 @@ if(NOT BUILD_CORE_ONLY)
     endif()
   else()
     if(EMSCRIPTEN)
-      set(RUST_BUILD_SUBDIR wasm32-wasi/release)    
-      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=wasm32-wasi)
+      set(RUST_BUILD_SUBDIR wasm32-unknown-emscripten/release)    
+      set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=wasm32-unknown-emscripten)
     elseif(X86_IOS_SIMULATOR)
       set(RUST_BUILD_SUBDIR x86_64-apple-ios/release)    
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=x86_64-apple-ios)
@@ -757,8 +757,10 @@ if(NOT BUILD_CORE_ONLY)
   #   set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   # endif()
 
-  if(EMSCRIPTEN)
-    set(RUST_CRT "-Ctarget-feature=-crt-static ")
+  if(EMSCRIPTEN_PTHREADS)
+    set(RUST_CRT "-Ctarget-feature=+atomics,+bulk-memory ")
+    set(CARGO_Z "-Zbuild-std=panic_abort,std")
+    set(CARGO_NIGHT "+nightly")
   endif()
 
   if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
@@ -770,7 +772,7 @@ if(NOT BUILD_CORE_ONLY)
   add_custom_target(
     rust_blocks
     COMMAND ${RUSTFLAGS}
-    COMMAND cargo build --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
@@ -937,7 +939,7 @@ target_link_libraries(cbedn ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_
 ExternalProject_Add(catch2
   URL ${CHAINBLOCKS_DIR}/deps/Catch2
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps ${EXTRA_CMAKE_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2Main.a
 )
