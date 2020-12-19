@@ -42,6 +42,7 @@ jobs:
         path: |
           build/cbl.wasm
           build/cbl.js
+          build/cbl.worker.js
           build/cbl.html
 
   wasm32-emscripten:
