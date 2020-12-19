@@ -342,10 +342,17 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(s1.valueType == CBType::String);
     auto s2 = Var("Hello world");
     auto s3 = Var("Hello world 2");
+    auto s5 = CBVar();
+    s5.valueType = CBType::String;
+    s5.payload.stringValue = "Hello world";
     std::string q("qwerty");
     auto s4 = Var(q);
     REQUIRE_THROWS(float(s4));
     REQUIRE(s1 == s2);
+    REQUIRE(s1 == s5);
+    REQUIRE(s2 == s5);
+    REQUIRE(s2 <= s5);
+    REQUIRE_FALSE(s2 < s5);
     REQUIRE(s1 != s3);
     REQUIRE(s1 != s4);
     REQUIRE(s1 < s3);
@@ -625,6 +632,19 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v1 == v1);
     REQUIRE(v1 <= v1);
     REQUIRE_FALSE(v1 < v1);
+  }
+
+  SECTION("Block") {
+    CBlock foo;
+    CBlock bar;
+    auto b1 = CBVar();
+    b1.valueType = CBType::Block;
+    b1.payload.blockValue = &foo;
+    auto b2 = CBVar();
+    b2.valueType = CBType::Block;
+    b2.payload.blockValue = &bar;
+    REQUIRE_FALSE(b1 == b2);
+    REQUIRE(b1 != b2);
   }
 }
 
