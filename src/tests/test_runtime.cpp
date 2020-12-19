@@ -651,15 +651,35 @@ TEST_CASE("CBVar-comparison", "[ops]") {
 }
 
 TEST_CASE("VarPayload") {
-  VarPayload a1 = Float4VarPayload({2.0, 1.0, 3.0, 9.0});
-  Var v1(std::get<Float4VarPayload>(a1));
-  Float4VarPayload a2({2.0, 1.0, 3.0, 9.0});
-  Var v2(a2);
-  Var v3(2.0, 1.0, 3.0, 9.0);
+  SECTION("Int2") {
+    VarPayload a1 = Int2VarPayload({2, 1});
+    Var v1(std::get<Int2VarPayload>(a1));
+    Int2VarPayload a2({2, 1});
+    Var v2(a2);
+    Var v3(2, 1);
+    Int2VarPayload a4 = {2, 1};
+    Var v4(a4);
 
-  REQUIRE(v1 == v2);
-  REQUIRE(v1 == v3);
-  REQUIRE(v2 == v3);
+    REQUIRE(v1 == v2);
+    REQUIRE(v1 == v3);
+    REQUIRE(v2 == v3);
+    REQUIRE(v1 == v4);
+  }
+
+  SECTION("Float4") {
+    VarPayload a1 = Float4VarPayload({2.0, 1.0, 3.0, 9.0});
+    Var v1(std::get<Float4VarPayload>(a1));
+    Float4VarPayload a2({2.0, 1.0, 3.0, 9.0});
+    Var v2(a2);
+    Var v3(2.0, 1.0, 3.0, 9.0);
+    Float4VarPayload a4 = {2.0, 1.0, 3.0, 9.0};
+    Var v4(a4);
+
+    REQUIRE(v1 == v2);
+    REQUIRE(v1 == v3);
+    REQUIRE(v2 == v3);
+    REQUIRE(v1 == v4);
+  }
 }
 
 TEST_CASE("CBSet") {
