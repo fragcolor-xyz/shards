@@ -632,6 +632,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v1 == v1);
     REQUIRE(v1 <= v1);
     REQUIRE_FALSE(v1 < v1);
+
+    LOG(INFO) << v1;
   }
 
   SECTION("Block") {
@@ -646,6 +648,18 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE_FALSE(b1 == b2);
     REQUIRE(b1 != b2);
   }
+}
+
+TEST_CASE("VarPayload") {
+  VarPayload a1 = Float4VarPayload({2.0, 1.0, 3.0, 9.0});
+  Var v1(std::get<Float4VarPayload>(a1));
+  Float4VarPayload a2({2.0, 1.0, 3.0, 9.0});
+  Var v2(a2);
+  Var v3(2.0, 1.0, 3.0, 9.0);
+
+  REQUIRE(v1 == v2);
+  REQUIRE(v1 == v3);
+  REQUIRE(v2 == v3);
 }
 
 TEST_CASE("CBSet") {

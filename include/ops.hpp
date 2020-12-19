@@ -474,11 +474,16 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
                           b.payload.bytesSize);
     return abuf < bbuf;
   }
-  case Array:
-    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
-           a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                  a.payload.arrayValue.len * sizeof(CBVarPayload)) < 0;
+  case Array: {
+    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements &&
+        a.payload.arrayValue.len == b.payload.arrayValue.len)
+      return false;
+    std::string_view abuf((const char *)a.payload.arrayValue.elements,
+                          a.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements,
+                          b.payload.arrayValue.len * sizeof(CBVarPayload));
+    return abuf < bbuf;
+  }
   default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator < not supported for the given type: " +
@@ -620,11 +625,16 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
                           b.payload.bytesSize);
     return abuf <= bbuf;
   }
-  case Array:
-    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
-           a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                  a.payload.arrayValue.len * sizeof(CBVarPayload)) <= 0;
+  case Array: {
+    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements &&
+        a.payload.arrayValue.len == b.payload.arrayValue.len)
+      return true;
+    std::string_view abuf((const char *)a.payload.arrayValue.elements,
+                          a.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements,
+                          b.payload.arrayValue.len * sizeof(CBVarPayload));
+    return abuf <= bbuf;
+  }
   default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator <= not supported for the given type: " +
