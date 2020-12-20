@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 
 #include "../../include/ops.hpp"
+#include "../../include/utility.hpp"
 #include "../core/runtime.hpp"
 
 using namespace chainblocks;
@@ -693,4 +694,68 @@ TEST_CASE("CBSet") {
   REQUIRE(x.count(Var("Hello Set")) == 1);
   x.erase(Var("Hello Set"));
   REQUIRE(x.count(Var("Hello Set")) == 0);
+}
+
+TEST_CASE("CXX-Chain-DSL") {
+  chainblocks::Globals::RootPath = "./";
+  registerCoreBlocks();
+
+  // TODO, improve this
+  auto chain1 = std::shared_ptr<CBChain>(chainblocks::Chain("test-chain")
+                                             .looped(true)
+                                             .let(1)
+                                             .block("Log")
+                                             .block("Math.Add", 2)
+                                             .block("Assert.Is", 3, true));
+  assert(chain1->blocks.size() == 4);
+}
+
+TEST_CASE("DynamicArray") {
+  CBSeq ts{};
+  Var a{0}, b{1}, c{2}, d{3}, e{4}, f{5};
+  arrayPush(ts, a);
+  assert(ts.len == 1);
+  assert(ts.cap == 4);
+  arrayPush(ts, b);
+  arrayPush(ts, c);
+  arrayPush(ts, d);
+  arrayPush(ts, e);
+  assert(ts.len == 5);
+  assert(ts.cap == 8);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(1));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayInsert(ts, 1, f);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(1));
+  assert(ts.elements[3] == Var(2));
+  assert(ts.elements[4] == Var(3));
+
+  arrayDel(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(2));
+  assert(ts.elements[3] == Var(3));
+  assert(ts.elements[4] == Var(4));
+
+  arrayDelFast(ts, 2);
+
+  assert(ts.elements[0] == Var(0));
+  assert(ts.elements[1] == Var(5));
+  assert(ts.elements[2] == Var(4));
+  assert(ts.elements[3] == Var(3));
+
+  assert(ts.len == 4);
+
+  arrayFree(ts);
+  assert(ts.elements == nullptr);
+  assert(ts.len == 0);
+  assert(ts.cap == 0);
 }
