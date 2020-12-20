@@ -906,6 +906,13 @@ struct ExposedInfo {
     return res;
   }
 
+  static CBExposedTypeInfo ProtectedVariable(const char *name, const char *help,
+                                             CBTypeInfo type,
+                                             bool isMutable = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, true, false, false};
+    return res;
+  }
+
   static CBExposedTypeInfo GlobalVariable(const char *name, const char *help,
                                           CBTypeInfo type,
                                           bool isMutable = false,

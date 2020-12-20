@@ -20,8 +20,8 @@ struct BaseConsumer : public Base {
   static inline Type windowType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
 
-  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "BGFX.Context", "The BGFX Context.", Context::Info));
+  static inline ExposedInfo requiredInfo = ExposedInfo(
+      ExposedInfo::Variable("GFX.Context", "The BGFX Context.", Context::Info));
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -101,11 +101,13 @@ struct BaseWindow : public Base {
 
 struct MainWindow : public BaseWindow {
   const static inline ExposedInfo exposedInfo = ExposedInfo(
-      ExposedInfo::Variable("BGFX.CurrentWindow", "The exposed SDL window.",
-                            BaseConsumer::windowType),
-      ExposedInfo::Variable("BGFX.Context", "The BGFX Context.", Context::Info),
-      ExposedInfo::Variable("ImGui.Context", "The ImGui Context.",
-                            chainblocks::ImGui::Context::Info));
+      ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
+                                     "The exposed SDL window.",
+                                     BaseConsumer::windowType),
+      ExposedInfo::ProtectedVariable("GFX.Context", "The BGFX Context.",
+                                     Context::Info),
+      ExposedInfo::ProtectedVariable("GUI.Context", "The ImGui Context.",
+                                     chainblocks::ImGui::Context::Info));
 
   CBExposedTypesInfo exposedVariables() {
     return CBExposedTypesInfo(exposedInfo);
@@ -120,8 +122,8 @@ struct MainWindow : public BaseWindow {
   CBTypeInfo compose(const CBInstanceData &data) {
     // Make sure MainWindow is UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, "BGFX.Context") == 0) {
-        throw CBException("BGFX.MainWindow must be unique, found another use!");
+      if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
+        throw CBException("GFX.MainWindow must be unique, found another use!");
       }
     }
     return data.inputType;
@@ -151,7 +153,7 @@ struct MainWindow : public BaseWindow {
     if (_sdlWinVar) {
       if (_sdlWinVar->refcount > 1) {
         throw CBException(
-            "MainWindow: Found a dangling reference to BGFX.CurrentWindow.");
+            "MainWindow: Found a dangling reference to GFX.CurrentWindow.");
       }
       memset(_sdlWinVar, 0x0, sizeof(CBVar));
       _sdlWinVar = nullptr;
@@ -160,7 +162,7 @@ struct MainWindow : public BaseWindow {
     if (_bgfxCtx) {
       if (_bgfxCtx->refcount > 1) {
         throw CBException(
-            "MainWindow: Found a dangling reference to BGFX.Context.");
+            "MainWindow: Found a dangling reference to GFX.Context.");
       }
       memset(_bgfxCtx, 0x0, sizeof(CBVar));
       _bgfxCtx = nullptr;
@@ -169,7 +171,7 @@ struct MainWindow : public BaseWindow {
     if (_imguiCtx) {
       if (_imguiCtx->refcount > 1) {
         throw CBException(
-            "MainWindow: Found a dangling reference to ImGui.Context.");
+            "MainWindow: Found a dangling reference to GUI.Context.");
       }
       memset(_imguiCtx, 0x0, sizeof(CBVar));
       _imguiCtx = nullptr;
@@ -322,9 +324,9 @@ struct MainWindow : public BaseWindow {
       bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
                          1.0f, 0);
 
-      _sdlWinVar = referenceVariable(context, "BGFX.CurrentWindow");
-      _bgfxCtx = referenceVariable(context, "BGFX.Context");
-      _imguiCtx = referenceVariable(context, "ImGui.Context");
+      _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+      _bgfxCtx = referenceVariable(context, "GFX.Context");
+      _imguiCtx = referenceVariable(context, "GUI.Context");
 
       _initDone = true;
     }
@@ -456,8 +458,8 @@ if (!_initDone) {
   bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                      0x303030FF, 1.0f, 0);
 
-  _sdlWinVar = findVariable(context, "BGFX.CurrentWindow");
-  _imguiCtx = findVariable(context, "ImGui.Context");
+  _sdlWinVar = findVariable(context, "GFX.CurrentWindow");
+  _imguiCtx = findVariable(context, "GUI.Context");
 
   _initDone = true;
 }
@@ -651,10 +653,7 @@ struct Texture2D : public BaseConsumer {
   }
 };
 
-template <char SHADER_TYPE> struct Shader {
-  // TODO
-  // Require BGFX context for sanity checking
-
+template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -799,13 +798,13 @@ template <char SHADER_TYPE> struct Shader {
 };
 
 void registerBGFXBlocks() {
-  REGISTER_CBLOCK("BGFX.MainWindow", MainWindow);
-  REGISTER_CBLOCK("BGFX.Draw", Draw);
-  REGISTER_CBLOCK("BGFX.Texture2D", Texture2D);
+  REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
+  REGISTER_CBLOCK("GFX.Draw", Draw);
+  REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
 
   using GraphicsShader = Shader<'g'>;
-  REGISTER_CBLOCK("BGFX.Shader", GraphicsShader);
+  REGISTER_CBLOCK("GFX.Shader", GraphicsShader);
   using ComputeShader = Shader<'c'>;
-  REGISTER_CBLOCK("BGFX.ComputeShader", ComputeShader);
+  REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
 }
 }; // namespace BGFX

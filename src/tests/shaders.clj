@@ -24,7 +24,7 @@
 (def main
   (Chain
    "main"
-  ;;  (BGFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
+  ;;  (GFX.MainWindow :Title "SDL Window" :Width 1024 :Height 1024)
 
    "../../deps/bgfx/examples/01-cubes/vs_cubes.sc" >> .args
    "v" >> .args
@@ -35,9 +35,9 @@
    "f" >> .args
    .args (Do loadShader) >= .pshader
 
-  ;;  (BGFX.Shader .vshader .pshader)
+  ;;  (GFX.Shader .vshader .pshader)
 
-  ;;  (BGFX.Draw)
+  ;;  (GFX.Draw)
    ))
 
 (schedule Root main)

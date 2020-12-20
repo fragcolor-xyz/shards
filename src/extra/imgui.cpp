@@ -13,7 +13,7 @@ namespace chainblocks {
 namespace ImGui {
 struct Base {
   static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "ImGui.Context", "The ImGui Context.", Context::Info));
+      "GUI.Context", "The ImGui Context.", Context::Info));
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -1902,43 +1902,43 @@ struct PlotBars : public PlottableBase {
 };
 
 void registerImGuiBlocks() {
-  REGISTER_CBLOCK("ImGui.Style", Style);
-  REGISTER_CBLOCK("ImGui.Window", Window);
-  REGISTER_CBLOCK("ImGui.ChildWindow", ChildWindow);
-  REGISTER_CBLOCK("ImGui.CheckBox", CheckBox);
-  REGISTER_CBLOCK("ImGui.Text", Text);
-  REGISTER_CBLOCK("ImGui.Button", Button);
-  REGISTER_CBLOCK("ImGui.HexViewer", HexViewer);
-  REGISTER_CBLOCK("ImGui.SameLine", SameLine);
-  REGISTER_CBLOCK("ImGui.Separator", Separator);
-  REGISTER_CBLOCK("ImGui.Indent", Indent);
-  REGISTER_CBLOCK("ImGui.Unindent", Unindent);
-  REGISTER_CBLOCK("ImGui.TreeNode", TreeNode);
-  REGISTER_CBLOCK("ImGui.IntInput", IntInput);
-  REGISTER_CBLOCK("ImGui.FloatInput", FloatInput);
-  REGISTER_CBLOCK("ImGui.Int2Input", Int2Input);
-  REGISTER_CBLOCK("ImGui.Int3Input", Int3Input);
-  REGISTER_CBLOCK("ImGui.Int4Input", Int4Input);
-  REGISTER_CBLOCK("ImGui.Float2Input", Float2Input);
-  REGISTER_CBLOCK("ImGui.Float3Input", Float3Input);
-  REGISTER_CBLOCK("ImGui.Float4Input", Float4Input);
-  REGISTER_CBLOCK("ImGui.IntDrag", IntDrag);
-  REGISTER_CBLOCK("ImGui.FloatDrag", FloatDrag);
-  REGISTER_CBLOCK("ImGui.Int2Drag", Int2Drag);
-  REGISTER_CBLOCK("ImGui.Int3Drag", Int3Drag);
-  REGISTER_CBLOCK("ImGui.Int4Drag", Int4Drag);
-  REGISTER_CBLOCK("ImGui.Float2Drag", Float2Drag);
-  REGISTER_CBLOCK("ImGui.Float3Drag", Float3Drag);
-  REGISTER_CBLOCK("ImGui.Float4Drag", Float4Drag);
-  REGISTER_CBLOCK("ImGui.TextInput", TextInput);
-  REGISTER_CBLOCK("ImGui.Image", Image);
-  REGISTER_CBLOCK("ImGui.Plot", Plot);
-  REGISTER_CBLOCK("ImGui.PlotLine", PlotLine);
-  REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
-  REGISTER_CBLOCK("ImGui.PlotScatter", PlotScatter);
-  REGISTER_CBLOCK("ImGui.PlotBars", PlotBars);
-  REGISTER_CBLOCK("ImGui.GetClipboard", GetClipboard);
-  REGISTER_CBLOCK("ImGui.SetClipboard", SetClipboard);
+  REGISTER_CBLOCK("GUI.Style", Style);
+  REGISTER_CBLOCK("GUI.Window", Window);
+  REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
+  REGISTER_CBLOCK("GUI.CheckBox", CheckBox);
+  REGISTER_CBLOCK("GUI.Text", Text);
+  REGISTER_CBLOCK("GUI.Button", Button);
+  REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
+  REGISTER_CBLOCK("GUI.SameLine", SameLine);
+  REGISTER_CBLOCK("GUI.Separator", Separator);
+  REGISTER_CBLOCK("GUI.Indent", Indent);
+  REGISTER_CBLOCK("GUI.Unindent", Unindent);
+  REGISTER_CBLOCK("GUI.TreeNode", TreeNode);
+  REGISTER_CBLOCK("GUI.IntInput", IntInput);
+  REGISTER_CBLOCK("GUI.FloatInput", FloatInput);
+  REGISTER_CBLOCK("GUI.Int2Input", Int2Input);
+  REGISTER_CBLOCK("GUI.Int3Input", Int3Input);
+  REGISTER_CBLOCK("GUI.Int4Input", Int4Input);
+  REGISTER_CBLOCK("GUI.Float2Input", Float2Input);
+  REGISTER_CBLOCK("GUI.Float3Input", Float3Input);
+  REGISTER_CBLOCK("GUI.Float4Input", Float4Input);
+  REGISTER_CBLOCK("GUI.IntDrag", IntDrag);
+  REGISTER_CBLOCK("GUI.FloatDrag", FloatDrag);
+  REGISTER_CBLOCK("GUI.Int2Drag", Int2Drag);
+  REGISTER_CBLOCK("GUI.Int3Drag", Int3Drag);
+  REGISTER_CBLOCK("GUI.Int4Drag", Int4Drag);
+  REGISTER_CBLOCK("GUI.Float2Drag", Float2Drag);
+  REGISTER_CBLOCK("GUI.Float3Drag", Float3Drag);
+  REGISTER_CBLOCK("GUI.Float4Drag", Float4Drag);
+  REGISTER_CBLOCK("GUI.TextInput", TextInput);
+  REGISTER_CBLOCK("GUI.Image", Image);
+  REGISTER_CBLOCK("GUI.Plot", Plot);
+  REGISTER_CBLOCK("GUI.PlotLine", PlotLine);
+  REGISTER_CBLOCK("GUI.PlotDigital", PlotDigital);
+  REGISTER_CBLOCK("GUI.PlotScatter", PlotScatter);
+  REGISTER_CBLOCK("GUI.PlotBars", PlotBars);
+  REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
+  REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

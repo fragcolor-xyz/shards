@@ -1,31 +1,31 @@
 \ Proof of concept for a forth inspired scripting language
 : action 2 Pause "This happened 2 seconds later" Msg Chain ;
 : Root Node ;
-Title: "My Window" Width: 400 Height: 200 BGFX.MainWindow
-Title: "My ImGui Window" Width: 400 Height: 200 PosX: 0 PosY: 0 
+Title: "My Window" Width: 400 Height: 200 GFX.MainWindow
+Title: "My ImGui Window" Width: 400 Height: 200 PosX: 0 PosY: 0
 Contents: [
-  "Hello world"     ImGui.Text
-  "Hello world 2"   ImGui.Text
-  "Hello world 3"   ImGui.Text
-  "Hello world 4"   ImGui.SameLine ImGui.Text
-  [ "Action!" Msg action Detach ] "Push me!" ImGui.Button
-  ImGui.CheckBox .state Set
-  [ "Hello optional world" ImGui.Text
+  "Hello world"     GUI.Text
+  "Hello world 2"   GUI.Text
+  "Hello world 3"   GUI.Text
+  "Hello world 4"   GUI.SameLine GUI.Text
+  [ "Action!" Msg action Detach ] "Push me!" GUI.Button
+  GUI.CheckBox .state Set
+  [ "Hello optional world" GUI.Text
     0.02 1.0 f2       .seq Push
     1 2 i2            .seq Push
     0 0 0 0 1 12 3 b  .seq Push
     255 255 255 255 c .seq Push
     .seq Log
     0.02 1.0 f2       \ Float2
-    1 2 i2            \ Int2      
-    0 0 0 0 1 12 3 b  \ Bytes  
+    1 2 i2            \ Int2
+    0 0 0 0 1 12 3 b  \ Bytes
     255 255 255 255 c \ Color
     s .seq2 Set       \ Seq and assign to .seq2
-    Log 
+    Log
     \ assert .seq2 == .seq
     .seq Assert.Is] [ true Is ] When
-] ImGui.Window
-BGFX.Draw
+] GUI.Window
+GFX.Draw
 Looped: Chain
 Root schedule
 0.02 Root run

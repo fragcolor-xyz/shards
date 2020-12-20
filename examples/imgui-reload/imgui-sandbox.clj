@@ -3,15 +3,15 @@
    "Reloadable"
 
    "Hello world!"
-   (ImGui.Text)
+   (GUI.Text)
 
    "Next text"
-   (ImGui.Text)
+   (GUI.Text)
 
-   (ImGui.CheckBox "Yes/No" "cbox1")
-   (ImGui.Text)
+   (GUI.CheckBox "Yes/No" "cbox1")
+   (GUI.Text)
 
-   (ImGui.Separator)
+   (GUI.Separator)
 
-   (ImGui.TextInput "Say something" "text1")
-   (ImGui.Text)))
+   (GUI.TextInput "Say something" "text1")
+   (GUI.Text)))
