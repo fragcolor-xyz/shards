@@ -11,27 +11,27 @@
    Root
    (Chain
     "MainLoop" :Looped
-    (GFX.MainWindow :Title "My Window"
-                     :Width 400 :Height 200)
-    (GUI.Window "My ImGui Window"
-                  :Width 400 :Height 200
-                  :PosX 0 :PosY 0
-                  :Contents
-                  ~["Hello world"   (GUI.Text)
-                    "Hello world 2" (GUI.Text)
-                    "Hello world 3" (GUI.Text)
-                    "Hello world 4" (GUI.SameLine) (GUI.Text)
-                    (GUI.Button "Push me!"
-                                  ~[(Msg "Action!")
-                                    (Await (Log "Hello worker!"))
-                                    action >= .chainVar
-                                    (ChainRunner .chainVar :Mode RunChainMode.Detached)
+    (GFX.MainWindow
+     :Title "My Window" :Width 400 :Height 200
+     :Contents
+     ~[(GUI.Window "My ImGui Window"
+                   :Width 400 :Height 200
+                   :PosX 0 :PosY 0
+                   :Contents
+                   ~["Hello world"   (GUI.Text)
+                     "Hello world 2" (GUI.Text)
+                     "Hello world 3" (GUI.Text)
+                     "Hello world 4" (GUI.SameLine) (GUI.Text)
+                     (GUI.Button "Push me!"
+                                 ~[(Msg "Action!")
+                                   (Await (Log "Hello worker!"))
+                                   action >= .chainVar
+                                   (ChainRunner .chainVar :Mode RunChainMode.Detached)
                                     ;; (Detach action)
-                                    ])
-                    (GUI.CheckBox)
-                    (When (Is true)
-                          ~["Hello optional world"
-                            (GUI.Text)])])
-    (GFX.Draw)))
+                                   ])
+                     (GUI.CheckBox)
+                     (When (Is true)
+                           ~["Hello optional world"
+                             (GUI.Text)])])])))
 
   (run Root 0.02))

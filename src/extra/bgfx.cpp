@@ -46,19 +46,17 @@ struct BaseWindow : public Base {
   void *_sysWnd = nullptr;
 #endif
 
-  const static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Title", "The title of the window to create.",
-                        CoreInfo::StringType),
-      ParamsInfo::Param("Width", "The width of the window to create",
-                        CoreInfo::IntType),
-      ParamsInfo::Param("Height", "The height of the window to create.",
-                        CoreInfo::IntType));
+  static inline Parameters params{
+      {"Title", "The title of the window to create.", {CoreInfo::StringType}},
+      {"Width", "The width of the window to create", {CoreInfo::IntType}},
+      {"Height", "The height of the window to create.", {CoreInfo::IntType}},
+      {"Contents", "The contents of this window.", {CoreInfo::BlocksOrNone}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return params; }
 
   bool _initDone = false;
   std::string _title;
@@ -68,6 +66,7 @@ struct BaseWindow : public Base {
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
   CBVar *_nativeWnd = nullptr;
+  BlocksVar _blocks;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -79,6 +78,9 @@ struct BaseWindow : public Base {
       break;
     case 2:
       _height = int(value.payload.intValue);
+      break;
+    case 3:
+      _blocks = value;
       break;
     default:
       break;
@@ -93,6 +95,8 @@ struct BaseWindow : public Base {
       return Var(_width);
     case 2:
       return Var(_height);
+    case 3:
+      return _blocks;
     default:
       return Var::Empty;
     }
@@ -109,10 +113,6 @@ struct MainWindow : public BaseWindow {
       ExposedInfo::ProtectedVariable("GUI.Context", "The ImGui Context.",
                                      chainblocks::ImGui::Context::Info));
 
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(exposedInfo);
-  }
-
   Context _bgfx_context{};
   chainblocks::ImGui::Context _imgui_context{};
   int32_t _wheelScroll = 0;
@@ -126,10 +126,20 @@ struct MainWindow : public BaseWindow {
         throw CBException("GFX.MainWindow must be unique, found another use!");
       }
     }
+
+    CBInstanceData dataCopy = data;
+    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[0]);
+    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[1]);
+    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[2]);
+    _blocks.compose(dataCopy);
+
     return data.inputType;
   }
 
   void cleanup() {
+    // cleanup before releasing the resources
+    _blocks.cleanup();
+
     _imgui_context.Reset();
 
     if (_initDone) {
@@ -202,134 +212,139 @@ struct MainWindow : public BaseWindow {
   }
 
   void warmup(CBContext *context) {
-    if (!_initDone) {
-      auto initErr = SDL_Init(SDL_INIT_EVENTS);
-      if (initErr != 0) {
-        LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
-        throw ActivationError("Failed to initialize SDL");
+    auto initErr = SDL_Init(SDL_INIT_EVENTS);
+    if (initErr != 0) {
+      LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
+      throw ActivationError("Failed to initialize SDL");
+    }
+
+    registerRunLoopCallback("fragcolor.bgfx.ospump", [] {
+      sdlEvents.clear();
+      SDL_Event event;
+      while (SDL_PollEvent(&event)) {
+        sdlEvents.push_back(event);
       }
+    });
 
-      registerRunLoopCallback("fragcolor.bgfx.ospump", [] {
-        sdlEvents.clear();
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-          sdlEvents.push_back(event);
-        }
-      });
+    bgfx::Init initInfo{};
 
-      bgfx::Init initInfo{};
-
-      // try to see if global native window is set
-      _nativeWnd = referenceVariable(context, "fragcolor.bgfx.nativewindow");
-      if (_nativeWnd->valueType == Object &&
-          _nativeWnd->payload.objectVendorId == CoreCC &&
-          _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
-        _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
-        // TODO SDL_CreateWindowFrom to enable inputs etc...
-        // specially for iOS thing is that we pass context as variable, not a
-        // window object we might need 2 variables in the end
-      } else {
+    // try to see if global native window is set
+    _nativeWnd = referenceVariable(context, "fragcolor.bgfx.nativewindow");
+    if (_nativeWnd->valueType == Object &&
+        _nativeWnd->payload.objectVendorId == CoreCC &&
+        _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
+      _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
+      // TODO SDL_CreateWindowFrom to enable inputs etc...
+      // specially for iOS thing is that we pass context as variable, not a
+      // window object we might need 2 variables in the end
+    } else {
 #if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
-        SDL_SysWMinfo winInfo{};
-        SDL_version sdlVer{};
+      SDL_SysWMinfo winInfo{};
+      SDL_version sdlVer{};
 #endif
-        Uint32 flags = SDL_WINDOW_SHOWN;
+      Uint32 flags = SDL_WINDOW_SHOWN;
 #ifdef __APPLE__
-        flags |= SDL_WINDOW_METAL;
+      flags |= SDL_WINDOW_METAL;
 #endif
-        // TODO: SDL_WINDOW_ALLOW_HIGHDPI
-        // TODO: SDL_WINDOW_RESIZABLE
-        // TODO: SDL_WINDOW_BORDERLESS
-        _window =
-            SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                             SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+      // TODO: SDL_WINDOW_ALLOW_HIGHDPI
+      // TODO: SDL_WINDOW_RESIZABLE
+      // TODO: SDL_WINDOW_BORDERLESS
+      _window =
+          SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
+                           SDL_WINDOWPOS_CENTERED, _width, _height, flags);
 
 #if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
-        SDL_VERSION(&sdlVer);
-        winInfo.version = sdlVer;
-        if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-          throw ActivationError("Failed to call SDL_GetWindowWMInfo");
-        }
+      SDL_VERSION(&sdlVer);
+      winInfo.version = sdlVer;
+      if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
+        throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+      }
 #endif
 
 #ifdef __APPLE__
 #ifdef SDL_VIDEO_DRIVER_UIKIT
-        _metalView = SDL_Metal_CreateView(_window);
-        _sysWnd = SDL_Metal_GetLayer(_metalView);
+      _metalView = SDL_Metal_CreateView(_window);
+      _sysWnd = SDL_Metal_GetLayer(_metalView);
 #else
-        _metalView = SDL_Metal_CreateView(_window);
-        _sysWnd = SDL_Metal_GetLayer(_metalView);
+      _metalView = SDL_Metal_CreateView(_window);
+      _sysWnd = SDL_Metal_GetLayer(_metalView);
 #endif
 #elif defined(_WIN32)
-        _sysWnd = winInfo.info.win.window;
+      _sysWnd = winInfo.info.win.window;
 #elif defined(__linux__)
-        _sysWnd = (void *)winInfo.info.x11.window;
+      _sysWnd = (void *)winInfo.info.x11.window;
 #elif defined(__EMSCRIPTEN__)
-        _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
+      _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
-      }
-
-      _nativeWnd->valueType = Object;
-      _nativeWnd->payload.objectValue = _sysWnd;
-      _nativeWnd->payload.objectVendorId = CoreCC;
-      _nativeWnd->payload.objectTypeId = BgfxNativeWindowCC;
-
-      // Ensure clicks will happen even from out of focus!
-      SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-
-      initInfo.platformData.nwh = _sysWnd;
-      initInfo.resolution.width = _width;
-      initInfo.resolution.height = _height;
-      initInfo.resolution.reset = BGFX_RESET_VSYNC;
-      if (!bgfx::init(initInfo)) {
-        throw ActivationError("Failed to initialize BGFX");
-      }
-
-      _imgui_context.Reset();
-      _imgui_context.Set();
-
-      imguiCreate();
-
-      ImGuiIO &io = ::ImGui::GetIO();
-
-      // Keyboard mapping. ImGui will use those indices to peek into the
-      // io.KeysDown[] array.
-      io.KeyMap[ImGuiKey_Tab] = SDL_SCANCODE_TAB;
-      io.KeyMap[ImGuiKey_LeftArrow] = SDL_SCANCODE_LEFT;
-      io.KeyMap[ImGuiKey_RightArrow] = SDL_SCANCODE_RIGHT;
-      io.KeyMap[ImGuiKey_UpArrow] = SDL_SCANCODE_UP;
-      io.KeyMap[ImGuiKey_DownArrow] = SDL_SCANCODE_DOWN;
-      io.KeyMap[ImGuiKey_PageUp] = SDL_SCANCODE_PAGEUP;
-      io.KeyMap[ImGuiKey_PageDown] = SDL_SCANCODE_PAGEDOWN;
-      io.KeyMap[ImGuiKey_Home] = SDL_SCANCODE_HOME;
-      io.KeyMap[ImGuiKey_End] = SDL_SCANCODE_END;
-      io.KeyMap[ImGuiKey_Insert] = SDL_SCANCODE_INSERT;
-      io.KeyMap[ImGuiKey_Delete] = SDL_SCANCODE_DELETE;
-      io.KeyMap[ImGuiKey_Backspace] = SDL_SCANCODE_BACKSPACE;
-      io.KeyMap[ImGuiKey_Space] = SDL_SCANCODE_SPACE;
-      io.KeyMap[ImGuiKey_Enter] = SDL_SCANCODE_RETURN;
-      io.KeyMap[ImGuiKey_Escape] = SDL_SCANCODE_ESCAPE;
-      io.KeyMap[ImGuiKey_KeyPadEnter] = SDL_SCANCODE_RETURN2;
-      io.KeyMap[ImGuiKey_A] = SDL_SCANCODE_A;
-      io.KeyMap[ImGuiKey_C] = SDL_SCANCODE_C;
-      io.KeyMap[ImGuiKey_V] = SDL_SCANCODE_V;
-      io.KeyMap[ImGuiKey_X] = SDL_SCANCODE_X;
-      io.KeyMap[ImGuiKey_Y] = SDL_SCANCODE_Y;
-      io.KeyMap[ImGuiKey_Z] = SDL_SCANCODE_Z;
-
-      io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
-      io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
-
-      bgfx::setViewRect(0, 0, 0, _width, _height);
-      bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
-                         1.0f, 0);
-
-      _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-      _bgfxCtx = referenceVariable(context, "GFX.Context");
-      _imguiCtx = referenceVariable(context, "GUI.Context");
-
-      _initDone = true;
     }
+
+    _nativeWnd->valueType = Object;
+    _nativeWnd->payload.objectValue = _sysWnd;
+    _nativeWnd->payload.objectVendorId = CoreCC;
+    _nativeWnd->payload.objectTypeId = BgfxNativeWindowCC;
+
+    // Ensure clicks will happen even from out of focus!
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
+    initInfo.platformData.nwh = _sysWnd;
+    initInfo.resolution.width = _width;
+    initInfo.resolution.height = _height;
+    initInfo.resolution.reset = BGFX_RESET_VSYNC;
+    if (!bgfx::init(initInfo)) {
+      throw ActivationError("Failed to initialize BGFX");
+    }
+
+    _imgui_context.Reset();
+    _imgui_context.Set();
+
+    imguiCreate();
+
+    ImGuiIO &io = ::ImGui::GetIO();
+
+    // Keyboard mapping. ImGui will use those indices to peek into the
+    // io.KeysDown[] array.
+    io.KeyMap[ImGuiKey_Tab] = SDL_SCANCODE_TAB;
+    io.KeyMap[ImGuiKey_LeftArrow] = SDL_SCANCODE_LEFT;
+    io.KeyMap[ImGuiKey_RightArrow] = SDL_SCANCODE_RIGHT;
+    io.KeyMap[ImGuiKey_UpArrow] = SDL_SCANCODE_UP;
+    io.KeyMap[ImGuiKey_DownArrow] = SDL_SCANCODE_DOWN;
+    io.KeyMap[ImGuiKey_PageUp] = SDL_SCANCODE_PAGEUP;
+    io.KeyMap[ImGuiKey_PageDown] = SDL_SCANCODE_PAGEDOWN;
+    io.KeyMap[ImGuiKey_Home] = SDL_SCANCODE_HOME;
+    io.KeyMap[ImGuiKey_End] = SDL_SCANCODE_END;
+    io.KeyMap[ImGuiKey_Insert] = SDL_SCANCODE_INSERT;
+    io.KeyMap[ImGuiKey_Delete] = SDL_SCANCODE_DELETE;
+    io.KeyMap[ImGuiKey_Backspace] = SDL_SCANCODE_BACKSPACE;
+    io.KeyMap[ImGuiKey_Space] = SDL_SCANCODE_SPACE;
+    io.KeyMap[ImGuiKey_Enter] = SDL_SCANCODE_RETURN;
+    io.KeyMap[ImGuiKey_Escape] = SDL_SCANCODE_ESCAPE;
+    io.KeyMap[ImGuiKey_KeyPadEnter] = SDL_SCANCODE_RETURN2;
+    io.KeyMap[ImGuiKey_A] = SDL_SCANCODE_A;
+    io.KeyMap[ImGuiKey_C] = SDL_SCANCODE_C;
+    io.KeyMap[ImGuiKey_V] = SDL_SCANCODE_V;
+    io.KeyMap[ImGuiKey_X] = SDL_SCANCODE_X;
+    io.KeyMap[ImGuiKey_Y] = SDL_SCANCODE_Y;
+    io.KeyMap[ImGuiKey_Z] = SDL_SCANCODE_Z;
+
+    io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
+    io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
+
+    bgfx::setViewRect(0, 0, 0, _width, _height);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF, 1.0f,
+                       0);
+
+    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+    _bgfxCtx = referenceVariable(context, "GFX.Context");
+    _imguiCtx = referenceVariable(context, "GUI.Context");
+
+    // populate them here too to allow warmup operation
+    *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
+    *_bgfxCtx = Var::Object(&_bgfx_context, CoreCC, BgfxContextCC);
+    *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
+                             chainblocks::ImGui::ImGuiContextCC);
+
+    // init blocks after we initialize the system
+    _blocks.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -404,118 +419,14 @@ struct MainWindow : public BaseWindow {
 
     imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height);
 
-    return input;
-  }
-};
+    // activate the blocks and render
+    CBVar output{};
+    _blocks.activate(context, input, output);
 
-/*
-struct Window : public BaseWindow {
-// WIP/TODO
-
-bgfx::FrameBufferHandle _frameBuffer = BGFX_INVALID_HANDLE;
-bgfx::ViewId _viewId; // todo manage
-chainblocks::ImGui::Context _imgui_context{};
-int32_t _wheelScroll = 0;
-
-void cleanup() {
-_imgui_context.Reset();
-
-if (_initDone) {
-  if (bgfx::isValid(_frameBuffer)) {
-    bgfx::destroy(_frameBuffer);
-  }
-  SDL_DestroyWindow(_window);
-  _window = nullptr;
-  _sdlWinVar = nullptr;
-  _sysWnd = nullptr;
-  _initDone = false;
-  _wheelScroll = 0;
-}
-}
-
-CBVar activate(CBContext *context, const CBVar &input) {
-if (!_initDone) {
-  SDL_SysWMinfo winInfo{};
-  SDL_version sdlVer{};
-  Uint32 flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN;
-  _window =
-      SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, _width, _height, flags);
-  SDL_VERSION(&sdlVer);
-  winInfo.version = sdlVer;
-  if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-    throw ActivationError("Failed to call SDL_GetWindowWMInfo");
-  }
-
-#ifdef __APPLE__
-  _sysWnd = winInfo.info.cocoa.window;
-#elif defined(_WIN32)
-  _sysWnd = winInfo.info.win.window;
-#endif
-  _frameBuffer = bgfx::createFrameBuffer(_sysWnd, _width, _height);
-
-  bgfx::setViewRect(_viewId, 0, 0, _width, _height);
-  bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                     0x303030FF, 1.0f, 0);
-
-  _sdlWinVar = findVariable(context, "GFX.CurrentWindow");
-  _imguiCtx = findVariable(context, "GUI.Context");
-
-  _initDone = true;
-}
-
-// Set them always as they might override each other during the chain
-*_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
-*_imguiCtx = Var::Object(&_imgui_context, CoreCC,
-                         chainblocks::ImGui::ImGuiContextCC);
-
-// Touch view 0
-bgfx::touch(_viewId);
-
-_imgui_context.Set();
-
-// Draw imgui and deal with inputs
-int32_t mouseX, mouseY;
-uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
-uint8_t imbtns = 0;
-if (mouseBtns & SDL_BUTTON(SDL_BUTTON_LEFT)) {
-  imbtns = imbtns | IMGUI_MBUT_LEFT;
-}
-if (mouseBtns & SDL_BUTTON(SDL_BUTTON_RIGHT)) {
-  imbtns = imbtns | IMGUI_MBUT_RIGHT;
-}
-if (mouseBtns & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
-  imbtns = imbtns | IMGUI_MBUT_MIDDLE;
-}
-
-// find mouse wheel events
-for (auto &event : MainWindow::sdlEvents) {
-  if (event.type == SDL_MOUSEWHEEL) {
-    _wheelScroll += event.wheel.y;
-    // This is not needed seems.. not even on MacOS Natural On/Off
-    // if (event.wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-    //   _wheelScroll += event.wheel.y;
-    // else
-    //   _wheelScroll -= event.wheel.y;
-  }
-}
-
-imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height,
-                _viewId);
-
-return input;
-}
-};
-*/
-
-struct Draw : public BaseConsumer {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
+    // finish up with this frame
     imguiEndFrame();
     bgfx::frame();
+
     return input;
   }
 };
@@ -799,7 +710,6 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
 
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
-  REGISTER_CBLOCK("GFX.Draw", Draw);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
 
   using GraphicsShader = Shader<'g'>;
