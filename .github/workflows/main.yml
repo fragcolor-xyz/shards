@@ -294,7 +294,6 @@ jobs:
         ./cbl ../src/tests/flows.clj
         ./cbl ../src/tests/kdtree.clj
         ./cbl ../src/tests/channels.clj
-        ./cbl ../src/tests/genetic.clj
         ./cbl ../src/tests/imaging.clj
         ./cbl ../src/tests/http.clj
         ./cbl ../src/tests/ws.clj
