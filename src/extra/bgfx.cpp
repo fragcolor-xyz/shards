@@ -10,7 +10,8 @@
 /*
 TODO
 
-(GFX.Model :Vertices [] :Indices []) >= .mymodel
+(GFX.Camera ...)
+(GFX.Model :Layout [] :Vertices [] :Indices []) >= .mymodel
 (GFX.Draw :Model .mymodel :Shader .myshader), input world matrices (multiple =
 possible instanced rendering)
 */
@@ -112,15 +113,6 @@ struct BaseWindow : public Base {
 };
 
 struct MainWindow : public BaseWindow {
-  const static inline ExposedInfo exposedInfo = ExposedInfo(
-      ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
-                                     "The exposed SDL window.",
-                                     BaseConsumer::windowType),
-      ExposedInfo::ProtectedVariable("GFX.Context", "The BGFX Context.",
-                                     Context::Info),
-      ExposedInfo::ProtectedVariable("GUI.Context", "The ImGui Context.",
-                                     chainblocks::ImGui::Context::Info));
-
   Context _bgfx_context{};
   chainblocks::ImGui::Context _imgui_context{};
   int32_t _wheelScroll = 0;
@@ -136,9 +128,16 @@ struct MainWindow : public BaseWindow {
     }
 
     CBInstanceData dataCopy = data;
-    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[0]);
-    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[1]);
-    arrayPush(dataCopy.shared, exposedInfo._innerInfo.elements[2]);
+    arrayPush(dataCopy.shared,
+              ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
+                                             "The exposed SDL window.",
+                                             BaseConsumer::windowType));
+    arrayPush(dataCopy.shared,
+              ExposedInfo::ProtectedVariable("GFX.Context", "The BGFX Context.",
+                                             Context::Info));
+    arrayPush(dataCopy.shared, ExposedInfo::ProtectedVariable(
+                                   "GUI.Context", "The ImGui Context.",
+                                   chainblocks::ImGui::Context::Info));
     _blocks.compose(dataCopy);
 
     return data.inputType;
