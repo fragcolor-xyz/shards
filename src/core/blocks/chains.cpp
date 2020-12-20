@@ -35,18 +35,7 @@ struct ChainBase {
        {CoreInfo::BoolType}}};
 
   static inline Parameters runChainParamsInfo{
-      {"Chain", "The chain to run.", {ChainTypes}},
-      {"Passthrough",
-       "The input of this block will be the output. Not used if Detached.",
-       {CoreInfo::BoolType}},
-      {"Mode",
-       "The way to run the chain. Inline: will run the sub chain inline within "
-       "the root chain, a pause in the child chain will pause the root too; "
-       "Detached: will run the chain separately in the same node, a pause in "
-       "this chain will not pause the root; Stepped: the chain will run as a "
-       "child, the root will tick the chain every activation of this block and "
-       "so a child pause won't pause the root.",
-       {ModeType}}};
+      {"Chain", "The chain to run.", {ChainTypes}}};
 
   ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
@@ -687,7 +676,13 @@ struct BaseRunner : public ChainBase {
   }
 };
 
+template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE>
 struct RunChain : public BaseRunner {
+  void setup() {
+    passthrough = INPUT_PASSTHROUGH;
+    mode = CHAIN_MODE;
+  }
+
   static CBParametersInfo parameters() { return runChainParamsInfo; }
 
   void setParam(int index, const CBVar &value) {
@@ -695,31 +690,19 @@ struct RunChain : public BaseRunner {
     case 0:
       chainref = value;
       break;
-    case 1:
-      passthrough = value.payload.boolValue;
-      break;
-    case 2:
-      mode = RunChainMode(value.payload.enumValue);
-      break;
     default:
       break;
     }
-    // make sure to reset!
-    cleanup();
   }
 
   CBVar getParam(int index) {
     switch (index) {
     case 0:
       return chainref;
-    case 1:
-      return Var(passthrough);
-    case 2:
-      return Var::Enum(mode, CoreCC, 'runC');
     default:
       break;
     }
-    return Var();
+    return Var::Empty;
   }
 
   void warmup(CBContext *context) {
@@ -731,12 +714,16 @@ struct RunChain : public BaseRunner {
     if (unlikely(!chain))
       return input;
 
-    if (mode == RunChainMode::Detached) {
+    if constexpr (CHAIN_MODE == RunChainMode::Detached) {
       activateDetached(context, input);
       return input;
-    } else if (mode == RunChainMode::Stepped) {
+    } else if constexpr (CHAIN_MODE == RunChainMode::Stepped) {
       activateStepMode(context, input);
-      return passthrough ? input : chain->previousOutput;
+      if constexpr (INPUT_PASSTHROUGH) {
+        return input;
+      } else {
+        return chain->previousOutput;
+      }
     } else {
       // Run within the root flow
       auto runRes = runSubChain(chain.get(), context, input);
@@ -745,10 +732,12 @@ struct RunChain : public BaseRunner {
         // running the sub chain, stop the parent too
         context->stopFlow(runRes.output);
         return runRes.output;
-      } else if (passthrough) {
-        return input;
       } else {
-        return runRes.output;
+        if constexpr (INPUT_PASSTHROUGH) {
+          return input;
+        } else {
+          return runRes.output;
+        }
       }
     }
   }
@@ -783,7 +772,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     default:
       break;
     }
-    return Var();
+    return Var::Empty;
   }
 
   void cleanup() { BaseRunner::cleanup(); }
@@ -1370,7 +1359,14 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("Start", Start);
   REGISTER_CBLOCK("WaitChain", WaitChain);
   REGISTER_CBLOCK("StopChain", StopChain);
-  REGISTER_CBLOCK("RunChain", RunChain);
+  using RunChainDo = RunChain<false, RunChainMode::Inline>;
+  REGISTER_CBLOCK("Do", RunChainDo);
+  using RunChainDispatch = RunChain<true, RunChainMode::Inline>;
+  REGISTER_CBLOCK("Dispatch", RunChainDispatch);
+  using RunChainDetach = RunChain<true, RunChainMode::Detached>;
+  REGISTER_CBLOCK("Detach", RunChainDetach);
+  using RunChainStep = RunChain<false, RunChainMode::Stepped>;
+  REGISTER_CBLOCK("Step", RunChainStep);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
   REGISTER_CBLOCK("Recur", Recur);

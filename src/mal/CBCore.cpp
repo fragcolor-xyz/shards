@@ -170,27 +170,17 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
       "args args-inner)))))",
       env);
-  rep("(def! Do (fn* [chain] (RunChain chain :Passthrough false :Mode "
-      "RunChainMode.Inline)))",
-      env);
-  rep("(def! Dispatch (fn* [chain] (RunChain chain :Passthrough true :Mode "
-      "RunChainMode.Inline)))",
-      env);
-  rep("(def! Detach (fn* [chain] (RunChain chain :Passthrough true :Mode "
-      "RunChainMode.Detached)))",
-      env);
-  rep("(def! Step (fn* [chain] (RunChain chain :Passthrough false :Mode "
-      "RunChainMode.Stepped)))",
-      env);
   rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
       "to))))",
       env);
   rep("(def || Await)", env);
-#ifdef _WIN32
+#if defined(_WIN32)
   rep("(def platform \"windows\")", env);
-#elif __linux__
+#elif defined(__EMSCRIPTEN__)
+  rep("(def platform \"emscripten\")", env);
+#elif defined(__linux__)
   rep("(def platform \"linux\")", env);
-#elif __APPLE__
+#elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
 }

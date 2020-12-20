@@ -7,6 +7,14 @@
 #include "SDL_syswm.h"
 #include <cstdlib>
 
+/*
+TODO
+
+(GFX.Model :Vertices [] :Indices []) >= .mymodel
+(GFX.Draw :Model .mymodel :Shader .myshader), input world matrices (multiple =
+possible instanced rendering)
+*/
+
 using namespace chainblocks;
 
 namespace BGFX {
