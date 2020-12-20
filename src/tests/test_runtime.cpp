@@ -368,7 +368,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     LOG(INFO) << s1; // logging coverage
   }
 
-  SECTION("Seq-Var") {
+  SECTION("std::vector-Var") {
     std::vector<Var> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
     REQUIRE(v1.valueType == CBType::Seq);
@@ -466,10 +466,16 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v1 >= v7);
     REQUIRE(s1 >= s7);
 
+    auto hash1 = hash(v1);
+    auto hash2 = hash(v2);
+    auto hash3 = hash(v3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+
     LOG(INFO) << v1;
   }
 
-  SECTION("Seq-CBVar") {
+  SECTION("std::vector-CBVar") {
     std::vector<CBVar> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
     REQUIRE(v1.valueType == CBType::Seq);
@@ -512,7 +518,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     LOG(INFO) << v1;
   }
 
-  SECTION("Array-Var") {
+  SECTION("std::array-Var") {
     std::array<Var, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
     REQUIRE(v1.valueType == CBType::Seq);
@@ -544,7 +550,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     LOG(INFO) << v1;
   }
 
-  SECTION("Array-CBVar") {
+  SECTION("std::array-CBVar") {
     std::array<CBVar, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
     REQUIRE(v1.valueType == CBType::Seq);
@@ -633,6 +639,12 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v1 == v1);
     REQUIRE(v1 <= v1);
     REQUIRE_FALSE(v1 < v1);
+
+    auto hash1 = hash(v1);
+    auto hash2 = hash(v2);
+    auto hash3 = hash(v3);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
 
     LOG(INFO) << v1;
   }
