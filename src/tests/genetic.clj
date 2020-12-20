@@ -30,7 +30,7 @@
     15)
    .best
    (Take 1)
-   (ToJson)
+   (ToJson false)
    (Log)
    ))
 
