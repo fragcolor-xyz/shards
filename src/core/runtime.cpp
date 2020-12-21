@@ -1278,13 +1278,13 @@ void validateConnection(ValidationContext &ctx) {
     };
 
     // Pass all we got in the context!
-    // TODO caching, this is repeated many times
-    // anyway won't influence run perf
+    // notice that blocks might add new records to this array
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
         chainblocks::arrayPush(data.shared, type);
       }
     }
+    DEFER(chainblocks::arrayFree(data.shared));
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -1330,8 +1330,6 @@ void validateConnection(ValidationContext &ctx) {
                ctx.userData);
       }
     }
-
-    chainblocks::arrayFree(data.shared);
   } else {
     // Short-cut if it's just one type and not any type
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
