@@ -865,71 +865,32 @@ private:
 
 class Chain {
 public:
-  template <typename String>
-  Chain(String name) : _name(name), _looped(false), _unsafe(false) {}
-  Chain() : _looped(false), _unsafe(false) {}
+  Chain(std::string_view name);
 
-  template <typename String, typename... Vars>
-  Chain &block(String name, Vars... params) {
-    std::string blockName(name);
-    auto blk = createBlock(blockName.c_str());
-    blk->setup(blk);
+  Chain &block(std::string_view name, std::vector<Var> params);
 
+  template <typename... Vars>
+  Chain &block(std::string_view name, Vars... params) {
     std::vector<Var> vars = {Var(params)...};
-    for (size_t i = 0; i < vars.size(); i++) {
-      blk->setParam(blk, int(i), &vars[i]);
-    }
-
-    _blocks.push_back(blk);
-    return *this;
+    return block(name, vars);
   }
+
+  Chain &let(Var value);
 
   template <typename V> Chain &let(V value) {
-    auto blk = createBlock("Const");
-    blk->setup(blk);
     auto val = Var(value);
-    blk->setParam(blk, 0, &val);
-    _blocks.push_back(blk);
-    return *this;
+    return let(val);
   }
 
-  Chain &looped(bool looped) {
-    _looped = looped;
-    return *this;
-  }
+  Chain &looped(bool looped);
+  Chain &unsafe(bool unsafe);
+  Chain &name(std::string_view name);
 
-  Chain &unsafe(bool unsafe) {
-    _unsafe = unsafe;
-    return *this;
-  }
-
-  template <typename String> Chain &name(String name) {
-    _name = name;
-    return *this;
-  }
-
-  operator std::shared_ptr<CBChain>();
-
-  // -- LEAKS --
-  // operator CBVar() {
-  //   CBVar res{};
-  //   res.valueType = Seq;
-  //   for (auto blk : _blocks) {
-  //     CBVar blkVar{};
-  //     blkVar.valueType = Block;
-  //     blkVar.payload.blockValue = blk;
-  //     stbds_arrpush(res.payload.seqValue, blkVar);
-  //   }
-  //   // blocks are unique so drain them here
-  //   _blocks.clear();
-  //   return res;
-  // }
+  CBChain *operator->() { return _chain.get(); }
+  CBChain *get() { return _chain.get(); }
 
 private:
-  std::string _name;
-  bool _looped;
-  bool _unsafe;
-  std::vector<CBlock *> _blocks;
+  std::shared_ptr<CBChain> _chain;
 };
 } // namespace chainblocks
 

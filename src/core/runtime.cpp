@@ -1883,15 +1883,42 @@ void installSignalHandlers() {
   std::signal(SIGSEGV, &error_handler);
 }
 
-Chain::operator std::shared_ptr<CBChain>() {
-  auto chain = CBChain::make(_name);
-  chain->looped = _looped;
-  for (auto blk : _blocks) {
-    chain->addBlock(blk);
+Chain::Chain(std::string_view name) : _chain(CBChain::make(name)) {}
+
+Chain &Chain::looped(bool looped) {
+  _chain->looped = looped;
+  return *this;
+}
+
+Chain &Chain::unsafe(bool unsafe) {
+  _chain->unsafe = unsafe;
+  return *this;
+}
+
+Chain &Chain::name(std::string_view name) {
+  _chain->name = name;
+  return *this;
+}
+
+Chain &Chain::block(std::string_view name, std::vector<Var> params) {
+  auto blk = createBlock(name.data());
+  blk->setup(blk);
+
+  const auto psize = params.size();
+  for (size_t i = 0; i < psize; i++) {
+    blk->setParam(blk, int(i), &params[i]);
   }
-  // blocks are unique so drain them here
-  _blocks.clear();
-  return chain;
+
+  _chain->addBlock(blk);
+  return *this;
+}
+
+Chain &Chain::let(Var value) {
+  auto blk = createBlock("Const");
+  blk->setup(blk);
+  blk->setParam(blk, 0, &value);
+  _chain->addBlock(blk);
+  return *this;
 }
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,

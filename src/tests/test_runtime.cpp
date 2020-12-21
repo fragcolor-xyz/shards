@@ -713,13 +713,13 @@ TEST_CASE("CXX-Chain-DSL") {
   registerCoreBlocks();
 
   // TODO, improve this
-  auto chain1 = std::shared_ptr<CBChain>(chainblocks::Chain("test-chain")
-                                             .looped(true)
-                                             .let(1)
-                                             .block("Log")
-                                             .block("Math.Add", 2)
-                                             .block("Assert.Is", 3, true));
-  assert(chain1->blocks.size() == 4);
+  auto chain = chainblocks::Chain("test-chain")
+                   .looped(true)
+                   .let(1)
+                   .block("Log")
+                   .block("Math.Add", 2)
+                   .block("Assert.Is", 3, true);
+  assert(chain->blocks.size() == 4);
 }
 
 TEST_CASE("DynamicArray") {
