@@ -67,7 +67,6 @@ struct BaseWindow : public Base {
 
   static CBParametersInfo parameters() { return params; }
 
-  bool _initDone = false;
   std::string _title;
   int _width = 1024;
   int _height = 768;
@@ -116,6 +115,8 @@ struct MainWindow : public BaseWindow {
   Context _bgfx_context{};
   chainblocks::ImGui::Context _imgui_context{};
   int32_t _wheelScroll = 0;
+  bool _bgfxInit{false};
+
   // TODO thread_local? anyway sort multiple threads
   static inline std::vector<SDL_Event> sdlEvents;
 
@@ -149,11 +150,12 @@ struct MainWindow : public BaseWindow {
 
     _imgui_context.Reset();
 
-    if (_initDone) {
+    if (_bgfxInit) {
       imguiDestroy();
       bgfx::shutdown();
-      unregisterRunLoopCallback("fragcolor.bgfx.ospump");
     }
+
+    unregisterRunLoopCallback("fragcolor.bgfx.ospump");
 
 #ifdef __APPLE__
     if (_metalView) {
@@ -201,8 +203,8 @@ struct MainWindow : public BaseWindow {
 
     _window = nullptr;
     _sysWnd = nullptr;
-    _initDone = false;
     _wheelScroll = 0;
+    _bgfxInit = false;
   }
 
   static inline char *_clipboardContents{nullptr};
@@ -299,6 +301,8 @@ struct MainWindow : public BaseWindow {
     initInfo.resolution.reset = BGFX_RESET_VSYNC;
     if (!bgfx::init(initInfo)) {
       throw ActivationError("Failed to initialize BGFX");
+    } else {
+      _bgfxInit = true;
     }
 
     _imgui_context.Reset();
