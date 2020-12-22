@@ -79,6 +79,13 @@ struct Type {
     return res;
   }
 
+  static Type Enum(int32_t vendorId, int32_t typeId) {
+    Type res;
+    res._type = {CBType::Enum,
+                 {.enumeration = {.vendorId = vendorId, .typeId = typeId}}};
+    return res;
+  }
+
   static Type TableOf(CBTypesInfo types) {
     Type res;
     res._type = {CBType::Table, {.table = {.types = types}}};

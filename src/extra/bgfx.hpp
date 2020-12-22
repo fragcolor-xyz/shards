@@ -10,10 +10,10 @@
 using namespace chainblocks;
 
 namespace BGFX {
-constexpr uint32_t BgfxTextureHandleCC = 'bgfT';
-constexpr uint32_t BgfxShaderHandleCC = 'bgfS';
-constexpr uint32_t BgfxContextCC = 'bgfx';
-constexpr uint32_t BgfxNativeWindowCC = 'bgfW';
+constexpr uint32_t BgfxTextureHandleCC = 'gfxT';
+constexpr uint32_t BgfxShaderHandleCC = 'gfxS';
+constexpr uint32_t BgfxContextCC = 'gfx ';
+constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 
 struct NativeWindow {
   static inline Type Info{

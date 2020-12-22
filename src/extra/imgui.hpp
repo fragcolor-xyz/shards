@@ -12,7 +12,7 @@ namespace ImGuiExtra {
 
 namespace chainblocks {
 namespace ImGui {
-constexpr uint32_t ImGuiContextCC = 'ImGu';
+constexpr uint32_t ImGuiContextCC = 'gui ';
 
 struct Context {
   static inline Type Info{

@@ -31,7 +31,7 @@ struct IDContext {
 
 struct Style : public Base {
   static inline Type styleEnumInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'ImGS'}}}};
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiS'}}}};
 
   enum ImGuiStyle {
     Alpha,
@@ -119,7 +119,7 @@ struct Style : public Base {
   };
 
   typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
-  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", CoreCC, 'ImGS'};
+  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", CoreCC, 'guiS'};
 
   ImGuiStyle _key{};
 
@@ -141,7 +141,7 @@ struct Style : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var::Enum(_key, CoreCC, 'ImGS');
+      return Var::Enum(_key, CoreCC, 'guiS');
     default:
       return Var::Empty;
     }
@@ -934,7 +934,7 @@ struct Button : public Base {
   CBTypesInfo outputType() { return CoreInfo::BoolType; }
 
   static inline Type buttonTypeInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'ImGB'}}}};
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiB'}}}};
 
   enum ButtonTypes {
     Normal,
@@ -947,7 +947,7 @@ struct Button : public Base {
   };
 
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
-  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'ImGB'};
+  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'guiB'};
 
   BlocksVar _blks{};
   ButtonTypes _type{};
@@ -997,7 +997,7 @@ struct Button : public Base {
     case 1:
       return _blks;
     case 2:
-      return Var::Enum(_type, CoreCC, 'ImGB');
+      return Var::Enum(_type, CoreCC, 'guiB');
     case 3:
       return Var(_size.x, _size.x);
     default:
