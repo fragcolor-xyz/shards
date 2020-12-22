@@ -687,7 +687,7 @@ CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
     complete = true;
   });
 
-  while (!complete) {
+  while (!complete && context->shouldContinue()) {
     if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
   }
@@ -727,7 +727,7 @@ void await(CBContext *context, std::function<void()> func) {
     complete = true;
   });
 
-  while (!complete) {
+  while (!complete && context->shouldContinue()) {
     if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
   }
