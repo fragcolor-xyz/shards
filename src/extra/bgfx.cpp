@@ -808,11 +808,7 @@ void registerBGFXBlocks() {
 #undef CHECK
 #endif
 
-#ifdef Always
-#undef Always
-#endif
-
-#include <catch2/catch_all.hpp>
+#include <catch2/catch.hpp>
 
 namespace chainblocks {
 namespace BGFX_Tests {
