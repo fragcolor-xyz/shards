@@ -4,13 +4,8 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
 #include "SDL.h"
-#include <cstdlib>
-
-#ifdef __cplusplus
-extern "C" {
 #include "SDL_syswm.h"
-}
-#endif
+#include <cstdlib>
 
 /*
 TODO
@@ -808,7 +803,15 @@ void registerBGFXBlocks() {
 }; // namespace BGFX
 
 #ifdef CB_INTERNAL_TESTS
+
+#ifdef CHECK
 #undef CHECK
+#endif
+
+#ifdef Always
+#undef Always
+#endif
+
 #include <catch2/catch_all.hpp>
 
 namespace chainblocks {
