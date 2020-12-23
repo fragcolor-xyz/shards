@@ -773,3 +773,31 @@ TEST_CASE("DynamicArray") {
   assert(ts.len == 0);
   assert(ts.cap == 0);
 }
+
+TEST_CASE("Type") {
+  SECTION("TableOf") {
+    Types VerticesSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type,
+                            CoreInfo::Float3Type, CoreInfo::ColorType}};
+    Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
+    Types IndicesSeqTypes{{
+        CoreInfo::IntType,  // Triangle strip
+        CoreInfo::Int2Type, // Line list
+        CoreInfo::Int3Type  // Triangle list
+    }};
+    Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
+    Types InputTableTypes{{VerticesSeq, IndicesSeq}};
+    std::array<CBString, 2> InputTableKeys{"Vertices", "Indices"};
+    Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
+
+    CBTypeInfo t1 = InputTable;
+    REQUIRE(t1.basicType == CBType::Table);
+    REQUIRE(t1.table.types.len == 2);
+    REQUIRE(t1.table.keys.len == 2);
+    REQUIRE(std::string(t1.table.keys.elements[0]) == "Vertices");
+    REQUIRE(std::string(t1.table.keys.elements[1]) == "Indices");
+    CBTypeInfo verticesSeq = VerticesSeq;
+    CBTypeInfo indicesSeq = IndicesSeq;
+    REQUIRE(t1.table.types.elements[0] == verticesSeq);
+    REQUIRE(t1.table.types.elements[1] == indicesSeq);
+  }
+}
