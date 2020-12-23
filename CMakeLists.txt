@@ -954,7 +954,7 @@ add_dependencies(libCatch2Main catch2)
 
 # when building tests override some defines to enable internal (inside .cpp) tests
 if(BUILD_INTERNAL_TESTS)
-  set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp PROPERTIES COMPILE_FLAGS -DCB_INTERNAL_TESTS=1)
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp PROPERTIES COMPILE_FLAGS -DCB_INTERNAL_TESTS)
 endif()
 
 add_executable(

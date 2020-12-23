@@ -4,8 +4,13 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
 #include "SDL.h"
-#include "SDL_syswm.h"
 #include <cstdlib>
+
+#ifdef __cplusplus
+extern "C" {
+#include "SDL_syswm.h"
+}
+#endif
 
 /*
 TODO
