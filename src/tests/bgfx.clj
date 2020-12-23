@@ -1,5 +1,29 @@
 (def! Root (Node))
 
+(def cube
+  {:Vertices
+   [(Float3 -1.0  1.0  1.0) 0xff000000
+    (Float3  1.0  1.0  1.0) 0xff0000ff
+    (Float3 -1.0 -1.0  1.0) 0xff00ff00
+    (Float3  1.0 -1.0  1.0) 0xff00ffff
+    (Float3 -1.0  1.0 -1.0) 0xffff0000
+    (Float3  1.0  1.0 -1.0) 0xffff00ff
+    (Float3 -1.0 -1.0 -1.0) 0xffffff00
+    (Float3  1.0 -1.0 -1.0) 0xffffffff]
+   :Indices
+   [(Int3 0 1 2)
+    (Int3 1 3 2)
+    (Int3 4 6 5)
+    (Int3 5 6 7)
+    (Int3 0 2 4)
+    (Int3 4 2 6)
+    (Int3 1 5 3)
+    (Int3 5 7 3)
+    (Int3 0 4 1)
+    (Int3 4 5 1)
+    (Int3 2 3 6)
+    (Int3 6 3 7)]})
+
 (schedule
  Root
  (Chain
@@ -14,6 +38,9 @@
              (LoadImage "../../assets/drawing.png")
              (GFX.Texture2D)
              (Set "image1" :Global true)
+            ;;  cube (GFX.Model
+            ;;        :Layout [VertexAttribute.Position
+            ;;                 VertexAttribute.Color0]) >= .cube
              false (Set "checkBoxie"))))
      (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024 :PosX 0 :PosY 0 :Contents
                  (-->

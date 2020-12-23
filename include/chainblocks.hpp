@@ -92,6 +92,16 @@ struct Type {
     return res;
   }
 
+  template <size_t N>
+  static Type TableOf(CBTypesInfo types, const std::array<CBString, N> &keys) {
+    Type res;
+    auto &k = const_cast<std::array<CBString, N> &>(keys);
+    res._type = {
+        CBType::Table,
+        {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+    return res;
+  }
+
 private:
   CBTypeInfo _type;
 };
@@ -808,6 +818,7 @@ inline void ForEach(const CBTable &table,
       },
       &f);
 }
+
 class ChainProvider {
   // used specially for live editing chains, from host languages
 public:

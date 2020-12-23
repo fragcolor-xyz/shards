@@ -781,6 +781,21 @@ struct Model {
                                                          CoreCC, 'gfxV'};
   static inline Type VertexAttributeType = Type::Enum(CoreCC, 'gfxV');
   static inline Type VertexAttributeSeqType = Type::SeqOf(VertexAttributeType);
+
+  static inline Types VerticesSeqTypes{
+      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
+       CoreInfo::ColorType}};
+  static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
+  static inline Types IndicesSeqTypes{{
+      CoreInfo::IntType,  // Triangle strip
+      CoreInfo::Int2Type, // Line list
+      CoreInfo::Int3Type  // Triangle list
+  }};
+  static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
+  static inline Types InputTableTypes{{VerticesSeq, IndicesSeq}};
+  static inline std::array<CBString, 2> InputTableKeys{"Vertices", "Indices"};
+  static inline Type InputTable =
+      Type::TableOf(InputTableTypes, InputTableKeys);
 };
 
 void registerBGFXBlocks() {
