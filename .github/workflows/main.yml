@@ -181,7 +181,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
         ninja rust_blocks && ninja test_runtime && ninja test_extra
     - name: Test
       env:
