@@ -741,6 +741,47 @@ struct Model {
     TexCoord7, //!< a_texcoord7
   };
 
+  static bgfx::Attrib::Enum toBgfx(VertexAttribute attribute) {
+    switch (attribute) {
+    case VertexAttribute::Position:
+      return bgfx::Attrib::Position;
+    case VertexAttribute::Normal:
+      return bgfx::Attrib::Normal;
+    case VertexAttribute::Tangent:
+      return bgfx::Attrib::Tangent;
+    case VertexAttribute::Bitangent:
+      return bgfx::Attrib::Bitangent;
+    case VertexAttribute::Color0:
+      return bgfx::Attrib::Color0;
+    case VertexAttribute::Color1:
+      return bgfx::Attrib::Color1;
+    case VertexAttribute::Color2:
+      return bgfx::Attrib::Color2;
+    case VertexAttribute::Color3:
+      return bgfx::Attrib::Color3;
+    case VertexAttribute::Indices:
+      return bgfx::Attrib::Indices;
+    case VertexAttribute::Weight:
+      return bgfx::Attrib::Weight;
+    case VertexAttribute::TexCoord0:
+      return bgfx::Attrib::TexCoord0;
+    case VertexAttribute::TexCoord1:
+      return bgfx::Attrib::TexCoord1;
+    case VertexAttribute::TexCoord2:
+      return bgfx::Attrib::TexCoord2;
+    case VertexAttribute::TexCoord3:
+      return bgfx::Attrib::TexCoord3;
+    case VertexAttribute::TexCoord4:
+      return bgfx::Attrib::TexCoord4;
+    case VertexAttribute::TexCoord5:
+      return bgfx::Attrib::TexCoord5;
+    case VertexAttribute::TexCoord6:
+      return bgfx::Attrib::TexCoord6;
+    case VertexAttribute::TexCoord7:
+      return bgfx::Attrib::TexCoord7;
+    }
+  }
+
   typedef EnumInfo<VertexAttribute> VertexAttributeInfo;
   static inline VertexAttributeInfo sVertexAttributeInfo{"VertexAttribute",
                                                          CoreCC, 'gfxV'};

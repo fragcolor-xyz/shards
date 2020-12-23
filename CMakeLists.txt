@@ -135,7 +135,7 @@ if(USE_LTO)
   ## this is nice but sets thin LTO, we don't want that
   # set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
   # set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=True)
-  
+
   add_compile_options(-flto)
   add_link_options(-flto)
   set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_C_FLAGS=-flto)
@@ -438,7 +438,7 @@ add_dependencies(libwasm3 wasm3)
 
 if(NOT BUILD_CORE_ONLY)
   add_compile_definitions(
-    CB_WITH_EXTRAS 
+    CB_WITH_EXTRAS
     BIMG_DECODE_ENABLE=0
     SDL_RENDER_DISABLED=1
     )
@@ -467,7 +467,7 @@ if(NOT BUILD_CORE_ONLY)
   else()
     set(libsdlfile ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/lib/libSDL2.a)
   endif()
-  
+
   if(X86_IOS_SIMULATOR)
     ExternalProject_Add(sdl_a
       URL ${CHAINBLOCKS_DIR}/deps/SDL
@@ -529,7 +529,7 @@ if(NOT BUILD_CORE_ONLY)
         ${CB_PLATFORM_LIBS}
 	      )
     endif()
-  elseif(APPLE)  
+  elseif(APPLE)
     add_compile_definitions(BGFX_CONFIG_RENDERER_METAL SDL_VIDEO_OPENGL_EGL=0)
 
     include_directories(
@@ -544,9 +544,9 @@ if(NOT BUILD_CORE_ONLY)
 
     if(IOS)
       enable_language(ASM)
-      
+
       if(X86 OR X86_IOS_SIMULATOR)
-        set(PLATFORM_SOURCES 
+        set(PLATFORM_SOURCES
           ${PLATFORM_SOURCES}
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
@@ -554,7 +554,7 @@ if(NOT BUILD_CORE_ONLY)
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
         )
       else()
-        set(PLATFORM_SOURCES 
+        set(PLATFORM_SOURCES
           ${PLATFORM_SOURCES}
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
           ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_arm64_aapcs_macho_gas.S
@@ -575,14 +575,14 @@ if(NOT BUILD_CORE_ONLY)
       "-framework Security"
       -liconv
       )
-    
+
     if(IOS)
       set(CB_PLATFORM_LIBS
           ${CB_PLATFORM_LIBS}
           "-framework hidapi"
           "-framework AVFoundation"
           "-framework GameController"
-          "-framework CoreMotion" 
+          "-framework CoreMotion"
           "-framework CoreGraphics"
           "-framework CoreHaptics"
           "-framework UIKit")
@@ -597,14 +597,14 @@ if(NOT BUILD_CORE_ONLY)
     if(NOT EMSCRIPTEN)
       add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL)
     else()
-      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES)  
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES)
     endif()
 
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos
       ${CMAKE_CURRENT_BINARY_DIR}/sdl_a/include/SDL2
       )
-      
+
     set(PLATFORM_SOURCES
       ${CHAINBLOCKS_DIR}/deps/bgfx/src/amalgamated.cpp
       )
@@ -634,7 +634,7 @@ if(NOT BUILD_CORE_ONLY)
   else()
     set_target_properties(libsnappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
   endif()
-  
+
   set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp)
   set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/snappy.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h)
 
@@ -656,11 +656,11 @@ if(NOT BUILD_CORE_ONLY)
   add_library(libbrotlicommon-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlicommon-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlicommon-static PROPERTIES 
+    set_target_properties(libbrotlicommon-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
       )
   else()
-    set_target_properties(libbrotlicommon-static PROPERTIES 
+    set_target_properties(libbrotlicommon-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
       )
   endif()
@@ -668,11 +668,11 @@ if(NOT BUILD_CORE_ONLY)
   add_library(libbrotlidec-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlidec-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlidec-static PROPERTIES 
+    set_target_properties(libbrotlidec-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
       )
   else()
-    set_target_properties(libbrotlidec-static PROPERTIES 
+    set_target_properties(libbrotlidec-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
       )
   endif()
@@ -680,11 +680,11 @@ if(NOT BUILD_CORE_ONLY)
   add_library(libbrotlienc-static STATIC IMPORTED GLOBAL)
   add_dependencies(libbrotlienc-static brotli_a)
   if(IOS)
-    set_target_properties(libbrotlienc-static PROPERTIES 
+    set_target_properties(libbrotlienc-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
       )
   else()
-    set_target_properties(libbrotlienc-static PROPERTIES 
+    set_target_properties(libbrotlienc-static PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
       )
   endif()
@@ -730,13 +730,13 @@ if(NOT BUILD_CORE_ONLY)
     endif()
   else()
     if(EMSCRIPTEN)
-      set(RUST_BUILD_SUBDIR wasm32-unknown-emscripten/release)    
+      set(RUST_BUILD_SUBDIR wasm32-unknown-emscripten/release)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=wasm32-unknown-emscripten)
     elseif(X86_IOS_SIMULATOR)
-      set(RUST_BUILD_SUBDIR x86_64-apple-ios/release)    
+      set(RUST_BUILD_SUBDIR x86_64-apple-ios/release)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=x86_64-apple-ios)
     elseif(IOS)
-      set(RUST_BUILD_SUBDIR aarch64-apple-ios/release)    
+      set(RUST_BUILD_SUBDIR aarch64-apple-ios/release)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release --target=aarch64-apple-ios)
     elseif(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
       set(RUST_BUILD_SUBDIR i686-pc-windows-gnu/release)
@@ -746,7 +746,7 @@ if(NOT BUILD_CORE_ONLY)
       set(RUST_BUILD_OPTIONS ${RUST_BUILD_OPTIONS} --release)
     endif()
   endif()
-    
+
   if(NOT SKIP_RUST_BINDGEN)
     # So we got issues when building win32 and libclang...
     # let's bindgen on win64 only and the other OSs
@@ -814,7 +814,7 @@ set(RUNTIME_SRC
 
 if(NOT CB_NO_BIGINT_BLOCKS)
   set(
-    RUNTIME_SRC 
+    RUNTIME_SRC
     ${RUNTIME_SRC}
     ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp)
 else()
@@ -864,7 +864,7 @@ add_dependencies(cb_shared libwasm3)
 set(EXTRA_LIBS ${EXTRA_LIBS} libwasm3)
 
 if(NOT BUILD_CORE_ONLY)
-  add_dependencies(cb_static cb_rust_static) 
+  add_dependencies(cb_static cb_rust_static)
   add_dependencies(cb_shared cb_rust_static)
   set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
 
@@ -961,3 +961,13 @@ add_dependencies(test_runtime libCatch2Main)
 add_dependencies(test_runtime cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/include)
 target_link_libraries(test_runtime ${CB_RUNTIME_LIBS} libCatch2Main libCatch2 ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
+
+add_executable(
+  test_extra
+  "${CHAINBLOCKS_DIR}/src/tests/test_extra.cpp"
+  )
+add_dependencies(test_extra libCatch2)
+add_dependencies(test_extra libCatch2Main)
+add_dependencies(test_extra cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/include)
+target_link_libraries(test_extra ${CB_RUNTIME_LIBS} libCatch2Main libCatch2 ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
