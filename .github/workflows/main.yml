@@ -124,7 +124,7 @@ jobs:
         mkdir build
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
-        ninja rust_blocks && ninja cbl && ninja test_runtime
+        ninja rust_blocks && ninja cbl
     - name: Test
       env:
         RUST_BACKTRACE: 1
@@ -150,7 +150,6 @@ jobs:
         ./cbl ../src/tests/failures.clj
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/shell.clj
-        ./test_runtime
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
@@ -159,14 +158,54 @@ jobs:
     - name: CodeCov
       run: |
         mkdir coverage
-        lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
+        lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
         lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
         genhtml coverage/coverage.f.info --output-directory coverage/output
         bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
-    - uses: actions/upload-artifact@master
+    # - uses: actions/upload-artifact@master
+    #   with:
+    #     name: coverage
+    #     path: coverage/output
+
+  Linux-Coverage-Tests:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup
+      run: |
+        git submodule update --init --recursive
+        sudo apt-get -y update
+        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb
+        rustup update
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS ..
+        ninja rust_blocks && ninja test_runtime && ninja test_extra
+    - name: Test
+      env:
+        RUST_BACKTRACE: 1
+      run: |
+        cd build
+        ./test_runtime
+    - name: Test Headless
+      uses: chainblocks/xvfb-action@v1
       with:
-        name: coverage
-        path: coverage/output
+        working-directory: ./build
+        run: |
+          ./test_extra
+    - name: CodeCov
+      run: |
+        mkdir coverage
+        lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
+        lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
+        genhtml coverage/coverage.f.info --output-directory coverage/output
+        bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+    # - uses: actions/upload-artifact@master
+    #   with:
+    #     name: coverage
+    #     path: coverage/output
 
   Linux-Release-Docker:
     runs-on: ubuntu-20.04

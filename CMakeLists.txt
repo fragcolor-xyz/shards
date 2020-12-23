@@ -952,6 +952,11 @@ add_library(libCatch2Main STATIC IMPORTED GLOBAL)
 set_target_properties(libCatch2Main PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/Catch2-deps/lib/libCatch2Main.a)
 add_dependencies(libCatch2Main catch2)
 
+# when building tests override some defines to enable internal (inside .cpp) tests
+if(BUILD_INTERNAL_TESTS)
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp PROPERTIES COMPILE_FLAGS -DCB_INTERNAL_TESTS=1)
+endif()
+
 add_executable(
   test_runtime
   "${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp"

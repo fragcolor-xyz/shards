@@ -15,7 +15,7 @@ inline std::string type2Name(CBType type) {
   switch (type) {
   case EndOfBlittableTypes:
     // this should never happen
-    throw std::runtime_error("EndOfBlittableTypes is an invalid type");
+    throw chainblocks::CBException("EndOfBlittableTypes is an invalid type");
   case None:
     name = "None";
     break;

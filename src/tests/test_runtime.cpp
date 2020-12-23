@@ -1,10 +1,12 @@
 #include <random>
 
-#include <catch2/catch_all.hpp>
-
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
 #include "../core/runtime.hpp"
+
+#undef CHECK
+
+#include <catch2/catch_all.hpp>
 
 using namespace chainblocks;
 

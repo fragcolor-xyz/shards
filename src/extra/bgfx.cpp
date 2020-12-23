@@ -779,6 +779,8 @@ struct Model {
       return bgfx::Attrib::TexCoord6;
     case VertexAttribute::TexCoord7:
       return bgfx::Attrib::TexCoord7;
+    default:
+      throw CBException("Invalid toBgfx case");
     }
   }
 
@@ -799,3 +801,52 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
 }
 }; // namespace BGFX
+
+#ifdef CB_INTERNAL_TESTS
+#undef CHECK
+#include <catch2/catch_all.hpp>
+
+namespace chainblocks {
+namespace BGFX_Tests {
+void testVertexAttribute() {
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Position) ==
+          bgfx::Attrib::Position);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Normal) ==
+          bgfx::Attrib::Normal);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Tangent) ==
+          bgfx::Attrib::Tangent);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Bitangent) ==
+          bgfx::Attrib::Bitangent);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Color0) ==
+          bgfx::Attrib::Color0);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Color1) ==
+          bgfx::Attrib::Color1);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Color2) ==
+          bgfx::Attrib::Color2);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Color3) ==
+          bgfx::Attrib::Color3);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Indices) ==
+          bgfx::Attrib::Indices);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Weight) ==
+          bgfx::Attrib::Weight);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord0) ==
+          bgfx::Attrib::TexCoord0);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord1) ==
+          bgfx::Attrib::TexCoord1);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord2) ==
+          bgfx::Attrib::TexCoord2);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord3) ==
+          bgfx::Attrib::TexCoord3);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord4) ==
+          bgfx::Attrib::TexCoord4);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord5) ==
+          bgfx::Attrib::TexCoord5);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord6) ==
+          bgfx::Attrib::TexCoord6);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord7) ==
+          bgfx::Attrib::TexCoord7);
+}
+
+} // namespace BGFX_Tests
+} // namespace chainblocks
+#endif
