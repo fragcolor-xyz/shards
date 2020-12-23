@@ -579,7 +579,7 @@ struct Var : public CBVar {
     std::vector<T> res;
     res.resize(payload.seqValue.len);
     for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = T(Var(payload.seqValue.elements[i]));
+      res[i] = T(*reinterpret_cast<Var*>(&payload.seqValue.elements[i]));
     }
     return res;
   }
@@ -590,7 +590,7 @@ struct Var : public CBVar {
     }
     std::vector<Var> res{size_t(payload.seqValue.len)};
     for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = Var(payload.seqValue.elements[i]);
+      res[i] = *reinterpret_cast<Var*>(&payload.seqValue.elements[i]);
     }
     return res;
   }

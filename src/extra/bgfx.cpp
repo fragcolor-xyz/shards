@@ -810,6 +810,17 @@ struct Model {
   void setParam(int index, const CBVar &value) {
     _layout = std::vector<Var>(Var(value));
   }
+
+  CBVar getParam(int index) { return Var(_layout); }
+
+  ModelHandle *_output{nullptr};
+
+  void cleanup() {
+    if (_output) {
+      ModelHandle::Var.Reset(_output);
+      _output = nullptr;
+    }
+  }
 };
 
 void registerBGFXBlocks() {

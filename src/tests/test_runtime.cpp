@@ -393,6 +393,15 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     Var v7(s7);
     std::vector<Var> s77 = std::vector<Var>(v7);
     std::vector<int> i77 = std::vector<int>(v7);
+    REQUIRE_THROWS(([&](){
+      std::vector<bool> f77 = std::vector<bool>(v7);
+      return true;
+    }()));
+    REQUIRE_THROWS(([&](){
+      Var empty{};
+      std::vector<Var> f77 = std::vector<Var>(empty);
+      return true;
+    }()));
     REQUIRE(i77[2] == 30);
     REQUIRE(s7 == s77);
     REQUIRE(v7.valueType == CBType::Seq);

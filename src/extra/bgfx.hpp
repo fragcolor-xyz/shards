@@ -12,6 +12,7 @@ using namespace chainblocks;
 namespace BGFX {
 constexpr uint32_t BgfxTextureHandleCC = 'gfxT';
 constexpr uint32_t BgfxShaderHandleCC = 'gfxS';
+constexpr uint32_t BgfxModelHandleCC = 'gfxM';
 constexpr uint32_t BgfxContextCC = 'gfx ';
 constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 
@@ -65,6 +66,41 @@ struct ShaderHandle {
     if (handle.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handle);
     }
+  }
+};
+
+struct ModelHandle {
+  static inline Type ModelHandleType{
+      {CBType::Object,
+       {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
+
+  typedef ObjectVar<ModelHandle> VarInfo;
+  static inline VarInfo Var{"BGFX-Model", CoreCC, BgfxModelHandleCC};
+
+  struct StaticModel {
+    bgfx::VertexBufferHandle vb;
+    bgfx::IndexBufferHandle ib;
+  };
+
+  struct DynamicModel {
+    bgfx::DynamicVertexBufferHandle vb;
+    bgfx::DynamicIndexBufferHandle ib;
+  };
+
+  std::variant<StaticModel, DynamicModel> model{
+      StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
+
+  ~ModelHandle() {
+    std::visit(
+        [](auto &m) {
+          if (m.vb.idx != bgfx::kInvalidHandle) {
+            bgfx::destroy(m.vb);
+          }
+          if (m.ib.idx != bgfx::kInvalidHandle) {
+            bgfx::destroy(m.ib);
+          }
+        },
+        model);
   }
 };
 }; // namespace BGFX
