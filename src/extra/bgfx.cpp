@@ -4,7 +4,6 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
 #include "SDL.h"
-#include "SDL_syswm.h"
 #include <cstdlib>
 
 /*
@@ -24,6 +23,13 @@ struct Base {
 };
 
 constexpr uint32_t windowCC = 'hwnd';
+
+// delay this at end of file, otherwise we pull a header mess
+#if defined(_WIN32)
+HWND SDL_GetNativeWindowPtr(SDL_Window *window);
+#elif defined(__linux__)
+void *SDL_GetNativeWindowPtr(SDL_Window *window);
+#endif
 
 struct BaseConsumer : public Base {
   static inline Type windowType{
@@ -247,10 +253,6 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
-      SDL_SysWMinfo winInfo{};
-      SDL_version sdlVer{};
-#endif
       Uint32 flags = SDL_WINDOW_SHOWN;
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
@@ -262,14 +264,6 @@ struct MainWindow : public BaseWindow {
           SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
                            SDL_WINDOWPOS_CENTERED, _width, _height, flags);
 
-#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
-      SDL_VERSION(&sdlVer);
-      winInfo.version = sdlVer;
-      if (!SDL_GetWindowWMInfo(_window, &winInfo)) {
-        throw ActivationError("Failed to call SDL_GetWindowWMInfo");
-      }
-#endif
-
 #ifdef __APPLE__
 #ifdef SDL_VIDEO_DRIVER_UIKIT
       _metalView = SDL_Metal_CreateView(_window);
@@ -278,10 +272,8 @@ struct MainWindow : public BaseWindow {
       _metalView = SDL_Metal_CreateView(_window);
       _sysWnd = SDL_Metal_GetLayer(_metalView);
 #endif
-#elif defined(_WIN32)
-      _sysWnd = winInfo.info.win.window;
-#elif defined(__linux__)
-      _sysWnd = (void *)winInfo.info.x11.window;
+#elif defined(_WIN32) || defined(__linux__)
+      _sysWnd = SDL_GetNativeWindowPtr(_window);
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
@@ -808,7 +800,7 @@ void registerBGFXBlocks() {
 #undef CHECK
 #endif
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 namespace chainblocks {
 namespace BGFX_Tests {
@@ -853,4 +845,29 @@ void testVertexAttribute() {
 
 } // namespace BGFX_Tests
 } // namespace chainblocks
+#endif
+
+#if defined(_WIN32) || defined(__linux__)
+#include "SDL_syswm.h"
+namespace BGFX {
+#if defined(_WIN32)
+HWND SDL_GetNativeWindowPtr(SDL_Window *window)
+#elif defined(__linux__)
+void *SDL_GetNativeWindowPtr(SDL_Window *window)
+#endif
+{
+  SDL_SysWMinfo winInfo{};
+  SDL_version sdlVer{};
+  SDL_VERSION(&sdlVer);
+  winInfo.version = sdlVer;
+  if (!SDL_GetWindowWMInfo(window, &winInfo)) {
+    throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+  }
+#if defined(_WIN32)
+  return winInfo.info.win.window;
+#elif defined(__linux__)
+  return (void *)winInfo.info.x11.window;
+#endif
+}
+} // namespace BGFX
 #endif
