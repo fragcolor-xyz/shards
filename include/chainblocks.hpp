@@ -572,6 +572,29 @@ struct Var : public CBVar {
     }
   }
 
+  template <typename T> explicit operator std::vector<T>() const {
+    if (valueType != Seq) {
+      throw InvalidVarTypeError("Invalid variable casting! expected Seq");
+    }
+    std::vector<T> res;
+    res.resize(payload.seqValue.len);
+    for (uint32_t i = 0; i < payload.seqValue.len; i++) {
+      res[i] = T(Var(payload.seqValue.elements[i]));
+    }
+    return res;
+  }
+
+  explicit operator std::vector<Var>() const {
+    if (valueType != Seq) {
+      throw InvalidVarTypeError("Invalid variable casting! expected Seq");
+    }
+    std::vector<Var> res{size_t(payload.seqValue.len)};
+    for (uint32_t i = 0; i < payload.seqValue.len; i++) {
+      res[i] = Var(payload.seqValue.elements[i]);
+    }
+    return res;
+  }
+
   constexpr static CBVar Empty{};
   constexpr static CBVar True{{true}, nullptr, 0, CBType::Bool};
   constexpr static CBVar False{{false}, nullptr, 0, CBType::Bool};

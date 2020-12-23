@@ -391,6 +391,10 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v6.valueType == CBType::Seq);
     std::vector<Var> s7{Var(10), Var(20), Var(30), Var(25), Var(35)};
     Var v7(s7);
+    std::vector<Var> s77 = std::vector<Var>(v7);
+    std::vector<int> i77 = std::vector<int>(v7);
+    REQUIRE(i77[2] == 30);
+    REQUIRE(s7 == s77);
     REQUIRE(v7.valueType == CBType::Seq);
     std::vector<Var> s8{Var(10)};
     Var v8(s8);

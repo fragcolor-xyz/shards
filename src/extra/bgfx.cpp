@@ -796,6 +796,20 @@ struct Model {
   static inline std::array<CBString, 2> InputTableKeys{"Vertices", "Indices"};
   static inline Type InputTable =
       Type::TableOf(InputTableTypes, InputTableKeys);
+
+  static CBTypesInfo inputTypes() { return InputTable; }
+  static CBTypesInfo outputTypes() { return InputTable; }
+
+  static inline Parameters params{
+      {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  std::vector<Var> _layout;
+
+  void setParam(int index, const CBVar &value) {
+    _layout = std::vector<Var>(Var(value));
+  }
 };
 
 void registerBGFXBlocks() {
