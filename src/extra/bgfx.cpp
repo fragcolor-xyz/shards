@@ -866,21 +866,47 @@ struct Model {
     for (auto &entry : _layout) {
       auto e = VertexAttribute(entry.payload.enumValue);
       auto elems = 0;
-      auto normalized = false;
       auto atype = bgfx::AttribType::Float;
+      auto normalized = false;
       switch (e) {
-      case VertexAttribute::Position: {
+      case VertexAttribute::Position:
+      case VertexAttribute::Normal:
+      case VertexAttribute::Tangent:
+      case VertexAttribute::Bitangent: {
         elems = 3;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float3);
+      } break;
+      case VertexAttribute::Weight: {
+        elems = 4;
+        atype = bgfx::AttribType::Float;
+        _expectedTypes.emplace_back(CBType::Float4);
+      } break;
+      case VertexAttribute::TexCoord0:
+      case VertexAttribute::TexCoord1:
+      case VertexAttribute::TexCoord2:
+      case VertexAttribute::TexCoord3:
+      case VertexAttribute::TexCoord4:
+      case VertexAttribute::TexCoord5:
+      case VertexAttribute::TexCoord6:
+      case VertexAttribute::TexCoord7: {
+        elems = 2;
+        atype = bgfx::AttribType::Float;
+        _expectedTypes.emplace_back(CBType::Float2);
       } break;
       case VertexAttribute::Color0:
       case VertexAttribute::Color1:
       case VertexAttribute::Color2:
       case VertexAttribute::Color3: {
-        elems = 1;
+        elems = 4;
+        normalized = true;
         atype = bgfx::AttribType::Uint8;
         _expectedTypes.emplace_back(CBType::Color);
+      } break;
+      case VertexAttribute::Indices: {
+        elems = 4;
+        atype = bgfx::AttribType::Uint8;
+        _expectedTypes.emplace_back(CBType::Int4);
       } break;
       default:
         throw ComposeError("Invalid VertexAttribute");
