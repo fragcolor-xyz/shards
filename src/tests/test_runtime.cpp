@@ -849,3 +849,15 @@ TEST_CASE("ObjectVar") {
     REQUIRE(or1->refcount == 1); // will be 0 when chain goes out of scope
   }
 }
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+// in this case we need to call exit our self
+#define CATCH_CONFIG_RUNNER
+#include "catch.hpp"
+
+int main( int argc, char* argv[] ) {
+  int result = Catch::Session().run( argc, argv );
+  exit(0);
+  return result;
+}
+#endif
