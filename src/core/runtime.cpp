@@ -1919,6 +1919,8 @@ Chain &Chain::let(Var value) {
   return *this;
 }
 
+CBChainRef Chain::weakRef() { return CBChain::weakRef(_chain); }
+
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
   memset(&chain->previousOutput, 0x0, sizeof(CBVar));

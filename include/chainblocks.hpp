@@ -579,7 +579,7 @@ struct Var : public CBVar {
     std::vector<T> res;
     res.resize(payload.seqValue.len);
     for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = T(*reinterpret_cast<Var*>(&payload.seqValue.elements[i]));
+      res[i] = T(*reinterpret_cast<Var *>(&payload.seqValue.elements[i]));
     }
     return res;
   }
@@ -590,7 +590,7 @@ struct Var : public CBVar {
     }
     std::vector<Var> res{size_t(payload.seqValue.len)};
     for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = *reinterpret_cast<Var*>(&payload.seqValue.elements[i]);
+      res[i] = *reinterpret_cast<Var *>(&payload.seqValue.elements[i]);
     }
     return res;
   }
@@ -787,6 +787,14 @@ struct Var : public CBVar {
     payload.stringLen = uint32_t(src.length());
   }
 
+  static Var ContextVar(const std::string &src) {
+    Var res;
+    res.valueType = CBType::ContextVar;
+    res.payload.stringValue = src.c_str();
+    res.payload.stringLen = uint32_t(src.length());
+    return res;
+  }
+
   explicit Var(CBTable &src) : CBVar() {
     valueType = Table;
     payload.tableValue = src;
@@ -929,6 +937,9 @@ public:
 
   CBChain *operator->() { return _chain.get(); }
   CBChain *get() { return _chain.get(); }
+
+  operator std::shared_ptr<CBChain>() { return _chain; }
+  CBChainRef weakRef();
 
 private:
   std::shared_ptr<CBChain> _chain;

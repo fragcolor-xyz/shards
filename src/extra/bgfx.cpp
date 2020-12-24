@@ -439,7 +439,7 @@ struct Texture2D : public BaseConsumer {
 
   void cleanup() {
     if (_texture) {
-      Texture::Var.Reset(_texture);
+      Texture::Var.Release(_texture);
       _texture = nullptr;
     }
   }
@@ -463,7 +463,7 @@ struct Texture2D : public BaseConsumer {
         input.payload.imageValue.channels != _texture->channels ||
         bpp != _texture->bpp) {
       if (_texture) {
-        Texture::Var.Reset(_texture);
+        Texture::Var.Release(_texture);
       }
       _texture = Texture::Var.New();
 
@@ -649,7 +649,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
     }
 
     if (_output) {
-      ShaderHandle::Var.Reset(_output);
+      ShaderHandle::Var.Release(_output);
       _output = nullptr;
     }
   }
@@ -677,7 +677,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
       }
 
       if (_output) {
-        ShaderHandle::Var.Reset(_output);
+        ShaderHandle::Var.Release(_output);
       }
       _output = ShaderHandle::Var.New();
       _output->handle = ph;
@@ -702,7 +702,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
       }
 
       if (_output) {
-        ShaderHandle::Var.Reset(_output);
+        ShaderHandle::Var.Release(_output);
       }
       _output = ShaderHandle::Var.New();
       _output->handle = ph;
@@ -817,7 +817,7 @@ struct Model {
 
   void cleanup() {
     if (_output) {
-      ModelHandle::Var.Reset(_output);
+      ModelHandle::Var.Release(_output);
       _output = nullptr;
     }
   }

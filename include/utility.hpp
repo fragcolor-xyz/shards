@@ -237,7 +237,7 @@ public:
     return &r->shared;
   }
 
-  void Reset(E *obj) {
+  void Release(E *obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
     r->refcount--;
     if (r->refcount == 0) {

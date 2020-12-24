@@ -393,11 +393,11 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     Var v7(s7);
     std::vector<Var> s77 = std::vector<Var>(v7);
     std::vector<int> i77 = std::vector<int>(v7);
-    REQUIRE_THROWS(([&](){
+    REQUIRE_THROWS(([&]() {
       std::vector<bool> f77 = std::vector<bool>(v7);
       return true;
     }()));
-    REQUIRE_THROWS(([&](){
+    REQUIRE_THROWS(([&]() {
       Var empty{};
       std::vector<Var> f77 = std::vector<Var>(empty);
       return true;
@@ -812,5 +812,40 @@ TEST_CASE("Type") {
     CBTypeInfo indicesSeq = IndicesSeq;
     REQUIRE(t1.table.types.elements[0] == verticesSeq);
     REQUIRE(t1.table.types.elements[1] == indicesSeq);
+  }
+}
+
+TEST_CASE("ObjectVar") {
+  SECTION("ChainUse") {
+    ObjectVar<int> myobject{"ObjectVarTestObject1", 100, 1};
+    int *o1 = myobject.New();
+    *o1 = 1000;
+    CBVar v1 = myobject.Get(o1);
+    REQUIRE(v1.valueType == CBType::Object);
+    int *vo1 = reinterpret_cast<int *>(v1.payload.objectValue);
+    REQUIRE(*vo1 == 1000);
+    REQUIRE(vo1 == o1);
+
+    // check internal ref count
+    // this is internal magic but needed for testing
+    struct ObjectRef {
+      int shared;
+      uint32_t refcount;
+    };
+    auto or1 = reinterpret_cast<ObjectRef *>(o1);
+    REQUIRE(or1->refcount == 1);
+
+    auto chain = chainblocks::Chain("test-chain")
+                     .let(v1)
+                     .block("Set", "v1")
+                     .block("Set", "v2")
+                     .block("Get", "v1")
+                     .block("Is", Var::ContextVar("v2"))
+                     .block("Assert.Is", true);
+    myobject.Release(o1);
+    auto node = CBNode::make();
+    node->schedule(chain);
+    REQUIRE(node->tick()); // false is chain errors happened
+    REQUIRE(or1->refcount == 1); // will be 0 when chain goes out of scope
   }
 }
