@@ -6,18 +6,18 @@
 
 #undef CHECK
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-// in this case we need to call exit our self
 #define CATCH_CONFIG_RUNNER
 
-int main( int argc, char* argv[] ) {
-  int result = Catch::Session().run( argc, argv );
+#include <catch2/catch_all.hpp>
+
+int main(int argc, char *argv[]) {
+  int result = Catch::Session().run(argc, argv);
+#ifdef __EMSCRIPTEN_PTHREADS__
+  // in this case we need to call exit our self
   exit(0);
+#endif
   return result;
 }
-#endif
-
-#include <catch2/catch_all.hpp>
 
 using namespace chainblocks;
 
