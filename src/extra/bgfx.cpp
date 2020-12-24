@@ -798,28 +798,112 @@ struct Model {
       Type::TableOf(InputTableTypes, InputTableKeys);
 
   static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return InputTable; }
+  static CBTypesInfo outputTypes() { return ModelHandle::ModelHandleType; }
 
   static inline Parameters params{
-      {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}}};
+      {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}},
+      {"Dynamic",
+       "If the model is dynamic and will be optimized to change as often as "
+       "every frame.",
+       {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
 
   std::vector<Var> _layout;
+  std::vector<CBType> _expectedTypes;
+  bool _dynamic{false};
+  ModelHandle *_output{nullptr};
+  bgfx::VertexLayoutHandle _layoutHandle = BGFX_INVALID_HANDLE;
 
   void setParam(int index, const CBVar &value) {
-    _layout = std::vector<Var>(Var(value));
+    switch (index) {
+    case 0:
+      _layout = std::vector<Var>(Var(value));
+      break;
+    case 1:
+      _dynamic = value.payload.boolValue;
+      break;
+    }
   }
 
-  CBVar getParam(int index) { return Var(_layout); }
-
-  ModelHandle *_output{nullptr};
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_layout);
+    case 1:
+      return Var(_dynamic);
+    default:
+      return Var::Empty;
+    }
+  }
 
   void cleanup() {
     if (_output) {
       ModelHandle::Var.Release(_output);
       _output = nullptr;
     }
+
+    if (_layoutHandle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_layoutHandle);
+    }
+    _layoutHandle = BGFX_INVALID_HANDLE;
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_dynamic) {
+      OVERRIDE_ACTIVATE(data, activateDynamic);
+    } else {
+      OVERRIDE_ACTIVATE(data, activateStatic);
+    }
+
+    if (_layoutHandle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_layoutHandle);
+    }
+
+    _expectedTypes.clear();
+    bgfx::VertexLayout layout;
+    layout.begin();
+    for (auto &entry : _layout) {
+      auto e = VertexAttribute(entry.payload.enumValue);
+      auto elems = 0;
+      auto normalized = false;
+      auto atype = bgfx::AttribType::Float;
+      switch (e) {
+      case VertexAttribute::Position: {
+        elems = 3;
+        atype = bgfx::AttribType::Float;
+        _expectedTypes.emplace_back(CBType::Float3);
+      } break;
+      case VertexAttribute::Color0:
+      case VertexAttribute::Color1:
+      case VertexAttribute::Color2:
+      case VertexAttribute::Color3: {
+        elems = 1;
+        atype = bgfx::AttribType::Uint8;
+        _expectedTypes.emplace_back(CBType::Color);
+      } break;
+      default:
+        throw ComposeError("Invalid VertexAttribute");
+      }
+      layout.add(toBgfx(e), elems, atype, normalized);
+    }
+    layout.end();
+
+    _layoutHandle = bgfx::createVertexLayout(layout);
+
+    return ModelHandle::ModelHandleType;
+  }
+
+  CBVar activateStatic(CBContext *context, const CBVar &input) {
+    return ModelHandle::Var.Get(_output);
+  }
+
+  CBVar activateDynamic(CBContext *context, const CBVar &input) {
+    return ModelHandle::Var.Get(_output);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Invalid activation function");
   }
 };
 

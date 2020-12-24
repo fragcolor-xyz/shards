@@ -845,7 +845,7 @@ TEST_CASE("ObjectVar") {
     myobject.Release(o1);
     auto node = CBNode::make();
     node->schedule(chain);
-    REQUIRE(node->tick()); // false is chain errors happened
+    REQUIRE(node->tick());       // false is chain errors happened
     REQUIRE(or1->refcount == 1); // will be 0 when chain goes out of scope
   }
 }
