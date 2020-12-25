@@ -11,7 +11,7 @@
 namespace chainblocks {
 namespace BGFX_Tests {
   extern void testVertexAttribute();
-  extern void testModelInputLayoutPacking();
+  //extern void testModelInputLayoutPacking();
 }
 }
 

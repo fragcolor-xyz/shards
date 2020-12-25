@@ -731,6 +731,7 @@ struct Model {
     TexCoord5, //!< a_texcoord5
     TexCoord6, //!< a_texcoord6
     TexCoord7, //!< a_texcoord7
+    Skip       // skips a byte
   };
 
   static bgfx::Attrib::Enum toBgfx(VertexAttribute attribute) {
@@ -811,7 +812,6 @@ struct Model {
 
   std::vector<Var> _layout;
   std::vector<CBType> _expectedTypes;
-  std::vector<size_t> _expectedSkips;
   bool _dynamic{false};
   ModelHandle *_output{nullptr};
   bgfx::VertexLayoutHandle _layoutHandle = BGFX_INVALID_HANDLE;
@@ -862,8 +862,6 @@ struct Model {
     }
 
     _expectedTypes.clear();
-    _expectedSkips.clear();
-    auto untilPacked = 0;
     bgfx::VertexLayout layout;
     layout.begin();
     for (auto &entry : _layout) {
@@ -872,35 +870,18 @@ struct Model {
       auto atype = bgfx::AttribType::Float;
       auto normalized = false;
       switch (e) {
+      case VertexAttribute::Skip:
+        layout.skip(1);
+        continue;
       case VertexAttribute::Position:
       case VertexAttribute::Normal:
       case VertexAttribute::Tangent:
       case VertexAttribute::Bitangent: {
-        if (untilPacked > 4) {
-          layout.skip(untilPacked);
-          _expectedSkips.emplace_back(untilPacked);
-          untilPacked = 4;
-        } else if (untilPacked == 4) {
-          _expectedSkips.emplace_back(0);
-          untilPacked = 0;
-        } else if (untilPacked == 0) {
-          _expectedSkips.emplace_back(0);
-          untilPacked = 4;
-        } else {
-          throw CBException("VertexAttribute invalid untilPacked value");
-        }
         elems = 3;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float3);
       } break;
       case VertexAttribute::Weight: {
-        if (untilPacked > 0) {
-          layout.skip(untilPacked);
-          _expectedSkips.emplace_back(untilPacked);
-        } else {
-          _expectedSkips.emplace_back(0);
-        }
-        untilPacked = 0;
         elems = 4;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float4);
@@ -913,45 +894,20 @@ struct Model {
       case VertexAttribute::TexCoord5:
       case VertexAttribute::TexCoord6:
       case VertexAttribute::TexCoord7: {
-        if (untilPacked == 8) {
-          untilPacked = 0;
-          _expectedSkips.emplace_back(0);
-        } else {
-          if (untilPacked != 0) {
-            layout.skip(untilPacked);
-            _expectedSkips.emplace_back(untilPacked);
-          } else {
-            _expectedSkips.emplace_back(0);
-          }
-          untilPacked = 8;
-        }
         elems = 2;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float2);
-        untilPacked = 8;
       } break;
       case VertexAttribute::Color0:
       case VertexAttribute::Color1:
       case VertexAttribute::Color2:
       case VertexAttribute::Color3: {
-        if (untilPacked > 0) {
-          untilPacked -= 4;
-        } else {
-          untilPacked = 12;
-        }
-        _expectedSkips.emplace_back(0);
         elems = 4;
         normalized = true;
         atype = bgfx::AttribType::Uint8;
         _expectedTypes.emplace_back(CBType::Color);
       } break;
       case VertexAttribute::Indices: {
-        if (untilPacked > 0) {
-          untilPacked -= 4;
-        } else {
-          untilPacked = 12;
-        }
-        _expectedSkips.emplace_back(0);
         elems = 4;
         atype = bgfx::AttribType::Uint8;
         _expectedTypes.emplace_back(CBType::Int4);
@@ -1039,6 +995,8 @@ void testVertexAttribute() {
           bgfx::Attrib::TexCoord6);
   REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::TexCoord7) ==
           bgfx::Attrib::TexCoord7);
+  REQUIRE_THROWS(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Skip) ==
+                 bgfx::Attrib::TexCoord7);
 }
 
 void testModelInputLayoutPacking() {

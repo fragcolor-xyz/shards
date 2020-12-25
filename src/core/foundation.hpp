@@ -264,8 +264,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
         new std::shared_ptr<CBChain>(shared_from_this()));
   }
 
-  static CBChainRef weakRef(std::shared_ptr<CBChain> &shared) {
-    return reinterpret_cast<CBChainRef>(&shared);
+  static CBChainRef weakRef(const std::shared_ptr<CBChain> &shared) {
+    return reinterpret_cast<CBChainRef>(
+        &const_cast<std::shared_ptr<CBChain> &>(shared));
   }
 
   static CBChainRef addRef(CBChainRef ref) {

@@ -393,6 +393,9 @@ struct Float4VarPayload : public CBVarPayload {
   CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
 };
 
+// forward declare this as we use it in Var
+class Chain;
+
 struct Var : public CBVar {
   Var(const IntVarPayload &p) : CBVar() {
     this->valueType = CBType::Int;
@@ -830,6 +833,8 @@ struct Var : public CBVar {
     payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
     payload.seqValue.len = N;
   }
+
+  Var(const Chain &chain);
 };
 
 using VarPayload =
@@ -939,7 +944,7 @@ public:
   CBChain *get() { return _chain.get(); }
 
   operator std::shared_ptr<CBChain>() { return _chain; }
-  CBChainRef weakRef();
+  CBChainRef weakRef() const;
 
 private:
   std::shared_ptr<CBChain> _chain;

@@ -1924,7 +1924,9 @@ Chain &Chain::let(Var value) {
   return *this;
 }
 
-CBChainRef Chain::weakRef() { return CBChain::weakRef(_chain); }
+CBChainRef Chain::weakRef() const { return CBChain::weakRef(_chain); }
+
+Var::Var(const Chain &chain) : Var(chain.weakRef()) {}
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
