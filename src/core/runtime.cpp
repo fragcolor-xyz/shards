@@ -1900,6 +1900,11 @@ Chain &Chain::name(std::string_view name) {
 
 Chain &Chain::block(std::string_view name, std::vector<Var> params) {
   auto blk = createBlock(name.data());
+  if (!blk) {
+    LOG(ERROR) << "The block " << name << " was not found.";
+    throw CBException("Block not found");
+  }
+
   blk->setup(blk);
 
   const auto psize = params.size();
