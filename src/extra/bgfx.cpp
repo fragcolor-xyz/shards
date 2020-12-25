@@ -785,7 +785,7 @@ struct Model {
 
   static inline Types VerticesSeqTypes{
       {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
-       CoreInfo::ColorType}};
+       CoreInfo::ColorType, CoreInfo::IntType}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
   static inline Types IndicesSeqTypes{{
       CoreInfo::IntType,  // Triangle strip
@@ -927,12 +927,34 @@ struct Model {
   }
 
   CBVar activateStatic(CBContext *context, const CBVar &input) {
-    const auto vertices = input.payload.tableValue.api->tableAt(
-        input.payload.tableValue, "Vertices");
-    const auto indices = input.payload.tableValue.api->tableAt(
-        input.payload.tableValue, "Indices");
+    // this is the most efficient way to find items in table
+    // without hashing and possible allocations etc
+    CBTable table = input.payload.tableValue;
+    CBTableIterator it;
+    table.api->tableGetIterator(table, &it);
+    CBVar vertices{};
+    CBVar indices{};
+    while (true) {
+      CBString k;
+      CBVar v;
+      if (!table.api->tableNext(table, &it, &k, &v))
+        break;
 
-    if (!vertices || !indices)
+      switch (k[0]) {
+      case 'V':
+      case 'v':
+        vertices = v;
+        break;
+      case 'I':
+      case 'i':
+        indices = v;
+        break;
+      default:
+        break;
+      }
+    }
+
+    if (vertices.valueType != Seq || indices.valueType != Seq)
       throw ActivationError("GFX.Model input table is invalid");
 
     if (!_output) {
@@ -944,7 +966,7 @@ struct Model {
       _output = ModelHandle::Var.New();
     }
 
-    const auto nElems = size_t(vertices->payload.seqValue.len);
+    const auto nElems = size_t(vertices.payload.seqValue.len);
     if ((nElems % _lineElems) != 0) {
       throw ActivationError("Invalid amount of vertex buffer elements");
     }
@@ -956,8 +978,13 @@ struct Model {
 
     for (size_t i = 0; i < nElems; i += _lineElems) {
       size_t idx = 0;
-      for (const auto expected : _expectedTypes) {
-        const auto &elem = vertices->payload.seqValue.elements[i + idx];
+      for (auto expected : _expectedTypes) {
+        const auto &elem = vertices.payload.seqValue.elements[i + idx];
+        // allow colors to be also Int
+        if (expected == CBType::Color && elem.valueType == CBType::Int) {
+          expected = CBType::Int;
+        }
+
         if (elem.valueType != expected) {
           LOG(ERROR) << "Expected vertex element of type: "
                      << type2Name(expected)
@@ -968,17 +995,17 @@ struct Model {
             offset += 1;
             break;
           case CBType::Float2:
-            memcpy(buffer->data + offset, &elem.payload.float2Value[0],
+            memcpy(buffer->data + offset, &elem.payload.float2Value,
                    sizeof(float) * 2);
             offset += sizeof(float) * 2;
             break;
           case CBType::Float3:
-            memcpy(buffer->data + offset, &elem.payload.float3Value[0],
+            memcpy(buffer->data + offset, &elem.payload.float3Value,
                    sizeof(float) * 3);
             offset += sizeof(float) * 3;
             break;
           case CBType::Float4:
-            memcpy(buffer->data + offset, &elem.payload.float4Value[0],
+            memcpy(buffer->data + offset, &elem.payload.float4Value,
                    sizeof(float) * 4);
             offset += sizeof(float) * 4;
             break;
@@ -1006,6 +1033,11 @@ struct Model {
             memcpy(buffer->data + offset, &elem.payload.colorValue.r, 4);
             offset += 4;
             break;
+          case CBType::Int: {
+            uint32_t intColor = uint32_t(elem.payload.intValue);
+            memcpy(buffer->data + offset, &intColor, 4);
+            offset += 4;
+          } break;
           default:
             throw ActivationError("Invalid type for a vertex buffer");
           }

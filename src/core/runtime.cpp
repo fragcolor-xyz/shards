@@ -1159,6 +1159,8 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
   }
   case Table: {
     if (strict) {
+      // TODO we are ignoring keys here...
+      // if both sides have keys they should also match
       auto atypes = inputType.table.types.len;
       auto btypes = receiverType.table.types.len;
       //  btypes != 0 assume consumer is not strict
@@ -1686,6 +1688,7 @@ void freeDerivedInfo(CBTypeInfo info) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
     chainblocks::arrayFree(info.table.types);
+    chainblocks::arrayFree(info.table.keys);
   }
   default:
     break;
@@ -1735,6 +1738,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
           auto derived = deriveTypeInfo(*value);
           if (!data->types.count(derived)) {
             chainblocks::arrayPush(data->varType->table.types, derived);
+            chainblocks::arrayPush(data->varType->table.keys, key);
             data->types.insert(derived);
           } else {
             freeDerivedInfo(derived);

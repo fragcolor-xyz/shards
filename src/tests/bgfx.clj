@@ -1,7 +1,7 @@
 (def! Root (Node))
 
 (def cube
-  {:Vertices
+  {"Vertices"
    [(Float3 -1.0  1.0  1.0) 0xff000000
     (Float3  1.0  1.0  1.0) 0xff0000ff
     (Float3 -1.0 -1.0  1.0) 0xff00ff00
@@ -10,7 +10,7 @@
     (Float3  1.0  1.0 -1.0) 0xffff00ff
     (Float3 -1.0 -1.0 -1.0) 0xffffff00
     (Float3  1.0 -1.0 -1.0) 0xffffffff]
-   :Indices
+   "Indices"
    [(Int3 0 1 2)
     (Int3 1 3 2)
     (Int3 4 6 5)
@@ -38,9 +38,9 @@
              (LoadImage "../../assets/drawing.png")
              (GFX.Texture2D)
              (Set "image1" :Global true)
-            ;;  cube (GFX.Model
-            ;;        :Layout [VertexAttribute.Position
-            ;;                 VertexAttribute.Color0]) >= .cube
+             cube (GFX.Model
+                   :Layout [VertexAttribute.Position
+                            VertexAttribute.Color0]) >= .cube
              false (Set "checkBoxie"))))
      (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024 :PosX 0 :PosY 0 :Contents
                  (-->
