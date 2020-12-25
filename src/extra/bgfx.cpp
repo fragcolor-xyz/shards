@@ -990,57 +990,58 @@ struct Model {
                      << type2Name(expected)
                      << " got instead: " << type2Name(elem.valueType);
           throw ActivationError("Invalid vertex buffer element type");
-          switch (elem.valueType) {
-          case CBType::None:
-            offset += 1;
-            break;
-          case CBType::Float2:
-            memcpy(buffer->data + offset, &elem.payload.float2Value,
-                   sizeof(float) * 2);
-            offset += sizeof(float) * 2;
-            break;
-          case CBType::Float3:
-            memcpy(buffer->data + offset, &elem.payload.float3Value,
-                   sizeof(float) * 3);
-            offset += sizeof(float) * 3;
-            break;
-          case CBType::Float4:
-            memcpy(buffer->data + offset, &elem.payload.float4Value,
-                   sizeof(float) * 4);
-            offset += sizeof(float) * 4;
-            break;
-          case CBType::Int4: {
-            if (elem.payload.int4Value[0] < 0 ||
-                elem.payload.int4Value[0] > 255 ||
-                elem.payload.int4Value[1] < 0 ||
-                elem.payload.int4Value[1] > 255 ||
-                elem.payload.int4Value[2] < 0 ||
-                elem.payload.int4Value[2] > 255 ||
-                elem.payload.int4Value[3] < 0 ||
-                elem.payload.int4Value[3] > 255) {
-              throw ActivationError(
-                  "Int4 value must be between 0 and 255 for a vertex buffer");
-            }
-            CBColor value;
-            value.r = uint8_t(elem.payload.int4Value[0]);
-            value.g = uint8_t(elem.payload.int4Value[1]);
-            value.b = uint8_t(elem.payload.int4Value[2]);
-            value.a = uint8_t(elem.payload.int4Value[3]);
-            memcpy(buffer->data + offset, &value.r, 4);
-            offset += 4;
-          } break;
-          case CBType::Color:
-            memcpy(buffer->data + offset, &elem.payload.colorValue.r, 4);
-            offset += 4;
-            break;
-          case CBType::Int: {
-            uint32_t intColor = uint32_t(elem.payload.intValue);
-            memcpy(buffer->data + offset, &intColor, 4);
-            offset += 4;
-          } break;
-          default:
-            throw ActivationError("Invalid type for a vertex buffer");
+        }
+
+        switch (elem.valueType) {
+        case CBType::None:
+          offset += 1;
+          break;
+        case CBType::Float2:
+          memcpy(buffer->data + offset, &elem.payload.float2Value,
+                 sizeof(float) * 2);
+          offset += sizeof(float) * 2;
+          break;
+        case CBType::Float3:
+          memcpy(buffer->data + offset, &elem.payload.float3Value,
+                 sizeof(float) * 3);
+          offset += sizeof(float) * 3;
+          break;
+        case CBType::Float4:
+          memcpy(buffer->data + offset, &elem.payload.float4Value,
+                 sizeof(float) * 4);
+          offset += sizeof(float) * 4;
+          break;
+        case CBType::Int4: {
+          if (elem.payload.int4Value[0] < 0 ||
+              elem.payload.int4Value[0] > 255 ||
+              elem.payload.int4Value[1] < 0 ||
+              elem.payload.int4Value[1] > 255 ||
+              elem.payload.int4Value[2] < 0 ||
+              elem.payload.int4Value[2] > 255 ||
+              elem.payload.int4Value[3] < 0 ||
+              elem.payload.int4Value[3] > 255) {
+            throw ActivationError(
+                "Int4 value must be between 0 and 255 for a vertex buffer");
           }
+          CBColor value;
+          value.r = uint8_t(elem.payload.int4Value[0]);
+          value.g = uint8_t(elem.payload.int4Value[1]);
+          value.b = uint8_t(elem.payload.int4Value[2]);
+          value.a = uint8_t(elem.payload.int4Value[3]);
+          memcpy(buffer->data + offset, &value.r, 4);
+          offset += 4;
+        } break;
+        case CBType::Color:
+          memcpy(buffer->data + offset, &elem.payload.colorValue.r, 4);
+          offset += 4;
+          break;
+        case CBType::Int: {
+          uint32_t intColor = uint32_t(elem.payload.intValue);
+          memcpy(buffer->data + offset, &intColor, 4);
+          offset += 4;
+        } break;
+        default:
+          throw ActivationError("Invalid type for a vertex buffer");
         }
         idx++;
       }
