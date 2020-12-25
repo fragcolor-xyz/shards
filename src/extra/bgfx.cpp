@@ -811,10 +811,12 @@ struct Model {
   static CBParametersInfo parameters() { return params; }
 
   std::vector<Var> _layout;
+  bgfx::VertexLayout _blayout;
   std::vector<CBType> _expectedTypes;
+  size_t _lineElems{0};
+  size_t _elemSize{0};
   bool _dynamic{false};
   ModelHandle *_output{nullptr};
-  bgfx::VertexLayoutHandle _layoutHandle = BGFX_INVALID_HANDLE;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -843,11 +845,6 @@ struct Model {
       ModelHandle::Var.Release(_output);
       _output = nullptr;
     }
-
-    if (_layoutHandle.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_layoutHandle);
-    }
-    _layoutHandle = BGFX_INVALID_HANDLE;
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -857,11 +854,8 @@ struct Model {
       OVERRIDE_ACTIVATE(data, activateStatic);
     }
 
-    if (_layoutHandle.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_layoutHandle);
-    }
-
     _expectedTypes.clear();
+    _elemSize = 0;
     bgfx::VertexLayout layout;
     layout.begin();
     for (auto &entry : _layout) {
@@ -872,6 +866,8 @@ struct Model {
       switch (e) {
       case VertexAttribute::Skip:
         layout.skip(1);
+        _expectedTypes.emplace_back(CBType::None);
+        _elemSize += 1;
         continue;
       case VertexAttribute::Position:
       case VertexAttribute::Normal:
@@ -880,11 +876,13 @@ struct Model {
         elems = 3;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float3);
+        _elemSize += 12;
       } break;
       case VertexAttribute::Weight: {
         elems = 4;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float4);
+        _elemSize += 16;
       } break;
       case VertexAttribute::TexCoord0:
       case VertexAttribute::TexCoord1:
@@ -897,6 +895,7 @@ struct Model {
         elems = 2;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float2);
+        _elemSize += 8;
       } break;
       case VertexAttribute::Color0:
       case VertexAttribute::Color1:
@@ -906,11 +905,13 @@ struct Model {
         normalized = true;
         atype = bgfx::AttribType::Uint8;
         _expectedTypes.emplace_back(CBType::Color);
+        _elemSize += 4;
       } break;
       case VertexAttribute::Indices: {
         elems = 4;
         atype = bgfx::AttribType::Uint8;
         _expectedTypes.emplace_back(CBType::Int4);
+        _elemSize += 4;
       } break;
       default:
         throw ComposeError("Invalid VertexAttribute");
@@ -919,12 +920,103 @@ struct Model {
     }
     layout.end();
 
-    _layoutHandle = bgfx::createVertexLayout(layout);
+    _blayout = layout;
+    _lineElems = _expectedTypes.size();
 
     return ModelHandle::ModelHandleType;
   }
 
   CBVar activateStatic(CBContext *context, const CBVar &input) {
+    const auto vertices = input.payload.tableValue.api->tableAt(
+        input.payload.tableValue, "Vertices");
+    const auto indices = input.payload.tableValue.api->tableAt(
+        input.payload.tableValue, "Indices");
+
+    if (!vertices || !indices)
+      throw ActivationError("GFX.Model input table is invalid");
+
+    if (!_output) {
+      _output = ModelHandle::Var.New();
+    } else {
+      // in the case of static model, we destroy it
+      // well, release, some variable might still be using it
+      ModelHandle::Var.Release(_output);
+      _output = ModelHandle::Var.New();
+    }
+
+    const auto nElems = size_t(vertices->payload.seqValue.len);
+    if ((nElems % _lineElems) != 0) {
+      throw ActivationError("Invalid amount of vertex buffer elements");
+    }
+    const auto line = nElems / _lineElems;
+    const auto size = line * _elemSize;
+
+    auto buffer = bgfx::alloc(size);
+    size_t offset = 0;
+
+    for (size_t i = 0; i < nElems; i += _lineElems) {
+      size_t idx = 0;
+      for (const auto expected : _expectedTypes) {
+        const auto &elem = vertices->payload.seqValue.elements[i + idx];
+        if (elem.valueType != expected) {
+          LOG(ERROR) << "Expected vertex element of type: "
+                     << type2Name(expected)
+                     << " got instead: " << type2Name(elem.valueType);
+          throw ActivationError("Invalid vertex buffer element type");
+          switch (elem.valueType) {
+          case CBType::None:
+            offset += 1;
+            break;
+          case CBType::Float2:
+            memcpy(buffer->data + offset, &elem.payload.float2Value[0],
+                   sizeof(float) * 2);
+            offset += sizeof(float) * 2;
+            break;
+          case CBType::Float3:
+            memcpy(buffer->data + offset, &elem.payload.float3Value[0],
+                   sizeof(float) * 3);
+            offset += sizeof(float) * 3;
+            break;
+          case CBType::Float4:
+            memcpy(buffer->data + offset, &elem.payload.float4Value[0],
+                   sizeof(float) * 4);
+            offset += sizeof(float) * 4;
+            break;
+          case CBType::Int4: {
+            if (elem.payload.int4Value[0] < 0 ||
+                elem.payload.int4Value[0] > 255 ||
+                elem.payload.int4Value[1] < 0 ||
+                elem.payload.int4Value[1] > 255 ||
+                elem.payload.int4Value[2] < 0 ||
+                elem.payload.int4Value[2] > 255 ||
+                elem.payload.int4Value[3] < 0 ||
+                elem.payload.int4Value[3] > 255) {
+              throw ActivationError(
+                  "Int4 value must be between 0 and 255 for a vertex buffer");
+            }
+            CBColor value;
+            value.r = uint8_t(elem.payload.int4Value[0]);
+            value.g = uint8_t(elem.payload.int4Value[1]);
+            value.b = uint8_t(elem.payload.int4Value[2]);
+            value.a = uint8_t(elem.payload.int4Value[3]);
+            memcpy(buffer->data + offset, &value.r, 4);
+            offset += 4;
+          } break;
+          case CBType::Color:
+            memcpy(buffer->data + offset, &elem.payload.colorValue.r, 4);
+            offset += 4;
+            break;
+          default:
+            throw ActivationError("Invalid type for a vertex buffer");
+          }
+        }
+        idx++;
+      }
+    }
+
+    auto &model = std::get<ModelHandle::StaticModel>(_output->model);
+    model.vb = bgfx::createVertexBuffer(buffer, _blayout);
+
     return ModelHandle::Var.Get(_output);
   }
 

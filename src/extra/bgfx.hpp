@@ -90,7 +90,7 @@ struct ModelHandle {
   std::variant<StaticModel, DynamicModel> model{
       StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
 
-  ~ModelHandle() {
+  void reset() {
     std::visit(
         [](auto &m) {
           if (m.vb.idx != bgfx::kInvalidHandle) {
@@ -102,5 +102,7 @@ struct ModelHandle {
         },
         model);
   }
+
+  ~ModelHandle() { reset(); }
 };
 }; // namespace BGFX
