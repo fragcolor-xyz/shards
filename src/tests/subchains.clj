@@ -106,7 +106,7 @@
    (Get "var2")
    (Log "var2")
    (Detach otherChain)
-   (WaitChain otherChain)
+   (Wait otherChain)
    (Log "otherChain")
    (Assert.Is 99 true)
    10
@@ -118,7 +118,7 @@
 
    (Detach loopedOther)
    (StopChain loopedOther)
-   (WaitChain loopedOther)
+   (Wait loopedOther)
 
                                         ; test a stepped chain that (Stop)s
    (Step tickedChain)
@@ -209,7 +209,7 @@
   (Log "loaded")
   ;; We must do this here! cos .chain will try to resume self
   (ChainRunner .chain :Mode RunChainMode.Detached)
-  (WaitChain .chain)))
+  (Wait .chain)))
 
 (run root)
 

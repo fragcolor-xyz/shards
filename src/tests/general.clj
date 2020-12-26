@@ -939,7 +939,7 @@
    (ReadFile "testChain.bin")
    (ExpectChain) >= .loadedChain (Log) (Hash) (Log "output chain hash")
    (ChainRunner .loadedChain :Mode RunChainMode.Detached)
-   (WaitChain .loadedChain)
+   (Wait .loadedChain)
    (Assert.Is "global1" true)
    (Get .global1 :Global true :Default "nope")
    (Assert.Is "global1" true)
@@ -947,7 +947,7 @@
    (Process.StackTrace)
    (Log)
    (ChainRunner .loadedChain :Mode RunChainMode.Detached)
-   (WaitChain .loadedChain)))
+   (Wait .loadedChain)))
 (schedule Root loadBinary)
 (if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Node holds ref...

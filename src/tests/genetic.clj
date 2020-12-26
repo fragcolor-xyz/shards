@@ -96,7 +96,7 @@
    (Take 1) (ExpectChain) >= .bestChain
    (ChainRunner .bestChain :Mode RunChainMode.Detached)
    (Msg "Waiting...")
-   (WaitChain .bestChain)
+   (Wait .bestChain)
    (Msg "Exiting...")
    ))
 

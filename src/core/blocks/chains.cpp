@@ -22,7 +22,7 @@ struct ChainBase {
 
   static inline Types ChainVarTypes{ChainTypes, {CoreInfo::ChainVarType}};
 
-  static inline Parameters waitChainParamsInfo{
+  static inline Parameters WaitParamsInfo{
       {"Chain", "The chain to wait.", {ChainVarTypes}},
       {"Passthrough",
        "The input of this block will be the output.",
@@ -254,7 +254,7 @@ struct ChainBase {
   }
 };
 
-struct WaitChain : public ChainBase {
+struct Wait : public ChainBase {
   // we don't need OwnedVar here
   // we keep the chain referenced!
   CBVar _output{};
@@ -266,7 +266,7 @@ struct WaitChain : public ChainBase {
     ChainBase::cleanup();
   }
 
-  static CBParametersInfo parameters() { return waitChainParamsInfo; }
+  static CBParametersInfo parameters() { return WaitParamsInfo; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -315,7 +315,7 @@ struct WaitChain : public ChainBase {
     }
 
     if (unlikely(!chain)) {
-      LOG(WARNING) << "WaitChain's chain is void.";
+      LOG(WARNING) << "Wait's chain is void.";
       return input;
     } else {
       while (isRunning(chain.get())) {
@@ -1357,7 +1357,7 @@ struct Spawn : public ChainBase {
 void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
-  REGISTER_CBLOCK("WaitChain", WaitChain);
+  REGISTER_CBLOCK("Wait", Wait);
   REGISTER_CBLOCK("StopChain", StopChain);
   using RunChainDo = RunChain<false, RunChainMode::Inline>;
   REGISTER_CBLOCK("Do", RunChainDo);
