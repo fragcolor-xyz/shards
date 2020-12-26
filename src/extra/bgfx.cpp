@@ -963,6 +963,8 @@ struct Model {
       _output = ModelHandle::Var.New();
     }
 
+    ModelHandle::StaticModel model;
+
     const auto nElems = size_t(vertices.payload.seqValue.len);
     if ((nElems % _lineElems) != 0) {
       throw ActivationError("Invalid amount of vertex buffer elements");
@@ -1083,9 +1085,10 @@ struct Model {
       }
     }
 
-    auto &model = std::get<ModelHandle::StaticModel>(_output->model);
     model.vb = bgfx::createVertexBuffer(buffer, _blayout);
     model.ib = bgfx::createIndexBuffer(ibuffer, flags);
+
+    _output->model = model;
 
     return ModelHandle::Var.Get(_output);
   }
