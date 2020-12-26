@@ -87,6 +87,8 @@ struct ModelHandle {
     bgfx::DynamicIndexBufferHandle ib;
   };
 
+  uint64_t topologyStateFlag{0}; // Triangle list
+
   std::variant<StaticModel, DynamicModel> model{
       StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
 

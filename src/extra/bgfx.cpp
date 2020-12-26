@@ -787,11 +787,8 @@ struct Model {
       {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
        CoreInfo::ColorType, CoreInfo::IntType}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
-  static inline Types IndicesSeqTypes{{
-      CoreInfo::IntType,  // Triangle strip
-      CoreInfo::Int2Type, // Line list
-      CoreInfo::Int3Type  // Triangle list
-  }};
+  // TODO support other topologies then triangle list
+  static inline Types IndicesSeqTypes{{CoreInfo::Int3Type}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
   static inline Types InputTableTypes{{VerticesSeq, IndicesSeq}};
   static inline std::array<CBString, 2> InputTableKeys{"Vertices", "Indices"};
@@ -1047,8 +1044,41 @@ struct Model {
       }
     }
 
+    const auto nindices = size_t(indices.payload.seqValue.len) * 3; // INT3s
+    uint16_t flags = BGFX_BUFFER_NONE;
+    size_t isize = 0;
+    bool compressed = true;
+    if (nindices > UINT16_MAX) {
+      flags |= BGFX_BUFFER_INDEX32;
+      isize = nindices * sizeof(uint32_t);
+      compressed = false;
+    } else {
+      isize = nindices * sizeof(uint16_t);
+    }
+
+    auto ibuffer = bgfx::alloc(isize);
+    offset = 0;
+
+    auto &selems = indices.payload.seqValue.elements;
+    for (size_t i = 0; i < nindices; i++) {
+      if (compressed) {
+        const uint16_t t[] = {uint16_t(selems[i].payload.int3Value[0]),
+                              uint16_t(selems[i].payload.int3Value[1]),
+                              uint16_t(selems[i].payload.int3Value[2])};
+        memcpy(ibuffer->data + offset, t, sizeof(uint16_t) * 3);
+        offset += sizeof(uint16_t) * 3;
+      } else {
+        const uint32_t t[] = {uint32_t(selems[i].payload.int3Value[0]),
+                              uint32_t(selems[i].payload.int3Value[1]),
+                              uint32_t(selems[i].payload.int3Value[2])};
+        memcpy(ibuffer->data + offset, t, sizeof(uint32_t) * 3);
+        offset += sizeof(uint32_t) * 3;
+      }
+    }
+
     auto &model = std::get<ModelHandle::StaticModel>(_output->model);
     model.vb = bgfx::createVertexBuffer(buffer, _blayout);
+    model.ib = bgfx::createIndexBuffer(ibuffer, flags);
 
     return ModelHandle::Var.Get(_output);
   }
