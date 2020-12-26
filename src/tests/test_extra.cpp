@@ -11,7 +11,7 @@
 namespace chainblocks {
 namespace BGFX_Tests {
   extern void testVertexAttribute();
-  //extern void testModelInputLayoutPacking();
+  extern void testModel();
 }
 }
 
@@ -21,6 +21,6 @@ TEST_CASE("BGFX-VertexAttribute", "[gfx]") {
   BGFX_Tests::testVertexAttribute();
 }
 
-// TEST_CASE("BGFX-ModelInputLayoutPacking", "[gfx]") {
-//   BGFX_Tests::testModelInputLayoutPacking();
-// }
+TEST_CASE("BGFX-Model", "[gfx]") {
+  BGFX_Tests::testModel();
+}

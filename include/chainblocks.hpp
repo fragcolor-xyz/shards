@@ -601,6 +601,8 @@ struct Var : public CBVar {
   constexpr static CBVar Empty{};
   constexpr static CBVar True{{true}, nullptr, 0, CBType::Bool};
   constexpr static CBVar False{{false}, nullptr, 0, CBType::Bool};
+  // this is a special one used to flag default value in Chain/Blocks C++ DSL
+  constexpr static CBVar Any{{false}, nullptr, 0, CBType::Any};
 
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,
@@ -643,6 +645,11 @@ struct Var : public CBVar {
   explicit Var(int src) : CBVar() {
     valueType = Int;
     payload.intValue = src;
+  }
+
+  explicit Var(unsigned int src) : CBVar() {
+    valueType = Int;
+    payload.intValue = int64_t(src);
   }
 
   explicit Var(int a, int b) : CBVar() {
@@ -761,6 +768,12 @@ struct Var : public CBVar {
     valueType = CBType::Chain;
     payload.chainValue = reinterpret_cast<CBChainRef>(
         &const_cast<std::shared_ptr<CBChain> &>(chain));
+  }
+
+  explicit Var(CBlock *block) : CBVar() {
+    // mostly internal use only, anyway use with care!
+    valueType = CBType::Block;
+    payload.blockValue = block;
   }
 
   explicit Var(CBImage img) : CBVar() {
@@ -915,6 +928,31 @@ public:
 
 private:
   CBChainProvider _provider;
+};
+
+class Blocks {
+public:
+  Blocks() {}
+
+  Blocks &block(std::string_view name, std::vector<Var> params);
+
+  template <typename... Vars>
+  Blocks &block(std::string_view name, Vars... params) {
+    std::vector<Var> vars = {Var(params)...};
+    return block(name, vars);
+  }
+
+  Blocks &let(Var value);
+
+  template <typename V> Blocks &let(V value) {
+    auto val = Var(value);
+    return let(val);
+  }
+
+  operator Var() { return Var(_blocks); }
+
+private:
+  std::vector<Var> _blocks;
 };
 
 class Chain {

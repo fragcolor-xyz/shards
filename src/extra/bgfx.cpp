@@ -154,7 +154,7 @@ struct MainWindow : public BaseWindow {
     // cleanup before releasing the resources
     _blocks.cleanup();
 
-    _imgui_context.Reset();
+    // _imgui_context.Reset();
 
     if (_bgfxInit) {
       imguiDestroy();
@@ -297,8 +297,8 @@ struct MainWindow : public BaseWindow {
       _bgfxInit = true;
     }
 
-    _imgui_context.Reset();
-    _imgui_context.Set();
+    // _imgui_context.Reset();
+    // _imgui_context.Set();
 
     imguiCreate();
 
@@ -360,7 +360,7 @@ struct MainWindow : public BaseWindow {
     // Touch view 0
     bgfx::touch(0);
 
-    _imgui_context.Set();
+    // _imgui_context.Set();
 
     ImGuiIO &io = ::ImGui::GetIO();
 
@@ -1164,14 +1164,44 @@ void testVertexAttribute() {
                  bgfx::Attrib::TexCoord7);
 }
 
-void testModelInputLayoutPacking() {
+void testModel() {
+  chainblocks::Globals::RootPath = "./";
+  registerCoreBlocks();
+
+  std::vector<Var> layout = {
+      Var::Enum(BGFX::Model::VertexAttribute::Position, CoreCC, 'gfxV'),
+      Var::Enum(BGFX::Model::VertexAttribute::Color0, CoreCC, 'gfxV')};
+  std::vector<Var> cubeVertices = {
+      Var(-1.0, 1.0, 1.0),   Var(0xff000000),      Var(1.0, 1.0, 1.0),
+      Var(0xff0000ff),       Var(-1.0, -1.0, 1.0), Var(0xff00ff00),
+      Var(1.0, -1.0, 1.0),   Var(0xff00ffff),      Var(-1.0, 1.0, -1.0),
+      Var(0xffff0000),       Var(1.0, 1.0, -1.0),  Var(0xffff00ff),
+      Var(-1.0, -1.0, -1.0), Var(0xffffff00),      Var(1.0, -1.0, -1.0),
+      Var(0xffffffff),
+  };
+  std::vector<Var> cubeIndices = {
+      Var(0, 1, 2), Var(1, 3, 2), Var(4, 6, 5), Var(5, 6, 7),
+      Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
+      Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
+  };
   auto chain = chainblocks::Chain("test-chain")
-                   .block("GFX.MainWindow", "MainWindow", 512, 512)
-                   .block("GFX.Model");
+                   .looped(true)
+                   .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                          Blocks()
+                              .let(cubeVertices)
+                              .block("Set", "cube", "Vertices")
+                              .let(cubeIndices)
+                              .block("Set", "cube", "Indices")
+                              .block("Get", "cube")
+                              .block("GFX.Model", Var(layout)));
   auto node = CBNode::make();
   node->schedule(chain);
-  REQUIRE(node->tick()); // false is chain errors happened
-}
+  auto count = 100;
+  while (count--) {
+    REQUIRE(node->tick()); // false is chain errors happened
+    chainblocks::sleep(0.016);
+  }
+} // namespace BGFX_Tests
 
 } // namespace BGFX_Tests
 } // namespace chainblocks

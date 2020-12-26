@@ -1885,6 +1885,34 @@ void installSignalHandlers() {
   std::signal(SIGSEGV, &error_handler);
 }
 
+Blocks &Blocks::block(std::string_view name, std::vector<Var> params) {
+  auto blk = createBlock(name.data());
+  if (!blk) {
+    LOG(ERROR) << "The block " << name << " was not found.";
+    throw CBException("Block not found");
+  }
+
+  blk->setup(blk);
+
+  const auto psize = params.size();
+  for (size_t i = 0; i < psize; i++) {
+    // skip Any, as they mean default value
+    if (params[i] != Var::Any)
+      blk->setParam(blk, int(i), &params[i]);
+  }
+
+  _blocks.emplace_back(blk);
+  return *this;
+}
+
+Blocks &Blocks::let(Var value) {
+  auto blk = createBlock("Const");
+  blk->setup(blk);
+  blk->setParam(blk, 0, &value);
+  _blocks.emplace_back(blk);
+  return *this;
+}
+
 Chain::Chain(std::string_view name) : _chain(CBChain::make(name)) {}
 
 Chain &Chain::looped(bool looped) {
@@ -1913,7 +1941,9 @@ Chain &Chain::block(std::string_view name, std::vector<Var> params) {
 
   const auto psize = params.size();
   for (size_t i = 0; i < psize; i++) {
-    blk->setParam(blk, int(i), &params[i]);
+    // skip Any, as they mean default value
+    if (params[i] != Var::Any)
+      blk->setParam(blk, int(i), &params[i]);
   }
 
   _chain->addBlock(blk);
