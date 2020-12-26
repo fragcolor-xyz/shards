@@ -1044,16 +1044,16 @@ struct Model {
       }
     }
 
-    const auto nindices = size_t(indices.payload.seqValue.len) * 3; // INT3s
+    const auto nindices = size_t(indices.payload.seqValue.len);
     uint16_t flags = BGFX_BUFFER_NONE;
     size_t isize = 0;
     bool compressed = true;
     if (nindices > UINT16_MAX) {
       flags |= BGFX_BUFFER_INDEX32;
-      isize = nindices * sizeof(uint32_t);
+      isize = nindices * sizeof(uint32_t) * 3; // int3s
       compressed = false;
     } else {
-      isize = nindices * sizeof(uint16_t);
+      isize = nindices * sizeof(uint16_t) * 3; // int3s
     }
 
     auto ibuffer = bgfx::alloc(isize);
