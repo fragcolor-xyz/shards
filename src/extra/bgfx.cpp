@@ -1061,17 +1061,24 @@ struct Model {
 
     auto &selems = indices.payload.seqValue.elements;
     for (size_t i = 0; i < nindices; i++) {
+      const static Var min{0, 0, 0};
       if (compressed) {
+        const static Var max{UINT16_MAX, UINT16_MAX, UINT16_MAX};
+        if (selems[i] < min || selems[i] > max) {
+          throw ActivationError("Vertex index out of range");
+        }
         const uint16_t t[] = {uint16_t(selems[i].payload.int3Value[0]),
                               uint16_t(selems[i].payload.int3Value[1]),
                               uint16_t(selems[i].payload.int3Value[2])};
         memcpy(ibuffer->data + offset, t, sizeof(uint16_t) * 3);
         offset += sizeof(uint16_t) * 3;
       } else {
-        const uint32_t t[] = {uint32_t(selems[i].payload.int3Value[0]),
-                              uint32_t(selems[i].payload.int3Value[1]),
-                              uint32_t(selems[i].payload.int3Value[2])};
-        memcpy(ibuffer->data + offset, t, sizeof(uint32_t) * 3);
+        const static Var max{INT32_MAX, INT32_MAX, INT32_MAX};
+        if (selems[i] < min || selems[i] > max) {
+          throw ActivationError("Vertex index out of range");
+        }
+        memcpy(ibuffer->data + offset, &selems[i].payload.int3Value,
+               sizeof(uint32_t) * 3);
         offset += sizeof(uint32_t) * 3;
       }
     }

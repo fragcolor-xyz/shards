@@ -2322,7 +2322,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 }
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
-  // TODO out should a set?
+  // TODO out should be a set?
   switch (coll.index()) {
   case 0: {
     // chain
