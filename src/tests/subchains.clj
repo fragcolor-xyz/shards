@@ -117,7 +117,7 @@
    (Dispatch funcChain)
 
    (Detach loopedOther)
-   (StopChain loopedOther)
+   (Stop loopedOther)
    (Wait loopedOther)
 
                                         ; test a stepped chain that (Stop)s

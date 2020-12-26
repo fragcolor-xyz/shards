@@ -1787,7 +1787,6 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Return", Return);
   REGISTER_CBLOCK("Restart", Restart);
-  REGISTER_CBLOCK("Stop", Stop);
   REGISTER_CBLOCK("Fail", Fail);
   REGISTER_CBLOCK("NaNTo0", NaNTo0);
   REGISTER_CBLOCK("IsNone", IsNone);

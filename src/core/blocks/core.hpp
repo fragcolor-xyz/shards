@@ -445,32 +445,6 @@ struct IsNotNone {
   }
 };
 
-struct Stop {
-  CBTypeInfo _inputType{};
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _inputType = data.inputType;
-    return data.inputType;
-  }
-
-  void composed(const CBChain *chain, const CBComposeResult *result) {
-    if (_inputType != result->outputType) {
-      throw ComposeError(
-          "Stop input and chain output type mismatch, Stop "
-          "input must be the same type of the chain's output "
-          "(regular flow), chain: " +
-          chain->name + " expected: " + type2Name(chain->outputType.basicType));
-    }
-  }
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  CBVar activate(CBContext *context, const CBVar &input) {
-    context->stopFlow(input);
-    return input;
-  }
-};
-
 struct Restart {
   // Must ensure input is the same kind of chain root input
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -2888,7 +2862,6 @@ RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);
-RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Fail);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);

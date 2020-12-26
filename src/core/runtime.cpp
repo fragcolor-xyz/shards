@@ -2322,6 +2322,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 }
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
+  // TODO out should a set?
   switch (coll.index()) {
   case 0: {
     // chain
@@ -2371,6 +2372,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     if (var.valueType == Block) {
       gatherBlocks(var.payload.blockValue, out);
     } else if (var.valueType == CBType::Chain) {
+      // TODO test this, how do we deal with multiple references of a chain??
       auto chain = CBChain::sharedFromRef(var.payload.chainValue);
       gatherBlocks(chain.get(), out);
     } else if (var.valueType == Seq) {

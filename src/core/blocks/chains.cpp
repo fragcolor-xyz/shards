@@ -339,6 +339,25 @@ struct StopChain : public ChainBase {
   OwnedVar _output{};
   CBExposedTypeInfo _requiredChain{};
 
+  CBTypeInfo _inputType{};
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _inputType = data.inputType;
+    ChainBase::compose(data);
+    return data.inputType;
+  }
+
+  void composed(const CBChain *chain, const CBComposeResult *result) {
+    if (!chain && chainref->valueType == None &&
+        _inputType != result->outputType) {
+      throw ComposeError(
+          "Stop input and chain output type mismatch, Stop "
+          "input must be the same type of the chain's output "
+          "(regular flow), chain: " +
+          chain->name + " expected: " + type2Name(chain->outputType.basicType));
+    }
+  }
+
   void cleanup() {
     if (chainref.isVariable())
       chain = nullptr;
@@ -394,7 +413,8 @@ struct StopChain : public ChainBase {
     }
 
     if (unlikely(!chain)) {
-      LOG(WARNING) << "StopChain's chain is void.";
+      // in this case we stop the current chain
+      context->stopFlow(input);
       return input;
     } else {
       chainblocks::stop(chain.get());
@@ -1358,7 +1378,7 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
   REGISTER_CBLOCK("Wait", Wait);
-  REGISTER_CBLOCK("StopChain", StopChain);
+  REGISTER_CBLOCK("Stop", StopChain);
   using RunChainDo = RunChain<false, RunChainMode::Inline>;
   REGISTER_CBLOCK("Do", RunChainDo);
   using RunChainDispatch = RunChain<true, RunChainMode::Inline>;
