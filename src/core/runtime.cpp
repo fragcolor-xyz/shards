@@ -1247,17 +1247,12 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   if (!inputMatches) {
-    auto foundString = type2Name(ctx.previousOutputType.basicType);
-    std::string expectedString;
-    for (uint32_t i = 0; inputInfos.len > i; i++) {
-      auto &inputInfo = inputInfos.elements[i];
-      expectedString.append(" ");
-      expectedString.append(type2Name(inputInfo.basicType));
-    }
-    std::string err("Could not find a matching input type, block: " +
-                    std::string(ctx.bottom->name(ctx.bottom)) + " expected:" +
-                    expectedString + " found instead: " + foundString);
-    ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+    std::stringstream ss;
+    ss << "Could not find a matching input type, block: "
+       << ctx.bottom->name(ctx.bottom) << " expected: " << inputInfos
+       << " found instead: " << ctx.previousOutputType;
+    const auto sss = ss.str();
+    ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
   }
 
   // infer and specialize types if we need to
@@ -1486,68 +1481,20 @@ void validateConnection(ValidationContext &ctx) {
     }
 
     if (!matching) {
-      std::string err(
-          "Required types do not match currently exposed ones for variable '" +
-          required.first + "'");
-      err += " required possible types: ";
+      std::stringstream ss;
+      ss << "Required types do not match currently exposed ones for variable '"
+         << required.first << "' required possible types: ";
       for (auto type : required.second) {
-        if (type.exposedType.basicType == Table &&
-            type.exposedType.table.types.elements &&
-            type.exposedType.table.keys.elements) {
-          err += "(" + type2Name(type.exposedType.basicType) + " [" +
-                 type2Name(type.exposedType.table.types.elements[0].basicType) +
-                 " " + type.exposedType.table.keys.elements[0] + "]) ";
-        } else if (type.exposedType.basicType == Seq) {
-          err += "(" + type2Name(type.exposedType.basicType) + " [";
-          for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
-            if (i < type.exposedType.seqTypes.len - 1)
-              err +=
-                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                  " ";
-            else
-              err +=
-                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                  " ";
-          }
-          err += "]) ";
-        } else {
-          err += type2Name(type.exposedType.basicType) + " ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
       }
-      err += "exposed types:";
+      ss << "exposed types: ";
       for (const auto &info : ctx.exposed) {
-        err += " (" + info.first + " [";
-
         for (auto type : info.second) {
-          if (type.exposedType.basicType == Table &&
-              type.exposedType.table.types.elements &&
-              type.exposedType.table.keys.elements) {
-            err +=
-                "(" + type2Name(type.exposedType.basicType) + " [" +
-                type2Name(type.exposedType.table.types.elements[0].basicType) +
-                " " + type.exposedType.table.keys.elements[0] + "]) ";
-          } else if (type.exposedType.basicType == Seq) {
-            err += "(" + type2Name(type.exposedType.basicType) + " [";
-            for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
-              if (i < type.exposedType.seqTypes.len - 1)
-                err +=
-                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                    " ";
-              else
-                err +=
-                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                    " ";
-            }
-            err += "]) ";
-          } else {
-            err += type2Name(type.exposedType.basicType) + " ";
-          }
+          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
         }
-        err.erase(err.end() - 1);
-
-        err += "])";
       }
-      ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      auto sss = ss.str();
+      ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())

@@ -8,5 +8,7 @@
 #include <ops.hpp>
 
 MAKE_LOGGABLE(CBVar, var, os);
+MAKE_LOGGABLE(CBTypeInfo, t, os);
+MAKE_LOGGABLE(CBTypesInfo, ts, os);
 
 #endif

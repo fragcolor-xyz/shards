@@ -697,7 +697,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
              bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              throw chainblocks::CBException(
+              throw chainblocks::ComposeError(
                   std::string(errorTxt) +
                   ", input block: " + std::string(blk->name(blk)));
             } else {
