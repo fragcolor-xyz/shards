@@ -162,7 +162,7 @@ struct MainWindow : public BaseWindow {
       bgfx::shutdown();
     }
 
-    unregisterRunLoopCallback("fragcolor.bgfx.ospump");
+    unregisterRunLoopCallback("fragcolor.gfx.ospump");
 
 #ifdef __APPLE__
     if (_metalView) {
@@ -236,7 +236,7 @@ struct MainWindow : public BaseWindow {
       throw ActivationError("Failed to initialize SDL");
     }
 
-    registerRunLoopCallback("fragcolor.bgfx.ospump", [] {
+    registerRunLoopCallback("fragcolor.gfx.ospump", [] {
       sdlEvents.clear();
       SDL_Event event;
       while (SDL_PollEvent(&event)) {
@@ -247,7 +247,7 @@ struct MainWindow : public BaseWindow {
     bgfx::Init initInfo{};
 
     // try to see if global native window is set
-    _nativeWnd = referenceVariable(context, "fragcolor.bgfx.nativewindow");
+    _nativeWnd = referenceVariable(context, "fragcolor.gfx.nativewindow");
     if (_nativeWnd->valueType == Object &&
         _nativeWnd->payload.objectVendorId == CoreCC &&
         _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
@@ -256,7 +256,7 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-      Uint32 flags = SDL_WINDOW_SHOWN;
+      uint32_t flags = SDL_WINDOW_SHOWN;
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
 #endif
