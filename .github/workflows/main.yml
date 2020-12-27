@@ -257,6 +257,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup
+      env:
+        CARGO_HTTP_MULTIPLEXING: false
       run: |
         git submodule update --init --recursive
         rustup update
@@ -282,6 +284,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup
+      env:
+        CARGO_HTTP_MULTIPLEXING: false
       run: |
         git submodule update --init --recursive
         rustup update
