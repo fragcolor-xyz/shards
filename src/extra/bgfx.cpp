@@ -1064,8 +1064,8 @@ struct Model {
     auto &selems = indices.payload.seqValue.elements;
     for (size_t i = 0; i < nindices; i++) {
       const static Var min{0, 0, 0};
+      const Var max{int(nindices * 3), int(nindices * 3), int(nindices * 3)};
       if (compressed) {
-        const static Var max{UINT16_MAX, UINT16_MAX, UINT16_MAX};
         if (selems[i] < min || selems[i] > max) {
           throw ActivationError("Vertex index out of range");
         }
@@ -1075,7 +1075,6 @@ struct Model {
         memcpy(ibuffer->data + offset, t, sizeof(uint16_t) * 3);
         offset += sizeof(uint16_t) * 3;
       } else {
-        const static Var max{INT32_MAX, INT32_MAX, INT32_MAX};
         if (selems[i] < min || selems[i] > max) {
           throw ActivationError("Vertex index out of range");
         }
@@ -1235,6 +1234,101 @@ void testModel() {
     auto errors = node->errors();
     LOG(ERROR) << errors[0];
     REQUIRE(errors[0] == "Invalid vertex buffer element type");
+  }
+
+  SECTION("Fail-Activate2") {
+    std::vector<Var> cubeVertices = {
+        Var(1.0, 1.0),        Var(1.0, 1.0, 1.0),   Var(0xff0000ff),
+        Var(-1.0, -1.0, 1.0), Var(0xff00ff00),      Var(1.0, -1.0, 1.0),
+        Var(0xff00ffff),      Var(-1.0, 1.0, -1.0), Var(0xffff0000),
+        Var(1.0, 1.0, -1.0),  Var(0xffff00ff),      Var(-1.0, -1.0, -1.0),
+        Var(0xffffff00),      Var(1.0, -1.0, -1.0), Var(0xffffffff),
+    };
+    std::vector<Var> cubeIndices = {
+        Var(0, 1, 2), Var(1, 3, 2), Var(4, 6, 5), Var(5, 6, 7),
+        Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
+        Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
+    };
+    auto chain = chainblocks::Chain("test-chain")
+                     .looped(true)
+                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                            Blocks()
+                                .let(cubeVertices)
+                                .block("Set", "cube", "Vertices")
+                                .let(cubeIndices)
+                                .block("Set", "cube", "Indices")
+                                .block("Get", "cube")
+                                .block("GFX.Model", Var(layout)));
+    auto node = CBNode::make();
+    node->schedule(chain);
+    REQUIRE_FALSE(node->tick()); // false is chain errors happened
+    auto errors = node->errors();
+    LOG(ERROR) << errors[0];
+    REQUIRE(errors[0] == "Invalid amount of vertex buffer elements");
+  }
+
+  SECTION("Fail-Activate3") {
+    std::vector<Var> cubeVertices = {
+        Var(-1.0, 1.0, 1.0),   Var(0xff000000),      Var(1.0, 1.0, 1.0),
+        Var(0xff0000ff),       Var(-1.0, -1.0, 1.0), Var(0xff00ff00),
+        Var(1.0, -1.0, 1.0),   Var(0xff00ffff),      Var(-1.0, 1.0, -1.0),
+        Var(0xffff0000),       Var(1.0, 1.0, -1.0),  Var(0xffff00ff),
+        Var(-1.0, -1.0, -1.0), Var(0xffffff00),      Var(1.0, -1.0, -1.0),
+        Var(0xffffffff),
+    };
+    std::vector<Var> cubeIndices = {
+        Var(0, 1, 2), Var(-1, 3, 2), Var(4, 6, 5), Var(5, 6, 7),
+        Var(0, 2, 4), Var(4, 2, 6),  Var(1, 5, 3), Var(5, 7, 3),
+        Var(0, 4, 1), Var(4, 5, 1),  Var(2, 3, 6), Var(6, 3, 7),
+    };
+    auto chain = chainblocks::Chain("test-chain")
+                     .looped(true)
+                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                            Blocks()
+                                .let(cubeVertices)
+                                .block("Set", "cube", "Vertices")
+                                .let(cubeIndices)
+                                .block("Set", "cube", "Indices")
+                                .block("Get", "cube")
+                                .block("GFX.Model", Var(layout)));
+    auto node = CBNode::make();
+    node->schedule(chain);
+    REQUIRE_FALSE(node->tick()); // false is chain errors happened
+    auto errors = node->errors();
+    LOG(ERROR) << errors[0];
+    REQUIRE(errors[0] == "Vertex index out of range");
+  }
+
+  SECTION("Fail-Activate4") {
+    std::vector<Var> cubeVertices = {
+        Var(-1.0, 1.0, 1.0),   Var(0xff000000),      Var(1.0, 1.0, 1.0),
+        Var(0xff0000ff),       Var(-1.0, -1.0, 1.0), Var(0xff00ff00),
+        Var(1.0, -1.0, 1.0),   Var(0xff00ffff),      Var(-1.0, 1.0, -1.0),
+        Var(0xffff0000),       Var(1.0, 1.0, -1.0),  Var(0xffff00ff),
+        Var(-1.0, -1.0, -1.0), Var(0xffffff00),      Var(1.0, -1.0, -1.0),
+        Var(0xffffffff),
+    };
+    std::vector<Var> cubeIndices = {
+        Var(0, 1, 2), Var(1, 3, 2),   Var(4, 6, 5), Var(5, 6, 7),
+        Var(0, 2, 4), Var(300, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
+        Var(0, 4, 1), Var(4, 5, 1),   Var(2, 3, 6), Var(6, 3, 7),
+    };
+    auto chain = chainblocks::Chain("test-chain")
+                     .looped(true)
+                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                            Blocks()
+                                .let(cubeVertices)
+                                .block("Set", "cube", "Vertices")
+                                .let(cubeIndices)
+                                .block("Set", "cube", "Indices")
+                                .block("Get", "cube")
+                                .block("GFX.Model", Var(layout)));
+    auto node = CBNode::make();
+    node->schedule(chain);
+    REQUIRE_FALSE(node->tick()); // false is chain errors happened
+    auto errors = node->errors();
+    LOG(ERROR) << errors[0];
+    REQUIRE(errors[0] == "Vertex index out of range");
   }
 } // namespace BGFX_Tests
 
