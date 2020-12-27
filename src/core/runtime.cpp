@@ -1164,41 +1164,79 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
   }
   case Table: {
     if (strict) {
-      // TODO we are ignoring keys here...
-      // if both sides have keys they should also match
-      auto atypes = inputType.table.types.len;
-      auto btypes = receiverType.table.types.len;
-      //  btypes != 0 assume consumer is not strict
-      for (uint32_t i = 0; i < atypes && (isParameter || btypes != 0); i++) {
-        // Go thru all exposed types and make sure we get a positive match with
-        // the consumer
-        auto atype = inputType.table.types.elements[i];
-        auto matched = false;
-        for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = receiverType.table.types.elements[y];
-          if (matchTypes(atype, btype, isParameter, strict)) {
-            matched = true;
-            break;
+      // Table is a complicated one
+      // We use it as many things.. one of it as structured data
+      // So we have many possible cases:
+      // 1. a receiver table with just type info is flexible, accepts only those
+      // types but the keys are open to anything, if no types are available, it
+      // accepts any type
+      // 2. a receiver table with type info and key info is strict, means that
+      // input has to match 1:1
+      const auto atypes = inputType.table.types.len;
+      const auto btypes = receiverType.table.types.len;
+      if (receiverType.table.keys.len == 0) {
+        // case 1, consumer is not strict, match types if avail
+        // ignore input keys information
+        if (atypes == 0) {
+          // assume this as an Any
+          auto matched = false;
+          CBTypeInfo anyType{CBType::Any};
+          for (uint32_t y = 0; y < btypes; y++) {
+            auto btype = receiverType.table.types.elements[y];
+            if (matchTypes(anyType, btype, isParameter, strict)) {
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            return false;
+          }
+        } else {
+          if (isParameter || btypes != 0) {
+            // receiver doesn't accept anything, match further
+            for (uint32_t i = 0; i < atypes; i++) {
+              // Go thru all exposed types and make sure we get a positive match
+              // with the consumer
+              auto atype = inputType.table.types.elements[i];
+              auto matched = false;
+              for (uint32_t y = 0; y < btypes; y++) {
+                auto btype = receiverType.table.types.elements[y];
+                if (matchTypes(atype, btype, isParameter, strict)) {
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                return false;
+              }
+            }
           }
         }
-        if (!matched) {
+      } else {
+        const auto akeys = inputType.table.keys.len;
+        const auto bkeys = receiverType.table.keys.len;
+        auto missingMatches = akeys;
+        if (akeys != bkeys || akeys != atypes) {
+          // we need a 1:1 match
           return false;
         }
-      }
-      if (atypes == 0) {
-        // assume this as an Any
-        auto matched = false;
-        CBTypeInfo anyType{CBType::Any};
-        for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = receiverType.table.types.elements[y];
-          if (matchTypes(anyType, btype, isParameter, strict)) {
-            matched = true;
-            break;
+        for (uint32_t i = 0; i < akeys; i++) {
+          auto atype = inputType.table.types.elements[i];
+          auto akey = inputType.table.keys.elements[i];
+          for (uint32_t y = 0; y < bkeys; y++) {
+            auto btype = receiverType.table.types.elements[y];
+            auto bkey = receiverType.table.keys.elements[y];
+            if (strcmp(akey, bkey) == 0) {
+              if (matchTypes(atype, btype, isParameter, strict))
+                missingMatches--;
+              else
+                return false; // fail quick in this case
+            }
           }
         }
-        if (!matched) {
+
+        if (missingMatches)
           return false;
-        }
       }
     }
     break;
