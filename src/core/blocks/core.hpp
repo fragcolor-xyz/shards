@@ -895,6 +895,8 @@ struct Update : public SetBase {
 struct Get : public VariableBase {
   CBVar _defaultValue{};
   CBTypeInfo _defaultType{};
+  std::vector<CBTypeInfo> _tableTypes{};
+  std::vector<CBString> _tableKeys{};
 
   static inline ParamsInfo getParamsInfo = ParamsInfo(
       variableParamsInfo,
@@ -985,6 +987,8 @@ struct Get : public VariableBase {
         }
       }
     } else {
+      _tableTypes.clear();
+      _tableKeys.clear();
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
         if (strcmp(_name.c_str(), cv.name) == 0) {
@@ -992,8 +996,29 @@ struct Get : public VariableBase {
             throw ComposeError("Get (" + _name +
                                "): Cannot Get, variable is protected.");
           }
-          return cv.exposedType;
+          if (cv.exposedType.basicType == CBType::Table && cv.isTableEntry &&
+              cv.exposedType.table.types.len == 1) {
+            // in this case we need to gather all types of the table
+            _tableTypes.emplace_back(cv.exposedType.table.types.elements[0]);
+            if (cv.exposedType.table.keys.len == 1) {
+              _tableKeys.emplace_back(cv.exposedType.table.keys.elements[0]);
+            } else {
+              _tableKeys.emplace_back("");
+            }
+          } else {
+            return cv.exposedType;
+          }
         }
+      }
+
+      // check if we can compose a table type
+      if (_tableTypes.size() > 0) {
+        auto outputTableType = CBTypeInfo(CoreInfo::AnyTableType);
+        outputTableType.table.types = {&_tableTypes[0],
+                                       uint32_t(_tableTypes.size()), 0};
+        outputTableType.table.keys = {&_tableKeys[0],
+                                      uint32_t(_tableKeys.size()), 0};
+        return outputTableType;
       }
     }
 
