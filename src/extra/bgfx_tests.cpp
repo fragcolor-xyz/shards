@@ -319,7 +319,32 @@ void testModel() {
     LOG(ERROR) << errors[0];
     REQUIRE(errors[0] == "Vertex index out of range");
   }
-} // namespace BGFX_Tests
+}
+
+void testCamera() {
+  chainblocks::Globals::RootPath = "./";
+  registerCoreBlocks();
+
+  SECTION("Working") {
+    auto chain = chainblocks::Chain("test-chain")
+                     .looped(true)
+                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                            Blocks()
+                                .let(0.0, 0.0, 0.0)
+                                .block("Set", "cam", "Position")
+                                .let(0.0, 0.0, 35.0)
+                                .block("Set", "cam", "Target")
+                                .block("Get", "cam")
+                                .block("GFX.Camera", 512, 512));
+    auto node = CBNode::make();
+    node->schedule(chain);
+    auto count = 100;
+    while (count--) {
+      REQUIRE(node->tick()); // false is chain errors happened
+      chainblocks::sleep(0.016);
+    }
+  }
+}
 
 } // namespace BGFX_Tests
 } // namespace chainblocks

@@ -281,6 +281,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/bgfx_tests.cpp
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp

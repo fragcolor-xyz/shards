@@ -4,6 +4,7 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
 #include "SDL.h"
+#include <bx/math.h>
 #include <cstdlib>
 
 /*
@@ -211,6 +212,8 @@ struct MainWindow : public BaseWindow {
     _sysWnd = nullptr;
     _wheelScroll = 0;
     _bgfxInit = false;
+
+    _bgfx_context.reset();
   }
 
   static inline char *_clipboardContents{nullptr};
@@ -341,22 +344,34 @@ struct MainWindow : public BaseWindow {
     _imguiCtx = referenceVariable(context, "GUI.Context");
 
     // populate them here too to allow warmup operation
-    *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
-    *_bgfxCtx = Var::Object(&_bgfx_context, CoreCC, BgfxContextCC);
-    *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
-                             chainblocks::ImGui::ImGuiContextCC);
+    _sdlWinVar->valueType = _bgfxCtx->valueType = _imguiCtx->valueType =
+        CBType::Object;
+    _sdlWinVar->payload.objectVendorId = _bgfxCtx->payload.objectVendorId =
+        _imguiCtx->payload.objectVendorId = CoreCC;
+
+    _sdlWinVar->payload.objectTypeId = windowCC;
+    _sdlWinVar->payload.objectValue = _sysWnd;
+
+    _bgfxCtx->payload.objectTypeId = BgfxContextCC;
+    _bgfxCtx->payload.objectValue = &_bgfx_context;
+
+    _imguiCtx->payload.objectTypeId = chainblocks::ImGui::ImGuiContextCC;
+    _imguiCtx->payload.objectValue = &_imgui_context;
+
+    auto nv = _bgfx_context.nextView();
+    assert(nv == 0); // always 0 in MainWindow
 
     // init blocks after we initialize the system
     _blocks.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // Set them always as they might override each other during the chain
-    *_sdlWinVar = Var::Object(_sysWnd, CoreCC, windowCC);
-    *_bgfxCtx = Var::Object(&_bgfx_context, CoreCC, BgfxContextCC);
-    *_imguiCtx = Var::Object(&_imgui_context, CoreCC,
-                             chainblocks::ImGui::ImGuiContextCC);
-
+    // push view 0
+    _bgfx_context.push(0);
+    DEFER({
+      _bgfx_context.pop();
+      assert(_bgfx_context.index() == 0);
+    });
     // Touch view 0
     bgfx::touch(0);
 
@@ -939,11 +954,9 @@ struct Model : public BaseConsumer {
 
       switch (k[0]) {
       case 'V':
-      case 'v':
         vertices = v;
         break;
       case 'I':
-      case 'i':
         indices = v;
         break;
       default:
@@ -1100,6 +1113,154 @@ struct Model : public BaseConsumer {
   }
 };
 
+struct Camera : public BaseConsumer {
+  // TODO must expose view, proj and viewproj in a stack fashion probably
+  static inline Types InputTableTypes{
+      {CoreInfo::Float3Type, CoreInfo::Float3Type}};
+  static inline std::array<CBString, 2> InputTableKeys{"Position", "Target"};
+  static inline Type InputTable =
+      Type::TableOf(InputTableTypes, InputTableKeys);
+
+  static CBTypesInfo inputTypes() { return InputTable; }
+  static CBTypesInfo outputTypes() { return InputTable; }
+
+  int _width = 1024;
+  int _height = 768;
+  float _near = 0.1;
+  float _far = 1000.0;
+  float _fov = 60.0;
+  int _offsetX = 0;
+  int _offsetY = 0;
+  CBVar *_bgfx_context{nullptr};
+
+  static inline Parameters params{
+      {"Width", "The width of the viewport.", {CoreInfo::IntType}},
+      {"Height", "The height of the viewport.", {CoreInfo::IntType}},
+      {"Near",
+       "The distance from the near clipping plane.",
+       {CoreInfo::FloatType}},
+      {"Far",
+       "The distance from the far clipping plane.",
+       {CoreInfo::FloatType}},
+      {"FieldOfView",
+       "The field of view of the camera.",
+       {CoreInfo::FloatType}},
+      {"OffsetX",
+       "The horizontal offset of the viewport.",
+       {CoreInfo::IntType}},
+      {"OffsetY", "The vertical offset of the viewport.", {CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _width = int(value.payload.intValue);
+      break;
+    case 1:
+      _height = int(value.payload.intValue);
+      break;
+    case 2:
+      _near = float(value.payload.floatValue);
+      break;
+    case 3:
+      _far = float(value.payload.floatValue);
+      break;
+    case 4:
+      _fov = float(value.payload.floatValue);
+      break;
+    case 5:
+      _offsetX = int(value.payload.intValue);
+      break;
+    case 6:
+      _offsetY = int(value.payload.intValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_width);
+    case 1:
+      return Var(_height);
+    case 2:
+      return Var(_near);
+    case 3:
+      return Var(_far);
+    case 4:
+      return Var(_fov);
+    case 5:
+      return Var(_offsetX);
+    case 6:
+      return Var(_offsetY);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void warmup(CBContext *context) {
+    _bgfx_context = referenceVariable(context, "GFX.Context");
+  }
+
+  void cleanup() {
+    if (_bgfx_context) {
+      releaseVariable(_bgfx_context);
+      _bgfx_context = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // this is the most efficient way to find items in table
+    // without hashing and possible allocations etc
+    CBTable table = input.payload.tableValue;
+    CBTableIterator it;
+    table.api->tableGetIterator(table, &it);
+    CBVar position{};
+    CBVar target{};
+    while (true) {
+      CBString k;
+      CBVar v;
+      if (!table.api->tableNext(table, &it, &k, &v))
+        break;
+
+      switch (k[0]) {
+      case 'P':
+        position = v;
+        break;
+      case 'T':
+        target = v;
+        break;
+      default:
+        break;
+      }
+    }
+
+    assert(position.valueType == CBType::Float3 &&
+           target.valueType == CBType::Float3);
+
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+    float view[16];
+    bx::Vec3 *bp = reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
+    bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
+    bx::mtxLookAt(view, *bp, *bt);
+
+    float proj[16];
+    bx::mtxProj(proj, _fov, float(_width) / float(_height), _near, _far,
+                bgfx::getCaps()->homogeneousDepth);
+
+    bgfx::setViewTransform(ctx->currentView(), view, proj);
+    bgfx::setViewRect(ctx->currentView(), uint16_t(_offsetX),
+                      uint16_t(_offsetY), uint16_t(_width), uint16_t(_height));
+
+    return input;
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -1108,6 +1269,7 @@ void registerBGFXBlocks() {
   using ComputeShader = Shader<'c'>;
   REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
   REGISTER_CBLOCK("GFX.Model", Model);
+  REGISTER_CBLOCK("GFX.Camera", Camera);
 }
 }; // namespace BGFX
 

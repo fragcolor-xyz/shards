@@ -29,6 +29,29 @@ struct Context {
 
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
+
+  const bgfx::ViewId currentView() const { return viewsStack.back(); };
+  void push(bgfx::ViewId view) { viewsStack.push_back(view); }
+  void pop() {
+    assert(viewsStack.size() > 0);
+    viewsStack.pop_back();
+  }
+  void clear() { viewsStack.clear(); }
+  size_t index() const { return viewsStack.size(); }
+
+  bgfx::ViewId nextView() {
+    assert(nextViewCounter < UINT16_MAX);
+    return nextViewCounter++;
+  }
+
+  void reset() {
+    viewsStack.clear();
+    nextViewCounter = 0;
+  }
+
+private:
+  std::vector<bgfx::ViewId> viewsStack;
+  bgfx::ViewId nextViewCounter{0};
 };
 
 struct Texture {

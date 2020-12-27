@@ -28,6 +28,11 @@ private:
   std::string errorMessage;
 };
 
+class InvalidParameterIndex : public CBException {
+public:
+  explicit InvalidParameterIndex() : CBException("Invalid parameter index") {}
+};
+
 class ActivationError : public CBException {
 public:
   explicit ActivationError(std::string_view msg) : CBException(msg) {}
@@ -954,6 +959,11 @@ public:
     return let(val);
   }
 
+  template <typename... Vs> Blocks &let(Vs... values) {
+    auto val = Var(values...);
+    return let(val);
+  }
+
   operator Var() { return Var(_blocks); }
 
 private:
@@ -976,6 +986,11 @@ public:
 
   template <typename V> Chain &let(V value) {
     auto val = Var(value);
+    return let(val);
+  }
+
+  template <typename... Vs> Chain &let(Vs... values) {
+    auto val = Var(values...);
     return let(val);
   }
 
