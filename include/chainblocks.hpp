@@ -33,6 +33,11 @@ public:
   explicit ActivationError(std::string_view msg) : CBException(msg) {}
 };
 
+class WarmupError : public CBException {
+public:
+  explicit WarmupError(std::string_view msg) : CBException(msg) {}
+};
+
 class ComposeError : public CBException {
 public:
   explicit ComposeError(std::string_view msg, bool fatal = true)

@@ -730,6 +730,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   template <class Observer>
   bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
+    _errors.clear();
     if (chainblocks::Globals::SigIntTerm > 0) {
       terminate();
     } else {
@@ -739,6 +740,9 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
         observer.before_tick(flow->chain);
         chainblocks::tick(flow->chain, now, input);
         if (unlikely(!chainblocks::isRunning(flow->chain))) {
+          if (flow->chain->finishedError.size() > 0) {
+            _errors.emplace_back(flow->chain->finishedError);
+          }
           observer.before_stop(flow->chain);
           if (!chainblocks::stop(flow->chain)) {
             noErrors = false;
@@ -789,6 +793,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
   bool empty() { return _flows.empty(); }
 
+  const std::vector<std::string> &errors() { return _errors; }
+
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,
                      boost::alignment::aligned_allocator<
@@ -801,6 +807,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
+  std::vector<std::string> _errors;
   CBNode() = default;
 };
 

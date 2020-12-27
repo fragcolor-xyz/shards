@@ -623,8 +623,6 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
           return CBChainState::Return;
         case CBChainState::Stop:
           if (context->failed()) {
-            // reset error since we throw
-            context->resetCancelFlow();
             throw ActivationError(context->getErrorMessage());
           }
         case CBChainState::Restart:
@@ -643,10 +641,17 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
+      // failure from exceptions need uptdate on context
+      if (!context->failed()) {
+        context->cancelFlow(e.what());
+      }
       throw; // bubble up
     } catch (...) {
       LOG(ERROR) << "Block activation error (...), failed block: "
                  << std::string(blk->name(blk));
+      if (!context->failed()) {
+        context->cancelFlow("foreign exception failure, check logs");
+      }
       throw; // bubble up
     }
     input = output;
@@ -2014,6 +2019,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
   // Reset state
   chain->state = CBChain::State::Prepared;
+  chain->finishedOutput = Var::Empty;
+  chain->finishedError.clear();
 
   // Create a new context and copy the sink in
   CBFlow anonFlow{chain};
@@ -2035,8 +2042,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   try {
     chain->warmup(&context);
   } catch (...) {
+    // inside warmup we re-throw, we handle logging and such there
     chain->state = CBChain::State::Failed;
-    context.stopFlow(Var::Empty);
     LOG(ERROR) << "chain " << chain->name << " warmup failed.";
     goto endOfChain;
   }
@@ -2098,6 +2105,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
 endOfChain:
   chain->finishedOutput = chain->previousOutput;
+  if (context.failed())
+    chain->finishedError = context.getErrorMessage();
 
   // run cleanup on all the blocks
   // ensure stop state is set
@@ -2606,18 +2615,23 @@ void CBChain::warmup(CBContext *context) {
         if (blk->warmup)
           blk->warmup(blk, context);
         if (context->failed()) {
-          // reset error since we throw
-          context->resetCancelFlow();
-          throw chainblocks::CBException(context->getErrorMessage());
+          throw chainblocks::WarmupError(context->getErrorMessage());
         }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));
         LOG(ERROR) << e.what();
+        // if the failure is from an exception context might not be uptodate
+        if (!context->failed()) {
+          context->cancelFlow(e.what());
+        }
         throw;
       } catch (...) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));
+        if (!context->failed()) {
+          context->cancelFlow("foreign exception failure, check logs");
+        }
         throw;
       }
     }

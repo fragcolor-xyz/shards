@@ -223,6 +223,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   CBVar previousOutput{};
 
   chainblocks::OwnedVar finishedOutput{};
+  std::string finishedError{};
 
   uint64_t composedHash{};
   bool warmedUp{false};
