@@ -295,7 +295,11 @@ struct MainWindow : public BaseWindow {
     // Ensure clicks will happen even from out of focus!
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
-    initInfo.platformData.nwh = _sysWnd;
+    // set platform data this way.. or we will have issues if we re-init bgfx
+    bgfx::PlatformData pdata{};
+    pdata.nwh = _sysWnd;
+    bgfx::setPlatformData(pdata);
+
     initInfo.resolution.width = _width;
     initInfo.resolution.height = _height;
     initInfo.resolution.reset = BGFX_RESET_VSYNC;
