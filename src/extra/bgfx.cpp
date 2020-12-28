@@ -472,6 +472,11 @@ struct Texture2D : public BaseConsumer {
 
   static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    return Texture::TextureHandleType;
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto bpp = 1;
     if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
@@ -593,7 +598,12 @@ struct Texture2D : public BaseConsumer {
 
 template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return ShaderHandle::ShaderHandleType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    return ShaderHandle::ShaderHandleType;
+  }
 
   static inline Parameters f_v_params{
       {"VertexShader",
