@@ -175,12 +175,14 @@ struct MainWindow : public BaseWindow {
     if (_window) {
       SDL_DestroyWindow(_window);
       SDL_Quit();
+      _window = nullptr;
+      _sysWnd = nullptr;
     }
 
     if (_sdlWinVar) {
       if (_sdlWinVar->refcount > 1) {
-        throw CBException(
-            "MainWindow: Found a dangling reference to GFX.CurrentWindow.");
+        LOG(ERROR)
+            << "MainWindow: Found a dangling reference to GFX.CurrentWindow.";
       }
       memset(_sdlWinVar, 0x0, sizeof(CBVar));
       _sdlWinVar = nullptr;
@@ -188,8 +190,7 @@ struct MainWindow : public BaseWindow {
 
     if (_bgfxCtx) {
       if (_bgfxCtx->refcount > 1) {
-        throw CBException(
-            "MainWindow: Found a dangling reference to GFX.Context.");
+        LOG(ERROR) << "MainWindow: Found a dangling reference to GFX.Context.";
       }
       memset(_bgfxCtx, 0x0, sizeof(CBVar));
       _bgfxCtx = nullptr;
@@ -197,8 +198,7 @@ struct MainWindow : public BaseWindow {
 
     if (_imguiCtx) {
       if (_imguiCtx->refcount > 1) {
-        throw CBException(
-            "MainWindow: Found a dangling reference to GUI.Context.");
+        LOG(ERROR) << "MainWindow: Found a dangling reference to GUI.Context.";
       }
       memset(_imguiCtx, 0x0, sizeof(CBVar));
       _imguiCtx = nullptr;
@@ -209,8 +209,6 @@ struct MainWindow : public BaseWindow {
       _nativeWnd = nullptr;
     }
 
-    _window = nullptr;
-    _sysWnd = nullptr;
     _wheelScroll = 0;
     _bgfxInit = false;
   }
@@ -267,13 +265,8 @@ struct MainWindow : public BaseWindow {
                            SDL_WINDOWPOS_CENTERED, _width, _height, flags);
 
 #ifdef __APPLE__
-#ifdef SDL_VIDEO_DRIVER_UIKIT
       _metalView = SDL_Metal_CreateView(_window);
       _sysWnd = SDL_Metal_GetLayer(_metalView);
-#else
-      _metalView = SDL_Metal_CreateView(_window);
-      _sysWnd = SDL_Metal_GetLayer(_metalView);
-#endif
 #elif defined(_WIN32) || defined(__linux__)
       _sysWnd = SDL_GetNativeWindowPtr(_window);
 #elif defined(__EMSCRIPTEN__)

@@ -30,7 +30,7 @@ struct Context {
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
 
-  const bgfx::ViewId currentView() const { return viewsStack.back(); };
+  bgfx::ViewId currentView() const { return viewsStack.back(); };
   void push(bgfx::ViewId view) { viewsStack.push_back(view); }
   void pop() {
     assert(viewsStack.size() > 0);
