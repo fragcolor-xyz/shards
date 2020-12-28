@@ -611,6 +611,10 @@ struct CBInstanceData {
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBExposedTypesInfo shared;
+  // if this activation might happen in a worker thread
+  // for example cos this block is within an Await block
+  // useful to fail during compose if we don't wish this
+  bool onWorkerThread;
 
   // basically what the next block can get as input
   struct CBTypesInfo outputTypes;

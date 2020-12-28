@@ -42,6 +42,14 @@ struct BaseConsumer : public Base {
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
   }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+    return data.inputType;
+  }
 };
 
 // DPI awareness fix
@@ -128,6 +136,11 @@ struct MainWindow : public BaseWindow {
   static inline std::vector<SDL_Event> sdlEvents;
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+
     // Make sure MainWindow is UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
@@ -852,6 +865,8 @@ struct Model : public BaseConsumer {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+
     if (_dynamic) {
       OVERRIDE_ACTIVATE(data, activateDynamic);
     } else {

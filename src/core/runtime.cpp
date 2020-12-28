@@ -1263,6 +1263,8 @@ struct ValidationContext {
 
   CBValidationCallback cb{};
   void *userData{};
+
+  bool onWorkerThread{false};
 };
 
 void validateConnection(ValidationContext &ctx) {
@@ -1303,6 +1305,7 @@ void validateConnection(ValidationContext &ctx) {
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
+    data.onWorkerThread = ctx.onWorkerThread;
 
     struct ComposeContext {
       std::string externalError;
@@ -1550,6 +1553,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
   ctx.cb = callback;
   ctx.chain = data.chain;
   ctx.userData = userData;
+  ctx.onWorkerThread = data.onWorkerThread;
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {

@@ -120,6 +120,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
+      LOG(ERROR) << "Compose error: " << ex.what();
       failed = true;
     }
     REQUIRE(failed);
@@ -154,6 +155,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
+      LOG(ERROR) << "Compose error: " << ex.what();
       failed = true;
     }
     REQUIRE(failed);
@@ -188,6 +190,43 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
+      LOG(ERROR) << "Compose error: " << ex.what();
+      failed = true;
+    }
+    REQUIRE(failed);
+  }
+
+  SECTION("Fail-Compose3") {
+    std::vector<Var> cubeVertices = {
+        Var(1.0, 1.0),         Var(0xff000000),      Var(1.0, 1.0, 1.0),
+        Var(0xff0000ff),       Var(-1.0, -1.0, 1.0), Var(0xff00ff00),
+        Var(1.0, -1.0, 1.0),   Var(0xff00ffff),      Var(-1.0, 1.0, -1.0),
+        Var(0xffff0000),       Var(1.0, 1.0, -1.0),  Var(0xffff00ff),
+        Var(-1.0, -1.0, -1.0), Var(0xffffff00),      Var(1.0, -1.0, -1.0),
+        Var(0xffffffff),
+    };
+    std::vector<Var> cubeIndices = {
+        Var(0, 1, 2), Var(1, 3, 2), Var(4, 6, 5), Var(5, 6, 7),
+        Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
+        Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
+    };
+    auto chain = chainblocks::Chain("test-chain")
+                     .looped(true)
+                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                            Blocks().block(
+                                "Await", Blocks()
+                                             .let(cubeVertices)
+                                             .block("Set", "cube", "Vertices")
+                                             .let(cubeIndices)
+                                             .block("Set", "cube", "Indices")
+                                             .block("Get", "cube")
+                                             .block("GFX.Model", Var(layout))));
+    auto node = CBNode::make();
+    auto failed = false;
+    try {
+      node->schedule(chain);
+    } catch (const ComposeError &ex) {
+      LOG(ERROR) << "Compose error: " << ex.what();
       failed = true;
     }
     REQUIRE(failed);
