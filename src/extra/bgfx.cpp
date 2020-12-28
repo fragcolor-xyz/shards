@@ -156,6 +156,7 @@ struct MainWindow : public BaseWindow {
     _blocks.cleanup();
 
     // _imgui_context.Reset();
+    _bgfx_context.reset();
 
     if (_bgfxInit) {
       imguiDestroy();
@@ -212,8 +213,6 @@ struct MainWindow : public BaseWindow {
     _sysWnd = nullptr;
     _wheelScroll = 0;
     _bgfxInit = false;
-
-    _bgfx_context.reset();
   }
 
   static inline char *_clipboardContents{nullptr};

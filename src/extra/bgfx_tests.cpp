@@ -335,7 +335,7 @@ void testCamera() {
                                 .let(0.0, 0.0, 35.0)
                                 .block("Set", "cam", "Target")
                                 .block("Get", "cam")
-                                .block("GFX.Camera", 512, 512));
+                                .block("GFX.Camera"));
     auto node = CBNode::make();
     node->schedule(chain);
     auto count = 100;
