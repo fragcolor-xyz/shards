@@ -319,7 +319,7 @@ struct MainWindow : public BaseWindow {
 
     initInfo.resolution.width = _width;
     initInfo.resolution.height = _height;
-    initInfo.resolution.reset = BGFX_RESET_VSYNC | BGFX_RESET_SRGB_BACKBUFFER;
+    initInfo.resolution.reset = BGFX_RESET_VSYNC;
     if (!bgfx::init(initInfo)) {
       throw ActivationError("Failed to initialize BGFX");
     } else {
@@ -528,22 +528,22 @@ struct Texture2D : public BaseConsumer {
         case 1:
           _texture->handle =
               bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::R8, BGFX_TEXTURE_SRGB);
+                                    bgfx::TextureFormat::R8);
           break;
         case 2:
-          _texture->handle = bgfx::createTexture2D(
-              _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RG8, BGFX_TEXTURE_SRGB);
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
+                                    bgfx::TextureFormat::RG8);
           break;
         case 3:
-          _texture->handle = bgfx::createTexture2D(
-              _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RGB8, BGFX_TEXTURE_SRGB);
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
+                                    bgfx::TextureFormat::RGB8);
           break;
         case 4:
-          _texture->handle = bgfx::createTexture2D(
-              _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_SRGB);
+          _texture->handle =
+              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
+                                    bgfx::TextureFormat::RGBA8);
           break;
         default:
           cbassert(false);
