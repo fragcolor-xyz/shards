@@ -354,25 +354,31 @@ void from_json(const json &j, CBVar &var) {
   case ContextVar: {
     var.valueType = ContextVar;
     auto strVal = j.at("value").get<std::string>();
-    var.payload.stringValue = new char[strVal.length() + 1];
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
-    ((char *)var.payload.stringValue)[strVal.length()] = 0;
+    const auto strLen = strVal.length();
+    var.payload.stringValue = new char[strLen + 1];
+    var.payload.stringLen = uint32_t(strLen);
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
   case String: {
     var.valueType = String;
     auto strVal = j.at("value").get<std::string>();
-    var.payload.stringValue = new char[strVal.length() + 1];
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
-    ((char *)var.payload.stringValue)[strVal.length()] = 0;
+    const auto strLen = strVal.length();
+    var.payload.stringValue = new char[strLen + 1];
+    var.payload.stringLen = uint32_t(strLen);
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
   case Path: {
     var.valueType = Path;
     auto strVal = j.at("value").get<std::string>();
-    var.payload.stringValue = new char[strVal.length() + 1];
-    memcpy((void *)var.payload.stringValue, strVal.c_str(), strVal.length());
-    ((char *)var.payload.stringValue)[strVal.length()] = 0;
+    const auto strLen = strVal.length();
+    var.payload.stringValue = new char[strLen + 1];
+    var.payload.stringLen = uint32_t(strLen);
+    memcpy((void *)var.payload.stringValue, strVal.c_str(), strLen);
+    ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
   case Color: {
@@ -696,10 +702,11 @@ struct FromJson {
     } else if (j.is_string()) {
       storage.valueType = String;
       auto strVal = j.get<std::string>();
-      storage.payload.stringValue = new char[strVal.length() + 1];
-      memcpy((void *)storage.payload.stringValue, strVal.c_str(),
-             strVal.length());
-      ((char *)storage.payload.stringValue)[strVal.length()] = 0;
+      const auto strLen = strVal.length();
+      storage.payload.stringValue = new char[strLen + 1];
+      storage.payload.stringLen = strLen;
+      memcpy((void *)storage.payload.stringValue, strVal.c_str(), strLen);
+      ((char *)storage.payload.stringValue)[strLen] = 0;
     } else if (j.is_boolean()) {
       storage.valueType = Bool;
       storage.payload.boolValue = j.get<bool>();

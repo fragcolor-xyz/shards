@@ -1647,6 +1647,9 @@ CBVar unreachableActivation(const CBVar &input) { throw; }
 CBVar exitProgramActivation(const CBVar &input) {
   exit(input.payload.intValue);
 }
+CBVar hashActivation(const CBVar &input) {
+  return Var(chainblocks::hash(input));
+}
 
 #ifdef __EMSCRIPTEN__
 CBVar emscriptenEvalActivation(const CBVar &input) {
@@ -1770,6 +1773,10 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Pass", PassMockBlock);
   REGISTER_CBLOCK("Exit", ExitBlock);
 
+  using HasherBlock =
+      LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::IntType>;
+  REGISTER_CBLOCK("Hash", HasherBlock);
+
 #ifdef __EMSCRIPTEN__
   using EmscriptenEvalBlock =
       LambdaBlock<emscriptenEvalActivation, CoreInfo::StringType,
@@ -1780,7 +1787,6 @@ void registerBlocksCoreBlocks() {
 
   REGISTER_CBLOCK("Return", Return);
   REGISTER_CBLOCK("Restart", Restart);
-  REGISTER_CBLOCK("Stop", Stop);
   REGISTER_CBLOCK("Fail", Fail);
   REGISTER_CBLOCK("NaNTo0", NaNTo0);
   REGISTER_CBLOCK("IsNone", IsNone);
@@ -1788,5 +1794,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Input", Input);
   REGISTER_CBLOCK("Comment", Comment);
   REGISTER_CBLOCK("Replace", Replace);
+  REGISTER_CBLOCK("OnCleanup", OnCleanup);
 }
 }; // namespace chainblocks

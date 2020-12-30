@@ -1,4 +1,5 @@
 #include "ops_internal.hpp"
+#include "ops.hpp"
 
 MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
@@ -82,9 +83,9 @@ MAKE_LOGGABLE(CBVar, var, os) {
     os << "(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
-        os << var.payload.int16Value[i];
+        os << int(var.payload.int16Value[i]);
       else
-        os << ", " << var.payload.int16Value[i];
+        os << ", " << int(var.payload.int16Value[i]);
     }
     os << ")";
     break;
@@ -180,5 +181,53 @@ MAKE_LOGGABLE(CBVar, var, os) {
     os << "}";
     break;
   }
+  return os;
+}
+
+MAKE_LOGGABLE(CBTypeInfo, t, os) {
+  os << type2Name(t.basicType);
+  if (t.basicType == CBType::Seq) {
+    os << " [";
+    for (uint32_t i = 0; i < t.seqTypes.len; i++) {
+      os << "(" << t.seqTypes.elements[i] << ")";
+      if (i < (t.seqTypes.len - 1)) {
+        os << " ";
+      }
+    }
+    os << "]";
+  } else if (t.basicType == CBType::Table) {
+    if (t.table.types.len == t.table.keys.len) {
+      os << " {";
+      for (uint32_t i = 0; i < t.table.types.len; i++) {
+        os << "\"" << t.table.keys.elements[i] << "\" ";
+        os << "(" << t.table.types.elements[i] << ")";
+        if (i < (t.table.types.len - 1)) {
+          os << " ";
+        }
+      }
+      os << "}";
+    } else {
+      os << " [";
+      for (uint32_t i = 0; i < t.table.types.len; i++) {
+        os << "(" << t.table.types.elements[i] << ")";
+        if (i < (t.table.types.len - 1)) {
+          os << " ";
+        }
+      }
+      os << "]";
+    }
+  }
+  return os;
+}
+
+MAKE_LOGGABLE(CBTypesInfo, ts, os) {
+  os << "[";
+  for (uint32_t i = 0; i < ts.len; i++) {
+    os << "(" << ts.elements[i] << ")";
+    if (i < (ts.len - 1)) {
+      os << " ";
+    }
+  }
+  os << "]";
   return os;
 }

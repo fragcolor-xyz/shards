@@ -28,9 +28,19 @@ private:
   std::string errorMessage;
 };
 
+class InvalidParameterIndex : public CBException {
+public:
+  explicit InvalidParameterIndex() : CBException("Invalid parameter index") {}
+};
+
 class ActivationError : public CBException {
 public:
   explicit ActivationError(std::string_view msg) : CBException(msg) {}
+};
+
+class WarmupError : public CBException {
+public:
+  explicit WarmupError(std::string_view msg) : CBException(msg) {}
 };
 
 class ComposeError : public CBException {
@@ -79,9 +89,26 @@ struct Type {
     return res;
   }
 
+  static Type Enum(int32_t vendorId, int32_t typeId) {
+    Type res;
+    res._type = {CBType::Enum,
+                 {.enumeration = {.vendorId = vendorId, .typeId = typeId}}};
+    return res;
+  }
+
   static Type TableOf(CBTypesInfo types) {
     Type res;
     res._type = {CBType::Table, {.table = {.types = types}}};
+    return res;
+  }
+
+  template <size_t N>
+  static Type TableOf(CBTypesInfo types, const std::array<CBString, N> &keys) {
+    Type res;
+    auto &k = const_cast<std::array<CBString, N> &>(keys);
+    res._type = {
+        CBType::Table,
+        {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
     return res;
   }
 
@@ -203,8 +230,25 @@ struct Parameters {
 
 // used to explicitly specialize, hinting compiler
 // mostly used internally for math blocks
-#define CB_PAYLOAD_MATH_OPS(CBPAYLOAD_TYPE, __item__)                          \
+#define CB_PAYLOAD_CTORS0(CBPAYLOAD_TYPE, __inner_type__, __item__)            \
+  constexpr static size_t Width{1};                                            \
   CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
+  CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
+    const __inner_type__ *p = l.begin();                                       \
+    this->__item__ = p[0];                                                     \
+  }
+
+#define CB_PAYLOAD_CTORS1(CBPAYLOAD_TYPE, __inner_type__, __item__, _width_)   \
+  constexpr static size_t Width{_width_};                                      \
+  CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
+  CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
+    const __inner_type__ *p = l.begin();                                       \
+    for (size_t i = 0; i < l.size(); ++i) {                                    \
+      this->__item__[i] = p[i];                                                \
+    }                                                                          \
+  }
+
+#define CB_PAYLOAD_MATH_OPS(CBPAYLOAD_TYPE, __item__)                          \
   ALWAYS_INLINE inline CBPAYLOAD_TYPE operator+(const CBPAYLOAD_TYPE &b)       \
       const {                                                                  \
     CBPAYLOAD_TYPE res;                                                        \
@@ -268,6 +312,35 @@ struct Parameters {
     return res;                                                                \
   }
 
+#define CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, __op__)             \
+  ALWAYS_INLINE static inline CBPAYLOAD_TYPE __op__(const CBPAYLOAD_TYPE &x) { \
+    CBPAYLOAD_TYPE res;                                                        \
+    for (size_t i = 0; i < CBPAYLOAD_TYPE::Width; i++) {                       \
+      res.__item__[i] = __builtin_##__op__(x.__item__[i]);                     \
+    }                                                                          \
+    return res;                                                                \
+  }
+
+#define CB_PAYLOAD_MATH_OPS_FLOAT(CBPAYLOAD_TYPE, __item__)                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, sqrt);                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, log);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, sin);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, cos);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, exp);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, tanh);                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, fabs);
+
+#define CB_PAYLOAD_MATH_POW_FLOAT(CBPAYLOAD_TYPE, __item__)                    \
+  template <typename P>                                                        \
+  ALWAYS_INLINE static inline CBPAYLOAD_TYPE pow(const CBPAYLOAD_TYPE &x,      \
+                                                 P p) {                        \
+    CBPAYLOAD_TYPE res;                                                        \
+    for (size_t i = 0; i < CBPAYLOAD_TYPE::Width; i++) {                       \
+      res.__item__[i] = __builtin_pow(x.__item__[i], p);                       \
+    }                                                                          \
+    return res;                                                                \
+  }
+
 #define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
   ALWAYS_INLINE inline CBPAYLOAD_TYPE(int32_t i) {                             \
     using t = decltype(__item__);                                              \
@@ -313,43 +386,62 @@ struct Parameters {
   }
 
 struct IntVarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS0(IntVarPayload, int64_t, intValue);
   CB_PAYLOAD_MATH_OPS(IntVarPayload, intValue);
   CB_PAYLOAD_MATH_OPS_SIMPLE(IntVarPayload, intValue);
   CB_PAYLOAD_MATH_OPS_INT(IntVarPayload, intValue);
 };
 struct Int2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Int2VarPayload, int64_t, int2Value, 2);
   CB_PAYLOAD_MATH_OPS(Int2VarPayload, int2Value);
   CB_PAYLOAD_MATH_OPS_INT(Int2VarPayload, int2Value);
 };
 struct Int3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Int3VarPayload, int32_t, int3Value, 3);
   CB_PAYLOAD_MATH_OPS(Int3VarPayload, int3Value);
   CB_PAYLOAD_MATH_OPS_INT(Int3VarPayload, int3Value);
 };
 struct Int4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Int4VarPayload, int32_t, int4Value, 4);
   CB_PAYLOAD_MATH_OPS(Int4VarPayload, int4Value);
   CB_PAYLOAD_MATH_OPS_INT(Int4VarPayload, int4Value);
 };
 struct Int8VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Int8VarPayload, int16_t, int8Value, 8);
   CB_PAYLOAD_MATH_OPS(Int8VarPayload, int8Value);
   CB_PAYLOAD_MATH_OPS_INT(Int8VarPayload, int8Value);
 };
 struct Int16VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Int16VarPayload, int8_t, int16Value, 16);
   CB_PAYLOAD_MATH_OPS(Int16VarPayload, int16Value);
   CB_PAYLOAD_MATH_OPS_INT(Int16VarPayload, int16Value);
 };
 struct FloatVarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS0(FloatVarPayload, double, floatValue);
   CB_PAYLOAD_MATH_OPS(FloatVarPayload, floatValue);
   CB_PAYLOAD_MATH_OPS_SIMPLE(FloatVarPayload, floatValue);
 };
 struct Float2VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Float2VarPayload, double, float2Value, 2);
   CB_PAYLOAD_MATH_OPS(Float2VarPayload, float2Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float2VarPayload, float2Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float2VarPayload, float2Value);
 };
 struct Float3VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Float3VarPayload, float, float3Value, 3);
   CB_PAYLOAD_MATH_OPS(Float3VarPayload, float3Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float3VarPayload, float3Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float3VarPayload, float3Value);
 };
 struct Float4VarPayload : public CBVarPayload {
+  CB_PAYLOAD_CTORS1(Float4VarPayload, float, float4Value, 4);
   CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float4VarPayload, float4Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float4VarPayload, float4Value);
 };
+
+// forward declare this as we use it in Var
+class Chain;
 
 struct Var : public CBVar {
   Var(const IntVarPayload &p) : CBVar() {
@@ -530,9 +622,34 @@ struct Var : public CBVar {
     }
   }
 
+  template <typename T> explicit operator std::vector<T>() const {
+    if (valueType != Seq) {
+      throw InvalidVarTypeError("Invalid variable casting! expected Seq");
+    }
+    std::vector<T> res;
+    res.resize(payload.seqValue.len);
+    for (uint32_t i = 0; i < payload.seqValue.len; i++) {
+      res[i] = T(*reinterpret_cast<Var *>(&payload.seqValue.elements[i]));
+    }
+    return res;
+  }
+
+  explicit operator std::vector<Var>() const {
+    if (valueType != Seq) {
+      throw InvalidVarTypeError("Invalid variable casting! expected Seq");
+    }
+    std::vector<Var> res{size_t(payload.seqValue.len)};
+    for (uint32_t i = 0; i < payload.seqValue.len; i++) {
+      res[i] = *reinterpret_cast<Var *>(&payload.seqValue.elements[i]);
+    }
+    return res;
+  }
+
   constexpr static CBVar Empty{};
-  constexpr static CBVar True{{true}, {nullptr}, 0, CBType::Bool};
-  constexpr static CBVar False{{false}, {nullptr}, 0, CBType::Bool};
+  constexpr static CBVar True{{true}, nullptr, 0, CBType::Bool};
+  constexpr static CBVar False{{false}, nullptr, 0, CBType::Bool};
+  // this is a special one used to flag default value in Chain/Blocks C++ DSL
+  constexpr static CBVar Any{{false}, nullptr, 0, CBType::Any};
 
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,
@@ -577,6 +694,11 @@ struct Var : public CBVar {
     payload.intValue = src;
   }
 
+  explicit Var(unsigned int src) : CBVar() {
+    valueType = Int;
+    payload.intValue = int64_t(src);
+  }
+
   explicit Var(int a, int b) : CBVar() {
     valueType = Int2;
     payload.int2Value[0] = a;
@@ -596,6 +718,43 @@ struct Var : public CBVar {
     payload.int4Value[1] = b;
     payload.int4Value[2] = c;
     payload.int4Value[3] = d;
+  }
+
+  explicit Var(int16_t a, int16_t b, int16_t c, int16_t d, int16_t e, int16_t f,
+               int16_t g, int16_t h)
+      : CBVar() {
+    valueType = Int8;
+    payload.int8Value[0] = a;
+    payload.int8Value[1] = b;
+    payload.int8Value[2] = c;
+    payload.int8Value[3] = d;
+    payload.int8Value[4] = e;
+    payload.int8Value[5] = f;
+    payload.int8Value[6] = g;
+    payload.int8Value[7] = h;
+  }
+
+  explicit Var(int8_t a, int8_t b, int8_t c, int8_t d, int8_t e, int8_t f,
+               int8_t g, int8_t h, int8_t i, int8_t j, int8_t k, int8_t l,
+               int8_t m, int8_t n, int8_t o, int8_t p)
+      : CBVar() {
+    valueType = Int16;
+    payload.int16Value[0] = a;
+    payload.int16Value[1] = b;
+    payload.int16Value[2] = c;
+    payload.int16Value[3] = d;
+    payload.int16Value[4] = e;
+    payload.int16Value[5] = f;
+    payload.int16Value[6] = g;
+    payload.int16Value[7] = h;
+    payload.int16Value[8] = i;
+    payload.int16Value[9] = j;
+    payload.int16Value[10] = k;
+    payload.int16Value[11] = l;
+    payload.int16Value[12] = m;
+    payload.int16Value[13] = n;
+    payload.int16Value[14] = o;
+    payload.int16Value[15] = p;
   }
 
   explicit Var(int64_t a, int64_t b) : CBVar() {
@@ -658,6 +817,12 @@ struct Var : public CBVar {
         &const_cast<std::shared_ptr<CBChain> &>(chain));
   }
 
+  explicit Var(CBlock *block) : CBVar() {
+    // mostly internal use only, anyway use with care!
+    valueType = CBType::Block;
+    payload.blockValue = block;
+  }
+
   explicit Var(CBImage img) : CBVar() {
     valueType = Image;
     payload.imageValue = img;
@@ -676,13 +841,21 @@ struct Var : public CBVar {
   explicit Var(const char *src, size_t len = 0) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src;
-    payload.stringLen = uint32_t(len);
+    payload.stringLen = uint32_t(len == 0 ? strlen(src) : len);
   }
 
   explicit Var(const std::string &src) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src.c_str();
     payload.stringLen = uint32_t(src.length());
+  }
+
+  static Var ContextVar(const std::string &src) {
+    Var res;
+    res.valueType = CBType::ContextVar;
+    res.payload.stringValue = src.c_str();
+    res.payload.stringLen = uint32_t(src.length());
+    return res;
   }
 
   explicit Var(CBTable &src) : CBVar() {
@@ -720,6 +893,8 @@ struct Var : public CBVar {
     payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
     payload.seqValue.len = N;
   }
+
+  Var(const Chain &chain);
 };
 
 using VarPayload =
@@ -739,6 +914,7 @@ inline void ForEach(const CBTable &table,
       },
       &f);
 }
+
 class ChainProvider {
   // used specially for live editing chains, from host languages
 public:
@@ -801,73 +977,72 @@ private:
   CBChainProvider _provider;
 };
 
-class Chain {
+class Blocks {
 public:
-  template <typename String>
-  Chain(String name) : _name(name), _looped(false), _unsafe(false) {}
-  Chain() : _looped(false), _unsafe(false) {}
+  Blocks() {}
 
-  template <typename String, typename... Vars>
-  Chain &block(String name, Vars... params) {
-    std::string blockName(name);
-    auto blk = createBlock(blockName.c_str());
-    blk->setup(blk);
+  Blocks &block(std::string_view name, std::vector<Var> params);
 
+  template <typename... Vars>
+  Blocks &block(std::string_view name, Vars... params) {
     std::vector<Var> vars = {Var(params)...};
-    for (size_t i = 0; i < vars.size(); i++) {
-      blk->setParam(blk, int(i), &vars[i]);
-    }
-
-    _blocks.push_back(blk);
-    return *this;
+    return block(name, vars);
   }
 
-  template <typename V> Chain &let(V value) {
-    auto blk = createBlock("Const");
-    blk->setup(blk);
+  Blocks &let(Var value);
+
+  template <typename V> Blocks &let(V value) {
     auto val = Var(value);
-    blk->setParam(blk, 0, &val);
-    _blocks.push_back(blk);
-    return *this;
+    return let(val);
   }
 
-  Chain &looped(bool looped) {
-    _looped = looped;
-    return *this;
+  template <typename... Vs> Blocks &let(Vs... values) {
+    auto val = Var(values...);
+    return let(val);
   }
 
-  Chain &unsafe(bool unsafe) {
-    _unsafe = unsafe;
-    return *this;
-  }
-
-  template <typename String> Chain &name(String name) {
-    _name = name;
-    return *this;
-  }
-
-  operator std::shared_ptr<CBChain>();
-
-  // -- LEAKS --
-  // operator CBVar() {
-  //   CBVar res{};
-  //   res.valueType = Seq;
-  //   for (auto blk : _blocks) {
-  //     CBVar blkVar{};
-  //     blkVar.valueType = Block;
-  //     blkVar.payload.blockValue = blk;
-  //     stbds_arrpush(res.payload.seqValue, blkVar);
-  //   }
-  //   // blocks are unique so drain them here
-  //   _blocks.clear();
-  //   return res;
-  // }
+  operator Var() { return Var(_blocks); }
 
 private:
-  std::string _name;
-  bool _looped;
-  bool _unsafe;
-  std::vector<CBlock *> _blocks;
+  std::vector<Var> _blocks;
+};
+
+class Chain {
+public:
+  Chain(std::string_view name);
+
+  Chain &block(std::string_view name, std::vector<Var> params);
+
+  template <typename... Vars>
+  Chain &block(std::string_view name, Vars... params) {
+    std::vector<Var> vars = {Var(params)...};
+    return block(name, vars);
+  }
+
+  Chain &let(Var value);
+
+  template <typename V> Chain &let(V value) {
+    auto val = Var(value);
+    return let(val);
+  }
+
+  template <typename... Vs> Chain &let(Vs... values) {
+    auto val = Var(values...);
+    return let(val);
+  }
+
+  Chain &looped(bool looped);
+  Chain &unsafe(bool unsafe);
+  Chain &name(std::string_view name);
+
+  CBChain *operator->() { return _chain.get(); }
+  CBChain *get() { return _chain.get(); }
+
+  operator std::shared_ptr<CBChain>() { return _chain; }
+  CBChainRef weakRef() const;
+
+private:
+  std::shared_ptr<CBChain> _chain;
 };
 } // namespace chainblocks
 

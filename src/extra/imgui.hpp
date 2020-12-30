@@ -12,7 +12,7 @@ namespace ImGuiExtra {
 
 namespace chainblocks {
 namespace ImGui {
-constexpr uint32_t ImGuiContextCC = 'ImGu';
+constexpr uint32_t ImGuiContextCC = 'gui ';
 
 struct Context {
   static inline Type Info{
@@ -22,16 +22,16 @@ struct Context {
   // Useful to compare with with plugins, they might mismatch!
   static inline const char *Version = ::ImGui::GetVersion();
 
-  ImGuiContext *context = ::ImGui::CreateContext();
+  // ImGuiContext *context = ::ImGui::CreateContext();
 
-  ~Context() { ::ImGui::DestroyContext(context); }
+  // ~Context() { ::ImGui::DestroyContext(context); }
 
-  void Set() { ::ImGui::SetCurrentContext(context); }
+  // void Set() { ::ImGui::SetCurrentContext(context); }
 
-  void Reset() {
-    ::ImGui::DestroyContext(context);
-    context = ::ImGui::CreateContext();
-  }
+  // void Reset() {
+  //   ::ImGui::DestroyContext(context);
+  //   context = ::ImGui::CreateContext();
+  // }
 };
 }; // namespace ImGui
 }; // namespace chainblocks

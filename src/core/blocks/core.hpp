@@ -338,6 +338,57 @@ struct Comment {
   }
 };
 
+struct OnCleanup {
+  BlocksVar _blocks{};
+  CBContext *_context{nullptr};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Blocks",
+       "The blocks to execute on chain's cleanup. Notice that blocks that "
+       "suspend execution are not allowed.",
+       {CoreInfo::BlocksOrNone}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  void warmup(CBContext *ctx) {
+    _context = ctx;
+    _blocks.warmup(ctx);
+  }
+
+  void cleanup() {
+    // also run the blocks here!
+    if (_context) {
+      // cleanup might be called multiple times
+      CBVar output{};
+      // we need to reset the state or only the first block will run
+      _context->resetCancelFlow();
+      _blocks.activate(_context, Var::Empty, output);
+      _context = nullptr;
+    }
+    // and cleanup after
+    _blocks.cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // We are a NOOP block
+    assert(false);
+    return input;
+  }
+};
+
 struct And {
   static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -391,32 +442,6 @@ struct IsNotNone {
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     return Var(input.valueType != None);
-  }
-};
-
-struct Stop {
-  CBTypeInfo _inputType{};
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _inputType = data.inputType;
-    return data.inputType;
-  }
-
-  void composed(const CBChain *chain, const CBComposeResult *result) {
-    if (_inputType != result->outputType) {
-      throw ComposeError(
-          "Stop input and chain output type mismatch, Stop "
-          "input must be the same type of the chain's output "
-          "(regular flow), chain: " +
-          chain->name + " expected: " + type2Name(chain->outputType.basicType));
-    }
-  }
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  CBVar activate(CBContext *context, const CBVar &input) {
-    context->stopFlow(input);
-    return input;
   }
 };
 
@@ -870,6 +895,8 @@ struct Update : public SetBase {
 struct Get : public VariableBase {
   CBVar _defaultValue{};
   CBTypeInfo _defaultType{};
+  std::vector<CBTypeInfo> _tableTypes{};
+  std::vector<CBString> _tableKeys{};
 
   static inline ParamsInfo getParamsInfo = ParamsInfo(
       variableParamsInfo,
@@ -960,6 +987,8 @@ struct Get : public VariableBase {
         }
       }
     } else {
+      _tableTypes.clear();
+      _tableKeys.clear();
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
         if (strcmp(_name.c_str(), cv.name) == 0) {
@@ -967,8 +996,29 @@ struct Get : public VariableBase {
             throw ComposeError("Get (" + _name +
                                "): Cannot Get, variable is protected.");
           }
-          return cv.exposedType;
+          if (cv.exposedType.basicType == CBType::Table && cv.isTableEntry &&
+              cv.exposedType.table.types.len == 1) {
+            // in this case we need to gather all types of the table
+            _tableTypes.emplace_back(cv.exposedType.table.types.elements[0]);
+            if (cv.exposedType.table.keys.len == 1) {
+              _tableKeys.emplace_back(cv.exposedType.table.keys.elements[0]);
+            } else {
+              _tableKeys.emplace_back("");
+            }
+          } else {
+            return cv.exposedType;
+          }
         }
+      }
+
+      // check if we can compose a table type
+      if (_tableTypes.size() > 0) {
+        auto outputTableType = CBTypeInfo(CoreInfo::AnyTableType);
+        outputTableType.table.types = {&_tableTypes[0],
+                                       uint32_t(_tableTypes.size()), 0};
+        outputTableType.table.keys = {&_tableKeys[0],
+                                      uint32_t(_tableKeys.size()), 0};
+        return outputTableType;
       }
     }
 
@@ -2837,7 +2887,6 @@ RUNTIME_CORE_BLOCK_TYPE(Const);
 RUNTIME_CORE_BLOCK_TYPE(And);
 RUNTIME_CORE_BLOCK_TYPE(Or);
 RUNTIME_CORE_BLOCK_TYPE(Not);
-RUNTIME_CORE_BLOCK_TYPE(Stop);
 RUNTIME_CORE_BLOCK_TYPE(Fail);
 RUNTIME_CORE_BLOCK_TYPE(Restart);
 RUNTIME_CORE_BLOCK_TYPE(Return);

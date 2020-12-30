@@ -237,7 +237,7 @@ public:
     return &r->shared;
   }
 
-  void Reset(E *obj) {
+  void Release(E *obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
     r->refcount--;
     if (r->refcount == 0) {
@@ -317,8 +317,9 @@ public:
 
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
-    _blocks.elements = &_blocksArray[0];
-    _blocks.len = uint32_t(_blocksArray.size());
+    const auto nblocks = _blocksArray.size();
+    _blocks.elements = nblocks > 0 ? &_blocksArray[0] : nullptr;
+    _blocks.len = uint32_t(nblocks);
 
     return _blocksParam;
   }
@@ -351,7 +352,7 @@ public:
 
   CBChainState activate(CBContext *context, const CBVar &input, CBVar &output,
                         const bool handleReturn = false) {
-    return CB_CORE::runBlocks(_blocks, context, input, &output, handleReturn);
+    return CB_CORE::runBlocks(_blocks, context, input, output, handleReturn);
   }
 
   operator bool() const { return _blocksArray.size() > 0; }
@@ -361,7 +362,7 @@ public:
 
 template <class CB_CORE> struct TOwnedVar : public CBVar {
   TOwnedVar() : CBVar() {}
-  TOwnedVar(TOwnedVar &&source) { *this = source; }
+  TOwnedVar(TOwnedVar &&source) : CBVar() { *this = source; }
   TOwnedVar(const TOwnedVar &source) : CBVar() {
     CB_CORE::cloneVar(*this, source);
   }

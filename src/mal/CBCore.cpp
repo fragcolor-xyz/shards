@@ -170,27 +170,17 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
       "args args-inner)))))",
       env);
-  rep("(def! Do (fn* [chain] (RunChain chain :Passthrough false :Mode "
-      "RunChainMode.Inline)))",
-      env);
-  rep("(def! Dispatch (fn* [chain] (RunChain chain :Passthrough true :Mode "
-      "RunChainMode.Inline)))",
-      env);
-  rep("(def! Detach (fn* [chain] (RunChain chain :Passthrough true :Mode "
-      "RunChainMode.Detached)))",
-      env);
-  rep("(def! Step (fn* [chain] (RunChain chain :Passthrough false :Mode "
-      "RunChainMode.Stepped)))",
-      env);
   rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
       "to))))",
       env);
   rep("(def || Await)", env);
-#ifdef _WIN32
+#if defined(_WIN32)
   rep("(def platform \"windows\")", env);
-#elif __linux__
+#elif defined(__EMSCRIPTEN__)
+  rep("(def platform \"emscripten\")", env);
+#elif defined(__linux__)
   rep("(def platform \"linux\")", env);
-#elif __APPLE__
+#elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
 }
@@ -1365,7 +1355,7 @@ BUILTIN("tick") {
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
     auto chain = CBChain::sharedFromRef(v->value());
-    Duration now = Clock::now().time_since_epoch();
+    CBDuration now = CBClock::now().time_since_epoch();
     auto ticked = chainblocks::tick(chain.get(), now);
     return mal::boolean(ticked);
   } else if (const malCBNode *v = DYNAMIC_CAST(malCBNode, first)) {
@@ -1416,9 +1406,9 @@ BUILTIN("run") {
 
   if (node) {
     while (!node->empty()) {
-      const auto pre = Clock::now();
+      const auto pre = CBClock::now();
       const auto noErrors = node->tick();
-      const auto elapsed = Clock::now() - pre;
+      const auto elapsed = CBClock::now() - pre;
 
       // other chains might be not in error tho...
       // so return only if empty
@@ -1440,9 +1430,9 @@ BUILTIN("run") {
       if (sleepTime <= 0.0) {
         chainblocks::sleep(-1.0);
       } else {
-        Duration dsleep(sleepTime);
+        CBDuration dsleep(sleepTime);
         // remove the time we took to tick from sleep
-        Duration realSleepTime = dsleep - elapsed;
+        CBDuration realSleepTime = dsleep - elapsed;
         if (realSleepTime.count() <= 0.0) {
           // tick took too long!!!
           // warn sometimes and skip sleeping, skipping callbacks too
@@ -1456,7 +1446,7 @@ BUILTIN("run") {
       }
     }
   } else {
-    Duration now = Clock::now().time_since_epoch();
+    CBDuration now = CBClock::now().time_since_epoch();
     while (!chainblocks::tick(chain, now)) {
       if (dec) {
         times--;
@@ -1466,7 +1456,7 @@ BUILTIN("run") {
         }
       }
       chainblocks::sleep(sleepTime);
-      now = Clock::now().time_since_epoch();
+      now = CBClock::now().time_since_epoch();
     }
   }
 
@@ -1694,6 +1684,16 @@ BUILTIN("setenv") {
 #else
   return mal::falseValue();
 #endif
+}
+
+BUILTIN("hasBlock?") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  if (builtIns.find(value->value()) != builtIns.end()) {
+    return mal::trueValue();
+  } else {
+    return mal::falseValue();
+  }
 }
 
 BUILTIN_ISA("Var?", malCBVar);

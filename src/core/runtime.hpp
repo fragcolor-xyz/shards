@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-using Clock = std::chrono::high_resolution_clock;
-using Duration = std::chrono::duration<double>;
+using CBClock = std::chrono::high_resolution_clock;
+using CBDuration = std::chrono::duration<double>;
 
 // For sleep
 #if _WIN32
@@ -75,7 +75,7 @@ struct CBContext {
 #else
       CBCoro *coro,
 #endif
-      CBChain *starter, CBFlow *flow)
+      const CBChain *starter, CBFlow *flow)
       : main(starter), flow(flow),
 #ifndef __EMSCRIPTEN__
         continuation(std::move(sink))
@@ -83,7 +83,7 @@ struct CBContext {
         continuation(coro)
 #endif
   {
-    chainStack.push_back(starter);
+    chainStack.push_back(const_cast<CBChain *>(starter));
   }
 
   const CBChain *main;
@@ -96,13 +96,10 @@ struct CBContext {
 #else
   CBCoro *continuation{nullptr};
 #endif
-  Duration next{};
+  CBDuration next{};
 #ifdef CB_USE_TSAN
   void *tsan_handle = nullptr;
 #endif
-
-  // Iteration counter
-  uint64_t iterationCount = 0;
 
   constexpr void stopFlow(const CBVar &lastValue) {
     state = CBChainState::Stop;
@@ -562,7 +559,7 @@ inline bool isRunning(CBChain *chain) {
          state <= CBChain::State::IterationEnded;
 }
 
-inline bool tick(CBChain *chain, Duration now, CBVar rootInput = {}) {
+inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
   if (!chain->context || !chain->coro || !(*chain->coro) || !(isRunning(chain)))
     return false; // check if not null and bool operator also to see if alive!
 
@@ -601,17 +598,17 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // Take note of how long it took and subtract from sleep time! if some time is
   // left sleep
   if (runCallbacks) {
-    Duration sleepTime(seconds);
-    auto pre = Clock::now();
+    CBDuration sleepTime(seconds);
+    auto pre = CBClock::now();
     for (auto &cbinfo : Globals::RunLoopHooks) {
       if (cbinfo.second) {
         cbinfo.second();
       }
     }
-    auto post = Clock::now();
+    auto post = CBClock::now();
 
-    Duration cbsTime = post - pre;
-    Duration realSleepTime = sleepTime - cbsTime;
+    CBDuration cbsTime = post - pre;
+    CBDuration realSleepTime = sleepTime - cbsTime;
     if (seconds != -1.0 && realSleepTime.count() > 0.0) {
       // Sleep actual time minus stuff we did in cbs
       seconds = realSleepTime.count();
@@ -700,7 +697,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
              bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              throw chainblocks::CBException(
+              throw chainblocks::ComposeError(
                   std::string(errorTxt) +
                   ", input block: " + std::string(blk->name(blk)));
             } else {
@@ -733,15 +730,19 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   template <class Observer>
   bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
+    _errors.clear();
     if (chainblocks::Globals::SigIntTerm > 0) {
       terminate();
     } else {
-      Duration now = Clock::now().time_since_epoch();
+      CBDuration now = CBClock::now().time_since_epoch();
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
         observer.before_tick(flow->chain);
         chainblocks::tick(flow->chain, now, input);
         if (unlikely(!chainblocks::isRunning(flow->chain))) {
+          if (flow->chain->finishedError.size() > 0) {
+            _errors.emplace_back(flow->chain->finishedError);
+          }
           observer.before_stop(flow->chain);
           if (!chainblocks::stop(flow->chain)) {
             noErrors = false;
@@ -792,6 +793,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
   bool empty() { return _flows.empty(); }
 
+  const std::vector<std::string> &errors() { return _errors; }
+
   std::unordered_map<std::string, CBVar, std::hash<std::string>,
                      std::equal_to<std::string>,
                      boost::alignment::aligned_allocator<
@@ -804,6 +807,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
+  std::vector<std::string> _errors;
   CBNode() = default;
 };
 

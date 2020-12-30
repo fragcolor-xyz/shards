@@ -30,7 +30,7 @@
     15)
    .best
    (Take 1)
-   (ToJson)
+   (ToJson false)
    (Log)
    ))
 
@@ -96,7 +96,7 @@
    (Take 1) (ExpectChain) >= .bestChain
    (ChainRunner .bestChain :Mode RunChainMode.Detached)
    (Msg "Waiting...")
-   (WaitChain .bestChain)
+   (Wait .bestChain)
    (Msg "Exiting...")
    ))
 

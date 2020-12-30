@@ -16,6 +16,9 @@
 #include <string.h>
 #include <unordered_set>
 
+#define XXH_INLINE_ALL
+#include <xxhash.h>
+
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
@@ -77,6 +80,10 @@ extern void registerBlocks();
 }
 
 namespace BigInt {
+extern void registerBlocks();
+}
+
+namespace Wasm {
 extern void registerBlocks();
 }
 
@@ -186,6 +193,7 @@ void registerCoreBlocks() {
   Imaging::registerBlocks();
   BigInt::registerBlocks();
   registerFSBlocks();
+  Wasm::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
@@ -218,82 +226,14 @@ void registerCoreBlocks() {
     registerBlock(pair.first, pair.second);
   }
 
-#ifndef NDEBUG
-  // TODO remove when we have better tests/samples
-
-  // Test chain DSL
-  auto chain1 = std::shared_ptr<CBChain>(Chain("test-chain")
-                                             .looped(true)
-                                             .let(1)
-                                             .block("Log")
-                                             .block("Math.Add", 2)
-                                             .block("Assert.Is", 3, true));
-  assert(chain1->blocks.size() == 4);
-
-  // Test dynamic array
-  CBSeq ts{};
-  Var a{0}, b{1}, c{2}, d{3}, e{4}, f{5};
-  arrayPush(ts, a);
-  assert(ts.len == 1);
-  assert(ts.cap == 4);
-  arrayPush(ts, b);
-  arrayPush(ts, c);
-  arrayPush(ts, d);
-  arrayPush(ts, e);
-  assert(ts.len == 5);
-  assert(ts.cap == 8);
-
-  assert(ts.elements[0] == Var(0));
-  assert(ts.elements[1] == Var(1));
-  assert(ts.elements[2] == Var(2));
-  assert(ts.elements[3] == Var(3));
-  assert(ts.elements[4] == Var(4));
-
-  arrayInsert(ts, 1, f);
-
-  assert(ts.elements[0] == Var(0));
-  assert(ts.elements[1] == Var(5));
-  assert(ts.elements[2] == Var(1));
-  assert(ts.elements[3] == Var(2));
-  assert(ts.elements[4] == Var(3));
-
-  arrayDel(ts, 2);
-
-  assert(ts.elements[0] == Var(0));
-  assert(ts.elements[1] == Var(5));
-  assert(ts.elements[2] == Var(2));
-  assert(ts.elements[3] == Var(3));
-  assert(ts.elements[4] == Var(4));
-
-  arrayDelFast(ts, 2);
-
-  assert(ts.elements[0] == Var(0));
-  assert(ts.elements[1] == Var(5));
-  assert(ts.elements[2] == Var(4));
-  assert(ts.elements[3] == Var(3));
-
-  assert(ts.len == 4);
-
-  arrayFree(ts);
-  assert(ts.elements == nullptr);
-  assert(ts.len == 0);
-  assert(ts.cap == 0);
-#endif
-
-#ifdef __EMSCRIPTEN__
-  CBCoro coro;
-  coro.init([&]() {
-    LOG(TRACE) << "Hmmm?";
-    coro.yield();
-  });
-  coro.resume();
-#endif
-
   // finally iterate cblock directory and load external dlls
   loadExternalBlocks(Globals::ExePath);
   if (Globals::RootPath != Globals::ExePath) {
     loadExternalBlocks(Globals::RootPath);
   }
+
+  // set root path as current directory
+  std::filesystem::current_path(Globals::RootPath);
 }
 
 CBlock *createBlock(std::string_view name) {
@@ -308,6 +248,8 @@ CBlock *createBlock(std::string_view name) {
   if (name == "Const") {
     blkp->inlineBlockId = CBInlineBlocks::CoreConst;
   } else if (name == "Pass") {
+    blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
+  } else if (name == "OnCleanup") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
   } else if (name == "Comment") {
     blkp->inlineBlockId = CBInlineBlocks::NoopBlock;
@@ -613,14 +555,16 @@ void releaseVariable(CBVar *variable) {
 }
 
 CBChainState suspend(CBContext *context, double seconds) {
-  if (!context->continuation) {
+  if (unlikely(!context->shouldContinue())) {
+    throw ActivationError("Trying to suspend a terminated context!");
+  } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
   }
 
   if (seconds <= 0) {
-    context->next = Duration(0);
+    context->next = CBDuration(0);
   } else {
-    context->next = Clock::now().time_since_epoch() + Duration(seconds);
+    context->next = CBClock::now().time_since_epoch() + CBDuration(seconds);
   }
 
 #ifdef CB_USE_TSAN
@@ -679,8 +623,6 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
           return CBChainState::Return;
         case CBChainState::Stop:
           if (context->failed()) {
-            // reset error since we throw
-            context->resetCancelFlow();
             throw ActivationError(context->getErrorMessage());
           }
         case CBChainState::Restart:
@@ -699,10 +641,17 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       LOG(ERROR) << "Block activation error, failed block: "
                  << std::string(blk->name(blk));
       LOG(ERROR) << e.what();
+      // failure from exceptions need uptdate on context
+      if (!context->failed()) {
+        context->cancelFlow(e.what());
+      }
       throw; // bubble up
     } catch (...) {
       LOG(ERROR) << "Block activation error (...), failed block: "
                  << std::string(blk->name(blk));
+      if (!context->failed()) {
+        context->cancelFlow("foreign exception failure, check logs");
+      }
       throw; // bubble up
     }
     input = output;
@@ -743,7 +692,7 @@ CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
     complete = true;
   });
 
-  while (!complete) {
+  while (!complete && context->shouldContinue()) {
     if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
   }
@@ -783,7 +732,7 @@ void await(CBContext *context, std::function<void()> func) {
     complete = true;
   });
 
-  while (!complete) {
+  while (!complete && context->shouldContinue()) {
     if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
   }
@@ -893,7 +842,12 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->suspend = [](CBContext *context, double seconds) noexcept {
-    return chainblocks::suspend(context, seconds);
+    try {
+      return chainblocks::suspend(context, seconds);
+    } catch (const chainblocks::ActivationError &ex) {
+      LOG(ERROR) << ex.what();
+      return CBChainState::Stop;
+    }
   };
 
   result->getState = [](CBContext *context) noexcept {
@@ -1134,6 +1088,8 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->setRootPath = [](const char *p) noexcept {
     chainblocks::Globals::RootPath = p;
+    chainblocks::loadExternalBlocks(p);
+    std::filesystem::current_path(p);
   };
 
   result->asyncActivate = [](auto context, auto data, auto call) {
@@ -1208,39 +1164,79 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
   }
   case Table: {
     if (strict) {
-      auto atypes = inputType.table.types.len;
-      auto btypes = receiverType.table.types.len;
-      //  btypes != 0 assume consumer is not strict
-      for (uint32_t i = 0; i < atypes && (isParameter || btypes != 0); i++) {
-        // Go thru all exposed types and make sure we get a positive match with
-        // the consumer
-        auto atype = inputType.table.types.elements[i];
-        auto matched = false;
-        for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = receiverType.table.types.elements[y];
-          if (matchTypes(atype, btype, isParameter, strict)) {
-            matched = true;
-            break;
+      // Table is a complicated one
+      // We use it as many things.. one of it as structured data
+      // So we have many possible cases:
+      // 1. a receiver table with just type info is flexible, accepts only those
+      // types but the keys are open to anything, if no types are available, it
+      // accepts any type
+      // 2. a receiver table with type info and key info is strict, means that
+      // input has to match 1:1
+      const auto atypes = inputType.table.types.len;
+      const auto btypes = receiverType.table.types.len;
+      if (receiverType.table.keys.len == 0) {
+        // case 1, consumer is not strict, match types if avail
+        // ignore input keys information
+        if (atypes == 0) {
+          // assume this as an Any
+          auto matched = false;
+          CBTypeInfo anyType{CBType::Any};
+          for (uint32_t y = 0; y < btypes; y++) {
+            auto btype = receiverType.table.types.elements[y];
+            if (matchTypes(anyType, btype, isParameter, strict)) {
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            return false;
+          }
+        } else {
+          if (isParameter || btypes != 0) {
+            // receiver doesn't accept anything, match further
+            for (uint32_t i = 0; i < atypes; i++) {
+              // Go thru all exposed types and make sure we get a positive match
+              // with the consumer
+              auto atype = inputType.table.types.elements[i];
+              auto matched = false;
+              for (uint32_t y = 0; y < btypes; y++) {
+                auto btype = receiverType.table.types.elements[y];
+                if (matchTypes(atype, btype, isParameter, strict)) {
+                  matched = true;
+                  break;
+                }
+              }
+              if (!matched) {
+                return false;
+              }
+            }
           }
         }
-        if (!matched) {
+      } else {
+        const auto akeys = inputType.table.keys.len;
+        const auto bkeys = receiverType.table.keys.len;
+        auto missingMatches = akeys;
+        if (akeys != bkeys || akeys != atypes) {
+          // we need a 1:1 match
           return false;
         }
-      }
-      if (atypes == 0) {
-        // assume this as an Any
-        auto matched = false;
-        CBTypeInfo anyType{CBType::Any};
-        for (uint32_t y = 0; y < btypes; y++) {
-          auto btype = receiverType.table.types.elements[y];
-          if (matchTypes(anyType, btype, isParameter, strict)) {
-            matched = true;
-            break;
+        for (uint32_t i = 0; i < akeys; i++) {
+          auto atype = inputType.table.types.elements[i];
+          auto akey = inputType.table.keys.elements[i];
+          for (uint32_t y = 0; y < bkeys; y++) {
+            auto btype = receiverType.table.types.elements[y];
+            auto bkey = receiverType.table.keys.elements[y];
+            if (strcmp(akey, bkey) == 0) {
+              if (matchTypes(atype, btype, isParameter, strict))
+                missingMatches--;
+              else
+                return false; // fail quick in this case
+            }
           }
         }
-        if (!matched) {
+
+        if (missingMatches)
           return false;
-        }
       }
     }
     break;
@@ -1267,6 +1263,8 @@ struct ValidationContext {
 
   CBValidationCallback cb{};
   void *userData{};
+
+  bool onWorkerThread{false};
 };
 
 void validateConnection(ValidationContext &ctx) {
@@ -1289,17 +1287,12 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   if (!inputMatches) {
-    auto foundString = type2Name(ctx.previousOutputType.basicType);
-    std::string expectedString;
-    for (uint32_t i = 0; inputInfos.len > i; i++) {
-      auto &inputInfo = inputInfos.elements[i];
-      expectedString.append(" ");
-      expectedString.append(type2Name(inputInfo.basicType));
-    }
-    std::string err("Could not find a matching input type, block: " +
-                    std::string(ctx.bottom->name(ctx.bottom)) + " expected:" +
-                    expectedString + " found instead: " + foundString);
-    ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+    std::stringstream ss;
+    ss << "Could not find a matching input type, block: "
+       << ctx.bottom->name(ctx.bottom) << " expected: " << inputInfos
+       << " found instead: " << ctx.previousOutputType;
+    const auto sss = ss.str();
+    ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
   }
 
   // infer and specialize types if we need to
@@ -1312,6 +1305,7 @@ void validateConnection(ValidationContext &ctx) {
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
+    data.onWorkerThread = ctx.onWorkerThread;
 
     struct ComposeContext {
       std::string externalError;
@@ -1327,13 +1321,13 @@ void validateConnection(ValidationContext &ctx) {
     };
 
     // Pass all we got in the context!
-    // TODO caching, this is repeated many times
-    // anyway won't influence run perf
+    // notice that blocks might add new records to this array
     for (auto &info : ctx.exposed) {
       for (auto &type : info.second) {
         chainblocks::arrayPush(data.shared, type);
       }
     }
+    DEFER(chainblocks::arrayFree(data.shared));
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
@@ -1379,8 +1373,6 @@ void validateConnection(ValidationContext &ctx) {
                ctx.userData);
       }
     }
-
-    chainblocks::arrayFree(data.shared);
   } else {
     // Short-cut if it's just one type and not any type
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
@@ -1530,68 +1522,20 @@ void validateConnection(ValidationContext &ctx) {
     }
 
     if (!matching) {
-      std::string err(
-          "Required types do not match currently exposed ones for variable '" +
-          required.first + "'");
-      err += " required possible types: ";
+      std::stringstream ss;
+      ss << "Required types do not match currently exposed ones for variable '"
+         << required.first << "' required possible types: ";
       for (auto type : required.second) {
-        if (type.exposedType.basicType == Table &&
-            type.exposedType.table.types.elements &&
-            type.exposedType.table.keys.elements) {
-          err += "(" + type2Name(type.exposedType.basicType) + " [" +
-                 type2Name(type.exposedType.table.types.elements[0].basicType) +
-                 " " + type.exposedType.table.keys.elements[0] + "]) ";
-        } else if (type.exposedType.basicType == Seq) {
-          err += "(" + type2Name(type.exposedType.basicType) + " [";
-          for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
-            if (i < type.exposedType.seqTypes.len - 1)
-              err +=
-                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                  " ";
-            else
-              err +=
-                  type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                  " ";
-          }
-          err += "]) ";
-        } else {
-          err += type2Name(type.exposedType.basicType) + " ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
       }
-      err += "exposed types:";
+      ss << "exposed types: ";
       for (const auto &info : ctx.exposed) {
-        err += " (" + info.first + " [";
-
         for (auto type : info.second) {
-          if (type.exposedType.basicType == Table &&
-              type.exposedType.table.types.elements &&
-              type.exposedType.table.keys.elements) {
-            err +=
-                "(" + type2Name(type.exposedType.basicType) + " [" +
-                type2Name(type.exposedType.table.types.elements[0].basicType) +
-                " " + type.exposedType.table.keys.elements[0] + "]) ";
-          } else if (type.exposedType.basicType == Seq) {
-            err += "(" + type2Name(type.exposedType.basicType) + " [";
-            for (uint32_t i = 0; i < type.exposedType.seqTypes.len; i++) {
-              if (i < type.exposedType.seqTypes.len - 1)
-                err +=
-                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                    " ";
-              else
-                err +=
-                    type2Name(type.exposedType.seqTypes.elements[i].basicType) +
-                    " ";
-            }
-            err += "]) ";
-          } else {
-            err += type2Name(type.exposedType.basicType) + " ";
-          }
+          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
         }
-        err.erase(err.end() - 1);
-
-        err += "])";
       }
-      ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+      auto sss = ss.str();
+      ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())
@@ -1609,6 +1553,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
   ctx.cb = callback;
   ctx.chain = data.chain;
   ctx.userData = userData;
+  ctx.onWorkerThread = data.onWorkerThread;
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -1737,6 +1682,7 @@ void freeDerivedInfo(CBTypeInfo info) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
     chainblocks::arrayFree(info.table.types);
+    chainblocks::arrayFree(info.table.keys);
   }
   default:
     break;
@@ -1786,6 +1732,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
           auto derived = deriveTypeInfo(*value);
           if (!data->types.count(derived)) {
             chainblocks::arrayPush(data->varType->table.types, derived);
+            chainblocks::arrayPush(data->varType->table.keys, key);
             data->types.insert(derived);
           } else {
             freeDerivedInfo(derived);
@@ -1932,16 +1879,82 @@ void installSignalHandlers() {
   std::signal(SIGSEGV, &error_handler);
 }
 
-Chain::operator std::shared_ptr<CBChain>() {
-  auto chain = CBChain::make(_name);
-  chain->looped = _looped;
-  for (auto blk : _blocks) {
-    chain->addBlock(blk);
+Blocks &Blocks::block(std::string_view name, std::vector<Var> params) {
+  auto blk = createBlock(name.data());
+  if (!blk) {
+    LOG(ERROR) << "The block " << name << " was not found.";
+    throw CBException("Block not found");
   }
-  // blocks are unique so drain them here
-  _blocks.clear();
-  return chain;
+
+  blk->setup(blk);
+
+  const auto psize = params.size();
+  for (size_t i = 0; i < psize; i++) {
+    // skip Any, as they mean default value
+    if (params[i] != Var::Any)
+      blk->setParam(blk, int(i), &params[i]);
+  }
+
+  _blocks.emplace_back(blk);
+  return *this;
 }
+
+Blocks &Blocks::let(Var value) {
+  auto blk = createBlock("Const");
+  blk->setup(blk);
+  blk->setParam(blk, 0, &value);
+  _blocks.emplace_back(blk);
+  return *this;
+}
+
+Chain::Chain(std::string_view name) : _chain(CBChain::make(name)) {}
+
+Chain &Chain::looped(bool looped) {
+  _chain->looped = looped;
+  return *this;
+}
+
+Chain &Chain::unsafe(bool unsafe) {
+  _chain->unsafe = unsafe;
+  return *this;
+}
+
+Chain &Chain::name(std::string_view name) {
+  _chain->name = name;
+  return *this;
+}
+
+Chain &Chain::block(std::string_view name, std::vector<Var> params) {
+  auto blk = createBlock(name.data());
+  if (!blk) {
+    LOG(ERROR) << "The block " << name << " was not found.";
+    throw CBException("Block not found");
+  }
+
+  blk->setup(blk);
+
+  const auto psize = params.size();
+  for (size_t i = 0; i < psize; i++) {
+    // skip Any, as they mean default value
+    if (params[i] != Var::Any)
+      blk->setParam(blk, int(i), &params[i]);
+  }
+
+  _chain->addBlock(blk);
+  return *this;
+}
+
+Chain &Chain::let(Var value) {
+  auto blk = createBlock("Const");
+  blk->setup(blk);
+  blk->setParam(blk, 0, &value);
+  _chain->addBlock(blk);
+  return *this;
+}
+
+CBChainRef Chain::weakRef() const { return CBChain::weakRef(_chain); }
+
+Var::Var(const Chain &chain) : Var(chain.weakRef()) {}
 
 CBRunChainOutput runChain(CBChain *chain, CBContext *context,
                           const CBVar &chainInput) {
@@ -1995,6 +2008,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
   // Reset state
   chain->state = CBChain::State::Prepared;
+  chain->finishedOutput = Var::Empty;
+  chain->finishedError.clear();
 
   // Create a new context and copy the sink in
   CBFlow anonFlow{chain};
@@ -2016,8 +2031,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   try {
     chain->warmup(&context);
   } catch (...) {
+    // inside warmup we re-throw, we handle logging and such there
     chain->state = CBChain::State::Failed;
-    context.stopFlow(Var::Empty);
     LOG(ERROR) << "chain " << chain->name << " warmup failed.";
     goto endOfChain;
   }
@@ -2043,7 +2058,6 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
     context.continueFlow();
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
-    context.iterationCount++; // increatse iteration counter
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";
       chain->state = CBChain::State::Failed;
@@ -2064,7 +2078,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
     if (!chain->unsafe && chain->looped) {
       // Ensure no while(true), yield anyway every run
-      context.next = Duration(0);
+      context.next = CBDuration(0);
 #ifndef __EMSCRIPTEN__
       context.continuation = context.continuation.resume();
 #else
@@ -2080,8 +2094,12 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
 endOfChain:
   chain->finishedOutput = chain->previousOutput;
+  if (context.failed())
+    chain->finishedError = context.getErrorMessage();
 
   // run cleanup on all the blocks
+  // ensure stop state is set
+  context.stopFlow(chain->previousOutput);
   chain->cleanup(true);
 
   // Need to take care that we might have stopped the chain very early due to
@@ -2332,6 +2350,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 }
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
+  // TODO out should be a set?
   switch (coll.index()) {
   case 0: {
     // chain
@@ -2381,6 +2400,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     if (var.valueType == Block) {
       gatherBlocks(var.payload.blockValue, out);
     } else if (var.valueType == CBType::Chain) {
+      // TODO test this, how do we deal with multiple references of a chain??
       auto chain = CBChain::sharedFromRef(var.payload.chainValue);
       gatherBlocks(chain.get(), out);
     } else if (var.valueType == Seq) {
@@ -2392,6 +2412,179 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   } break;
   default:
     assert(false);
+  }
+}
+
+#ifndef CUSTOM_XXH3_kSecret
+// Applications embedding chainblocks can override this and should.
+// TODO add our secret
+#define CUSTOM_XXH3_kSecret XXH3_kSecret
+#endif
+
+static thread_local std::unordered_set<CBChain *> tHashingChains;
+
+void hash_update(const CBVar &var, void *state);
+
+uint64_t hash(const CBVar &var) {
+  static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
+                "XXH64_hash_t is not uint64_t");
+
+  tHashingChains.clear();
+
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                               XXH_SECRET_DEFAULT_SIZE);
+
+  hash_update(var, &hashState);
+
+  return XXH3_64bits_digest(&hashState);
+}
+
+void hash_update(const CBVar &var, void *state) {
+  auto hashState = reinterpret_cast<XXH3_state_s *>(state);
+
+  auto error =
+      XXH3_64bits_update(hashState, &var.valueType, sizeof(var.valueType));
+  assert(error == XXH_OK);
+
+  switch (var.valueType) {
+  case CBType::Bytes: {
+    error = XXH3_64bits_update(hashState, var.payload.bytesValue,
+                               size_t(var.payload.bytesSize));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Path:
+  case CBType::ContextVar:
+  case CBType::String: {
+    error = XXH3_64bits_update(hashState, var.payload.stringValue,
+                               size_t(var.payload.stringLen > 0
+                                          ? var.payload.stringLen
+                                          : strlen(var.payload.stringValue)));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Image: {
+    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    assert(error == XXH_OK);
+    auto pixsize = 1;
+    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+        CBIMAGE_FLAGS_16BITS_INT)
+      pixsize = 2;
+    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+             CBIMAGE_FLAGS_32BITS_FLOAT)
+      pixsize = 4;
+    error = XXH3_64bits_update(
+        hashState, var.payload.imageValue.data,
+        size_t(var.payload.imageValue.channels * var.payload.imageValue.width *
+               var.payload.imageValue.height * pixsize));
+    assert(error == XXH_OK);
+  } break;
+  case CBType::Seq: {
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      hash_update(var.payload.seqValue.elements[i], state);
+    }
+  } break;
+  case CBType::Array: {
+    for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
+      CBVar tmp; // only of blittable types and hash uses just type, so no init
+                 // needed
+      tmp.valueType = var.innerType;
+      tmp.payload = var.payload.arrayValue.elements[i];
+      hash_update(tmp, state);
+    }
+  } break;
+  case CBType::Table: {
+    CBTableIterator it;
+    var.payload.tableValue.api->tableGetIterator(var.payload.tableValue, &it);
+    CBString key;
+    CBVar value;
+    while (true) {
+      auto valid = var.payload.tableValue.api->tableNext(var.payload.tableValue,
+                                                         &it, &key, &value);
+      if (!valid)
+        break;
+      error = XXH3_64bits_update(hashState, key, strlen(key));
+      assert(error == XXH_OK);
+      hash_update(value, state);
+    }
+  } break;
+  case CBType::Block: {
+    auto blk = var.payload.blockValue;
+    auto name = blk->name(blk);
+    auto error = XXH3_64bits_update(hashState, name, strlen(name));
+    assert(error == XXH_OK);
+
+    auto params = blk->parameters(blk);
+    for (uint32_t i = 0; i < params.len; i++) {
+      auto pval = blk->getParam(blk, int(i));
+      hash_update(pval, state);
+    }
+
+    if (blk->getState) {
+      auto bstate = blk->getState(blk);
+      hash_update(bstate, state);
+    }
+  } break;
+  case CBType::Chain: {
+    auto chain = CBChain::sharedFromRef(var.payload.chainValue);
+    if (tHashingChains.count(chain.get()) == 0) {
+      tHashingChains.insert(chain.get());
+
+      error = XXH3_64bits_update(hashState, chain->name.c_str(),
+                                 chain->name.length());
+      assert(error == XXH_OK);
+
+      error =
+          XXH3_64bits_update(hashState, &chain->looped, sizeof(chain->looped));
+      assert(error == XXH_OK);
+
+      error =
+          XXH3_64bits_update(hashState, &chain->unsafe, sizeof(chain->unsafe));
+      assert(error == XXH_OK);
+
+      for (auto &blk : chain->blocks) {
+        CBVar tmp;
+        tmp.valueType = CBType::Block;
+        tmp.payload.blockValue = blk;
+        hash_update(tmp, state);
+      }
+
+      for (auto &chainVar : chain->variables) {
+        error = XXH3_64bits_update(hashState, chainVar.first.c_str(),
+                                   chainVar.first.length());
+        assert(error == XXH_OK);
+        hash_update(chainVar.second, state);
+      }
+    }
+  } break;
+  case CBType::Object: {
+    error = XXH3_64bits_update(hashState, &var.payload.objectVendorId,
+                               sizeof(var.payload.objectVendorId));
+    assert(error == XXH_OK);
+    error = XXH3_64bits_update(hashState, &var.payload.objectTypeId,
+                               sizeof(var.payload.objectTypeId));
+    assert(error == XXH_OK);
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+        var.objectInfo && var.objectInfo->hash) {
+      // hash of the hash...
+      auto objHash = var.objectInfo->hash(var.payload.objectValue);
+      error = XXH3_64bits_update(hashState, &objHash, sizeof(uint64_t));
+      assert(error == XXH_OK);
+    } else {
+      // this will be valid only within this process memory space
+      // better then nothing
+      error = XXH3_64bits_update(hashState, &var.payload.objectValue,
+                                 sizeof(var.payload.objectValue));
+      assert(error == XXH_OK);
+    }
+  } break;
+  case CBType::None:
+  case CBType::Any:
+    break;
+  default: {
+    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    assert(error == XXH_OK);
+  }
   }
 }
 }; // namespace chainblocks
@@ -2411,18 +2604,23 @@ void CBChain::warmup(CBContext *context) {
         if (blk->warmup)
           blk->warmup(blk, context);
         if (context->failed()) {
-          // reset error since we throw
-          context->resetCancelFlow();
-          throw chainblocks::CBException(context->getErrorMessage());
+          throw chainblocks::WarmupError(context->getErrorMessage());
         }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));
         LOG(ERROR) << e.what();
+        // if the failure is from an exception context might not be uptodate
+        if (!context->failed()) {
+          context->cancelFlow(e.what());
+        }
         throw;
       } catch (...) {
         LOG(ERROR) << "Block warmup error, failed block: "
                    << std::string(blk->name(blk));
+        if (!context->failed()) {
+          context->cancelFlow("foreign exception failure, check logs");
+        }
         throw;
       }
     }
@@ -2453,7 +2651,7 @@ void CBChain::cleanup(bool force) {
       catch (const std::exception &e) {
         LOG(ERROR) << "Block cleanup error, failed block: "
                    << std::string(blk->name(blk));
-        LOG(ERROR) << e.what() << '\n';
+        LOG(ERROR) << e.what();
       } catch (...) {
         LOG(ERROR) << "Block cleanup error, failed block: "
                    << std::string(blk->name(blk));

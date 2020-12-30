@@ -223,9 +223,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   CBVar previousOutput{};
 
   chainblocks::OwnedVar finishedOutput{};
+  std::string finishedError{};
 
-  // those are mostly used internally in chains.cpp
-  std::size_t composedHash{};
+  uint64_t composedHash{};
   bool warmedUp{false};
   std::unordered_set<void *> chainUsers;
 
@@ -265,8 +265,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
         new std::shared_ptr<CBChain>(shared_from_this()));
   }
 
-  static CBChainRef weakRef(std::shared_ptr<CBChain> &shared) {
-    return reinterpret_cast<CBChainRef>(&shared);
+  static CBChainRef weakRef(const std::shared_ptr<CBChain> &shared) {
+    return reinterpret_cast<CBChainRef>(
+        &const_cast<std::shared_ptr<CBChain> &>(shared));
   }
 
   static CBChainRef addRef(CBChainRef ref) {
@@ -291,14 +292,16 @@ private:
 };
 
 namespace chainblocks {
+using CBSet =
+    std::unordered_set<OwnedVar, std::hash<CBVar>, std::equal_to<CBVar>,
+                       boost::alignment::aligned_allocator<OwnedVar, 16>>;
+using CBSetIt = CBSet::iterator;
+
 using CBMap = std::unordered_map<
     std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
     boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
                                         16>>;
-using CBMapIt = std::unordered_map<
-    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
-                                        16>>::iterator;
+using CBMapIt = CBMap::iterator;
 
 struct Globals {
   static inline int SigIntTerm{0};
@@ -744,9 +747,10 @@ struct InternalCore {
     return composeChain(blocks, callback, userData, data);
   }
 
-  static CBChainState runBlocks(CBlocks blocks, CBContext *context, CBVar input,
-                                CBVar *output, const CBBool handleReturn) {
-    return chainblocks::activateBlocks(blocks, context, input, *output,
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context,
+                                const CBVar &input, CBVar &output,
+                                const CBBool handleReturn) {
+    return chainblocks::activateBlocks(blocks, context, input, output,
                                        handleReturn);
   }
 
@@ -896,18 +900,26 @@ struct ExposedInfo {
     }
   }
 
-  static CBExposedTypeInfo Variable(const char *name, const char *help,
-                                    CBTypeInfo type, bool isMutable = false,
-                                    bool isTableField = false) {
+  constexpr static CBExposedTypeInfo Variable(const char *name,
+                                              const char *help, CBTypeInfo type,
+                                              bool isMutable = false,
+                                              bool isTableField = false) {
     CBExposedTypeInfo res = {name,  help,         type, isMutable,
                              false, isTableField, false};
     return res;
   }
 
-  static CBExposedTypeInfo GlobalVariable(const char *name, const char *help,
-                                          CBTypeInfo type,
-                                          bool isMutable = false,
-                                          bool isTableField = false) {
+  constexpr static CBExposedTypeInfo ProtectedVariable(const char *name,
+                                                       const char *help,
+                                                       CBTypeInfo type,
+                                                       bool isMutable = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, true, false, false};
+    return res;
+  }
+
+  constexpr static CBExposedTypeInfo
+  GlobalVariable(const char *name, const char *help, CBTypeInfo type,
+                 bool isMutable = false, bool isTableField = false) {
     CBExposedTypeInfo res = {name,  help,         type, isMutable,
                              false, isTableField, true};
     return res;
@@ -925,7 +937,13 @@ struct ExposedInfo {
 
 struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
+
   void reset() { data.clear(); }
+
+  std::streamsize xsputn(const char *s, std::streamsize n) override {
+    data.insert(data.end(), &s[0], s + n);
+    return n;
+  }
 
   int overflow(int c) override {
     data.push_back(static_cast<char>(c));
@@ -935,6 +953,36 @@ struct CachedStreamBuf : std::streambuf {
   void done() { data.push_back('\0'); }
 
   const char *str() { return &data[0]; }
+};
+
+struct StringStreamBuf : std::streambuf {
+  StringStreamBuf(const std::string_view &s) : data(s) {}
+
+  std::string_view data;
+  uint32_t index{0};
+  bool done{false};
+
+  std::streamsize xsgetn(char *s, std::streamsize n) override {
+    if (unlikely(done)) {
+      return 0;
+    } else if ((size_t(index) + n) > data.size()) {
+      const auto len = data.size() - index;
+      memcpy(s, &data[index], len);
+      done = true; // flag to indicate we are done
+      return len;
+    } else {
+      memcpy(s, &data[index], n);
+      index += n;
+      return n;
+    }
+  }
+
+  int underflow() override {
+    if (index >= data.size())
+      return EOF;
+
+    return data[index++];
+  }
 };
 
 struct VarStringStream {

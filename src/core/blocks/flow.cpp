@@ -437,6 +437,7 @@ struct Maybe : public BaseSubFlow {
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
         LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
+        context->resetCancelFlow();
         if (_elseBlks)
           _elseBlks.activate(context, input, output);
       }
@@ -458,6 +459,13 @@ struct Await : public BaseSubFlow {
   void setParam(int index, const CBVar &value) { _blocks = value; }
 
   CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto dataCopy = data;
+    // flag that we might use a worker
+    dataCopy.onWorkerThread = true;
+    return BaseSubFlow::compose(dataCopy);
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     return awaitne(context, [&] {

@@ -52,11 +52,11 @@ enum CBChainState : uint8_t {
 
 // These blocks run fully inline in the runchain threaded execution engine
 enum CBInlineBlocks : uint32_t {
+  // regular blocks
   NotInline,
-
   // special flag that will optimize and skip activate calls
   NoopBlock,
-
+  // internal "quick" inlined blocks
   CoreConst,
   CoreSleep,
   CoreInput,
@@ -403,6 +403,7 @@ typedef void(__cdecl *CBObjectSerializerFree)(CBPointer customHandle);
 typedef CBPointer(__cdecl *CBObjectDeserializer)(uint8_t *data, size_t len);
 typedef void(__cdecl *CBObjectReference)(CBPointer);
 typedef void(__cdecl *CBObjectRelease)(CBPointer);
+typedef uint64_t(__cdecl *CBObjectHash)(CBPointer);
 
 struct CBObjectInfo {
   const char *name;
@@ -413,6 +414,8 @@ struct CBObjectInfo {
 
   CBObjectReference reference;
   CBObjectRelease release;
+
+  CBObjectHash hash;
 };
 
 struct CBEnumInfo {
@@ -608,6 +611,10 @@ struct CBInstanceData {
   // Info related to our activation
   struct CBTypeInfo inputType;
   CBExposedTypesInfo shared;
+  // if this activation might happen in a worker thread
+  // for example cos this block is within an Await block
+  // useful to fail during compose if we don't wish this
+  bool onWorkerThread;
 
   // basically what the next block can get as input
   struct CBTypesInfo outputTypes;

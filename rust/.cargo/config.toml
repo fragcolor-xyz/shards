@@ -1,5 +1,0 @@
-[target.x86_64-pc-windows-gnu]
-rustflags = ["-Ctarget-feature=+avx"]
-
-[target.i686-pc-windows-gnu]
-rustflags = ["-Ctarget-feature=+avx"]

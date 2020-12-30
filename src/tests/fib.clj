@@ -50,7 +50,20 @@
    ;; (Log "exit")
    ))
 
-(schedule Root (Chain "run" (Profile (--> 34 (Do fib3))) (Log "result")))
+(def fib4
+  (Chain
+   "fib4"
+   (Math.Subtract 3) >= .n
+   1 >= .a
+   2 >= .b
+   (Repeat
+    ~[.a (Math.Add .b) >= .c
+      .b > .a
+      .c > .b]
+    :Times .n)
+   .b))
+
+(schedule Root (Chain "run" (Profile (--> 34 (Do fib4))) (Log "result")))
 (run Root)
 
 (def fib1 nil)

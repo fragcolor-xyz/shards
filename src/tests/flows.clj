@@ -112,7 +112,7 @@
   "loop-test"
   0
   (Detach Loop)
-  (WaitChain Loop)
+  (Wait Loop)
   (Assert.Is 5 true)
   (Log)
 
@@ -164,13 +164,13 @@
   (Assert.Is "A" false)
 
   -10
-  (If ~[(Do spawner) >= .ccc (WaitChain .ccc) (ExpectBool)]
+  (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
       (--> true)
       (--> false))
   (Assert.IsNot false false)
 
   11
-  (If ~[(Do spawner) >= .ccc (WaitChain .ccc) (ExpectBool)]
+  (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
       (--> true)
       (--> false))
   (Assert.Is true false)

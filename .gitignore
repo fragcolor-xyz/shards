@@ -40,3 +40,5 @@ Cargo.lock
 test.txt
 compile_commands.json
 src/tests/subchains.chain
+.lsp
+.clj-kondo

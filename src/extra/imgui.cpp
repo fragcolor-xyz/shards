@@ -13,7 +13,7 @@ namespace chainblocks {
 namespace ImGui {
 struct Base {
   static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "ImGui.Context", "The ImGui Context.", Context::Info));
+      "GUI.Context", "The ImGui Context.", Context::Info));
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -31,7 +31,7 @@ struct IDContext {
 
 struct Style : public Base {
   static inline Type styleEnumInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'ImGS'}}}};
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiS'}}}};
 
   enum ImGuiStyle {
     Alpha,
@@ -119,7 +119,7 @@ struct Style : public Base {
   };
 
   typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
-  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", CoreCC, 'ImGS'};
+  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", CoreCC, 'guiS'};
 
   ImGuiStyle _key{};
 
@@ -141,7 +141,7 @@ struct Style : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var::Enum(_key, CoreCC, 'ImGS');
+      return Var::Enum(_key, CoreCC, 'guiS');
     default:
       return Var::Empty;
     }
@@ -258,6 +258,7 @@ struct Style : public Base {
   }
 
   static ImVec4 color2Vec4(const CBColor &color) {
+    // remember, we edited the shader to do srgb->linear
     ImVec4 res;
     res.x = color.r / 255.0f;
     res.y = color.g / 255.0f;
@@ -268,6 +269,16 @@ struct Style : public Base {
 
   static ImVec4 color2Vec4(const CBVar &input) {
     return color2Vec4(input.payload.colorValue);
+  }
+
+  static CBColor vec42Color(const ImVec4 &color) {
+    // remember, we edited the shader to do srgb->linear
+    CBColor res;
+    res.r = color.x * 255.0f;
+    res.g = color.y * 255.0f;
+    res.b = color.z * 255.0f;
+    res.a = color.w * 255.0f;
+    return res;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -868,8 +879,6 @@ struct CheckBox : public Variable<CBType::Bool> {
 };
 
 struct Text : public Base {
-  // TODO add color
-
   std::string _label;
   CBVar _color{};
 
@@ -934,7 +943,7 @@ struct Button : public Base {
   CBTypesInfo outputType() { return CoreInfo::BoolType; }
 
   static inline Type buttonTypeInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'ImGB'}}}};
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiB'}}}};
 
   enum ButtonTypes {
     Normal,
@@ -947,7 +956,7 @@ struct Button : public Base {
   };
 
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
-  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'ImGB'};
+  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'guiB'};
 
   BlocksVar _blks{};
   ButtonTypes _type{};
@@ -997,7 +1006,7 @@ struct Button : public Base {
     case 1:
       return _blks;
     case 2:
-      return Var::Enum(_type, CoreCC, 'ImGB');
+      return Var::Enum(_type, CoreCC, 'guiB');
     case 3:
       return Var(_size.x, _size.x);
     default:
@@ -1420,6 +1429,39 @@ struct TextInput : public Variable<CBType::String> {
       ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
                          _buffer.capacity() + 1, 0, &InputTextCallback, this);
       return Var(_buffer);
+    }
+  }
+};
+
+struct ColorInput : public Variable<CBType::Color> {
+  ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+      if (_exposing) {
+        // we own the variable so let's run some init
+        _variable->valueType = Color;
+        _variable->payload.colorValue.r = 0;
+        _variable->payload.colorValue.g = 0;
+        _variable->payload.colorValue.b = 0;
+        _variable->payload.colorValue.a = 255;
+      }
+    }
+
+    if (_variable) {
+      auto fc = Style::color2Vec4(*_variable);
+      ::ImGui::ColorEdit4(_label.c_str(), &fc.x);
+      _variable->payload.colorValue = Style::vec42Color(fc);
+      return *_variable;
+    } else {
+      ::ImGui::ColorEdit4(_label.c_str(), &_lcolor.x);
+      return Var(Style::vec42Color(_lcolor));
     }
   }
 };
@@ -1902,43 +1944,44 @@ struct PlotBars : public PlottableBase {
 };
 
 void registerImGuiBlocks() {
-  REGISTER_CBLOCK("ImGui.Style", Style);
-  REGISTER_CBLOCK("ImGui.Window", Window);
-  REGISTER_CBLOCK("ImGui.ChildWindow", ChildWindow);
-  REGISTER_CBLOCK("ImGui.CheckBox", CheckBox);
-  REGISTER_CBLOCK("ImGui.Text", Text);
-  REGISTER_CBLOCK("ImGui.Button", Button);
-  REGISTER_CBLOCK("ImGui.HexViewer", HexViewer);
-  REGISTER_CBLOCK("ImGui.SameLine", SameLine);
-  REGISTER_CBLOCK("ImGui.Separator", Separator);
-  REGISTER_CBLOCK("ImGui.Indent", Indent);
-  REGISTER_CBLOCK("ImGui.Unindent", Unindent);
-  REGISTER_CBLOCK("ImGui.TreeNode", TreeNode);
-  REGISTER_CBLOCK("ImGui.IntInput", IntInput);
-  REGISTER_CBLOCK("ImGui.FloatInput", FloatInput);
-  REGISTER_CBLOCK("ImGui.Int2Input", Int2Input);
-  REGISTER_CBLOCK("ImGui.Int3Input", Int3Input);
-  REGISTER_CBLOCK("ImGui.Int4Input", Int4Input);
-  REGISTER_CBLOCK("ImGui.Float2Input", Float2Input);
-  REGISTER_CBLOCK("ImGui.Float3Input", Float3Input);
-  REGISTER_CBLOCK("ImGui.Float4Input", Float4Input);
-  REGISTER_CBLOCK("ImGui.IntDrag", IntDrag);
-  REGISTER_CBLOCK("ImGui.FloatDrag", FloatDrag);
-  REGISTER_CBLOCK("ImGui.Int2Drag", Int2Drag);
-  REGISTER_CBLOCK("ImGui.Int3Drag", Int3Drag);
-  REGISTER_CBLOCK("ImGui.Int4Drag", Int4Drag);
-  REGISTER_CBLOCK("ImGui.Float2Drag", Float2Drag);
-  REGISTER_CBLOCK("ImGui.Float3Drag", Float3Drag);
-  REGISTER_CBLOCK("ImGui.Float4Drag", Float4Drag);
-  REGISTER_CBLOCK("ImGui.TextInput", TextInput);
-  REGISTER_CBLOCK("ImGui.Image", Image);
-  REGISTER_CBLOCK("ImGui.Plot", Plot);
-  REGISTER_CBLOCK("ImGui.PlotLine", PlotLine);
-  REGISTER_CBLOCK("ImGui.PlotDigital", PlotDigital);
-  REGISTER_CBLOCK("ImGui.PlotScatter", PlotScatter);
-  REGISTER_CBLOCK("ImGui.PlotBars", PlotBars);
-  REGISTER_CBLOCK("ImGui.GetClipboard", GetClipboard);
-  REGISTER_CBLOCK("ImGui.SetClipboard", SetClipboard);
+  REGISTER_CBLOCK("GUI.Style", Style);
+  REGISTER_CBLOCK("GUI.Window", Window);
+  REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
+  REGISTER_CBLOCK("GUI.CheckBox", CheckBox);
+  REGISTER_CBLOCK("GUI.Text", Text);
+  REGISTER_CBLOCK("GUI.Button", Button);
+  REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
+  REGISTER_CBLOCK("GUI.SameLine", SameLine);
+  REGISTER_CBLOCK("GUI.Separator", Separator);
+  REGISTER_CBLOCK("GUI.Indent", Indent);
+  REGISTER_CBLOCK("GUI.Unindent", Unindent);
+  REGISTER_CBLOCK("GUI.TreeNode", TreeNode);
+  REGISTER_CBLOCK("GUI.IntInput", IntInput);
+  REGISTER_CBLOCK("GUI.FloatInput", FloatInput);
+  REGISTER_CBLOCK("GUI.Int2Input", Int2Input);
+  REGISTER_CBLOCK("GUI.Int3Input", Int3Input);
+  REGISTER_CBLOCK("GUI.Int4Input", Int4Input);
+  REGISTER_CBLOCK("GUI.Float2Input", Float2Input);
+  REGISTER_CBLOCK("GUI.Float3Input", Float3Input);
+  REGISTER_CBLOCK("GUI.Float4Input", Float4Input);
+  REGISTER_CBLOCK("GUI.IntDrag", IntDrag);
+  REGISTER_CBLOCK("GUI.FloatDrag", FloatDrag);
+  REGISTER_CBLOCK("GUI.Int2Drag", Int2Drag);
+  REGISTER_CBLOCK("GUI.Int3Drag", Int3Drag);
+  REGISTER_CBLOCK("GUI.Int4Drag", Int4Drag);
+  REGISTER_CBLOCK("GUI.Float2Drag", Float2Drag);
+  REGISTER_CBLOCK("GUI.Float3Drag", Float3Drag);
+  REGISTER_CBLOCK("GUI.Float4Drag", Float4Drag);
+  REGISTER_CBLOCK("GUI.TextInput", TextInput);
+  REGISTER_CBLOCK("GUI.Image", Image);
+  REGISTER_CBLOCK("GUI.Plot", Plot);
+  REGISTER_CBLOCK("GUI.PlotLine", PlotLine);
+  REGISTER_CBLOCK("GUI.PlotDigital", PlotDigital);
+  REGISTER_CBLOCK("GUI.PlotScatter", PlotScatter);
+  REGISTER_CBLOCK("GUI.PlotBars", PlotBars);
+  REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
+  REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
+  REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

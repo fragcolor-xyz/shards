@@ -14,7 +14,8 @@ inline std::string type2Name(CBType type) {
   std::string name = "";
   switch (type) {
   case EndOfBlittableTypes:
-    break;
+    // this should never happen
+    throw chainblocks::CBException("EndOfBlittableTypes is an invalid type");
   case None:
     name = "None";
     break;
@@ -266,9 +267,22 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return a.payload.blockValue == b.payload.blockValue;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return a.payload.stringValue == b.payload.stringValue ||
-           strcmp(a.payload.stringValue, b.payload.stringValue) == 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return true;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr == bstr;
+  }
   case Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
@@ -369,15 +383,30 @@ inline bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
+// avoid trying to be smart with SIMDs here
+// compiler will outsmart us likely anyway.
+#define CBVECTOR_CMP(_a_, _b_, _s_, _final_)                                   \
+  for (auto i = 0; i < _s_; i++) {                                             \
+    if (_a_[i] < _b_[i])                                                       \
+      return true;                                                             \
+    else if (_a_[i] > _b_[i])                                                  \
+      return false;                                                            \
+  }                                                                            \
+  return _final_
+
 ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
-    return false;
+    throw chainblocks::InvalidVarTypeError(
+        "Comparison < between two different value types");
 
   switch (a.valueType) {
-  case Enum:
-    return a.payload.enumVendorId < b.payload.enumVendorId ||
-           a.payload.enumTypeId < b.payload.enumTypeId ||
-           a.payload.enumValue < b.payload.enumValue;
+  case Enum: {
+    if (a.payload.enumVendorId != b.payload.enumVendorId ||
+        a.payload.enumTypeId != b.payload.enumTypeId)
+      throw chainblocks::InvalidVarTypeError(
+          "Comparison < between two different kind of enums (vendor/type)");
+    return a.payload.enumValue < b.payload.enumValue;
+  }
   case Bool:
     return a.payload.boolValue < b.payload.boolValue;
   case Int:
@@ -385,60 +414,28 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue < b.payload.floatValue;
   case Int2: {
-    CBInt2 vec = a.payload.int2Value < b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] < 0) // -1 is true
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
   }
   case Int3: {
-    CBInt3 vec = a.payload.int3Value < b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
   }
   case Int4: {
-    CBInt4 vec = a.payload.int4Value < b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
   }
   case Int8: {
-    CBInt8 vec = a.payload.int8Value < b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
   }
   case Int16: {
-    auto vec = a.payload.int16Value < b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
   }
   case Float2: {
-    CBInt2 vec = a.payload.float2Value < b.payload.float2Value; // cast to int
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
   }
   case Float3: {
-    CBInt3 vec = a.payload.float3Value < b.payload.float3Value; // cast to int
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
   }
   case Float4: {
-    CBInt4 vec = a.payload.float4Value < b.payload.float4Value; // cast to int
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] < 0)
-        return true;
-    return false;
+    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
   }
   case Color:
     return a.payload.colorValue.r < b.payload.colorValue.r ||
@@ -447,34 +444,51 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.a < b.payload.colorValue.a;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) < 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return false;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr < bstr;
+  }
   case Seq:
     return _seqLess(a, b);
   case Table:
     return _tableLess(a, b);
-  case Bytes:
-    return a.payload.bytesSize == b.payload.bytesSize &&
-           memcmp(a.payload.bytesValue, b.payload.bytesValue,
-                  a.payload.bytesSize) < 0;
-  case Array:
-    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
-           a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                  a.payload.arrayValue.len * sizeof(CBVarPayload)) < 0;
-  case Image:
-  case Chain:
-  case Block:
-  case Object:
-  case CBType::Any:
-  case None:
-  case EndOfBlittableTypes:
+  case Bytes: {
+    if (a.payload.bytesValue == b.payload.bytesValue &&
+        a.payload.bytesSize == b.payload.bytesSize)
+      return false;
+    std::string_view abuf((const char *)a.payload.bytesValue,
+                          a.payload.bytesSize);
+    std::string_view bbuf((const char *)b.payload.bytesValue,
+                          b.payload.bytesSize);
+    return abuf < bbuf;
+  }
+  case Array: {
+    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements &&
+        a.payload.arrayValue.len == b.payload.arrayValue.len)
+      return false;
+    std::string_view abuf((const char *)a.payload.arrayValue.elements,
+                          a.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements,
+                          b.payload.arrayValue.len * sizeof(CBVarPayload));
+    return abuf < bbuf;
+  }
+  default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator < not supported for the given type: " +
         type2Name(a.valueType));
   }
-
-  return false;
 }
 
 inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
@@ -533,13 +547,17 @@ inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
-    return false;
+    throw chainblocks::InvalidVarTypeError(
+        "Comparison <= between two different value types");
 
   switch (a.valueType) {
-  case Enum:
-    return a.payload.enumVendorId == b.payload.enumVendorId &&
-           a.payload.enumTypeId == b.payload.enumTypeId &&
-           a.payload.enumValue <= b.payload.enumValue;
+  case Enum: {
+    if (a.payload.enumVendorId != b.payload.enumVendorId ||
+        a.payload.enumTypeId != b.payload.enumTypeId)
+      throw chainblocks::InvalidVarTypeError(
+          "Comparison <= between two different kind of enums (vendor/type)");
+    return a.payload.enumValue <= b.payload.enumValue;
+  }
   case Bool:
     return a.payload.boolValue <= b.payload.boolValue;
   case Int:
@@ -547,60 +565,28 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue <= b.payload.floatValue;
   case Int2: {
-    CBInt2 vec = a.payload.int2Value <= b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
   }
   case Int3: {
-    CBInt3 vec = a.payload.int3Value <= b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
   }
   case Int4: {
-    CBInt4 vec = a.payload.int4Value <= b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
   }
   case Int8: {
-    CBInt8 vec = a.payload.int8Value <= b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
   }
   case Int16: {
-    auto vec = a.payload.int16Value <= b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
   }
   case Float2: {
-    CBInt2 vec = a.payload.float2Value <= b.payload.float2Value; // cast to int
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
   }
   case Float3: {
-    CBInt3 vec = a.payload.float3Value <= b.payload.float3Value; // cast to int
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
   }
   case Float4: {
-    CBInt4 vec = a.payload.float4Value <= b.payload.float4Value; // cast to int
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
   }
   case Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r &&
@@ -609,35 +595,54 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
            a.payload.colorValue.a <= b.payload.colorValue.a;
   case CBType::Path:
   case ContextVar:
-  case CBType::String:
-    return strcmp(a.payload.stringValue, b.payload.stringValue) <= 0;
+  case CBType::String: {
+    if (a.payload.stringValue == b.payload.stringValue)
+      return true;
+
+    const auto astr =
+        a.payload.stringLen > 0
+            ? std::string_view(a.payload.stringValue, a.payload.stringLen)
+            : std::string_view(a.payload.stringValue);
+
+    const auto bstr =
+        b.payload.stringLen > 0
+            ? std::string_view(b.payload.stringValue, b.payload.stringLen)
+            : std::string_view(b.payload.stringValue);
+
+    return astr <= bstr;
+  }
   case Seq:
     return _seqLessEq(a, b);
   case Table:
     return _tableLessEq(a, b);
-  case Bytes:
-    return a.payload.bytesSize == b.payload.bytesSize &&
-           memcmp(a.payload.bytesValue, b.payload.bytesValue,
-                  a.payload.bytesSize) <= 0;
-  case Array:
-    return a.payload.arrayValue.len == b.payload.arrayValue.len &&
-           a.innerType == b.innerType &&
-           memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                  a.payload.arrayValue.len * sizeof(CBVarPayload)) <= 0;
-  case Image:
-  case Chain:
-  case Block:
-  case Object:
-  case CBType::Any:
-  case None:
-  case EndOfBlittableTypes:
+  case Bytes: {
+    if (a.payload.bytesValue == b.payload.bytesValue &&
+        a.payload.bytesSize == b.payload.bytesSize)
+      return true;
+    std::string_view abuf((const char *)a.payload.bytesValue,
+                          a.payload.bytesSize);
+    std::string_view bbuf((const char *)b.payload.bytesValue,
+                          b.payload.bytesSize);
+    return abuf <= bbuf;
+  }
+  case Array: {
+    if (a.payload.arrayValue.elements == b.payload.arrayValue.elements &&
+        a.payload.arrayValue.len == b.payload.arrayValue.len)
+      return true;
+    std::string_view abuf((const char *)a.payload.arrayValue.elements,
+                          a.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements,
+                          b.payload.arrayValue.len * sizeof(CBVarPayload));
+    return abuf <= bbuf;
+  }
+  default:
     throw chainblocks::InvalidVarTypeError(
         "Comparison operator <= not supported for the given type: " +
         type2Name(a.valueType));
   }
-
-  return false;
 }
+
+#undef CBVECTOR_CMP
 
 ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) {
   return !(a == b);
@@ -741,8 +746,17 @@ inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
   return !(a == b);
 }
 
+namespace chainblocks {
+uint64_t hash(const CBVar &var);
+} // namespace chainblocks
+
 namespace std {
-// TODO put in its own header maybe
+template <> struct hash<CBVar> {
+  std::size_t operator()(const CBVar &var) const {
+    // not ideal on 32 bits as our hash is 64.. but it should be ok
+    return std::size_t(chainblocks::hash(var));
+  }
+};
 
 template <> struct hash<CBTypeInfo> {
   std::size_t operator()(const CBTypeInfo &typeInfo) const {
@@ -787,173 +801,6 @@ template <> struct hash<CBExposedTypeInfo> {
     res = res ^ hash<int>()(typeInfo.isProtected);
     res = res ^ hash<int>()(typeInfo.isTableEntry);
     res = res ^ hash<int>()(typeInfo.global);
-    return res;
-  }
-};
-
-#define MAGIC_HASH(__val__) res = res ^ hash<decltype(__val__)>()(__val__)
-#define MAGIC_HASH2(__val__)                                                   \
-  res = res ^                                                                  \
-        hash<std::remove_const<                                                \
-            std::remove_reference<decltype(__val__)>::type>::type>()(__val__)
-template <> struct hash<CBVar> {
-  std::size_t operator()(const CBVar &var) const {
-    using std::hash;
-    using std::size_t;
-    using std::string;
-
-    static CBCore *core = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
-    if (!core)
-      throw std::runtime_error("chainblocksInterface failed!");
-
-    auto res = hash<int>()(int(var.valueType));
-    switch (var.valueType) {
-    case None:
-    case Any:
-      break;
-    case Object:
-      MAGIC_HASH(var.payload.objectVendorId);
-      MAGIC_HASH(var.payload.objectTypeId);
-      MAGIC_HASH(var.payload.objectValue);
-      break;
-    case Enum:
-      MAGIC_HASH(var.payload.enumVendorId);
-      MAGIC_HASH(var.payload.enumTypeId);
-      MAGIC_HASH(var.payload.enumValue);
-      break;
-    case Bool:
-      MAGIC_HASH(var.payload.boolValue);
-      break;
-    case Int:
-      MAGIC_HASH(var.payload.intValue);
-      break;
-    case Int2:
-      for (auto i = 0; i < 2; i++) {
-        MAGIC_HASH2(var.payload.int2Value[i]);
-      }
-      break;
-    case Int3:
-      for (auto i = 0; i < 3; i++) {
-        MAGIC_HASH2(var.payload.int3Value[i]);
-      }
-      break;
-    case Int4:
-      for (auto i = 0; i < 4; i++) {
-        MAGIC_HASH2(var.payload.int4Value[i]);
-      }
-      break;
-    case Int8:
-      for (auto i = 0; i < 8; i++) {
-        MAGIC_HASH2(var.payload.int8Value[i]);
-      }
-      break;
-    case Int16:
-      for (auto i = 0; i < 16; i++) {
-        MAGIC_HASH2(var.payload.int16Value[i]);
-      }
-      break;
-    case Float:
-      MAGIC_HASH(var.payload.floatValue);
-      break;
-    case Float2:
-      for (auto i = 0; i < 2; i++) {
-        MAGIC_HASH2(var.payload.float2Value[i]);
-      }
-      break;
-    case Float3:
-      for (auto i = 0; i < 3; i++) {
-        MAGIC_HASH2(var.payload.float3Value[i]);
-      }
-      break;
-    case Float4:
-      for (auto i = 0; i < 4; i++) {
-        MAGIC_HASH2(var.payload.float4Value[i]);
-      }
-      break;
-    case Color:
-      MAGIC_HASH(var.payload.colorValue.r);
-      MAGIC_HASH(var.payload.colorValue.g);
-      MAGIC_HASH(var.payload.colorValue.b);
-      MAGIC_HASH(var.payload.colorValue.a);
-      break;
-    case Chain: {
-      auto chainInfo = core->getChainInfo(var.payload.chainValue);
-      std::string_view buf(chainInfo.name);
-      res = res ^ hash<std::string_view>()(buf);
-      MAGIC_HASH(chainInfo.looped);
-      MAGIC_HASH(chainInfo.unsafe);
-      for (uint32_t i = 0; i < chainInfo.blocks.len; i++) {
-        CBVar blockVar{};
-        blockVar.valueType = CBType::Block;
-        blockVar.payload.blockValue = chainInfo.blocks.elements[i];
-        res = res ^ hash<CBVar>()(blockVar);
-      }
-    } break;
-    case Block: {
-      auto blk = var.payload.blockValue;
-      std::string_view buf(blk->name(blk));
-      res = res ^ hash<std::string_view>()(buf);
-      auto params = blk->parameters(blk);
-      for (uint32_t i = 0; i < params.len; i++) {
-        res = res ^ hash<CBVar>()(blk->getParam(blk, int(i)));
-      }
-    } break;
-    case Bytes: {
-      std::string_view buf((char *)var.payload.bytesValue,
-                           var.payload.bytesSize);
-      res = res ^ hash<std::string_view>()(buf);
-    } break;
-    case Array: {
-      res = res ^ hash<int>()(int(var.innerType));
-      std::string_view buf((char *)var.payload.arrayValue.elements,
-                           var.payload.arrayValue.len * sizeof(CBVarPayload));
-      res = res ^ hash<std::string_view>()(buf);
-    } break;
-    case String:
-    case Path:
-    case ContextVar: {
-      std::string_view buf(var.payload.stringValue);
-      res = res ^ hash<std::string_view>()(buf);
-    } break;
-    case Image: {
-      auto pixsize = 1;
-      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-          CBIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               CBIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
-      MAGIC_HASH(var.payload.imageValue.width);
-      MAGIC_HASH(var.payload.imageValue.height);
-      MAGIC_HASH(var.payload.imageValue.channels);
-      MAGIC_HASH(var.payload.imageValue.flags);
-      auto len = size_t(var.payload.imageValue.width) *
-                 size_t(var.payload.imageValue.height) *
-                 size_t(var.payload.imageValue.channels) * pixsize;
-      std::string_view buf((char *)var.payload.imageValue.data, len);
-      res = res ^ hash<std::string_view>()(buf);
-    } break;
-    case Seq:
-      for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-        res = res ^ hash<CBVar>()(var.payload.seqValue.elements[i]);
-      }
-      break;
-    case Table: {
-      auto table = var.payload.tableValue;
-      table.api->tableForEach(
-          table,
-          [](const char *key, CBVar *value, void *data) {
-            std::size_t *pres = (std::size_t *)data;
-            std::string_view buf(key);
-            *pres = *pres ^ hash<std::string_view>()(buf);
-            *pres = *pres ^ hash<CBVar>()(*value);
-            return true;
-          },
-          &res);
-    } break;
-    case EndOfBlittableTypes:
-      break;
-    }
     return res;
   }
 };
