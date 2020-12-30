@@ -231,13 +231,15 @@ struct Parameters {
 // used to explicitly specialize, hinting compiler
 // mostly used internally for math blocks
 #define CB_PAYLOAD_CTORS0(CBPAYLOAD_TYPE, __inner_type__, __item__)            \
+  constexpr static size_t Width{1};                                            \
   CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
   CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
     const __inner_type__ *p = l.begin();                                       \
     this->__item__ = p[0];                                                     \
   }
 
-#define CB_PAYLOAD_CTORS1(CBPAYLOAD_TYPE, __inner_type__, __item__)            \
+#define CB_PAYLOAD_CTORS1(CBPAYLOAD_TYPE, __inner_type__, __item__, _width_)   \
+  constexpr static size_t Width{_width_};                                      \
   CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
   CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
     const __inner_type__ *p = l.begin();                                       \
@@ -310,6 +312,35 @@ struct Parameters {
     return res;                                                                \
   }
 
+#define CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, __op__)             \
+  ALWAYS_INLINE static inline CBPAYLOAD_TYPE __op__(const CBPAYLOAD_TYPE &x) { \
+    CBPAYLOAD_TYPE res;                                                        \
+    for (size_t i = 0; i < CBPAYLOAD_TYPE::Width; i++) {                       \
+      res.__item__[i] = __builtin_##__op__(x.__item__[i]);                     \
+    }                                                                          \
+    return res;                                                                \
+  }
+
+#define CB_PAYLOAD_MATH_OPS_FLOAT(CBPAYLOAD_TYPE, __item__)                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, sqrt);                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, log);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, sin);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, cos);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, exp);                     \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, tanh);                    \
+  CB_PAYLOAD_MATH_OP_FLOAT(CBPAYLOAD_TYPE, __item__, fabs);
+
+#define CB_PAYLOAD_MATH_POW_FLOAT(CBPAYLOAD_TYPE, __item__)                    \
+  template <typename P>                                                        \
+  ALWAYS_INLINE static inline CBPAYLOAD_TYPE pow(const CBPAYLOAD_TYPE &x,      \
+                                                 P p) {                        \
+    CBPAYLOAD_TYPE res;                                                        \
+    for (size_t i = 0; i < CBPAYLOAD_TYPE::Width; i++) {                       \
+      res.__item__[i] = __builtin_pow(x.__item__[i], p);                       \
+    }                                                                          \
+    return res;                                                                \
+  }
+
 #define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
   ALWAYS_INLINE inline CBPAYLOAD_TYPE(int32_t i) {                             \
     using t = decltype(__item__);                                              \
@@ -361,27 +392,27 @@ struct IntVarPayload : public CBVarPayload {
   CB_PAYLOAD_MATH_OPS_INT(IntVarPayload, intValue);
 };
 struct Int2VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Int2VarPayload, int64_t, int2Value);
+  CB_PAYLOAD_CTORS1(Int2VarPayload, int64_t, int2Value, 2);
   CB_PAYLOAD_MATH_OPS(Int2VarPayload, int2Value);
   CB_PAYLOAD_MATH_OPS_INT(Int2VarPayload, int2Value);
 };
 struct Int3VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Int3VarPayload, int32_t, int3Value);
+  CB_PAYLOAD_CTORS1(Int3VarPayload, int32_t, int3Value, 3);
   CB_PAYLOAD_MATH_OPS(Int3VarPayload, int3Value);
   CB_PAYLOAD_MATH_OPS_INT(Int3VarPayload, int3Value);
 };
 struct Int4VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Int4VarPayload, int32_t, int4Value);
+  CB_PAYLOAD_CTORS1(Int4VarPayload, int32_t, int4Value, 4);
   CB_PAYLOAD_MATH_OPS(Int4VarPayload, int4Value);
   CB_PAYLOAD_MATH_OPS_INT(Int4VarPayload, int4Value);
 };
 struct Int8VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Int8VarPayload, int16_t, int8Value);
+  CB_PAYLOAD_CTORS1(Int8VarPayload, int16_t, int8Value, 8);
   CB_PAYLOAD_MATH_OPS(Int8VarPayload, int8Value);
   CB_PAYLOAD_MATH_OPS_INT(Int8VarPayload, int8Value);
 };
 struct Int16VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Int16VarPayload, int8_t, int16Value);
+  CB_PAYLOAD_CTORS1(Int16VarPayload, int8_t, int16Value, 16);
   CB_PAYLOAD_MATH_OPS(Int16VarPayload, int16Value);
   CB_PAYLOAD_MATH_OPS_INT(Int16VarPayload, int16Value);
 };
@@ -391,16 +422,22 @@ struct FloatVarPayload : public CBVarPayload {
   CB_PAYLOAD_MATH_OPS_SIMPLE(FloatVarPayload, floatValue);
 };
 struct Float2VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Float2VarPayload, double, float2Value);
+  CB_PAYLOAD_CTORS1(Float2VarPayload, double, float2Value, 2);
   CB_PAYLOAD_MATH_OPS(Float2VarPayload, float2Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float2VarPayload, float2Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float2VarPayload, float2Value);
 };
 struct Float3VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Float3VarPayload, float, float3Value);
+  CB_PAYLOAD_CTORS1(Float3VarPayload, float, float3Value, 3);
   CB_PAYLOAD_MATH_OPS(Float3VarPayload, float3Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float3VarPayload, float3Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float3VarPayload, float3Value);
 };
 struct Float4VarPayload : public CBVarPayload {
-  CB_PAYLOAD_CTORS1(Float4VarPayload, float, float4Value);
+  CB_PAYLOAD_CTORS1(Float4VarPayload, float, float4Value, 4);
   CB_PAYLOAD_MATH_OPS(Float4VarPayload, float4Value);
+  CB_PAYLOAD_MATH_OPS_FLOAT(Float4VarPayload, float4Value);
+  CB_PAYLOAD_MATH_POW_FLOAT(Float4VarPayload, float4Value);
 };
 
 // forward declare this as we use it in Var

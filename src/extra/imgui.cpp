@@ -258,6 +258,7 @@ struct Style : public Base {
   }
 
   static ImVec4 color2Vec4(const CBColor &color) {
+    // remember, we edited the shader to do srgb->linear
     ImVec4 res;
     res.x = color.r / 255.0f;
     res.y = color.g / 255.0f;
@@ -268,6 +269,16 @@ struct Style : public Base {
 
   static ImVec4 color2Vec4(const CBVar &input) {
     return color2Vec4(input.payload.colorValue);
+  }
+
+  static CBColor vec42Color(const ImVec4 &color) {
+    // remember, we edited the shader to do srgb->linear
+    CBColor res;
+    res.r = color.x * 255.0f;
+    res.g = color.y * 255.0f;
+    res.b = color.z * 255.0f;
+    res.a = color.w * 255.0f;
+    return res;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -868,8 +879,6 @@ struct CheckBox : public Variable<CBType::Bool> {
 };
 
 struct Text : public Base {
-  // TODO add color
-
   std::string _label;
   CBVar _color{};
 
@@ -1424,6 +1433,41 @@ struct TextInput : public Variable<CBType::String> {
   }
 };
 
+struct ColorInput : public Variable<CBType::Color> {
+  // ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
+  ImVec4 _lcolor = Style::color2Vec4(CBColor{190, 255, 52, 255});
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+      if (_exposing) {
+        // we own the variable so let's run some init
+        _variable->valueType = Color;
+        _variable->payload.colorValue.r = 0;
+        _variable->payload.colorValue.g = 0;
+        _variable->payload.colorValue.b = 0;
+        _variable->payload.colorValue.a = 255;
+      }
+    }
+
+    if (_variable) {
+      auto fc = Style::color2Vec4(*_variable);
+      ::ImGui::ColorEdit4(_label.c_str(), &fc.x);
+      _variable->payload.colorValue = Style::vec42Color(fc);
+      return *_variable;
+    } else {
+      ::ImGui::ColorEdit4(_label.c_str(), &_lcolor.x,
+                          ImGuiColorEditFlags_Float);
+      return Var(Style::vec42Color(_lcolor));
+    }
+  }
+};
+
 struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
@@ -1939,6 +1983,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.PlotBars", PlotBars);
   REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
   REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
+  REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
