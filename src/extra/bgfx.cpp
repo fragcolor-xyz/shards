@@ -131,6 +131,8 @@ struct MainWindow : public BaseWindow {
   chainblocks::ImGui::Context _imgui_context{};
   int32_t _wheelScroll = 0;
   bool _bgfxInit{false};
+  float _windowScalingW{1.0};
+  float _windowScalingH{1.0};
 
   // TODO thread_local? anyway sort multiple threads
   static inline std::vector<SDL_Event> sdlEvents;
@@ -240,7 +242,7 @@ struct MainWindow : public BaseWindow {
   }
 
   void warmup(CBContext *context) {
-    auto initErr = SDL_Init(SDL_INIT_EVENTS);
+    auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     if (initErr != 0) {
       LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
       throw ActivationError("Failed to initialize SDL");
@@ -266,7 +268,7 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-      uint32_t flags = SDL_WINDOW_SHOWN;
+      uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
 #endif
@@ -278,7 +280,22 @@ struct MainWindow : public BaseWindow {
                            SDL_WINDOWPOS_CENTERED, _width, _height, flags);
 
 #ifdef __APPLE__
+      // tricky cos retina..
+      // first we must poke metal
       _metalView = SDL_Metal_CreateView(_window);
+      // now we can find out the scaling
+      int real_w, real_h;
+      SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
+      LOG(INFO) << "w: " << real_w << " h: " << real_h;
+      _windowScalingW = float(real_w) / float(_width);
+      _windowScalingH = float(real_h) / float(_height);
+      // fix the scaling now if needed
+      if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
+        SDL_Metal_DestroyView(_metalView);
+        SDL_SetWindowSize(_window, int(float(_width) / _windowScalingW),
+                          int(float(_height) / _windowScalingH));
+        _metalView = SDL_Metal_CreateView(_window);
+      }
       _sysWnd = SDL_Metal_GetLayer(_metalView);
 #elif defined(_WIN32) || defined(__linux__)
       _sysWnd = SDL_GetNativeWindowPtr(_window);
@@ -442,6 +459,11 @@ struct MainWindow : public BaseWindow {
           throw ActivationError("Window closed, aborting chain.");
         }
       }
+    }
+
+    if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
+      mouseX = int32_t(float(mouseX) * _windowScalingW);
+      mouseY = int32_t(float(mouseY) * _windowScalingH);
     }
 
     imguiBeginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width, _height);
