@@ -481,7 +481,22 @@ struct MainWindow : public BaseWindow {
 };
 
 struct Texture2D : public BaseConsumer {
+  static inline Parameters params{
+      {"sRGB",
+       "If the texture should be loaded as an sRGB format (only valid for 8 "
+       "bit per color textures).",
+       {CoreInfo::BoolType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _srgb = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_srgb); }
+
   Texture *_texture{nullptr};
+  bool _srgb{false};
 
   void cleanup() {
     if (_texture) {
@@ -526,24 +541,24 @@ struct Texture2D : public BaseConsumer {
       if (_texture->bpp == 1) {
         switch (_texture->channels) {
         case 1:
-          _texture->handle =
-              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::R8);
+          _texture->handle = bgfx::createTexture2D(
+              _texture->width, _texture->height, false, 1,
+              bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 2:
-          _texture->handle =
-              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::RG8);
+          _texture->handle = bgfx::createTexture2D(
+              _texture->width, _texture->height, false, 1,
+              bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 3:
-          _texture->handle =
-              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::RGB8);
+          _texture->handle = bgfx::createTexture2D(
+              _texture->width, _texture->height, false, 1,
+              bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 4:
-          _texture->handle =
-              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::RGBA8);
+          _texture->handle = bgfx::createTexture2D(
+              _texture->width, _texture->height, false, 1,
+              bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         default:
           cbassert(false);
