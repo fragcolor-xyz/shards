@@ -1434,8 +1434,7 @@ struct TextInput : public Variable<CBType::String> {
 };
 
 struct ColorInput : public Variable<CBType::Color> {
-  // ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
-  ImVec4 _lcolor = Style::color2Vec4(CBColor{190, 255, 52, 255});
+  ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
@@ -1461,8 +1460,7 @@ struct ColorInput : public Variable<CBType::Color> {
       _variable->payload.colorValue = Style::vec42Color(fc);
       return *_variable;
     } else {
-      ::ImGui::ColorEdit4(_label.c_str(), &_lcolor.x,
-                          ImGuiColorEditFlags_Float);
+      ::ImGui::ColorEdit4(_label.c_str(), &_lcolor.x);
       return Var(Style::vec42Color(_lcolor));
     }
   }
