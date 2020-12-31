@@ -373,9 +373,21 @@ struct OnCleanup {
     if (_context) {
       // cleanup might be called multiple times
       CBVar output{};
+      std::string error;
+      if (_context->failed()) {
+        error = _context->getErrorMessage();
+      }
       // we need to reset the state or only the first block will run
       _context->resetCancelFlow();
-      _blocks.activate(_context, Var::Empty, output);
+      _context->onCleanup = true; // this is kind of a hack
+      _blocks.activate(_context, Var(error), output);
+      // restore the terminal state
+      if (error.size() > 0) {
+        _context->cancelFlow(error);
+      } else {
+        // var should not matter at this point
+        _context->stopFlow(Var::Empty);
+      }
       _context = nullptr;
     }
     // and cleanup after

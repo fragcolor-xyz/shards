@@ -322,6 +322,12 @@ struct Wait : public ChainBase {
         CB_SUSPEND(context, 0);
       }
 
+      if (chain->finishedError.size() > 0) {
+        // if the chain has errors we need to propagate them
+        // we can avoid interruption using Maybe blocks
+        throw ActivationError(chain->finishedError);
+      }
+
       if (passthrough) {
         return input;
       } else {

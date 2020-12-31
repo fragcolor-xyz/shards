@@ -89,6 +89,7 @@ struct CBContext {
   const CBChain *main;
   CBFlow *flow;
   std::vector<CBChain *> chainStack;
+  bool onCleanup{false};
 
 // Used within the coro& stack! (suspend, etc)
 #ifndef __EMSCRIPTEN__

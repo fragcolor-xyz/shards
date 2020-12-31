@@ -555,7 +555,7 @@ void releaseVariable(CBVar *variable) {
 }
 
 CBChainState suspend(CBContext *context, double seconds) {
-  if (unlikely(!context->shouldContinue())) {
+  if (unlikely(!context->shouldContinue() || context->onCleanup)) {
     throw ActivationError("Trying to suspend a terminated context!");
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");

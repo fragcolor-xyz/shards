@@ -1,12 +1,12 @@
 (def Root (Node))
 
 ; fail during await, uses awaitne(...)
-(def c
+(def a
   (Chain
    "test-1"
    (Await ~[false (Assert.Is true)])))
 
-(schedule Root c)
+(schedule Root a)
 (run Root 0.1)
 
 ; fail during http resolver, uses await(...)
@@ -21,9 +21,20 @@
 ; fail during cleanup, we cannot use pauses
 (def c
   (Chain
-   "test-2"
+   "test-3"
    (OnCleanup ~[(Pause 10.0)])))
 
 (schedule Root c)
+(run Root 0.1)
+
+; fail the root chain propagated from Wait
+(def d
+  (Chain
+   "test-4"
+   (Detach a)
+   (Wait a)
+   (Assert.Is true false)))
+
+(schedule Root d)
 (run Root 0.1)
 
