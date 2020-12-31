@@ -89,6 +89,12 @@ struct Type {
     return res;
   }
 
+  static Type VariableOf(CBTypesInfo types) {
+    Type res;
+    res._type = {CBType::ContextVar, {.contextVarTypes = types}};
+    return res;
+  }
+
   static Type Enum(int32_t vendorId, int32_t typeId) {
     Type res;
     res._type = {CBType::Enum,

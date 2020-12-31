@@ -281,7 +281,7 @@ mod dummy_block {
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
   blocks::http::registerBlocks();
-  cblog!("Rust blocks initialization done.");
+  // cblog!("Rust blocks initialization done.");
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -290,5 +290,5 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
   core::registerBlock::<dummy_block::DummyBlock>();
-  cblog!("Rust blocks initialization done.");
+  // cblog!("Rust blocks initialization done.");
 }

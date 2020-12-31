@@ -286,7 +286,6 @@ struct MainWindow : public BaseWindow {
       // now we can find out the scaling
       int real_w, real_h;
       SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
-      LOG(INFO) << "w: " << real_w << " h: " << real_h;
       _windowScalingW = float(real_w) / float(_width);
       _windowScalingH = float(real_h) / float(_height);
       // fix the scaling now if needed
@@ -635,11 +634,11 @@ struct Texture2D : public BaseConsumer {
 
 template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return ShaderHandle::ShaderHandleType; }
+  static CBTypesInfo outputTypes() { return ShaderHandle::ObjType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
-    return ShaderHandle::ShaderHandleType;
+    return ShaderHandle::ObjType;
   }
 
   static inline Parameters f_v_params{
@@ -867,7 +866,7 @@ struct Model : public BaseConsumer {
       Type::TableOf(InputTableTypes, InputTableKeys);
 
   static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return ModelHandle::ModelHandleType; }
+  static CBTypesInfo outputTypes() { return ModelHandle::ObjType; }
 
   static inline Parameters params{
       {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}},
@@ -993,7 +992,7 @@ struct Model : public BaseConsumer {
     _blayout = layout;
     _lineElems = _expectedTypes.size();
 
-    return ModelHandle::ModelHandleType;
+    return ModelHandle::ObjType;
   }
 
   CBVar activateStatic(CBContext *context, const CBVar &input) {
@@ -1319,18 +1318,127 @@ struct Camera : public BaseConsumer {
   }
 };
 
-class Draw {
+struct Draw : public BaseConsumer {
+  // TODO required info call, model and shader
+
+  // a matrix (in the form of 4 float4s)
+  // or multiple matrices (will draw multiple times, instanced TODO)
+  static inline Type InputSeqType = Type::SeqOf(CoreInfo::Float4SeqType);
+  static inline Types InputTypes{{CoreInfo::Float4SeqType, InputSeqType}};
+
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return InputTypes; }
+
   // keep in mind that bgfx does its own sorting, so we don't need to make this
   // block way too smart
-  static inline Parameters params{
-      {"Shader",
-       "The shader program to use for this draw.",
-       {ShaderHandle::ShaderHandleType}},
-      {"Model", "The model to draw.", {ModelHandle::ModelHandleType}}};
+  static inline Parameters params{{"Shader",
+                                   "The shader program to use for this draw.",
+                                   {ShaderHandle::VarType, CoreInfo::NoneType}},
+                                  {"Model",
+                                   "The model to draw.",
+                                   {ModelHandle::VarType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return input; }
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _shader = value;
+      break;
+    case 1:
+      _model = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _shader;
+    case 1:
+      return _model;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  ParamVar _shader{};
+  ParamVar _model{};
+  CBVar *_bgfx_context{nullptr};
+
+  void warmup(CBContext *context) {
+    _shader.warmup(context);
+    _model.warmup(context);
+    _bgfx_context = referenceVariable(context, "GFX.Context");
+  }
+
+  void cleanup() {
+    _shader.cleanup();
+    _model.cleanup();
+    if (_bgfx_context) {
+      releaseVariable(_bgfx_context);
+      _bgfx_context = nullptr;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.seqTypes.elements[0].basicType == CBType::Seq) {
+      // TODO
+      OVERRIDE_ACTIVATE(data, activate);
+    } else {
+      OVERRIDE_ACTIVATE(data, activateSingle);
+    }
+    return data.inputType;
+  }
+
+  CBVar activateSingle(CBContext *context, const CBVar &input) {
+    auto shader =
+        reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
+    auto model =
+        reinterpret_cast<ModelHandle *>(_model.get().payload.objectValue);
+    auto *ctx = reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+    if (input.payload.seqValue.len != 4) {
+      throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+    }
+
+    float mat[16];
+    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
+           sizeof(float) * 4);
+    bgfx::setTransform(mat);
+
+    std::visit(
+        [](auto &m) {
+          // Set vertex and index buffer.
+          bgfx::setVertexBuffer(0, m.vb);
+          bgfx::setIndexBuffer(m.ib);
+        },
+        model->model);
+
+    // set state, (it's auto reset after submit)
+    uint64_t state = 0 | BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G |
+                     BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A |
+                     BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+                     BGFX_STATE_CULL_CW;
+    bgfx::setState(state);
+
+    // Submit primitive for rendering to the current view.
+    bgfx::submit(ctx->currentView(), shader->handle);
+
+    return input;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Invalid activation path.");
+  }
 };
 
 void registerBGFXBlocks() {
@@ -1342,6 +1450,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
   REGISTER_CBLOCK("GFX.Model", Model);
   REGISTER_CBLOCK("GFX.Camera", Camera);
+  REGISTER_CBLOCK("GFX.Draw", Draw);
 }
 }; // namespace BGFX
 

@@ -1727,7 +1727,6 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   case Table: {
     auto &ta = value.payload.tableValue;
     struct iterdata {
-      std::unordered_set<CBTypeInfo> types;
       CBTypeInfo *varType;
     } data;
     data.varType = &varType;
@@ -1736,13 +1735,8 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;
           auto derived = deriveTypeInfo(*value);
-          if (!data->types.count(derived)) {
-            chainblocks::arrayPush(data->varType->table.types, derived);
-            chainblocks::arrayPush(data->varType->table.keys, key);
-            data->types.insert(derived);
-          } else {
-            freeDerivedInfo(derived);
-          }
+          chainblocks::arrayPush(data->varType->table.types, derived);
+          chainblocks::arrayPush(data->varType->table.keys, key);
           return true;
         },
         &data);
