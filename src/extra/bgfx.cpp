@@ -1319,6 +1319,20 @@ struct Camera : public BaseConsumer {
   }
 };
 
+class Draw {
+  // keep in mind that bgfx does its own sorting, so we don't need to make this
+  // block way too smart
+  static inline Parameters params{
+      {"Shader",
+       "The shader program to use for this draw.",
+       {ShaderHandle::ShaderHandleType}},
+      {"Model", "The model to draw.", {ModelHandle::ModelHandleType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  CBVar activate(CBContext *context, const CBVar &input) { return input; }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);

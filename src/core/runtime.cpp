@@ -1171,7 +1171,10 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       // types but the keys are open to anything, if no types are available, it
       // accepts any type
       // 2. a receiver table with type info and key info is strict, means that
-      // input has to match 1:1
+      // input has to match 1:1, an exception is done if the last key is empty
+      // as in
+      // "" on the receiver side, in such case any input is allowed (types are
+      // still checked)
       const auto atypes = inputType.table.types.len;
       const auto btypes = receiverType.table.types.len;
       if (receiverType.table.keys.len == 0) {
@@ -1215,18 +1218,21 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       } else {
         const auto akeys = inputType.table.keys.len;
         const auto bkeys = receiverType.table.keys.len;
-        auto missingMatches = akeys;
-        if (akeys != bkeys || akeys != atypes) {
-          // we need a 1:1 match
+        const auto anyLast = // last element can be a jolly
+            strlen(receiverType.table.keys.elements[bkeys - 1]) == 0;
+        if (!anyLast && (akeys != bkeys || akeys != atypes)) {
+          // we need a 1:1 match in this case, fail early
           return false;
         }
+        auto missingMatches = akeys;
         for (uint32_t i = 0; i < akeys; i++) {
           auto atype = inputType.table.types.elements[i];
           auto akey = inputType.table.keys.elements[i];
           for (uint32_t y = 0; y < bkeys; y++) {
             auto btype = receiverType.table.types.elements[y];
             auto bkey = receiverType.table.keys.elements[y];
-            if (strcmp(akey, bkey) == 0) {
+            // if anyLast and the last perform a match anyway
+            if (strcmp(akey, bkey) == 0 || (anyLast && y == (bkeys - 1))) {
               if (matchTypes(atype, btype, isParameter, strict))
                 missingMatches--;
               else
