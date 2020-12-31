@@ -13,6 +13,7 @@ namespace BGFX_Tests {
   extern void testVertexAttribute();
   extern void testModel();
   extern void testCamera();
+  extern void testDraw();
 }
 }
 
@@ -28,4 +29,8 @@ TEST_CASE("GFX-Model", "[gfx]") {
 
 TEST_CASE("GFX-Camera", "[gfx]") {
   BGFX_Tests::testCamera();
+}
+
+TEST_CASE("GFX-Draw", "[gfx]") {
+  BGFX_Tests::testDraw();
 }
