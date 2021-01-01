@@ -479,7 +479,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 0) {
     // stdio
@@ -656,7 +656,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 0) {
     ssize_t res = 0;
@@ -721,7 +721,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 1) {
     ssize_t res = 0;
