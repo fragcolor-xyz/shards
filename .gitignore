@@ -42,6 +42,8 @@ compile_commands.json
 src/tests/subchains.chain
 .lsp
 .clj-kondo
-examples/shadercRelease.wasm
-examples/fs-shader-tmp.txt
-examples/vs-shader-tmp.txt
+examples/shaderc/shadercRelease.wasm
+examples/shaderc/fs-shader-tmp.txt
+examples/shaderc/vs-shader-tmp.txt
+examples/shaderc/varying.def.sc
+examples/shaderc/bgfx_shader.sh

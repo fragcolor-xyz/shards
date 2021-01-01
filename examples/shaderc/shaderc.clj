@@ -11,7 +11,7 @@
     (= platform "windows") "s_5"
     (= platform "apple") "metal"
     (= platform "linux") "450"
-    (= platform "emscripten")) "")
+    (= platform "emscripten") ""))
 
 (defn shaderc [type in out]
   (if (= platform "windows")
@@ -23,10 +23,12 @@
                               "-p" shaders-profile
                               "--type" type])]))
 
-(defn Shader [vs-code fs-code] 
+(defn Shader [varying vs-code fs-code] 
   (let [loader 
         (Chain
          "shader-compiler"
+         "varying.def.sc"
+         (FS.Write varying :Overwrite true)
          "vs-shader-tmp.txt"
          (FS.Write vs-code :Overwrite true)
          "fs-shader-tmp.txt"
@@ -44,4 +46,31 @@
     ; read results
     (stop loader)))
 
-(prn (Shader "" ""))
+(prn (Shader
+      "
+vec4 v_color0   : COLOR0 = vec4(1.0, 0.0, 0.0, 1.0);
+vec3 a_position : POSITION;
+vec4 a_color0   : COLOR0;
+"
+      "
+$input a_position, a_color0
+$output v_color0
+
+#include <bgfx_shader.sh>
+
+void main()
+{
+	gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
+	v_color0 = a_color0;
+}
+"
+      "
+$input v_color0
+
+#include <bgfx_shader.sh>
+
+void main()
+{
+	gl_FragColor = v_color0;
+}
+"))
