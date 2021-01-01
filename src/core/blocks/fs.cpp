@@ -247,16 +247,19 @@ struct Write {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Contents",
-                        "The string or bytes to write as the file's contents.",
-                        CoreInfo::StringOrBytesVarOrNone),
-      ParamsInfo::Param("Overwrite", "Overwrite the file if it already exists.",
-                        CoreInfo::BoolType),
-      ParamsInfo::Param("Append",
-                        "If we should append Contents to an existing file.",
-                        CoreInfo::BoolType));
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static inline Parameters params{
+      {"Contents",
+       "The string or bytes to write as the file's contents.",
+       {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType,
+        CoreInfo::BytesVarType, CoreInfo::NoneType}},
+      {"Overwrite",
+       "Overwrite the file if it already exists.",
+       {CoreInfo::BoolType}},
+      {"Append",
+       "If we should append Contents to an existing file.",
+       {CoreInfo::BoolType}}};
+
+  static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {

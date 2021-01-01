@@ -42,3 +42,6 @@ compile_commands.json
 src/tests/subchains.chain
 .lsp
 .clj-kondo
+examples/shadercRelease.wasm
+examples/fs-shader-tmp.txt
+examples/vs-shader-tmp.txt
