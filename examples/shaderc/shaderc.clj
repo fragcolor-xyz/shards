@@ -15,13 +15,20 @@
 
 (defn shaderc [type in out]
   (if (= platform "windows")
-    ~[(Process.Run "shadercRelease.exe")]
+    ~[(Process.Run
+       "shadercRelease.exe"
+       ["-f" in
+        "-o" out
+        "--platform" shaders-platform
+        "-p" shaders-profile
+        "--type" type])]
     ~[(Wasm.Run
-       "shadercRelease.wasm" ["-f" in
-                              "-o" out
-                              "--platform" shaders-platform
-                              "-p" shaders-profile
-                              "--type" type])]))
+       "shadercRelease.wasm"
+       ["-f" in
+        "-o" out
+        "--platform" shaders-platform
+        "-p" shaders-profile
+        "--type" type])]))
 
 (defn Shader [varying vs-code fs-code] 
   (let [loader 
@@ -43,34 +50,35 @@
         node (Node)]
     (schedule node loader)
     (run node 0.1)
-    ; read results
+    ; read results and cleanup the chain
     (stop loader)))
 
 (prn (Shader
+      ; varying info
       "
 vec4 v_color0   : COLOR0 = vec4(1.0, 0.0, 0.0, 1.0);
 vec3 a_position : POSITION;
 vec4 a_color0   : COLOR0;
 "
+      ; vertex shader
       "
 $input a_position, a_color0
 $output v_color0
 
 #include <bgfx_shader.sh>
 
-void main()
-{
+void main() {
 	gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
 	v_color0 = a_color0;
 }
 "
+      ; fragment shader
       "
 $input v_color0
 
 #include <bgfx_shader.sh>
 
-void main()
-{
+void main() {
 	gl_FragColor = v_color0;
 }
 "))
