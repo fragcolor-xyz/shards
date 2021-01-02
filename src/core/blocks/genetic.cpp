@@ -170,7 +170,7 @@ struct Evolve {
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
-      cleanupFlow.parallel_for(
+      cleanupFlow.for_each_dynamic(
           _population.begin(), _population.end(), [&](Individual &i) {
             // Free and release chain
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
@@ -216,7 +216,7 @@ struct Evolve {
         _nelites = size_t(double(_popsize) * _elitism);
 
         tf::Taskflow initFlow;
-        initFlow.parallel_for(
+        initFlow.for_each_dynamic(
             _population.begin(), _population.end(), [&](Individual &i) {
               Serialization deserial;
               std::stringstream i1Stream(chainStr);
@@ -317,7 +317,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -334,7 +334,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -360,7 +360,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -380,7 +380,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -411,7 +411,7 @@ struct Evolve {
       // From validation to end, every iteration/era
       {
         tf::Taskflow runFlow;
-        runFlow.parallel_for(
+        runFlow.for_each_dynamic(
             _population.begin(), _population.end(), [&](Individual &i) {
               TickObserver obs{i};
 
@@ -437,7 +437,7 @@ struct Evolve {
       { // Stop all the population chains
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _population.begin(), _population.end(), [](Individual &i) {
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               auto fitchain =
@@ -484,14 +484,14 @@ struct Evolve {
       // since we might need them
       {
         tf::Taskflow mutFlow;
-        mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
-                             _sortedPopulation.end(), [&](auto &i) {
-                               // reset the individual if extinct
-                               if (i->extinct) {
-                                 resetState(*i);
-                               }
-                               mutate(*i);
-                             });
+        mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites,
+                                 _sortedPopulation.end(), [&](auto &i) {
+                                   // reset the individual if extinct
+                                   if (i->extinct) {
+                                     resetState(*i);
+                                   }
+                                   mutate(*i);
+                                 });
         _exec->run(mutFlow).get();
       }
 
