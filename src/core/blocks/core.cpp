@@ -1653,8 +1653,8 @@ CBVar hashActivation(const CBVar &input) {
 
 #ifdef __EMSCRIPTEN__
 CBVar emscriptenEvalActivation(const CBVar &input) {
-  emscripten_run_script(input.payload.stringValue);
-  return input;
+  auto res = emscripten_run_script_string(input.payload.stringValue);
+  return Var(res);
 }
 #endif
 
