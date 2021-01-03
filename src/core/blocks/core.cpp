@@ -1657,16 +1657,10 @@ EM_JS(char *, cb_emscripten_eval, (const char *code), {
   try {
     const scode = UTF8ToString(code);
     const result = eval(scode);
-    var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(result);
-    if (!me.bufferSize || me.bufferSize < len + 1) {
-      if (me.bufferSize)
-        _free(me.buffer);
-      me.bufferSize = len + 1;
-      me.buffer = _malloc(me.bufferSize);
-    }
-    stringToUTF8(result, me.buffer, me.bufferSize);
-    return me.buffer;
+    var buffer = _malloc(len + 1);
+    stringToUTF8(result, buffer, len);
+    return buffer;
   } catch (error) {
     console.error(error);
     return -1;
@@ -1675,12 +1669,18 @@ EM_JS(char *, cb_emscripten_eval, (const char *code), {
 // clang-format on
 
 CBVar emscriptenEvalActivation(const CBVar &input) {
+  static thread_local std::string str;
   auto res = cb_emscripten_eval(input.payload.stringValue);
   const auto check = reinterpret_cast<intptr_t>(res);
   if (check == -1) {
     throw ActivationError("Failure on the javascript side, check console");
   }
-  return Var(res);
+  str.clear();
+  if (res) {
+    str.assign(res);
+    free(res)
+  }
+  return Var(str);
 }
 
 // clang-format off
@@ -1688,18 +1688,13 @@ EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
   try {
     const scode = UTF8ToString(code);
     const promise = eval(scode);
-    var result = "";
-    Asyncify.handleAsync(async() => { result = await promise; });
-    var me = _emscripten_run_script_string;
-    var len = lengthBytesUTF8(result);
-    if (!me.bufferSize || me.bufferSize < len + 1) {
-      if (me.bufferSize)
-        _free(me.buffer);
-      me.bufferSize = len + 1;
-      me.buffer = _malloc(me.bufferSize);
-    }
-    stringToUTF8(result, me.buffer, me.bufferSize);
-    return me.buffer;
+    return Asyncify.handleAsync(async() => {
+      var result = await promise;
+      var len = lengthBytesUTF8(result);
+      var buffer = _malloc(len + 1);
+      stringToUTF8(result, buffer, len);
+      return buffer;
+    });
   } catch (error) {
     console.error(error);
     return -1;
@@ -1708,12 +1703,18 @@ EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
 // clang-format on
 
 CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
+  static thread_local std::string str;
   auto res = cb_emscripten_eval_async(input.payload.stringValue);
   const auto check = reinterpret_cast<intptr_t>(res);
   if (check == -1) {
     throw ActivationError("Failure on the javascript side, check console");
   }
-  return Var(res);
+  str.clear();
+  if (res) {
+    str.assign(res);
+    free(res)
+  }
+  return Var(str);
 }
 #endif
 
