@@ -27,6 +27,17 @@
 (schedule Root c)
 (run Root 0.1)
 
+; out of range
+(def c
+  (Chain
+   "test-3"
+   [10 20 1000 40 50]
+   (IntSeqToBytes)
+   (Log)))
+
+(schedule Root c)
+(run Root 0.1)
+
 ; fail the root chain propagated from Wait
 (def d
   (Chain

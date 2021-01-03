@@ -684,6 +684,16 @@ struct Var : public CBVar {
     payload.bytesValue = ptr;
   }
 
+  Var(const std::vector<uint8_t> &bytes) : CBVar() {
+    valueType = Bytes;
+    const auto size = bytes.size();
+    if (size > UINT32_MAX)
+      throw CBException(
+          "std::vector<uint8_t> to Var size exceeded uint32 maximum");
+    payload.bytesSize = uint32_t(size);
+    payload.bytesValue = const_cast<uint8_t *>(bytes.data());
+  }
+
   Var(uint8_t *data, uint16_t width, uint16_t height, uint8_t channels,
       uint8_t flags = 0)
       : CBVar() {

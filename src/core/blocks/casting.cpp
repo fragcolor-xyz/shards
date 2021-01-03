@@ -76,6 +76,27 @@ struct FromSeq {
       throw ActivationError("Conversion pair not implemented yet.");
     }
   }
+
+  template <CBType OF>
+  void toBytes(std::vector<uint8_t> &buffer, const CBVar &input) {
+    // TODO SIMD this
+    if (input.payload.seqValue.len == 0)
+      throw ActivationError("Input sequence was empty.");
+
+    buffer.resize(size_t(input.payload.seqValue.len));
+
+    if constexpr (OF == CBType::Int) {
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        const auto val = input.payload.seqValue.elements[i].payload.intValue;
+        if (val > UINT8_MAX || val < 0)
+          throw ActivationError("Value out of byte range (0~255)");
+
+        buffer[i] = uint8_t(val);
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
 };
 
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
@@ -141,8 +162,6 @@ template <CBType FROMTYPE> struct ToImage {
     }
   }
 
-  void warmup(CBContext *_) {}
-
   CBVar activate(CBContext *context, const CBVar &input) {
     FromSeq c;
     c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels),
@@ -154,6 +173,23 @@ private:
   uint8_t _channels = 1;
   uint16_t _width = 16;
   uint16_t _height = 16;
+  std::vector<uint8_t> _buffer;
+};
+
+template <CBType FROMTYPE> struct ToBytes {
+  static inline Type _inputElemType{{FROMTYPE}};
+  static inline Type _inputType{{CBType::Seq, {.seqTypes = _inputElemType}}};
+
+  static CBTypesInfo inputTypes() { return _inputType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    FromSeq c;
+    c.toBytes<FROMTYPE>(_buffer, input);
+    return Var(_buffer);
+  }
+
+private:
   std::vector<uint8_t> _buffer;
 };
 
@@ -648,6 +684,9 @@ void registerCastingBlocks() {
   using FloatsToImage = ToImage<CBType::Float>;
   REGISTER_CBLOCK("ImageToFloats", ImageToFloats);
   REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
+
+  using IntSeqToBytes = ToBytes<CBType::Int>;
+  REGISTER_CBLOCK("IntSeqToBytes", IntSeqToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);

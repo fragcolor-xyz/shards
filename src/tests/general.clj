@@ -84,6 +84,10 @@
           (--> (Is 10)) (--> (Msg "Cond was false!") true)] :Threading false :Passthrough false)
    (Assert.Is false true)
    (Log)
+   
+   [10 20 30 40 50]
+   (IntSeqToBytes)
+   (Log)
 
    "Hello"
    (Assert.Is "Hello" true)
