@@ -778,7 +778,13 @@ template <class T> struct BaseLoader : public BaseRunner {
     const IterableExposedInfo sharedStb(data.shared);
     // copy shared
     _sharedCopy = sharedStb;
-    return data.inputType;
+
+    if (mode == RunChainMode::Inline || mode == RunChainMode::Stepped) {
+      // If inline allow chains to receive a result
+      return CoreInfo::AnyType;
+    } else {
+      return data.inputType;
+    }
   }
 
   void setParam(int index, const CBVar &value) {
@@ -803,25 +809,24 @@ template <class T> struct BaseLoader : public BaseRunner {
 
   void cleanup() { BaseRunner::cleanup(); }
 
-  bool activateChain(CBContext *context, const CBVar &input) {
+  CBVar activateChain(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
-      return false;
+      return input; // just pass the input, could be not ready!
 
     if (mode == RunChainMode::Detached) {
       activateDetached(context, input);
-      return true;
     } else if (mode == RunChainMode::Stepped) {
       activateStepMode(context, input);
-      return true;
+      return chain->previousOutput;
     } else {
       // Run within the root flow
-      auto runRes = runSubChain(chain.get(), context, input);
-      if (unlikely(runRes.state == Failed)) {
-        return false;
-      } else {
-        return true;
+      const auto runRes = runSubChain(chain.get(), context, input);
+      if (likely(runRes.state != Failed)) {
+        return runRes.output;
       }
     }
+
+    return input;
   }
 };
 
@@ -847,7 +852,6 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   static CBParametersInfo parameters() { return params; }
 
   CBChainProvider *_provider;
-  bool _healthy{false};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -933,17 +937,13 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         chain.reset(update.chain,
                     [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
-        _healthy = true; // give a chance to the new chain
         LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
         CBVar output{};
         _onReloadBlocks.activate(context, Var::Empty, output);
       }
     }
 
-    if (_healthy)
-      _healthy = BaseLoader<ChainLoader>::activateChain(context, input);
-
-    return input;
+    return BaseLoader<ChainLoader>::activateChain(context, input);
   }
 };
 
@@ -1058,10 +1058,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
       doWarmup(context);
     }
 
-    if (!BaseLoader<ChainRunner>::activateChain(context, input))
-      context->stopFlow(input);
-
-    return input;
+    return BaseLoader<ChainRunner>::activateChain(context, input);
   }
 };
 
