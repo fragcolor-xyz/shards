@@ -1678,7 +1678,7 @@ CBVar emscriptenEvalActivation(const CBVar &input) {
   str.clear();
   if (res) {
     str.assign(res);
-    free(res)
+    free(res);
   }
   return Var(str);
 }
@@ -1712,7 +1712,7 @@ CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
   str.clear();
   if (res) {
     str.assign(res);
-    free(res)
+    free(res);
   }
   return Var(str);
 }
