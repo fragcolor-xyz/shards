@@ -1652,30 +1652,67 @@ CBVar hashActivation(const CBVar &input) {
 }
 
 #ifdef __EMSCRIPTEN__
+// clang-format off
+EM_JS(char *, cb_emscripten_eval, (const char *code), {
+  try {
+    const scode = UTF8ToString(code);
+    const result = eval(scode);
+    var me = _emscripten_run_script_string;
+    var len = lengthBytesUTF8(result);
+    if (!me.bufferSize || me.bufferSize < len + 1) {
+      if (me.bufferSize)
+        _free(me.buffer);
+      me.bufferSize = len + 1;
+      me.buffer = _malloc(me.bufferSize);
+    }
+    stringToUTF8(result, me.buffer, me.bufferSize);
+    return me.buffer;
+  } catch (error) {
+    console.error(error);
+    return -1;
+  }
+});
+// clang-format on
+
 CBVar emscriptenEvalActivation(const CBVar &input) {
-  auto res = emscripten_run_script_string(input.payload.stringValue);
+  auto res = cb_emscripten_eval(input.payload.stringValue);
+  const auto check = reinterpret_cast<intptr_t>(res);
+  if (check == -1) {
+    throw ActivationError("Failure on the javascript side, check console");
+  }
   return Var(res);
 }
 
+// clang-format off
 EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
-  const scode = UTF8ToString(code);
-  const promise = eval(scode);
-  var result = "";
-  Asyncify.handleAsync(async() = > { result = await promise; });
-  var me = _emscripten_run_script_string;
-  var len = lengthBytesUTF8(result);
-  if (!me.bufferSize || me.bufferSize < len + 1) {
-    if (me.bufferSize)
-      _free(me.buffer);
-    me.bufferSize = len + 1;
-    me.buffer = _malloc(me.bufferSize);
+  try {
+    const scode = UTF8ToString(code);
+    const promise = eval(scode);
+    var result = "";
+    Asyncify.handleAsync(async() => { result = await promise; });
+    var me = _emscripten_run_script_string;
+    var len = lengthBytesUTF8(result);
+    if (!me.bufferSize || me.bufferSize < len + 1) {
+      if (me.bufferSize)
+        _free(me.buffer);
+      me.bufferSize = len + 1;
+      me.buffer = _malloc(me.bufferSize);
+    }
+    stringToUTF8(result, me.buffer, me.bufferSize);
+    return me.buffer;
+  } catch (error) {
+    console.error(error);
+    return -1;
   }
-  stringToUTF8(result, me.buffer, me.bufferSize);
-  return me.buffer;
 });
+// clang-format on
 
 CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
   auto res = cb_emscripten_eval_async(input.payload.stringValue);
+  const auto check = reinterpret_cast<intptr_t>(res);
+  if (check == -1) {
+    throw ActivationError("Failure on the javascript side, check console");
+  }
   return Var(res);
 }
 #endif
