@@ -1656,6 +1656,28 @@ CBVar emscriptenEvalActivation(const CBVar &input) {
   auto res = emscripten_run_script_string(input.payload.stringValue);
   return Var(res);
 }
+
+EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
+  const scode = UTF8ToString(code);
+  const promise = eval(scode);
+  var result = "";
+  Asyncify.handleAsync(async() = > { result = await promise; });
+  var me = _emscripten_run_script_string;
+  var len = lengthBytesUTF8(result);
+  if (!me.bufferSize || me.bufferSize < len + 1) {
+    if (me.bufferSize)
+      _free(me.buffer);
+    me.bufferSize = len + 1;
+    me.buffer = _malloc(me.bufferSize);
+  }
+  stringToUTF8(result, me.buffer, me.bufferSize);
+  return me.buffer;
+});
+
+CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
+  auto res = cb_emscripten_eval_async(input.payload.stringValue);
+  return Var(res);
+}
 #endif
 
 void registerBlocksCoreBlocks() {
@@ -1783,6 +1805,12 @@ void registerBlocksCoreBlocks() {
                   CoreInfo::StringType>;
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
+
+  using EmscriptenEvalAsyncBlock =
+      LambdaBlock<emscriptenEvalAsyncActivation, CoreInfo::StringType,
+                  CoreInfo::StringType>;
+  // _ prefix = internal block
+  REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenEvalAsyncBlock);
 #endif
 
   REGISTER_CBLOCK("Return", Return);
