@@ -811,7 +811,7 @@ template <class T> struct BaseLoader : public BaseRunner {
 
   CBVar activateChain(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
-      return input; // just pass the input, could be not ready!
+      throw ActivationError("Could not find a chain to run");
 
     if (mode == RunChainMode::Detached) {
       activateDetached(context, input);
