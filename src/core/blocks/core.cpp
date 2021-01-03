@@ -1656,9 +1656,12 @@ CBVar hashActivation(const CBVar &input) {
 EM_JS(char *, cb_emscripten_eval, (const char *code), {
   try {
     const scode = UTF8ToString(code);
-    const result = eval(scode);
-    var len = lengthBytesUTF8(result);
-    var buffer = _malloc(len + 1);
+    var result = eval(scode);
+    if(typeof(result) !== "string") {
+      result = JSON.stringify(result);
+    }
+    var len = lengthBytesUTF8(result) + 1;
+    var buffer = _malloc(len);
     stringToUTF8(result, buffer, len);
     return buffer;
   } catch (error) {
@@ -1685,20 +1688,23 @@ CBVar emscriptenEvalActivation(const CBVar &input) {
 
 // clang-format off
 EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
-  try {
-    const scode = UTF8ToString(code);
-    const promise = eval(scode);
-    return Asyncify.handleAsync(async() => {
+  return Asyncify.handleAsync(async() => {
+    try {
+      const scode = UTF8ToString(code);
+      const promise = eval(scode);
       var result = await promise;
-      var len = lengthBytesUTF8(result);
-      var buffer = _malloc(len + 1);
+      if(typeof(result) !== "string") {
+        result = JSON.stringify(result);
+      }
+      var len = lengthBytesUTF8(result) + 1;
+      var buffer = _malloc(len);
       stringToUTF8(result, buffer, len);
       return buffer;
-    });
-  } catch (error) {
-    console.error(error);
-    return -1;
-  }
+    } catch (error) {
+      console.error(error);
+      return -1;
+    }
+  });
 });
 // clang-format on
 
