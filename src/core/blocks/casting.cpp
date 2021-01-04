@@ -591,7 +591,7 @@ template <Type &ET> struct ExpectXComplex {
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   CBTypesInfo outputTypes() { return ET; }
   CBVar activate(CBContext *context, const CBVar &input) {
-    // TODO make this check stricter?
+    // TODO make this check strict for now it's just dummy
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
       LOG(ERROR) << "Unexpected value: " << input;
@@ -690,6 +690,8 @@ void registerCastingBlocks() {
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
+  using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
+  REGISTER_CBLOCK("ExpectIntSeq", ExpectIntSeq);
 
   REGISTER_CBLOCK("ToBase64", ToBase64);
   REGISTER_CBLOCK("FromBase64", FromBase64);
