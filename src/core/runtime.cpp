@@ -1396,7 +1396,12 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   return varType;
 }
 
-uint64_t deriveTypeHash(const CBVar &value);
+// this is potentially called from unsafe code (e.g. networking)
+// let's do some crude stack protection here
+static thread_local int deriveTypeHashRecursionCounter;
+static constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
+
+uint64_t _deriveTypeHash(const CBVar &value);
 
 void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
   // this is not complete at all, missing Array and ContextVar for example
@@ -1418,10 +1423,12 @@ void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
     break;
   }
   case Seq: {
-    std::unordered_set<uint64_t> types;
+    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+                       stack_allocator<uint64_t>>
+        types;
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       // first derive the hash of the full type, mix only once per type
-      auto typeHash = deriveTypeHash(var.payload.seqValue.elements[i]);
+      auto typeHash = _deriveTypeHash(var.payload.seqValue.elements[i]);
       if (!types.count(typeHash)) {
         XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
         types.insert(typeHash);
@@ -1439,7 +1446,7 @@ void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
         ta,
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;
-          auto typeHash = deriveTypeHash(*value);
+          auto typeHash = _deriveTypeHash(*value);
           XXH3_64bits_update(data->state, &typeHash, sizeof(typeHash));
           XXH3_64bits_update(data->state, key, strlen(key));
           return true;
@@ -1452,7 +1459,10 @@ void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
   };
 }
 
-uint64_t deriveTypeHash(const CBVar &value) {
+uint64_t _deriveTypeHash(const CBVar &value) {
+  if (deriveTypeHashRecursionCounter >= MAX_DERIVED_TYPE_HASH_RECURSION)
+    throw CBException("deriveTypeHash  recursion");
+  deriveTypeHashRecursionCounter++;
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
@@ -1465,10 +1475,14 @@ uint64_t deriveTypeHash(const CBVar &value) {
   return XXH3_64bits_digest(&hashState);
 }
 
+uint64_t deriveTypeHash(const CBVar &value) {
+  deriveTypeHashRecursionCounter = 0;
+  return _deriveTypeHash(value);
+}
+
 uint64_t deriveTypeHash(const CBTypeInfo &value);
 
 void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
-  // this is not complete at all, missing Array and ContextVar for example
   XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
 
   switch (t.basicType) {
@@ -1485,7 +1499,10 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
     break;
   }
   case Seq: {
-    std::unordered_set<uint64_t> types;
+    // this is unsafe because allocates on the stack, but faster...
+    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+                       stack_allocator<uint64_t>>
+        types;
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       // first derive the hash of the full type, mix only once per type
       auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
