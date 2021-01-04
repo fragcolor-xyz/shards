@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
-#define STB_DS_IMPLEMENTATION 1
-
 // must go first
 #include <boost/asio.hpp>
 
