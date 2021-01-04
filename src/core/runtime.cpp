@@ -1459,8 +1459,9 @@ void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
 
 uint64_t _deriveTypeHash(const CBVar &value) {
   if (deriveTypeHashRecursionCounter >= MAX_DERIVED_TYPE_HASH_RECURSION)
-    throw CBException("deriveTypeHash  recursion");
+    throw CBException("deriveTypeHash maximum recursion exceeded");
   deriveTypeHashRecursionCounter++;
+  DEFER(deriveTypeHashRecursionCounter--);
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
