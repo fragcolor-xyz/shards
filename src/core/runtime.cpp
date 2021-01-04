@@ -1482,7 +1482,10 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
     break;
   }
   case Seq: {
-    std::unordered_set<uint64_t> types;
+    // this is unsafe because allocates on the stack, but faster...
+    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+                       stack_allocator<uint64_t>>
+        types;
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       // first derive the hash of the full type, mix only once per type
       auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
@@ -1511,7 +1514,6 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
 }
 
 uint64_t deriveTypeHash(const CBTypeInfo &value) {
-
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
 

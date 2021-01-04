@@ -122,6 +122,56 @@ inline void destroyVar(CBVar &src);
 
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
+
+// utility stack allocator (stolen from stackoverflow)
+template <std::size_t Size = 512> struct bumping_memory_resource {
+  char buffer[Size];
+  std::size_t _used = 0;
+  char *_ptr;
+
+  explicit bumping_memory_resource() : _ptr(&buffer[0]) {}
+
+  void *allocate(std::size_t size) {
+    _used += size;
+    if (_used > Size)
+      throw chainblocks::CBException("Stack allocator memory exhausted");
+
+    auto ret = _ptr;
+    _ptr += size;
+    return ret;
+  }
+
+  void deallocate(void *) noexcept {}
+};
+
+template <typename T, typename Resource = bumping_memory_resource<512>>
+struct stack_allocator {
+  Resource _res;
+  using value_type = T;
+
+  stack_allocator() {}
+
+  stack_allocator(const stack_allocator &) = default;
+
+  template <typename U>
+  stack_allocator(const stack_allocator<U, Resource> &other)
+      : _res(other._res) {}
+
+  T *allocate(std::size_t n) {
+    return static_cast<T *>(_res.allocate(sizeof(T) * n));
+  }
+  void deallocate(T *ptr, std::size_t) { _res.deallocate(ptr); }
+
+  friend bool operator==(const stack_allocator &lhs,
+                         const stack_allocator &rhs) {
+    return lhs._res == rhs._res;
+  }
+
+  friend bool operator!=(const stack_allocator &lhs,
+                         const stack_allocator &rhs) {
+    return lhs._res != rhs._res;
+  }
+};
 } // namespace chainblocks
 
 #ifndef __EMSCRIPTEN__
