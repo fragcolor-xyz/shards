@@ -1657,6 +1657,11 @@ EM_JS(char *, cb_emscripten_eval, (const char *code), {
   try {
     const scode = UTF8ToString(code);
     var result = eval(scode);
+    // if undefined just return null
+    if(result === undefined) {
+      return 0;
+    }
+    // if not undefined return a string
     if(typeof(result) !== "string") {
       result = JSON.stringify(result);
     }
@@ -1693,6 +1698,11 @@ EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
       const scode = UTF8ToString(code);
       const promise = eval(scode);
       var result = await promise;
+      // if undefined just return null
+      if(result === undefined) {
+        return 0;
+      }
+      // if not undefined return a string
       if(typeof(result) !== "string") {
         result = JSON.stringify(result);
       }
