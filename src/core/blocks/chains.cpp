@@ -769,6 +769,10 @@ struct RunChain : public BaseRunner {
   }
 };
 
+struct ChainNotFound : public ActivationError {
+  ChainNotFound() : ActivationError("Could not find a chain to run") {}
+};
+
 template <class T> struct BaseLoader : public BaseRunner {
   CBTypeInfo _inputTypeCopy{};
   IterableExposedInfo _sharedCopy;
@@ -811,7 +815,7 @@ template <class T> struct BaseLoader : public BaseRunner {
 
   CBVar activateChain(CBContext *context, const CBVar &input) {
     if (unlikely(!chain))
-      throw ActivationError("Could not find a chain to run");
+      throw ChainNotFound();
 
     if (mode == RunChainMode::Detached) {
       activateDetached(context, input);
@@ -943,7 +947,12 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       }
     }
 
-    return BaseLoader<ChainLoader>::activateChain(context, input);
+    try {
+      return BaseLoader<ChainLoader>::activateChain(context, input);
+    } catch (const ChainNotFound &ex) {
+      // let's ignore chain not found in this case
+      return input;
+    }
   }
 };
 

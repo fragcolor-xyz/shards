@@ -8,7 +8,7 @@
           (Chain
            "n" :Looped
            10 (Set "var")
-           (Maybe (ChainLoader (Chain* "loadme.clj")))))
+           (ChainLoader (Chain* "loadme.clj"))))
 
 (def! dec (fn* [a] (- a 1)))
 (def! Loop (fn* [count] (do
