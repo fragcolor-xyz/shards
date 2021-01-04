@@ -588,15 +588,39 @@ EXPECT_BLOCK(Table, Table);
 EXPECT_BLOCK(Chain, CBType::Chain);
 
 template <Type &ET> struct ExpectXComplex {
-  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  CBTypesInfo outputTypes() { return ET; }
+  static inline Parameters params{
+      {"Unsafe",
+       "If we should skip performing deep type hashing and comparison. "
+       "(generally fast but this might improve performance)",
+       {CoreInfo::BoolType}}};
+  static inline uint64_t ExpectedHash = deriveTypeHash(ET);
+
+  bool _unsafe{false};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return ET; }
+
+  void setParam(int index, const CBVar &value) {
+    _unsafe = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_unsafe); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     // TODO make this check strict for now it's just dummy
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
-      LOG(ERROR) << "Unexpected value: " << input;
+      LOG(ERROR) << "Unexpected value: " << input << " expected type: " << info;
       throw ActivationError("Expected type " + type2Name(info.basicType) +
                             " got instead " + type2Name(input.valueType));
+    } else if (!_unsafe) {
+      auto inputTypeHash = deriveTypeHash(input);
+      if (unlikely(inputTypeHash != ExpectedHash)) {
+        LOG(ERROR) << "Unexpected value: " << input
+                   << " expected type: " << info;
+        throw ActivationError("Expected type " + type2Name(info.basicType) +
+                              " got instead " + type2Name(input.valueType));
+      }
     }
     return input;
   }

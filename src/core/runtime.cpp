@@ -1395,58 +1395,133 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   return varType;
 }
 
-// uint64_t deriveTypeHash(const CBVar &value) {
-//   // We need to guess a valid CBTypeInfo for this var in order to validate
-//   // Build a CBTypeInfo for the var
-//   auto varType = CBTypeInfo();
-//   varType.basicType = value.valueType;
-//   varType.seqTypes = {};
-//   varType.table.types = {};
-//   switch (value.valueType) {
-//   case Object: {
-//     varType.object.vendorId = value.payload.objectVendorId;
-//     varType.object.typeId = value.payload.objectTypeId;
-//     break;
-//   }
-//   case Enum: {
-//     varType.enumeration.vendorId = value.payload.enumVendorId;
-//     varType.enumeration.typeId = value.payload.enumTypeId;
-//     break;
-//   }
-//   case Seq: {
-//     std::unordered_set<CBTypeInfo> types;
-//     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-//       auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
-//       if (!types.count(derived)) {
-//         chainblocks::arrayPush(varType.seqTypes, derived);
-//         types.insert(derived);
-//       }
-//     }
-//     break;
-//   }
-//   case Table: {
-//     auto &ta = value.payload.tableValue;
-//     struct iterdata {
-//       CBTypeInfo *varType;
-//     } data;
-//     data.varType = &varType;
-//     ta.api->tableForEach(
-//         ta,
-//         [](const char *key, CBVar *value, void *_data) {
-//           auto data = (iterdata *)_data;
-//           auto derived = deriveTypeInfo(*value);
-//           chainblocks::arrayPush(data->varType->table.types, derived);
-//           chainblocks::arrayPush(data->varType->table.keys, key);
-//           return true;
-//         },
-//         &data);
-//     break;
-//   }
-//   default:
-//     break;
-//   };
-//   return varType;
-// }
+uint64_t deriveTypeHash(const CBVar &value);
+
+void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
+  XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
+
+  switch (var.valueType) {
+  case Object: {
+    XXH3_64bits_update(state, &var.payload.objectVendorId,
+                       sizeof(var.payload.objectVendorId));
+    XXH3_64bits_update(state, &var.payload.objectTypeId,
+                       sizeof(var.payload.objectTypeId));
+    break;
+  }
+  case Enum: {
+    XXH3_64bits_update(state, &var.payload.enumVendorId,
+                       sizeof(var.payload.enumVendorId));
+    XXH3_64bits_update(state, &var.payload.enumTypeId,
+                       sizeof(var.payload.enumTypeId));
+    break;
+  }
+  case Seq: {
+    std::unordered_set<uint64_t> types;
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      // first derive the hash of the full type, mix only once per type
+      auto typeHash = deriveTypeHash(var.payload.seqValue.elements[i]);
+      if (!types.count(typeHash)) {
+        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+        types.insert(typeHash);
+      }
+    }
+    break;
+  }
+  case Table: {
+    auto &ta = var.payload.tableValue;
+    struct iterdata {
+      XXH3_state_s *state;
+    } data;
+    data.state = state;
+    ta.api->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *_data) {
+          auto data = (iterdata *)_data;
+          auto typeHash = deriveTypeHash(*value);
+          XXH3_64bits_update(data->state, &typeHash, sizeof(typeHash));
+          XXH3_64bits_update(data->state, key, strlen(key));
+          return true;
+        },
+        &data);
+    break;
+  }
+  default:
+    break;
+  };
+}
+
+uint64_t deriveTypeHash(const CBVar &value) {
+
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+
+  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                               XXH_SECRET_DEFAULT_SIZE);
+
+  updateTypeHash(value, &hashState);
+
+  return XXH3_64bits_digest(&hashState);
+}
+
+uint64_t deriveTypeHash(const CBTypeInfo &value);
+
+void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
+  XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
+
+  switch (t.basicType) {
+  case Object: {
+    XXH3_64bits_update(state, &t.object.vendorId, sizeof(t.object.vendorId));
+    XXH3_64bits_update(state, &t.object.typeId, sizeof(t.object.typeId));
+    break;
+  }
+  case Enum: {
+    XXH3_64bits_update(state, &t.enumeration.vendorId,
+                       sizeof(t.enumeration.vendorId));
+    XXH3_64bits_update(state, &t.enumeration.typeId,
+                       sizeof(t.enumeration.typeId));
+    break;
+  }
+  case Seq: {
+    std::unordered_set<uint64_t> types;
+    for (uint32_t i = 0; i < t.seqTypes.len; i++) {
+      // first derive the hash of the full type, mix only once per type
+      auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
+      if (!types.count(typeHash)) {
+        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+        types.insert(typeHash);
+      }
+    }
+    break;
+  }
+  case Table: {
+    if (t.table.types.len != t.table.keys.len)
+      throw CBException("updateTypeHash for tables needs both types and keys "
+                        "populated, the other cases are undefined for now");
+    for (uint32_t i = 0; i < t.table.types.len; i++) {
+      auto typeHash = deriveTypeHash(t.table.types.elements[i]);
+      XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+      const char *key = t.table.keys.elements[i];
+      XXH3_64bits_update(state, key, strlen(key));
+    }
+    break;
+  }
+  default:
+    break;
+  };
+}
+
+uint64_t deriveTypeHash(const CBTypeInfo &value) {
+
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+
+  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                               XXH_SECRET_DEFAULT_SIZE);
+
+  updateTypeHash(value, &hashState);
+
+  return XXH3_64bits_digest(&hashState);
+}
 
 bool validateSetParam(CBlock *block, int index, const CBVar &value,
                       CBValidationCallback callback, void *userData) {

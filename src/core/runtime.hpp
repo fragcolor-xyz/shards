@@ -129,6 +129,9 @@ namespace chainblocks {
 void freeDerivedInfo(CBTypeInfo info);
 CBTypeInfo deriveTypeInfo(const CBVar &value);
 
+uint64_t deriveTypeHash(const CBVar &value);
+uint64_t deriveTypeHash(const CBTypeInfo &value);
+
 struct ToTypeInfo {
   ToTypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
 
