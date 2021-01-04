@@ -1345,6 +1345,7 @@ void freeDerivedInfo(CBTypeInfo info) {
 CBTypeInfo deriveTypeInfo(const CBVar &value) {
   // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
+  // this is not complete at all, missing Array and ContextVar for example
   auto varType = CBTypeInfo();
   varType.basicType = value.valueType;
   varType.seqTypes = {};
@@ -1398,6 +1399,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
 uint64_t deriveTypeHash(const CBVar &value);
 
 void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
+  // this is not complete at all, missing Array and ContextVar for example
   XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
 
   switch (var.valueType) {
@@ -1466,6 +1468,7 @@ uint64_t deriveTypeHash(const CBVar &value) {
 uint64_t deriveTypeHash(const CBTypeInfo &value);
 
 void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
+  // this is not complete at all, missing Array and ContextVar for example
   XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
 
   switch (t.basicType) {
@@ -1482,10 +1485,7 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
     break;
   }
   case Seq: {
-    // this is unsafe because allocates on the stack, but faster...
-    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
-                       stack_allocator<uint64_t>>
-        types;
+    std::unordered_set<uint64_t> types;
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       // first derive the hash of the full type, mix only once per type
       auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
