@@ -662,58 +662,58 @@ CBType keywordToType(malKeyword *typeKeyword) {
 
 malValuePtr typeToKeyword(CBType type) {
   switch (type) {
-  case EndOfBlittableTypes:
-  case None:
+  case CBType::EndOfBlittableTypes:
+  case CBType::None:
     return mal::keyword(":None");
-  case Any:
+  case CBType::Any:
     return mal::keyword(":Any");
-  case Object:
+  case CBType::Object:
     return mal::keyword(":Object");
-  case Enum:
+  case CBType::Enum:
     return mal::keyword(":Enum");
-  case Bool:
+  case CBType::Bool:
     return mal::keyword(":Bool");
-  case Int:
+  case CBType::Int:
     return mal::keyword(":Int");
-  case Int2:
+  case CBType::Int2:
     return mal::keyword(":Int2");
-  case Int3:
+  case CBType::Int3:
     return mal::keyword(":Int3");
-  case Int4:
+  case CBType::Int4:
     return mal::keyword(":Int4");
-  case Int8:
+  case CBType::Int8:
     return mal::keyword(":Int8");
-  case Int16:
+  case CBType::Int16:
     return mal::keyword(":Int16");
-  case Float:
+  case CBType::Float:
     return mal::keyword(":Float");
-  case Float2:
+  case CBType::Float2:
     return mal::keyword(":Float2");
-  case Float3:
+  case CBType::Float3:
     return mal::keyword(":Float3");
-  case Float4:
+  case CBType::Float4:
     return mal::keyword(":Float4");
-  case Color:
+  case CBType::Color:
     return mal::keyword(":Color");
-  case Chain:
+  case CBType::Chain:
     return mal::keyword(":Chain");
-  case Block:
+  case CBType::Block:
     return mal::keyword(":Block");
-  case String:
+  case CBType::String:
     return mal::keyword(":String");
-  case ContextVar:
+  case CBType::ContextVar:
     return mal::keyword(":ContextVar");
-  case Path:
+  case CBType::Path:
     return mal::keyword(":Path");
-  case Image:
+  case CBType::Image:
     return mal::keyword(":Image");
-  case Bytes:
+  case CBType::Bytes:
     return mal::keyword(":Bytes");
-  case Seq:
+  case CBType::Seq:
     return mal::keyword(":Seq");
-  case Table:
+  case CBType::Table:
     return mal::keyword(":Table");
-  case Array:
+  case CBType::Array:
     return mal::keyword(":Array");
   };
   return mal::keyword(":None");
@@ -973,7 +973,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
     CBVar var{};
-    var.valueType = Chain;
+    var.valueType = CBType::Chain;
     var.payload.chainValue = chain;
     auto cvar = new malCBVar(var);
     cvar->reference(v);

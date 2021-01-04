@@ -36,38 +36,6 @@ using CBDuration = std::chrono::duration<double>;
   if (_suspend_state != CBChainState::Continue)                                \
   return Var::Empty
 
-void freeDerivedInfo(CBTypeInfo info);
-CBTypeInfo deriveTypeInfo(const CBVar &value);
-
-struct ToTypeInfo {
-  ToTypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
-
-  ~ToTypeInfo() { freeDerivedInfo(_info); }
-
-  operator const CBTypeInfo &() { return _info; }
-
-  const CBTypeInfo *operator->() const { return &_info; }
-
-private:
-  CBTypeInfo _info;
-};
-
-[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-
-bool validateSetParam(CBlock *block, int index, const CBVar &value,
-                      CBValidationCallback callback, void *userData);
-
 struct CBContext {
   CBContext(
 #ifndef __EMSCRIPTEN__
@@ -156,6 +124,40 @@ private:
   bool hasError{false};
   std::string errorMessage;
 };
+
+namespace chainblocks {
+void freeDerivedInfo(CBTypeInfo info);
+CBTypeInfo deriveTypeInfo(const CBVar &value);
+
+struct ToTypeInfo {
+  ToTypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
+
+  ~ToTypeInfo() { freeDerivedInfo(_info); }
+
+  operator const CBTypeInfo &() { return _info; }
+
+  const CBTypeInfo *operator->() const { return &_info; }
+
+private:
+  CBTypeInfo _info;
+};
+
+[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
+                                           CBValidationCallback callback,
+                                           void *userData, CBInstanceData data);
+
+bool validateSetParam(CBlock *block, int index, const CBVar &value,
+                      CBValidationCallback callback, void *userData);
+} // namespace chainblocks
 
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
@@ -653,6 +655,8 @@ struct RuntimeCallbacks {
 };
 }; // namespace chainblocks
 
+using namespace chainblocks;
+
 struct CBNode : public std::enable_shared_from_this<CBNode> {
   static std::shared_ptr<CBNode> make() {
     return std::shared_ptr<CBNode>(new CBNode());
@@ -698,26 +702,24 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
              bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              throw chainblocks::ComposeError(
-                  std::string(errorTxt) +
-                  ", input block: " + std::string(blk->name(blk)));
+              throw ComposeError(std::string(errorTxt) + ", input block: " +
+                                 std::string(blk->name(blk)));
             } else {
               LOG(INFO) << "Validation warning: " << errorTxt
                         << " input block: " << blk->name(blk);
             }
           },
           this, data);
-      chainblocks::arrayFree(validation.exposedInfo);
-      chainblocks::arrayFree(validation.requiredInfo);
+      arrayFree(validation.exposedInfo);
+      arrayFree(validation.requiredInfo);
       freeDerivedInfo(data.inputType);
     }
 
     observer.before_prepare(chain.get());
     // create a flow as well
-    chainblocks::prepare(chain.get(),
-                         _flows.emplace_back(new CBFlow{chain.get()}).get());
+    prepare(chain.get(), _flows.emplace_back(new CBFlow{chain.get()}).get());
     observer.before_start(chain.get());
-    chainblocks::start(chain.get(), input);
+    start(chain.get(), input);
 
     scheduled.insert(chain);
   }
@@ -729,10 +731,10 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   template <class Observer>
-  bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
+  bool tick(Observer observer, CBVar input = Var::Empty) {
     auto noErrors = true;
     _errors.clear();
-    if (chainblocks::Globals::SigIntTerm > 0) {
+    if (Globals::SigIntTerm > 0) {
       terminate();
     } else {
       CBDuration now = CBClock::now().time_since_epoch();
@@ -740,12 +742,12 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
         auto &flow = *it;
         observer.before_tick(flow->chain);
         chainblocks::tick(flow->chain, now, input);
-        if (unlikely(!chainblocks::isRunning(flow->chain))) {
+        if (unlikely(!isRunning(flow->chain))) {
           if (flow->chain->finishedError.size() > 0) {
             _errors.emplace_back(flow->chain->finishedError);
           }
           observer.before_stop(flow->chain);
-          if (!chainblocks::stop(flow->chain)) {
+          if (!stop(flow->chain)) {
             noErrors = false;
           }
           flow->chain->node.reset();
@@ -758,14 +760,14 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     return noErrors;
   }
 
-  bool tick(CBVar input = chainblocks::Var::Empty) {
+  bool tick(CBVar input = Var::Empty) {
     EmptyObserver obs;
     return tick(obs, input);
   }
 
   void terminate() {
     for (auto chain : scheduled) {
-      chainblocks::stop(chain.get());
+      stop(chain.get());
       chain->node.reset();
     }
 
@@ -784,7 +786,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   void remove(const std::shared_ptr<CBChain> &chain) {
-    chainblocks::stop(chain.get());
+    stop(chain.get());
     _flows.remove_if(
         [chain](auto &flow) { return flow->chain == chain.get(); });
     chain->node.reset();

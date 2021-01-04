@@ -14,28 +14,28 @@ void to_json(json &j, const CBChainRef &chain);
 void _releaseMemory(CBVar &var) {
   // Used by Block and Chain from_json
   switch (var.valueType) {
-  case Path:
-  case ContextVar:
-  case String:
+  case CBType::Path:
+  case CBType::ContextVar:
+  case CBType::String:
     delete[] var.payload.stringValue;
     break;
-  case Image:
+  case CBType::Image:
     delete[] var.payload.imageValue.data;
     break;
-  case Bytes:
+  case CBType::Bytes:
     delete[] var.payload.bytesValue;
     break;
-  case Seq:
+  case CBType::Seq:
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       _releaseMemory(var.payload.seqValue.elements[i]);
     }
     chainblocks::arrayFree(var.payload.seqValue);
     break;
-  case Table: {
+  case CBType::Table: {
     auto map = (chainblocks::CBMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
-  case Chain: {
+  case CBType::Chain: {
     CBChain::deleteRef(var.payload.chainValue);
   } break;
   case CBType::Object: {
@@ -53,38 +53,38 @@ void _releaseMemory(CBVar &var) {
 void to_json(json &j, const CBVar &var) {
   auto valType = magic_enum::enum_name(var.valueType);
   switch (var.valueType) {
-  case Any:
-  case EndOfBlittableTypes:
-  case None: {
+  case CBType::Any:
+  case CBType::EndOfBlittableTypes:
+  case CBType::None: {
     j = json{{"type", valType}};
     break;
   }
-  case Bool: {
+  case CBType::Bool: {
     j = json{{"type", valType}, {"value", var.payload.boolValue}};
     break;
   }
-  case Int: {
+  case CBType::Int: {
     j = json{{"type", valType}, {"value", var.payload.intValue}};
     break;
   }
-  case Int2: {
+  case CBType::Int2: {
     auto vec = {var.payload.int2Value[0], var.payload.int2Value[1]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Int3: {
+  case CBType::Int3: {
     auto vec = {var.payload.int3Value[0], var.payload.int3Value[1],
                 var.payload.int3Value[2]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Int4: {
+  case CBType::Int4: {
     auto vec = {var.payload.int4Value[0], var.payload.int4Value[1],
                 var.payload.int4Value[2], var.payload.int4Value[3]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Int8: {
+  case CBType::Int8: {
     auto vec = {var.payload.int8Value[0], var.payload.int8Value[1],
                 var.payload.int8Value[2], var.payload.int8Value[3],
                 var.payload.int8Value[4], var.payload.int8Value[5],
@@ -92,7 +92,7 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Int16: {
+  case CBType::Int16: {
     auto vec = {var.payload.int16Value[0],  var.payload.int16Value[1],
                 var.payload.int16Value[2],  var.payload.int16Value[3],
                 var.payload.int16Value[4],  var.payload.int16Value[5],
@@ -104,41 +104,41 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Float: {
+  case CBType::Float: {
     j = json{{"type", valType}, {"value", var.payload.floatValue}};
     break;
   }
-  case Float2: {
+  case CBType::Float2: {
     auto vec = {var.payload.float2Value[0], var.payload.float2Value[1]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Float3: {
+  case CBType::Float3: {
     auto vec = {var.payload.float3Value[0], var.payload.float3Value[1],
                 var.payload.float3Value[2]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Float4: {
+  case CBType::Float4: {
     auto vec = {var.payload.float4Value[0], var.payload.float4Value[1],
                 var.payload.float4Value[2], var.payload.float4Value[3]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
-  case Path:
-  case ContextVar:
-  case String: {
+  case CBType::Path:
+  case CBType::ContextVar:
+  case CBType::String: {
     j = json{{"type", valType}, {"value", var.payload.stringValue}};
     break;
   }
-  case Color: {
+  case CBType::Color: {
     j = json{{"type", valType},
              {"value",
               {var.payload.colorValue.r, var.payload.colorValue.g,
                var.payload.colorValue.b, var.payload.colorValue.a}}};
     break;
   }
-  case Image: {
+  case CBType::Image: {
     if (var.payload.imageValue.data) {
       auto pixsize = 1;
       if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
@@ -164,7 +164,7 @@ void to_json(json &j, const CBVar &var) {
     }
     break;
   }
-  case Bytes: {
+  case CBType::Bytes: {
     std::vector<uint8_t> buffer;
     buffer.resize(var.payload.bytesSize);
     if (var.payload.bytesSize > 0)
@@ -172,7 +172,7 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"data", buffer}};
     break;
   }
-  case Array: {
+  case CBType::Array: {
     std::vector<uint8_t> buffer;
     buffer.resize(var.payload.arrayValue.len * sizeof(CBVarPayload));
     if (var.payload.arrayValue.len > 0)
@@ -190,7 +190,7 @@ void to_json(json &j, const CBVar &var) {
              {"typeId", var.payload.enumTypeId}};
     break;
   }
-  case Seq: {
+  case CBType::Seq: {
     std::vector<json> items;
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       auto &v = var.payload.seqValue.elements[i];
@@ -199,7 +199,7 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"values", items}};
     break;
   }
-  case Table: {
+  case CBType::Table: {
     std::vector<json> items;
     auto &ta = var.payload.tableValue;
     ta.api->tableForEach(
@@ -214,7 +214,7 @@ void to_json(json &j, const CBVar &var) {
     j = json{{"type", valType}, {"values", items}};
     break;
   }
-  case Block: {
+  case CBType::Block: {
     auto blk = var.payload.blockValue;
     std::vector<json> params;
     auto paramsDesc = blk->parameters(blk);
@@ -234,12 +234,12 @@ void to_json(json &j, const CBVar &var) {
     }
     break;
   }
-  case Chain: {
+  case CBType::Chain: {
     json jchain = var.payload.chainValue;
     j = json{{"type", valType}, {"value", jchain}};
     break;
   }
-  case Object: {
+  case CBType::Object: {
     j = json{{"type", valType},
              {"vendorId", var.payload.objectVendorId},
              {"typeId", var.payload.objectTypeId}};
@@ -273,86 +273,86 @@ void from_json(const json &j, CBVar &var) {
     throw chainblocks::ActivationError("Failed to parse CBVar value type.");
   }
   switch (valType.value()) {
-  case Any:
-  case EndOfBlittableTypes:
-  case None: {
+  case CBType::Any:
+  case CBType::EndOfBlittableTypes:
+  case CBType::None: {
     var = {};
     var.valueType = valType.value();
     break;
   }
-  case Bool: {
-    var.valueType = Bool;
+  case CBType::Bool: {
+    var.valueType = CBType::Bool;
     var.payload.boolValue = j.at("value").get<bool>();
     break;
   }
-  case Int: {
-    var.valueType = Int;
+  case CBType::Int: {
+    var.valueType = CBType::Int;
     var.payload.intValue = j.at("value").get<int64_t>();
     break;
   }
-  case Int2: {
-    var.valueType = Int2;
+  case CBType::Int2: {
+    var.valueType = CBType::Int2;
     var.payload.int2Value[0] = j.at("value")[0].get<int64_t>();
     var.payload.int2Value[1] = j.at("value")[1].get<int64_t>();
     break;
   }
-  case Int3: {
-    var.valueType = Int3;
+  case CBType::Int3: {
+    var.valueType = CBType::Int3;
     var.payload.int3Value[0] = j.at("value")[0].get<int32_t>();
     var.payload.int3Value[1] = j.at("value")[1].get<int32_t>();
     var.payload.int3Value[2] = j.at("value")[2].get<int32_t>();
     break;
   }
-  case Int4: {
-    var.valueType = Int4;
+  case CBType::Int4: {
+    var.valueType = CBType::Int4;
     var.payload.int4Value[0] = j.at("value")[0].get<int32_t>();
     var.payload.int4Value[1] = j.at("value")[1].get<int32_t>();
     var.payload.int4Value[2] = j.at("value")[2].get<int32_t>();
     var.payload.int4Value[3] = j.at("value")[3].get<int32_t>();
     break;
   }
-  case Int8: {
-    var.valueType = Int8;
+  case CBType::Int8: {
+    var.valueType = CBType::Int8;
     for (auto i = 0; i < 8; i++) {
       var.payload.int8Value[i] = j.at("value")[i].get<int16_t>();
     }
     break;
   }
-  case Int16: {
-    var.valueType = Int16;
+  case CBType::Int16: {
+    var.valueType = CBType::Int16;
     for (auto i = 0; i < 16; i++) {
       var.payload.int16Value[i] = j.at("value")[i].get<int8_t>();
     }
     break;
   }
-  case Float: {
-    var.valueType = Float;
+  case CBType::Float: {
+    var.valueType = CBType::Float;
     var.payload.floatValue = j.at("value").get<double>();
     break;
   }
-  case Float2: {
-    var.valueType = Float2;
+  case CBType::Float2: {
+    var.valueType = CBType::Float2;
     var.payload.float2Value[0] = j.at("value")[0].get<double>();
     var.payload.float2Value[1] = j.at("value")[1].get<double>();
     break;
   }
-  case Float3: {
-    var.valueType = Float3;
+  case CBType::Float3: {
+    var.valueType = CBType::Float3;
     var.payload.float3Value[0] = j.at("value")[0].get<float>();
     var.payload.float3Value[1] = j.at("value")[1].get<float>();
     var.payload.float3Value[2] = j.at("value")[2].get<float>();
     break;
   }
-  case Float4: {
-    var.valueType = Float4;
+  case CBType::Float4: {
+    var.valueType = CBType::Float4;
     var.payload.float4Value[0] = j.at("value")[0].get<float>();
     var.payload.float4Value[1] = j.at("value")[1].get<float>();
     var.payload.float4Value[2] = j.at("value")[2].get<float>();
     var.payload.float4Value[3] = j.at("value")[3].get<float>();
     break;
   }
-  case ContextVar: {
-    var.valueType = ContextVar;
+  case CBType::ContextVar: {
+    var.valueType = CBType::ContextVar;
     auto strVal = j.at("value").get<std::string>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
@@ -361,8 +361,8 @@ void from_json(const json &j, CBVar &var) {
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
-  case String: {
-    var.valueType = String;
+  case CBType::String: {
+    var.valueType = CBType::String;
     auto strVal = j.at("value").get<std::string>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
@@ -371,8 +371,8 @@ void from_json(const json &j, CBVar &var) {
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
-  case Path: {
-    var.valueType = Path;
+  case CBType::Path: {
+    var.valueType = CBType::Path;
     auto strVal = j.at("value").get<std::string>();
     const auto strLen = strVal.length();
     var.payload.stringValue = new char[strLen + 1];
@@ -381,16 +381,16 @@ void from_json(const json &j, CBVar &var) {
     ((char *)var.payload.stringValue)[strLen] = 0;
     break;
   }
-  case Color: {
-    var.valueType = Color;
+  case CBType::Color: {
+    var.valueType = CBType::Color;
     var.payload.colorValue.r = j.at("value")[0].get<uint8_t>();
     var.payload.colorValue.g = j.at("value")[1].get<uint8_t>();
     var.payload.colorValue.b = j.at("value")[2].get<uint8_t>();
     var.payload.colorValue.a = j.at("value")[3].get<uint8_t>();
     break;
   }
-  case Image: {
-    var.valueType = Image;
+  case CBType::Image: {
+    var.valueType = CBType::Image;
     var.payload.imageValue.width = j.at("width").get<int32_t>();
     var.payload.imageValue.height = j.at("height").get<int32_t>();
     var.payload.imageValue.channels = j.at("channels").get<int32_t>();
@@ -410,20 +410,20 @@ void from_json(const json &j, CBVar &var) {
     memcpy(var.payload.imageValue.data, &buffer[0], binsize);
     break;
   }
-  case Bytes: {
-    var.valueType = Bytes;
+  case CBType::Bytes: {
+    var.valueType = CBType::Bytes;
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     var.payload.bytesValue = new uint8_t[buffer.size()];
     memcpy(var.payload.bytesValue, &buffer[0], buffer.size());
     break;
   }
-  case Array: {
+  case CBType::Array: {
     auto innerName = j.at("inner").get<std::string>();
     auto innerType = magic_enum::enum_cast<CBType>(innerName);
     if (!innerType.has_value()) {
       throw chainblocks::ActivationError("Failed to parse CBVar inner type.");
     }
-    var.valueType = Array;
+    var.valueType = CBType::Array;
     var.innerType = innerType.value();
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     auto len = buffer.size() / sizeof(CBVarPayload);
@@ -431,15 +431,15 @@ void from_json(const json &j, CBVar &var) {
     memcpy(&var.payload.arrayValue.elements[0], &buffer[0], buffer.size());
     break;
   }
-  case Enum: {
-    var.valueType = Enum;
+  case CBType::Enum: {
+    var.valueType = CBType::Enum;
     var.payload.enumValue = CBEnum(j.at("value").get<int32_t>());
     var.payload.enumVendorId = CBEnum(j.at("vendorId").get<int32_t>());
     var.payload.enumTypeId = CBEnum(j.at("typeId").get<int32_t>());
     break;
   }
-  case Seq: {
-    var.valueType = Seq;
+  case CBType::Seq: {
+    var.valueType = CBType::Seq;
     auto items = j.at("values").get<std::vector<json>>();
     var.payload.seqValue = {};
     for (const auto &item : items) {
@@ -447,9 +447,9 @@ void from_json(const json &j, CBVar &var) {
     }
     break;
   }
-  case Table: {
+  case CBType::Table: {
     auto map = new chainblocks::CBMap();
-    var.valueType = Table;
+    var.valueType = CBType::Table;
     var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
     var.payload.tableValue.opaque = map;
     auto items = j.at("values").get<std::vector<json>>();
@@ -460,8 +460,8 @@ void from_json(const json &j, CBVar &var) {
     }
     break;
   }
-  case Block: {
-    var.valueType = Block;
+  case CBType::Block: {
+    var.valueType = CBType::Block;
     auto blkname = j.at("name").get<std::string>();
     auto blk = chainblocks::createBlock(blkname.c_str());
     if (!blk) {
@@ -499,13 +499,13 @@ void from_json(const json &j, CBVar &var) {
     }
     break;
   }
-  case Chain: {
-    var.valueType = Chain;
+  case CBType::Chain: {
+    var.valueType = CBType::Chain;
     var.payload.chainValue = j.at("value").get<CBChainRef>();
     break;
   }
-  case Object: {
-    var.valueType = Object;
+  case CBType::Object: {
+    var.valueType = CBType::Object;
     var.payload.objectVendorId = CBEnum(j.at("vendorId").get<int32_t>());
     var.payload.objectTypeId = CBEnum(j.at("typeId").get<int32_t>());
     var.payload.objectValue = nullptr;
