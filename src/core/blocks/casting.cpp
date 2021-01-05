@@ -607,7 +607,6 @@ template <Type &ET> struct ExpectXComplex {
   CBVar getParam(int index) { return Var(_unsafe); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // TODO make this check strict for now it's just dummy
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
       LOG(ERROR) << "Unexpected value: " << input << " expected type: " << info;
@@ -619,6 +618,89 @@ template <Type &ET> struct ExpectXComplex {
         LOG(ERROR) << "Unexpected value: " << input
                    << " expected type: " << info;
         throw ActivationError("Expected type " + type2Name(info.basicType) +
+                              " got instead " + type2Name(input.valueType));
+      }
+    }
+    return input;
+  }
+};
+
+struct ExpectLike {
+  ParamVar _example{};
+  CBTypeInfo _expectedType{};
+  uint64_t _outputTypeHash{0};
+  bool _unsafe{false};
+  bool _derived{false};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Example",
+       "The example value to expect, in the case of a used chain, the output "
+       "type of that chain will be used.",
+       {CoreInfo::AnyType}},
+      {"Unsafe",
+       "If we should skip performing deep type hashing and comparison. "
+       "(generally fast but this might improve performance)",
+       {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index == 0)
+      _example = value;
+    else if (index == 1)
+      _unsafe = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _example;
+    else
+      return Var(_unsafe);
+  }
+
+  void warmup(CBContext *context) { _example.warmup(context); }
+
+  void cleanup() {
+    _example.cleanup();
+    _outputTypeHash = 0;
+    if (_derived) {
+      freeDerivedInfo(_expectedType);
+      _derived = false;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // we could use compose but it's a bit unreliable cos we don't know when
+    // chain is composed
+    if (unlikely(_outputTypeHash == 0)) {
+      auto example = _example.get();
+      if (example.valueType == CBType::Chain) {
+        auto chain = CBChain::sharedFromRef(example.payload.chainValue);
+        _outputTypeHash = deriveTypeHash(chain->outputType);
+        _expectedType = chain->outputType;
+        _derived = false;
+      } else {
+        _outputTypeHash = deriveTypeHash(example);
+        _expectedType = deriveTypeInfo(example);
+        _derived = true;
+      }
+    }
+
+    if (unlikely(input.valueType != _expectedType.basicType)) {
+      LOG(ERROR) << "Unexpected value: " << input
+                 << " expected type: " << _expectedType;
+      throw ActivationError("Expected type " +
+                            type2Name(_expectedType.basicType) +
+                            " got instead " + type2Name(input.valueType));
+    } else if (!_unsafe) {
+      auto inputTypeHash = deriveTypeHash(input);
+      if (unlikely(inputTypeHash != _outputTypeHash)) {
+        LOG(ERROR) << "Unexpected value: " << input
+                   << " expected type: " << _expectedType;
+        throw ActivationError("Expected type " +
+                              type2Name(_expectedType.basicType) +
                               " got instead " + type2Name(input.valueType));
       }
     }
@@ -716,6 +798,8 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
   using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
   REGISTER_CBLOCK("ExpectIntSeq", ExpectIntSeq);
+
+  REGISTER_CBLOCK("ExpectLike", ExpectLike);
 
   REGISTER_CBLOCK("ToBase64", ToBase64);
   REGISTER_CBLOCK("FromBase64", FromBase64);

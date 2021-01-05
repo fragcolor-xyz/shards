@@ -87,11 +87,13 @@
    
    [10 20 30 40 50]
    (ExpectIntSeq)
+   (ExpectLike [1 2 3 4])
    (IntSeqToBytes)
    (Log)
 
    "Hello"
    (Assert.Is "Hello" true)
+   (ExpectLike inner1)
    (Log)
 
    77

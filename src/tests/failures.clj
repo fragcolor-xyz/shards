@@ -50,6 +50,19 @@
 (schedule Root c)
 (run Root 0.1)
 
+; wrong type
+(def c
+  (Chain
+   "test-3"
+   [10 20 20 40 50]
+   (ExpectIntSeq)
+   (IntSeqToBytes)
+   (ExpectLike [1 2 3])
+   (Log)))
+
+(schedule Root c)
+(run Root 0.1)
+
 ; fail the root chain propagated from Wait
 (def d
   (Chain
