@@ -356,6 +356,8 @@ pub mod common_type {
           cap: 0,
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -386,6 +388,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_table: CBTypeInfo = CBTypeInfo {
@@ -404,6 +408,8 @@ pub mod common_type {
             },
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_var: CBTypeInfo = CBTypeInfo {
@@ -415,6 +421,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_table_var: CBTypeInfo = CBTypeInfo {
@@ -426,6 +434,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
     };
   }
@@ -524,6 +534,8 @@ impl Type {
           cap: 0,
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -531,11 +543,10 @@ impl Type {
     Type {
       basicType: CBType_Object,
       details: CBTypeInfo_Details {
-        object: CBTypeInfo_Details_Object {
-          vendorId,
-          typeId,
-        },
+        object: CBTypeInfo_Details_Object { vendorId, typeId },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -556,6 +567,8 @@ impl Type {
           },
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 }
@@ -752,8 +765,8 @@ impl From<String> for &str {
   #[inline(always)]
   fn from(v: String) -> Self {
     unsafe {
-        let cstr = CStr::from_ptr(v.0);
-        cstr.to_str().unwrap()
+      let cstr = CStr::from_ptr(v.0);
+      cstr.to_str().unwrap()
     }
   }
 }

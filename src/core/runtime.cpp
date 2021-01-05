@@ -1344,10 +1344,9 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
   // this is not complete at all, missing Array and ContextVar for example
-  auto varType = CBTypeInfo();
+  CBTypeInfo varType{};
   varType.basicType = value.valueType;
-  varType.seqTypes = {};
-  varType.table.types = {};
+  varType.innerType = value.innerType;
   switch (value.valueType) {
   case Object: {
     varType.object.vendorId = value.payload.objectVendorId;
@@ -1368,6 +1367,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
         types.insert(derived);
       }
     }
+    varType.fixedSize = value.payload.seqValue.len;
     break;
   }
   case Table: {

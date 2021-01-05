@@ -392,6 +392,12 @@ struct CBTypeInfo {
     real;
   }
   CB_UNION_NAME(details);
+
+  // used for Seq and Array only for now, to allow optimizations if the size is
+  // known at compose time.
+  uint32_t fixedSize;
+  // Used by Array type, which is still not implemented properly and unstable.
+  enum CBType innerType;
 };
 
 // if outData is NULL will just give you a valid outLen

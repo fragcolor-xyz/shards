@@ -666,6 +666,39 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   ParamVar _pcode{};
   ParamVar _ccode{};
   ShaderHandle *_output{nullptr};
+  std::array<CBExposedTypeInfo, 2> _exposing;
+
+  CBExposedTypesInfo requiredVariables() {
+    if constexpr (SHADER_TYPE == 'c') {
+      if (!_ccode.isVariable()) {
+        return {};
+      } else {
+        _exposing[0].name = _ccode.variableName();
+        _exposing[0].help = "The required compute shader bytecode.";
+        _exposing[0].exposedType = CoreInfo::BytesType;
+        return {_exposing.data(), 1, 0};
+      }
+    } else {
+      int idx = -1;
+      if (_vcode.isVariable()) {
+        idx++;
+        _exposing[idx].name = _vcode.variableName();
+        _exposing[idx].help = "The required vertex shader bytecode.";
+        _exposing[idx].exposedType = CoreInfo::BytesType;
+      }
+      if (_pcode.isVariable()) {
+        idx++;
+        _exposing[idx].name = _pcode.variableName();
+        _exposing[idx].help = "The required pixel shader bytecode.";
+        _exposing[idx].exposedType = CoreInfo::BytesType;
+      }
+      if (idx == -1) {
+        return {};
+      } else {
+        return {_exposing.data(), uint32_t(idx + 1), 0};
+      }
+    }
+  }
 
   void setParam(int index, const CBVar &value) {
     if constexpr (SHADER_TYPE == 'c') {
@@ -1367,6 +1400,28 @@ struct Draw : public BaseConsumer {
   ParamVar _shader{};
   ParamVar _model{};
   CBVar *_bgfx_context{nullptr};
+  std::array<CBExposedTypeInfo, 2> _exposing;
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = -1;
+    if (_shader.isVariable()) {
+      idx++;
+      _exposing[idx].name = _shader.variableName();
+      _exposing[idx].help = "The required shader.";
+      _exposing[idx].exposedType = ShaderHandle::ObjType;
+    }
+    if (_model.isVariable()) {
+      idx++;
+      _exposing[idx].name = _model.variableName();
+      _exposing[idx].help = "The required model.";
+      _exposing[idx].exposedType = ModelHandle::ObjType;
+    }
+    if (idx == -1) {
+      return {};
+    } else {
+      return {_exposing.data(), uint32_t(idx + 1), 0};
+    }
+  }
 
   void warmup(CBContext *context) {
     _shader.warmup(context);
