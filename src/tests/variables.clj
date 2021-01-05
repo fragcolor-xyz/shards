@@ -11,7 +11,7 @@
   (Assert.Is 20 true)
   (Get "x")
   (Assert.Is 10 true)
-  
+
   (Set "y" "key1")
   (Assert.Is 10 true)
   (Get "y")
@@ -184,8 +184,7 @@
   (Repeat
    (-->
     0.1 >> .sf
-    .sf >> .sff
-    )
+    .sf >> .sff)
    :Times 3)
 
   .sf (Assert.Is [0.1 0.1 0.1] true) (Log)
@@ -199,10 +198,12 @@
   10 >> .smany
   .smany (Assert.Is [true, [[0.1], [0.1, 0.1], [0.1, 0.1, 0.1]], 10] true) (Log)
 
+  ; without Table block the rest would not work cos Table won't be exposed by When
+  (Table .table-decl-1 :Types Type.Float)
+  true (When (Is true) ~[11.0 (Set .table-decl-1 "A")])
+  (Get .table-decl-1 "A") (Math.Add 2.0) (Assert.Is 13.0 true)
 
-
-  (Msg "Done!")
-  ))
+  (Msg "Done!")))
 
 (tick node)
 (tick node)

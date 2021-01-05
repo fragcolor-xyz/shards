@@ -1432,13 +1432,6 @@ struct Sequence : public SeqBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
-  void destroy() {
-    if (_tableInfo.table.keys.elements)
-      chainblocks::arrayFree(_tableInfo.table.keys);
-    if (_tableInfo.table.types.elements)
-      chainblocks::arrayFree(_tableInfo.table.types);
-  }
-
   void setParam(int index, const CBVar &value) {
     if (index <= 2)
       VariableBase::setParam(index, value);
@@ -1621,6 +1614,276 @@ struct Sequence : public SeqBase {
     if (_clear) {
       auto &seq = *_cell;
       chainblocks::arrayResize(seq.payload.seqValue, 0);
+    }
+
+    return input;
+  }
+};
+
+struct TableDecl : public VariableBase {
+  CBTypeInfo _tableInfo{};
+
+  void initTable() {
+    if (_isTable) {
+      if (_target->valueType != Table) {
+        // Not initialized yet
+        _target->valueType = Table;
+        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
+      }
+
+      if (!_key.isVariable()) {
+        auto &kv = _key.get();
+        _cell = _target->payload.tableValue.api->tableAt(
+            _target->payload.tableValue, kv.payload.stringValue);
+
+        auto table = _cell;
+        if (table->valueType != Table) {
+          // Not initialized yet
+          table->valueType = Table;
+          table->payload.tableValue.api = &Globals::TableInterface;
+          table->payload.tableValue.opaque = new CBMap();
+        }
+      } else {
+        return; // we will check during activate
+      }
+    } else {
+      if (_target->valueType != Table) {
+        _target->valueType = Table;
+        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.opaque = new CBMap();
+      }
+      _cell = _target;
+    }
+
+    assert(_cell);
+  }
+
+  void fillVariableCell() {
+    auto &kv = _key.get();
+    _cell = _target->payload.tableValue.api->tableAt(
+        _target->payload.tableValue, kv.payload.stringValue);
+
+    auto table = _cell;
+    if (table->valueType != Table) {
+      // Not initialized yet
+      table->valueType = Table;
+      table->payload.tableValue.api = &Globals::TableInterface;
+      table->payload.tableValue.opaque = new CBMap();
+    }
+  }
+
+  void warmup(CBContext *context) {
+    if (_global)
+      _target = referenceGlobalVariable(context, _name.c_str());
+    else
+      _target = referenceVariable(context, _name.c_str());
+    _key.warmup(context);
+    initTable();
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(_exposedInfo);
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void destroy() {
+    if (_tableInfo.table.keys.elements)
+      chainblocks::arrayFree(_tableInfo.table.keys);
+    if (_tableInfo.table.types.elements)
+      chainblocks::arrayFree(_tableInfo.table.types);
+  }
+
+  ParamVar _types{Var::Enum(BasicTypes::Any, CoreCC, 'type')};
+  Types _seqTypes{};
+  std::deque<Types> _innerTypes;
+
+  static inline ParamsInfo pushParams = ParamsInfo(
+      variableParamsInfo,
+      ParamsInfo::Param("Types", "The sequence inner types to forward declare.",
+                        CoreInfo2::BasicTypesTypes));
+
+  static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
+
+  void setParam(int index, const CBVar &value) {
+    if (index <= 2)
+      VariableBase::setParam(index, value);
+    else if (index == 3) {
+      _types = value;
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index <= 2)
+      return VariableBase::getParam(index);
+    else if (index == 3)
+      return _types;
+    throw CBException("Param index out of range.");
+  }
+
+  void addType(Types &inner, BasicTypes type) {
+    switch (type) {
+    case BasicTypes::Any:
+      inner._types.emplace_back(CoreInfo::AnyType);
+      break;
+    case BasicTypes::Bool:
+      inner._types.emplace_back(CoreInfo::BoolType);
+      break;
+    case BasicTypes::Int:
+      inner._types.emplace_back(CoreInfo::IntType);
+      break;
+    case BasicTypes::Int2:
+      inner._types.emplace_back(CoreInfo::Int2Type);
+      break;
+    case BasicTypes::Int3:
+      inner._types.emplace_back(CoreInfo::Int3Type);
+      break;
+    case BasicTypes::Int4:
+      inner._types.emplace_back(CoreInfo::Int4Type);
+      break;
+    case BasicTypes::Int8:
+      inner._types.emplace_back(CoreInfo::Int8Type);
+      break;
+    case BasicTypes::Int16:
+      inner._types.emplace_back(CoreInfo::Int16Type);
+      break;
+    case BasicTypes::Float:
+      inner._types.emplace_back(CoreInfo::FloatType);
+      break;
+    case BasicTypes::Float2:
+      inner._types.emplace_back(CoreInfo::Float2Type);
+      break;
+    case BasicTypes::Float3:
+      inner._types.emplace_back(CoreInfo::Float3Type);
+      break;
+    case BasicTypes::Float4:
+      inner._types.emplace_back(CoreInfo::Float4Type);
+      break;
+    case BasicTypes::Color:
+      inner._types.emplace_back(CoreInfo::ColorType);
+      break;
+    case BasicTypes::Chain:
+      inner._types.emplace_back(CoreInfo::ChainType);
+      break;
+    case BasicTypes::Block:
+      inner._types.emplace_back(CoreInfo::BlockType);
+      break;
+    case BasicTypes::Bytes:
+      inner._types.emplace_back(CoreInfo::BytesType);
+      break;
+    case BasicTypes::String:
+      inner._types.emplace_back(CoreInfo::StringType);
+      break;
+    case BasicTypes::Image:
+      inner._types.emplace_back(CoreInfo::ImageType);
+      break;
+    }
+  }
+
+  void processTypes(Types &inner, const IterableSeq &s) {
+    for (auto &v : s) {
+      if (v.valueType == Seq) {
+        auto &sinner = _innerTypes.emplace_back();
+        IterableSeq ss(v);
+        processTypes(sinner, ss);
+        CBTypeInfo stype{CBType::Seq, {.seqTypes = sinner}};
+        inner._types.emplace_back(stype);
+      } else {
+        const auto type = BasicTypes(v.payload.enumValue);
+        // assume enum
+        addType(inner, type);
+      }
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    const auto updateTableInfo = [this] {
+      _tableInfo.basicType = Table;
+      if (_tableInfo.table.types.elements) {
+        chainblocks::arrayFree(_tableInfo.table.types);
+      }
+      if (_tableInfo.table.keys.elements) {
+        chainblocks::arrayFree(_tableInfo.table.keys);
+      }
+      auto stype =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
+      chainblocks::arrayPush(_tableInfo.table.types, stype);
+      if (!_key.isVariable()) {
+        CBVar kv = _key;
+        chainblocks::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
+      }
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", CBTypeInfo(_tableInfo), true));
+      }
+    };
+
+    // Ensure variable did not exist
+    if (!_isTable) {
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        auto &reference = data.shared.elements[i];
+        if (strcmp(reference.name, _name.c_str()) == 0) {
+          throw ComposeError("Table - Variable " + _name + " already exists.");
+        }
+      }
+    } else {
+      for (uint32_t i = 0; data.shared.len > i; i++) {
+        if (data.shared.elements[i].name == _name &&
+            data.shared.elements[i].exposedType.table.types.elements) {
+          auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
+          for (uint32_t y = 0; y < tableKeys.len; y++) {
+            // if here, key is not variable
+            CBVar kv = _key;
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0) {
+              throw ComposeError("Table - Variable " +
+                                 std::string(kv.payload.stringValue) +
+                                 " in table " + _name + " already exists.");
+            }
+          }
+        }
+      }
+    }
+
+    // Process types to expose
+    // cleaning up previous first
+    _seqTypes._types.clear();
+    _innerTypes.clear();
+    if (_types->valueType == Enum) {
+      // a single type
+      addType(_seqTypes, BasicTypes(_types->payload.enumValue));
+    } else {
+      IterableSeq st(_types);
+      processTypes(_seqTypes, st);
+    }
+
+    if (!_isTable) {
+      auto stype =
+          CBTypeInfo{CBType::Table,
+                     {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
+      if (_global) {
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), "The exposed table.", stype, true));
+      } else {
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), "The exposed table.", stype, true));
+      }
+    } else {
+      updateTableInfo();
+    }
+
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(_isTable && _key.isVariable())) {
+      fillVariableCell();
     }
 
     return input;
@@ -2914,6 +3177,7 @@ RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Sequence);
+RUNTIME_CORE_BLOCK_TYPE(TableDecl);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(PopFront);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
