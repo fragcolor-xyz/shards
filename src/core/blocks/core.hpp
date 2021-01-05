@@ -1697,17 +1697,16 @@ struct TableDecl : public VariableBase {
       chainblocks::arrayFree(_tableInfo.table.types);
   }
 
-  ParamVar _types{};
+  ParamVar _types{Var::Enum(BasicTypes::Any, CoreCC, 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
-  static inline Parameters params{
-      {"Types",
-       "The sequence inner types to forward declare.",
-       {CoreInfo2::BasicTypesType, CoreInfo2::BasicTypesSeqType,
-        CoreInfo::NoneType}}};
+  static inline ParamsInfo pushParams = ParamsInfo(
+      variableParamsInfo,
+      ParamsInfo::Param("Types", "The sequence inner types to forward declare.",
+                        CoreInfo2::BasicTypesTypes));
 
-  static CBParametersInfo parameters() { return params; }
+  static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, const CBVar &value) {
     if (index <= 2)
@@ -1859,7 +1858,7 @@ struct TableDecl : public VariableBase {
     if (_types->valueType == Enum) {
       // a single type
       addType(_seqTypes, BasicTypes(_types->payload.enumValue));
-    } else if (_types->valueType == Seq) { // can be none for Table!
+    } else {
       IterableSeq st(_types);
       processTypes(_seqTypes, st);
     }
