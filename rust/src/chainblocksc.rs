@@ -3,6 +3,92 @@
 pub const true_: u32 = 1;
 pub const false_: u32 = 0;
 pub const __bool_true_false_are_defined: u32 = 1;
+pub const __MINGW64_VERSION_MAJOR: u32 = 9;
+pub const __MINGW64_VERSION_MINOR: u32 = 0;
+pub const __MINGW64_VERSION_BUGFIX: u32 = 0;
+pub const __MINGW64_VERSION_RC: u32 = 0;
+pub const __MINGW64_VERSION_STATE: &'static [u8; 6usize] = b"alpha\0";
+pub const __MINGW32_MAJOR_VERSION: u32 = 3;
+pub const __MINGW32_MINOR_VERSION: u32 = 11;
+pub const _M_IX86: u32 = 300;
+pub const __MINGW_USE_UNDERSCORE_PREFIX: u32 = 1;
+pub const __MINGW_HAVE_ANSI_C99_PRINTF: u32 = 1;
+pub const __MINGW_HAVE_WIDE_C99_PRINTF: u32 = 1;
+pub const __MINGW_HAVE_ANSI_C99_SCANF: u32 = 1;
+pub const __MINGW_HAVE_WIDE_C99_SCANF: u32 = 1;
+pub const __MINGW_SEC_WARN_STR : & 'static [u8 ; 92usize] = b"This function or variable may be unsafe, use _CRT_SECURE_NO_WARNINGS to disable deprecation\0" ;
+pub const __MINGW_MSVC2005_DEPREC_STR : & 'static [u8 ; 117usize] = b"This POSIX function is deprecated beginning in Visual C++ 2005, use _CRT_NONSTDC_NO_DEPRECATE to disable deprecation\0" ;
+pub const __MINGW_FORTIFY_LEVEL: u32 = 0;
+pub const __MINGW_FORTIFY_VA_ARG: u32 = 0;
+pub const _CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES: u32 = 0;
+pub const _CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_MEMORY: u32 = 0;
+pub const _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES: u32 = 0;
+pub const _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT: u32 = 0;
+pub const _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_MEMORY: u32 = 0;
+pub const __USE_CRTIMP: u32 = 1;
+pub const USE___UUIDOF: u32 = 0;
+pub const __CRT__NO_INLINE: u32 = 1;
+pub const __MSVCRT_VERSION__: u32 = 1792;
+pub const _WIN32_WINNT: u32 = 1537;
+pub const MINGW_HAS_SECURE_API: u32 = 1;
+pub const __STDC_SECURE_LIB__: u32 = 200411;
+pub const __GOT_SECURE_LIB__: u32 = 200411;
+pub const MINGW_HAS_DDK_H: u32 = 1;
+pub const _CRT_PACKING: u32 = 8;
+pub const _SECURECRT_FILL_BUFFER_PATTERN: u32 = 253;
+pub const _ARGMAX: u32 = 100;
+pub const __USE_MINGW_ANSI_STDIO: u32 = 1;
+pub const INT8_MIN: i32 = -128;
+pub const INT16_MIN: i32 = -32768;
+pub const INT32_MIN: i32 = -2147483648;
+pub const INT64_MIN: i64 = -9223372036854775808;
+pub const INT8_MAX: u32 = 127;
+pub const INT16_MAX: u32 = 32767;
+pub const INT32_MAX: u32 = 2147483647;
+pub const INT64_MAX: u64 = 9223372036854775807;
+pub const UINT8_MAX: u32 = 255;
+pub const UINT16_MAX: u32 = 65535;
+pub const UINT32_MAX: u32 = 4294967295;
+pub const UINT64_MAX: i32 = -1;
+pub const INT_LEAST8_MIN: i32 = -128;
+pub const INT_LEAST16_MIN: i32 = -32768;
+pub const INT_LEAST32_MIN: i32 = -2147483648;
+pub const INT_LEAST64_MIN: i64 = -9223372036854775808;
+pub const INT_LEAST8_MAX: u32 = 127;
+pub const INT_LEAST16_MAX: u32 = 32767;
+pub const INT_LEAST32_MAX: u32 = 2147483647;
+pub const INT_LEAST64_MAX: u64 = 9223372036854775807;
+pub const UINT_LEAST8_MAX: u32 = 255;
+pub const UINT_LEAST16_MAX: u32 = 65535;
+pub const UINT_LEAST32_MAX: u32 = 4294967295;
+pub const UINT_LEAST64_MAX: i32 = -1;
+pub const INT_FAST8_MIN: i32 = -128;
+pub const INT_FAST16_MIN: i32 = -32768;
+pub const INT_FAST32_MIN: i32 = -2147483648;
+pub const INT_FAST64_MIN: i64 = -9223372036854775808;
+pub const INT_FAST8_MAX: u32 = 127;
+pub const INT_FAST16_MAX: u32 = 32767;
+pub const INT_FAST32_MAX: u32 = 2147483647;
+pub const INT_FAST64_MAX: u64 = 9223372036854775807;
+pub const UINT_FAST8_MAX: u32 = 255;
+pub const UINT_FAST16_MAX: u32 = 65535;
+pub const UINT_FAST32_MAX: u32 = 4294967295;
+pub const UINT_FAST64_MAX: i32 = -1;
+pub const INTPTR_MIN: i32 = -2147483648;
+pub const INTPTR_MAX: u32 = 2147483647;
+pub const UINTPTR_MAX: u32 = 4294967295;
+pub const INTMAX_MIN: i64 = -9223372036854775808;
+pub const INTMAX_MAX: u64 = 9223372036854775807;
+pub const UINTMAX_MAX: i32 = -1;
+pub const PTRDIFF_MIN: i32 = -2147483648;
+pub const PTRDIFF_MAX: u32 = 2147483647;
+pub const SIG_ATOMIC_MIN: i32 = -2147483648;
+pub const SIG_ATOMIC_MAX: u32 = 2147483647;
+pub const SIZE_MAX: u32 = 4294967295;
+pub const WCHAR_MIN: u32 = 0;
+pub const WCHAR_MAX: u32 = 65535;
+pub const WINT_MIN: u32 = 0;
+pub const WINT_MAX: u32 = 65535;
 pub const CBIMAGE_FLAGS_NONE: u32 = 0;
 pub const CBIMAGE_FLAGS_BGRA: u32 = 1;
 pub const CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA: u32 = 2;
@@ -58,22 +144,480 @@ fn bindgen_test_layout_max_align_t() {
         )
     );
 }
-pub type int_least64_t = i64;
-pub type uint_least64_t = u64;
-pub type int_fast64_t = i64;
-pub type uint_fast64_t = u64;
-pub type int_least32_t = i32;
-pub type uint_least32_t = u32;
-pub type int_fast32_t = i32;
-pub type uint_fast32_t = u32;
-pub type int_least16_t = i16;
-pub type uint_least16_t = u16;
-pub type int_fast16_t = i16;
-pub type uint_fast16_t = u16;
-pub type int_least8_t = i8;
-pub type uint_least8_t = u8;
-pub type int_fast8_t = i8;
-pub type uint_fast8_t = u8;
+pub type __gnuc_va_list = __builtin_va_list;
+pub type va_list = __gnuc_va_list;
+extern "C" {
+    pub fn __debugbreak();
+}
+extern "C" {
+    pub fn __mingw_get_crt_info() -> *const ::std::os::raw::c_char;
+}
+pub type ssize_t = ::std::os::raw::c_int;
+pub type rsize_t = size_t;
+pub type wint_t = ::std::os::raw::c_ushort;
+pub type wctype_t = ::std::os::raw::c_ushort;
+pub type errno_t = ::std::os::raw::c_int;
+pub type __time32_t = ::std::os::raw::c_long;
+pub type __time64_t = ::std::os::raw::c_longlong;
+pub type time_t = __time32_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct threadmbcinfostruct {
+    _unused: [u8; 0],
+}
+pub type pthreadlocinfo = *mut threadlocaleinfostruct;
+pub type pthreadmbcinfo = *mut threadmbcinfostruct;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __lc_time_data {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct localeinfo_struct {
+    pub locinfo: pthreadlocinfo,
+    pub mbcinfo: pthreadmbcinfo,
+}
+#[test]
+fn bindgen_test_layout_localeinfo_struct() {
+    assert_eq!(
+        ::core::mem::size_of::<localeinfo_struct>(),
+        8usize,
+        concat!("Size of: ", stringify!(localeinfo_struct))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<localeinfo_struct>(),
+        4usize,
+        concat!("Alignment of ", stringify!(localeinfo_struct))
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<localeinfo_struct>())).locinfo as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(localeinfo_struct),
+            "::",
+            stringify!(locinfo)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<localeinfo_struct>())).mbcinfo as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(localeinfo_struct),
+            "::",
+            stringify!(mbcinfo)
+        )
+    );
+}
+impl Default for localeinfo_struct {
+    fn default() -> Self {
+        unsafe { ::core::mem::zeroed() }
+    }
+}
+pub type _locale_tstruct = localeinfo_struct;
+pub type _locale_t = *mut localeinfo_struct;
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct tagLC_ID {
+    pub wLanguage: ::std::os::raw::c_ushort,
+    pub wCountry: ::std::os::raw::c_ushort,
+    pub wCodePage: ::std::os::raw::c_ushort,
+}
+#[test]
+fn bindgen_test_layout_tagLC_ID() {
+    assert_eq!(
+        ::core::mem::size_of::<tagLC_ID>(),
+        6usize,
+        concat!("Size of: ", stringify!(tagLC_ID))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<tagLC_ID>(),
+        2usize,
+        concat!("Alignment of ", stringify!(tagLC_ID))
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<tagLC_ID>())).wLanguage as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(tagLC_ID),
+            "::",
+            stringify!(wLanguage)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<tagLC_ID>())).wCountry as *const _ as usize },
+        2usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(tagLC_ID),
+            "::",
+            stringify!(wCountry)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<tagLC_ID>())).wCodePage as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(tagLC_ID),
+            "::",
+            stringify!(wCodePage)
+        )
+    );
+}
+pub type LC_ID = tagLC_ID;
+pub type LPLC_ID = *mut tagLC_ID;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct threadlocaleinfostruct {
+    pub refcount: ::std::os::raw::c_int,
+    pub lc_codepage: ::std::os::raw::c_uint,
+    pub lc_collate_cp: ::std::os::raw::c_uint,
+    pub lc_handle: [::std::os::raw::c_ulong; 6usize],
+    pub lc_id: [LC_ID; 6usize],
+    pub lc_category: [threadlocaleinfostruct__bindgen_ty_1; 6usize],
+    pub lc_clike: ::std::os::raw::c_int,
+    pub mb_cur_max: ::std::os::raw::c_int,
+    pub lconv_intl_refcount: *mut ::std::os::raw::c_int,
+    pub lconv_num_refcount: *mut ::std::os::raw::c_int,
+    pub lconv_mon_refcount: *mut ::std::os::raw::c_int,
+    pub lconv: *mut lconv,
+    pub ctype1_refcount: *mut ::std::os::raw::c_int,
+    pub ctype1: *mut ::std::os::raw::c_ushort,
+    pub pctype: *const ::std::os::raw::c_ushort,
+    pub pclmap: *const ::std::os::raw::c_uchar,
+    pub pcumap: *const ::std::os::raw::c_uchar,
+    pub lc_time_curr: *mut __lc_time_data,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct threadlocaleinfostruct__bindgen_ty_1 {
+    pub locale: *mut ::std::os::raw::c_char,
+    pub wlocale: *mut wchar_t,
+    pub refcount: *mut ::std::os::raw::c_int,
+    pub wrefcount: *mut ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
+    assert_eq!(
+        ::core::mem::size_of::<threadlocaleinfostruct__bindgen_ty_1>(),
+        16usize,
+        concat!(
+            "Size of: ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1)
+        )
+    );
+    assert_eq!(
+        ::core::mem::align_of::<threadlocaleinfostruct__bindgen_ty_1>(),
+        4usize,
+        concat!(
+            "Alignment of ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).locale as *const _
+                as usize
+        },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1),
+            "::",
+            stringify!(locale)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).wlocale as *const _
+                as usize
+        },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1),
+            "::",
+            stringify!(wlocale)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).refcount as *const _
+                as usize
+        },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1),
+            "::",
+            stringify!(refcount)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).wrefcount as *const _
+                as usize
+        },
+        12usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct__bindgen_ty_1),
+            "::",
+            stringify!(wrefcount)
+        )
+    );
+}
+impl Default for threadlocaleinfostruct__bindgen_ty_1 {
+    fn default() -> Self {
+        unsafe { ::core::mem::zeroed() }
+    }
+}
+#[test]
+fn bindgen_test_layout_threadlocaleinfostruct() {
+    assert_eq!(
+        ::core::mem::size_of::<threadlocaleinfostruct>(),
+        216usize,
+        concat!("Size of: ", stringify!(threadlocaleinfostruct))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<threadlocaleinfostruct>(),
+        4usize,
+        concat!("Alignment of ", stringify!(threadlocaleinfostruct))
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).refcount as *const _ as usize
+        },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(refcount)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_codepage as *const _ as usize
+        },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_codepage)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_collate_cp as *const _ as usize
+        },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_collate_cp)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_handle as *const _ as usize
+        },
+        12usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_handle)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_id as *const _ as usize },
+        36usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_id)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_category as *const _ as usize
+        },
+        72usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_category)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_clike as *const _ as usize
+        },
+        168usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_clike)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).mb_cur_max as *const _ as usize
+        },
+        172usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(mb_cur_max)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_intl_refcount as *const _
+                as usize
+        },
+        176usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lconv_intl_refcount)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_num_refcount as *const _
+                as usize
+        },
+        180usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lconv_num_refcount)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_mon_refcount as *const _
+                as usize
+        },
+        184usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lconv_mon_refcount)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv as *const _ as usize },
+        188usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lconv)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).ctype1_refcount as *const _ as usize
+        },
+        192usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(ctype1_refcount)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).ctype1 as *const _ as usize },
+        196usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(ctype1)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pctype as *const _ as usize },
+        200usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(pctype)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pclmap as *const _ as usize },
+        204usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(pclmap)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pcumap as *const _ as usize },
+        208usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(pcumap)
+        )
+    );
+    assert_eq!(
+        unsafe {
+            &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_time_curr as *const _ as usize
+        },
+        212usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(threadlocaleinfostruct),
+            "::",
+            stringify!(lc_time_curr)
+        )
+    );
+}
+impl Default for threadlocaleinfostruct {
+    fn default() -> Self {
+        unsafe { ::core::mem::zeroed() }
+    }
+}
+pub type threadlocinfo = threadlocaleinfostruct;
+pub type int_least8_t = ::std::os::raw::c_schar;
+pub type uint_least8_t = ::std::os::raw::c_uchar;
+pub type int_least16_t = ::std::os::raw::c_short;
+pub type uint_least16_t = ::std::os::raw::c_ushort;
+pub type int_least32_t = ::std::os::raw::c_int;
+pub type uint_least32_t = ::std::os::raw::c_uint;
+pub type int_least64_t = ::std::os::raw::c_longlong;
+pub type uint_least64_t = ::std::os::raw::c_ulonglong;
+pub type int_fast8_t = ::std::os::raw::c_schar;
+pub type uint_fast8_t = ::std::os::raw::c_uchar;
+pub type int_fast16_t = ::std::os::raw::c_short;
+pub type uint_fast16_t = ::std::os::raw::c_ushort;
+pub type int_fast32_t = ::std::os::raw::c_int;
+pub type uint_fast32_t = ::std::os::raw::c_uint;
+pub type int_fast64_t = ::std::os::raw::c_longlong;
+pub type uint_fast64_t = ::std::os::raw::c_ulonglong;
 pub type intmax_t = ::std::os::raw::c_longlong;
 pub type uintmax_t = ::std::os::raw::c_ulonglong;
 pub const CBType_None: CBType = 0;
@@ -1013,6 +1557,8 @@ fn bindgen_test_layout_CBTableInterface() {
 pub struct CBTypeInfo {
     pub basicType: CBType,
     pub details: CBTypeInfo_Details,
+    pub fixedSize: u32,
+    pub innerType: CBType,
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1437,7 +1983,7 @@ impl Default for CBTypeInfo_Details {
 fn bindgen_test_layout_CBTypeInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBTypeInfo>(),
-        32usize,
+        40usize,
         concat!("Size of: ", stringify!(CBTypeInfo))
     );
     assert_eq!(
@@ -1465,6 +2011,26 @@ fn bindgen_test_layout_CBTypeInfo() {
             stringify!(details)
         )
     );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<CBTypeInfo>())).fixedSize as *const _ as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(CBTypeInfo),
+            "::",
+            stringify!(fixedSize)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<CBTypeInfo>())).innerType as *const _ as usize },
+        36usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(CBTypeInfo),
+            "::",
+            stringify!(innerType)
+        )
+    );
 }
 impl Default for CBTypeInfo {
     fn default() -> Self {
@@ -1485,6 +2051,7 @@ pub type CBObjectDeserializer =
     ::core::option::Option<unsafe extern "C" fn(data: *mut u8, len: size_t) -> CBPointer>;
 pub type CBObjectReference = ::core::option::Option<unsafe extern "C" fn(arg1: CBPointer)>;
 pub type CBObjectRelease = ::core::option::Option<unsafe extern "C" fn(arg1: CBPointer)>;
+pub type CBObjectHash = ::core::option::Option<unsafe extern "C" fn(arg1: CBPointer) -> u64>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBObjectInfo {
@@ -1494,12 +2061,13 @@ pub struct CBObjectInfo {
     pub deserialize: CBObjectDeserializer,
     pub reference: CBObjectReference,
     pub release: CBObjectRelease,
+    pub hash: CBObjectHash,
 }
 #[test]
 fn bindgen_test_layout_CBObjectInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBObjectInfo>(),
-        24usize,
+        28usize,
         concat!("Size of: ", stringify!(CBObjectInfo))
     );
     assert_eq!(
@@ -1565,6 +2133,16 @@ fn bindgen_test_layout_CBObjectInfo() {
             stringify!(CBObjectInfo),
             "::",
             stringify!(release)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).hash as *const _ as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(CBObjectInfo),
+            "::",
+            stringify!(hash)
         )
     );
 }
@@ -1688,7 +2266,7 @@ pub struct CBExposedTypeInfo {
 fn bindgen_test_layout_CBExposedTypeInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBExposedTypeInfo>(),
-        48usize,
+        56usize,
         concat!("Size of: ", stringify!(CBExposedTypeInfo))
     );
     assert_eq!(
@@ -1728,7 +2306,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isMutable as *const _ as usize },
-        40usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -1738,7 +2316,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isProtected as *const _ as usize },
-        41usize,
+        49usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -1748,7 +2326,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isTableEntry as *const _ as usize },
-        42usize,
+        50usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -1758,7 +2336,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).global as *const _ as usize },
-        43usize,
+        51usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -1768,7 +2346,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).scope as *const _ as usize },
-        44usize,
+        52usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2534,7 +3112,7 @@ impl Default for CBRunChainOutput {
 pub struct CBComposeResult {
     pub outputType: CBTypeInfo,
     pub failed: CBBool,
-    pub __bindgen_padding_0: u64,
+    pub __bindgen_padding_0: [u64; 0usize],
     pub failureMessage: CBVar,
     pub exposedInfo: CBExposedTypesInfo,
     pub requiredInfo: CBExposedTypesInfo,
@@ -2564,7 +3142,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).failed as *const _ as usize },
-        32usize,
+        40usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -2632,6 +3210,7 @@ pub struct CBInstanceData {
     pub chain: *mut CBChain,
     pub inputType: CBTypeInfo,
     pub shared: CBExposedTypesInfo,
+    pub onWorkerThread: bool,
     pub outputTypes: CBTypesInfo,
     pub reportError: CBComposeError,
     pub privateContext: *mut ::core::ffi::c_void,
@@ -2640,7 +3219,7 @@ pub struct CBInstanceData {
 fn bindgen_test_layout_CBInstanceData() {
     assert_eq!(
         ::core::mem::size_of::<CBInstanceData>(),
-        72usize,
+        88usize,
         concat!("Size of: ", stringify!(CBInstanceData))
     );
     assert_eq!(
@@ -2680,7 +3259,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).shared as *const _ as usize },
-        40usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -2689,8 +3268,18 @@ fn bindgen_test_layout_CBInstanceData() {
         )
     );
     assert_eq!(
+        unsafe { &(*(::core::ptr::null::<CBInstanceData>())).onWorkerThread as *const _ as usize },
+        60usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(CBInstanceData),
+            "::",
+            stringify!(onWorkerThread)
+        )
+    );
+    assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).outputTypes as *const _ as usize },
-        52usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -2700,7 +3289,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).reportError as *const _ as usize },
-        64usize,
+        76usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -2710,7 +3299,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).privateContext as *const _ as usize },
-        68usize,
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -4501,4 +5090,10 @@ pub type CBChainblocksInterface =
     ::core::option::Option<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>;
 extern "C" {
     pub fn chainblocksInterface(abi_version: u32) -> *mut CBCore;
+}
+pub type __builtin_va_list = *mut ::std::os::raw::c_char;
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct lconv {
+    pub _address: u8,
 }
