@@ -660,34 +660,37 @@ struct ExpectLike {
       return Var(_unsafe);
   }
 
-  void warmup(CBContext *context) { _example.warmup(context); }
-
-  void cleanup() {
-    _example.cleanup();
-    _outputTypeHash = 0;
-    if (_derived) {
+  void destroy() {
+    if (_expectedType.basicType != None) {
       freeDerivedInfo(_expectedType);
-      _derived = false;
+      _expectedType = {};
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_example.isVariable()) {
+      throw ComposeError(
+          "The example value of ExpectLike cannot be a variable");
+    } else {
+      if (_expectedType.basicType != None) {
+        freeDerivedInfo(_expectedType);
+        _expectedType = {};
+      }
+      if (_example->valueType == CBType::Chain) {
+        auto chain = CBChain::sharedFromRef(_example->payload.chainValue);
+        _expectedType = chain->outputType;
+        _outputTypeHash = deriveTypeHash(_expectedType);
+        return _expectedType;
+      } else {
+        CBVar example = _example;
+        _expectedType = deriveTypeInfo(example);
+        _outputTypeHash = deriveTypeHash(_expectedType);
+        return _expectedType;
+      }
     }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // we could use compose but it's a bit unreliable cos we don't know when
-    // chain is composed
-    if (unlikely(_outputTypeHash == 0)) {
-      auto example = _example.get();
-      if (example.valueType == CBType::Chain) {
-        auto chain = CBChain::sharedFromRef(example.payload.chainValue);
-        _outputTypeHash = deriveTypeHash(chain->outputType);
-        _expectedType = chain->outputType;
-        _derived = false;
-      } else {
-        _outputTypeHash = deriveTypeHash(example);
-        _expectedType = deriveTypeInfo(example);
-        _derived = true;
-      }
-    }
-
     if (unlikely(input.valueType != _expectedType.basicType)) {
       LOG(ERROR) << "Unexpected value: " << input
                  << " expected type: " << _expectedType;

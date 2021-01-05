@@ -93,7 +93,6 @@
 
    "Hello"
    (Assert.Is "Hello" true)
-   (ExpectLike inner1)
    (Log)
 
    77
@@ -488,6 +487,7 @@
    (Assert.Is "0x9000070000000000" true)
 
    "Test"
+   (ExpectLike inner1)
    (Any ["Test" "A"])
    (Log)
 
