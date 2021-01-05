@@ -964,7 +964,11 @@ struct Get : public VariableBase {
             }
           } else {
             // we got no key names
-            if (tableTypes.len == 1) {
+            if (_defaultValue.valueType != None) {
+              freeDerivedInfo(_defaultType);
+              _defaultType = deriveTypeInfo(_defaultValue);
+              return _defaultType;
+            } else if (tableTypes.len == 1) {
               // 1 type only so we assume we return that type
               return tableTypes.elements[0];
             } else {
