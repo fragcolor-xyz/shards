@@ -619,7 +619,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     }
     try {
       output = activateBlock(blk, context, input);
-      if (!context->shouldContinue()) {
+      if (unlikely(!context->shouldContinue())) {
         switch (context->getState()) {
         case CBChainState::Return:
           if (handlesReturn)

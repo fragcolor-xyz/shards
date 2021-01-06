@@ -39,7 +39,7 @@ enum CBType : uint8_t {
   Table,
   Chain,
   Object,
-  Array // Notice: of just bilttable types!
+  Array // Notice: of just bilttable types/WIP!
 };
 
 enum CBChainState : uint8_t {
