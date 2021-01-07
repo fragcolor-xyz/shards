@@ -891,12 +891,14 @@ struct Serialization {
   }
 
   std::unordered_map<std::string, CBChainRef> chains;
+  std::unordered_map<std::string, std::shared_ptr<CBlock>> defaultBlocks;
 
   void reset() {
     for (auto &ref : chains) {
       CBChain::deleteRef(ref.second);
     }
     chains.clear();
+    defaultBlocks.clear();
   }
 
   ~Serialization() { reset(); }
@@ -1387,10 +1389,20 @@ struct Serialization {
       write((const uint8_t *)name, len);
       total += len;
       // params
+      // well, this is bad and should be fixed somehow at some point
+      // we are creating a block just to compare to figure default values
+      auto model =
+          defaultBlocks
+              .emplace(name, std::shared_ptr<CBlock>(
+                                 createBlock(name),
+                                 [](CBlock *block) { block->destroy(block); }))
+              .first->second.get();
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
+        auto dval = model->getParam(model, int(i));
         auto pval = blk->getParam(blk, int(i));
-        total += serialize(pval, write);
+        if (pval != dval)
+          total += serialize(pval, write);
       }
       // optional state
       if (blk->getState) {
