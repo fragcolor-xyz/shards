@@ -1122,11 +1122,15 @@ struct Serialization {
       }
       blk->setup(blk);
       // TODO we need some block hashing to validate maybe?
-      auto params = blk->parameters(blk);
-      for (uint32_t i = 0; i < params.len; i++) {
+      auto params = blk->parameters(blk).len + 1;
+      while (params--) {
+        int idx;
+        read((uint8_t *)&idx, sizeof(int));
+        if (idx == -1)
+          break;
         CBVar tmp{};
         deserialize(read, tmp);
-        blk->setParam(blk, int(i), &tmp);
+        blk->setParam(blk, idx, &tmp);
         varFree(tmp);
       }
       if (blk->setState) {
@@ -1399,11 +1403,17 @@ struct Serialization {
               .first->second.get();
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
-        auto dval = model->getParam(model, int(i));
-        auto pval = blk->getParam(blk, int(i));
-        if (pval != dval)
-          total += serialize(pval, write);
+        auto idx = int(i);
+        auto dval = model->getParam(model, idx);
+        auto pval = blk->getParam(blk, idx);
+        if (pval != dval) {
+          write((const uint8_t *)&idx, sizeof(int));
+          total += serialize(pval, write) + sizeof(int);
+        }
       }
+      int idx = -1; // end of params
+      write((const uint8_t *)&idx, sizeof(int));
+      total += sizeof(int);
       // optional state
       if (blk->getState) {
         auto state = blk->getState(blk);
