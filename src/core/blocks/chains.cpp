@@ -850,7 +850,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
        "so a child pause won't pause the root.",
        {ModeType}},
       {"OnReload",
-       "Blocks to execute when the chain is reloaded",
+       "Blocks to execute when the chain is reloaded, the input of this flow "
+       "will be the reloaded chain.",
        {CoreInfo::BlocksOrNone}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -943,7 +944,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         doWarmup(context);
         LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
         CBVar output{};
-        _onReloadBlocks.activate(context, Var::Empty, output);
+        _onReloadBlocks.activate(context, Var(chain), output);
       }
     }
 
