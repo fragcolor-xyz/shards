@@ -164,7 +164,6 @@ bool validateSetParam(CBlock *block, int index, const CBVar &value,
 
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
-
 namespace chainblocks {
 
 void installSignalHandlers();

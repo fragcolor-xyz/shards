@@ -4,10 +4,6 @@
 #ifndef CB_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY
 
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/error.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
@@ -22,7 +18,6 @@ namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include "asiotools.hpp"
-#include "chainblocks.hpp"
 #include "shared.hpp"
 
 namespace chainblocks {

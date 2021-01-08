@@ -835,6 +835,10 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
+
+  if(WIN32)
+    set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp PROPERTIES COMPILE_FLAGS -O1)
+  endif()
 else()
   set(
     RUNTIME_SRC
