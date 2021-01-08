@@ -1119,8 +1119,15 @@ struct Serialization {
       if (!blk) {
         throw CBException("Block not found! name: " + std::string(&buf[0]));
       }
+      // validate the hash of the block
+      uint32_t crc;
+      read((uint8_t *)&crc, sizeof(uint32_t));
+      if (blk->hash(blk) != crc) {
+        throw CBException("Block hash mismatch, the serialized version is "
+                          "probably different: " +
+                          std::string(&buf[0]));
+      }
       blk->setup(blk);
-      // TODO we need some block hashing to validate maybe?
       auto params = blk->parameters(blk).len + 1;
       while (params--) {
         int idx;
@@ -1391,6 +1398,10 @@ struct Serialization {
       total += sizeof(uint32_t);
       write((const uint8_t *)name, len);
       total += len;
+      // serialize the hash of the block as well
+      auto crc = blk->hash(blk);
+      write((const uint8_t *)&crc, sizeof(uint32_t));
+      total += sizeof(uint32_t);
       // params
       // well, this is bad and should be fixed somehow at some point
       // we are creating a block just to compare to figure default values

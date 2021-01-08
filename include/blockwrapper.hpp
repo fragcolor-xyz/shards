@@ -9,6 +9,7 @@
 
 namespace chainblocks {
 CB_HAS_MEMBER_TEST(name);
+CB_HAS_MEMBER_TEST(hash);
 CB_HAS_MEMBER_TEST(help);
 CB_HAS_MEMBER_TEST(setup);
 CB_HAS_MEMBER_TEST(destroy);
@@ -35,6 +36,7 @@ template <class T> struct BlockWrapper {
   CBlock header;
   T block;
   static inline const char *name = "";
+  static inline uint32_t crc = 0;
 
   static __cdecl CBlock *create() {
     CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16})
@@ -47,6 +49,15 @@ template <class T> struct BlockWrapper {
       });
     } else {
       result->name = static_cast<CBNameProc>([](CBlock *b) { return name; });
+    }
+
+    // name
+    if constexpr (has_hash<T>::value) {
+      result->hash = static_cast<CBHashProc>([](CBlock *b) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.hash();
+      });
+    } else {
+      result->hash = static_cast<CBHashProc>([](CBlock *b) { return crc; });
     }
 
     // help
@@ -269,6 +280,8 @@ template <class T> struct BlockWrapper {
 
 #define REGISTER_CBLOCK(__name__, __type__)                                    \
   ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
+  ::chainblocks::BlockWrapper<__type__>::crc =                                 \
+      ::chainblocks::crc32(__name__ CHAINBLOCKS_CURRENT_ABI_STR);              \
   ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
                                &::chainblocks::BlockWrapper<__type__>::create, \
                                NAMEOF_FULL_TYPE(__type__))

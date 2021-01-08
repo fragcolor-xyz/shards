@@ -635,6 +635,7 @@ typedef struct CBlock *(__cdecl *CBBlockConstructor)();
 typedef void(__cdecl *CBCallback)();
 
 typedef const char *(__cdecl *CBNameProc)(struct CBlock *);
+typedef uint32_t(__cdecl *CBHashProc)(struct CBlock *);
 typedef const char *(__cdecl *CBHelpProc)(struct CBlock *);
 
 // Construction/Destruction
@@ -698,6 +699,7 @@ struct CBlock {
 
   CBNameProc name; // Returns the name of the block, do not free the string,
                    // generally const
+  CBHashProc hash; // Returns the hash of the block, useful for serialization
   CBHelpProc help; // Returns the help text of the block, do not free the
                    // string, generally const
 
@@ -1048,6 +1050,7 @@ typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #endif
 
 #define CHAINBLOCKS_CURRENT_ABI 0x20200101
+#define CHAINBLOCKS_CURRENT_ABI_STR "0x20200101"
 
 #if defined(__cplusplus)
 extern "C" {

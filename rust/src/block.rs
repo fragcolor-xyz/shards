@@ -32,6 +32,7 @@ use std::os::raw::c_char;
 
 pub trait Block {
   fn registerName() -> &'static str;
+  fn hash() -> u32;
 
   fn name(&mut self) -> &str;
   fn help(&mut self) -> &str {
@@ -116,6 +117,10 @@ unsafe extern "C" fn cblock_name<T: Block>(arg1: *mut CBlock) -> *const ::std::o
   let name = (*blk).block.name();
   (*blk).name = Some(CString::new(name).expect("CString::new failed"));
   (*blk).name.as_ref().unwrap().as_ptr()
+}
+
+unsafe extern "C" fn cblock_hash<T: Block>(_arg1: *mut CBlock) -> u32 {
+  T::hash()
 }
 
 unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> *const ::std::os::raw::c_char {
@@ -275,6 +280,7 @@ pub fn create<T: Default + Block>() -> BlockWrapper<T> {
       inlineBlockId: 0,
       owned: false,
       name: Some(cblock_name::<T>),
+      hash: Some(cblock_hash::<T>),
       help: Some(cblock_help::<T>),
       inputTypes: Some(cblock_inputTypes::<T>),
       outputTypes: Some(cblock_outputTypes::<T>),

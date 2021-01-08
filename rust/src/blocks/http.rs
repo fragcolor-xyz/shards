@@ -162,6 +162,10 @@ impl Block for Get {
       Ok(self.output.0)
     }))
   }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("Http.Get2-rust-0x20200101")
+  }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
