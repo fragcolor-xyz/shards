@@ -31,11 +31,11 @@ jobs:
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DEMSCRIPTEN_PTHREADS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
-    # - name: Test
-    #   run: |
-    #     cd build
-    #     node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
-    #     node --experimental-wasm-threads --experimental-wasm-bulk-memory test_runtime.js
+    - name: Test
+      run: |
+        cd build
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm-mt
@@ -71,11 +71,11 @@ jobs:
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
-    # - name: Test
-    #   run: |
-    #     cd build
-    #     node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
-    #     node --experimental-wasm-threads --experimental-wasm-bulk-memory test_runtime.js
+    - name: Test
+      run: |
+        cd build
+        node ../src/tests/test_cbl.js
+        node ../src/tests/test_runtime.js
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
