@@ -43,7 +43,6 @@ jobs:
           build/cbl.wasm
           build/cbl.js
           build/cbl.worker.js
-          build/cbl.html
 
   wasm32-emscripten:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
@@ -82,7 +81,6 @@ jobs:
         path: |
           build/cbl.wasm
           build/cbl.js
-          build/cbl.html
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
