@@ -922,9 +922,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
-if(EMSCRIPTEN)
-set_target_properties(cbl PROPERTIES SUFFIX ".html")
-endif()
+# if(EMSCRIPTEN)
+# set_target_properties(cbl PROPERTIES SUFFIX ".html")
+# endif()
 ###
 
 ### our experimental edn eval
