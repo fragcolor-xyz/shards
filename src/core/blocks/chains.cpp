@@ -107,7 +107,7 @@ struct ChainBase {
 
     LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
                << " composing: " << chain->name
-               << " input basic type: " << type2Name(data.inputType.basicType);
+               << " input type: " << data.inputType;
 
     // we can add early in this case!
     // useful for Resume/Start
@@ -178,10 +178,8 @@ struct ChainBase {
       // verify input type
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
-        LOG(ERROR) << "Previous chain composed type "
-                   << type2Name(chain->inputType.basicType)
-                   << " requested call type "
-                   << type2Name(data.inputType.basicType);
+        LOG(ERROR) << "Previous chain composed type " << chain->inputType
+                   << " requested call type " << data.inputType;
         throw ComposeError("Attempted to call an already composed chain with a "
                            "different input type! chain: " +
                            chain->name);
@@ -224,8 +222,7 @@ struct ChainBase {
       if (done) {
         LOG(TRACE) << "Marking as composed: " << chain->name
                    << " ptr: " << chain.get() << " inputType "
-                   << type2Name(chain->inputType.basicType) << " outputType "
-                   << type2Name(chain->outputType.basicType);
+                   << chain->inputType << " outputType " << chain->outputType;
       }
     }
 
@@ -356,11 +353,11 @@ struct StopChain : public ChainBase {
   void composed(const CBChain *chain, const CBComposeResult *result) {
     if (!chain && chainref->valueType == None &&
         _inputType != result->outputType) {
-      throw ComposeError(
-          "Stop input and chain output type mismatch, Stop "
-          "input must be the same type of the chain's output "
-          "(regular flow), chain: " +
-          chain->name + " expected: " + type2Name(chain->outputType.basicType));
+      LOG(ERROR)
+          << "Stop input and chain output type mismatch, Stop input must be "
+             "the same type of the chain's output (regular flow), chain: "
+          << chain->name << " expected: " << chain->outputType;
+      throw ComposeError("Stop input and chain output type mismatch");
     }
   }
 
