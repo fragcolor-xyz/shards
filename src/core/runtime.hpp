@@ -126,25 +126,6 @@ private:
 };
 
 namespace chainblocks {
-void freeDerivedInfo(CBTypeInfo info);
-CBTypeInfo deriveTypeInfo(const CBVar &value);
-
-uint64_t deriveTypeHash(const CBVar &value);
-uint64_t deriveTypeHash(const CBTypeInfo &value);
-
-struct ToTypeInfo {
-  ToTypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
-
-  ~ToTypeInfo() { freeDerivedInfo(_info); }
-
-  operator const CBTypeInfo &() { return _info; }
-
-  const CBTypeInfo *operator->() const { return &_info; }
-
-private:
-  CBTypeInfo _info;
-};
-
 [[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
                                            CBValidationCallback callback,
                                            void *userData, CBInstanceData data);

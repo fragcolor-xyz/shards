@@ -172,6 +172,35 @@ struct stack_allocator {
     return lhs._res != rhs._res;
   }
 };
+
+void freeDerivedInfo(CBTypeInfo info);
+CBTypeInfo deriveTypeInfo(const CBVar &value);
+CBTypeInfo cloneTypeInfo(const CBTypeInfo &other);
+
+uint64_t deriveTypeHash(const CBVar &value);
+uint64_t deriveTypeHash(const CBTypeInfo &value);
+
+struct TypeInfo {
+  TypeInfo() {}
+  TypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
+  TypeInfo(const CBTypeInfo &info) { _info = cloneTypeInfo(info); }
+  TypeInfo &operator=(const CBTypeInfo &info) {
+    freeDerivedInfo(_info);
+    _info = cloneTypeInfo(info);
+    return *this;
+  }
+
+  ~TypeInfo() { freeDerivedInfo(_info); }
+
+  operator const CBTypeInfo &() { return _info; }
+
+  const CBTypeInfo *operator->() const { return &_info; }
+
+  const CBTypeInfo &operator*() const { return _info; }
+
+private:
+  CBTypeInfo _info{};
+};
 } // namespace chainblocks
 
 #ifndef __EMSCRIPTEN__
@@ -276,7 +305,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   bool warmedUp{false};
   std::unordered_set<void *> chainUsers;
 
-  mutable CBTypeInfo inputType{};
+  // we need to clone this, as might disappear, since outside chain
+  mutable chainblocks::TypeInfo inputType{};
+  // this one is a block inside the chain, so won't disappear
   mutable CBTypeInfo outputType{};
   mutable std::vector<std::string> requiredVariables;
 

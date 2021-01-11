@@ -460,12 +460,12 @@ struct IsNotNone {
 struct Restart {
   // Must ensure input is the same kind of chain root input
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.chain->inputType.basicType != CBType::None &&
+    if (data.chain->inputType->basicType != CBType::None &&
         data.inputType != data.chain->inputType)
       throw ComposeError("Restart input and chain input type mismatch, Restart "
                          "feeds back to the chain input, chain: " +
                          data.chain->name + " expected: " +
-                         type2Name(data.chain->inputType.basicType));
+                         type2Name(data.chain->inputType->basicType));
     return data.inputType; // actually we are flow stopper
   }
 

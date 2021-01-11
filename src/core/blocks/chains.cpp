@@ -178,7 +178,7 @@ struct ChainBase {
       // verify input type
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
-        LOG(ERROR) << "Previous chain composed type " << chain->inputType
+        LOG(ERROR) << "Previous chain composed type " << *chain->inputType
                    << " requested call type " << data.inputType;
         throw ComposeError("Attempted to call an already composed chain with a "
                            "different input type! chain: " +
@@ -222,7 +222,7 @@ struct ChainBase {
       if (done) {
         LOG(TRACE) << "Marking as composed: " << chain->name
                    << " ptr: " << chain.get() << " inputType "
-                   << chain->inputType << " outputType " << chain->outputType;
+                   << *chain->inputType << " outputType " << chain->outputType;
       }
     }
 

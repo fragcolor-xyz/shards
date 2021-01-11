@@ -1394,6 +1394,38 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   return varType;
 }
 
+CBTypeInfo cloneTypeInfo(const CBTypeInfo &other) {
+  // We need to guess a valid CBTypeInfo for this var in order to validate
+  // Build a CBTypeInfo for the var
+  // this is not complete at all, missing Array and ContextVar for example
+  CBTypeInfo varType;
+  memcpy(&varType, &other, sizeof(CBTypeInfo));
+  switch (varType.basicType) {
+  case Seq: {
+    varType.seqTypes = {};
+    for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
+      chainblocks::arrayPush(varType.seqTypes, cloned);
+    }
+    break;
+  }
+  case Table: {
+    varType.table = {};
+    for (uint32_t i = 0; i < other.table.types.len; i++) {
+      auto cloned = cloneTypeInfo(other.table.types.elements[i]);
+      chainblocks::arrayPush(varType.table.types, cloned);
+    }
+    for (uint32_t i = 0; i < other.table.keys.len; i++) {
+      chainblocks::arrayPush(varType.table.keys, other.table.keys.elements[i]);
+    }
+    break;
+  }
+  default:
+    break;
+  };
+  return varType;
+} // namespace chainblocks
+
 // this is potentially called from unsafe code (e.g. networking)
 // let's do some crude stack protection here
 static thread_local int deriveTypeHashRecursionCounter;
@@ -2359,7 +2391,7 @@ void CBChain::reset() {
 
   chainUsers.clear();
   composedHash = 0;
-  inputType = {};
+  inputType = CBTypeInfo();
   outputType = {};
   requiredVariables.clear();
 
