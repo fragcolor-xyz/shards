@@ -11,6 +11,7 @@ static const Regex hexRegex("^0x[0-9a-fA-F]+$");
 static const Regex floatRegex("^[-+]?[0-9]*\\.?[0-9]+$");
 static const Regex closeRegex("[\\)\\]}]");
 
+static const Regex newlineRegex("[\\n\\r]");
 static const Regex whitespaceRegex("[\\s,]+|;.*");
 static const Regex tokenRegexes[] = {
     Regex("~@"),
@@ -42,6 +43,8 @@ public:
         return m_iter == m_end;
     }
 
+    int line() const { return m_currentLine;}
+
 private:
     void skipWhitespace();
     void nextToken();
@@ -53,6 +56,7 @@ private:
     String      m_token;
     StringIter  m_iter;
     StringIter  m_end;
+    int m_currentLine{1};
 };
 
 Tokeniser::Tokeniser(const String& input)
@@ -102,18 +106,20 @@ void Tokeniser::nextToken()
 
     String mismatch(m_iter, m_end);
     if (mismatch[0] == '"') {
-        MAL_CHECK(false, "expected '\"', got EOF");
+        MAL_CHECK(false, "expected '\"', got EOF, line: %i", line());
     }
     else {
-        MAL_CHECK(false, "unexpected '%s'", mismatch.c_str());
+        MAL_CHECK(false, "unexpected '%s', line: %i", mismatch.c_str(), line());
     }
 }
 
 void Tokeniser::skipWhitespace()
 {
+    auto start = m_iter;
     while (matchRegex(whitespaceRegex)) {
         m_iter += m_token.size();
     }
+    m_currentLine += std::count(start, m_iter, '\n');
 }
 
 static malValuePtr readAtom(Tokeniser& tokeniser);
@@ -133,10 +139,10 @@ malValuePtr readStr(const String& input)
 
 static malValuePtr readForm(Tokeniser& tokeniser)
 {
-    MAL_CHECK(!tokeniser.eof(), "expected form, got EOF");
+    MAL_CHECK(!tokeniser.eof(), "expected form, got EOF, line: %i", tokeniser.line());
     String token = tokeniser.peek();
 
-    MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s'", token.c_str());
+    MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s', line: %i", token.c_str(), tokeniser.line());
 
     if (token == "(") {
         tokeniser.next();
@@ -188,7 +194,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     };
 
     String token = tokeniser.next();
-    
+
     if (token[0] == '"') {
         return mal::string(unescape(token));
     }
@@ -196,16 +202,16 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     if (token[0] == '#' && token[1] == '"') {
         return mal::string(token.substr(2, token.length() - 3));
     }
-    
+
     if (token[0] == ':') {
         return mal::keyword(token);
     }
-    
+
     if (token[0] == '.') {
       auto str = token.substr(1);
       return mal::contextVar(str);
     }
-    
+
     if (token == "^") {
         malValuePtr meta = readForm(tokeniser);
         malValuePtr value = readForm(tokeniser);
@@ -223,7 +229,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
             return processMacro(tokeniser, macro.symbol);
         }
     }
-    
+
     if (std::regex_match(token, intRegex)) {
         return mal::number(token, true);
     }
@@ -235,7 +241,7 @@ static malValuePtr readAtom(Tokeniser& tokeniser)
     if (std::regex_match(token, hexRegex)) {
         return mal::numberHex(token);
     }
-    
+
     return mal::symbol(token);
 }
 
@@ -243,7 +249,7 @@ static void readList(Tokeniser& tokeniser, malValueVec* items,
                       const String& end)
 {
     while (1) {
-        MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF", end.c_str());
+        MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF, line: %i", end.c_str(), tokeniser.line());
         if (tokeniser.peek() == end) {
             tokeniser.next();
             return;

@@ -1,5 +1,7 @@
                                         ; must return a chain as script result
 (do
+  (def defined-text "Hello world!")
+
   (Chain "loaded"
          (Get "var")
          (Math.Add 1)
@@ -7,5 +9,6 @@
          (Msg "Hello")
          (Time.Delta)
          (Log "DT")
-         (Detach "myChain")))
+         (Detach "myChain")
+         (eval (read-string (str "~[" (slurp "loadme-extra.clj") "]")))))
 

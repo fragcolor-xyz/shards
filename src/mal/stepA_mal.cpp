@@ -172,7 +172,9 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env)
             if (special == "def!") {
                 checkArgsIs("def!", 2, argCount);
                 const malSymbol* id = VALUE_CAST(malSymbol, list->item(1));
-                return env->set(id->value(), EVAL(list->item(2), env));
+                auto rootEnv = env->getRoot();
+                auto e = rootEnv != nullptr ? rootEnv : env;
+                return e->set(id->value(), EVAL(list->item(2), env));
             }
 
             if (special == "defmacro!") {
@@ -181,7 +183,9 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env)
                 const malSymbol* id = VALUE_CAST(malSymbol, list->item(1));
                 malValuePtr body = EVAL(list->item(2), env);
                 const malLambda* lambda = VALUE_CAST(malLambda, body);
-                return env->set(id->value(), mal::macro(*lambda));
+                auto rootEnv = env->getRoot();
+                auto e = rootEnv != nullptr ? rootEnv : env;
+                return e->set(id->value(), mal::macro(*lambda));
             }
 
             if (special == "do") {
