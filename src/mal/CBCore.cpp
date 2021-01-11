@@ -375,6 +375,7 @@ struct ChainFileWatcher {
   std::atomic_bool running;
   std::thread worker;
   std::string fileName;
+  std::string autoexec;
   std::string path;
   boost::lockfree::queue<ChainLoadResult> results;
   std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
@@ -498,15 +499,20 @@ struct ChainFileWatcher {
     }
   }
 
-  explicit ChainFileWatcher(std::string &file, std::string currentPath,
-                            const CBInstanceData &data)
-      : running(true), fileName(file), path(currentPath), results(2),
-        garbage(2), inputTypeInfo(data.inputType), shared(data.shared) {
+  explicit ChainFileWatcher(const std::string &file, std::string currentPath,
+                            const CBInstanceData &data,
+                            const std::string &autoexec)
+      : running(true), fileName(file), autoexec(autoexec), path(currentPath),
+        results(2), garbage(2), inputTypeInfo(data.inputType),
+        shared(data.shared) {
     node = data.chain->node;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
     localRoot = std::filesystem::path(path).string();
     try {
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+      if (this->autoexec.size() > 0) {
+        maleval(this->autoexec.c_str(), rootEnv);
+      }
     } catch (const std::exception &e) {
       LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
       throw e;
@@ -519,6 +525,9 @@ struct ChainFileWatcher {
       localRoot = std::filesystem::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+        if (this->autoexec.size() > 0) {
+          maleval(this->autoexec.c_str(), rootEnv);
+        }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
         throw e;
@@ -556,6 +565,10 @@ public:
   malChainProvider(const MalString &name)
       : chainblocks::ChainProvider(), _filename(name), _watcher(nullptr) {}
 
+  malChainProvider(const MalString &name, const MalString &autoexec)
+      : chainblocks::ChainProvider(), _filename(name), _autoexec(autoexec),
+        _watcher(nullptr) {}
+
   malChainProvider(const malCBVar &that, const malValuePtr &meta) = delete;
 
   virtual ~malChainProvider() {}
@@ -574,7 +587,7 @@ public:
   bool ready() override { return bool(_watcher); }
 
   void setup(const char *path, const CBInstanceData &data) override {
-    _watcher.reset(new ChainFileWatcher(_filename, path, data));
+    _watcher.reset(new ChainFileWatcher(_filename, path, data, _autoexec));
   }
 
   bool updated() override {
@@ -605,6 +618,7 @@ public:
 
 private:
   MalString _filename;
+  MalString _autoexec;
   std::unique_ptr<ChainFileWatcher> _watcher;
 };
 
@@ -1255,15 +1269,25 @@ BUILTIN("LOG") {
 }
 
 BUILTIN("Chain@") {
-  CHECK_ARGS_IS(1);
+  CHECK_ARGS_AT_LEAST(1);
   ARG(malString, value);
-  return malValuePtr(new malChainProvider(value->ref()));
+  if (argsBegin != argsEnd) {
+    ARG(malString, autoexec);
+    return malValuePtr(new malChainProvider(value->ref(), autoexec->ref()));
+  } else {
+    return malValuePtr(new malChainProvider(value->ref()));
+  }
 }
 
 BUILTIN("Chain*") {
-  CHECK_ARGS_IS(1);
+  CHECK_ARGS_AT_LEAST(1);
   ARG(malString, value);
-  return malValuePtr(new malChainProvider(value->ref()));
+  if (argsBegin != argsEnd) {
+    ARG(malString, autoexec);
+    return malValuePtr(new malChainProvider(value->ref(), autoexec->ref()));
+  } else {
+    return malValuePtr(new malChainProvider(value->ref()));
+  }
 }
 
 BUILTIN("-->") {

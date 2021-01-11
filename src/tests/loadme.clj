@@ -1,6 +1,6 @@
                                         ; must return a chain as script result
 (do
-  (def defined-text "Hello world!")
+  (def defined-text1 "Hello world!")
 
   (Chain "loaded"
          (Get "var")
