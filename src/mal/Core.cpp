@@ -9,15 +9,6 @@
 #include <fstream>
 #include <iostream>
 
-#define CHECK_ARGS_IS(expected)                                                \
-  checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_BETWEEN(min, max)                                           \
-  checkArgsBetween(name.c_str(), min, max, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_AT_LEAST(expected)                                          \
-  checkArgsAtLeast(name.c_str(), expected, std::distance(argsBegin, argsEnd))
-
 static String printValues(malValueIter begin, malValueIter end,
                           const String &sep, bool readably);
 

@@ -7,6 +7,37 @@
 #include <exception>
 #include <map>
 
+#define CHECK_ARGS_IS(expected)                                                \
+  try {                                                                        \
+    checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd));    \
+  } catch (std::string & s) {                                                  \
+    if (*argsBegin != nullptr)                                                 \
+      s += ", line: " + std::to_string((*argsBegin)->line);                    \
+    throw s;                                                                   \
+  }
+
+#define CHECK_ARGS_BETWEEN(min, max)                                           \
+  [&]() {                                                                      \
+    try {                                                                      \
+      return checkArgsBetween(name.c_str(), min, max,                          \
+                              std::distance(argsBegin, argsEnd));              \
+    } catch (std::string & s) {                                                \
+      if (*argsBegin != nullptr)                                               \
+        s += ", line: " + std::to_string((*argsBegin)->line);                  \
+      throw s;                                                                 \
+    }                                                                          \
+  }()
+
+#define CHECK_ARGS_AT_LEAST(expected)                                          \
+  try {                                                                        \
+    checkArgsAtLeast(name.c_str(), expected,                                   \
+                     std::distance(argsBegin, argsEnd));                       \
+  } catch (std::string & s) {                                                  \
+    if (*argsBegin != nullptr)                                                 \
+      s += ", line: " + std::to_string((*argsBegin)->line);                    \
+    throw s;                                                                   \
+  }
+
 class malEmptyInputException : public std::exception {};
 
 class malValue : public RefCounted {
@@ -39,7 +70,8 @@ protected:
 
 template <class T> T *value_cast(malValuePtr obj, const char *typeName) {
   T *dest = dynamic_cast<T *>(obj.ptr());
-  MAL_CHECK(dest != NULL, "%s is not a %s, line: %u", obj->print(true).c_str(), typeName, obj->line);
+  MAL_CHECK(dest != NULL, "%s is not a %s, line: %u", obj->print(true).c_str(),
+            typeName, obj->line);
   return dest;
 }
 

@@ -24,15 +24,6 @@
 #include <dlfcn.h>
 #endif
 
-#define CHECK_ARGS_IS(expected)                                                \
-  checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_BETWEEN(min, max)                                           \
-  checkArgsBetween(name.c_str(), min, max, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_AT_LEAST(expected)                                          \
-  checkArgsAtLeast(name.c_str(), expected, std::distance(argsBegin, argsEnd))
-
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
 static StaticList<malBuiltIn *> handlers;
