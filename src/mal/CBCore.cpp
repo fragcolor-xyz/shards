@@ -1711,6 +1711,55 @@ BUILTIN("hasBlock?") {
   }
 }
 
+BUILTIN("blocks") {
+  malValueVec v;
+  for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
+    v.emplace_back(mal::string(std::string(name)));
+  }
+  malValueVec *items = new malValueVec(v);
+  return mal::list(items);
+}
+
+BUILTIN("info") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, blkname);
+  const auto blkIt = builtIns.find(blkname->ref());
+  if (blkIt == builtIns.end()) {
+    return mal::nilValue();
+  } else {
+    malHash::Map map;
+    auto block = createBlock(blkname->ref().c_str());
+    DEFER(block->destroy(block));
+
+    map["help"] = mal::string(block->help(block));
+
+    malHash::Map pmap;
+    auto params = block->parameters(block);
+    for (uint32_t i = 0; i < params.len; i++) {
+      pmap["name"] = mal::string(params.elements[i].name);
+      pmap["help"] = mal::string(params.elements[i].help);
+      std::stringstream ss;
+      ss << params.elements[i].valueTypes;
+      pmap["types"] = mal::string(ss.str());
+    }
+    map["parameters"] = mal::hash(pmap);
+
+    {
+      std::stringstream ss;
+      ss << block->inputTypes(block);
+      map["inputTypes"] = mal::string(ss.str());
+    }
+
+    {
+      std::stringstream ss;
+      ss << block->outputTypes(block);
+      map["outputTypes"] = mal::string(ss.str());
+    }
+
+    return mal::hash(map);
+  }
+}
+
 BUILTIN_ISA("Var?", malCBVar);
 BUILTIN_ISA("Node?", malCBNode);
 BUILTIN_ISA("Chain?", malCBChain);

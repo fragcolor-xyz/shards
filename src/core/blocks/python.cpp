@@ -1086,19 +1086,21 @@ struct Py {
   CBTypesInfo inputTypes() {
     Context ctx(_ts);
 
-    PyObj pytype;
-    if (_self.get())
-      pytype = Env::call(_inputTypes, Env::incRefGet(_self));
-    else
-      pytype = Env::call(_inputTypes);
-    try {
-      Env::extractTypes(pytype, _inputTypesStorage, _inputInners);
-    } catch (Env::ToTypesFailed &ex) {
-      LOG(ERROR) << ex.what();
-      LOG(ERROR) << "Script: " << _scriptName
-                 << " inputTypes method should return a tuple of strings "
-                    "or a string.";
-      throw CBException("Failed call inputTypes on python script!");
+    if (Env::isCallable(_inputTypes)) {
+      PyObj pytype;
+      if (_self.get())
+        pytype = Env::call(_inputTypes, Env::incRefGet(_self));
+      else
+        pytype = Env::call(_inputTypes);
+      try {
+        Env::extractTypes(pytype, _inputTypesStorage, _inputInners);
+      } catch (Env::ToTypesFailed &ex) {
+        LOG(ERROR) << ex.what();
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " inputTypes method should return a tuple of strings "
+                      "or a string.";
+        throw CBException("Failed call inputTypes on python script!");
+      }
     }
     return _inputTypesStorage;
   }
@@ -1106,19 +1108,21 @@ struct Py {
   CBTypesInfo outputTypes() {
     Context ctx(_ts);
 
-    PyObj pytype;
-    if (_self.get())
-      pytype = Env::call(_outputTypes, Env::incRefGet(_self));
-    else
-      pytype = Env::call(_outputTypes);
-    try {
-      Env::extractTypes(pytype, _outputTypesStorage, _outputInners);
-    } catch (Env::ToTypesFailed &ex) {
-      LOG(ERROR) << ex.what();
-      LOG(ERROR) << "Script: " << _scriptName
-                 << " outputTypes method should return a tuple of strings "
-                    "or a string.";
-      throw CBException("Failed call outputTypes on python script!");
+    if (Env::isCallable(_outputTypes)) {
+      PyObj pytype;
+      if (_self.get())
+        pytype = Env::call(_outputTypes, Env::incRefGet(_self));
+      else
+        pytype = Env::call(_outputTypes);
+      try {
+        Env::extractTypes(pytype, _outputTypesStorage, _outputInners);
+      } catch (Env::ToTypesFailed &ex) {
+        LOG(ERROR) << ex.what();
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " outputTypes method should return a tuple of strings "
+                      "or a string.";
+        throw CBException("Failed call outputTypes on python script!");
+      }
     }
     return _outputTypesStorage;
   }

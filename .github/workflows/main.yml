@@ -148,6 +148,7 @@ jobs:
         ./cbl ../src/tests/failures.clj
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/shell.clj
+        ./cbl ../src/tests/blocks.clj
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
