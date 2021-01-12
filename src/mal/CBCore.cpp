@@ -1733,16 +1733,18 @@ BUILTIN("info") {
 
     map["help"] = mal::string(block->help(block));
 
-    malHash::Map pmap;
     auto params = block->parameters(block);
+    malValueVec pvec;
     for (uint32_t i = 0; i < params.len; i++) {
+      malHash::Map pmap;
       pmap["name"] = mal::string(params.elements[i].name);
       pmap["help"] = mal::string(params.elements[i].help);
       std::stringstream ss;
       ss << params.elements[i].valueTypes;
       pmap["types"] = mal::string(ss.str());
+      pvec.emplace_back(mal::hash(pmap));
     }
-    map["parameters"] = mal::hash(pmap);
+    map["parameters"] = mal::list(pvec.begin(), pvec.end());
 
     {
       std::stringstream ss;

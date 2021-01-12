@@ -14,8 +14,13 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef NDEBUG
 #define CBCCSTR(_str_)                                                         \
   ::chainblocks::getCompiledCompressedString(::chainblocks::crc32(_str_))
+#else
+#define CBCCSTR(_str_)                                                         \
+  ::chainblocks::setCompiledCompressedString(::chainblocks::crc32(_str_), _str_)
+#endif
 
 namespace chainblocks {
 // compile time CRC32
@@ -70,7 +75,11 @@ constexpr uint32_t crc32(std::string_view str) {
   return crc ^ 0xffffffff;
 }
 
+#ifdef NDEBUG
 const char *getCompiledCompressedString(uint32_t crc);
+#else
+const char *setCompiledCompressedString(uint32_t crc, const char *str);
+#endif
 
 // SFINAE tests
 #define CB_HAS_MEMBER_TEST(_name_)                                             \
