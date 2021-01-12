@@ -26,6 +26,19 @@
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
+const char *getCompiledCompressedString(uint32_t id) {
+  static std::unordered_map<uint32_t, const char *> CompiledCompressedStrings;
+  const auto s = CompiledCompressedStrings[id];
+  if (s == nullptr)
+    return "";
+  else
+    return s;
+}
+
+const char *operator"" _ccstr(size_t crc) {
+  return getCompiledCompressedString(crc);
+}
+
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();

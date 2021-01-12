@@ -43,7 +43,7 @@ private:
   CBVar _max{};
   static inline Parameters _params{
       {"Max",
-       "The maximum (if integer, not including) value to output.",
+       CBCCSTR("The maximum (if integer, not including) value to output."),
        {CoreInfo::NoneType, OUTTYPE}}
 
   };

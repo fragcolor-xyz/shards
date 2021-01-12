@@ -568,13 +568,14 @@ struct ToJson {
   bool _pure{true};
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Pure",
-                              "If the input string is generic pure json rather "
-                              "then chainblocks flavored json.",
-                              {CoreInfo::BoolType}},
-                             {"Indent",
-                              "How many spaces to use as json prettify indent.",
-                              {CoreInfo::IntType}}};
+    static Parameters params{
+        {"Pure",
+         CBCCSTR("If the input string is generic pure json rather then "
+                 "chainblocks flavored json."),
+         {CoreInfo::BoolType}},
+        {"Indent",
+         CBCCSTR("How many spaces to use as json prettify indent."),
+         {CoreInfo::IntType}}};
     return params;
   }
 
@@ -670,10 +671,11 @@ struct FromJson {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Pure",
-                              "If the input string is generic pure json rather "
-                              "then chainblocks flavored json.",
-                              {CoreInfo::BoolType}}};
+    static Parameters params{
+        {"Pure",
+         CBCCSTR("If the input string is generic pure json rather then "
+                 "chainblocks flavored json."),
+         {CoreInfo::BoolType}}};
     return params;
   }
 

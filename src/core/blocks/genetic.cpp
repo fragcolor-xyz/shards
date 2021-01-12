@@ -572,22 +572,32 @@ private:
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
-      {"Chain", "The chain to optimize and evolve.", {CoreInfo::ChainType}},
-      {"Fitness",
-       "The fitness chain to run at the end of the main chain evaluation and "
-       "using "
-       "its last output; should output a Float fitness value.",
+      {"Chain",
+       CBCCSTR("The chain to optimize and evolve."),
        {CoreInfo::ChainType}},
-      {"Population", "The population size.", {CoreInfo::IntType}},
-      {"Mutation", "The rate of mutation, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Crossover", "The rate of crossover, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Extinction",
-       "The rate of extinction, 0.1 = 10%.",
+      {"Fitness",
+       CBCCSTR(
+           "The fitness chain to run at the end of the main chain evaluation "
+           "and using its last output; should output a Float fitness value."),
+       {CoreInfo::ChainType}},
+      {"Population", CBCCSTR("The population size."), {CoreInfo::IntType}},
+      {"Mutation",
+       CBCCSTR("The rate of mutation, 0.1 = 10%."),
        {CoreInfo::FloatType}},
-      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Threads", "The number of cpu threads to use.", {CoreInfo::IntType}},
+      {"Crossover",
+       CBCCSTR("The rate of crossover, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Extinction",
+       CBCCSTR("The rate of extinction, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Elitism",
+       CBCCSTR("The rate of elitism, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Threads",
+       CBCCSTR("The number of cpu threads to use."),
+       {CoreInfo::IntType}},
       {"Coroutines",
-       "The number of coroutines to run on each thread.",
+       CBCCSTR("The number of coroutines to run on each thread."),
        {CoreInfo::IntType}}};
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
@@ -830,16 +840,16 @@ private:
   OwnedVar _mutations{};
   OwnedVar _options{};
   static inline Parameters _params{
-      {"Block", "The block to mutate.", {CoreInfo::BlockType}},
+      {"Block", CBCCSTR("The block to mutate."), {CoreInfo::BlockType}},
       {"Indices",
-       "The parameter indices to mutate of the inner block.",
+       CBCCSTR("The parameter indices to mutate of the inner block."),
        {CoreInfo::IntSeqType}},
       {"Mutations",
-       "Optional chains of blocks (or Nones) to call when mutating one of the "
-       "parameters, if empty a default operator will be used.",
+       CBCCSTR("Optional chains of blocks (or Nones) to call when mutating one "
+               "of the parameters, if empty a default operator will be used."),
        {CoreInfo::BlocksOrNoneSeq}},
       {"Options",
-       "Mutation options table - a table with mutation options.",
+       CBCCSTR("Mutation options table - a table with mutation options."),
        {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
 };
 
@@ -1050,9 +1060,11 @@ struct DBlock {
   static const char *help() { return "A dynamic block."; }
 
   static inline Parameters _params{
-      {"Name", "The name of the block to wrap.", {CoreInfo::StringType}},
+      {"Name",
+       CBCCSTR("The name of the block to wrap."),
+       {CoreInfo::StringType}},
       {"Parameters",
-       "The parameters to pass to the wrapped block.",
+       CBCCSTR("The parameters to pass to the wrapped block."),
        {CoreInfo::AnySeqType}}};
 
   static CBParametersInfo parameters() { return _params; }

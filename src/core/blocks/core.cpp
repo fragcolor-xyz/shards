@@ -19,14 +19,15 @@ struct JointOp {
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline ParamsInfo joinOpParams = ParamsInfo(
-      ParamsInfo::Param("From",
-                        "The name of the sequence variable to edit in place.",
-                        CoreInfo::AnyVarSeqType),
+      ParamsInfo::Param(
+          "From",
+          CBCCSTR("The name of the sequence variable to edit in place."),
+          CoreInfo::AnyVarSeqType),
       ParamsInfo::Param(
 
           "Join",
-          "Other columns to join sort/filter using the input (they must be "
-          "of the same length).",
+          CBCCSTR("Other columns to join sort/filter using the input (they "
+                  "must be of the same length)."),
           CoreInfo::AnyVarSeqType));
 
   void setParam(int index, const CBVar &value) {
@@ -143,12 +144,14 @@ struct Sort : public ActionJointOp {
       joinOpParams,
       ParamsInfo::Param(
           "Desc",
-          "If sorting should be in descending order, defaults ascending.",
+          CBCCSTR(
+              "If sorting should be in descending order, defaults ascending."),
           CoreInfo::BoolType),
-      ParamsInfo::Param("Key",
-                        "The blocks to use to transform the collection's items "
-                        "before they are compared. Can be None.",
-                        CoreInfo::BlocksOrNone));
+      ParamsInfo::Param(
+          "Key",
+          CBCCSTR("The blocks to use to transform the collection's items "
+                  "before they are compared. Can be None."),
+          CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -305,12 +308,12 @@ struct Remove : public ActionJointOp {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
       ParamsInfo::Param("Predicate",
-                        "The blocks to use as predicate, if true the item will "
-                        "be popped from the sequence.",
+                        CBCCSTR("The blocks to use as predicate, if true the "
+                                "item will be popped from the sequence."),
                         CoreInfo::Blocks),
       ParamsInfo::Param("Unordered",
-                        "Turn on to remove items very quickly but will not "
-                        "preserve the sequence items order.",
+                        CBCCSTR("Turn on to remove items very quickly but will "
+                                "not preserve the sequence items order."),
                         CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
@@ -420,9 +423,9 @@ struct Profile {
   std::string _label{"<no label>"};
 
   static inline Parameters _params{
-      {"Action", "The action blocks to profile.", {CoreInfo::Blocks}},
+      {"Action", CBCCSTR("The action blocks to profile."), {CoreInfo::Blocks}},
       {"Label",
-       "The label to print when outputting time data.",
+       CBCCSTR("The label to print when outputting time data."),
        {CoreInfo::StringType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -494,7 +497,8 @@ struct XpendTo : public XPendBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Collection", "The collection to add the input to.", xpendTypes));
+      "Collection", CBCCSTR("The collection to add the input to."),
+      xpendTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -696,7 +700,7 @@ struct ForEachBlock {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
@@ -752,7 +756,7 @@ struct Map {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   CBVar _output{};
@@ -832,7 +836,7 @@ struct Reduce {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   CBVar *_tmp = nullptr;
@@ -965,16 +969,16 @@ struct Erase : SeqUser {
 private:
   ParamVar _indices{};
   static inline Parameters _params = {
-      {"Indices", "One or multiple indices to filter from a sequence.",
+      {"Indices", CBCCSTR("One or multiple indices to filter from a sequence."),
        CoreInfo::TakeTypes},
-      {"Name", "The name of the variable.", CoreInfo::StringOrAnyVar},
+      {"Name", CBCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar},
       {"Key",
-       "The key of the value to read/write from/in the table "
-       "(this variable will become a table).",
+       CBCCSTR("The key of the value to read/write from/in the table (this "
+               "variable will become a table)."),
        {CoreInfo::StringType}},
       {"Global",
-       "If the variable is or should be available to all "
-       "of the chains in the same node.",
+       CBCCSTR("If the variable is or should be available to all of the chains "
+               "in the same node."),
        {CoreInfo::BoolType}}};
   bool _isTable;
 };
@@ -1111,12 +1115,12 @@ struct Replace {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
   static inline Parameters params{
       {"Patterns",
-       "The patterns to find.",
+       CBCCSTR("The patterns to find."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType,
         CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
       {"Replacements",
-       "The replacements to apply to the input, if a single value is "
-       "provided every match will be replaced with that single value.",
+       CBCCSTR("The replacements to apply to the input, if a single value is "
+               "provided every match will be replaced with that single value."),
        {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType,
         CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 

@@ -219,15 +219,16 @@ struct IndexOf {
   }
 
   static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Item",
+                        CBCCSTR("The item to find the index of from the input, "
+                                "if it's a sequence it will try to match all "
+                                "the items in the sequence, in sequence."),
+                        CoreInfo::AnyType),
       ParamsInfo::Param(
-          "Item",
-          "The item to find the index of from the input, if it's a sequence it "
-          "will try to match all the items in the sequence, in sequence.",
-          CoreInfo::AnyType),
-      ParamsInfo::Param("All",
-                        "If true will return a sequence with all the indices "
-                        "of Item, empty sequence if not found.",
-                        CoreInfo::BoolType));
+          "All",
+          CBCCSTR("If true will return a sequence with all the indices of "
+                  "Item, empty sequence if not found."),
+          CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 

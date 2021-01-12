@@ -61,17 +61,19 @@ struct Client {
   static inline Types InTypes{CoreInfo::NoneType, CoreInfo::StringTableType};
   static inline Parameters params{
       {"Host",
-       "The remote host address or IP.",
+       CBCCSTR("The remote host address or IP."),
        {CoreInfo::StringType, CoreInfo::StringVarType}},
       {"Target",
-       "The remote host target path.",
+       CBCCSTR("The remote host target path."),
        {CoreInfo::StringType, CoreInfo::StringVarType}},
       {"Port",
-       "The remote host port.",
+       CBCCSTR("The remote host port."),
        {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"Secure", "If the connection should be secured.", {CoreInfo::BoolType}},
+      {"Secure",
+       CBCCSTR("If the connection should be secured."),
+       {CoreInfo::BoolType}},
       {"Headers",
-       "The headers to attach to this request.",
+       CBCCSTR("The headers to attach to this request."),
        {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
         CoreInfo::NoneType}}};
 
@@ -291,9 +293,9 @@ template <http::verb VERB> struct PostLike final : public Client {
   static CBTypesInfo inputTypes() { return PostInTypes; }
 
   static const char *help() {
-    return "If the input is a table it will default to "
-           "application/x-www-form-urlencoded, if it's a string will be "
-           "application/json instead";
+    return CBCCSTR("If the input is a table it will default to "
+                   "application/x-www-form-urlencoded, if it's a string will "
+                   "be application/json instead");
   }
 
   void request(CBContext *context, const CBVar &input) override {
@@ -388,12 +390,14 @@ struct PeerError {
 struct Server {
   static inline Parameters params{
       {"Handler",
-       "The chain that will be spawned and handle a remote request.",
+       CBCCSTR("The chain that will be spawned and handle a remote request."),
        {CoreInfo::ChainOrNone}},
       {"Endpoint",
-       "The URL from where your service can be accessed by a client.",
+       CBCCSTR("The URL from where your service can be accessed by a client."),
        {CoreInfo::StringType}},
-      {"Port", "The port this service will use.", {CoreInfo::IntType}}};
+      {"Port",
+       CBCCSTR("The port this service will use."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -600,9 +604,11 @@ struct Response {
   static CBTypesInfo outputTypes() { return PostInTypes; }
 
   static inline Parameters params{
-      {"Status", "The HTTP status code to return.", {CoreInfo::IntType}},
+      {"Status",
+       CBCCSTR("The HTTP status code to return."),
+       {CoreInfo::IntType}},
       {"Headers",
-       "The headers to attach to this response.",
+       CBCCSTR("The headers to attach to this response."),
        {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
         CoreInfo::NoneType}}};
 
@@ -673,7 +679,7 @@ struct SendFile {
 
   static inline Parameters params{
       {"Headers",
-       "The headers to attach to this response.",
+       CBCCSTR("The headers to attach to this response."),
        {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
         CoreInfo::NoneType}}};
 

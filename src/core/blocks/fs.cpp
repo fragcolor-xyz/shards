@@ -32,7 +32,8 @@ struct Iterate {
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Recursive",
-      "If the iteration should be recursive, following sub-directories.",
+      CBCCSTR(
+          "If the iteration should be recursive, following sub-directories."),
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -152,7 +153,8 @@ struct Filename {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "NoExtension", "If the extension should be stripped from the result.",
+      "NoExtension",
+      CBCCSTR("If the extension should be stripped from the result."),
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -198,7 +200,7 @@ struct Read {
   }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Bytes", "If the output should be Bytes instead of String.",
+      "Bytes", CBCCSTR("If the output should be Bytes instead of String."),
       CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -249,14 +251,14 @@ struct Write {
 
   static inline Parameters params{
       {"Contents",
-       "The string or bytes to write as the file's contents.",
+       CBCCSTR("The string or bytes to write as the file's contents."),
        {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType,
         CoreInfo::BytesVarType, CoreInfo::NoneType}},
       {"Overwrite",
-       "Overwrite the file if it already exists.",
+       CBCCSTR("Overwrite the file if it already exists."),
        {CoreInfo::BoolType}},
       {"Append",
-       "If we should append Contents to an existing file.",
+       CBCCSTR("If we should append Contents to an existing file."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -332,12 +334,14 @@ struct Copy {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Destination",
-                        "The destination path, can be a file or a directory.",
-                        CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("Behavior",
-                        "What to do when the destination already exists.",
-                        OverWEnumType));
+      ParamsInfo::Param(
+          "Destination",
+          CBCCSTR("The destination path, can be a file or a directory."),
+          CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param(
+          "Behavior",
+          CBCCSTR("What to do when the destination already exists."),
+          OverWEnumType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, const CBVar &value) {

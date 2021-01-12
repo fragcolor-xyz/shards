@@ -17,7 +17,7 @@ struct FileBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline Parameters params{{"File",
-                                   "The file to read/write from.",
+                                   CBCCSTR("The file to read/write from."),
                                    {CoreInfo::StringStringVarOrNone}}};
 
   ParamVar _filename{};
@@ -76,8 +76,8 @@ struct WriteFile : public FileBase {
   static inline Parameters params{
       FileBase::params,
       {{"Append",
-        "If we should append to the file if existed already or truncate. "
-        "(default: false).",
+        CBCCSTR("If we should append to the file if existed already or "
+                "truncate. (default: false)."),
         {CoreInfo::BoolType}}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -253,7 +253,7 @@ struct LoadImage : public FileBase {
   static inline Parameters params{
       FileBase::params,
       {{"BPP",
-        "bits per pixel (HDR images loading and such!)",
+        CBCCSTR("bits per pixel (HDR images loading and such!)"),
         {BPPEnumInfo}}}};
 
   static CBParametersInfo parameters() { return params; }

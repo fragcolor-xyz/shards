@@ -10,18 +10,19 @@ namespace chainblocks {
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(
         "Chains",
-        "A sequence of chains, interleaving condition test predicate and "
-        "action to execute if the condition matches.",
+        CBCCSTR("A sequence of chains, interleaving condition test predicate "
+                "and action to execute if the condition matches."),
         CoreInfo::BlockSeqOrNone),
     ParamsInfo::Param(
         "Passthrough",
-        "The input of this block will be the output. (default: true)",
+        CBCCSTR("The input of this block will be the output. (default: true)"),
         CoreInfo::BoolType),
-    ParamsInfo::Param("Threading",
-                      "Will not short circuit after the first true test "
-                      "expression. The threaded value gets used in only the "
-                      "action and not the test part of the clause.",
-                      CoreInfo::BoolType));
+    ParamsInfo::Param(
+        "Threading",
+        CBCCSTR("Will not short circuit after the first true test expression. "
+                "The threaded value gets used in only the action and not the "
+                "test part of the clause."),
+        CoreInfo::BoolType));
 
 struct Cond {
   // WORKS but TODO refactor using newer abstracted types
@@ -367,7 +368,7 @@ protected:
   BlocksVar _blocks{};
   CBComposeResult _composition{};
   static inline Parameters _params{
-      {"Blocks", "The blocks to activate.", {CoreInfo::BlocksOrNone}}};
+      {"Blocks", CBCCSTR("The blocks to activate."), {CoreInfo::BlocksOrNone}}};
 };
 
 struct Maybe : public BaseSubFlow {
@@ -447,10 +448,11 @@ struct Maybe : public BaseSubFlow {
 
 private:
   BlocksVar _elseBlks{};
-  static inline Parameters _params{BaseSubFlow::_params,
-                                   {{"Else",
-                                     "The blocks to activate on failure.",
-                                     {CoreInfo::BlocksOrNone}}}};
+  static inline Parameters _params{
+      BaseSubFlow::_params,
+      {{"Else",
+        CBCCSTR("The blocks to activate on failure."),
+        {CoreInfo::BlocksOrNone}}}};
 };
 
 struct Await : public BaseSubFlow {
@@ -579,14 +581,14 @@ template <bool COND> struct When {
 private:
   static inline Parameters _params{
       {"Predicate",
-       "The predicate to evaluate in order to trigger Action.",
+       CBCCSTR("The predicate to evaluate in order to trigger Action."),
        {CoreInfo::BlocksOrNone}},
       {"Action",
-       "The blocks to activate on when Predicate is true for When and false "
-       "for WhenNot.",
+       CBCCSTR("The blocks to activate on when Predicate is true for When and "
+               "false for WhenNot."),
        {CoreInfo::BlocksOrNone}},
       {"Passthrough",
-       "The input of this block will be the output. (default: true)",
+       CBCCSTR("The input of this block will be the output. (default: true)"),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _action{};
@@ -678,14 +680,14 @@ struct IfBlock {
 private:
   static inline Parameters _params{
       {"Predicate",
-       "The predicate to evaluate in order to trigger Action.",
+       CBCCSTR("The predicate to evaluate in order to trigger Action."),
        {CoreInfo::BlocksOrNone}},
-      {"Then", "The blocks to activate when Predicate is true.",
+      {"Then", CBCCSTR("The blocks to activate when Predicate is true."),
        CoreInfo::BlocksOrNone},
-      {"Else", "The blocks to activate when Predicate is false.",
+      {"Else", CBCCSTR("The blocks to activate when Predicate is false."),
        CoreInfo::BlocksOrNone},
       {"Passthrough",
-       "The input of this block will be the output. (default: true)",
+       CBCCSTR("The input of this block will be the output. (default: true)"),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _then{};
@@ -699,11 +701,11 @@ struct Match {
 
   static inline Parameters params{
       {"Cases",
-       "The cases to match the input against, a nil/None case will match "
-       "anything.",
+       CBCCSTR("The cases to match the input against, a nil/None case will "
+               "match anything."),
        {CoreInfo::AnySeqType}},
       {"Passthrough",
-       "The input of this block will be the output. (default: true)",
+       CBCCSTR("The input of this block will be the output. (default: true)"),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
@@ -832,7 +834,7 @@ struct Sub {
 
   static CBParametersInfo parameters() {
     static Parameters params{{"Blocks",
-                              "The blocks to execute in the sub flow.",
+                              CBCCSTR("The blocks to execute in the sub flow."),
                               {CoreInfo::BlocksOrNone}}};
     return params;
   }

@@ -11,7 +11,11 @@
 #include <mutex>
 #include <nameof.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#define CBCCSTR(_str_)                                                         \
+  ::chainblocks::getCompiledCompressedString(::chainblocks::crc32(_str_))
 
 namespace chainblocks {
 // compile time CRC32
@@ -65,6 +69,8 @@ constexpr uint32_t crc32(std::string_view str) {
     crc = (crc >> 8) ^ crc_table[(crc ^ c) & 0xff];
   return crc ^ 0xffffffff;
 }
+
+const char *getCompiledCompressedString(uint32_t crc);
 
 // SFINAE tests
 #define CB_HAS_MEMBER_TEST(_name_)                                             \

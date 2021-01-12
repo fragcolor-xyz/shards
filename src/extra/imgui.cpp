@@ -13,7 +13,7 @@ namespace chainblocks {
 namespace ImGui {
 struct Base {
   static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "GUI.Context", "The ImGui Context.", Context::Info));
+      "GUI.Context", CBCCSTR("The ImGui Context."), Context::Info));
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -123,8 +123,8 @@ struct Style : public Base {
 
   ImGuiStyle _key{};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Style", "A style key to set.", styleEnumInfo));
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
+      "Style", CBCCSTR("A style key to set."), styleEnumInfo));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -544,19 +544,20 @@ struct Window : public Base {
   CBVar _posX{}, _posY{}, _width{}, _height{};
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Title", "The title of the window to create.",
+      ParamsInfo::Param("Title", CBCCSTR("The title of the window to create."),
                         CoreInfo::StringType),
-      ParamsInfo::Param("PosX",
-                        "The horizontal position of the window to create",
+      ParamsInfo::Param(
+          "PosX", CBCCSTR("The horizontal position of the window to create"),
+          CoreInfo::IntOrNone),
+      ParamsInfo::Param(
+          "PosY", CBCCSTR("The vertical position of the window to create."),
+          CoreInfo::IntOrNone),
+      ParamsInfo::Param("Width", CBCCSTR("The width of the window to create"),
                         CoreInfo::IntOrNone),
-      ParamsInfo::Param("PosY",
-                        "The vertical position of the window to create.",
+      ParamsInfo::Param("Height",
+                        CBCCSTR("The height of the window to create."),
                         CoreInfo::IntOrNone),
-      ParamsInfo::Param("Width", "The width of the window to create",
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param("Height", "The height of the window to create.",
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param("Contents", "The inner contents blocks.",
+      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."),
                         CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
@@ -668,15 +669,17 @@ struct ChildWindow : public Base {
   ImGuiID _wndId = ++windowIds;
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Width", "The width of the child window to create",
+      ParamsInfo::Param("Width",
+                        CBCCSTR("The width of the child window to create"),
                         CoreInfo::IntOrNone),
-      ParamsInfo::Param("Height", "The height of the child window to create.",
+      ParamsInfo::Param("Height",
+                        CBCCSTR("The height of the child window to create."),
                         CoreInfo::IntOrNone),
       ParamsInfo::Param(
           "Border",
-          "If we want to draw a border frame around the child window.",
+          CBCCSTR("If we want to draw a border frame around the child window."),
           CoreInfo::BoolType),
-      ParamsInfo::Param("Contents", "The inner contents blocks.",
+      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."),
                         CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
@@ -790,9 +793,10 @@ template <CBType CT> struct Variable : public Base {
   CBExposedTypesInfo requiredVariables() {
     if (_variable_name.size() > 0 && !_exposing) {
       _expInfo = ExposedInfo(
-          requiredInfo, ExposedInfo::Variable(_variable_name.c_str(),
-                                              "The required input variable.",
-                                              CBTypeInfo(varType)));
+          requiredInfo,
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The required input variable."),
+                                CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -802,9 +806,10 @@ template <CBType CT> struct Variable : public Base {
   CBExposedTypesInfo exposedVariables() {
     if (_variable_name.size() > 0 && _exposing) {
       _expInfo = ExposedInfo(
-          requiredInfo, ExposedInfo::Variable(_variable_name.c_str(),
-                                              "The exposed input variable.",
-                                              CBTypeInfo(varType)));
+          requiredInfo,
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The exposed input variable."),
+                                CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -812,11 +817,12 @@ template <CBType CT> struct Variable : public Base {
   }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Label", "The label for this widget.",
+      ParamsInfo::Param("Label", CBCCSTR("The label for this widget."),
                         CoreInfo::StringOrNone),
-      ParamsInfo::Param("Variable",
-                        "The name of the variable that holds the input value.",
-                        CoreInfo::StringOrNone));
+      ParamsInfo::Param(
+          "Variable",
+          CBCCSTR("The name of the variable that holds the input value."),
+          CoreInfo::StringOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -882,11 +888,11 @@ struct Text : public Base {
   std::string _label;
   CBVar _color{};
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("Label", "An optional label for the value.",
-                                   CoreInfo::StringOrNone),
-                 ParamsInfo::Param("Color", "The optional color of the text.",
-                                   CoreInfo::ColorOrNone));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Label", CBCCSTR("An optional label for the value."),
+                        CoreInfo::StringOrNone),
+      ParamsInfo::Param("Color", CBCCSTR("The optional color of the text."),
+                        CoreInfo::ColorOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -968,13 +974,14 @@ struct Button : public Base {
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Label", "The text label of this button.",
+      ParamsInfo::Param("Label", CBCCSTR("The text label of this button."),
                         CoreInfo::StringType),
-      ParamsInfo::Param("Action",
-                        "The blocks to execute when the button is pressed.",
-                        CoreInfo::BlocksOrNone),
-      ParamsInfo::Param("Type", "The button type.", buttonTypeInfo),
-      ParamsInfo::Param("Size", "The optional size override.",
+      ParamsInfo::Param(
+          "Action",
+          CBCCSTR("The blocks to execute when the button is pressed."),
+          CoreInfo::BlocksOrNone),
+      ParamsInfo::Param("Type", CBCCSTR("The button type."), buttonTypeInfo),
+      ParamsInfo::Param("Size", CBCCSTR("The optional size override."),
                         CoreInfo::Float2Type));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
@@ -1156,12 +1163,12 @@ struct TreeNode : public Base {
   BlocksVar _blocks;
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Label", "The label of this node.",
+      ParamsInfo::Param("Label", CBCCSTR("The label of this node."),
                         CoreInfo::StringType),
-      ParamsInfo::Param("Contents", "The contents of this node.",
+      ParamsInfo::Param("Contents", CBCCSTR("The contents of this node."),
                         CoreInfo::BlocksOrNone),
       ParamsInfo::Param("StartOpen",
-                        "If this node should start in the open state.",
+                        CBCCSTR("If this node should start in the open state."),
                         CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
@@ -1474,12 +1481,12 @@ struct Image : public Base {
 
   static CBTypesInfo outputTypes() { return BGFX::Texture::TextureHandleType; }
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("Size", "The drawing size of the image.",
-                                   CoreInfo::Float2Type),
-                 ParamsInfo::Param("TrueSize",
-                                   "If the given size is in true image pixels.",
-                                   CoreInfo::BoolType));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."),
+                        CoreInfo::Float2Type),
+      ParamsInfo::Param("TrueSize",
+                        CBCCSTR("If the given size is in true image pixels."),
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -1556,23 +1563,25 @@ struct Plot : public Base {
   ParamVar _lockx{Var(false)}, _locky{Var(false)};
 
   static inline Parameters params{
-      {"Title", "The title of the plot to create.", {CoreInfo::StringType}},
+      {"Title",
+       CBCCSTR("The title of the plot to create."),
+       {CoreInfo::StringType}},
       {"Contents",
-       "The blocks describing this plot.",
+       CBCCSTR("The blocks describing this plot."),
        {CoreInfo::BlocksOrNone}},
-      {"X_Label", "The X axis label.", {CoreInfo::StringType}},
-      {"Y_Label", "The Y axis label.", {CoreInfo::StringType}},
+      {"X_Label", CBCCSTR("The X axis label."), {CoreInfo::StringType}},
+      {"Y_Label", CBCCSTR("The Y axis label."), {CoreInfo::StringType}},
       {"X_Limits",
-       "The X axis limits.",
+       CBCCSTR("The X axis limits."),
        {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
       {"Y_Limits",
-       "The Y axis limits.",
+       CBCCSTR("The Y axis limits."),
        {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
       {"Lock_X",
-       "If the X axis should be locked into its limits.",
+       CBCCSTR("If the X axis should be locked into its limits."),
        {CoreInfo::BoolType, CoreInfo::BoolVarType}},
       {"Lock_Y",
-       "If the Y axis should be locked into its limits.",
+       CBCCSTR("If the Y axis should be locked into its limits."),
        {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -1698,9 +1707,9 @@ struct PlottableBase : Base {
 
   static constexpr int nparams = 2;
   static inline Parameters params{
-      {"Label", "The plot's label.", {CoreInfo::StringType}},
+      {"Label", CBCCSTR("The plot's label."), {CoreInfo::StringType}},
       {"Color",
-       "The plot's color.",
+       CBCCSTR("The plot's color."),
        {CoreInfo::NoneType, CoreInfo::ColorType}}};
   static CBParametersInfo parameters() { return params; }
 
@@ -1874,9 +1883,9 @@ struct PlotBars : public PlottableBase {
 
   static inline Parameters params{
       PlottableBase::params,
-      {{"Width", "The width of each bar", {CoreInfo::FloatType}},
+      {{"Width", CBCCSTR("The width of each bar"), {CoreInfo::FloatType}},
        {"Horizontal",
-        "If the bar should be horiziontal rather than vertical",
+        CBCCSTR("If the bar should be horiziontal rather than vertical"),
         {CoreInfo::BoolType}}},
   };
 

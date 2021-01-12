@@ -14,10 +14,11 @@ struct Convolve {
 
   static inline Parameters _params{
       {"Radius",
-       "The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on.",
+       CBCCSTR("The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and "
+               "so on."),
        {CoreInfo::IntType}},
       {"Step",
-       "How many pixels to advance each activation.",
+       CBCCSTR("How many pixels to advance each activation."),
        {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
@@ -233,8 +234,8 @@ struct Resize {
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters _params{
-      {"Width", "The target width.", {CoreInfo::IntType}},
-      {"Height", "How target height.", {CoreInfo::IntType}}};
+      {"Width", CBCCSTR("The target width."), {CoreInfo::IntType}},
+      {"Height", CBCCSTR("How target height."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 

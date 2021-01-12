@@ -1078,21 +1078,22 @@ struct Run {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static inline Parameters params{
       {"Module",
-       "The wasm module to run.",
+       CBCCSTR("The wasm module to run."),
        {WasmFilePath, CoreInfo::StringType}},
       {"Arguments",
-       "The arguments to pass to the module entrypoint function.",
+       CBCCSTR("The arguments to pass to the module entrypoint function."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType,
         CoreInfo::StringVarSeqType}},
       {"EntryPoint",
-       "The entry point function to call when activating.",
+       CBCCSTR("The entry point function to call when activating."),
        {CoreInfo::StringType}},
-      {"StackSize", "The stack size in kilobytes to use.", {CoreInfo::IntType}},
+      {"StackSize",
+       CBCCSTR("The stack size in kilobytes to use."),
+       {CoreInfo::IntType}},
       {"ResetRuntime",
-       "If the runtime should be reset every activation, altho slow this might "
-       "be useful if certain modules fail to execute properly or leak on "
-       "multiple "
-       "activations.",
+       CBCCSTR("If the runtime should be reset every activation, altho slow "
+               "this might be useful if certain modules fail to execute "
+               "properly or leak on multiple activations."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 

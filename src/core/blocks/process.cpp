@@ -29,14 +29,15 @@ struct Run {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static inline Parameters params{
       {"Executable",
-       "The executable to run.",
+       CBCCSTR("The executable to run."),
        {CoreInfo::PathType, CoreInfo::StringType}},
       {"Arguments",
-       "The arguments to pass to the executable.",
+       CBCCSTR("The arguments to pass to the executable."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType,
         CoreInfo::StringVarSeqType}},
       {"Timeout",
-       "The maximum time to wait for the executable to finish in seconds.",
+       CBCCSTR(
+           "The maximum time to wait for the executable to finish in seconds."),
        {CoreInfo::IntType}}};
   static CBParametersInfo parameters() { return params; }
 

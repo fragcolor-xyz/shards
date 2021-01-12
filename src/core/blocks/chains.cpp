@@ -23,19 +23,19 @@ struct ChainBase {
   static inline Types ChainVarTypes{ChainTypes, {CoreInfo::ChainVarType}};
 
   static inline Parameters WaitParamsInfo{
-      {"Chain", "The chain to wait.", {ChainVarTypes}},
+      {"Chain", CBCCSTR("The chain to wait."), {ChainVarTypes}},
       {"Passthrough",
-       "The input of this block will be the output.",
+       CBCCSTR("The input of this block will be the output."),
        {CoreInfo::BoolType}}};
 
   static inline Parameters stopChainParamsInfo{
-      {"Chain", "The chain to wait.", {ChainVarTypes}},
+      {"Chain", CBCCSTR("The chain to wait."), {ChainVarTypes}},
       {"Passthrough",
-       "The input of this block will be the output.",
+       CBCCSTR("The input of this block will be the output."),
        {CoreInfo::BoolType}}};
 
   static inline Parameters runChainParamsInfo{
-      {"Chain", "The chain to run.", {ChainTypes}}};
+      {"Chain", CBCCSTR("The chain to run."), {ChainTypes}}};
 
   ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
@@ -438,7 +438,7 @@ struct Resume : public ChainBase {
   }
 
   static inline Parameters params{
-      {"Chain", "The name of the chain to switch to.", {ChainTypes}}};
+      {"Chain", CBCCSTR("The name of the chain to switch to."), {ChainTypes}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -836,19 +836,20 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 
   static inline Parameters params{
       {"Provider",
-       "The chainblocks chain provider.",
+       CBCCSTR("The chainblocks chain provider."),
        {ChainProvider::ProviderOrNone}},
       {"Mode",
-       "The way to run the chain. Inline: will run the sub chain inline within "
-       "the root chain, a pause in the child chain will pause the root too; "
-       "Detached: will run the chain separately in the same node, a pause in "
-       "this chain will not pause the root; Stepped: the chain will run as a "
-       "child, the root will tick the chain every activation of this block and "
-       "so a child pause won't pause the root.",
+       CBCCSTR("The way to run the chain. Inline: will run the sub chain "
+               "inline within the root chain, a pause in the child chain will "
+               "pause the root too; Detached: will run the chain separately in "
+               "the same node, a pause in this chain will not pause the root; "
+               "Stepped: the chain will run as a child, the root will tick the "
+               "chain every activation of this block and so a child pause "
+               "won't pause the root."),
        {ModeType}},
       {"OnReload",
-       "Blocks to execute when the chain is reloaded, the input of this flow "
-       "will be the reloaded chain.",
+       CBCCSTR("Blocks to execute when the chain is reloaded, the input of "
+               "this flow will be the reloaded chain."),
        {CoreInfo::BlocksOrNone}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -957,15 +958,16 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 struct ChainRunner : public BaseLoader<ChainRunner> {
   static inline Parameters params{
       {"Chain",
-       "The chain variable to compose and run.",
+       CBCCSTR("The chain variable to compose and run."),
        {CoreInfo::ChainVarType}},
       {"Mode",
-       "The way to run the chain. Inline: will run the sub chain inline within "
-       "the root chain, a pause in the child chain will pause the root too; "
-       "Detached: will run the chain separately in the same node, a pause in "
-       "this chain will not pause the root; Stepped: the chain will run as a "
-       "child, the root will tick the chain every activation of this block and "
-       "so a child pause won't pause the root.",
+       CBCCSTR("The way to run the chain. Inline: will run the sub chain "
+               "inline within the root chain, a pause in the child chain will "
+               "pause the root too; Detached: will run the chain separately in "
+               "the same node, a pause in this chain will not pause the root; "
+               "Stepped: the chain will run as a child, the root will tick the "
+               "chain every activation of this block and so a child pause "
+               "won't pause the root."),
        {ModeType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -1093,10 +1095,11 @@ struct TryMany : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline Parameters _params{
-      {"Chain", "The chain to spawn and try to run many times concurrently.",
+      {"Chain",
+       CBCCSTR("The chain to spawn and try to run many times concurrently."),
        ChainBase::ChainVarTypes},
       {"Policy",
-       "The execution policy in terms of chains success.",
+       CBCCSTR("The execution policy in terms of chains success."),
        {WaitUntilType}}};
 
   static CBParametersInfo parameters() { return _params; }
@@ -1300,7 +1303,8 @@ struct Spawn : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::ChainType; }
 
   static inline Parameters _params{
-      {"Chain", "The chain to spawn and try to run many times concurrently.",
+      {"Chain",
+       CBCCSTR("The chain to spawn and try to run many times concurrently."),
        ChainBase::ChainVarTypes}};
 
   static CBParametersInfo parameters() { return _params; }

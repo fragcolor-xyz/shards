@@ -61,19 +61,19 @@ struct Client {
 
   static CBParametersInfo parameters() {
     static Parameters params{{"Name",
-                              "The name of this websocket instance.",
+                              CBCCSTR("The name of this websocket instance."),
                               {CoreInfo::StringType}},
                              {"Host",
-                              "The remote host address or IP.",
+                              CBCCSTR("The remote host address or IP."),
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Target",
-                              "The remote host target path.",
+                              CBCCSTR("The remote host target path."),
                               {CoreInfo::StringType, CoreInfo::StringVarType}},
                              {"Port",
-                              "The remote host port.",
+                              CBCCSTR("The remote host port."),
                               {CoreInfo::IntType, CoreInfo::IntVarType}},
                              {"Secure",
-                              "If the connection should be secured.",
+                              CBCCSTR("If the connection should be secured."),
                               {CoreInfo::BoolType}}};
     return params;
   }
@@ -189,8 +189,8 @@ struct Client {
   }
 
   CBExposedTypesInfo exposedVariables() {
-    _expInfo = CBExposedTypeInfo{name.c_str(), "The exposed websocket.",
-                                 Common::WebSocket};
+    _expInfo = CBExposedTypeInfo{
+        name.c_str(), CBCCSTR("The exposed websocket."), Common::WebSocket};
     _expInfo.isProtected = true;
     return CBExposedTypesInfo{&_expInfo, 1, 0};
   }
@@ -228,8 +228,9 @@ struct User {
   CBExposedTypeInfo _expInfo{};
 
   static CBParametersInfo parameters() {
-    static Parameters params{
-        {"Socket", "The websocket instance variable.", {Common::WebSocketVar}}};
+    static Parameters params{{"Socket",
+                              CBCCSTR("The websocket instance variable."),
+                              {Common::WebSocketVar}}};
     return params;
   }
 
@@ -252,8 +253,9 @@ struct User {
 
   CBExposedTypesInfo requiredVariables() {
     if (_wsVar.isVariable()) {
-      _expInfo = CBExposedTypeInfo{
-          _wsVar.variableName(), "The required websocket.", Common::WebSocket};
+      _expInfo = CBExposedTypeInfo{_wsVar.variableName(),
+                                   CBCCSTR("The required websocket."),
+                                   Common::WebSocket};
     } else {
       throw ComposeError("No websocket specified.");
     }

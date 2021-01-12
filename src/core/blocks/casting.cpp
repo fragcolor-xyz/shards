@@ -128,9 +128,13 @@ template <CBType FROMTYPE> struct ToImage {
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters _params{
-      {"Width", "The width of the output image.", {CoreInfo::IntType}},
-      {"Height", "The height of the output image.", {CoreInfo::IntType}},
-      {"Channels", "The channels of the output image.", {CoreInfo::IntType}}};
+      {"Width", CBCCSTR("The width of the output image."), {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the output image."),
+       {CoreInfo::IntType}},
+      {"Channels",
+       CBCCSTR("The channels of the output image."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -590,8 +594,8 @@ EXPECT_BLOCK(Chain, CBType::Chain);
 template <Type &ET> struct ExpectXComplex {
   static inline Parameters params{
       {"Unsafe",
-       "If we should skip performing deep type hashing and comparison. "
-       "(generally fast but this might improve performance)",
+       CBCCSTR("If we should skip performing deep type hashing and comparison. "
+               "(generally fast but this might improve performance)"),
        {CoreInfo::BoolType}}};
   static inline uint64_t ExpectedHash = deriveTypeHash(ET);
 
@@ -637,12 +641,12 @@ struct ExpectLike {
 
   static inline Parameters params{
       {"Example",
-       "The example value to expect, in the case of a used chain, the output "
-       "type of that chain will be used.",
+       CBCCSTR("The example value to expect, in the case of a used chain, the "
+               "output type of that chain will be used."),
        {CoreInfo::AnyType}},
       {"Unsafe",
-       "If we should skip performing deep type hashing and comparison. "
-       "(generally fast but this might improve performance)",
+       CBCCSTR("If we should skip performing deep type hashing and comparison. "
+               "(generally fast but this might improve performance)"),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 

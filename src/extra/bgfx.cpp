@@ -71,10 +71,18 @@ struct BaseWindow : public Base {
 #endif
 
   static inline Parameters params{
-      {"Title", "The title of the window to create.", {CoreInfo::StringType}},
-      {"Width", "The width of the window to create", {CoreInfo::IntType}},
-      {"Height", "The height of the window to create.", {CoreInfo::IntType}},
-      {"Contents", "The contents of this window.", {CoreInfo::BlocksOrNone}}};
+      {"Title",
+       CBCCSTR("The title of the window to create."),
+       {CoreInfo::StringType}},
+      {"Width",
+       CBCCSTR("The width of the window to create"),
+       {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the window to create."),
+       {CoreInfo::IntType}},
+      {"Contents",
+       CBCCSTR("The contents of this window."),
+       {CoreInfo::BlocksOrNone}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -153,13 +161,13 @@ struct MainWindow : public BaseWindow {
     CBInstanceData dataCopy = data;
     arrayPush(dataCopy.shared,
               ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
-                                             "The exposed SDL window.",
+                                             CBCCSTR("The exposed SDL window."),
                                              BaseConsumer::windowType));
     arrayPush(dataCopy.shared,
-              ExposedInfo::ProtectedVariable("GFX.Context", "The BGFX Context.",
-                                             Context::Info));
+              ExposedInfo::ProtectedVariable(
+                  "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
     arrayPush(dataCopy.shared, ExposedInfo::ProtectedVariable(
-                                   "GUI.Context", "The ImGui Context.",
+                                   "GUI.Context", CBCCSTR("The ImGui Context."),
                                    chainblocks::ImGui::Context::Info));
     _blocks.compose(dataCopy);
 
@@ -482,8 +490,8 @@ struct MainWindow : public BaseWindow {
 struct Texture2D : public BaseConsumer {
   static inline Parameters params{
       {"sRGB",
-       "If the texture should be loaded as an sRGB format (only valid for 8 "
-       "bit per color textures).",
+       CBCCSTR("If the texture should be loaded as an sRGB format (only valid "
+               "for 8 bit per color textures)."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -643,15 +651,15 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
 
   static inline Parameters f_v_params{
       {"VertexShader",
-       "The vertex shader bytecode.",
+       CBCCSTR("The vertex shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}},
       {"PixelShader",
-       "The pixel shader bytecode.",
+       CBCCSTR("The pixel shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
   static inline Parameters c_params{
       {"ComputeShader",
-       "The compute shader bytecode.",
+       CBCCSTR("The compute shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
   static CBParametersInfo parameters() {
@@ -674,7 +682,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
         return {};
       } else {
         _exposing[0].name = _ccode.variableName();
-        _exposing[0].help = "The required compute shader bytecode.";
+        _exposing[0].help = CBCCSTR("The required compute shader bytecode.");
         _exposing[0].exposedType = CoreInfo::BytesType;
         return {_exposing.data(), 1, 0};
       }
@@ -683,13 +691,13 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
       if (_vcode.isVariable()) {
         idx++;
         _exposing[idx].name = _vcode.variableName();
-        _exposing[idx].help = "The required vertex shader bytecode.";
+        _exposing[idx].help = CBCCSTR("The required vertex shader bytecode.");
         _exposing[idx].exposedType = CoreInfo::BytesType;
       }
       if (_pcode.isVariable()) {
         idx++;
         _exposing[idx].name = _pcode.variableName();
-        _exposing[idx].help = "The required pixel shader bytecode.";
+        _exposing[idx].help = CBCCSTR("The required pixel shader bytecode.");
         _exposing[idx].exposedType = CoreInfo::BytesType;
       }
       if (idx == -1) {
@@ -902,10 +910,12 @@ struct Model : public BaseConsumer {
   static CBTypesInfo outputTypes() { return ModelHandle::ObjType; }
 
   static inline Parameters params{
-      {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}},
+      {"Layout",
+       CBCCSTR("The vertex layout of this model."),
+       {VertexAttributeSeqType}},
       {"Dynamic",
-       "If the model is dynamic and will be optimized to change as often as "
-       "every frame.",
+       CBCCSTR("If the model is dynamic and will be optimized to change as "
+               "often as every frame."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -1224,21 +1234,23 @@ struct Camera : public BaseConsumer {
   CBVar *_bgfx_context{nullptr};
 
   static inline Parameters params{
-      {"Width", "The width of the viewport.", {CoreInfo::IntType}},
-      {"Height", "The height of the viewport.", {CoreInfo::IntType}},
+      {"Width", CBCCSTR("The width of the viewport."), {CoreInfo::IntType}},
+      {"Height", CBCCSTR("The height of the viewport."), {CoreInfo::IntType}},
       {"Near",
-       "The distance from the near clipping plane.",
+       CBCCSTR("The distance from the near clipping plane."),
        {CoreInfo::FloatType}},
       {"Far",
-       "The distance from the far clipping plane.",
+       CBCCSTR("The distance from the far clipping plane."),
        {CoreInfo::FloatType}},
       {"FieldOfView",
-       "The field of view of the camera.",
+       CBCCSTR("The field of view of the camera."),
        {CoreInfo::FloatType}},
       {"OffsetX",
-       "The horizontal offset of the viewport.",
+       CBCCSTR("The horizontal offset of the viewport."),
        {CoreInfo::IntType}},
-      {"OffsetY", "The vertical offset of the viewport.", {CoreInfo::IntType}}};
+      {"OffsetY",
+       CBCCSTR("The vertical offset of the viewport."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1364,12 +1376,13 @@ struct Draw : public BaseConsumer {
 
   // keep in mind that bgfx does its own sorting, so we don't need to make this
   // block way too smart
-  static inline Parameters params{{"Shader",
-                                   "The shader program to use for this draw.",
-                                   {ShaderHandle::VarType, CoreInfo::NoneType}},
-                                  {"Model",
-                                   "The model to draw.",
-                                   {ModelHandle::VarType, CoreInfo::NoneType}}};
+  static inline Parameters params{
+      {"Shader",
+       CBCCSTR("The shader program to use for this draw."),
+       {ShaderHandle::VarType, CoreInfo::NoneType}},
+      {"Model",
+       CBCCSTR("The model to draw."),
+       {ModelHandle::VarType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1407,13 +1420,13 @@ struct Draw : public BaseConsumer {
     if (_shader.isVariable()) {
       idx++;
       _exposing[idx].name = _shader.variableName();
-      _exposing[idx].help = "The required shader.";
+      _exposing[idx].help = CBCCSTR("The required shader.");
       _exposing[idx].exposedType = ShaderHandle::ObjType;
     }
     if (_model.isVariable()) {
       idx++;
       _exposing[idx].name = _model.variableName();
-      _exposing[idx].help = "The required model.";
+      _exposing[idx].help = CBCCSTR("The required model.");
       _exposing[idx].exposedType = ModelHandle::ObjType;
     }
     if (idx == -1) {

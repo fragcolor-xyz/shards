@@ -45,8 +45,8 @@ struct BinaryBase : public Base {
        CoreInfo::ColorType,  CoreInfo::ColorVarType,
        CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}};
 
-  static inline ParamsInfo mathParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Operand", "The operand.", MathTypesOrVar));
+  static inline ParamsInfo mathParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Operand", CBCCSTR("The operand."), MathTypesOrVar));
 
   ParamVar _operand{Var(0)};
   ExposedInfo _requiredInfo{};
@@ -122,9 +122,9 @@ struct BinaryBase : public Base {
   CBExposedTypesInfo requiredVariables() {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
-      _requiredInfo = ExposedInfo(
-          ExposedInfo::Variable(operandSpec.payload.stringValue,
-                                "The required operand.", CoreInfo::AnyType));
+      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
+          operandSpec.payload.stringValue, CBCCSTR("The required operand."),
+          CoreInfo::AnyType));
       return CBExposedTypesInfo(_requiredInfo);
     }
     return {};
@@ -559,7 +559,7 @@ struct Mean {
   static CBParametersInfo parameters() {
     static Type kind{{CBType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
     static Parameters params{
-        {"Kind", "The kind of Pythagorean means.", {kind}}};
+        {"Kind", CBCCSTR("The kind of Pythagorean means."), {kind}}};
     return params;
   }
 
@@ -627,7 +627,7 @@ template <class T> struct UnaryBin : public T {
     switch (data.inputType.basicType) {
     case Seq: {
       if (data.inputType.seqTypes.len != 1)
-        throw CBException("Expected a Seq with just one type as input");
+        throw ComposeError("Expected a Seq with just one type as input");
       setOperand(data.inputType.seqTypes.elements[0].basicType);
     } break;
     default:
