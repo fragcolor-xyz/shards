@@ -9,30 +9,31 @@
 #include <vector>
 
 class malValue;
-typedef RefCountedPtr<malValue>  malValuePtr;
+typedef RefCountedPtr<malValue> malValuePtr;
 typedef std::vector<malValuePtr> malValueVec;
-typedef malValueVec::iterator    malValueIter;
+typedef malValueVec::iterator malValueIter;
 
 class malEnv;
-typedef RefCountedPtr<malEnv>     malEnvPtr;
+typedef RefCountedPtr<malEnv> malEnvPtr;
 
 // step*.cpp
-extern malValuePtr APPLY(malValuePtr op,
-                         malValueIter argsBegin, malValueIter argsEnd);
+extern malValuePtr APPLY(malValuePtr op, malValueIter argsBegin,
+                         malValueIter argsEnd);
 extern malValuePtr EVAL(malValuePtr ast, malEnvPtr env);
-extern malValuePtr readline(const String& prompt);
-extern String rep(const String& input, malEnvPtr env);
+extern malValuePtr readline(const String &prompt);
+extern String rep(const String &input, malEnvPtr env);
 
 // Core.cpp
 extern void installCore(malEnvPtr env);
-extern void installCBCore(const malEnvPtr& env, const char *exePath, const char *scriptPath);
+extern void installCBCore(const malEnvPtr &env, const char *exePath,
+                          const char *scriptPath);
 
 // Reader.cpp
-extern malValuePtr readStr(const String& input);
+extern malValuePtr readStr(const String &input);
 
 // Extras
 extern void malinit(malEnvPtr env, const char *exePath, const char *scriptPath);
-extern malValuePtr maleval(const char* str, malEnvPtr env);
+extern malValuePtr maleval(const char *str, malEnvPtr env);
 extern String malpath();
 
 #endif // INCLUDE_MAL_H

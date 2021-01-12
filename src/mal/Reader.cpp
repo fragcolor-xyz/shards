@@ -40,11 +40,7 @@ public:
 
   bool eof() const { return m_iter == m_end; }
 
-  size_t line() const {
-    return size_t(
-        std::distance(std::sregex_iterator(m_begin, m_iter, newlineRegex),
-                      std::sregex_iterator())) + 1;
-  }
+  size_t line() const { return m_currentLine; }
 
 private:
   void skipWhitespace();
@@ -58,6 +54,7 @@ private:
   StringIter m_iter;
   StringIter m_begin;
   StringIter m_end;
+  size_t m_currentLine{1};
 };
 
 Tokeniser::Tokeniser(const String &input)
@@ -95,6 +92,11 @@ void Tokeniser::nextToken() {
   if (eof()) {
     return;
   }
+
+  m_currentLine +=
+      size_t(std::distance(std::sregex_iterator(m_begin, m_iter, newlineRegex),
+                           std::sregex_iterator()));
+  m_begin = m_iter;
 
   for (auto &it : tokenRegexes) {
     if (matchRegex(it)) {
@@ -152,7 +154,7 @@ static malValuePtr readForm(Tokeniser &tokeniser) {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return mal::list(mal::symbol("chainify"), mal::vector(items.release()));
+    return mal::list(mal::symbol("chainify", tokeniser.line()), mal::vector(items.release()));
   } else if (token == "{") {
     tokeniser.next();
     malValueVec items;
@@ -207,7 +209,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
     malValuePtr meta = readForm(tokeniser);
     malValuePtr value = readForm(tokeniser);
     // Note that meta and value switch places
-    return mal::list(mal::symbol("with-meta"), value, meta);
+    return mal::list(mal::symbol("with-meta", tokeniser.line()), value, meta);
   }
 
   for (auto &constant : constantTable) {
@@ -233,7 +235,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
     return mal::numberHex(token);
   }
 
-  return mal::symbol(token);
+  return mal::symbol(token, tokeniser.line());
 }
 
 static void readList(Tokeniser &tokeniser, malValueVec *items,
@@ -250,5 +252,5 @@ static void readList(Tokeniser &tokeniser, malValueVec *items,
 }
 
 static malValuePtr processMacro(Tokeniser &tokeniser, const String &symbol) {
-  return mal::list(mal::symbol(symbol), readForm(tokeniser));
+  return mal::list(mal::symbol(symbol, tokeniser.line()), readForm(tokeniser));
 }
