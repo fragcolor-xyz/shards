@@ -95,8 +95,8 @@ malValuePtr string(const String &token) {
   return malValuePtr(new malString(token));
 }
 
-malValuePtr symbol(const String &token, size_t line) {
-  return malValuePtr(new malSymbol(token, line));
+malValuePtr symbol(const String &token) {
+  return malValuePtr(new malSymbol(token));
 };
 
 malValuePtr trueValue() {
@@ -355,7 +355,7 @@ bool malSequence::doIsEqualTo(const malValue *rhs) const {
 
 malValueVec *malSequence::evalItems(malEnvPtr env) const {
   malValueVec *items = new malValueVec;
-  ;
+
   items->reserve(count());
   for (auto it = m_items->begin(), end = m_items->end(); it != end; ++it) {
     items->push_back(EVAL(*it, env));
@@ -393,7 +393,14 @@ String malString::print(bool readably) const {
   return readably ? escapedValue() : value();
 }
 
-malValuePtr malSymbol::eval(malEnvPtr env) { return env->get(value()); }
+malValuePtr malSymbol::eval(malEnvPtr env) {
+  try {
+  return env->get(value());
+  } catch(String &s) {
+    s += ", line: " + std::to_string(line);
+    throw s;
+  }
+}
 
 malValuePtr malVector::conj(malValueIter argsBegin,
                             malValueIter argsEnd) const {

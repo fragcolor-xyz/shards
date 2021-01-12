@@ -118,6 +118,13 @@ void Tokeniser::skipWhitespace() {
   }
 }
 
+#define VALUE_WITH_LINE(__val__)                                               \
+  [&]() {                                                                      \
+    auto val = __val__;                                                        \
+    val->line = tokeniser.line();                                              \
+    return val;                                                                \
+  }()
+
 static malValuePtr readAtom(Tokeniser &tokeniser);
 static malValuePtr readForm(Tokeniser &tokeniser);
 static void readList(Tokeniser &tokeniser, malValueVec *items,
@@ -144,24 +151,24 @@ static malValuePtr readForm(Tokeniser &tokeniser) {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return mal::list(items.release());
+    return VALUE_WITH_LINE(mal::list(items.release()));
   } else if (token == "[") {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), "]");
-    return mal::vector(items.release());
+    return VALUE_WITH_LINE(mal::vector(items.release()));
   } else if (token == "#(") {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return mal::list(mal::symbol("chainify", tokeniser.line()), mal::vector(items.release()));
+    return VALUE_WITH_LINE(mal::list(mal::symbol("chainify"), mal::vector(items.release())));
   } else if (token == "{") {
     tokeniser.next();
     malValueVec items;
     readList(tokeniser, &items, "}");
-    return mal::hash(items.begin(), items.end(), false);
+    return VALUE_WITH_LINE(mal::hash(items.begin(), items.end(), false));
   } else {
-    return readAtom(tokeniser);
+    return VALUE_WITH_LINE(readAtom(tokeniser));
   }
 }
 
@@ -209,7 +216,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
     malValuePtr meta = readForm(tokeniser);
     malValuePtr value = readForm(tokeniser);
     // Note that meta and value switch places
-    return mal::list(mal::symbol("with-meta", tokeniser.line()), value, meta);
+    return mal::list(mal::symbol("with-meta"), value, meta);
   }
 
   for (auto &constant : constantTable) {
@@ -235,7 +242,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
     return mal::numberHex(token);
   }
 
-  return mal::symbol(token, tokeniser.line());
+  return mal::symbol(token);
 }
 
 static void readList(Tokeniser &tokeniser, malValueVec *items,
@@ -252,5 +259,5 @@ static void readList(Tokeniser &tokeniser, malValueVec *items,
 }
 
 static malValuePtr processMacro(Tokeniser &tokeniser, const String &symbol) {
-  return mal::list(mal::symbol(symbol, tokeniser.line()), readForm(tokeniser));
+  return mal::list(mal::symbol(symbol), readForm(tokeniser));
 }

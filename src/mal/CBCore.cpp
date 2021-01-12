@@ -1045,7 +1045,8 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
         auto var = varify(value);
         if (!validateSetParam(block, idx, var->value(), validationCallback,
                               nullptr)) {
-          LOG(ERROR) << "Failed parameter: " << paramName;
+          LOG(ERROR) << "Failed parameter: " << paramName
+                     << ", line: " << value->line;
           throw chainblocks::CBException("Parameter validation failed");
         }
         block->setParam(block, idx, &var->value());
@@ -1061,7 +1062,8 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       auto var = varify(arg);
       if (!validateSetParam(block, pindex, var->value(), validationCallback,
                             nullptr)) {
-        LOG(ERROR) << "Failed parameter index: " << pindex;
+        LOG(ERROR) << "Failed parameter index: " << pindex
+                   << ", line: " << arg->line;
         throw chainblocks::CBException("Parameter validation failed");
       }
       block->setParam(block, pindex, &var->value());

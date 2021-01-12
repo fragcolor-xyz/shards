@@ -505,8 +505,7 @@ BUILTIN("swap!") {
 BUILTIN("symbol") {
   CHECK_ARGS_IS(1);
   ARG(malString, token);
-  // TODO figure how to add line info
-  return mal::symbol(token->value(), -1);
+  return mal::symbol(token->value());
 }
 
 BUILTIN("throw") {

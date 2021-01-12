@@ -108,7 +108,7 @@ static String safeRep(const String &input, malEnvPtr env, bool *failed) {
   } catch (malValuePtr &mv) {
     if (failed)
       *failed = true;
-    return "Error: " + mv->print(true);
+    return "Error: " + mv->print(true) + " Line: " + std::to_string(mv->line);
   } catch (String &s) {
     if (failed)
       *failed = true;
@@ -306,12 +306,7 @@ malValuePtr APPLY(malValuePtr op, malValueIter argsBegin,
   MAL_CHECK(handler != NULL, "\"%s\" is not applicable",
             op->print(true).c_str());
 
-  try {
-    return handler->apply(argsBegin, argsEnd);
-  } catch (const std::exception &e) {
-    auto err = std::string("Failed to apply, error: ") + e.what();
-    throw std::runtime_error(err);
-  }
+  return handler->apply(argsBegin, argsEnd);
 }
 
 static bool isSymbol(malValuePtr obj, const String &text) {
@@ -327,7 +322,7 @@ static const malSequence *isPair(malValuePtr obj) {
 static malValuePtr quasiquote(malValuePtr obj) {
   const malSequence *seq = isPair(obj);
   if (!seq) {
-    return mal::list(mal::symbol("quote", -1), obj);
+    return mal::list(mal::symbol("quote"), obj);
   }
 
   if (isSymbol(seq->item(0), "unquote")) {
@@ -340,12 +335,12 @@ static malValuePtr quasiquote(malValuePtr obj) {
   if (innerSeq && isSymbol(innerSeq->item(0), "splice-unquote")) {
     checkArgsIs("splice-unquote", 1, innerSeq->count() - 1);
     // (qq (sq '(a b c))) -> a b c
-    return mal::list(mal::symbol("concat", -1), innerSeq->item(1),
+    return mal::list(mal::symbol("concat"), innerSeq->item(1),
                      quasiquote(seq->rest()));
   } else {
     // (qq (a b c)) -> (list (qq a) (qq b) (qq c))
     // (qq xs     ) -> (cons (qq (car xs)) (qq (cdr xs)))
-    return mal::list(mal::symbol("cons", -1), quasiquote(seq->first()),
+    return mal::list(mal::symbol("cons"), quasiquote(seq->first()),
                      quasiquote(seq->rest()));
   }
 }

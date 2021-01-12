@@ -29,6 +29,8 @@ public:
 
   virtual String print(bool readably) const = 0;
 
+  size_t line{0};
+
 protected:
   virtual bool doIsEqualTo(const malValue *rhs) const = 0;
 
@@ -37,7 +39,7 @@ protected:
 
 template <class T> T *value_cast(malValuePtr obj, const char *typeName) {
   T *dest = dynamic_cast<T *>(obj.ptr());
-  MAL_CHECK(dest != NULL, "%s is not a %s", obj->print(true).c_str(), typeName);
+  MAL_CHECK(dest != NULL, "%s is not a %s, line: %u", obj->print(true).c_str(), typeName, obj->line);
   return dest;
 }
 
@@ -144,8 +146,7 @@ public:
 
 class malSymbol : public malStringBase {
 public:
-  malSymbol(const String &token, size_t line)
-      : malStringBase(token), m_line(line) {}
+  malSymbol(const String &token) : malStringBase(token) {}
   malSymbol(const malSymbol &that, malValuePtr meta)
       : malStringBase(that, meta) {}
 
@@ -156,9 +157,6 @@ public:
   }
 
   WITH_META(malSymbol);
-
-private:
-  size_t m_line;
 };
 
 class malSequence : public malValue {
@@ -362,7 +360,7 @@ malValuePtr list(malValuePtr a, malValuePtr b, malValuePtr c);
 malValuePtr macro(const malLambda &lambda);
 malValuePtr nilValue();
 malValuePtr string(const String &token);
-malValuePtr symbol(const String &token, size_t line);
+malValuePtr symbol(const String &token);
 malValuePtr trueValue();
 malValuePtr vector(malValueVec *items);
 malValuePtr vector(malValueIter begin, malValueIter end);
