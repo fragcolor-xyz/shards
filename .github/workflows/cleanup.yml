@@ -8,7 +8,7 @@ jobs:
   cancel-runs:
     # Prevent forks from running this to be nice
     if: github.repository == 'sinkingsugar/chainblocks'
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     steps:
       - uses: chainblocks/cancel-previous-runs@v2
         with:
