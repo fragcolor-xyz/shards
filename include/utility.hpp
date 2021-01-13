@@ -16,10 +16,12 @@
 
 #ifdef NDEBUG
 #define CBCCSTR(_str_)                                                         \
-  ::chainblocks::getCompiledCompressedString(::chainblocks::crc32(_str_))
+  ::chainblocks::getCompiledCompressedString(                                  \
+      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value)
 #else
 #define CBCCSTR(_str_)                                                         \
-  ::chainblocks::setCompiledCompressedString(::chainblocks::crc32(_str_), _str_)
+  ::chainblocks::setCompiledCompressedString(                                  \
+      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value, _str_)
 #endif
 
 namespace chainblocks {
@@ -74,6 +76,8 @@ constexpr uint32_t crc32(std::string_view str) {
     crc = (crc >> 8) ^ crc_table[(crc ^ c) & 0xff];
   return crc ^ 0xffffffff;
 }
+
+template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
 #ifdef NDEBUG
 const char *getCompiledCompressedString(uint32_t crc);

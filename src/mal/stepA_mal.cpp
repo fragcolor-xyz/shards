@@ -160,7 +160,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       int argCount = list->count() - 1;
 
       if (special == "def!") {
-        checkArgsIs("def!", 2, argCount);
+        checkArgsIs("def!", 2, argCount, list->item(0));
         const malSymbol *id = VALUE_CAST(malSymbol, list->item(1));
         auto rootEnv = env->getRoot();
         auto e = rootEnv != nullptr ? rootEnv : env;
@@ -168,7 +168,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "defmacro!") {
-        checkArgsIs("defmacro!", 2, argCount);
+        checkArgsIs("defmacro!", 2, argCount, list->item(0));
 
         const malSymbol *id = VALUE_CAST(malSymbol, list->item(1));
         malValuePtr body = EVAL(list->item(2), env);
@@ -179,7 +179,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "do") {
-        checkArgsAtLeast("do", 1, argCount);
+        checkArgsAtLeast("do", 1, argCount, list->item(0));
 
         for (int i = 1; i < argCount; i++) {
           EVAL(list->item(i), env);
@@ -189,7 +189,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "fn*") {
-        checkArgsIs("fn*", 2, argCount);
+        checkArgsIs("fn*", 2, argCount, list->item(0));
 
         const malSequence *bindings = VALUE_CAST(malSequence, list->item(1));
         StringVec params;
@@ -202,7 +202,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "if") {
-        checkArgsBetween("if", 2, 3, argCount);
+        checkArgsBetween("if", 2, 3, argCount, list->item(0));
 
         bool isTrue = EVAL(list->item(1), env)->isTrue();
         if (!isTrue && (argCount == 2)) {
@@ -213,9 +213,9 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "let*") {
-        checkArgsIs("let*", 2, argCount);
+        checkArgsIs("let*", 2, argCount, list->item(0));
         const malSequence *bindings = VALUE_CAST(malSequence, list->item(1));
-        int count = checkArgsEven("let*", bindings->count());
+        int count = checkArgsEven("let*", bindings->count(), list->item(0));
         malEnvPtr inner(new malEnv(env));
         for (int i = 0; i < count; i += 2) {
           const malSymbol *var = VALUE_CAST(malSymbol, bindings->item(i));
@@ -227,18 +227,18 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
       }
 
       if (special == "macroexpand") {
-        checkArgsIs("macroexpand", 1, argCount);
+        checkArgsIs("macroexpand", 1, argCount, list->item(0));
         return macroExpand(list->item(1), env);
       }
 
       if (special == "quasiquote") {
-        checkArgsIs("quasiquote", 1, argCount);
+        checkArgsIs("quasiquote", 1, argCount, list->item(0));
         ast = quasiquote(list->item(1));
         continue; // TCO
       }
 
       if (special == "quote") {
-        checkArgsIs("quote", 1, argCount);
+        checkArgsIs("quote", 1, argCount, list->item(0));
         return list->item(1);
       }
 
@@ -249,10 +249,10 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
           ast = EVAL(tryBody, env);
           continue; // TCO
         }
-        checkArgsIs("try*", 2, argCount);
+        checkArgsIs("try*", 2, argCount, list->item(0));
         const malList *catchBlock = VALUE_CAST(malList, list->item(2));
 
-        checkArgsIs("catch*", 2, catchBlock->count() - 1);
+        checkArgsIs("catch*", 2, catchBlock->count() - 1, list->item(2));
         MAL_CHECK(VALUE_CAST(malSymbol, catchBlock->item(0))->value() ==
                       "catch*",
                   "catch block must begin with catch*");
@@ -327,13 +327,13 @@ static malValuePtr quasiquote(malValuePtr obj) {
 
   if (isSymbol(seq->item(0), "unquote")) {
     // (qq (uq form)) -> form
-    checkArgsIs("unquote", 1, seq->count() - 1);
+    checkArgsIs("unquote", 1, seq->count() - 1, obj);
     return seq->item(1);
   }
 
   const malSequence *innerSeq = isPair(seq->item(0));
   if (innerSeq && isSymbol(innerSeq->item(0), "splice-unquote")) {
-    checkArgsIs("splice-unquote", 1, innerSeq->count() - 1);
+    checkArgsIs("splice-unquote", 1, innerSeq->count() - 1, obj);
     // (qq (sq '(a b c))) -> a b c
     return mal::list(mal::symbol("concat"), innerSeq->item(1),
                      quasiquote(seq->rest()));

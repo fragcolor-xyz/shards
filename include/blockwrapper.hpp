@@ -281,7 +281,8 @@ template <class T> struct BlockWrapper {
 #define REGISTER_CBLOCK(__name__, __type__)                                    \
   ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
   ::chainblocks::BlockWrapper<__type__>::crc =                                 \
-      ::chainblocks::crc32(__name__ CHAINBLOCKS_CURRENT_ABI_STR);              \
+      ::chainblocks::constant<::chainblocks::crc32(                            \
+          __name__ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                       \
   ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
                                &::chainblocks::BlockWrapper<__type__>::create, \
                                NAMEOF_FULL_TYPE(__type__))

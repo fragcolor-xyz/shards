@@ -15,8 +15,8 @@
     result->name = static_cast<CBNameProc>(                                    \
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->hash = static_cast<CBHashProc>([](CBlock *block) {                 \
-      return ::chainblocks::crc32(#_namespace_                                 \
-                                  "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR);    \
+      return ::chainblocks::constant<::chainblocks::crc32(                     \
+          #_namespace_ "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;       \
     });                                                                        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
@@ -55,7 +55,8 @@
     result->name =                                                             \
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->hash = static_cast<CBHashProc>([](CBlock *block) {                 \
-      return ::chainblocks::crc32(#_name_ CHAINBLOCKS_CURRENT_ABI_STR);        \
+      return ::chainblocks::constant<::chainblocks::crc32(                     \
+          #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                        \
     });                                                                        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
@@ -95,8 +96,8 @@
     result->name = static_cast<CBNameProc>(                                    \
         [](CBlock *block) { return #_namespace_ "." #_name_; });               \
     result->hash = static_cast<CBHashProc>([](CBlock *block) {                 \
-      return ::chainblocks::crc32(#_namespace_                                 \
-                                  "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR);    \
+      return ::chainblocks::constant<::chainblocks::crc32(                     \
+          #_namespace_ "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;       \
     });                                                                        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
@@ -136,7 +137,8 @@
     result->name =                                                             \
         static_cast<CBNameProc>([](CBlock *block) { return #_name_; });        \
     result->hash = static_cast<CBHashProc>([](CBlock *block) {                 \
-      return ::chainblocks::crc32(#_name_ CHAINBLOCKS_CURRENT_ABI_STR);        \
+      return ::chainblocks::constant<::chainblocks::crc32(                     \
+          #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                        \
     });                                                                        \
     result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
