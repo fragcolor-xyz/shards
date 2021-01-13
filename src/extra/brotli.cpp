@@ -20,8 +20,8 @@ struct Compress {
 
   static inline Parameters params{
       {"Quality",
-       "Compression quality, higher is better but slower, "
-       "valid values from 1 to 11.",
+       CBCCSTR("Compression quality, higher is better but slower, valid values "
+               "from 1 to 11."),
        {CoreInfo::IntType}}};
 
   CBParametersInfo parameters() { return params; }

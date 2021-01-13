@@ -17,6 +17,9 @@ extern crate approx;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate compile_time_crc32;
+
 pub mod block;
 mod chainblocksc;
 pub mod core;
@@ -213,6 +216,10 @@ mod dummy_block {
     fn registerName() -> &'static str {
       "Dummy\0"
     }
+
+    fn hash() -> u32 {
+      compile_time_crc32::crc32!("Dummy-rust-0x20200101")
+    }
   }
 
   #[cfg(test)]
@@ -274,14 +281,13 @@ mod dummy_block {
   }
 }
 
-
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocks")]
 #[no_mangle]
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
   blocks::http::registerBlocks();
-  cblog!("Rust blocks initialization done.");
+  // cblog!("Rust blocks initialization done.");
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -290,5 +296,5 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
   core::registerBlock::<dummy_block::DummyBlock>();
-  cblog!("Rust blocks initialization done.");
+  // cblog!("Rust blocks initialization done.");
 }

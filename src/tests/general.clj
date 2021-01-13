@@ -84,6 +84,12 @@
           (--> (Is 10)) (--> (Msg "Cond was false!") true)] :Threading false :Passthrough false)
    (Assert.Is false true)
    (Log)
+   
+   [10 20 30 40 50]
+   (ExpectIntSeq)
+   (ExpectLike [1 2 3 4])
+   (IntsToBytes)
+   (Log)
 
    "Hello"
    (Assert.Is "Hello" true)
@@ -481,6 +487,7 @@
    (Assert.Is "0x9000070000000000" true)
 
    "Test"
+   (ExpectLike inner1)
    (Any ["Test" "A"])
    (Log)
 

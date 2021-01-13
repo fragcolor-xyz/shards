@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
@@ -32,6 +33,7 @@ use std::os::raw::c_char;
 
 pub trait Block {
   fn registerName() -> &'static str;
+  fn hash() -> u32;
 
   fn name(&mut self) -> &str;
   fn help(&mut self) -> &str {
@@ -118,11 +120,18 @@ unsafe extern "C" fn cblock_name<T: Block>(arg1: *mut CBlock) -> *const ::std::o
   (*blk).name.as_ref().unwrap().as_ptr()
 }
 
-unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> *const ::std::os::raw::c_char {
+unsafe extern "C" fn cblock_hash<T: Block>(_arg1: *mut CBlock) -> u32 {
+  T::hash()
+}
+
+unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> CBOptionalString {
   let blk = arg1 as *mut BlockWrapper<T>;
   let help = (*blk).block.help();
   (*blk).help = Some(CString::new(help).expect("CString::new failed"));
-  (*blk).help.as_ref().unwrap().as_ptr()
+  CBOptionalString{
+    string: (*blk).help.as_ref().unwrap().as_ptr(),
+    crc: 0
+  }
 }
 
 unsafe extern "C" fn cblock_inputTypes<T: Block>(arg1: *mut CBlock) -> CBTypesInfo {
@@ -275,6 +284,7 @@ pub fn create<T: Default + Block>() -> BlockWrapper<T> {
       inlineBlockId: 0,
       owned: false,
       name: Some(cblock_name::<T>),
+      hash: Some(cblock_hash::<T>),
       help: Some(cblock_help::<T>),
       inputTypes: Some(cblock_inputTypes::<T>),
       outputTypes: Some(cblock_outputTypes::<T>),

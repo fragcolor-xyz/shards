@@ -29,13 +29,13 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DEMSCRIPTEN_PTHREADS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory test_runtime.js
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm-mt
@@ -43,7 +43,6 @@ jobs:
           build/cbl.wasm
           build/cbl.js
           build/cbl.worker.js
-          build/cbl.html
 
   wasm32-emscripten:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
@@ -69,20 +68,19 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_LTO=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Pause 2.0) (Msg "Hello") (Dummy) 0 (Exit))) (run Root 0.1))'
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory test_runtime.js
+        node ../src/tests/test_cbl.js
+        node ../src/tests/test_runtime.js
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
         path: |
           build/cbl.wasm
           build/cbl.js
-          build/cbl.html
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
@@ -150,6 +148,7 @@ jobs:
         ./cbl ../src/tests/failures.clj
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/shell.clj
+        ./cbl ../src/tests/blocks.clj
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
@@ -344,6 +343,7 @@ jobs:
         ./cbl ../src/tests/brotli.clj
         ./cbl ../src/tests/snappy.clj
         ./cbl ../src/tests/wasm.clj
+        ./cbl ../src/tests/infos.clj
         ./test_runtime
 
   iOS:

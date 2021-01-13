@@ -41,15 +41,16 @@ struct NetworkBase {
   SocketData _socket{};
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Address",
-                        "The local bind address or the remote address.",
-                        CoreInfo::StringOrStringVar),
       ParamsInfo::Param(
-          "Port", "The port to bind if server or to connect to if client.",
+          "Address", CBCCSTR("The local bind address or the remote address."),
+          CoreInfo::StringOrStringVar),
+      ParamsInfo::Param(
+          "Port",
+          CBCCSTR("The port to bind if server or to connect to if client."),
           CoreInfo::IntOrIntVar),
-      ParamsInfo::Param("Receive",
-                        "The flow to execute when a packet is received.",
-                        CoreInfo::BlocksOrNone));
+      ParamsInfo::Param(
+          "Receive", CBCCSTR("The flow to execute when a packet is received."),
+          CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -123,8 +124,9 @@ struct NetworkBase {
 
   CBTypeInfo compose(CBInstanceData &data) {
     // inject our special context vars
-    auto endpointInfo = ExposedInfo::Variable(
-        "Network.Socket", "The active socket.", CBTypeInfo(SocketInfo));
+    auto endpointInfo =
+        ExposedInfo::Variable("Network.Socket", CBCCSTR("The active socket."),
+                              CBTypeInfo(SocketInfo));
     chainblocks::arrayPush(data.shared, endpointInfo);
     _blks.compose(data);
     return data.inputType;

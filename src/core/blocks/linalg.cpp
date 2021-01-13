@@ -39,7 +39,7 @@ struct VectorBinaryBase : public BinaryBase {
   static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", "The operand.", CoreInfo::FloatVectorsOrVar));
+      "Operand", CBCCSTR("The operand."), CoreInfo::FloatVectorsOrVar));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -347,7 +347,7 @@ struct MatMul : public VectorBinaryBase {
 struct Transpose : public VectorUnaryBase {
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.basicType != Seq) {
-      throw CBException("Transpose expected a Seq matrix array as input.");
+      throw ComposeError("Transpose expected a Seq matrix array as input.");
     }
     return data.inputType;
   }
@@ -485,10 +485,11 @@ struct Orthographic : VectorUnaryBase {
 
   // left, right, bottom, top, near, far
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Width", "Width size.", CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Height", "Height size.", CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Near", "Near plane.", CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Far", "Far plane.", CoreInfo::IntOrFloat));
+      ParamsInfo::Param("Width", CBCCSTR("Width size."), CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Height", CBCCSTR("Height size."),
+                        CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Near", CBCCSTR("Near plane."), CoreInfo::IntOrFloat),
+      ParamsInfo::Param("Far", CBCCSTR("Far plane."), CoreInfo::IntOrFloat));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 

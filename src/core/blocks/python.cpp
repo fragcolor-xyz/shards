@@ -892,8 +892,8 @@ struct Py {
   void setup() { _ts.init(); }
 
   Parameters params{{"Module",
-                     "The module name to load (must be in the script path, .py "
-                     "extension added internally!)",
+                     CBCCSTR("The module name to load (must be in the script "
+                             "path, .py extension added internally!)"),
                      {CoreInfo::StringType}}};
 
   CBParametersInfo parameters() {
@@ -938,7 +938,8 @@ struct Py {
             auto pytypes = Env::tupleGetItem(pyparam, 2);
             Types types;
             Env::extractTypes(pytypes, types, _paramsInners);
-            otherParams.emplace_back(name.c_str(), help.c_str(), types);
+            otherParams.emplace_back(name.c_str(),
+                                     CBOptionalString{help.c_str()}, types);
           } else {
             throw CBException(
                 "Malformed python block parameters, list of tuple (name, help, "
@@ -1086,19 +1087,21 @@ struct Py {
   CBTypesInfo inputTypes() {
     Context ctx(_ts);
 
-    PyObj pytype;
-    if (_self.get())
-      pytype = Env::call(_inputTypes, Env::incRefGet(_self));
-    else
-      pytype = Env::call(_inputTypes);
-    try {
-      Env::extractTypes(pytype, _inputTypesStorage, _inputInners);
-    } catch (Env::ToTypesFailed &ex) {
-      LOG(ERROR) << ex.what();
-      LOG(ERROR) << "Script: " << _scriptName
-                 << " inputTypes method should return a tuple of strings "
-                    "or a string.";
-      throw CBException("Failed call inputTypes on python script!");
+    if (Env::isCallable(_inputTypes)) {
+      PyObj pytype;
+      if (_self.get())
+        pytype = Env::call(_inputTypes, Env::incRefGet(_self));
+      else
+        pytype = Env::call(_inputTypes);
+      try {
+        Env::extractTypes(pytype, _inputTypesStorage, _inputInners);
+      } catch (Env::ToTypesFailed &ex) {
+        LOG(ERROR) << ex.what();
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " inputTypes method should return a tuple of strings "
+                      "or a string.";
+        throw CBException("Failed call inputTypes on python script!");
+      }
     }
     return _inputTypesStorage;
   }
@@ -1106,19 +1109,21 @@ struct Py {
   CBTypesInfo outputTypes() {
     Context ctx(_ts);
 
-    PyObj pytype;
-    if (_self.get())
-      pytype = Env::call(_outputTypes, Env::incRefGet(_self));
-    else
-      pytype = Env::call(_outputTypes);
-    try {
-      Env::extractTypes(pytype, _outputTypesStorage, _outputInners);
-    } catch (Env::ToTypesFailed &ex) {
-      LOG(ERROR) << ex.what();
-      LOG(ERROR) << "Script: " << _scriptName
-                 << " outputTypes method should return a tuple of strings "
-                    "or a string.";
-      throw CBException("Failed call outputTypes on python script!");
+    if (Env::isCallable(_outputTypes)) {
+      PyObj pytype;
+      if (_self.get())
+        pytype = Env::call(_outputTypes, Env::incRefGet(_self));
+      else
+        pytype = Env::call(_outputTypes);
+      try {
+        Env::extractTypes(pytype, _outputTypesStorage, _outputInners);
+      } catch (Env::ToTypesFailed &ex) {
+        LOG(ERROR) << ex.what();
+        LOG(ERROR) << "Script: " << _scriptName
+                   << " outputTypes method should return a tuple of strings "
+                      "or a string.";
+        throw CBException("Failed call outputTypes on python script!");
+      }
     }
     return _outputTypesStorage;
   }

@@ -77,19 +77,19 @@ typedef struct wasi_iovec_t {
   __wasi_size_t buf_len;
 } wasi_iovec_t;
 
-#define PREOPEN_CNT 4
+#define PREOPEN_CNT 5
 
 typedef struct Preopen {
   int fd;
   const char *path;
+  const char *real_path;
 } Preopen;
 
-Preopen preopen[PREOPEN_CNT] = {
-    {0, "<stdin>"},
-    {1, "<stdout>"},
-    {2, "<stderr>"},
-    {-1, "./"},
-};
+Preopen preopen[PREOPEN_CNT] = {{0, "<stdin>", ""},
+                                {1, "<stdout>", ""},
+                                {2, "<stderr>", ""},
+                                {-1, "/", "./"},
+                                {-1, "./", "./"}};
 
 static __wasi_errno_t errno_to_wasi(int errnum) {
   switch (errnum) {
@@ -267,7 +267,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_get) {
   m3ApiGetArgMem(uint32_t *, argv);
   m3ApiGetArgMem(char *, argv_buf);
 
-  // LOG(TRACE) << "WASI args_get";
+  LOG(TRACE) << "WASI args_get";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -290,7 +290,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_sizes_get) {
   m3ApiGetArgMem(__wasi_size_t *, argc);
   m3ApiGetArgMem(__wasi_size_t *, argv_buf_size);
 
-  // LOG(TRACE) << "WASI args_sizes_get";
+  LOG(TRACE) << "WASI args_sizes_get";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -312,7 +312,7 @@ m3ApiRawFunction(m3_wasi_unstable_environ_get) {
   m3ApiGetArgMem(uint32_t *, env);
   m3ApiGetArgMem(char *, env_buf);
 
-  // LOG(TRACE) << "WASI environ_get";
+  LOG(TRACE) << "WASI environ_get";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -326,7 +326,7 @@ m3ApiRawFunction(m3_wasi_unstable_environ_sizes_get) {
   m3ApiGetArgMem(__wasi_size_t *, env_count);
   m3ApiGetArgMem(__wasi_size_t *, env_buf_size);
 
-  // LOG(TRACE) << "WASI environ_sizes_get";
+  LOG(TRACE) << "WASI environ_sizes_get";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -345,7 +345,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_dir_name) {
   m3ApiGetArgMem(char *, path);
   m3ApiGetArg(__wasi_size_t, path_len);
 
-  // LOG(TRACE) << "WASI fd_prestat_dir_name";
+  LOG(TRACE) << "WASI fd_prestat_dir_name";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -363,7 +363,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(uint32_t *, buf); // TODO: use actual struct
 
-  // LOG(TRACE) << "WASI fd_prestat_get";
+  LOG(TRACE) << "WASI fd_prestat_get";
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -381,7 +381,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(__wasi_fdstat_t *, fdstat);
 
-  // LOG(TRACE) << "WASI fd_fdstat_get";
+  LOG(TRACE) << "WASI fd_fdstat_get";
 
   if (runtime == NULL || fdstat == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -432,7 +432,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_filestat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(__wasi_filestat_t *, filestat);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_filestat_get";
+  LOG(TRACE) << "WASI m3_wasi_unstable_fd_filestat_get";
 
   if (runtime == NULL || filestat == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -459,7 +459,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_set_flags) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArg(__wasi_fdflags_t, flags);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_fdstat_set_flags";
+  LOG(TRACE) << "WASI m3_wasi_unstable_fd_fdstat_set_flags";
 
   // TODO
 
@@ -473,13 +473,13 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
   m3ApiGetArg(__wasi_whence_t, wasi_whence);
   m3ApiGetArgMem(__wasi_filesize_t *, result);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_seek";
+  LOG(TRACE) << "WASI m3_wasi_unstable_fd_seek";
 
   if (runtime == NULL || result == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 0) {
     // stdio
@@ -570,7 +570,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   m3ApiGetArg(__wasi_fdflags_t, fs_flags);
   m3ApiGetArgMem(__wasi_fd_t *, fd);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_path_open";
+  LOG(TRACE) << "WASI m3_wasi_unstable_path_open";
 
   if (path_len >= 512)
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -584,7 +584,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   memcpy(host_path, path, path_len);
   host_path[path_len] = '\0'; // NULL terminator
 
-  // LOG(TRACE) << "WASI path_open: " << std::string_view(host_path, path_len);
+  LOG(TRACE) << "WASI path_open: " << std::string_view(host_path, path_len);
 
 #if defined(_WIN32)
   // TODO: This all needs a proper implementation
@@ -632,7 +632,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
     flags |= O_RDONLY; // no-op because O_RDONLY is 0
   }
   int mode = 0644;
-  int host_fd = openat(dirfd, host_path, flags, mode);
+  int host_fd = openat(preopen[dirfd].fd, host_path, flags, mode);
 
   if (host_fd < 0) {
     m3ApiReturn(errno_to_wasi(errno));
@@ -650,13 +650,13 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
   m3ApiGetArg(__wasi_size_t, iovs_len);
   m3ApiGetArgMem(__wasi_size_t *, nread);
 
-  // LOG(TRACE) << "WASI fd_read, fd: " << fd;
+  LOG(TRACE) << "WASI fd_read, fd: " << fd;
 
   if (runtime == NULL || nread == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 0) {
     ssize_t res = 0;
@@ -715,13 +715,13 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
   m3ApiGetArg(__wasi_size_t, iovs_len);
   m3ApiGetArgMem(__wasi_size_t *, nwritten);
 
-  // LOG(TRACE) << "WASI fd_write, fd: " << fd;
+  LOG(TRACE) << "WASI fd_write, fd: " << fd;
 
   if (runtime == NULL || nwritten == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userPointer);
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   if (fd == 1) {
     ssize_t res = 0;
@@ -783,7 +783,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_close) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_close";
+  LOG(TRACE) << "WASI m3_wasi_unstable_fd_close";
 
   int ret = close(fd);
   m3ApiReturn(ret == 0 ? __WASI_ERRNO_SUCCESS : ret);
@@ -793,7 +793,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_datasync) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_fd_datasync";
+  LOG(TRACE) << "WASI m3_wasi_unstable_fd_datasync";
 
 #if defined(_WIN32)
   int ret = _commit(fd);
@@ -813,7 +813,7 @@ m3ApiRawFunction(m3_wasi_unstable_random_get) {
   m3ApiGetArgMem(uint8_t *, buf);
   m3ApiGetArg(__wasi_size_t, buflen);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_random_get";
+  LOG(TRACE) << "WASI m3_wasi_unstable_random_get";
 
   while (1) {
     ssize_t retlen = 0;
@@ -855,7 +855,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_res_get) {
   m3ApiGetArg(__wasi_clockid_t, wasi_clk_id);
   m3ApiGetArgMem(__wasi_timestamp_t *, resolution);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_clock_res_get";
+  LOG(TRACE) << "WASI m3_wasi_unstable_clock_res_get";
 
   if (runtime == NULL || resolution == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -881,7 +881,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
   m3ApiGetArg(__wasi_timestamp_t, precision);
   m3ApiGetArgMem(__wasi_timestamp_t *, time);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_clock_time_get";
+  LOG(TRACE) << "WASI m3_wasi_unstable_clock_time_get";
 
   if (runtime == NULL || time == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -903,7 +903,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
 m3ApiRawFunction(m3_wasi_unstable_proc_exit) {
   m3ApiGetArg(uint32_t, code);
 
-  // LOG(TRACE) << "WASI m3_wasi_unstable_proc_exit";
+  LOG(TRACE) << "WASI m3_wasi_unstable_proc_exit";
 
   runtime->exit_code = code;
   m3ApiTrap(m3Err_trapExit);
@@ -927,7 +927,7 @@ M3Result m3_LinkWASI(IM3Module module) {
 
   // Preopen dirs
   for (int i = 3; i < PREOPEN_CNT; i++) {
-    preopen[i].fd = open(preopen[i].path, O_RDONLY);
+    preopen[i].fd = open(preopen[i].real_path, O_RDONLY);
   }
 #endif
 
@@ -1078,21 +1078,22 @@ struct Run {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static inline Parameters params{
       {"Module",
-       "The wasm module to run.",
+       CBCCSTR("The wasm module to run."),
        {WasmFilePath, CoreInfo::StringType}},
       {"Arguments",
-       "The arguments to pass to the module entrypoint function.",
+       CBCCSTR("The arguments to pass to the module entrypoint function."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType,
         CoreInfo::StringVarSeqType}},
       {"EntryPoint",
-       "The entry point function to call when activating.",
+       CBCCSTR("The entry point function to call when activating."),
        {CoreInfo::StringType}},
-      {"StackSize", "The stack size in kilobytes to use.", {CoreInfo::IntType}},
+      {"StackSize",
+       CBCCSTR("The stack size in kilobytes to use."),
+       {CoreInfo::IntType}},
       {"ResetRuntime",
-       "If the runtime should be reset every activation, altho slow this might "
-       "be useful if certain modules fail to execute properly or leak on "
-       "multiple "
-       "activations.",
+       CBCCSTR("If the runtime should be reset every activation, altho slow "
+               "this might be useful if certain modules fail to execute "
+               "properly or leak on multiple activations."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 

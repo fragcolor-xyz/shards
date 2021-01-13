@@ -76,9 +76,10 @@ struct Texture {
 };
 
 struct ShaderHandle {
-  static inline Type ShaderHandleType{
+  static inline Type ObjType{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxShaderHandleCC}}}};
+  static inline Type VarType = Type::VariableOf(ObjType);
 
   typedef ObjectVar<ShaderHandle> VarInfo;
   static inline VarInfo Var{"BGFX-Shader", CoreCC, BgfxShaderHandleCC};
@@ -93,9 +94,10 @@ struct ShaderHandle {
 };
 
 struct ModelHandle {
-  static inline Type ModelHandleType{
+  static inline Type ObjType{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
+  static inline Type VarType = Type::VariableOf(ObjType);
 
   typedef ObjectVar<ModelHandle> VarInfo;
   static inline VarInfo Var{"BGFX-Model", CoreCC, BgfxModelHandleCC};

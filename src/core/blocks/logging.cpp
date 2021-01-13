@@ -12,9 +12,9 @@ struct LoggingBase {
 };
 
 struct Log : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Prefix", "The prefix message to the value to log.",
-                        CoreInfo::StringType));
+  static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Prefix", CBCCSTR("The prefix message to the value to log."),
+      CoreInfo::StringType));
 
   std::string msg;
 
@@ -58,7 +58,7 @@ struct Log : public LoggingBase {
 
 struct Msg : public LoggingBase {
   static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Message", "The message to log.", CoreInfo::StringType));
+      "Message", CBCCSTR("The message to log."), CoreInfo::StringType));
 
   std::string msg;
 

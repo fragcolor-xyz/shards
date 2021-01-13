@@ -36,8 +36,8 @@ struct BaseConsumer : public Base {
   static inline Type windowType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
 
-  static inline ExposedInfo requiredInfo = ExposedInfo(
-      ExposedInfo::Variable("GFX.Context", "The BGFX Context.", Context::Info));
+  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
+      "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -71,10 +71,18 @@ struct BaseWindow : public Base {
 #endif
 
   static inline Parameters params{
-      {"Title", "The title of the window to create.", {CoreInfo::StringType}},
-      {"Width", "The width of the window to create", {CoreInfo::IntType}},
-      {"Height", "The height of the window to create.", {CoreInfo::IntType}},
-      {"Contents", "The contents of this window.", {CoreInfo::BlocksOrNone}}};
+      {"Title",
+       CBCCSTR("The title of the window to create."),
+       {CoreInfo::StringType}},
+      {"Width",
+       CBCCSTR("The width of the window to create"),
+       {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the window to create."),
+       {CoreInfo::IntType}},
+      {"Contents",
+       CBCCSTR("The contents of this window."),
+       {CoreInfo::BlocksOrNone}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -153,13 +161,13 @@ struct MainWindow : public BaseWindow {
     CBInstanceData dataCopy = data;
     arrayPush(dataCopy.shared,
               ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
-                                             "The exposed SDL window.",
+                                             CBCCSTR("The exposed SDL window."),
                                              BaseConsumer::windowType));
     arrayPush(dataCopy.shared,
-              ExposedInfo::ProtectedVariable("GFX.Context", "The BGFX Context.",
-                                             Context::Info));
+              ExposedInfo::ProtectedVariable(
+                  "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
     arrayPush(dataCopy.shared, ExposedInfo::ProtectedVariable(
-                                   "GUI.Context", "The ImGui Context.",
+                                   "GUI.Context", CBCCSTR("The ImGui Context."),
                                    chainblocks::ImGui::Context::Info));
     _blocks.compose(dataCopy);
 
@@ -286,7 +294,6 @@ struct MainWindow : public BaseWindow {
       // now we can find out the scaling
       int real_w, real_h;
       SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
-      LOG(INFO) << "w: " << real_w << " h: " << real_h;
       _windowScalingW = float(real_w) / float(_width);
       _windowScalingH = float(real_h) / float(_height);
       // fix the scaling now if needed
@@ -319,7 +326,7 @@ struct MainWindow : public BaseWindow {
 
     initInfo.resolution.width = _width;
     initInfo.resolution.height = _height;
-    initInfo.resolution.reset = BGFX_RESET_VSYNC | BGFX_RESET_SRGB_BACKBUFFER;
+    initInfo.resolution.reset = BGFX_RESET_VSYNC;
     if (!bgfx::init(initInfo)) {
       throw ActivationError("Failed to initialize BGFX");
     } else {
@@ -481,7 +488,22 @@ struct MainWindow : public BaseWindow {
 };
 
 struct Texture2D : public BaseConsumer {
+  static inline Parameters params{
+      {"sRGB",
+       CBCCSTR("If the texture should be loaded as an sRGB format (only valid "
+               "for 8 bit per color textures)."),
+       {CoreInfo::BoolType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _srgb = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_srgb); }
+
   Texture *_texture{nullptr};
+  bool _srgb{false};
 
   void cleanup() {
     if (_texture) {
@@ -526,24 +548,24 @@ struct Texture2D : public BaseConsumer {
       if (_texture->bpp == 1) {
         switch (_texture->channels) {
         case 1:
-          _texture->handle =
-              bgfx::createTexture2D(_texture->width, _texture->height, false, 1,
-                                    bgfx::TextureFormat::R8, BGFX_TEXTURE_SRGB);
+          _texture->handle = bgfx::createTexture2D(
+              _texture->width, _texture->height, false, 1,
+              bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 2:
           _texture->handle = bgfx::createTexture2D(
               _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RG8, BGFX_TEXTURE_SRGB);
+              bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 3:
           _texture->handle = bgfx::createTexture2D(
               _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RGB8, BGFX_TEXTURE_SRGB);
+              bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         case 4:
           _texture->handle = bgfx::createTexture2D(
               _texture->width, _texture->height, false, 1,
-              bgfx::TextureFormat::RGBA8, BGFX_TEXTURE_SRGB);
+              bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);
           break;
         default:
           cbassert(false);
@@ -620,24 +642,24 @@ struct Texture2D : public BaseConsumer {
 
 template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return ShaderHandle::ShaderHandleType; }
+  static CBTypesInfo outputTypes() { return ShaderHandle::ObjType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
-    return ShaderHandle::ShaderHandleType;
+    return ShaderHandle::ObjType;
   }
 
   static inline Parameters f_v_params{
       {"VertexShader",
-       "The vertex shader bytecode.",
+       CBCCSTR("The vertex shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}},
       {"PixelShader",
-       "The pixel shader bytecode.",
+       CBCCSTR("The pixel shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
   static inline Parameters c_params{
       {"ComputeShader",
-       "The compute shader bytecode.",
+       CBCCSTR("The compute shader bytecode."),
        {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
   static CBParametersInfo parameters() {
@@ -652,6 +674,39 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   ParamVar _pcode{};
   ParamVar _ccode{};
   ShaderHandle *_output{nullptr};
+  std::array<CBExposedTypeInfo, 2> _exposing;
+
+  CBExposedTypesInfo requiredVariables() {
+    if constexpr (SHADER_TYPE == 'c') {
+      if (!_ccode.isVariable()) {
+        return {};
+      } else {
+        _exposing[0].name = _ccode.variableName();
+        _exposing[0].help = CBCCSTR("The required compute shader bytecode.");
+        _exposing[0].exposedType = CoreInfo::BytesType;
+        return {_exposing.data(), 1, 0};
+      }
+    } else {
+      int idx = -1;
+      if (_vcode.isVariable()) {
+        idx++;
+        _exposing[idx].name = _vcode.variableName();
+        _exposing[idx].help = CBCCSTR("The required vertex shader bytecode.");
+        _exposing[idx].exposedType = CoreInfo::BytesType;
+      }
+      if (_pcode.isVariable()) {
+        idx++;
+        _exposing[idx].name = _pcode.variableName();
+        _exposing[idx].help = CBCCSTR("The required pixel shader bytecode.");
+        _exposing[idx].exposedType = CoreInfo::BytesType;
+      }
+      if (idx == -1) {
+        return {};
+      } else {
+        return {_exposing.data(), uint32_t(idx + 1), 0};
+      }
+    }
+  }
 
   void setParam(int index, const CBVar &value) {
     if constexpr (SHADER_TYPE == 'c') {
@@ -852,13 +907,15 @@ struct Model : public BaseConsumer {
       Type::TableOf(InputTableTypes, InputTableKeys);
 
   static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return ModelHandle::ModelHandleType; }
+  static CBTypesInfo outputTypes() { return ModelHandle::ObjType; }
 
   static inline Parameters params{
-      {"Layout", "The vertex layout of this model.", {VertexAttributeSeqType}},
+      {"Layout",
+       CBCCSTR("The vertex layout of this model."),
+       {VertexAttributeSeqType}},
       {"Dynamic",
-       "If the model is dynamic and will be optimized to change as often as "
-       "every frame.",
+       CBCCSTR("If the model is dynamic and will be optimized to change as "
+               "often as every frame."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -978,7 +1035,7 @@ struct Model : public BaseConsumer {
     _blayout = layout;
     _lineElems = _expectedTypes.size();
 
-    return ModelHandle::ModelHandleType;
+    return ModelHandle::ObjType;
   }
 
   CBVar activateStatic(CBContext *context, const CBVar &input) {
@@ -1177,21 +1234,23 @@ struct Camera : public BaseConsumer {
   CBVar *_bgfx_context{nullptr};
 
   static inline Parameters params{
-      {"Width", "The width of the viewport.", {CoreInfo::IntType}},
-      {"Height", "The height of the viewport.", {CoreInfo::IntType}},
+      {"Width", CBCCSTR("The width of the viewport."), {CoreInfo::IntType}},
+      {"Height", CBCCSTR("The height of the viewport."), {CoreInfo::IntType}},
       {"Near",
-       "The distance from the near clipping plane.",
+       CBCCSTR("The distance from the near clipping plane."),
        {CoreInfo::FloatType}},
       {"Far",
-       "The distance from the far clipping plane.",
+       CBCCSTR("The distance from the far clipping plane."),
        {CoreInfo::FloatType}},
       {"FieldOfView",
-       "The field of view of the camera.",
+       CBCCSTR("The field of view of the camera."),
        {CoreInfo::FloatType}},
       {"OffsetX",
-       "The horizontal offset of the viewport.",
+       CBCCSTR("The horizontal offset of the viewport."),
        {CoreInfo::IntType}},
-      {"OffsetY", "The vertical offset of the viewport.", {CoreInfo::IntType}}};
+      {"OffsetY",
+       CBCCSTR("The vertical offset of the viewport."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1304,6 +1363,152 @@ struct Camera : public BaseConsumer {
   }
 };
 
+struct Draw : public BaseConsumer {
+  // TODO required info call, model and shader
+
+  // a matrix (in the form of 4 float4s)
+  // or multiple matrices (will draw multiple times, instanced TODO)
+  static inline Type InputSeqType = Type::SeqOf(CoreInfo::Float4SeqType);
+  static inline Types InputTypes{{CoreInfo::Float4SeqType, InputSeqType}};
+
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return InputTypes; }
+
+  // keep in mind that bgfx does its own sorting, so we don't need to make this
+  // block way too smart
+  static inline Parameters params{
+      {"Shader",
+       CBCCSTR("The shader program to use for this draw."),
+       {ShaderHandle::VarType, CoreInfo::NoneType}},
+      {"Model",
+       CBCCSTR("The model to draw."),
+       {ModelHandle::VarType, CoreInfo::NoneType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _shader = value;
+      break;
+    case 1:
+      _model = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _shader;
+    case 1:
+      return _model;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  ParamVar _shader{};
+  ParamVar _model{};
+  CBVar *_bgfx_context{nullptr};
+  std::array<CBExposedTypeInfo, 2> _exposing;
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = -1;
+    if (_shader.isVariable()) {
+      idx++;
+      _exposing[idx].name = _shader.variableName();
+      _exposing[idx].help = CBCCSTR("The required shader.");
+      _exposing[idx].exposedType = ShaderHandle::ObjType;
+    }
+    if (_model.isVariable()) {
+      idx++;
+      _exposing[idx].name = _model.variableName();
+      _exposing[idx].help = CBCCSTR("The required model.");
+      _exposing[idx].exposedType = ModelHandle::ObjType;
+    }
+    if (idx == -1) {
+      return {};
+    } else {
+      return {_exposing.data(), uint32_t(idx + 1), 0};
+    }
+  }
+
+  void warmup(CBContext *context) {
+    _shader.warmup(context);
+    _model.warmup(context);
+    _bgfx_context = referenceVariable(context, "GFX.Context");
+  }
+
+  void cleanup() {
+    _shader.cleanup();
+    _model.cleanup();
+    if (_bgfx_context) {
+      releaseVariable(_bgfx_context);
+      _bgfx_context = nullptr;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.seqTypes.elements[0].basicType == CBType::Seq) {
+      // TODO
+      OVERRIDE_ACTIVATE(data, activate);
+    } else {
+      OVERRIDE_ACTIVATE(data, activateSingle);
+    }
+    return data.inputType;
+  }
+
+  CBVar activateSingle(CBContext *context, const CBVar &input) {
+    auto shader =
+        reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
+    auto model =
+        reinterpret_cast<ModelHandle *>(_model.get().payload.objectValue);
+    auto *ctx = reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+    if (input.payload.seqValue.len != 4) {
+      throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+    }
+
+    float mat[16];
+    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
+           sizeof(float) * 4);
+    bgfx::setTransform(mat);
+
+    std::visit(
+        [](auto &m) {
+          // Set vertex and index buffer.
+          bgfx::setVertexBuffer(0, m.vb);
+          bgfx::setIndexBuffer(m.ib);
+        },
+        model->model);
+
+    // set state, (it's auto reset after submit)
+    uint64_t state = 0 | BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G |
+                     BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A |
+                     BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+                     BGFX_STATE_CULL_CW;
+    bgfx::setState(state);
+
+    // Submit primitive for rendering to the current view.
+    bgfx::submit(ctx->currentView(), shader->handle);
+
+    return input;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    throw ActivationError("Invalid activation path.");
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -1313,6 +1518,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
   REGISTER_CBLOCK("GFX.Model", Model);
   REGISTER_CBLOCK("GFX.Camera", Camera);
+  REGISTER_CBLOCK("GFX.Draw", Draw);
 }
 }; // namespace BGFX
 

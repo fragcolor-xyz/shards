@@ -8,9 +8,11 @@ namespace Assert {
 
 struct Base {
   static inline ParamsInfo assertParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Value", "The value to test against for equality.",
+      ParamsInfo::Param("Value",
+                        CBCCSTR("The value to test against for equality."),
                         CoreInfo::AnyType),
-      ParamsInfo::Param("Abort", "If we should abort the process on failure.",
+      ParamsInfo::Param("Abort",
+                        CBCCSTR("If we should abort the process on failure."),
                         CoreInfo::BoolType));
 
   CBVar value{};

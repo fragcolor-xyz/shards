@@ -12,6 +12,7 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 approx = "0.4.0"
 lazy_static = "1.4.0"
+compile-time-crc32 = "0.1.2"
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }

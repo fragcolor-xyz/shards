@@ -9,6 +9,7 @@
 
 namespace chainblocks {
 CB_HAS_MEMBER_TEST(name);
+CB_HAS_MEMBER_TEST(hash);
 CB_HAS_MEMBER_TEST(help);
 CB_HAS_MEMBER_TEST(setup);
 CB_HAS_MEMBER_TEST(destroy);
@@ -35,6 +36,7 @@ template <class T> struct BlockWrapper {
   CBlock header;
   T block;
   static inline const char *name = "";
+  static inline uint32_t crc = 0;
 
   static __cdecl CBlock *create() {
     CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16})
@@ -49,13 +51,23 @@ template <class T> struct BlockWrapper {
       result->name = static_cast<CBNameProc>([](CBlock *b) { return name; });
     }
 
+    // name
+    if constexpr (has_hash<T>::value) {
+      result->hash = static_cast<CBHashProc>([](CBlock *b) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.hash();
+      });
+    } else {
+      result->hash = static_cast<CBHashProc>([](CBlock *b) { return crc; });
+    }
+
     // help
     if constexpr (has_help<T>::value) {
       result->help = static_cast<CBHelpProc>([](CBlock *b) {
         return reinterpret_cast<BlockWrapper<T> *>(b)->block.help();
       });
     } else {
-      result->help = static_cast<CBHelpProc>([](CBlock *b) { return ""; });
+      result->help =
+          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 
     // setup
@@ -269,6 +281,9 @@ template <class T> struct BlockWrapper {
 
 #define REGISTER_CBLOCK(__name__, __type__)                                    \
   ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
+  ::chainblocks::BlockWrapper<__type__>::crc =                                 \
+      ::chainblocks::constant<::chainblocks::crc32(                            \
+          __name__ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                       \
   ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
                                &::chainblocks::BlockWrapper<__type__>::create, \
                                NAMEOF_FULL_TYPE(__type__))

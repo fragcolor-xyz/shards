@@ -170,7 +170,7 @@ struct Evolve {
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
-      cleanupFlow.parallel_for(
+      cleanupFlow.for_each_dynamic(
           _population.begin(), _population.end(), [&](Individual &i) {
             // Free and release chain
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
@@ -216,7 +216,7 @@ struct Evolve {
         _nelites = size_t(double(_popsize) * _elitism);
 
         tf::Taskflow initFlow;
-        initFlow.parallel_for(
+        initFlow.for_each_dynamic(
             _population.begin(), _population.end(), [&](Individual &i) {
               Serialization deserial;
               std::stringstream i1Stream(chainStr);
@@ -317,7 +317,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -334,7 +334,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -360,7 +360,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -380,7 +380,7 @@ struct Evolve {
       {
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _era == 0 ? _sortedPopulation.begin()
                       : _sortedPopulation.begin() + _nelites,
             _sortedPopulation.end(),
@@ -411,7 +411,7 @@ struct Evolve {
       // From validation to end, every iteration/era
       {
         tf::Taskflow runFlow;
-        runFlow.parallel_for(
+        runFlow.for_each_dynamic(
             _population.begin(), _population.end(), [&](Individual &i) {
               TickObserver obs{i};
 
@@ -437,7 +437,7 @@ struct Evolve {
       { // Stop all the population chains
         tf::Taskflow flow;
 
-        flow.parallel_for(
+        flow.for_each_dynamic(
             _population.begin(), _population.end(), [](Individual &i) {
               auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
               auto fitchain =
@@ -484,14 +484,14 @@ struct Evolve {
       // since we might need them
       {
         tf::Taskflow mutFlow;
-        mutFlow.parallel_for(_sortedPopulation.begin() + _nelites,
-                             _sortedPopulation.end(), [&](auto &i) {
-                               // reset the individual if extinct
-                               if (i->extinct) {
-                                 resetState(*i);
-                               }
-                               mutate(*i);
-                             });
+        mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites,
+                                 _sortedPopulation.end(), [&](auto &i) {
+                                   // reset the individual if extinct
+                                   if (i->extinct) {
+                                     resetState(*i);
+                                   }
+                                   mutate(*i);
+                                 });
         _exec->run(mutFlow).get();
       }
 
@@ -572,22 +572,32 @@ private:
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
-      {"Chain", "The chain to optimize and evolve.", {CoreInfo::ChainType}},
-      {"Fitness",
-       "The fitness chain to run at the end of the main chain evaluation and "
-       "using "
-       "its last output; should output a Float fitness value.",
+      {"Chain",
+       CBCCSTR("The chain to optimize and evolve."),
        {CoreInfo::ChainType}},
-      {"Population", "The population size.", {CoreInfo::IntType}},
-      {"Mutation", "The rate of mutation, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Crossover", "The rate of crossover, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Extinction",
-       "The rate of extinction, 0.1 = 10%.",
+      {"Fitness",
+       CBCCSTR(
+           "The fitness chain to run at the end of the main chain evaluation "
+           "and using its last output; should output a Float fitness value."),
+       {CoreInfo::ChainType}},
+      {"Population", CBCCSTR("The population size."), {CoreInfo::IntType}},
+      {"Mutation",
+       CBCCSTR("The rate of mutation, 0.1 = 10%."),
        {CoreInfo::FloatType}},
-      {"Elitism", "The rate of elitism, 0.1 = 10%.", {CoreInfo::FloatType}},
-      {"Threads", "The number of cpu threads to use.", {CoreInfo::IntType}},
+      {"Crossover",
+       CBCCSTR("The rate of crossover, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Extinction",
+       CBCCSTR("The rate of extinction, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Elitism",
+       CBCCSTR("The rate of elitism, 0.1 = 10%."),
+       {CoreInfo::FloatType}},
+      {"Threads",
+       CBCCSTR("The number of cpu threads to use."),
+       {CoreInfo::IntType}},
       {"Coroutines",
-       "The number of coroutines to run on each thread.",
+       CBCCSTR("The number of coroutines to run on each thread."),
        {CoreInfo::IntType}}};
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
@@ -762,7 +772,7 @@ struct Mutant {
       for (auto &mut : muts) {
         if (idx >= int(innerParams.len))
           break;
-        ToTypeInfo ptype(inner->getParam(inner, idx));
+        TypeInfo ptype(inner->getParam(inner, idx));
         dataCopy.inputType = ptype;
         if (mut.valueType == Block) {
           auto blk = mut.payload.blockValue;
@@ -830,16 +840,16 @@ private:
   OwnedVar _mutations{};
   OwnedVar _options{};
   static inline Parameters _params{
-      {"Block", "The block to mutate.", {CoreInfo::BlockType}},
+      {"Block", CBCCSTR("The block to mutate."), {CoreInfo::BlockType}},
       {"Indices",
-       "The parameter indices to mutate of the inner block.",
+       CBCCSTR("The parameter indices to mutate of the inner block."),
        {CoreInfo::IntSeqType}},
       {"Mutations",
-       "Optional chains of blocks (or Nones) to call when mutating one of the "
-       "parameters, if empty a default operator will be used.",
+       CBCCSTR("Optional chains of blocks (or Nones) to call when mutating one "
+               "of the parameters, if empty a default operator will be used."),
        {CoreInfo::BlocksOrNoneSeq}},
       {"Options",
-       "Mutation options table - a table with mutation options.",
+       CBCCSTR("Mutation options table - a table with mutation options."),
        {CoreInfo::NoneType, CoreInfo::AnyTableType}}};
 };
 
@@ -1047,12 +1057,14 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
 }
 
 struct DBlock {
-  static const char *help() { return "A dynamic block."; }
+  static CBOptionalString help() { return CBCCSTR("A dynamic block."); }
 
   static inline Parameters _params{
-      {"Name", "The name of the block to wrap.", {CoreInfo::StringType}},
+      {"Name",
+       CBCCSTR("The name of the block to wrap."),
+       {CoreInfo::StringType}},
       {"Parameters",
-       "The parameters to pass to the wrapped block.",
+       CBCCSTR("The parameters to pass to the wrapped block."),
        {CoreInfo::AnySeqType}}};
 
   static CBParametersInfo parameters() { return _params; }

@@ -81,16 +81,16 @@ struct Base {
   bool _noCopy = false;
 
   static inline Parameters producerParams{
-      {"Name", "The name of the channel.", {CoreInfo::StringType}},
+      {"Name", CBCCSTR("The name of the channel."), {CoreInfo::StringType}},
       {"NoCopy!!",
-       "Unsafe flag that will improve performance by not copying values when "
-       "sending them thru the channel.",
+       CBCCSTR("Unsafe flag that will improve performance by not copying "
+               "values when sending them thru the channel."),
        {CoreInfo::BoolType}}};
 
   static inline Parameters consumerParams{
-      {"Name", "The name of the channel.", {CoreInfo::StringType}},
+      {"Name", CBCCSTR("The name of the channel."), {CoreInfo::StringType}},
       {"Buffer",
-       "The amount of values to buffer before outputting them.",
+       CBCCSTR("The amount of values to buffer before outputting them."),
        {CoreInfo::IntType}}};
 
   void setParam(int index, const CBVar &value) {

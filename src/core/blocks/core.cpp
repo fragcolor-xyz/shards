@@ -19,14 +19,15 @@ struct JointOp {
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline ParamsInfo joinOpParams = ParamsInfo(
-      ParamsInfo::Param("From",
-                        "The name of the sequence variable to edit in place.",
-                        CoreInfo::AnyVarSeqType),
+      ParamsInfo::Param(
+          "From",
+          CBCCSTR("The name of the sequence variable to edit in place."),
+          CoreInfo::AnyVarSeqType),
       ParamsInfo::Param(
 
           "Join",
-          "Other columns to join sort/filter using the input (they must be "
-          "of the same length).",
+          CBCCSTR("Other columns to join sort/filter using the input (they "
+                  "must be of the same length)."),
           CoreInfo::AnyVarSeqType));
 
   void setParam(int index, const CBVar &value) {
@@ -143,12 +144,14 @@ struct Sort : public ActionJointOp {
       joinOpParams,
       ParamsInfo::Param(
           "Desc",
-          "If sorting should be in descending order, defaults ascending.",
+          CBCCSTR(
+              "If sorting should be in descending order, defaults ascending."),
           CoreInfo::BoolType),
-      ParamsInfo::Param("Key",
-                        "The blocks to use to transform the collection's items "
-                        "before they are compared. Can be None.",
-                        CoreInfo::BlocksOrNone));
+      ParamsInfo::Param(
+          "Key",
+          CBCCSTR("The blocks to use to transform the collection's items "
+                  "before they are compared. Can be None."),
+          CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -305,12 +308,12 @@ struct Remove : public ActionJointOp {
   static inline ParamsInfo paramsInfo = ParamsInfo(
       joinOpParams,
       ParamsInfo::Param("Predicate",
-                        "The blocks to use as predicate, if true the item will "
-                        "be popped from the sequence.",
+                        CBCCSTR("The blocks to use as predicate, if true the "
+                                "item will be popped from the sequence."),
                         CoreInfo::Blocks),
       ParamsInfo::Param("Unordered",
-                        "Turn on to remove items very quickly but will not "
-                        "preserve the sequence items order.",
+                        CBCCSTR("Turn on to remove items very quickly but will "
+                                "not preserve the sequence items order."),
                         CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
@@ -420,9 +423,9 @@ struct Profile {
   std::string _label{"<no label>"};
 
   static inline Parameters _params{
-      {"Action", "The action blocks to profile.", {CoreInfo::Blocks}},
+      {"Action", CBCCSTR("The action blocks to profile."), {CoreInfo::Blocks}},
       {"Label",
-       "The label to print when outputting time data.",
+       CBCCSTR("The label to print when outputting time data."),
        {CoreInfo::StringType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -494,7 +497,8 @@ struct XpendTo : public XPendBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Collection", "The collection to add the input to.", xpendTypes));
+      "Collection", CBCCSTR("The collection to add the input to."),
+      xpendTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -696,7 +700,7 @@ struct ForEachBlock {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
@@ -752,7 +756,7 @@ struct Map {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   CBVar _output{};
@@ -832,7 +836,7 @@ struct Reduce {
 private:
   static inline Parameters _params{
       {"Apply",
-       "The function to apply to each item of the sequence.",
+       CBCCSTR("The function to apply to each item of the sequence."),
        {CoreInfo::Blocks}}};
 
   CBVar *_tmp = nullptr;
@@ -965,16 +969,16 @@ struct Erase : SeqUser {
 private:
   ParamVar _indices{};
   static inline Parameters _params = {
-      {"Indices", "One or multiple indices to filter from a sequence.",
+      {"Indices", CBCCSTR("One or multiple indices to filter from a sequence."),
        CoreInfo::TakeTypes},
-      {"Name", "The name of the variable.", CoreInfo::StringOrAnyVar},
+      {"Name", CBCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar},
       {"Key",
-       "The key of the value to read/write from/in the table "
-       "(this variable will become a table).",
+       CBCCSTR("The key of the value to read/write from/in the table (this "
+               "variable will become a table)."),
        {CoreInfo::StringType}},
       {"Global",
-       "If the variable is or should be available to all "
-       "of the chains in the same node.",
+       CBCCSTR("If the variable is or should be available to all of the chains "
+               "in the same node."),
        {CoreInfo::BoolType}}};
   bool _isTable;
 };
@@ -988,11 +992,13 @@ struct Assoc : public VariableBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (_isTable) {
-      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The required table.", CoreInfo::AnyTableType));
+      _requiredInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The required table."),
+                                CoreInfo::AnyTableType));
     } else {
       _requiredInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The required sequence.", CoreInfo::AnySeqType));
+          _name.c_str(), CBCCSTR("The required sequence."),
+          CoreInfo::AnySeqType));
     }
     return CBExposedTypesInfo(_requiredInfo);
   }
@@ -1004,18 +1010,20 @@ struct Assoc : public VariableBase {
       _tableTypes = Type::TableOf(data.inputType.seqTypes);
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-            _name.c_str(), "The exposed table.", _tableTypes, true));
+            _name.c_str(), CBCCSTR("The exposed table."), _tableTypes, true));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The exposed table.", _tableTypes, true));
+            _name.c_str(), CBCCSTR("The exposed table."), _tableTypes, true));
       }
     } else {
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-            _name.c_str(), "The exposed sequence.", data.inputType, true));
+            _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
+            true));
       } else {
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The exposed sequence.", data.inputType, true));
+            _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
+            true));
       }
     }
 
@@ -1111,12 +1119,12 @@ struct Replace {
   static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
   static inline Parameters params{
       {"Patterns",
-       "The patterns to find.",
+       CBCCSTR("The patterns to find."),
        {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType,
         CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
       {"Replacements",
-       "The replacements to apply to the input, if a single value is "
-       "provided every match will be replaced with that single value.",
+       CBCCSTR("The replacements to apply to the input, if a single value is "
+               "provided every match will be replaced with that single value."),
        {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType,
         CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
@@ -1366,6 +1374,21 @@ RUNTIME_BLOCK_setParam(Sequence);
 RUNTIME_BLOCK_getParam(Sequence);
 RUNTIME_BLOCK_activate(Sequence);
 RUNTIME_BLOCK_END(Sequence);
+
+// Register TableDecl
+RUNTIME_CORE_BLOCK_FACTORY(TableDecl);
+RUNTIME_BLOCK_cleanup(TableDecl);
+RUNTIME_BLOCK_destroy(TableDecl);
+RUNTIME_BLOCK_warmup(TableDecl);
+RUNTIME_BLOCK_inputTypes(TableDecl);
+RUNTIME_BLOCK_outputTypes(TableDecl);
+RUNTIME_BLOCK_parameters(TableDecl);
+RUNTIME_BLOCK_compose(TableDecl);
+RUNTIME_BLOCK_exposedVariables(TableDecl);
+RUNTIME_BLOCK_setParam(TableDecl);
+RUNTIME_BLOCK_getParam(TableDecl);
+RUNTIME_BLOCK_activate(TableDecl);
+RUNTIME_BLOCK_END(TableDecl);
 
 // Register Pop
 RUNTIME_CORE_BLOCK_FACTORY(Pop);
@@ -1652,9 +1675,85 @@ CBVar hashActivation(const CBVar &input) {
 }
 
 #ifdef __EMSCRIPTEN__
+// clang-format off
+EM_JS(char *, cb_emscripten_eval, (const char *code), {
+  try {
+    const scode = UTF8ToString(code);
+    var result = eval(scode);
+    // if undefined just return null
+    if(result === undefined) {
+      return 0;
+    }
+    // if not undefined return a string
+    if(typeof(result) !== "string") {
+      result = JSON.stringify(result);
+    }
+    var len = lengthBytesUTF8(result) + 1;
+    var buffer = _malloc(len);
+    stringToUTF8(result, buffer, len);
+    return buffer;
+  } catch (error) {
+    console.error(error);
+    return -1;
+  }
+});
+// clang-format on
+
 CBVar emscriptenEvalActivation(const CBVar &input) {
-  emscripten_run_script(input.payload.stringValue);
-  return input;
+  static thread_local std::string str;
+  auto res = cb_emscripten_eval(input.payload.stringValue);
+  const auto check = reinterpret_cast<intptr_t>(res);
+  if (check == -1) {
+    throw ActivationError("Failure on the javascript side, check console");
+  }
+  str.clear();
+  if (res) {
+    str.assign(res);
+    free(res);
+  }
+  return Var(str);
+}
+
+// clang-format off
+EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
+  return Asyncify.handleAsync(async() => {
+    try {
+      const scode = UTF8ToString(code);
+      const promise = eval(scode);
+      var result = await promise;
+      // if undefined just return null
+      if(result === undefined) {
+        return 0;
+      }
+      // if not undefined return a string
+      if(typeof(result) !== "string") {
+        result = JSON.stringify(result);
+      }
+      var len = lengthBytesUTF8(result) + 1;
+      var buffer = _malloc(len);
+      stringToUTF8(result, buffer, len);
+      return buffer;
+    } catch (error) {
+      console.error(error);
+      return -1;
+    }
+  });
+});
+// clang-format on
+
+CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
+  static thread_local std::string str;
+  auto res = cb_emscripten_eval_async(input.payload.stringValue);
+  const auto check = reinterpret_cast<intptr_t>(res);
+  if (check == -1) {
+    throw ActivationError("Failure on the javascript side, check console");
+  }
+  str.clear();
+  if (res) {
+    str.assign(res);
+    free(res);
+  }
+  return Var(str);
 }
 #endif
 
@@ -1665,6 +1764,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
   REGISTER_CORE_BLOCK(Sequence);
+  chainblocks::registerBlock("Table", createBlockTableDecl);
   REGISTER_CORE_BLOCK(Clear);
   REGISTER_CORE_BLOCK(Pop);
   REGISTER_CORE_BLOCK(PopFront);
@@ -1783,6 +1883,12 @@ void registerBlocksCoreBlocks() {
                   CoreInfo::StringType>;
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
+
+  using EmscriptenEvalAsyncBlock =
+      LambdaBlock<emscriptenEvalAsyncActivation, CoreInfo::StringType,
+                  CoreInfo::StringType>;
+  // _ prefix = internal block
+  REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenEvalAsyncBlock);
 #endif
 
   REGISTER_CBLOCK("Return", Return);

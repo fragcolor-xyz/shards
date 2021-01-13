@@ -91,7 +91,7 @@ else()
   # build with cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
   # MinSizeRel is better for release builds
   # test with node cbl.js -e '(do (def Root (Node)) (schedule Root (Chain "x" (Msg "Hello"))) (run Root 0.1))'
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s EXIT_RUNTIME=1 -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s INLINING_LIMIT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=[\"cb_emscripten_eval_async\"]' -s MODULARIZE=1 -s 'EXPORT_NAME=\"cbl\"' -s 'EXTRA_EXPORTED_RUNTIME_METHODS=[\"FS\", \"callMain\", \"ENV\"]' -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=1")
     add_compile_options(-g2 -Oz)
@@ -102,6 +102,12 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
+  endif()
+  if(EMSCRIPTEN_IDBFS)
+    add_link_options(-lidbfs.js)
+  endif()
+  if(EMSCRIPTEN_NODEFS)
+    add_link_options(-lnodefs.js)
   endif()
 endif()
 
@@ -125,7 +131,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
 else()
   # add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT EMSCRIPTEN)
+  if(NOT WIN32 AND NOT EMSCRIPTEN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
   endif()
@@ -211,6 +217,7 @@ elseif(APPLE)
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
+  include_directories(${CHAINBLOCKS_DIR}/external/boost_1_75_0)
 elseif(UNIX)
   set(BOOST_LIBS -lboost_context -lboost_filesystem -lssl -lcrypto -pthread -ldl -lrt)
 endif()
@@ -287,6 +294,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
   ${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/cbccstrings.hpp
   )
 
 #### Header paths for tidy
@@ -835,6 +843,10 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
+
+  if(WIN32)
+    set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp PROPERTIES COMPILE_FLAGS -O1)
+  endif()
 else()
   set(
     RUNTIME_SRC
@@ -918,9 +930,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
-if(EMSCRIPTEN)
-set_target_properties(cbl PROPERTIES SUFFIX ".html")
-endif()
+# if(EMSCRIPTEN)
+# set_target_properties(cbl PROPERTIES SUFFIX ".html")
+# endif()
 ###
 
 ### our experimental edn eval

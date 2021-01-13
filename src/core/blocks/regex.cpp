@@ -8,7 +8,7 @@ namespace chainblocks {
 namespace Regex {
 struct Common {
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Regex", "The regular expression.", CoreInfo::StringType));
+      "Regex", CBCCSTR("The regular expression."), CoreInfo::StringType));
 
   std::regex _re;
   std::string _re_str;
@@ -90,10 +90,10 @@ struct Replace : public Common {
   std::string _replacement;
   std::string _output;
 
-  static inline ParamsInfo params =
-      ParamsInfo(Common::params,
-                 ParamsInfo::Param("Replacement", "The replacement expression.",
-                                   CoreInfo::StringType));
+  static inline ParamsInfo params = ParamsInfo(
+      Common::params,
+      ParamsInfo::Param("Replacement", CBCCSTR("The replacement expression."),
+                        CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 

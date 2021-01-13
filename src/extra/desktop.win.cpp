@@ -330,7 +330,8 @@ struct PixelBase {
   std::string variableName;
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Window", "The window variable name to use as coordinate origin.",
+      "Window",
+      CBCCSTR("The window variable name to use as coordinate origin."),
       Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
@@ -359,7 +360,7 @@ struct PixelBase {
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            variableName.c_str(), "The window to use as origin.",
+            variableName.c_str(), CBCCSTR("The window to use as origin."),
             Globals::windowType));
       } else {
         variableName.clear();
@@ -757,13 +758,13 @@ struct Tap : public MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param(
-          "Long",
-          "A big delay will be injected after tap down to simulate a long tap.",
-          CoreInfo::BoolType),
+      ParamsInfo::Param("Long",
+                        CBCCSTR("A big delay will be injected after tap down "
+                                "to simulate a long tap."),
+                        CoreInfo::BoolType),
       ParamsInfo::Param(
           "Natural",
-          "Small pauses will be injected after tap events down & up.",
+          CBCCSTR("Small pauses will be injected after tap events down & up."),
           CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
@@ -875,7 +876,8 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
       MousePosBase::params,
       ParamsInfo::Param(
           "Natural",
-          "Small pauses will be injected after click events down & up.",
+          CBCCSTR(
+              "Small pauses will be injected after click events down & up."),
           CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }

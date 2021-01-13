@@ -24,14 +24,9 @@
 #include <dlfcn.h>
 #endif
 
-#define CHECK_ARGS_IS(expected)                                                \
-  checkArgsIs(name.c_str(), expected, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_BETWEEN(min, max)                                           \
-  checkArgsBetween(name.c_str(), min, max, std::distance(argsBegin, argsEnd))
-
-#define CHECK_ARGS_AT_LEAST(expected)                                          \
-  checkArgsAtLeast(name.c_str(), expected, std::distance(argsBegin, argsEnd))
+#ifdef CB_COMPRESSED_STRINGS
+#include "../core/cbccstrings.hpp"
+#endif
 
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
@@ -99,6 +94,7 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
 #endif
 
     cbRegisterAllBlocks();
+
     initDoneOnce = true;
   }
 
@@ -375,6 +371,7 @@ struct ChainFileWatcher {
   std::atomic_bool running;
   std::thread worker;
   std::string fileName;
+  malValuePtr autoexec;
   std::string path;
   boost::lockfree::queue<ChainLoadResult> results;
   std::unordered_map<CBChain *, std::tuple<malEnvPtr, malValuePtr>> liveChains;
@@ -498,15 +495,20 @@ struct ChainFileWatcher {
     }
   }
 
-  explicit ChainFileWatcher(std::string &file, std::string currentPath,
-                            const CBInstanceData &data)
-      : running(true), fileName(file), path(currentPath), results(2),
-        garbage(2), inputTypeInfo(data.inputType), shared(data.shared) {
+  explicit ChainFileWatcher(const std::string &file, std::string currentPath,
+                            const CBInstanceData &data,
+                            const malValuePtr &autoexec)
+      : running(true), fileName(file), autoexec(autoexec), path(currentPath),
+        results(2), garbage(2), inputTypeInfo(data.inputType),
+        shared(data.shared) {
     node = data.chain->node;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
     localRoot = std::filesystem::path(path).string();
     try {
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+      if (this->autoexec != nullptr) {
+        EVAL(this->autoexec, rootEnv);
+      }
     } catch (const std::exception &e) {
       LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
       throw e;
@@ -519,6 +521,9 @@ struct ChainFileWatcher {
       localRoot = std::filesystem::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
+        if (this->autoexec != nullptr) {
+          EVAL(this->autoexec, rootEnv);
+        }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
         throw e;
@@ -556,6 +561,10 @@ public:
   malChainProvider(const MalString &name)
       : chainblocks::ChainProvider(), _filename(name), _watcher(nullptr) {}
 
+  malChainProvider(const MalString &name, const malValuePtr &ast)
+      : chainblocks::ChainProvider(), _filename(name), _autoexec(ast),
+        _watcher(nullptr) {}
+
   malChainProvider(const malCBVar &that, const malValuePtr &meta) = delete;
 
   virtual ~malChainProvider() {}
@@ -574,7 +583,7 @@ public:
   bool ready() override { return bool(_watcher); }
 
   void setup(const char *path, const CBInstanceData &data) override {
-    _watcher.reset(new ChainFileWatcher(_filename, path, data));
+    _watcher.reset(new ChainFileWatcher(_filename, path, data, _autoexec));
   }
 
   bool updated() override {
@@ -605,6 +614,7 @@ public:
 
 private:
   MalString _filename;
+  malValuePtr _autoexec;
   std::unique_ptr<ChainFileWatcher> _watcher;
 };
 
@@ -662,58 +672,58 @@ CBType keywordToType(malKeyword *typeKeyword) {
 
 malValuePtr typeToKeyword(CBType type) {
   switch (type) {
-  case EndOfBlittableTypes:
-  case None:
+  case CBType::EndOfBlittableTypes:
+  case CBType::None:
     return mal::keyword(":None");
-  case Any:
+  case CBType::Any:
     return mal::keyword(":Any");
-  case Object:
+  case CBType::Object:
     return mal::keyword(":Object");
-  case Enum:
+  case CBType::Enum:
     return mal::keyword(":Enum");
-  case Bool:
+  case CBType::Bool:
     return mal::keyword(":Bool");
-  case Int:
+  case CBType::Int:
     return mal::keyword(":Int");
-  case Int2:
+  case CBType::Int2:
     return mal::keyword(":Int2");
-  case Int3:
+  case CBType::Int3:
     return mal::keyword(":Int3");
-  case Int4:
+  case CBType::Int4:
     return mal::keyword(":Int4");
-  case Int8:
+  case CBType::Int8:
     return mal::keyword(":Int8");
-  case Int16:
+  case CBType::Int16:
     return mal::keyword(":Int16");
-  case Float:
+  case CBType::Float:
     return mal::keyword(":Float");
-  case Float2:
+  case CBType::Float2:
     return mal::keyword(":Float2");
-  case Float3:
+  case CBType::Float3:
     return mal::keyword(":Float3");
-  case Float4:
+  case CBType::Float4:
     return mal::keyword(":Float4");
-  case Color:
+  case CBType::Color:
     return mal::keyword(":Color");
-  case Chain:
+  case CBType::Chain:
     return mal::keyword(":Chain");
-  case Block:
+  case CBType::Block:
     return mal::keyword(":Block");
-  case String:
+  case CBType::String:
     return mal::keyword(":String");
-  case ContextVar:
+  case CBType::ContextVar:
     return mal::keyword(":ContextVar");
-  case Path:
+  case CBType::Path:
     return mal::keyword(":Path");
-  case Image:
+  case CBType::Image:
     return mal::keyword(":Image");
-  case Bytes:
+  case CBType::Bytes:
     return mal::keyword(":Bytes");
-  case Seq:
+  case CBType::Seq:
     return mal::keyword(":Seq");
-  case Table:
+  case CBType::Table:
     return mal::keyword(":Table");
-  case Array:
+  case CBType::Array:
     return mal::keyword(":Array");
   };
   return mal::keyword(":None");
@@ -973,7 +983,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
     CBVar var{};
-    var.valueType = Chain;
+    var.valueType = CBType::Chain;
     var.payload.chainValue = chain;
     auto cvar = new malCBVar(var);
     cvar->reference(v);
@@ -1031,7 +1041,8 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
         auto var = varify(value);
         if (!validateSetParam(block, idx, var->value(), validationCallback,
                               nullptr)) {
-          LOG(ERROR) << "Failed parameter: " << paramName;
+          LOG(ERROR) << "Failed parameter: " << paramName
+                     << ", line: " << value->line;
           throw chainblocks::CBException("Parameter validation failed");
         }
         block->setParam(block, idx, &var->value());
@@ -1047,7 +1058,8 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       auto var = varify(arg);
       if (!validateSetParam(block, pindex, var->value(), validationCallback,
                             nullptr)) {
-        LOG(ERROR) << "Failed parameter index: " << pindex;
+        LOG(ERROR) << "Failed parameter index: " << pindex
+                   << ", line: " << arg->line;
         throw chainblocks::CBException("Parameter validation failed");
       }
       block->setParam(block, pindex, &var->value());
@@ -1255,15 +1267,23 @@ BUILTIN("LOG") {
 }
 
 BUILTIN("Chain@") {
-  CHECK_ARGS_IS(1);
+  CHECK_ARGS_AT_LEAST(1);
   ARG(malString, value);
-  return malValuePtr(new malChainProvider(value->ref()));
+  if (argsBegin != argsEnd) {
+    return malValuePtr(new malChainProvider(value->ref(), *argsBegin));
+  } else {
+    return malValuePtr(new malChainProvider(value->ref()));
+  }
 }
 
 BUILTIN("Chain*") {
-  CHECK_ARGS_IS(1);
+  CHECK_ARGS_AT_LEAST(1);
   ARG(malString, value);
-  return malValuePtr(new malChainProvider(value->ref()));
+  if (argsBegin != argsEnd) {
+    return malValuePtr(new malChainProvider(value->ref(), *argsBegin));
+  } else {
+    return malValuePtr(new malChainProvider(value->ref()));
+  }
 }
 
 BUILTIN("-->") {
@@ -1694,6 +1714,119 @@ BUILTIN("hasBlock?") {
   } else {
     return mal::falseValue();
   }
+}
+
+BUILTIN("blocks") {
+  malValueVec v;
+  for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
+    v.emplace_back(mal::string(std::string(name)));
+  }
+  malValueVec *items = new malValueVec(v);
+  return mal::list(items);
+}
+
+BUILTIN("info") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, blkname);
+  const auto blkIt = builtIns.find(blkname->ref());
+  if (blkIt == builtIns.end()) {
+    return mal::nilValue();
+  } else {
+    malHash::Map map;
+    auto block = createBlock(blkname->ref().c_str());
+    DEFER(block->destroy(block));
+
+    auto help = block->help(block);
+    map["help"] = mal::string(help.string ? help.string : getString(help.crc));
+
+    auto params = block->parameters(block);
+    malValueVec pvec;
+    for (uint32_t i = 0; i < params.len; i++) {
+      malHash::Map pmap;
+      pmap["name"] = mal::string(params.elements[i].name);
+      if (params.elements[i].help.string)
+        pmap["help"] = mal::string(params.elements[i].help.string);
+      else
+        pmap["help"] = mal::string(getString(params.elements[i].help.crc));
+      std::stringstream ss;
+      ss << params.elements[i].valueTypes;
+      pmap["types"] = mal::string(ss.str());
+      pvec.emplace_back(mal::hash(pmap));
+    }
+    map["parameters"] = mal::list(pvec.begin(), pvec.end());
+
+    {
+      std::stringstream ss;
+      ss << block->inputTypes(block);
+      map["inputTypes"] = mal::string(ss.str());
+    }
+
+    {
+      std::stringstream ss;
+      ss << block->outputTypes(block);
+      map["outputTypes"] = mal::string(ss.str());
+    }
+
+    return mal::hash(map);
+  }
+}
+
+#ifndef CB_COMPRESSED_STRINGS
+BUILTIN("export-strings") {
+  assert(chainblocks::Globals::CompressedStrings);
+  malValueVec strs;
+  for (auto &[crc, str] : *chainblocks::Globals::CompressedStrings) {
+    if (crc != 0) {
+      malValueVec record;
+      record.emplace_back(mal::number(crc, true));
+      record.emplace_back(mal::string(str.string));
+      strs.emplace_back(mal::list(record.begin(), record.end()));
+    }
+  }
+  return mal::list(strs.begin(), strs.end());
+}
+#else
+static std::unordered_map<uint32_t, std::string> strings_storage;
+#endif
+
+BUILTIN("decompress-strings") {
+#ifdef CB_COMPRESSED_STRINGS
+  if (!chainblocks::Globals::CompressedStrings) {
+    throw chainblocks::CBException("String storage was null");
+  }
+  // run the script to populate compressed strings
+  auto bytes = Var(__chainblocks_compressed_strings);
+  auto chain = ::chainblocks::Chain("decompress strings")
+                   .let(bytes)
+                   .block("Brotli.Decompress")
+                   .block("FromBytes");
+  auto node = CBNode::make();
+  node->schedule(chain);
+  node->tick();
+  if (chain->finishedOutput.valueType != CBType::Seq) {
+    throw chainblocks::CBException("Failed to decompress strings!");
+  }
+
+  for (uint32_t i = 0; i < chain->finishedOutput.payload.seqValue.len; i++) {
+    auto pair = chain->finishedOutput.payload.seqValue.elements[i];
+    if (pair.valueType != CBType::Seq || pair.payload.seqValue.len != 2) {
+      throw chainblocks::CBException("Failed to decompress strings!");
+    }
+    auto crc = pair.payload.seqValue.elements[0];
+    auto str = pair.payload.seqValue.elements[1];
+    if (crc.valueType != CBType::Int || str.valueType != CBType::String) {
+      throw chainblocks::CBException("Failed to decompress strings!");
+    }
+    auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue),
+                                            str.payload.stringValue);
+    auto &s = emplaced.first->second;
+    auto &val = (*chainblocks::Globals::CompressedStrings)[uint32_t(
+        crc.payload.intValue)];
+    val.string = s.c_str();
+    val.crc = uint32_t(crc.payload.intValue);
+  }
+#endif
+  return mal::nilValue();
 }
 
 BUILTIN_ISA("Var?", malCBVar);

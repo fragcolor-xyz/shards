@@ -72,7 +72,7 @@ struct BigIntBinaryOp : public ::chainblocks::Math::BinaryOperation<T> {
   CBParametersInfo parameters() {
     static Parameters params{
         {"Operand",
-         "The bytes variable representing the operand",
+         CBCCSTR("The bytes variable representing the operand"),
          {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
     return params;
   }
@@ -109,9 +109,10 @@ struct BigOperandBase {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBParametersInfo parameters() {
-    static Parameters params{{"Operand",
-                              "The bytes variable representing the operand",
-                              {CoreInfo::BytesVarType}}};
+    static Parameters params{
+        {"Operand",
+         CBCCSTR("The bytes variable representing the operand"),
+         {CoreInfo::BytesVarType}}};
     return params;
   }
 
@@ -142,7 +143,7 @@ struct RegOperandBase {
 
   CBParametersInfo parameters() {
     static Parameters params{{"Operand",
-                              "The integer operand, can be a variable",
+                              CBCCSTR("The integer operand, can be a variable"),
                               {CoreInfo::IntType, CoreInfo::IntVarType}}};
     return params;
   }
@@ -262,8 +263,9 @@ struct Shift : public ShiftBase {
   CBParametersInfo parameters() {
     static Parameters params{
         {"By",
-         "The shift is of the decimal point, i.e. of powers of ten, and is to "
-         "the left if n is negative or to the right if n is positive.",
+         CBCCSTR(
+             "The shift is of the decimal point, i.e. of powers of ten, and is "
+             "to the left if n is negative or to the right if n is positive."),
          {CoreInfo::IntType, CoreInfo::IntVarType}}};
     return params;
   }
@@ -288,8 +290,9 @@ struct ToFloat : public ShiftBase {
   CBParametersInfo parameters() {
     static Parameters params{
         {"ShiftedBy",
-         "The shift is of the decimal point, i.e. of powers of ten, and is to "
-         "the left if n is negative or to the right if n is positive.",
+         CBCCSTR(
+             "The shift is of the decimal point, i.e. of powers of ten, and is "
+             "to the left if n is negative or to the right if n is positive."),
          {CoreInfo::IntType}}};
     return params;
   }
@@ -316,8 +319,9 @@ struct FromFloat : public ShiftBase {
   CBParametersInfo parameters() {
     static Parameters params{
         {"ShiftedBy",
-         "The shift is of the decimal point, i.e. of powers of ten, and is to "
-         "the left if n is negative or to the right if n is positive.",
+         CBCCSTR(
+             "The shift is of the decimal point, i.e. of powers of ten, and is "
+             "to the left if n is negative or to the right if n is positive."),
          {CoreInfo::IntType}}};
     return params;
   }

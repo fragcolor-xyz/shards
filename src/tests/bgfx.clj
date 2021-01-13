@@ -24,6 +24,20 @@
     (Int3 2 3 6)
     (Int3 6 3 7)]})
 
+(def identity
+  [(Float4 1 0 0 0)
+   (Float4 0 1 0 0)
+   (Float4 0 0 1 0)
+   (Float4 0 0 0 1)])
+
+(def shaders-folder
+  (cond
+    (= platform "windows") "dx11"
+    (= platform "apple") "metal"
+    (or 
+     (= platform "linux") 
+     (= platform "emscripten")) "glsl"))
+
 (def test-chain
   (Chain
    "test-chain"
@@ -31,17 +45,24 @@
    (GFX.MainWindow
     :Title "SDL Window" :Width 1024 :Height 1024
     :Contents
-    ~[(Once (Dispatch
-             (Chain
-              "init"
-              (LoadImage "../../assets/drawing.png")
-              (GFX.Texture2D)
-              (Set "image1" :Global true)
-              cube (GFX.Model
-                    :Layout [VertexAttribute.Position
-                             VertexAttribute.Color0]) >= .cube
-              false (Set "checkBoxie"))))
-      (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024 :PosX 0 :PosY 0 :Contents
+    ~[(Once
+       ~[(LoadImage "../../assets/drawing.png")
+         (GFX.Texture2D) >= .image1
+         cube (GFX.Model
+               :Layout [VertexAttribute.Position
+                        VertexAttribute.Color0]) >= .cube
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
+         (FS.Read :Bytes true) >= .vs_bytes
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
+         (FS.Read :Bytes true) >= .fs_bytes
+         (GFX.Shader :VertexShader .vs_bytes
+                     :PixelShader .fs_bytes) >= .shader
+         false (Set "checkBoxie")])
+      {"Position" (Float3 0 0 10)
+       "Target" (Float3 0 0 0)} (GFX.Camera :Width 1024 :Height 1024)
+      identity (GFX.Draw :Shader .shader :Model .cube)
+      (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
+                  :PosX 0 :PosY 0 :Contents
                   (-->
                    "Hello world"   (GUI.Text)
                    "Hello world 2" (GUI.Text)
@@ -123,7 +144,7 @@
 
 (schedule Root test-chain)
 (run Root 0.02 100)
-; (run Root 0.02)
+;; (run Root 0.02)
 
 (schedule Root test-chain)
 (run Root 0.02 100)

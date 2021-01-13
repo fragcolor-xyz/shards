@@ -28,7 +28,7 @@ struct FromImage {
       const int c = int(input.payload.imageValue.channels);
       const int flatsize = w * h * c * pixsize;
 
-      output.resize(flatsize, Var(0.0));
+      output.resize(flatsize);
 
       if (pixsize == 1) {
         for (int i = 0; i < flatsize; i++) {
@@ -76,6 +76,47 @@ struct FromSeq {
       throw ActivationError("Conversion pair not implemented yet.");
     }
   }
+
+  template <CBType OF>
+  void toBytes(std::vector<uint8_t> &buffer, const CBVar &input) {
+    // TODO SIMD this
+    if (input.payload.seqValue.len == 0)
+      throw ActivationError("Input sequence was empty.");
+
+    buffer.resize(size_t(input.payload.seqValue.len));
+
+    if constexpr (OF == CBType::Int) {
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
+        const auto val = input.payload.seqValue.elements[i].payload.intValue;
+        if (val > UINT8_MAX || val < 0)
+          throw ActivationError("Value out of byte range (0~255)");
+
+        buffer[i] = uint8_t(val);
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
+};
+
+struct FromBytes {
+  template <CBType OF>
+  void toSeq(std::vector<Var> &output, const CBVar &input) {
+    if constexpr (OF == CBType::Int) {
+      // assume we want 0-1 normalized values
+      if (input.valueType != CBType::Bytes)
+        throw ActivationError("Expected Bytes type.");
+
+      output.resize(input.payload.bytesSize);
+
+      for (uint32_t i = 0; i < input.payload.bytesSize; i++) {
+        const auto b = int64_t(input.payload.bytesValue[i]);
+        output[i] = Var(b);
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
 };
 
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
@@ -92,6 +133,9 @@ template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
     if constexpr (CBTYPE == CBType::Image) {
       FromImage c;
       c.toSeq<CBOTHER>(_output, input);
+    } else if constexpr (CBTYPE == CBType::Bytes) {
+      FromBytes c;
+      c.toSeq<CBOTHER>(_output, input);
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
     }
@@ -107,9 +151,13 @@ template <CBType FROMTYPE> struct ToImage {
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters _params{
-      {"Width", "The width of the output image.", {CoreInfo::IntType}},
-      {"Height", "The height of the output image.", {CoreInfo::IntType}},
-      {"Channels", "The channels of the output image.", {CoreInfo::IntType}}};
+      {"Width", CBCCSTR("The width of the output image."), {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the output image."),
+       {CoreInfo::IntType}},
+      {"Channels",
+       CBCCSTR("The channels of the output image."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -141,8 +189,6 @@ template <CBType FROMTYPE> struct ToImage {
     }
   }
 
-  void warmup(CBContext *_) {}
-
   CBVar activate(CBContext *context, const CBVar &input) {
     FromSeq c;
     c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels),
@@ -154,6 +200,23 @@ private:
   uint8_t _channels = 1;
   uint16_t _width = 16;
   uint16_t _height = 16;
+  std::vector<uint8_t> _buffer;
+};
+
+template <CBType FROMTYPE> struct ToBytes {
+  static inline Type _inputElemType{{FROMTYPE}};
+  static inline Type _inputType{{CBType::Seq, {.seqTypes = _inputElemType}}};
+
+  static CBTypesInfo inputTypes() { return _inputType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    FromSeq c;
+    c.toBytes<FROMTYPE>(_buffer, input);
+    return Var(_buffer);
+  }
+
+private:
   std::vector<uint8_t> _buffer;
 };
 
@@ -552,15 +615,124 @@ EXPECT_BLOCK(Table, Table);
 EXPECT_BLOCK(Chain, CBType::Chain);
 
 template <Type &ET> struct ExpectXComplex {
-  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  CBTypesInfo outputTypes() { return ET; }
+  static inline Parameters params{
+      {"Unsafe",
+       CBCCSTR("If we should skip performing deep type hashing and comparison. "
+               "(generally fast but this might improve performance)"),
+       {CoreInfo::BoolType}}};
+  static inline uint64_t ExpectedHash = deriveTypeHash(ET);
+
+  bool _unsafe{false};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return ET; }
+
+  void setParam(int index, const CBVar &value) {
+    _unsafe = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_unsafe); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
-    // TODO make this check stricter?
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
-      LOG(ERROR) << "Unexpected value: " << input;
+      LOG(ERROR) << "Unexpected value: " << input << " expected type: " << info;
       throw ActivationError("Expected type " + type2Name(info.basicType) +
                             " got instead " + type2Name(input.valueType));
+    } else if (!_unsafe) {
+      auto inputTypeHash = deriveTypeHash(input);
+      if (unlikely(inputTypeHash != ExpectedHash)) {
+        LOG(ERROR) << "Unexpected value: " << input
+                   << " expected type: " << info;
+        throw ActivationError("Expected type " + type2Name(info.basicType) +
+                              " got instead " + type2Name(input.valueType));
+      }
+    }
+    return input;
+  }
+};
+
+struct ExpectLike {
+  ParamVar _example{};
+  CBTypeInfo _expectedType{};
+  uint64_t _outputTypeHash{0};
+  bool _unsafe{false};
+  bool _derived{false};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Example",
+       CBCCSTR("The example value to expect, in the case of a used chain, the "
+               "output type of that chain will be used."),
+       {CoreInfo::AnyType}},
+      {"Unsafe",
+       CBCCSTR("If we should skip performing deep type hashing and comparison. "
+               "(generally fast but this might improve performance)"),
+       {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index == 0)
+      _example = value;
+    else if (index == 1)
+      _unsafe = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0)
+      return _example;
+    else
+      return Var(_unsafe);
+  }
+
+  void destroy() {
+    if (_expectedType.basicType != None) {
+      freeDerivedInfo(_expectedType);
+      _expectedType = {};
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_example.isVariable()) {
+      throw ComposeError(
+          "The example value of ExpectLike cannot be a variable");
+    } else {
+      if (_expectedType.basicType != None) {
+        freeDerivedInfo(_expectedType);
+        _expectedType = {};
+      }
+      if (_example->valueType == CBType::Chain) {
+        auto chain = CBChain::sharedFromRef(_example->payload.chainValue);
+        _expectedType = chain->outputType;
+        _outputTypeHash = deriveTypeHash(_expectedType);
+        return _expectedType;
+      } else {
+        CBVar example = _example;
+        _expectedType = deriveTypeInfo(example);
+        _outputTypeHash = deriveTypeHash(_expectedType);
+        return _expectedType;
+      }
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(input.valueType != _expectedType.basicType)) {
+      LOG(ERROR) << "Unexpected value: " << input
+                 << " expected type: " << _expectedType;
+      throw ActivationError("Expected type " +
+                            type2Name(_expectedType.basicType) +
+                            " got instead " + type2Name(input.valueType));
+    } else if (!_unsafe) {
+      auto inputTypeHash = deriveTypeHash(input);
+      if (unlikely(inputTypeHash != _outputTypeHash)) {
+        LOG(ERROR) << "Unexpected value: " << input
+                   << " expected type: " << _expectedType;
+        throw ActivationError("Expected type " +
+                              type2Name(_expectedType.basicType) +
+                              " got instead " + type2Name(input.valueType));
+      }
     }
     return input;
   }
@@ -649,8 +821,17 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("ImageToFloats", ImageToFloats);
   REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
 
+  using BytesToInts = ToSeq<CBType::Bytes, CBType::Int>;
+  using IntsToBytes = ToBytes<CBType::Int>;
+  REGISTER_CBLOCK("BytesToInts", BytesToInts);
+  REGISTER_CBLOCK("IntsToBytes", IntsToBytes);
+
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
+  using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
+  REGISTER_CBLOCK("ExpectIntSeq", ExpectIntSeq);
+
+  REGISTER_CBLOCK("ExpectLike", ExpectLike);
 
   REGISTER_CBLOCK("ToBase64", ToBase64);
   REGISTER_CBLOCK("FromBase64", FromBase64);

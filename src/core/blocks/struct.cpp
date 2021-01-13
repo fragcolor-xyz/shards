@@ -118,7 +118,8 @@ struct StructBase {
   static inline std::regex arrlenx{"^.*\\[(\\d+)\\]$"};
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Definition", "A string defining the struct e.g. \"i32 f32 b i8[256]\".",
+      "Definition",
+      CBCCSTR("A string defining the struct e.g. \"i32 f32 b i8[256]\"."),
       CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }

@@ -11,6 +11,7 @@ use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
+use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
 use crate::chainblocksc::CBPointer;
@@ -90,6 +91,7 @@ pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
 #[derive(PartialEq)]
 pub struct String(pub CBString);
+pub struct OptionalString(pub CBOptionalString);
 
 #[derive(PartialEq)]
 pub enum ChainState {
@@ -174,7 +176,10 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: chelp,
+      help: CBOptionalString {
+        string: chelp,
+        crc: 0,
+      },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -187,7 +192,10 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: help.as_ptr(),
+      help: CBOptionalString {
+        string: help.as_ptr(),
+        crc: 0,
+      },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -202,7 +210,10 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: chelp,
+      help: CBOptionalString {
+        string: chelp,
+        crc: 0,
+      },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -221,7 +232,10 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: chelp,
+      help: CBOptionalString {
+        string: chelp,
+        crc: 0,
+      },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -255,7 +269,10 @@ impl ParameterInfo {
     let chelp = core::ptr::null();
     let res = CBParameterInfo {
       name: cname.into_raw() as *mut i8,
-      help: chelp,
+      help: CBOptionalString {
+        string: chelp,
+        crc: 0,
+      },
       valueTypes: internal_from_types(types),
     };
     ParameterInfo(res)
@@ -266,7 +283,10 @@ impl ParameterInfo {
     let chelp = CString::new(help).unwrap();
     let res = CBParameterInfo {
       name: cname.into_raw() as *mut i8,
-      help: chelp.into_raw() as *mut i8,
+      help: CBOptionalString {
+        string: chelp.into_raw() as *mut i8,
+        crc: 0,
+      },
       valueTypes: internal_from_types(types),
     };
     ParameterInfo(res)
@@ -293,9 +313,9 @@ impl Drop for ParameterInfo {
         drop(cname);
       }
     }
-    if self.0.help != core::ptr::null() {
+    if self.0.help.string != core::ptr::null() {
       unsafe {
-        let chelp = CString::from_raw(self.0.help as *mut i8);
+        let chelp = CString::from_raw(self.0.help.string as *mut i8);
         drop(chelp);
       }
     }
@@ -356,6 +376,8 @@ pub mod common_type {
           cap: 0,
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -386,6 +408,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_table: CBTypeInfo = CBTypeInfo {
@@ -404,6 +428,8 @@ pub mod common_type {
             },
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_var: CBTypeInfo = CBTypeInfo {
@@ -415,6 +441,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
 
       pub static $name_table_var: CBTypeInfo = CBTypeInfo {
@@ -426,6 +454,8 @@ pub mod common_type {
             cap: 0,
           },
         },
+        fixedSize: 0,
+        innerType: CBType_None,
       };
     };
   }
@@ -524,6 +554,8 @@ impl Type {
           cap: 0,
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -531,11 +563,10 @@ impl Type {
     Type {
       basicType: CBType_Object,
       details: CBTypeInfo_Details {
-        object: CBTypeInfo_Details_Object {
-          vendorId,
-          typeId,
-        },
+        object: CBTypeInfo_Details_Object { vendorId, typeId },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 
@@ -556,6 +587,8 @@ impl Type {
           },
         },
       },
+      fixedSize: 0,
+      innerType: CBType_None,
     }
   }
 }
@@ -752,8 +785,8 @@ impl From<String> for &str {
   #[inline(always)]
   fn from(v: String) -> Self {
     unsafe {
-        let cstr = CStr::from_ptr(v.0);
-        cstr.to_str().unwrap()
+      let cstr = CStr::from_ptr(v.0);
+      cstr.to_str().unwrap()
     }
   }
 }

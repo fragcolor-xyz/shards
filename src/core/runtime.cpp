@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
-#define STB_DS_IMPLEMENTATION 1
-
 // must go first
 #include <boost/asio.hpp>
 
@@ -19,9 +17,37 @@
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
+#ifndef CUSTOM_XXH3_kSecret
+// Applications embedding chainblocks can override this and should.
+// TODO add our secret
+#define CUSTOM_XXH3_kSecret XXH3_kSecret
+#endif
+
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
+#ifdef CB_COMPRESSED_STRINGS
+CBOptionalString getCompiledCompressedString(uint32_t id) {
+  static std::unordered_map<uint32_t, CBOptionalString>
+      CompiledCompressedStrings;
+  if (Globals::CompressedStrings == nullptr)
+    Globals::CompressedStrings = &CompiledCompressedStrings;
+  auto &val = CompiledCompressedStrings[id];
+  val.crc = id; // make sure we return with crc to allow later lookups!
+  return val;
+}
+#else
+CBOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
+  static std::unordered_map<uint32_t, CBOptionalString>
+      CompiledCompressedStrings;
+  if (Globals::CompressedStrings == nullptr)
+    Globals::CompressedStrings = &CompiledCompressedStrings;
+  CBOptionalString ls{str, id};
+  CompiledCompressedStrings[id] = ls;
+  return ls;
+}
+#endif
+
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
@@ -555,7 +581,7 @@ void releaseVariable(CBVar *variable) {
 }
 
 CBChainState suspend(CBContext *context, double seconds) {
-  if (unlikely(!context->shouldContinue())) {
+  if (unlikely(!context->shouldContinue() || context->onCleanup)) {
     throw ActivationError("Trying to suspend a terminated context!");
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
@@ -615,7 +641,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     }
     try {
       output = activateBlock(blk, context, input);
-      if (!context->shouldContinue()) {
+      if (unlikely(!context->shouldContinue())) {
         switch (context->getState()) {
         case CBChainState::Return:
           if (handlesReturn)
@@ -747,370 +773,10 @@ void await(CBContext *context, std::function<void()> func) {
   }
 #endif
 }
-}; // namespace chainblocks
-
-#ifndef OVERRIDE_REGISTER_ALL_BLOCKS
-void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
-#endif
-
-#define API_TRY_CALL(_name_, _block_)                                          \
-  {                                                                            \
-    try {                                                                      \
-      _block_                                                                  \
-    } catch (const std::exception &ex) {                                       \
-      LOG(ERROR) << #_name_ " failed, error: " << ex.what();                   \
-    }                                                                          \
-  }
-
-bool cb_current_interface_loaded{false};
-CBCore cb_current_interface{};
-
-extern "C" {
-EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
-  // for now we ignore abi_version
-  if (cb_current_interface_loaded)
-    return &cb_current_interface;
-
-  // Load everything we know if we did not yet!
-  try {
-    chainblocks::registerCoreBlocks();
-  } catch (const std::exception &ex) {
-    LOG(ERROR) << "Failed to register core blocks, error: " << ex.what();
-    return nullptr;
-  }
-
-  if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
-    LOG(ERROR) << "A plugin requested an invalid ABI version.";
-    return nullptr;
-  }
-
-  auto result = &cb_current_interface;
-  cb_current_interface_loaded = true;
-
-  result->registerBlock = [](const char *fullName,
-                             CBBlockConstructor constructor) noexcept {
-    API_TRY_CALL(registerBlock,
-                 chainblocks::registerBlock(fullName, constructor);)
-  };
-
-  result->registerObjectType = [](int32_t vendorId, int32_t typeId,
-                                  CBObjectInfo info) noexcept {
-    API_TRY_CALL(registerObjectType,
-                 chainblocks::registerObjectType(vendorId, typeId, info);)
-  };
-
-  result->registerEnumType = [](int32_t vendorId, int32_t typeId,
-                                CBEnumInfo info) noexcept {
-    API_TRY_CALL(registerEnumType,
-                 chainblocks::registerEnumType(vendorId, typeId, info);)
-  };
-
-  result->registerRunLoopCallback = [](const char *eventName,
-                                       CBCallback callback) noexcept {
-    API_TRY_CALL(registerRunLoopCallback,
-                 chainblocks::registerRunLoopCallback(eventName, callback);)
-  };
-
-  result->registerExitCallback = [](const char *eventName,
-                                    CBCallback callback) noexcept {
-    API_TRY_CALL(registerExitCallback,
-                 chainblocks::registerExitCallback(eventName, callback);)
-  };
-
-  result->unregisterRunLoopCallback = [](const char *eventName) noexcept {
-    API_TRY_CALL(unregisterRunLoopCallback,
-                 chainblocks::unregisterRunLoopCallback(eventName);)
-  };
-
-  result->unregisterExitCallback = [](const char *eventName) noexcept {
-    API_TRY_CALL(unregisterExitCallback,
-                 chainblocks::unregisterExitCallback(eventName);)
-  };
-
-  result->referenceVariable = [](CBContext *context,
-                                 const char *name) noexcept {
-    return chainblocks::referenceVariable(context, name);
-  };
-
-  result->referenceChainVariable = [](CBChainRef chain,
-                                      const char *name) noexcept {
-    return chainblocks::referenceChainVariable(chain, name);
-  };
-
-  result->releaseVariable = [](CBVar *variable) noexcept {
-    return chainblocks::releaseVariable(variable);
-  };
-
-  result->suspend = [](CBContext *context, double seconds) noexcept {
-    try {
-      return chainblocks::suspend(context, seconds);
-    } catch (const chainblocks::ActivationError &ex) {
-      LOG(ERROR) << ex.what();
-      return CBChainState::Stop;
-    }
-  };
-
-  result->getState = [](CBContext *context) noexcept {
-    return context->getState();
-  };
-
-  result->abortChain = [](CBContext *context, const char *message) noexcept {
-    context->cancelFlow(message);
-  };
-
-  result->cloneVar = [](CBVar *dst, const CBVar *src) noexcept {
-    chainblocks::cloneVar(*dst, *src);
-  };
-
-  result->destroyVar = [](CBVar *var) noexcept {
-    chainblocks::destroyVar(*var);
-  };
-
-#define CB_ARRAY_IMPL(_arr_, _val_, _name_)                                    \
-  result->_name_##Free = [](_arr_ *seq) noexcept {                             \
-    chainblocks::arrayFree(*seq);                                              \
-  };                                                                           \
-                                                                               \
-  result->_name_##Resize = [](_arr_ *seq, uint32_t size) noexcept {            \
-    chainblocks::arrayResize(*seq, size);                                      \
-  };                                                                           \
-                                                                               \
-  result->_name_##Push = [](_arr_ *seq, const _val_ *value) noexcept {         \
-    chainblocks::arrayPush(*seq, *value);                                      \
-  };                                                                           \
-                                                                               \
-  result->_name_##Insert = [](_arr_ *seq, uint32_t index,                      \
-                              const _val_ *value) noexcept {                   \
-    chainblocks::arrayInsert(*seq, index, *value);                             \
-  };                                                                           \
-                                                                               \
-  result->_name_##Pop = [](_arr_ *seq) noexcept {                              \
-    return chainblocks::arrayPop<_arr_, _val_>(*seq);                          \
-  };                                                                           \
-                                                                               \
-  result->_name_##FastDelete = [](_arr_ *seq, uint32_t index) noexcept {       \
-    chainblocks::arrayDelFast(*seq, index);                                    \
-  };                                                                           \
-                                                                               \
-  result->_name_##SlowDelete = [](_arr_ *seq, uint32_t index) noexcept {       \
-    chainblocks::arrayDel(*seq, index);                                        \
-  }
-
-  CB_ARRAY_IMPL(CBSeq, CBVar, seq);
-  CB_ARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
-  CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
-  CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
-  CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
-  CB_ARRAY_IMPL(CBStrings, CBString, strings);
-
-  result->tableNew = []() noexcept {
-    CBTable res;
-    res.api = &chainblocks::Globals::TableInterface;
-    res.opaque = new chainblocks::CBMap();
-    return res;
-  };
-
-  result->composeChain = [](CBChainRef chain, CBValidationCallback callback,
-                            void *userData, CBInstanceData data) noexcept {
-    auto sc = CBChain::sharedFromRef(chain);
-    try {
-      return composeChain(sc.get(), callback, userData, data);
-    } catch (const std::exception &e) {
-      CBComposeResult res{};
-      res.failed = true;
-      auto msgTmp = chainblocks::Var(e.what());
-      chainblocks::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      CBComposeResult res{};
-      res.failed = true;
-      auto msgTmp =
-          chainblocks::Var("foreign exception failure during composeChain");
-      chainblocks::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
-  };
-
-  result->runChain = [](CBChainRef chain, CBContext *context,
-                        const CBVar *input) noexcept {
-    auto sc = CBChain::sharedFromRef(chain);
-    return chainblocks::runSubChain(sc.get(), context, *input);
-  };
-
-  result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
-                             void *userData, CBInstanceData data) noexcept {
-    try {
-      return composeChain(blocks, callback, userData, data);
-    } catch (const std::exception &e) {
-      CBComposeResult res{};
-      res.failed = true;
-      auto msgTmp = chainblocks::Var(e.what());
-      chainblocks::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      CBComposeResult res{};
-      res.failed = true;
-      auto msgTmp =
-          chainblocks::Var("foreign exception failure during composeChain");
-      chainblocks::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
-  };
-
-  result->validateSetParam = [](CBlock *block, int index, const CBVar *param,
-                                CBValidationCallback callback,
-                                void *userData) noexcept {
-    return validateSetParam(block, index, *param, callback, userData);
-  };
-
-  result->runBlocks = [](CBlocks blocks, CBContext *context, const CBVar *input,
-                         CBVar *output, const CBBool handleReturn) noexcept {
-    try {
-      return chainblocks::activateBlocks(blocks, context, *input, *output,
-                                         handleReturn);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return CBChainState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runBlocks");
-      return CBChainState::Stop;
-    }
-  };
-
-  result->getChainInfo = [](CBChainRef chainref) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    auto chain = sc.get();
-    CBChainInfo info{chain->name.c_str(),
-                     chain->looped,
-                     chain->unsafe,
-                     chain,
-                     {&chain->blocks[0], uint32_t(chain->blocks.size()), 0},
-                     chainblocks::isRunning(chain)};
-    return info;
-  };
-
-  result->log = [](const char *msg) noexcept { LOG(INFO) << msg; };
-
-  result->setLoggingOptions = [](CBLoggingOptions options) noexcept {
-    chainblocks::LogsDefaultConf.setGlobally(
-        el::ConfigurationType::MaxLogFileSize, std::to_string(options.maxSize));
-    el::Loggers::reconfigureAllLoggers(chainblocks::LogsDefaultConf);
-  };
-
-  result->createBlock = [](const char *name) noexcept {
-    return chainblocks::createBlock(name);
-  };
-
-  result->createChain = []() noexcept {
-    auto chain = CBChain::make();
-    return chain->newRef();
-  };
-
-  result->setChainName = [](CBChainRef chainref, const char *name) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    sc->name = name;
-  };
-
-  result->setChainLooped = [](CBChainRef chainref, CBBool looped) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    sc->looped = looped;
-  };
-
-  result->setChainUnsafe = [](CBChainRef chainref, CBBool unsafe) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    sc->unsafe = unsafe;
-  };
-
-  result->addBlock = [](CBChainRef chainref, CBlockPtr blk) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    sc->addBlock(blk);
-  };
-
-  result->removeBlock = [](CBChainRef chainref, CBlockPtr blk) noexcept {
-    auto sc = CBChain::sharedFromRef(chainref);
-    sc->removeBlock(blk);
-  };
-
-  result->destroyChain = [](CBChainRef chain) noexcept {
-    CBChain::deleteRef(chain);
-  };
-
-  result->stopChain = [](CBChainRef chain) {
-    auto sc = CBChain::sharedFromRef(chain);
-    CBVar output{};
-    chainblocks::stop(sc.get(), &output);
-    return output;
-  };
-
-  result->destroyChain = [](CBChainRef chain) noexcept {
-    CBChain::deleteRef(chain);
-  };
-
-  result->destroyChain = [](CBChainRef chain) noexcept {
-    CBChain::deleteRef(chain);
-  };
-
-  result->createNode = []() noexcept {
-    return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
-  };
-
-  result->destroyNode = [](CBNodeRef node) noexcept {
-    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    delete snode;
-  };
-
-  result->schedule = [](CBNodeRef node, CBChainRef chain) noexcept {
-    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    (*snode)->schedule(CBChain::sharedFromRef(chain));
-  };
-
-  result->unschedule = [](CBNodeRef node, CBChainRef chain) noexcept {
-    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    (*snode)->remove(CBChain::sharedFromRef(chain));
-  };
-
-  result->tick = [](CBNodeRef node) noexcept {
-    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    (*snode)->tick();
-    if ((*snode)->empty())
-      return false;
-    else
-      return true;
-  };
-
-  result->sleep = [](double seconds, bool runCallbacks) noexcept {
-    chainblocks::sleep(seconds, runCallbacks);
-  };
-
-  result->getRootPath = []() noexcept {
-    return chainblocks::Globals::RootPath.c_str();
-  };
-
-  result->setRootPath = [](const char *p) noexcept {
-    chainblocks::Globals::RootPath = p;
-    chainblocks::loadExternalBlocks(p);
-    std::filesystem::current_path(p);
-  };
-
-  result->asyncActivate = [](auto context, auto data, auto call) {
-    return chainblocks::awaitne(context, [&] { return call(context, data); });
-  };
-
-  result->getBlocks = []() {
-    CBStrings s{};
-    for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
-      chainblocks::arrayPush(s, name.data());
-    }
-    return s;
-  };
-
-  return result;
-}
-};
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {
-  if (receiverType.basicType == Any)
+  if (receiverType.basicType == CBType::Any)
     return true;
 
   if (inputType.basicType != receiverType.basicType) {
@@ -1139,7 +805,7 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
         // all input types must be in receiver, receiver can have more ofc
         for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
           for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
-            if (receiverType.seqTypes.elements[j].basicType == Any ||
+            if (receiverType.seqTypes.elements[j].basicType == CBType::Any ||
                 inputType.seqTypes.elements[i] ==
                     receiverType.seqTypes.elements[j])
               goto matched;
@@ -1151,7 +817,7 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       } else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0) {
         // find Any
         for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
-          if (receiverType.seqTypes.elements[j].basicType == Any)
+          if (receiverType.seqTypes.elements[j].basicType == CBType::Any)
             return true;
         }
         return false;
@@ -1171,7 +837,10 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       // types but the keys are open to anything, if no types are available, it
       // accepts any type
       // 2. a receiver table with type info and key info is strict, means that
-      // input has to match 1:1
+      // input has to match 1:1, an exception is done if the last key is empty
+      // as in
+      // "" on the receiver side, in such case any input is allowed (types are
+      // still checked)
       const auto atypes = inputType.table.types.len;
       const auto btypes = receiverType.table.types.len;
       if (receiverType.table.keys.len == 0) {
@@ -1215,18 +884,21 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       } else {
         const auto akeys = inputType.table.keys.len;
         const auto bkeys = receiverType.table.keys.len;
-        auto missingMatches = akeys;
-        if (akeys != bkeys || akeys != atypes) {
-          // we need a 1:1 match
+        const auto anyLast = // last element can be a jolly
+            strlen(receiverType.table.keys.elements[bkeys - 1]) == 0;
+        if (!anyLast && (akeys != bkeys || akeys != atypes)) {
+          // we need a 1:1 match in this case, fail early
           return false;
         }
+        auto missingMatches = akeys;
         for (uint32_t i = 0; i < akeys; i++) {
           auto atype = inputType.table.types.elements[i];
           auto akey = inputType.table.keys.elements[i];
           for (uint32_t y = 0; y < bkeys; y++) {
             auto btype = receiverType.table.types.elements[y];
             auto bkey = receiverType.table.keys.elements[y];
-            if (strcmp(akey, bkey) == 0) {
+            // if anyLast and the last perform a match anyway
+            if (strcmp(akey, bkey) == 0 || (anyLast && y == (bkeys - 1))) {
               if (matchTypes(atype, btype, isParameter, strict))
                 missingMatches--;
               else
@@ -1349,12 +1021,12 @@ void validateConnection(ValidationContext &ctx) {
     auto valid_block_outputTypes =
         flowStopper ||
         std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
-          return t.basicType == Any ||
+          return t.basicType == CBType::Any ||
                  (t.basicType == Seq && t.seqTypes.len == 1 &&
-                  t.seqTypes.elements[0].basicType == Any &&
+                  t.seqTypes.elements[0].basicType == CBType::Any &&
                   ctx.previousOutputType.basicType == Seq) || // any seq
                  (t.basicType == Seq && t.seqTypes.len == 1 &&
-                  t.seqTypes.elements[0].basicType == Any &&
+                  t.seqTypes.elements[0].basicType == CBType::Any &&
                   ctx.previousOutputType.basicType == Table) || // any table
                  t == ctx.previousOutputType;
         });
@@ -1377,14 +1049,15 @@ void validateConnection(ValidationContext &ctx) {
     // Short-cut if it's just one type and not any type
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
     if (outputTypes.len == 1) {
-      if (outputTypes.elements[0].basicType != Any) {
+      if (outputTypes.elements[0].basicType != CBType::Any) {
         ctx.previousOutputType = outputTypes.elements[0];
       } else {
         // Any type tho means keep previous output type!
         // Unless we require a specific input type, in that case
         // We assume we are not a passthru block
         auto inputTypes = ctx.bottom->inputTypes(ctx.bottom);
-        if (inputTypes.len == 1 && inputTypes.elements[0].basicType != Any) {
+        if (inputTypes.len == 1 &&
+            inputTypes.elements[0].basicType != CBType::Any) {
           ctx.previousOutputType = outputTypes.elements[0];
         }
       }
@@ -1692,10 +1365,10 @@ void freeDerivedInfo(CBTypeInfo info) {
 CBTypeInfo deriveTypeInfo(const CBVar &value) {
   // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
-  auto varType = CBTypeInfo();
+  // this is not complete at all, missing Array and ContextVar for example
+  CBTypeInfo varType{};
   varType.basicType = value.valueType;
-  varType.seqTypes = {};
-  varType.table.types = {};
+  varType.innerType = value.innerType;
   switch (value.valueType) {
   case Object: {
     varType.object.vendorId = value.payload.objectVendorId;
@@ -1716,12 +1389,12 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
         types.insert(derived);
       }
     }
+    varType.fixedSize = value.payload.seqValue.len;
     break;
   }
   case Table: {
     auto &ta = value.payload.tableValue;
     struct iterdata {
-      std::unordered_set<CBTypeInfo> types;
       CBTypeInfo *varType;
     } data;
     data.varType = &varType;
@@ -1730,13 +1403,8 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
         [](const char *key, CBVar *value, void *_data) {
           auto data = (iterdata *)_data;
           auto derived = deriveTypeInfo(*value);
-          if (!data->types.count(derived)) {
-            chainblocks::arrayPush(data->varType->table.types, derived);
-            chainblocks::arrayPush(data->varType->table.keys, key);
-            data->types.insert(derived);
-          } else {
-            freeDerivedInfo(derived);
-          }
+          chainblocks::arrayPush(data->varType->table.types, derived);
+          chainblocks::arrayPush(data->varType->table.keys, key);
           return true;
         },
         &data);
@@ -1746,6 +1414,185 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
     break;
   };
   return varType;
+}
+
+CBTypeInfo cloneTypeInfo(const CBTypeInfo &other) {
+  // We need to guess a valid CBTypeInfo for this var in order to validate
+  // Build a CBTypeInfo for the var
+  // this is not complete at all, missing Array and ContextVar for example
+  CBTypeInfo varType;
+  memcpy(&varType, &other, sizeof(CBTypeInfo));
+  switch (varType.basicType) {
+  case Seq: {
+    varType.seqTypes = {};
+    for (uint32_t i = 0; i < other.seqTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
+      chainblocks::arrayPush(varType.seqTypes, cloned);
+    }
+    break;
+  }
+  case Table: {
+    varType.table = {};
+    for (uint32_t i = 0; i < other.table.types.len; i++) {
+      auto cloned = cloneTypeInfo(other.table.types.elements[i]);
+      chainblocks::arrayPush(varType.table.types, cloned);
+    }
+    for (uint32_t i = 0; i < other.table.keys.len; i++) {
+      chainblocks::arrayPush(varType.table.keys, other.table.keys.elements[i]);
+    }
+    break;
+  }
+  default:
+    break;
+  };
+  return varType;
+} // namespace chainblocks
+
+// this is potentially called from unsafe code (e.g. networking)
+// let's do some crude stack protection here
+static thread_local int deriveTypeHashRecursionCounter;
+static constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
+
+uint64_t _deriveTypeHash(const CBVar &value);
+
+void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
+  // this is not complete at all, missing Array and ContextVar for example
+  XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
+
+  switch (var.valueType) {
+  case Object: {
+    XXH3_64bits_update(state, &var.payload.objectVendorId,
+                       sizeof(var.payload.objectVendorId));
+    XXH3_64bits_update(state, &var.payload.objectTypeId,
+                       sizeof(var.payload.objectTypeId));
+    break;
+  }
+  case Enum: {
+    XXH3_64bits_update(state, &var.payload.enumVendorId,
+                       sizeof(var.payload.enumVendorId));
+    XXH3_64bits_update(state, &var.payload.enumTypeId,
+                       sizeof(var.payload.enumTypeId));
+    break;
+  }
+  case Seq: {
+    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+                       stack_allocator<uint64_t>>
+        types;
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      // first derive the hash of the full type, mix only once per type
+      auto typeHash = _deriveTypeHash(var.payload.seqValue.elements[i]);
+      if (!types.count(typeHash)) {
+        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+        types.insert(typeHash);
+      }
+    }
+    break;
+  }
+  case Table: {
+    auto &ta = var.payload.tableValue;
+    struct iterdata {
+      XXH3_state_s *state;
+    } data;
+    data.state = state;
+    ta.api->tableForEach(
+        ta,
+        [](const char *key, CBVar *value, void *_data) {
+          auto data = (iterdata *)_data;
+          auto typeHash = _deriveTypeHash(*value);
+          XXH3_64bits_update(data->state, &typeHash, sizeof(typeHash));
+          XXH3_64bits_update(data->state, key, strlen(key));
+          return true;
+        },
+        &data);
+    break;
+  }
+  default:
+    break;
+  };
+}
+
+uint64_t _deriveTypeHash(const CBVar &value) {
+  if (deriveTypeHashRecursionCounter >= MAX_DERIVED_TYPE_HASH_RECURSION)
+    throw CBException("deriveTypeHash maximum recursion exceeded");
+  deriveTypeHashRecursionCounter++;
+  DEFER(deriveTypeHashRecursionCounter--);
+
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+
+  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                               XXH_SECRET_DEFAULT_SIZE);
+
+  updateTypeHash(value, &hashState);
+
+  return XXH3_64bits_digest(&hashState);
+}
+
+uint64_t deriveTypeHash(const CBVar &value) {
+  deriveTypeHashRecursionCounter = 0;
+  return _deriveTypeHash(value);
+}
+
+uint64_t deriveTypeHash(const CBTypeInfo &value);
+
+void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
+  XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
+
+  switch (t.basicType) {
+  case Object: {
+    XXH3_64bits_update(state, &t.object.vendorId, sizeof(t.object.vendorId));
+    XXH3_64bits_update(state, &t.object.typeId, sizeof(t.object.typeId));
+    break;
+  }
+  case Enum: {
+    XXH3_64bits_update(state, &t.enumeration.vendorId,
+                       sizeof(t.enumeration.vendorId));
+    XXH3_64bits_update(state, &t.enumeration.typeId,
+                       sizeof(t.enumeration.typeId));
+    break;
+  }
+  case Seq: {
+    // this is unsafe because allocates on the stack, but faster...
+    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
+                       stack_allocator<uint64_t>>
+        types;
+    for (uint32_t i = 0; i < t.seqTypes.len; i++) {
+      // first derive the hash of the full type, mix only once per type
+      auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
+      if (!types.count(typeHash)) {
+        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+        types.insert(typeHash);
+      }
+    }
+    break;
+  }
+  case Table: {
+    if (t.table.types.len != t.table.keys.len)
+      throw CBException("updateTypeHash for tables needs both types and keys "
+                        "populated, the other cases are undefined for now");
+    for (uint32_t i = 0; i < t.table.types.len; i++) {
+      auto typeHash = deriveTypeHash(t.table.types.elements[i]);
+      XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+      const char *key = t.table.keys.elements[i];
+      XXH3_64bits_update(state, key, strlen(key));
+    }
+    break;
+  }
+  default:
+    break;
+  };
+}
+
+uint64_t deriveTypeHash(const CBTypeInfo &value) {
+  XXH3_state_s hashState;
+  XXH3_INITSTATE(&hashState);
+
+  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                               XXH_SECRET_DEFAULT_SIZE);
+
+  updateTypeHash(value, &hashState);
+
+  return XXH3_64bits_digest(&hashState);
 }
 
 bool validateSetParam(CBlock *block, int index, const CBVar &value,
@@ -1789,47 +1636,6 @@ bool validateSetParam(CBlock *block, int index, const CBVar &value,
   return false;
 }
 
-void CBChain::reset() {
-  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
-    (*it)->cleanup(*it);
-  }
-  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
-    (*it)->destroy(*it);
-    // blk is responsible to free itself, as they might use any allocation
-    // strategy they wish!
-  }
-  blocks.clear();
-
-  // find dangling variables, notice but do not destroy
-  for (auto var : variables) {
-    if (var.second.refcount > 0) {
-      LOG(ERROR) << "Found a dangling variable: " << var.first
-                 << " in chain: " << name;
-    }
-  }
-  variables.clear();
-
-  chainUsers.clear();
-  composedHash = 0;
-  inputType = {};
-  outputType = {};
-  requiredVariables.clear();
-
-  auto n = node.lock();
-  if (n) {
-    n->visitedChains.erase(this);
-  }
-  node.reset();
-
-  if (stack_mem) {
-    ::operator delete[](stack_mem, std::align_val_t{16});
-    stack_mem = nullptr;
-  }
-
-  resumer = nullptr;
-}
-
-namespace chainblocks {
 void error_handler(int err_sig) {
   std::signal(err_sig, SIG_DFL);
 
@@ -2415,12 +2221,6 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   }
 }
 
-#ifndef CUSTOM_XXH3_kSecret
-// Applications embedding chainblocks can override this and should.
-// TODO add our secret
-#define CUSTOM_XXH3_kSecret XXH3_kSecret
-#endif
-
 static thread_local std::unordered_set<CBChain *> tHashingChains;
 
 void hash_update(const CBVar &var, void *state);
@@ -2587,7 +2387,61 @@ void hash_update(const CBVar &var, void *state) {
   }
   }
 }
+
+CBString getString(uint32_t crc) {
+  assert(chainblocks::Globals::CompressedStrings);
+  auto s = (*chainblocks::Globals::CompressedStrings)[crc].string;
+  return s != nullptr ? s : "";
+}
+
+void setString(uint32_t crc, CBString str) {
+  assert(chainblocks::Globals::CompressedStrings);
+  (*chainblocks::Globals::CompressedStrings)[crc].string = str;
+  (*chainblocks::Globals::CompressedStrings)[crc].crc = crc;
+}
 }; // namespace chainblocks
+
+// NO NAMESPACE here!
+
+void CBChain::reset() {
+  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+    (*it)->cleanup(*it);
+  }
+  for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+    (*it)->destroy(*it);
+    // blk is responsible to free itself, as they might use any allocation
+    // strategy they wish!
+  }
+  blocks.clear();
+
+  // find dangling variables, notice but do not destroy
+  for (auto var : variables) {
+    if (var.second.refcount > 0) {
+      LOG(ERROR) << "Found a dangling variable: " << var.first
+                 << " in chain: " << name;
+    }
+  }
+  variables.clear();
+
+  chainUsers.clear();
+  composedHash = 0;
+  inputType = CBTypeInfo();
+  outputType = {};
+  requiredVariables.clear();
+
+  auto n = node.lock();
+  if (n) {
+    n->visitedChains.erase(this);
+  }
+  node.reset();
+
+  if (stack_mem) {
+    ::operator delete[](stack_mem, std::align_val_t{16});
+    stack_mem = nullptr;
+  }
+
+  resumer = nullptr;
+}
 
 void CBChain::warmup(CBContext *context) {
   if (!warmedUp) {
@@ -2679,3 +2533,369 @@ void CBChain::cleanup(bool force) {
     LOG(DEBUG) << "Ran cleanup on chain: " << name;
   }
 }
+
+#ifndef OVERRIDE_REGISTER_ALL_BLOCKS
+void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
+#endif
+
+#define API_TRY_CALL(_name_, _block_)                                          \
+  {                                                                            \
+    try {                                                                      \
+      _block_                                                                  \
+    } catch (const std::exception &ex) {                                       \
+      LOG(ERROR) << #_name_ " failed, error: " << ex.what();                   \
+    }                                                                          \
+  }
+
+bool cb_current_interface_loaded{false};
+CBCore cb_current_interface{};
+
+extern "C" {
+EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
+  // for now we ignore abi_version
+  if (cb_current_interface_loaded)
+    return &cb_current_interface;
+
+  // Load everything we know if we did not yet!
+  try {
+    chainblocks::registerCoreBlocks();
+  } catch (const std::exception &ex) {
+    LOG(ERROR) << "Failed to register core blocks, error: " << ex.what();
+    return nullptr;
+  }
+
+  if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
+    LOG(ERROR) << "A plugin requested an invalid ABI version.";
+    return nullptr;
+  }
+
+  auto result = &cb_current_interface;
+  cb_current_interface_loaded = true;
+
+  result->registerBlock = [](const char *fullName,
+                             CBBlockConstructor constructor) noexcept {
+    API_TRY_CALL(registerBlock,
+                 chainblocks::registerBlock(fullName, constructor);)
+  };
+
+  result->registerObjectType = [](int32_t vendorId, int32_t typeId,
+                                  CBObjectInfo info) noexcept {
+    API_TRY_CALL(registerObjectType,
+                 chainblocks::registerObjectType(vendorId, typeId, info);)
+  };
+
+  result->registerEnumType = [](int32_t vendorId, int32_t typeId,
+                                CBEnumInfo info) noexcept {
+    API_TRY_CALL(registerEnumType,
+                 chainblocks::registerEnumType(vendorId, typeId, info);)
+  };
+
+  result->registerRunLoopCallback = [](const char *eventName,
+                                       CBCallback callback) noexcept {
+    API_TRY_CALL(registerRunLoopCallback,
+                 chainblocks::registerRunLoopCallback(eventName, callback);)
+  };
+
+  result->registerExitCallback = [](const char *eventName,
+                                    CBCallback callback) noexcept {
+    API_TRY_CALL(registerExitCallback,
+                 chainblocks::registerExitCallback(eventName, callback);)
+  };
+
+  result->unregisterRunLoopCallback = [](const char *eventName) noexcept {
+    API_TRY_CALL(unregisterRunLoopCallback,
+                 chainblocks::unregisterRunLoopCallback(eventName);)
+  };
+
+  result->unregisterExitCallback = [](const char *eventName) noexcept {
+    API_TRY_CALL(unregisterExitCallback,
+                 chainblocks::unregisterExitCallback(eventName);)
+  };
+
+  result->referenceVariable = [](CBContext *context,
+                                 const char *name) noexcept {
+    return chainblocks::referenceVariable(context, name);
+  };
+
+  result->referenceChainVariable = [](CBChainRef chain,
+                                      const char *name) noexcept {
+    return chainblocks::referenceChainVariable(chain, name);
+  };
+
+  result->releaseVariable = [](CBVar *variable) noexcept {
+    return chainblocks::releaseVariable(variable);
+  };
+
+  result->suspend = [](CBContext *context, double seconds) noexcept {
+    try {
+      return chainblocks::suspend(context, seconds);
+    } catch (const chainblocks::ActivationError &ex) {
+      LOG(ERROR) << ex.what();
+      return CBChainState::Stop;
+    }
+  };
+
+  result->getState = [](CBContext *context) noexcept {
+    return context->getState();
+  };
+
+  result->abortChain = [](CBContext *context, const char *message) noexcept {
+    context->cancelFlow(message);
+  };
+
+  result->cloneVar = [](CBVar *dst, const CBVar *src) noexcept {
+    chainblocks::cloneVar(*dst, *src);
+  };
+
+  result->destroyVar = [](CBVar *var) noexcept {
+    chainblocks::destroyVar(*var);
+  };
+
+#define CB_ARRAY_IMPL(_arr_, _val_, _name_)                                    \
+  result->_name_##Free = [](_arr_ *seq) noexcept {                             \
+    chainblocks::arrayFree(*seq);                                              \
+  };                                                                           \
+                                                                               \
+  result->_name_##Resize = [](_arr_ *seq, uint32_t size) noexcept {            \
+    chainblocks::arrayResize(*seq, size);                                      \
+  };                                                                           \
+                                                                               \
+  result->_name_##Push = [](_arr_ *seq, const _val_ *value) noexcept {         \
+    chainblocks::arrayPush(*seq, *value);                                      \
+  };                                                                           \
+                                                                               \
+  result->_name_##Insert = [](_arr_ *seq, uint32_t index,                      \
+                              const _val_ *value) noexcept {                   \
+    chainblocks::arrayInsert(*seq, index, *value);                             \
+  };                                                                           \
+                                                                               \
+  result->_name_##Pop = [](_arr_ *seq) noexcept {                              \
+    return chainblocks::arrayPop<_arr_, _val_>(*seq);                          \
+  };                                                                           \
+                                                                               \
+  result->_name_##FastDelete = [](_arr_ *seq, uint32_t index) noexcept {       \
+    chainblocks::arrayDelFast(*seq, index);                                    \
+  };                                                                           \
+                                                                               \
+  result->_name_##SlowDelete = [](_arr_ *seq, uint32_t index) noexcept {       \
+    chainblocks::arrayDel(*seq, index);                                        \
+  }
+
+  CB_ARRAY_IMPL(CBSeq, CBVar, seq);
+  CB_ARRAY_IMPL(CBTypesInfo, CBTypeInfo, types);
+  CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
+  CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
+  CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_IMPL(CBStrings, CBString, strings);
+
+  result->tableNew = []() noexcept {
+    CBTable res;
+    res.api = &chainblocks::Globals::TableInterface;
+    res.opaque = new chainblocks::CBMap();
+    return res;
+  };
+
+  result->composeChain = [](CBChainRef chain, CBValidationCallback callback,
+                            void *userData, CBInstanceData data) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    try {
+      return composeChain(sc.get(), callback, userData, data);
+    } catch (const std::exception &e) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp = chainblocks::Var(e.what());
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    } catch (...) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp =
+          chainblocks::Var("foreign exception failure during composeChain");
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    }
+  };
+
+  result->runChain = [](CBChainRef chain, CBContext *context,
+                        const CBVar *input) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    return chainblocks::runSubChain(sc.get(), context, *input);
+  };
+
+  result->composeBlocks = [](CBlocks blocks, CBValidationCallback callback,
+                             void *userData, CBInstanceData data) noexcept {
+    try {
+      return chainblocks::composeChain(blocks, callback, userData, data);
+    } catch (const std::exception &e) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp = chainblocks::Var(e.what());
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    } catch (...) {
+      CBComposeResult res{};
+      res.failed = true;
+      auto msgTmp =
+          chainblocks::Var("foreign exception failure during composeChain");
+      chainblocks::cloneVar(res.failureMessage, msgTmp);
+      return res;
+    }
+  };
+
+  result->validateSetParam = [](CBlock *block, int index, const CBVar *param,
+                                CBValidationCallback callback,
+                                void *userData) noexcept {
+    return chainblocks::validateSetParam(block, index, *param, callback,
+                                         userData);
+  };
+
+  result->runBlocks = [](CBlocks blocks, CBContext *context, const CBVar *input,
+                         CBVar *output, const CBBool handleReturn) noexcept {
+    try {
+      return chainblocks::activateBlocks(blocks, context, *input, *output,
+                                         handleReturn);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+      return CBChainState::Stop;
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during runBlocks");
+      return CBChainState::Stop;
+    }
+  };
+
+  result->getChainInfo = [](CBChainRef chainref) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    auto chain = sc.get();
+    CBChainInfo info{chain->name.c_str(),
+                     chain->looped,
+                     chain->unsafe,
+                     chain,
+                     {&chain->blocks[0], uint32_t(chain->blocks.size()), 0},
+                     chainblocks::isRunning(chain)};
+    return info;
+  };
+
+  result->log = [](const char *msg) noexcept { LOG(INFO) << msg; };
+
+  result->setLoggingOptions = [](CBLoggingOptions options) noexcept {
+    chainblocks::LogsDefaultConf.setGlobally(
+        el::ConfigurationType::MaxLogFileSize, std::to_string(options.maxSize));
+    el::Loggers::reconfigureAllLoggers(chainblocks::LogsDefaultConf);
+  };
+
+  result->createBlock = [](const char *name) noexcept {
+    return chainblocks::createBlock(name);
+  };
+
+  result->createChain = []() noexcept {
+    auto chain = CBChain::make();
+    return chain->newRef();
+  };
+
+  result->setChainName = [](CBChainRef chainref, const char *name) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->name = name;
+  };
+
+  result->setChainLooped = [](CBChainRef chainref, CBBool looped) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->looped = looped;
+  };
+
+  result->setChainUnsafe = [](CBChainRef chainref, CBBool unsafe) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->unsafe = unsafe;
+  };
+
+  result->addBlock = [](CBChainRef chainref, CBlockPtr blk) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->addBlock(blk);
+  };
+
+  result->removeBlock = [](CBChainRef chainref, CBlockPtr blk) noexcept {
+    auto sc = CBChain::sharedFromRef(chainref);
+    sc->removeBlock(blk);
+  };
+
+  result->destroyChain = [](CBChainRef chain) noexcept {
+    CBChain::deleteRef(chain);
+  };
+
+  result->stopChain = [](CBChainRef chain) {
+    auto sc = CBChain::sharedFromRef(chain);
+    CBVar output{};
+    chainblocks::stop(sc.get(), &output);
+    return output;
+  };
+
+  result->destroyChain = [](CBChainRef chain) noexcept {
+    CBChain::deleteRef(chain);
+  };
+
+  result->destroyChain = [](CBChainRef chain) noexcept {
+    CBChain::deleteRef(chain);
+  };
+
+  result->createNode = []() noexcept {
+    return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
+  };
+
+  result->destroyNode = [](CBNodeRef node) noexcept {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    delete snode;
+  };
+
+  result->schedule = [](CBNodeRef node, CBChainRef chain) noexcept {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->schedule(CBChain::sharedFromRef(chain));
+  };
+
+  result->unschedule = [](CBNodeRef node, CBChainRef chain) noexcept {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->remove(CBChain::sharedFromRef(chain));
+  };
+
+  result->tick = [](CBNodeRef node) noexcept {
+    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+    (*snode)->tick();
+    if ((*snode)->empty())
+      return false;
+    else
+      return true;
+  };
+
+  result->sleep = [](double seconds, bool runCallbacks) noexcept {
+    chainblocks::sleep(seconds, runCallbacks);
+  };
+
+  result->getRootPath = []() noexcept {
+    return chainblocks::Globals::RootPath.c_str();
+  };
+
+  result->setRootPath = [](const char *p) noexcept {
+    chainblocks::Globals::RootPath = p;
+    chainblocks::loadExternalBlocks(p);
+    std::filesystem::current_path(p);
+  };
+
+  result->asyncActivate = [](auto context, auto data, auto call) {
+    return chainblocks::awaitne(context, [&] { return call(context, data); });
+  };
+
+  result->getBlocks = []() {
+    CBStrings s{};
+    for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
+      chainblocks::arrayPush(s, name.data());
+    }
+    return s;
+  };
+
+  result->getString = [](uint32_t crc) { return chainblocks::getString(crc); };
+
+  result->setString = [](uint32_t crc, CBString str) {
+    chainblocks::setString(crc, str);
+  };
+
+  return result;
+}
+};
