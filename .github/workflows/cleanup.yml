@@ -13,4 +13,4 @@ jobs:
       - uses: chainblocks/cancel-previous-runs@v2
         with:
           token: ${{ secrets.TOKEN }}
-          workflow: my-heavy-workflow.yml
+          workflow: main.yml
