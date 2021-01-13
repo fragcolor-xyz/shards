@@ -199,9 +199,11 @@ typedef const char *CBString;
 CB_ARRAY_DECL(CBStrings, CBString);
 // used in order to compress/omit/localize the strings at runtime
 // specially for help functions
-typedef struct _CBLazyString {
+// if string is null, crc is checked and used to retrieve a string
+typedef struct _CBOptionalString {
   CBString string;
-} CBLazyString;
+  uint32_t crc;
+} CBOptionalString;
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -436,13 +438,13 @@ struct CBEnumInfo {
 
 struct CBParameterInfo {
   CBString name;
-  CBLazyString help;
+  CBOptionalString help;
   CBTypesInfo valueTypes;
 };
 
 struct CBExposedTypeInfo {
   CBString name;
-  CBLazyString help;
+  CBOptionalString help;
   struct CBTypeInfo exposedType;
 
   // the following are actually used only when exposing.
@@ -640,7 +642,7 @@ typedef void(__cdecl *CBCallback)();
 
 typedef CBString(__cdecl *CBNameProc)(struct CBlock *);
 typedef uint32_t(__cdecl *CBHashProc)(struct CBlock *);
-typedef CBLazyString(__cdecl *CBHelpProc)(struct CBlock *);
+typedef CBOptionalString(__cdecl *CBHelpProc)(struct CBlock *);
 
 // Construction/Destruction
 typedef void(__cdecl *CBSetupProc)(struct CBlock *);
@@ -920,6 +922,9 @@ typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
 
 typedef CBStrings(__cdecl *CBGetBlocks)();
 
+typedef CBString(__cdecl *CBGetString)(uint32_t crc);
+typedef void(__cdecl *CBSetString)(uint32_t crc, CBString str);
+
 struct CBChainInfo {
   CBString name;
   CBBool looped;
@@ -1035,6 +1040,10 @@ typedef struct _CBCore {
 
   // Blocks discovery (free after use, only the array, not the strings)
   CBGetBlocks getBlocks;
+
+  // interned strings management
+  CBGetString getString;
+  CBSetString setString;
 } CBCore;
 
 typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);

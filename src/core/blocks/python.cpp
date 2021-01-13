@@ -938,8 +938,8 @@ struct Py {
             auto pytypes = Env::tupleGetItem(pyparam, 2);
             Types types;
             Env::extractTypes(pytypes, types, _paramsInners);
-            otherParams.emplace_back(name.c_str(), CBLazyString{help.c_str()},
-                                     types);
+            otherParams.emplace_back(name.c_str(),
+                                     CBOptionalString{help.c_str()}, types);
           } else {
             throw CBException(
                 "Malformed python block parameters, list of tuple (name, help, "

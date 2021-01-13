@@ -153,10 +153,10 @@ struct Types {
 
 struct ParameterInfo {
   CBString _name;
-  CBLazyString _help;
+  CBOptionalString _help;
   Types _types;
 
-  ParameterInfo(CBString name, CBLazyString help, Types types)
+  ParameterInfo(CBString name, CBOptionalString help, Types types)
       : _name(name), _help(help), _types(types) {}
   ParameterInfo(CBString name, Types types)
       : _name(name), _help({}), _types(types) {}

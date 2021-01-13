@@ -1192,38 +1192,49 @@ impl Default for CBStrings {
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _CBLazyString {
+pub struct _CBOptionalString {
     pub string: CBString,
+    pub crc: u32,
 }
 #[test]
-fn bindgen_test_layout__CBLazyString() {
+fn bindgen_test_layout__CBOptionalString() {
     assert_eq!(
-        ::core::mem::size_of::<_CBLazyString>(),
-        4usize,
-        concat!("Size of: ", stringify!(_CBLazyString))
+        ::core::mem::size_of::<_CBOptionalString>(),
+        8usize,
+        concat!("Size of: ", stringify!(_CBOptionalString))
     );
     assert_eq!(
-        ::core::mem::align_of::<_CBLazyString>(),
+        ::core::mem::align_of::<_CBOptionalString>(),
         4usize,
-        concat!("Alignment of ", stringify!(_CBLazyString))
+        concat!("Alignment of ", stringify!(_CBOptionalString))
     );
     assert_eq!(
-        unsafe { &(*(::core::ptr::null::<_CBLazyString>())).string as *const _ as usize },
+        unsafe { &(*(::core::ptr::null::<_CBOptionalString>())).string as *const _ as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(_CBLazyString),
+            stringify!(_CBOptionalString),
             "::",
             stringify!(string)
         )
     );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<_CBOptionalString>())).crc as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_CBOptionalString),
+            "::",
+            stringify!(crc)
+        )
+    );
 }
-impl Default for _CBLazyString {
+impl Default for _CBOptionalString {
     fn default() -> Self {
         unsafe { ::core::mem::zeroed() }
     }
 }
-pub type CBLazyString = _CBLazyString;
+pub type CBOptionalString = _CBOptionalString;
 pub type CBInt2 = [i64; 2usize];
 pub type CBInt3 = [i32; 4usize];
 pub type CBInt4 = [i32; 4usize];
@@ -2234,14 +2245,14 @@ impl Default for CBEnumInfo {
 #[derive(Debug, Copy, Clone)]
 pub struct CBParameterInfo {
     pub name: CBString,
-    pub help: CBLazyString,
+    pub help: CBOptionalString,
     pub valueTypes: CBTypesInfo,
 }
 #[test]
 fn bindgen_test_layout_CBParameterInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBParameterInfo>(),
-        20usize,
+        24usize,
         concat!("Size of: ", stringify!(CBParameterInfo))
     );
     assert_eq!(
@@ -2271,7 +2282,7 @@ fn bindgen_test_layout_CBParameterInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBParameterInfo>())).valueTypes as *const _ as usize },
-        8usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBParameterInfo),
@@ -2289,7 +2300,7 @@ impl Default for CBParameterInfo {
 #[derive(Copy, Clone)]
 pub struct CBExposedTypeInfo {
     pub name: CBString,
-    pub help: CBLazyString,
+    pub help: CBOptionalString,
     pub exposedType: CBTypeInfo,
     pub isMutable: CBBool,
     pub isProtected: CBBool,
@@ -2301,7 +2312,7 @@ pub struct CBExposedTypeInfo {
 fn bindgen_test_layout_CBExposedTypeInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBExposedTypeInfo>(),
-        56usize,
+        64usize,
         concat!("Size of: ", stringify!(CBExposedTypeInfo))
     );
     assert_eq!(
@@ -2331,7 +2342,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).exposedType as *const _ as usize },
-        8usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2341,7 +2352,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isMutable as *const _ as usize },
-        48usize,
+        56usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2351,7 +2362,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isProtected as *const _ as usize },
-        49usize,
+        57usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2361,7 +2372,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isTableEntry as *const _ as usize },
-        50usize,
+        58usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2371,7 +2382,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).global as *const _ as usize },
-        51usize,
+        59usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2381,7 +2392,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).scope as *const _ as usize },
-        52usize,
+        60usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -3353,7 +3364,7 @@ pub type CBCallback = ::core::option::Option<unsafe extern "C" fn()>;
 pub type CBNameProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> CBString>;
 pub type CBHashProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> u32>;
 pub type CBHelpProc =
-    ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> CBLazyString>;
+    ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> CBOptionalString>;
 pub type CBSetupProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock)>;
 pub type CBDestroyProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock)>;
 pub type CBInputTypesProc =
@@ -4038,6 +4049,8 @@ pub type CBRunAsyncActivate = ::core::option::Option<
     ) -> CBVar,
 >;
 pub type CBGetBlocks = ::core::option::Option<unsafe extern "C" fn() -> CBStrings>;
+pub type CBGetString = ::core::option::Option<unsafe extern "C" fn(crc: u32) -> CBString>;
+pub type CBSetString = ::core::option::Option<unsafe extern "C" fn(crc: u32, str_: CBString)>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBChainInfo {
@@ -4246,12 +4259,14 @@ pub struct _CBCore {
     pub setRootPath: CBSetRootPath,
     pub asyncActivate: CBRunAsyncActivate,
     pub getBlocks: CBGetBlocks,
+    pub getString: CBGetString,
+    pub setString: CBSetString,
 }
 #[test]
 fn bindgen_test_layout__CBCore() {
     assert_eq!(
         ::core::mem::size_of::<_CBCore>(),
-        340usize,
+        348usize,
         concat!("Size of: ", stringify!(_CBCore))
     );
     assert_eq!(
@@ -5111,6 +5126,26 @@ fn bindgen_test_layout__CBCore() {
             stringify!(_CBCore),
             "::",
             stringify!(getBlocks)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<_CBCore>())).getString as *const _ as usize },
+        340usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_CBCore),
+            "::",
+            stringify!(getString)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<_CBCore>())).setString as *const _ as usize },
+        344usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_CBCore),
+            "::",
+            stringify!(setString)
         )
     );
 }

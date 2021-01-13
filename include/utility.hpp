@@ -68,8 +68,8 @@ constexpr uint32_t crc32(std::string_view str) {
 
 template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
-inline CBLazyString operator"" _lazy(const char *s, size_t) {
-  return CBLazyString{s};
+inline CBOptionalString operator"" _optional(const char *s, size_t) {
+  return CBOptionalString{s};
 }
 
 // SFINAE tests

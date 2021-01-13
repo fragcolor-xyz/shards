@@ -1737,7 +1737,7 @@ BUILTIN("info") {
     DEFER(block->destroy(block));
 
     auto help = block->help(block);
-    map["help"] = mal::string(help.string ? help.string : "");
+    map["help"] = mal::string(help.string ? help.string : getString(help.crc));
 
     auto params = block->parameters(block);
     malValueVec pvec;
@@ -1747,7 +1747,7 @@ BUILTIN("info") {
       if (params.elements[i].help.string)
         pmap["help"] = mal::string(params.elements[i].help.string);
       else
-        pmap["help"] = mal::string("");
+        pmap["help"] = mal::string(getString(params.elements[i].help.crc));
       std::stringstream ss;
       ss << params.elements[i].valueTypes;
       pmap["types"] = mal::string(ss.str());
@@ -1783,12 +1783,15 @@ BUILTIN("export-strings") {
   }
   return mal::list(strs.begin(), strs.end());
 }
+#else
+static std::unordered_map<uint32_t, std::string> strings_storage;
 #endif
 
 BUILTIN("decompress-strings") {
 #ifdef CB_COMPRESSED_STRINGS
-  static std::unordered_map<uint32_t, std::string> strings_storage;
-
+  if (!chainblocks::Globals::CompressedStrings) {
+    throw chainblocks::CBException("String storage was null");
+  }
   // run the script to populate compressed strings
   auto bytes = Var(__chainblocks_compressed_strings);
   auto chain = ::chainblocks::Chain("decompress strings")
@@ -1815,8 +1818,10 @@ BUILTIN("decompress-strings") {
     auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue),
                                             str.payload.stringValue);
     auto &s = emplaced.first->second;
-    (*chainblocks::Globals::CompressedStrings)[uint32_t(crc.payload.intValue)]
-        .string = s.c_str();
+    auto &val = (*chainblocks::Globals::CompressedStrings)[uint32_t(
+        crc.payload.intValue)];
+    val.string = s.c_str();
+    val.crc = uint32_t(crc.payload.intValue);
   }
 #endif
   return mal::nilValue();

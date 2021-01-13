@@ -292,7 +292,7 @@ template <http::verb VERB> struct PostLike final : public Client {
 
   static CBTypesInfo inputTypes() { return PostInTypes; }
 
-  static CBLazyString help() {
+  static CBOptionalString help() {
     return CBCCSTR("If the input is a table it will default to "
                    "application/x-www-form-urlencoded, if it's a string will "
                    "be application/json instead");

@@ -27,18 +27,22 @@ INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
 #ifdef CB_COMPRESSED_STRINGS
-CBLazyString getCompiledCompressedString(uint32_t id) {
-  static std::unordered_map<uint32_t, CBLazyString> CompiledCompressedStrings;
+CBOptionalString getCompiledCompressedString(uint32_t id) {
+  static std::unordered_map<uint32_t, CBOptionalString>
+      CompiledCompressedStrings;
   if (Globals::CompressedStrings == nullptr)
     Globals::CompressedStrings = &CompiledCompressedStrings;
-  return CompiledCompressedStrings[id];
+  auto &val = CompiledCompressedStrings[id];
+  val.crc = id; // make sure we return with crc to allow later lookups!
+  return val;
 }
 #else
-CBLazyString setCompiledCompressedString(uint32_t id, const char *str) {
-  static std::unordered_map<uint32_t, CBLazyString> CompiledCompressedStrings;
+CBOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
+  static std::unordered_map<uint32_t, CBOptionalString>
+      CompiledCompressedStrings;
   if (Globals::CompressedStrings == nullptr)
     Globals::CompressedStrings = &CompiledCompressedStrings;
-  CBLazyString ls{str};
+  CBOptionalString ls{str, id};
   CompiledCompressedStrings[id] = ls;
   return ls;
 }
@@ -2383,6 +2387,18 @@ void hash_update(const CBVar &var, void *state) {
   }
   }
 }
+
+CBString getString(uint32_t crc) {
+  assert(chainblocks::Globals::CompressedStrings);
+  auto s = (*chainblocks::Globals::CompressedStrings)[crc].string;
+  return s != nullptr ? s : "";
+}
+
+void setString(uint32_t crc, CBString str) {
+  assert(chainblocks::Globals::CompressedStrings);
+  (*chainblocks::Globals::CompressedStrings)[crc].string = str;
+  (*chainblocks::Globals::CompressedStrings)[crc].crc = crc;
+}
 }; // namespace chainblocks
 
 // NO NAMESPACE here!
@@ -2872,6 +2888,12 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
       chainblocks::arrayPush(s, name.data());
     }
     return s;
+  };
+
+  result->getString = [](uint32_t crc) { return chainblocks::getString(crc); };
+
+  result->setString = [](uint32_t crc, CBString str) {
+    chainblocks::setString(crc, str);
   };
 
   return result;

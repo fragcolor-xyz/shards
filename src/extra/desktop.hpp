@@ -193,7 +193,7 @@ struct WaitKeyEventBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static CBLazyString help() {
+  static CBOptionalString help() {
     return CBCCSTR(
         "### Pauses the chain and waits for keyboard events.\n#### The output "
         "of this block will be a Int2.\n * The first integer will be 0 for Key "
@@ -214,7 +214,7 @@ struct SendKeyEventBase {
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static CBLazyString help() {
+  static CBOptionalString help() {
     return CBCCSTR("### Sends the input key event.\n#### The input of this "
                    "block will be a Int2.\n * The first integer will be 0 for "
                    "Key down/push events and 1 for Key up/release events.\n * "

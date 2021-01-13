@@ -67,7 +67,7 @@ template <class T> struct BlockWrapper {
       });
     } else {
       result->help =
-          static_cast<CBHelpProc>([](CBlock *b) { return CBLazyString(); });
+          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 
     // setup

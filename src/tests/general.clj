@@ -1,5 +1,3 @@
-(decompress-strings)
-
 (def! Root (Node))
 
 (def! inner1 (Chain "inner"

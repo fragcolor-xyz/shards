@@ -90,11 +90,13 @@ struct CBCoro {
 
 namespace chainblocks {
 #ifdef CB_COMPRESSED_STRINGS
-CBLazyString getCompiledCompressedString(uint32_t crc);
+CBOptionalString getCompiledCompressedString(uint32_t crc);
 #else
-CBLazyString setCompiledCompressedString(uint32_t crc, const char *str);
+CBOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 #endif
 
+CBString getString(uint32_t crc);
+void setString(uint32_t crc, CBString str);
 [[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
                                            CBValidationCallback callback,
                                            void *userData, CBInstanceData data);
@@ -422,8 +424,8 @@ struct Globals {
   static inline std::string RootPath;
   static inline std::string ExePath;
 
-  static inline std::unordered_map<uint32_t, CBLazyString> *CompressedStrings{
-      nullptr};
+  static inline std::unordered_map<uint32_t, CBOptionalString>
+      *CompressedStrings{nullptr};
 
   static inline CBTableInterface TableInterface{
       .tableForEach =
@@ -925,7 +927,7 @@ struct ParamsInfo {
     }
   }
 
-  static CBParameterInfo Param(CBString name, CBLazyString help,
+  static CBParameterInfo Param(CBString name, CBOptionalString help,
                                CBTypesInfo types) {
     CBParameterInfo res = {name, help, types};
     return res;
@@ -1001,17 +1003,16 @@ struct ExposedInfo {
     }
   }
 
-  constexpr static CBExposedTypeInfo Variable(CBString name, CBLazyString help,
-                                              CBTypeInfo type,
-                                              bool isMutable = false,
-                                              bool isTableField = false) {
+  constexpr static CBExposedTypeInfo
+  Variable(CBString name, CBOptionalString help, CBTypeInfo type,
+           bool isMutable = false, bool isTableField = false) {
     CBExposedTypeInfo res = {name,  help,         type, isMutable,
                              false, isTableField, false};
     return res;
   }
 
   constexpr static CBExposedTypeInfo ProtectedVariable(CBString name,
-                                                       CBLazyString help,
+                                                       CBOptionalString help,
                                                        CBTypeInfo type,
                                                        bool isMutable = false) {
     CBExposedTypeInfo res = {name, help, type, isMutable, true, false, false};
@@ -1019,7 +1020,7 @@ struct ExposedInfo {
   }
 
   constexpr static CBExposedTypeInfo
-  GlobalVariable(CBString name, CBLazyString help, CBTypeInfo type,
+  GlobalVariable(CBString name, CBOptionalString help, CBTypeInfo type,
                  bool isMutable = false, bool isTableField = false) {
     CBExposedTypeInfo res = {name,  help,         type, isMutable,
                              false, isTableField, true};
