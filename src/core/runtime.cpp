@@ -27,19 +27,20 @@ INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
 #ifdef CB_COMPRESSED_STRINGS
-const char *getCompiledCompressedString(uint32_t id) {
-  static std::unordered_map<uint32_t, const char *> CompiledCompressedStrings;
-  const auto s = CompiledCompressedStrings[id];
-  if (s == nullptr)
-    return "";
-  else
-    return s;
+CBLazyString getCompiledCompressedString(uint32_t id) {
+  static std::unordered_map<uint32_t, CBLazyString> CompiledCompressedStrings;
+  if (Globals::CompressedStrings == nullptr)
+    Globals::CompressedStrings = &CompiledCompressedStrings;
+  return CompiledCompressedStrings[id];
 }
 #else
-const char *setCompiledCompressedString(uint32_t id, const char *str) {
-  static std::unordered_map<uint32_t, const char *> CompiledCompressedStrings;
-  CompiledCompressedStrings[id] = str;
-  return str;
+CBLazyString setCompiledCompressedString(uint32_t id, const char *str) {
+  static std::unordered_map<uint32_t, CBLazyString> CompiledCompressedStrings;
+  if (Globals::CompressedStrings == nullptr)
+    Globals::CompressedStrings = &CompiledCompressedStrings;
+  CBLazyString ls{str};
+  CompiledCompressedStrings[id] = ls;
+  return ls;
 }
 #endif
 

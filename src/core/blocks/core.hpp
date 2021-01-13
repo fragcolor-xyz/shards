@@ -268,8 +268,9 @@ struct Pause {
 
   CBExposedTypesInfo requiredVariables() {
     if (time.isVariable()) {
-      reqs = ExposedInfo(ExposedInfo::Variable(
-          time.variableName(), "The required variable", CoreInfo::FloatType));
+      reqs = ExposedInfo(ExposedInfo::Variable(time.variableName(),
+                                               CBCCSTR("The required variable"),
+                                               CoreInfo::FloatType));
     } else {
       reqs = {};
     }
@@ -296,8 +297,9 @@ struct PauseMs : public Pause {
 
   CBExposedTypesInfo requiredVariables() {
     if (time.isVariable()) {
-      reqs = ExposedInfo(ExposedInfo::Variable(
-          time.variableName(), "The required variable", CoreInfo::IntType));
+      reqs = ExposedInfo(ExposedInfo::Variable(time.variableName(),
+                                               CBCCSTR("The required variable"),
+                                               CoreInfo::IntType));
     } else {
       reqs = {};
     }
@@ -714,21 +716,23 @@ struct Set : public SetBase {
       }
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-            _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+            _name.c_str(), CBCCSTR("The exposed table."), _tableTypeInfo, true,
+            true));
       } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed table."),
+                                  _tableTypeInfo, true, true));
       }
     } else {
       // just a variable!
       if (_global) {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::GlobalVariable(_name.c_str(), "The exposed variable.",
-                                        CBTypeInfo(data.inputType), true));
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+            _name.c_str(), CBCCSTR("The exposed variable."),
+            CBTypeInfo(data.inputType), true));
       } else {
-        _exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
-                                  CBTypeInfo(data.inputType), true));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+            _name.c_str(), CBCCSTR("The exposed variable."),
+            CBTypeInfo(data.inputType), true));
       }
     }
     return data.inputType;
@@ -759,12 +763,14 @@ struct Ref : public SetBase {
                        {.table = {.keys = {&_tableContentKey, 1, 0},
                                   .types = {&_tableContentInfo, 1, 0}}}};
       }
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo, false, true));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed table."),
+                                _tableTypeInfo, false, true));
     } else {
       // just a variable!
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed variable.", CBTypeInfo(data.inputType)));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed variable."),
+                                CBTypeInfo(data.inputType)));
     }
     return data.inputType;
   }
@@ -889,12 +895,13 @@ struct Update : public SetBase {
                        {.table = {.keys = {&_tableContentKey, 1, 0},
                                   .types = {&_tableContentInfo, 1, 0}}}};
       }
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), "The exposed table.", _tableTypeInfo, true, true));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed table."),
+                                _tableTypeInfo, true, true));
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), "The exposed variable.",
+          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed variable."),
                                 CBTypeInfo(data.inputType), true));
     }
 

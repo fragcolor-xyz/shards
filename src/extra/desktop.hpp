@@ -193,7 +193,7 @@ struct WaitKeyEventBase {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static const char *help() {
+  static CBLazyString help() {
     return CBCCSTR(
         "### Pauses the chain and waits for keyboard events.\n#### The output "
         "of this block will be a Int2.\n * The first integer will be 0 for Key "
@@ -205,8 +205,8 @@ struct WaitKeyEventBase {
 struct SendKeyEventBase {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Window",
-                        "None or a window variable if we wish to send the "
-                        "event only to a specific target window.",
+                        CBCCSTR("None or a window variable if we wish to send "
+                                "the event only to a specific target window."),
                         Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
@@ -214,7 +214,7 @@ struct SendKeyEventBase {
   static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  static const char *help() {
+  static CBLazyString help() {
     return CBCCSTR("### Sends the input key event.\n#### The input of this "
                    "block will be a Int2.\n * The first integer will be 0 for "
                    "Key down/push events and 1 for Key up/release events.\n * "

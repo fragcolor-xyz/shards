@@ -303,8 +303,8 @@ String PRINT(malValuePtr ast) { return ast->print(true); }
 malValuePtr APPLY(malValuePtr op, malValueIter argsBegin,
                   malValueIter argsEnd) {
   const malApplicable *handler = DYNAMIC_CAST(malApplicable, op);
-  MAL_CHECK(handler != NULL, "\"%s\" is not applicable",
-            op->print(true).c_str());
+  MAL_CHECK(handler != NULL, "\"%s\" is not applicable, line: %u",
+            op->print(true).c_str(), op->line);
 
   return handler->apply(argsBegin, argsEnd);
 }

@@ -32,7 +32,7 @@
   (Chain
    "test-3"
    [10 20 1000 40 50]
-   (IntSeqToBytes)
+   (IntsToBytes)
    (Log)))
 
 (schedule Root c)
@@ -44,7 +44,7 @@
    "test-3"
    [10 20 2.0 40 50]
    (ExpectIntSeq)
-   (IntSeqToBytes)
+   (IntsToBytes)
    (Log)))
 
 (schedule Root c)
@@ -56,7 +56,7 @@
    "test-3"
    [10 20 20 40 50]
    (ExpectIntSeq)
-   (IntSeqToBytes)
+   (IntsToBytes)
    (ExpectLike [1 2 3])
    (Log)))
 

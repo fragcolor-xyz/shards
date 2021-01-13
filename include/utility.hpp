@@ -11,22 +11,7 @@
 #include <mutex>
 #include <nameof.hpp>
 #include <string>
-#include <unordered_map>
 #include <vector>
-
-#ifdef NDEBUG
-#define CB_COMPRESSED_STRINGS 1
-#endif
-
-#ifdef CB_COMPRESSED_STRINGS
-#define CBCCSTR(_str_)                                                         \
-  ::chainblocks::getCompiledCompressedString(                                  \
-      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value)
-#else
-#define CBCCSTR(_str_)                                                         \
-  ::chainblocks::setCompiledCompressedString(                                  \
-      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value, _str_)
-#endif
 
 namespace chainblocks {
 // compile time CRC32
@@ -83,11 +68,9 @@ constexpr uint32_t crc32(std::string_view str) {
 
 template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
-#ifdef CB_COMPRESSED_STRINGS
-const char *getCompiledCompressedString(uint32_t crc);
-#else
-const char *setCompiledCompressedString(uint32_t crc, const char *str);
-#endif
+inline CBLazyString operator"" _lazy(const char *s, size_t) {
+  return CBLazyString{s};
+}
 
 // SFINAE tests
 #define CB_HAS_MEMBER_TEST(_name_)                                             \

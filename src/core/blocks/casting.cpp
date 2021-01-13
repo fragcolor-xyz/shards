@@ -28,7 +28,7 @@ struct FromImage {
       const int c = int(input.payload.imageValue.channels);
       const int flatsize = w * h * c * pixsize;
 
-      output.resize(flatsize, Var(0.0));
+      output.resize(flatsize);
 
       if (pixsize == 1) {
         for (int i = 0; i < flatsize; i++) {
@@ -99,6 +99,26 @@ struct FromSeq {
   }
 };
 
+struct FromBytes {
+  template <CBType OF>
+  void toSeq(std::vector<Var> &output, const CBVar &input) {
+    if constexpr (OF == CBType::Int) {
+      // assume we want 0-1 normalized values
+      if (input.valueType != CBType::Bytes)
+        throw ActivationError("Expected Bytes type.");
+
+      output.resize(input.payload.bytesSize);
+
+      for (uint32_t i = 0; i < input.payload.bytesSize; i++) {
+        const auto b = int64_t(input.payload.bytesValue[i]);
+        output[i] = Var(b);
+      }
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+  }
+};
+
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
   static inline Type _outputElemType{{CBOTHER}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputElemType}}};
@@ -112,6 +132,9 @@ template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
     // do not .clear here, for speed, let From manage that
     if constexpr (CBTYPE == CBType::Image) {
       FromImage c;
+      c.toSeq<CBOTHER>(_output, input);
+    } else if constexpr (CBTYPE == CBType::Bytes) {
+      FromBytes c;
       c.toSeq<CBOTHER>(_output, input);
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
@@ -798,8 +821,10 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("ImageToFloats", ImageToFloats);
   REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
 
-  using IntSeqToBytes = ToBytes<CBType::Int>;
-  REGISTER_CBLOCK("IntSeqToBytes", IntSeqToBytes);
+  using BytesToInts = ToSeq<CBType::Bytes, CBType::Int>;
+  using IntsToBytes = ToBytes<CBType::Int>;
+  REGISTER_CBLOCK("BytesToInts", BytesToInts);
+  REGISTER_CBLOCK("IntsToBytes", IntsToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);

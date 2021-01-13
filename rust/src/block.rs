@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBLazyString;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
@@ -123,11 +124,13 @@ unsafe extern "C" fn cblock_hash<T: Block>(_arg1: *mut CBlock) -> u32 {
   T::hash()
 }
 
-unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> *const ::std::os::raw::c_char {
+unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> CBLazyString {
   let blk = arg1 as *mut BlockWrapper<T>;
   let help = (*blk).block.help();
   (*blk).help = Some(CString::new(help).expect("CString::new failed"));
-  (*blk).help.as_ref().unwrap().as_ptr()
+  CBLazyString{
+    string: (*blk).help.as_ref().unwrap().as_ptr()
+  }
 }
 
 unsafe extern "C" fn cblock_inputTypes<T: Block>(arg1: *mut CBlock) -> CBTypesInfo {

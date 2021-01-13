@@ -330,7 +330,8 @@ struct PixelBase {
   std::string variableName;
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Window", "The window variable name to use as coordinate origin.",
+      "Window",
+      CBCCSTR("The window variable name to use as coordinate origin."),
       Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }

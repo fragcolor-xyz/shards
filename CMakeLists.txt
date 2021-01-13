@@ -294,6 +294,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
   ${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp
+  ${CHAINBLOCKS_DIR}/src/core/cbccstrings.hpp
   )
 
 #### Header paths for tidy

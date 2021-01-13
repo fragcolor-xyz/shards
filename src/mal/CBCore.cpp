@@ -24,6 +24,10 @@
 #include <dlfcn.h>
 #endif
 
+#ifdef CB_COMPRESSED_STRINGS
+#include "../core/cbccstrings.hpp"
+#endif
+
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
 static StaticList<malBuiltIn *> handlers;
@@ -90,6 +94,7 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
 #endif
 
     cbRegisterAllBlocks();
+
     initDoneOnce = true;
   }
 
@@ -1731,14 +1736,18 @@ BUILTIN("info") {
     auto block = createBlock(blkname->ref().c_str());
     DEFER(block->destroy(block));
 
-    map["help"] = mal::string(block->help(block));
+    auto help = block->help(block);
+    map["help"] = mal::string(help.string ? help.string : "");
 
     auto params = block->parameters(block);
     malValueVec pvec;
     for (uint32_t i = 0; i < params.len; i++) {
       malHash::Map pmap;
       pmap["name"] = mal::string(params.elements[i].name);
-      pmap["help"] = mal::string(params.elements[i].help);
+      if (params.elements[i].help.string)
+        pmap["help"] = mal::string(params.elements[i].help.string);
+      else
+        pmap["help"] = mal::string("");
       std::stringstream ss;
       ss << params.elements[i].valueTypes;
       pmap["types"] = mal::string(ss.str());
@@ -1760,6 +1769,57 @@ BUILTIN("info") {
 
     return mal::hash(map);
   }
+}
+
+#ifndef CB_COMPRESSED_STRINGS
+BUILTIN("export-strings") {
+  assert(chainblocks::Globals::CompressedStrings);
+  malValueVec strs;
+  for (auto &[crc, str] : *chainblocks::Globals::CompressedStrings) {
+    malValueVec record;
+    record.emplace_back(mal::number(crc, true));
+    record.emplace_back(mal::string(str.string));
+    strs.emplace_back(mal::list(record.begin(), record.end()));
+  }
+  return mal::list(strs.begin(), strs.end());
+}
+#endif
+
+BUILTIN("decompress-strings") {
+#ifdef CB_COMPRESSED_STRINGS
+  static std::unordered_map<uint32_t, std::string> strings_storage;
+
+  // run the script to populate compressed strings
+  auto bytes = Var(__chainblocks_compressed_strings);
+  auto chain = ::chainblocks::Chain("decompress strings")
+                   .let(bytes)
+                   .block("Brotli.Decompress")
+                   .block("FromBytes");
+  auto node = CBNode::make();
+  node->schedule(chain);
+  node->tick();
+  if (chain->finishedOutput.valueType != CBType::Seq) {
+    throw chainblocks::CBException("Failed to decompress strings!");
+  }
+
+  for (uint32_t i = 0; i < chain->finishedOutput.payload.seqValue.len; i++) {
+    auto pair = chain->finishedOutput.payload.seqValue.elements[i];
+    if (pair.valueType != CBType::Seq || pair.payload.seqValue.len != 2) {
+      throw chainblocks::CBException("Failed to decompress strings!");
+    }
+    auto crc = pair.payload.seqValue.elements[0];
+    auto str = pair.payload.seqValue.elements[1];
+    if (crc.valueType != CBType::Int || str.valueType != CBType::String) {
+      throw chainblocks::CBException("Failed to decompress strings!");
+    }
+    auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue),
+                                            str.payload.stringValue);
+    auto &s = emplaced.first->second;
+    (*chainblocks::Globals::CompressedStrings)[uint32_t(crc.payload.intValue)]
+        .string = s.c_str();
+  }
+#endif
+  return mal::nilValue();
 }
 
 BUILTIN_ISA("Var?", malCBVar);

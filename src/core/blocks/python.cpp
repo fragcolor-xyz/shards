@@ -892,8 +892,8 @@ struct Py {
   void setup() { _ts.init(); }
 
   Parameters params{{"Module",
-                     "The module name to load (must be in the script path, .py "
-                     "extension added internally!)",
+                     CBCCSTR("The module name to load (must be in the script "
+                             "path, .py extension added internally!)"),
                      {CoreInfo::StringType}}};
 
   CBParametersInfo parameters() {
@@ -938,7 +938,8 @@ struct Py {
             auto pytypes = Env::tupleGetItem(pyparam, 2);
             Types types;
             Env::extractTypes(pytypes, types, _paramsInners);
-            otherParams.emplace_back(name.c_str(), help.c_str(), types);
+            otherParams.emplace_back(name.c_str(), CBLazyString{help.c_str()},
+                                     types);
           } else {
             throw CBException(
                 "Malformed python block parameters, list of tuple (name, help, "

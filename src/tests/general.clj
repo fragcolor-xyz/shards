@@ -1,3 +1,5 @@
+(decompress-strings)
+
 (def! Root (Node))
 
 (def! inner1 (Chain "inner"
@@ -88,7 +90,7 @@
    [10 20 30 40 50]
    (ExpectIntSeq)
    (ExpectLike [1 2 3 4])
-   (IntSeqToBytes)
+   (IntsToBytes)
    (Log)
 
    "Hello"

@@ -11,6 +11,7 @@ use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
+use crate::chainblocksc::CBLazyString;
 use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
 use crate::chainblocksc::CBPointer;
@@ -90,6 +91,7 @@ pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
 #[derive(PartialEq)]
 pub struct String(pub CBString);
+pub struct LazyString(pub CBLazyString);
 
 #[derive(PartialEq)]
 pub enum ChainState {
@@ -174,7 +176,7 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: chelp,
+      help: CBLazyString { string: chelp },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -187,7 +189,9 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: help.as_ptr(),
+      help: CBLazyString {
+        string: help.as_ptr(),
+      },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -202,7 +206,7 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: chelp,
+      help: CBLazyString { string: chelp },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -221,7 +225,7 @@ impl ExposedInfo {
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: chelp,
+      help: CBLazyString { string: chelp },
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
@@ -255,7 +259,7 @@ impl ParameterInfo {
     let chelp = core::ptr::null();
     let res = CBParameterInfo {
       name: cname.into_raw() as *mut i8,
-      help: chelp,
+      help: CBLazyString { string: chelp },
       valueTypes: internal_from_types(types),
     };
     ParameterInfo(res)
@@ -266,7 +270,7 @@ impl ParameterInfo {
     let chelp = CString::new(help).unwrap();
     let res = CBParameterInfo {
       name: cname.into_raw() as *mut i8,
-      help: chelp.into_raw() as *mut i8,
+      help: CBLazyString { string: chelp.into_raw() as *mut i8 },
       valueTypes: internal_from_types(types),
     };
     ParameterInfo(res)
@@ -293,9 +297,9 @@ impl Drop for ParameterInfo {
         drop(cname);
       }
     }
-    if self.0.help != core::ptr::null() {
+    if self.0.help.string != core::ptr::null() {
       unsafe {
-        let chelp = CString::from_raw(self.0.help as *mut i8);
+        let chelp = CString::from_raw(self.0.help.string as *mut i8);
         drop(chelp);
       }
     }

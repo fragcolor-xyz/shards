@@ -1057,7 +1057,7 @@ inline void Evolve::resetState(Evolve::Individual &individual) {
 }
 
 struct DBlock {
-  static const char *help() { return "A dynamic block."; }
+  static CBLazyString help() { return CBCCSTR("A dynamic block."); }
 
   static inline Parameters _params{
       {"Name",

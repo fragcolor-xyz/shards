@@ -1190,6 +1190,40 @@ impl Default for CBStrings {
         unsafe { ::core::mem::zeroed() }
     }
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _CBLazyString {
+    pub string: CBString,
+}
+#[test]
+fn bindgen_test_layout__CBLazyString() {
+    assert_eq!(
+        ::core::mem::size_of::<_CBLazyString>(),
+        4usize,
+        concat!("Size of: ", stringify!(_CBLazyString))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<_CBLazyString>(),
+        4usize,
+        concat!("Alignment of ", stringify!(_CBLazyString))
+    );
+    assert_eq!(
+        unsafe { &(*(::core::ptr::null::<_CBLazyString>())).string as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_CBLazyString),
+            "::",
+            stringify!(string)
+        )
+    );
+}
+impl Default for _CBLazyString {
+    fn default() -> Self {
+        unsafe { ::core::mem::zeroed() }
+    }
+}
+pub type CBLazyString = _CBLazyString;
 pub type CBInt2 = [i64; 2usize];
 pub type CBInt3 = [i32; 4usize];
 pub type CBInt4 = [i32; 4usize];
@@ -2056,7 +2090,7 @@ pub type CBObjectHash = ::core::option::Option<unsafe extern "C" fn(arg1: CBPoin
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBObjectInfo {
-    pub name: *const ::std::os::raw::c_char,
+    pub name: CBString,
     pub serialize: CBObjectSerializer,
     pub free: CBObjectSerializerFree,
     pub deserialize: CBObjectDeserializer,
@@ -2155,7 +2189,7 @@ impl Default for CBObjectInfo {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBEnumInfo {
-    pub name: *const ::std::os::raw::c_char,
+    pub name: CBString,
     pub labels: CBStrings,
 }
 #[test]
@@ -2199,8 +2233,8 @@ impl Default for CBEnumInfo {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBParameterInfo {
-    pub name: *const ::std::os::raw::c_char,
-    pub help: *const ::std::os::raw::c_char,
+    pub name: CBString,
+    pub help: CBLazyString,
     pub valueTypes: CBTypesInfo,
 }
 #[test]
@@ -2254,8 +2288,8 @@ impl Default for CBParameterInfo {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct CBExposedTypeInfo {
-    pub name: *const ::std::os::raw::c_char,
-    pub help: *const ::std::os::raw::c_char,
+    pub name: CBString,
+    pub help: CBLazyString,
     pub exposedType: CBTypeInfo,
     pub isMutable: CBBool,
     pub isProtected: CBBool,
@@ -3200,7 +3234,7 @@ impl Default for CBComposeResult {
 pub type CBComposeError = ::core::option::Option<
     unsafe extern "C" fn(
         privateContext: *mut ::core::ffi::c_void,
-        errorText: *const ::std::os::raw::c_char,
+        errorText: CBString,
         warningOnly: CBBool,
     ),
 >;
@@ -3316,13 +3350,10 @@ impl Default for CBInstanceData {
 }
 pub type CBBlockConstructor = ::core::option::Option<unsafe extern "C" fn() -> *mut CBlock>;
 pub type CBCallback = ::core::option::Option<unsafe extern "C" fn()>;
-pub type CBNameProc = ::core::option::Option<
-    unsafe extern "C" fn(arg1: *mut CBlock) -> *const ::std::os::raw::c_char,
->;
+pub type CBNameProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> CBString>;
 pub type CBHashProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> u32>;
-pub type CBHelpProc = ::core::option::Option<
-    unsafe extern "C" fn(arg1: *mut CBlock) -> *const ::std::os::raw::c_char,
->;
+pub type CBHelpProc =
+    ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock) -> CBLazyString>;
 pub type CBSetupProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock)>;
 pub type CBDestroyProc = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBlock)>;
 pub type CBInputTypesProc =
@@ -3651,7 +3682,7 @@ impl Default for CBlock {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBChainProviderUpdate {
-    pub error: *const ::std::os::raw::c_char,
+    pub error: CBString,
     pub chain: *mut CBChain,
 }
 #[test]
@@ -3697,11 +3728,7 @@ pub type CBProviderReset =
 pub type CBProviderReady =
     ::core::option::Option<unsafe extern "C" fn(provider: *mut CBChainProvider) -> CBBool>;
 pub type CBProviderSetup = ::core::option::Option<
-    unsafe extern "C" fn(
-        provider: *mut CBChainProvider,
-        path: *const ::std::os::raw::c_char,
-        data: CBInstanceData,
-    ),
+    unsafe extern "C" fn(provider: *mut CBChainProvider, path: CBString, data: CBInstanceData),
 >;
 pub type CBProviderUpdated =
     ::core::option::Option<unsafe extern "C" fn(provider: *mut CBChainProvider) -> CBBool>;
@@ -3813,41 +3840,34 @@ impl Default for CBChainProvider {
 pub type CBValidationCallback = ::core::option::Option<
     unsafe extern "C" fn(
         errorBlock: *const CBlock,
-        errorTxt: *const ::std::os::raw::c_char,
+        errorTxt: CBString,
         nonfatalWarning: CBBool,
         userData: *mut ::core::ffi::c_void,
     ),
 >;
 pub type CBRegisterBlock = ::core::option::Option<
-    unsafe extern "C" fn(fullName: *const ::std::os::raw::c_char, constructor: CBBlockConstructor),
+    unsafe extern "C" fn(fullName: CBString, constructor: CBBlockConstructor),
 >;
 pub type CBRegisterObjectType =
     ::core::option::Option<unsafe extern "C" fn(vendorId: i32, typeId: i32, info: CBObjectInfo)>;
 pub type CBRegisterEnumType =
     ::core::option::Option<unsafe extern "C" fn(vendorId: i32, typeId: i32, info: CBEnumInfo)>;
-pub type CBRegisterRunLoopCallback = ::core::option::Option<
-    unsafe extern "C" fn(eventName: *const ::std::os::raw::c_char, callback: CBCallback),
->;
-pub type CBRegisterExitCallback = ::core::option::Option<
-    unsafe extern "C" fn(eventName: *const ::std::os::raw::c_char, callback: CBCallback),
->;
+pub type CBRegisterRunLoopCallback =
+    ::core::option::Option<unsafe extern "C" fn(eventName: CBString, callback: CBCallback)>;
+pub type CBRegisterExitCallback =
+    ::core::option::Option<unsafe extern "C" fn(eventName: CBString, callback: CBCallback)>;
 pub type CBUnregisterRunLoopCallback =
-    ::core::option::Option<unsafe extern "C" fn(eventName: *const ::std::os::raw::c_char)>;
+    ::core::option::Option<unsafe extern "C" fn(eventName: CBString)>;
 pub type CBUnregisterExitCallback =
-    ::core::option::Option<unsafe extern "C" fn(eventName: *const ::std::os::raw::c_char)>;
+    ::core::option::Option<unsafe extern "C" fn(eventName: CBString)>;
 pub type CBReferenceVariable = ::core::option::Option<
-    unsafe extern "C" fn(
-        context: *mut CBContext,
-        name: *const ::std::os::raw::c_char,
-    ) -> *mut CBVar,
+    unsafe extern "C" fn(context: *mut CBContext, name: CBString) -> *mut CBVar,
 >;
-pub type CBReferenceChainVariable = ::core::option::Option<
-    unsafe extern "C" fn(chain: CBChainRef, name: *const ::std::os::raw::c_char) -> *mut CBVar,
->;
+pub type CBReferenceChainVariable =
+    ::core::option::Option<unsafe extern "C" fn(chain: CBChainRef, name: CBString) -> *mut CBVar>;
 pub type CBReleaseVariable = ::core::option::Option<unsafe extern "C" fn(variable: *mut CBVar)>;
-pub type CBAbortChain = ::core::option::Option<
-    unsafe extern "C" fn(context: *mut CBContext, errorText: *const ::std::os::raw::c_char),
->;
+pub type CBAbortChain =
+    ::core::option::Option<unsafe extern "C" fn(context: *mut CBContext, errorText: CBString)>;
 pub type CBSuspend = ::core::option::Option<
     unsafe extern "C" fn(context: *mut CBContext, seconds: f64) -> CBChainState,
 >;
@@ -3882,14 +3902,12 @@ pub type CBRunBlocks = ::core::option::Option<
         handleReturn: CBBool,
     ) -> CBChainState,
 >;
-pub type CBLog = ::core::option::Option<unsafe extern "C" fn(msg: *const ::std::os::raw::c_char)>;
-pub type CBCreateBlock = ::core::option::Option<
-    unsafe extern "C" fn(name: *const ::std::os::raw::c_char) -> *mut CBlock,
->;
+pub type CBLog = ::core::option::Option<unsafe extern "C" fn(msg: CBString)>;
+pub type CBCreateBlock =
+    ::core::option::Option<unsafe extern "C" fn(name: CBString) -> *mut CBlock>;
 pub type CBCreateChain = ::core::option::Option<unsafe extern "C" fn() -> CBChainRef>;
-pub type CBSetChainName = ::core::option::Option<
-    unsafe extern "C" fn(chain: CBChainRef, name: *const ::std::os::raw::c_char),
->;
+pub type CBSetChainName =
+    ::core::option::Option<unsafe extern "C" fn(chain: CBChainRef, name: CBString)>;
 pub type CBSetChainLooped =
     ::core::option::Option<unsafe extern "C" fn(chain: CBChainRef, looped: CBBool)>;
 pub type CBSetChainUnsafe =
@@ -4007,10 +4025,8 @@ pub type CBStringsFastDelete =
 pub type CBStringsSlowDelete =
     ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBStrings, arg2: u32)>;
 pub type CBTableNew = ::core::option::Option<unsafe extern "C" fn() -> CBTable>;
-pub type CBGetRootPath =
-    ::core::option::Option<unsafe extern "C" fn() -> *const ::std::os::raw::c_char>;
-pub type CBSetRootPath =
-    ::core::option::Option<unsafe extern "C" fn(arg1: *const ::std::os::raw::c_char)>;
+pub type CBGetRootPath = ::core::option::Option<unsafe extern "C" fn() -> CBString>;
+pub type CBSetRootPath = ::core::option::Option<unsafe extern "C" fn(arg1: CBString)>;
 pub type CBAsyncActivateProc = ::core::option::Option<
     unsafe extern "C" fn(context: *mut CBContext, userData: *mut ::core::ffi::c_void) -> CBVar,
 >;
@@ -4025,7 +4041,7 @@ pub type CBGetBlocks = ::core::option::Option<unsafe extern "C" fn() -> CBString
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CBChainInfo {
-    pub name: *const ::std::os::raw::c_char,
+    pub name: CBString,
     pub looped: CBBool,
     pub unsafe_: CBBool,
     pub chain: *const CBChain,

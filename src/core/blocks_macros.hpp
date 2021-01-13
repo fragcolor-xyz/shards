@@ -18,7 +18,8 @@
       return ::chainblocks::constant<::chainblocks::crc32(                     \
           #_namespace_ "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;       \
     });                                                                        \
-    result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
+    result->help =                                                             \
+        static_cast<CBHelpProc>([](CBlock *block) { return CBLazyString(); }); \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
       auto blk = (_name_##Runtime *)block;                                     \
@@ -58,7 +59,8 @@
       return ::chainblocks::constant<::chainblocks::crc32(                     \
           #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                        \
     });                                                                        \
-    result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
+    result->help =                                                             \
+        static_cast<CBHelpProc>([](CBlock *block) { return CBLazyString(); }); \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
       auto blk = (_name_##Runtime *)block;                                     \
@@ -99,7 +101,8 @@
       return ::chainblocks::constant<::chainblocks::crc32(                     \
           #_namespace_ "." #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;       \
     });                                                                        \
-    result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
+    result->help =                                                             \
+        static_cast<CBHelpProc>([](CBlock *block) { return CBLazyString(); }); \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
       auto blk = (_name_##Runtime *)block;                                     \
@@ -140,7 +143,8 @@
       return ::chainblocks::constant<::chainblocks::crc32(                     \
           #_name_ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                        \
     });                                                                        \
-    result->help = static_cast<CBHelpProc>([](CBlock *block) { return ""; });  \
+    result->help =                                                             \
+        static_cast<CBHelpProc>([](CBlock *block) { return CBLazyString(); }); \
     result->setup = static_cast<CBSetupProc>([](CBlock *block) {});            \
     result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {           \
       auto blk = (_name_##Runtime *)block;                                     \

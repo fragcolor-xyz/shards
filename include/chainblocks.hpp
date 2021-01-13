@@ -152,14 +152,14 @@ struct Types {
 };
 
 struct ParameterInfo {
-  const char *_name;
-  const char *_help;
+  CBString _name;
+  CBLazyString _help;
   Types _types;
 
-  ParameterInfo(const char *name, const char *help, Types types)
+  ParameterInfo(CBString name, CBLazyString help, Types types)
       : _name(name), _help(help), _types(types) {}
-  ParameterInfo(const char *name, Types types)
-      : _name(name), _help(""), _types(types) {}
+  ParameterInfo(CBString name, Types types)
+      : _name(name), _help({}), _types(types) {}
 
   operator CBParameterInfo() {
     CBParameterInfo res{_name, _help, _types};
@@ -884,30 +884,39 @@ struct Var : public CBVar {
     payload.colorValue = color;
   }
 
-  explicit Var(std::vector<CBVar> &vectorRef) : CBVar() {
+  explicit Var(const std::vector<CBVar> &vectorRef) : CBVar() {
     valueType = Seq;
     payload.seqValue.len = uint32_t(vectorRef.size());
     payload.seqValue.elements =
-        payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
+        payload.seqValue.len > 0 ? const_cast<CBVar *>(&vectorRef[0]) : nullptr;
   }
 
-  explicit Var(std::vector<Var> &vectorRef) : CBVar() {
+  explicit Var(const std::vector<Var> &vectorRef) : CBVar() {
     valueType = Seq;
     payload.seqValue.len = uint32_t(vectorRef.size());
     payload.seqValue.elements =
-        payload.seqValue.len > 0 ? &vectorRef[0] : nullptr;
+        payload.seqValue.len > 0 ? const_cast<Var *>(&vectorRef[0]) : nullptr;
   }
 
-  template <size_t N> explicit Var(std::array<CBVar, N> &arrRef) : CBVar() {
+  template <size_t N>
+  explicit Var(const std::array<CBVar, N> &arrRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
+    payload.seqValue.elements =
+        N > 0 ? const_cast<CBVar *>(&arrRef[0]) : nullptr;
     payload.seqValue.len = N;
   }
 
-  template <size_t N> explicit Var(std::array<Var, N> &arrRef) : CBVar() {
+  template <size_t N> explicit Var(const std::array<Var, N> &arrRef) : CBVar() {
     valueType = Seq;
-    payload.seqValue.elements = N > 0 ? &arrRef[0] : nullptr;
+    payload.seqValue.elements = N > 0 ? const_cast<Var *>(&arrRef[0]) : nullptr;
     payload.seqValue.len = N;
+  }
+
+  template <size_t N>
+  explicit Var(const std::array<uint8_t, N> &arrRef) : CBVar() {
+    valueType = CBType::Bytes;
+    payload.bytesValue = N > 0 ? const_cast<uint8_t *>(&arrRef[0]) : nullptr;
+    payload.bytesSize = N;
   }
 
   Var(const Chain &chain);

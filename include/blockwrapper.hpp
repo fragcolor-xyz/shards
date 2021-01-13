@@ -66,7 +66,8 @@ template <class T> struct BlockWrapper {
         return reinterpret_cast<BlockWrapper<T> *>(b)->block.help();
       });
     } else {
-      result->help = static_cast<CBHelpProc>([](CBlock *b) { return ""; });
+      result->help =
+          static_cast<CBHelpProc>([](CBlock *b) { return CBLazyString(); });
     }
 
     // setup
