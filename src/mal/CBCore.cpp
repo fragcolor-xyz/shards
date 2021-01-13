@@ -1776,10 +1776,12 @@ BUILTIN("export-strings") {
   assert(chainblocks::Globals::CompressedStrings);
   malValueVec strs;
   for (auto &[crc, str] : *chainblocks::Globals::CompressedStrings) {
-    malValueVec record;
-    record.emplace_back(mal::number(crc, true));
-    record.emplace_back(mal::string(str.string));
-    strs.emplace_back(mal::list(record.begin(), record.end()));
+    if (crc != 0) {
+      malValueVec record;
+      record.emplace_back(mal::number(crc, true));
+      record.emplace_back(mal::string(str.string));
+      strs.emplace_back(mal::list(record.begin(), record.end()));
+    }
   }
   return mal::list(strs.begin(), strs.end());
 }
