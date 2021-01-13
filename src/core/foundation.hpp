@@ -74,9 +74,9 @@ struct CBCoro {
 };
 #endif
 
-// #ifdef NDEBUG
+#ifdef NDEBUG
 #define CB_COMPRESSED_STRINGS 1
-// #endif
+#endif
 
 #ifdef CB_COMPRESSED_STRINGS
 #define CBCCSTR(_str_)                                                         \
