@@ -3,6 +3,14 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  cancel-previous-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: chainblocks/cancel-workflow-action@0.7.0
+        with:
+          access_token: ${{ secrets.TOKEN }}
+
   wasm32-emscripten-mt:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
     runs-on: ubuntu-20.04
