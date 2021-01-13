@@ -1,0 +1,16 @@
+name: Cleanup Duplicate Branches and PRs
+
+on:
+  schedule:
+    - cron:  '*/15 * * * *'
+
+jobs:
+  cancel-runs:
+    # Prevent forks from running this to be nice
+    if: github.repository == 'foo-org/my-repo'
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: chainblocks/cancel-previous-runs@v2
+        with:
+          token: ${{ secrets.TOKEN }}
+          workflow: my-heavy-workflow.yml
