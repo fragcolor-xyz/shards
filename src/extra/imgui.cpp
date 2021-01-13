@@ -547,12 +547,12 @@ struct Window : public Base {
       ParamsInfo::Param("Title", CBCCSTR("The title of the window to create."),
                         CoreInfo::StringType),
       ParamsInfo::Param(
-          "PosX", CBCCSTR("The horizontal position of the window to create"),
+          "PosX", CBCCSTR("The horizontal position of the window to create."),
           CoreInfo::IntOrNone),
       ParamsInfo::Param(
           "PosY", CBCCSTR("The vertical position of the window to create."),
           CoreInfo::IntOrNone),
-      ParamsInfo::Param("Width", CBCCSTR("The width of the window to create"),
+      ParamsInfo::Param("Width", CBCCSTR("The width of the window to create."),
                         CoreInfo::IntOrNone),
       ParamsInfo::Param("Height",
                         CBCCSTR("The height of the window to create."),

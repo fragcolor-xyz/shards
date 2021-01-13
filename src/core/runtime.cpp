@@ -26,7 +26,7 @@
 INITIALIZE_EASYLOGGINGPP
 
 namespace chainblocks {
-#ifdef NDEBUG
+#ifdef CB_COMPRESSED_STRINGS
 const char *getCompiledCompressedString(uint32_t id) {
   static std::unordered_map<uint32_t, const char *> CompiledCompressedStrings;
   const auto s = CompiledCompressedStrings[id];

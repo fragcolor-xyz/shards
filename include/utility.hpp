@@ -15,6 +15,10 @@
 #include <vector>
 
 #ifdef NDEBUG
+#define CB_COMPRESSED_STRINGS 1
+#endif
+
+#ifdef CB_COMPRESSED_STRINGS
 #define CBCCSTR(_str_)                                                         \
   ::chainblocks::getCompiledCompressedString(                                  \
       ::chainblocks::constant<::chainblocks::crc32(_str_)>::value)
@@ -79,7 +83,7 @@ constexpr uint32_t crc32(std::string_view str) {
 
 template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
-#ifdef NDEBUG
+#ifdef CB_COMPRESSED_STRINGS
 const char *getCompiledCompressedString(uint32_t crc);
 #else
 const char *setCompiledCompressedString(uint32_t crc, const char *str);
