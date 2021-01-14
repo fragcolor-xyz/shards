@@ -17,7 +17,6 @@ namespace net = boost::asio;            // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-#include "asiotools.hpp"
 #include "shared.hpp"
 
 namespace chainblocks {
@@ -34,9 +33,9 @@ struct Common {
 };
 
 struct Socket {
-  Asio::IOContext asioCtx{};
-  ssl::context ctx{ssl::context::tlsv12_client};
-  websocket::stream<beast::ssl_stream<tcp::socket>> socket{asioCtx(), ctx};
+  net::io_context ioCtx{};
+  ssl::context secureCtx{ssl::context::tlsv12_client};
+  websocket::stream<beast::ssl_stream<tcp::socket>> socket{ioCtx, secureCtx};
 
   void close() {
     if (socket.is_open()) {
@@ -203,6 +202,8 @@ struct Client {
       socket->payload.objectValue = &ws;
     }
 
+    ws->ioCtx.poll();
+
     return input;
   }
 
@@ -300,9 +301,16 @@ struct ReadString : public User {
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    // TODO refactor, we are not awaiting here...
+    // either refactor Send of await as well
+
     ensureSocket();
 
     _buffer.clear();
+
+    // poll once, if we have data we will be done quick
+    // we become the pollers in this case
+    _ws->ioCtx.poll();
 
     bool done = false;
     boost::system::error_code done_err{};
@@ -312,6 +320,8 @@ struct ReadString : public User {
     });
 
     while (!done) {
+      // we become the pollers in this case
+      _ws->ioCtx.poll();
       CB_SUSPEND(context, 0);
     }
 
