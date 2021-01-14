@@ -247,8 +247,10 @@ struct Pause {
   ExposedInfo reqs{};
   static inline Parameters params{
       {"Time",
-       CBCCSTR("The amount of time in seconds (float) to pause this chain."),
-       {CoreInfo::NoneType, CoreInfo::FloatType}}};
+       CBCCSTR("The amount of time in seconds (can be fractional) to pause "
+               "this chain."),
+       {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::IntType,
+        CoreInfo::FloatVarType, CoreInfo::IntVarType}}};
 
   ParamVar time{};
 
@@ -270,7 +272,10 @@ struct Pause {
     if (time.isVariable()) {
       reqs = ExposedInfo(ExposedInfo::Variable(time.variableName(),
                                                CBCCSTR("The required variable"),
-                                               CoreInfo::FloatType));
+                                               CoreInfo::FloatType),
+                         ExposedInfo::Variable(time.variableName(),
+                                               CBCCSTR("The required variable"),
+                                               CoreInfo::IntType));
     } else {
       reqs = {};
     }
@@ -281,6 +286,8 @@ struct Pause {
     const auto &t = time.get();
     if (t.valueType == None)
       suspend(context, 0.0);
+    else if (t.valueType == Int)
+      suspend(context, double(t.payload.intValue));
     else
       suspend(context, t.payload.floatValue);
     return input;
@@ -291,7 +298,7 @@ struct PauseMs : public Pause {
   static inline Parameters params{
       {"Time",
        CBCCSTR("The amount of time in milliseconds to pause this chain."),
-       {CoreInfo::NoneType, CoreInfo::IntType}}};
+       {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::IntVarType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -311,7 +318,7 @@ struct PauseMs : public Pause {
     if (t.valueType == None)
       suspend(context, 0.0);
     else
-      suspend(context, t.payload.intValue);
+      suspend(context, double(t.payload.intValue) / 1000.0);
     return input;
   }
 };
