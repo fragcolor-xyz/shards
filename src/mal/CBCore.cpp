@@ -1737,34 +1737,34 @@ BUILTIN("info") {
     DEFER(block->destroy(block));
 
     auto help = block->help(block);
-    map["help"] = mal::string(help.string ? help.string : getString(help.crc));
+    map[":help"] = mal::string(help.string ? help.string : getString(help.crc));
 
     auto params = block->parameters(block);
     malValueVec pvec;
     for (uint32_t i = 0; i < params.len; i++) {
       malHash::Map pmap;
-      pmap["name"] = mal::string(params.elements[i].name);
+      pmap[":name"] = mal::string(params.elements[i].name);
       if (params.elements[i].help.string)
-        pmap["help"] = mal::string(params.elements[i].help.string);
+        pmap[":help"] = mal::string(params.elements[i].help.string);
       else
-        pmap["help"] = mal::string(getString(params.elements[i].help.crc));
+        pmap[":help"] = mal::string(getString(params.elements[i].help.crc));
       std::stringstream ss;
       ss << params.elements[i].valueTypes;
-      pmap["types"] = mal::string(ss.str());
+      pmap[":types"] = mal::string(ss.str());
       pvec.emplace_back(mal::hash(pmap));
     }
-    map["parameters"] = mal::list(pvec.begin(), pvec.end());
+    map[":parameters"] = mal::list(pvec.begin(), pvec.end());
 
     {
       std::stringstream ss;
       ss << block->inputTypes(block);
-      map["inputTypes"] = mal::string(ss.str());
+      map[":inputTypes"] = mal::string(ss.str());
     }
 
     {
       std::stringstream ss;
       ss << block->outputTypes(block);
-      map["outputTypes"] = mal::string(ss.str());
+      map[":outputTypes"] = mal::string(ss.str());
     }
 
     return mal::hash(map);
