@@ -120,10 +120,11 @@ struct FromBytes {
 };
 
 template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
+  static inline Type _inputType{{CBTYPE}};
   static inline Type _outputElemType{{CBOTHER}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputElemType}}};
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo inputTypes() { return _inputType; }
   static CBTypesInfo outputTypes() { return _outputType; }
 
   std::vector<Var> _output;
@@ -136,6 +137,27 @@ template <CBType CBTYPE, CBType CBOTHER> struct ToSeq {
     } else if constexpr (CBTYPE == CBType::Bytes) {
       FromBytes c;
       c.toSeq<CBOTHER>(_output, input);
+    } else {
+      throw ActivationError("Conversion pair not implemented yet.");
+    }
+    return Var(_output);
+  }
+};
+
+template <CBType CBTYPE> struct ToString1 {
+  static inline Type _inputType{{CBTYPE}};
+
+  static CBTypesInfo inputTypes() { return _inputType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  std::string _output;
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // do not .clear here, for speed, let From manage that
+    if constexpr (CBTYPE == CBType::Bytes) {
+      _output.clear();
+      _output.assign((const char *)input.payload.bytesValue,
+                     size_t(input.payload.bytesSize));
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
     }
@@ -822,8 +844,10 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("FloatsToImage", FloatsToImage);
 
   using BytesToInts = ToSeq<CBType::Bytes, CBType::Int>;
+  using BytesToString = ToString1<CBType::Bytes>;
   using IntsToBytes = ToBytes<CBType::Int>;
   REGISTER_CBLOCK("BytesToInts", BytesToInts);
+  REGISTER_CBLOCK("BytesToString!!", BytesToString);
   REGISTER_CBLOCK("IntsToBytes", IntsToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;

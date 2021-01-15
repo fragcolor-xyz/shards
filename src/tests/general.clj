@@ -195,6 +195,15 @@
    (Do inner1)
    (Assert.Is "My input 2" true)
    (Log)
+   
+   ; test some casting
+   (ToBytes)
+   (BytesToInts)
+   ; need to strip serialization prefix
+   (Slice 5)
+   (IntsToBytes)
+   (BytesToString!!)
+   (Assert.Is "My input 2" true)
 
    {"x" 10 "y" 20 "hello" "world"} >= .table-a
    {"x" 10 "y" 20 "hello" "world"} >= .table-b
