@@ -334,9 +334,11 @@ struct MainWindow : public BaseWindow {
     }
 
 #ifdef BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION
-    LOG(INFO) << "Renderer version: " << bgfx::getRendererName(bgfx::RendererType::OpenGL);
+    LOG(INFO) << "Renderer version: "
+              << bgfx::getRendererName(bgfx::RendererType::OpenGL);
 #elif BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
-    LOG(INFO) << "Renderer version: " << bgfx::getRendererName(bgfx::RendererType::OpenGLES);
+    LOG(INFO) << "Renderer version: "
+              << bgfx::getRendererName(bgfx::RendererType::OpenGLES);
 #endif
 
     // _imgui_context.Reset();
