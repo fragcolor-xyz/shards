@@ -333,9 +333,9 @@ struct MainWindow : public BaseWindow {
       _bgfxInit = true;
     }
 
-#ifdef BGFX_CONFIG_RENDERER_OPENGL
+#ifdef BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION
     LOG(INFO) << "Renderer version: " << bgfx::getRendererName(bgfx::RendererType::OpenGL);
-#elif BGFX_CONFIG_RENDERER_OPENGLES
+#elif BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
     LOG(INFO) << "Renderer version: " << bgfx::getRendererName(bgfx::RendererType::OpenGLES);
 #endif
 
