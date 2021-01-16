@@ -63,7 +63,7 @@
       identity (GFX.Draw :Shader .shader :Model .cube)
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :PosX 0 :PosY 0 :Contents
-                  (-->
+                  (->
                    "Hello world"   (GUI.Text)
                    "Hello world 2" (GUI.Text)
                    "Hello world 3" (GUI.SameLine) (GUI.Text)
@@ -89,7 +89,7 @@
                    (GUI.ChildWindow :Border true :Contents
                                     #((GUI.TreeNode
                                        "Node1"
-                                       (-->
+                                       (->
                                         "Node text..."
                                         (GUI.Text)
                                         (GUI.TextInput "Say something" "text1")
@@ -129,15 +129,15 @@
                                                   :Lock_X false
                                                   :Lock_Y true)))))
 
-                   (GUI.Button "Push me!" (-->
+                   (GUI.Button "Push me!" (->
                                            (Msg "Action!")))
-                   (Cond [(--> (Is true)) (--> (Msg "yeah..."))])
-                   (GUI.Button "Push me!" (-->
+                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
+                   (GUI.Button "Push me!" (->
                                            (Msg "Action!")) ImGuiButton.Small)
-                   (Cond [(--> (Is true)) (--> (Msg "yeah..."))])
-                   (GUI.Button "Push me!" (-->
+                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
+                   (GUI.Button "Push me!" (->
                                            (Msg "Action!")) ImGuiButton.ArrowUp)
-                   (Cond [(--> (Is true)) (--> (Msg "yeah..."))])
+                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
                    (GUI.ChildWindow :Border true :Width 100 :Height 100 :Contents
                                     #((ToBytes)
                                       (GUI.HexViewer)))))])))

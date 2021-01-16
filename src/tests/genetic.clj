@@ -14,13 +14,13 @@
    "test"
    (Sequence .best :Types [Type.Float Type.Chain])
    (Repeat
-    (-->
+    (->
      (Evolve
       (Chain
        "evolveme"
        (Mutant (Const 10) [0])
        (Pause)
-       (Mutant (Math.Multiply 2) [0] [(-->
+       (Mutant (Math.Multiply 2) [0] [(->
                                        (RandomInt 10)
                                        (Math.Add 1))]))
       fitness
@@ -71,17 +71,17 @@
    "test"
    (Sequence .best :Types [Type.Float Type.Chain])
    (Repeat
-    (-->
+    (->
      (Evolve
       (Chain
        "evolveme"
        :Looped
-       (Once (--> 0 >== .niters)) ;; global on purpose for testing
+       (Once (-> 0 >== .niters)) ;; global on purpose for testing
        .niters (Math.Inc) > .niters
        (When (IsMore 10) (Stop))
        (Step (Chain "stepped" (Start state1)))
        (Mutant (Const 10) [0])
-       (Mutant (Math.Multiply 2) [0] [(-->
+       (Mutant (Math.Multiply 2) [0] [(->
                                        (RandomInt 10)
                                        (Math.Add 1))]))
       fitness
@@ -122,9 +122,9 @@
   (Chain
    "test"
    :Looped
-   (Once (--> 0 >= .ntimes))
+   (Once (-> 0 >= .ntimes))
    .ntimes (Math.Inc) > .ntimes
-   (When (IsMore 7) (-->
+   (When (IsMore 7) (->
                      (Msg "STOP OK!")
                      (Stop)))
    (Evolve
@@ -132,7 +132,7 @@
      "evolveme"
      (Mutant (Const 10) [0])
      (Pause)
-     (Mutant (Math.Multiply 2) [0] [(-->
+     (Mutant (Math.Multiply 2) [0] [(->
                                      (RandomInt 10)
                                      (Math.Add 1))]))
     fitness

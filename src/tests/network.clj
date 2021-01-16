@@ -4,16 +4,16 @@
   (Chain "server" :Looped
          (Network.Server
           "127.0.0.1" 9191
-          (--> ; this acts like a callback                                        
+          (-> ; this acts like a callback                                        
            (Ref "pkt") ; the input of this flow will be the received packet
            ;; (Get remote)  ; Context variable Network.RemoteEndpoint will be the current remote
            ;; (Cond
-           ;;  [(-->
+           ;;  [(->
            ;;    (Is "127.0.0.1"))
-           ;;   (-->
+           ;;   (->
            ;;    (Msg "Hey localhost!"))
-           ;;   (--> true)
-           ;;   (-->
+           ;;   (-> true)
+           ;;   (->
            ;;    (Msg "Hey remote host!"))
            ;;   ])
            (Get "pkt")
@@ -42,7 +42,7 @@
   (Chain "client" :Looped
          (Network.Client
           "127.0.0.1" 9191
-          (--> ; acting as callback when there is a new pkt
+          (-> ; acting as callback when there is a new pkt
            (Log)
            ))
                                         ; test some sending

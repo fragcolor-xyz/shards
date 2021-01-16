@@ -3,9 +3,9 @@
 (schedule Root (Chain "analysis" ; :Looped
   18000000
   (Set "nfloats")  
-  (Profile (-->
+  (Profile (->
     0 (Set "idx")
-    (Repeat (-->
+    (Repeat (->
       ; (Get "idx") ; LR per call 79
       (Get "idx") 
       (Math.Add 1)

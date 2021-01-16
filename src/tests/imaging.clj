@@ -8,7 +8,7 @@
   (StripAlpha)
   (WritePNG "testbase.png")
   (Ref .img)
-  (Repeat (-->
+  (Repeat (->
            (Get .img)
            (Convolve 50)
            (WritePNG "test.png")

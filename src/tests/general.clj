@@ -39,49 +39,49 @@
 
    true
    (Cond [#((Is true)) #((Msg "Cond was true!!") false)
-          (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+          (-> (Is false)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is false true)
    (Log)
 
    true
-   (Cond [(--> (Is false) (Or) (Is true)) (--> (Msg "Cond was true!!") false)
-          (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+   (Cond [(-> (Is false) (Or) (Is true)) (-> (Msg "Cond was true!!") false)
+          (-> (Is false)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is false true)
    (Log)
 
    true
-   (Cond [(--> (Is false) (And) (Is true)) (--> (Assert.Is nil true))
-          (--> (Is true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+   (Cond [(-> (Is false) (And) (Is true)) (-> (Assert.Is nil true))
+          (-> (Is true)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is true true)
    (Log)
 
    false
-   (Cond [(--> (Is true)) (--> (Msg "Cond was true!!") false)
-          (--> (Is false)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+   (Cond [(-> (Is true)) (-> (Msg "Cond was true!!") false)
+          (-> (Is false)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is true true)
    (Log)
 
    false
-   (Cond [(--> (Is true)) (--> (Msg "Cond was true!!") false)
-          (--> (Is false) (And) (IsNot true)) (--> (Msg "Cond was false!") true)] :Passthrough false)
+   (Cond [(-> (Is true)) (-> (Msg "Cond was true!!") false)
+          (-> (Is false) (And) (IsNot true)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is true true)
    (Log)
 
    false
-   (Cond [(--> (Is false) (And) (IsNot false)) (--> (Assert.Is nil true))
-          (--> (Is false)) (--> (Msg "Cond was true!!") false)] :Passthrough false)
+   (Cond [(-> (Is false) (And) (IsNot false)) (-> (Assert.Is nil true))
+          (-> (Is false)) (-> (Msg "Cond was true!!") false)] :Passthrough false)
    (Assert.Is false true)
    (Log)
 
    10
-   (Cond [(--> true)    (--> (Msg "Cond was true!!") false)
-          (--> (Is 10)) (--> (Msg "Cond was false!") true)] :Threading true :Passthrough false)
+   (Cond [(-> true)    (-> (Msg "Cond was true!!") false)
+          (-> (Is 10)) (-> (Msg "Cond was false!") true)] :Threading true :Passthrough false)
    (Assert.Is true true)
    (Log)
 
    10
-   (Cond [(--> true)    (--> (Msg "Cond was true!!") false)
-          (--> (Is 10)) (--> (Msg "Cond was false!") true)] :Threading false :Passthrough false)
+   (Cond [(-> true)    (-> (Msg "Cond was true!!") false)
+          (-> (Is 10)) (-> (Msg "Cond was false!") true)] :Threading false :Passthrough false)
    (Assert.Is false true)
    (Log)
    
@@ -137,7 +137,7 @@
    (Assert.Is 30 true)
    (Log)
 
-   (Repeat (-->
+   (Repeat (->
             10 (Push "list1")
             20 (Push "list1")
             30 (Push "list1")
@@ -155,7 +155,7 @@
 
    0
    (Set "counter")
-   (Repeat (-->
+   (Repeat (->
             (Get "counter")
             (Math.Add 1)
             (Update "counter")) :Times 5)
@@ -339,7 +339,7 @@
    (Assert.Is 11 true)
    (Log)
 
-   (Repeat (-->
+   (Repeat (->
             (Pop "myseq2flat")
             (Log)) 6)
 
@@ -420,7 +420,7 @@
    (IndexOf .toFindVar)
    (Assert.Is 3 true)
 
-   (Remove .unsortedList :Predicate (--> (IsMore 3)))
+   (Remove .unsortedList :Predicate (-> (IsMore 3)))
    (Sort .unsortedList :Desc true)
    (Assert.Is [2 1 1 0] true)
    (Count "unsortedList")
@@ -431,7 +431,7 @@
 
    (Get "unsortedList2")
    (Set "unsortedList2Copy")
-   (Remove .unsortedList2Copy [.unsortedList3] (--> (IsMore 3)))
+   (Remove .unsortedList2Copy [.unsortedList3] (-> (IsMore 3)))
    (Sort .unsortedList2Copy [.unsortedList3])
    (Log)
    (Assert.Is [0 1 1 2] true)
@@ -443,7 +443,7 @@
 
    (Const [[2 "x"] [3 "y"] [1 "z"]])
    (Ref "constSeq")
-   (Sort .constSeq :Key (-->
+   (Sort .constSeq :Key (->
                          (Take 0)))
    (Assert.Is [[1 "z"] [2 "x"] [3 "y"]] true)
 
@@ -474,7 +474,7 @@
    (Take .indexAsVar2)
    (Assert.Is [2.0 0.0] true)
 
-   (Repeat (-->
+   (Repeat (->
             (Pop "meanTest")
             (Math.Add 1.0)
             (Log)) 4)
@@ -484,7 +484,7 @@
 
    10 (Set "repeatsn")
    0 >= .iterCount
-   (Repeat (--> .iterCount (Math.Add 1) > .iterCount) :Times .repeatsn)
+   (Repeat (-> .iterCount (Math.Add 1) > .iterCount) :Times .repeatsn)
    .iterCount
    (Assert.Is 10 true)
 
@@ -760,11 +760,11 @@
    (Log)
 
    (Get .seq-a)
-   (Map (-->
+   (Map (->
          (Log)))
 
    (Get .seq-a)
-   (Map (-->
+   (Map (->
          (Math.Add 1)))
    (Log)
    (Assert.Is [112 113 102 115 98 100] true)
@@ -776,9 +776,9 @@
    (Assert.Is 98 true)
 
    (Await
-    (-->
+    (->
      (Get .seq-a)
-     (Reduce (-->
+     (Reduce (->
               (Math.Add .$0)
               (Log)))))
    (Log)
@@ -927,7 +927,7 @@
 
   ; test for a possible issue with thread pool on ending
    (||
-    (-->
+    (->
      (Maybe
       (ExpectString)
       (Stop))))))
@@ -1009,7 +1009,7 @@
 (if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
 
 (def fileReader (Chain "readFile"
-  (Repeat (-->
+  (Repeat (->
     (ReadFile "test.bin")
     (ExpectString)
     (Log)

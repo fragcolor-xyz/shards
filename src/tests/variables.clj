@@ -150,7 +150,7 @@
   (Push .n1)
   (Get .n1)
   (Log "before U remove")
-  (Remove .n1 :Predicate (--> (Take 0) (IsLess 3)) :Unordered true)
+  (Remove .n1 :Predicate (-> (Take 0) (IsLess 3)) :Unordered true)
   (Log "after U remove")
   (Assert.Is [[3 4 5]] true)
   (Count .n1)
@@ -165,7 +165,7 @@
   (Push .n2)
   (Get .n2)
   (Log "before O remove")
-  (Remove .n2 :Predicate (--> (Take 0) (IsLess 3)) :Unordered false)
+  (Remove .n2 :Predicate (-> (Take 0) (IsLess 3)) :Unordered false)
   (Log "after O remove")
   (Assert.Is [[3 4 5]] true)
   (Count .n2)
@@ -182,7 +182,7 @@
   (Sequence .sff :Types [Type.Float])
 
   (Repeat
-   (-->
+   (->
     0.1 >> .sf
     .sf >> .sff)
    :Times 3)

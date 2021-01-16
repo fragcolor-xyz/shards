@@ -16,7 +16,7 @@
    >= .n
    (If (< 2)
        :Then (Pass)
-       :Else (--> .n (- 2) (Recur) >= .a
+       :Else (-> .n (- 2) (Recur) >= .a
                   .n (- 1) (Recur) >= .b
                   .a (+ .b)))
    ;; (Log "exit")
@@ -31,7 +31,7 @@
    >= .n
    (If (< 2)
        :Then (Pass)
-       :Else (--> (- 2) (Recur) >= .a
+       :Else (-> (- 2) (Recur) >= .a
                   .n (- 1) (Recur) (+ .a)))
    ;; (Log "exit")
    ))
@@ -45,7 +45,7 @@
    (Push)
    (If (< 2)
        :Then (Pass)
-       :Else (--> (- 2) (Recur) >= .a
+       :Else (-> (- 2) (Recur) >= .a
                   (Pop) (- 1) (Recur) (+ .a)))
    ;; (Log "exit")
    ))
@@ -63,7 +63,7 @@
     :Times .n)
    .b))
 
-(schedule Root (Chain "run" (Profile (--> 34 (Do fib4))) (Log "result")))
+(schedule Root (Chain "run" (Profile (-> 34 (Do fib4))) (Log "result")))
 (run Root)
 
 (def fib1 nil)

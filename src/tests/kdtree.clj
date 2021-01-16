@@ -16,8 +16,8 @@
                                         ; count points
    (Count "points")
    (Cond
-    [(--> (IsNot 0))
-     (-->
+    [(-> (IsNot 0))
+     (->
                                         ; if empty don't bother going further
       (Set "point-count")
                                         ; find median
@@ -32,7 +32,7 @@
       (Math.Mod k)
       (Set "dimension")
                                         ; sort points
-      (Sort .points :Key (--> (Take .dimension)))
+      (Sort .points :Key (-> (Take .dimension)))
                                         ; split left and right, push points
       (Slice :To .median)
                                         ; left points arg
@@ -68,7 +68,7 @@
                                         ; right
       (Pop "right-mem")
       (Push "result"))
-     (--> true)
+     (-> true)
      (Clear "result")
      ])
    (Get "result" :Default [])

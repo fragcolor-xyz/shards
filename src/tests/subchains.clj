@@ -6,8 +6,8 @@
    "Hello chain"
    (Set "var1" :Global true)
    (Cond [
-          (--> true) (--> 1 (Set "var2" :Global true))
-          (--> false) (--> 2 (Set "var2" :Global true))
+          (-> true) (-> 1 (Set "var2" :Global true))
+          (-> false) (-> 2 (Set "var2" :Global true))
           ])
    (Input) ; test Input
    (Log)
@@ -20,7 +20,7 @@
 (def funcChain
   (Chain
    "func"
-   (If (--> (Is 10) (Or) (Is 20)) (Log))))
+   (If (-> (Is 10) (Or) (Is 20)) (Log))))
 
 (def jumpChain
   (Chain
@@ -153,7 +153,7 @@
 
                                         ; test a stepped chain that never stops and rotates
    (Repeat
-    (-->
+    (->
      (Msg "repeating!")
      (Step tickedChain2)
      (Msg "had message 1")

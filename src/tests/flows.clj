@@ -37,7 +37,7 @@
    (Log "depth")
    (Math.Inc)
    (Cond
-    [(--> (IsLess 5))
+    [(-> (IsLess 5))
      (Do "recur")])
    (Log "res")
    ))
@@ -102,7 +102,7 @@
    (Math.Inc)
    (Log)
    (Cond
-    [(--> (Is 5))
+    [(-> (Is 5))
      (Stop)])
    (Restart)))
 
@@ -122,38 +122,38 @@
   ;; is handled by (If)
   -10
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.Is true false)
 
   -10
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.IsNot false false)
 
   11
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.Is true false)
 
   11
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.IsNot false false)
 
   0
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.Is false false)
 
   0
   (If (Do logicChain)
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.IsNot true false)
 
   (Const ["A" "B" "C"])
@@ -165,14 +165,14 @@
 
   -10
   (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.IsNot false false)
 
   11
   (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
-      (--> true)
-      (--> false))
+      (-> true)
+      (-> false))
   (Assert.Is true false)
 
   (Msg "Done")))
