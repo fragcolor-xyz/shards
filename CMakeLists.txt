@@ -236,7 +236,6 @@ set(
   ${CHAINBLOCKS_DIR}/include/blockwrapper.hpp
   ${CHAINBLOCKS_DIR}/include/dllblock.hpp
   ${CHAINBLOCKS_DIR}/include/utility.hpp
-  ${CHAINBLOCKS_DIR}/include/asiotools.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.hpp
   ${CHAINBLOCKS_DIR}/include/chainblocks.h
   ${CHAINBLOCKS_DIR}/include/common_types.hpp
