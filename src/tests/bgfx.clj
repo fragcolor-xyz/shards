@@ -85,49 +85,57 @@
 
                    (Get "image1")
                    (GUI.Image (Float2 0.1 0.1))
+                   
+                   (GFX.RenderTexture 256 256
+                                      (-> {"Position" (Float3 0 0 10)
+                                           "Target" (Float3 0 0 0)} (GFX.Camera 256 256)
+                                          identity (GFX.Draw :Shader .shader :Model .cube)
+                                          ))
+                   (GUI.Image (Float2 0.5 0.5))
 
-                   (GUI.ChildWindow :Border true :Contents
-                                    #((GUI.TreeNode
-                                       "Node1"
-                                       (->
-                                        "Node text..."
-                                        (GUI.Text)
-                                        (GUI.TextInput "Say something" "text1")
-                                        (GUI.Text "<-- you said!")
+                   (GUI.ChildWindow
+                    :Border true :Contents
+                    #((GUI.TreeNode
+                       "Node1"
+                       (->
+                        "Node text..."
+                        (GUI.Text)
+                        (GUI.TextInput "Say something" "text1")
+                        (GUI.Text "<-- you said!")
 
-                                        (GUI.IntInput)
-                                        (GUI.Text)
+                        (GUI.IntInput)
+                        (GUI.Text)
 
-                                        (GUI.FloatInput)
-                                        (GUI.Text)
+                        (GUI.FloatInput)
+                        (GUI.Text)
 
-                                        (GUI.Int3Input)
-                                        (GUI.Text)
+                        (GUI.Int3Input)
+                        (GUI.Text)
 
-                                        (GUI.Float3Input "f3" "f3var")
-                                        (Get "f3var")
-                                        (GUI.Text)
+                        (GUI.Float3Input "f3" "f3var")
+                        (Get "f3var")
+                        (GUI.Text)
 
-                                        (GUI.FloatDrag)
-                                        (GUI.Text)
+                        (GUI.FloatDrag)
+                        (GUI.Text)
 
-                                        (GUI.ColorInput)
-                                        (GUI.Text)
+                        (GUI.ColorInput)
+                        (GUI.Text)
 
-                                        (GUI.Float3Drag)
-                                        (GUI.Text)
-                                        (GUI.Plot "Plot"
-                                                  #((Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
-                                                    (GUI.PlotLine)
-                                                    (GUI.PlotDigital)
-                                                    (Math.Add (Float2 -10 -10))
-                                                    (GUI.PlotScatter)
-                                                    (Math.Add (Float2 5 3))
-                                                    (GUI.PlotBars))
-                                                  :X_Limits (Float2 -10 10)
-                                                  :Y_Limits (Float2 -10 10)
-                                                  :Lock_X false
-                                                  :Lock_Y true)))))
+                        (GUI.Float3Drag)
+                        (GUI.Text)
+                        (GUI.Plot "Plot"
+                                  #((Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
+                                    (GUI.PlotLine)
+                                    (GUI.PlotDigital)
+                                    (Math.Add (Float2 -10 -10))
+                                    (GUI.PlotScatter)
+                                    (Math.Add (Float2 5 3))
+                                    (GUI.PlotBars))
+                                  :X_Limits (Float2 -10 10)
+                                  :Y_Limits (Float2 -10 10)
+                                  :Lock_X false
+                                  :Lock_Y true)))))
 
                    (GUI.Button "Push me!" (->
                                            (Msg "Action!")))

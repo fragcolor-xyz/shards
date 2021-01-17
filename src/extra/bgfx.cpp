@@ -1592,6 +1592,149 @@ struct Draw : public BaseConsumer {
   }
 };
 
+struct RenderTexture : public BaseConsumer {
+  // to make it simple our render textures are always 16bit linear
+  // TODO we share same size/formats depth buffers, expose only color part
+
+  static inline Parameters params{
+      {"Width",
+       CBCCSTR("The width of the texture to render."),
+       {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the texture to render."),
+       {CoreInfo::IntType}},
+      {"Contents",
+       CBCCSTR("The blocks expressing the contents to render."),
+       {CoreInfo::BlocksOrNone}}};
+  static CBParametersInfo parameters() { return params; }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
+
+  BlocksVar _blocks;
+  CBVar *_variable{nullptr};
+  int _width{256};
+  int _height{256};
+  Texture *_texture{nullptr}; // the color part we expose
+  Texture _depth{};
+  bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
+  CBVar *_bgfx_context{nullptr};
+  bgfx::ViewId _viewId;
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _width = int(value.payload.intValue);
+      break;
+    case 1:
+      _height = int(value.payload.intValue);
+      break;
+    case 2:
+      _blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_width);
+    case 1:
+      return Var(_height);
+    case 2:
+      return _blocks;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+    _blocks.compose(data);
+    return Texture::TextureHandleType;
+  }
+
+  void warmup(CBContext *context) {
+    _texture = Texture::Var.New();
+    _texture->handle =
+        bgfx::createTexture2D(_width, _height, false, 1,
+                              bgfx::TextureFormat::RGBA16U, BGFX_TEXTURE_RT);
+    _texture->width = _width;
+    _texture->height = _height;
+    _texture->channels = 4;
+    _texture->bpp = 2;
+
+    _depth.handle = bgfx::createTexture2D(_width, _height, false, 1,
+                                          bgfx::TextureFormat::D24S8,
+                                          BGFX_TEXTURE_RT_WRITE_ONLY);
+
+    bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
+    _framebuffer = bgfx::createFrameBuffer(2, textures, false);
+
+    _bgfx_context = referenceVariable(context, "GFX.Context");
+    assert(_bgfx_context->valueType == CBType::Object);
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+    _viewId = ctx->nextView();
+    bgfx::setViewFrameBuffer(_viewId, _framebuffer);
+    bgfx::setViewRect(_viewId, 0, 0, _width, _height);
+    bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
+                       1.0f, 0);
+
+    _blocks.warmup(context);
+  }
+
+  void cleanup() {
+    _blocks.cleanup();
+
+    if (_bgfx_context) {
+      releaseVariable(_bgfx_context);
+      _bgfx_context = nullptr;
+    }
+
+    if (_framebuffer.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_framebuffer);
+      _framebuffer.idx = bgfx::kInvalidHandle;
+    }
+
+    if (_depth.handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_depth.handle);
+      _depth.handle.idx = bgfx::kInvalidHandle;
+    }
+
+    if (_texture) {
+      Texture::Var.Release(_texture);
+      _texture = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+    // push _viewId
+    ctx->push(_viewId);
+    DEFER({
+      ctx->pop();
+      assert(ctx->index() == _viewId);
+    });
+
+    // Touch _viewId
+    bgfx::touch(_viewId);
+
+    // activate the blocks and render
+    CBVar output{};
+    _blocks.activate(context, input, output);
+
+    return Texture::Var.Get(_texture);
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -1602,6 +1745,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.Model", Model);
   REGISTER_CBLOCK("GFX.Camera", Camera);
   REGISTER_CBLOCK("GFX.Draw", Draw);
+  REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
 }
 }; // namespace BGFX
 
