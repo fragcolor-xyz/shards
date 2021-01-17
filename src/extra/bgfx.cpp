@@ -1447,8 +1447,6 @@ struct Camera : public BaseConsumer {
 };
 
 struct Draw : public BaseConsumer {
-  // TODO required info call, model and shader
-
   // a matrix (in the form of 4 float4s)
   // or multiple matrices (will draw multiple times, instanced TODO)
   static inline Type InputSeqType = Type::SeqOf(CoreInfo::Float4SeqType);
