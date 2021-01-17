@@ -85,12 +85,11 @@
 
                    (Get "image1")
                    (GUI.Image (Float2 0.1 0.1))
-                   
+
                    (GFX.RenderTexture 256 256
-                                      (-> {"Position" (Float3 0 0 10)
+                                      (-> {"Position" (Float3 10 15 10)
                                            "Target" (Float3 0 0 0)} (GFX.Camera 256 256)
-                                          identity (GFX.Draw :Shader .shader :Model .cube)
-                                          ))
+                                          identity (GFX.Draw :Shader .shader :Model .cube)))
                    (GUI.Image (Float2 0.5 0.5))
 
                    (GUI.ChildWindow

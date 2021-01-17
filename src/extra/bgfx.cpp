@@ -1612,14 +1612,14 @@ struct RenderTexture : public BaseConsumer {
   static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
   BlocksVar _blocks;
-  CBVar *_variable{nullptr};
   int _width{256};
   int _height{256};
-  Texture *_texture{nullptr}; // the color part we expose
-  Texture _depth{};
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   CBVar *_bgfx_context{nullptr};
   bgfx::ViewId _viewId;
+
+  Texture *_texture{nullptr}; // the color part we expose
+  Texture _depth{};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
