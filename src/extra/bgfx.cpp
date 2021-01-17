@@ -8,14 +8,10 @@
 #include <bx/math.h>
 #include <cstdlib>
 
-/*
-TODO
-
-(GFX.Camera ...)
-(GFX.Model :Layout [] :Vertices [] :Indices []) >= .mymodel
-(GFX.Draw :Model .mymodel :Shader .myshader), input world matrices (multiple =
-possible instanced rendering)
-*/
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#include <webxr.h>
+#endif
 
 using namespace chainblocks;
 
@@ -1730,6 +1726,37 @@ struct RenderTexture : public BaseConsumer {
     _blocks.activate(context, input, output);
 
     return Texture::Var.Get(_texture);
+  }
+};
+
+#ifdef __EMSCRIPTEN__
+EM_JS(bool, cb_emscripten_show_xr_dialog, (), {
+  console.log("Stop here and ask for XR permissions...");
+  return false;
+});
+#endif
+
+struct RenderXR : public RenderTexture {
+#ifdef __EMSCRIPTEN__
+  static EM_BOOL on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+    webxr_request_session();
+    return true;
+  }
+#endif
+
+  void warmup(CBContext *context) {
+#ifdef __EMSCRIPTEN__
+    emscripten_set_click_callback("#chainblocks-webxr-dialog-ok", (void*)this, true, on_button_click);
+    if(!cb_emscripten_show_xr_dialog()) {
+      LOG(WARNING) << "Failed to enable XR session.";
+    }
+#endif
+  }
+
+  void cleanup() {
+#ifdef __EMSCRIPTEN__
+    webxr_request_exit();
+#endif
   }
 };
 

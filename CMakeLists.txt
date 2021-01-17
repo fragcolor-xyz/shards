@@ -890,6 +890,9 @@ if(NOT BUILD_CORE_ONLY)
     add_dependencies(cb_static libsdl)
     add_dependencies(cb_shared libsdl)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
+  else()
+    # for includes
+    target_link_libraries(cb_static webxr)
   endif()
 
   add_dependencies(cb_static libsnappy)
