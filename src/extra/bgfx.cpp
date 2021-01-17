@@ -1668,6 +1668,9 @@ struct RenderTexture : public BaseConsumer {
     _texture->height = _height;
     _texture->channels = 4;
     _texture->bpp = 2;
+#ifdef __EMSCRIPTEN__
+    _texture->flippedY = true;
+#endif
 
     _depth.handle = bgfx::createTexture2D(
         _width, _height, false, 1, bgfx::TextureFormat::D24S8,

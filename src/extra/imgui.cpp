@@ -1524,6 +1524,8 @@ struct Image : public Base {
       ImVec2 size = _size;
       size.x *= texture->width;
       size.y *= texture->height;
+      if (texture->flippedY)
+        size.y *= -1.0;
       ::ImGui::Image(texture->handle, size);
     } else {
       ::ImGui::Image(texture->handle, _size);

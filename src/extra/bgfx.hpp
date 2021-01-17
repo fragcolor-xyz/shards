@@ -67,6 +67,9 @@ struct Texture {
   uint16_t height = 0;
   uint8_t channels = 0;
   int bpp = 1;
+  // this is a workaround for webgl and mostly ImGUI blocks, bgfx flips GL
+  // stuff, but webgl does not need basically
+  bool flippedY = false;
 
   ~Texture() {
     if (handle.idx != bgfx::kInvalidHandle) {
