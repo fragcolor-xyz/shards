@@ -109,6 +109,11 @@ else()
   if(EMSCRIPTEN_NODEFS)
     add_link_options(-lnodefs.js)
   endif()
+
+  ## webxr
+  if(NOT BUILD_CORE_ONLY)
+    add_subdirectory(${CHAINBLOCKS_DIR}/deps/emscripten-webxr)
+  endif()
 endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
@@ -928,10 +933,9 @@ add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
-
-# if(EMSCRIPTEN)
-# set_target_properties(cbl PROPERTIES SUFFIX ".html")
-# endif()
+if(EMSCRIPTEN AND NOT BUILD_CORE_ONLY)
+  target_link_libraries(cbl webxr)
+endif()
 ###
 
 ### our experimental edn eval
