@@ -1663,15 +1663,15 @@ struct RenderTexture : public BaseConsumer {
     _texture = Texture::Var.New();
     _texture->handle =
         bgfx::createTexture2D(_width, _height, false, 1,
-                              bgfx::TextureFormat::RGBA16U, BGFX_TEXTURE_RT);
+                              bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT);
     _texture->width = _width;
     _texture->height = _height;
     _texture->channels = 4;
     _texture->bpp = 2;
 
-    _depth.handle = bgfx::createTexture2D(_width, _height, false, 1,
-                                          bgfx::TextureFormat::D24S8,
-                                          BGFX_TEXTURE_RT_WRITE_ONLY);
+    _depth.handle = bgfx::createTexture2D(
+        _width, _height, false, 1, bgfx::TextureFormat::D24S8,
+        BGFX_TEXTURE_RT | BGFX_TEXTURE_RT_WRITE_ONLY);
 
     bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
     _framebuffer = bgfx::createFrameBuffer(2, textures, false);
