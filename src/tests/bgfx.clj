@@ -43,7 +43,7 @@
    "test-chain"
    :Looped
    (GFX.MainWindow
-    :Title "SDL Window" :Width 1024 :Height 1024
+    :Title "SDL Window" :Width 1024 :Height 1024 :Debug true
     :Contents
     ~[(Once
        ~[(LoadImage "../../assets/drawing.png")
@@ -65,7 +65,7 @@
                      :PixelShader .fs_bytes) >= .tex-shader
          false (Set "checkBoxie")])
       ; full screen quad pass
-      identity (GFX.Draw :Shader .tex-shader)
+      ;; identity (GFX.Draw :Shader .tex-shader :Textures .image1)
       ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera :Width 1024 :Height 1024)

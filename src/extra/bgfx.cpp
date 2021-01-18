@@ -79,7 +79,11 @@ struct BaseWindow : public Base {
        {CoreInfo::IntType}},
       {"Contents",
        CBCCSTR("The contents of this window."),
-       {CoreInfo::BlocksOrNone}}};
+       {CoreInfo::BlocksOrNone}},
+      {"Debug",
+       CBCCSTR("If the device backing the window should be created with "
+               "debug layers on."),
+       {CoreInfo::BoolType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -90,6 +94,7 @@ struct BaseWindow : public Base {
   std::string _title;
   int _width = 1024;
   int _height = 768;
+  bool _debug = false;
   SDL_Window *_window = nullptr;
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
@@ -110,6 +115,9 @@ struct BaseWindow : public Base {
     case 3:
       _blocks = value;
       break;
+    case 4:
+      _debug = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -125,6 +133,8 @@ struct BaseWindow : public Base {
       return Var(_height);
     case 3:
       return _blocks;
+    case 4:
+      return Var(_debug);
     default:
       return Var::Empty;
     }
@@ -398,6 +408,7 @@ struct MainWindow : public BaseWindow {
     initInfo.resolution.width = _width;
     initInfo.resolution.height = _height;
     initInfo.resolution.reset = BGFX_RESET_VSYNC;
+    initInfo.debug = _debug;
     if (!bgfx::init(initInfo)) {
       throw ActivationError("Failed to initialize BGFX");
     } else {
@@ -1546,16 +1557,31 @@ struct Draw : public BaseConsumer {
   }
 
   void warmup(CBContext *context) {
+    // touch this thread shared to create it if not already created
+    Samplers().clear();
+
     _shader.warmup(context);
     _textures.warmup(context);
     _model.warmup(context);
+
     _bgfx_context = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
+    // this is shared, means the first cleanup will do it fully, other calls
+    // will just be already cleared
+    auto &samplers = Samplers();
+    for (auto sampler : samplers) {
+      if (sampler.idx != bgfx::kInvalidHandle) {
+        bgfx::destroy(sampler);
+      }
+    }
+    samplers.clear();
+
     _shader.cleanup();
     _textures.cleanup();
     _model.cleanup();
+
     if (_bgfx_context) {
       releaseVariable(_bgfx_context);
       _bgfx_context = nullptr;
@@ -1595,7 +1621,7 @@ struct Draw : public BaseConsumer {
 
   static inline bool LayoutSetup{false};
 
-  ThreadShared<std::deque<bgfx::UniformHandle>> samplers{};
+  ThreadShared<std::vector<bgfx::UniformHandle>> Samplers{};
 
   void setup() {
     if (!LayoutSetup) {
@@ -1702,6 +1728,31 @@ struct Draw : public BaseConsumer {
                      BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A |
                      BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | culling;
     bgfx::setState(state);
+
+    auto vtextures = _textures.get();
+    auto nsamplers = Samplers().size();
+    if (vtextures.valueType == CBType::Object) {
+      if (nsamplers == 0) {
+        Samplers().emplace_back(
+            bgfx::createUniform("DrawSampler0", bgfx::UniformType::Sampler));
+      }
+      auto texture = reinterpret_cast<Texture *>(vtextures.payload.objectValue);
+      bgfx::setTexture(0, Samplers()[0], texture->handle);
+    } else if (vtextures.valueType == CBType::Seq) {
+      auto textures = vtextures.payload.seqValue;
+      for (uint32_t i = 0; i < textures.len; i++) {
+        if (i >= nsamplers) {
+          std::string name("DrawSampler");
+          name.append(std::to_string(i));
+          Samplers().emplace_back(
+              bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
+          nsamplers++;
+        }
+        auto texture = reinterpret_cast<Texture *>(
+            textures.elements[i].payload.objectValue);
+        bgfx::setTexture(uint8_t(i), Samplers()[i], texture->handle);
+      }
+    }
 
     // Submit primitive for rendering to the current view.
     bgfx::submit(currentView.id, shader->handle);
