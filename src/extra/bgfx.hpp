@@ -31,6 +31,12 @@ struct NativeWindow {
        {.object = {.vendorId = CoreCC, .typeId = BgfxNativeWindowCC}}}};
 };
 
+struct ViewInfo {
+  bgfx::ViewId id{0};
+  int width{0};
+  int height{0};
+};
+
 struct Context {
   static inline Type Info{
       {CBType::Object,
@@ -39,16 +45,18 @@ struct Context {
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
 
-  bgfx::ViewId currentView() const { return viewsStack.back(); };
-  void push(bgfx::ViewId view) { viewsStack.push_back(view); }
-  void pop() {
+  ViewInfo &currentView() { return viewsStack.back(); };
+
+  void pushView(ViewInfo view) { viewsStack.emplace_back(view); }
+
+  void popView() {
     assert(viewsStack.size() > 0);
     viewsStack.pop_back();
   }
-  void clear() { viewsStack.clear(); }
-  size_t index() const { return viewsStack.size(); }
 
-  bgfx::ViewId nextView() {
+  size_t viewIndex() const { return viewsStack.size(); }
+
+  bgfx::ViewId nextViewId() {
     assert(nextViewCounter < UINT16_MAX);
     return nextViewCounter++;
   }
@@ -59,7 +67,7 @@ struct Context {
   }
 
 private:
-  std::vector<bgfx::ViewId> viewsStack;
+  std::deque<ViewInfo> viewsStack;
   bgfx::ViewId nextViewCounter{0};
 };
 

@@ -470,8 +470,8 @@ struct MainWindow : public BaseWindow {
     _imguiCtx->payload.objectTypeId = chainblocks::ImGui::ImGuiContextCC;
     _imguiCtx->payload.objectValue = &_imgui_context;
 
-    auto nv = _bgfx_context.nextView();
-    assert(nv == 0); // always 0 in MainWindow
+    auto viewId = _bgfx_context.nextViewId();
+    assert(viewId == 0); // always 0 in MainWindow
 
     // init blocks after we initialize the system
     _blocks.warmup(context);
@@ -479,10 +479,10 @@ struct MainWindow : public BaseWindow {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // push view 0
-    _bgfx_context.push(0);
+    _bgfx_context.pushView({0, _width, _height});
     DEFER({
-      _bgfx_context.pop();
-      assert(_bgfx_context.index() == 0);
+      _bgfx_context.popView();
+      assert(_bgfx_context.viewIndex() == 0);
     });
     // Touch view 0
     bgfx::touch(0);
@@ -1438,15 +1438,15 @@ struct Camera : public BaseConsumer {
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
       // workaround for flipped Y render to textures
-      if (currentView > 0) {
+      if (currentView.id > 0) {
         proj[5] = -proj[5];
         proj[8] = -proj[8];
         proj[9] = -proj[9];
       }
     }
 
-    bgfx::setViewTransform(currentView, view, proj);
-    bgfx::setViewRect(currentView, uint16_t(_offsetX), uint16_t(_offsetY),
+    bgfx::setViewTransform(currentView.id, view, proj);
+    bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(_width), uint16_t(_height));
 
     return input;
@@ -1660,6 +1660,8 @@ struct Draw : public BaseConsumer {
       throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
     }
 
+    const auto currentView = ctx->currentView();
+
     float mat[16];
     memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
            sizeof(float) * 4);
@@ -1671,20 +1673,23 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(mat);
 
-    std::visit(
-        [](auto &m) {
-          // Set vertex and index buffer.
-          bgfx::setVertexBuffer(0, m.vb);
-          bgfx::setIndexBuffer(m.ib);
-        },
-        model->model);
+    if (model) {
+      std::visit(
+          [](auto &m) {
+            // Set vertex and index buffer.
+            bgfx::setVertexBuffer(0, m.vb);
+            bgfx::setIndexBuffer(m.ib);
+          },
+          model->model);
+    } else {
+      screenSpaceQuad(float(currentView.width), float(currentView.height));
+    }
 
     auto culling = BGFX_STATE_CULL_CW;
-    const auto currentView = ctx->currentView();
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
       // workaround for flipped Y render to textures
-      if (currentView > 0) {
+      if (currentView.id > 0) {
         culling = BGFX_STATE_CULL_CCW;
       }
     }
@@ -1696,7 +1701,7 @@ struct Draw : public BaseConsumer {
     bgfx::setState(state);
 
     // Submit primitive for rendering to the current view.
-    bgfx::submit(currentView, shader->handle);
+    bgfx::submit(currentView.id, shader->handle);
 
     return input;
   }
@@ -1794,7 +1799,7 @@ struct RenderTexture : public RenderTarget {
     assert(_bgfx_context->valueType == CBType::Object);
     Context *ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
-    _viewId = ctx->nextView();
+    _viewId = ctx->nextViewId();
     bgfx::setViewFrameBuffer(_viewId, _framebuffer);
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
     bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
@@ -1832,10 +1837,10 @@ struct RenderTexture : public RenderTarget {
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 
     // push _viewId
-    ctx->push(_viewId);
+    ctx->pushView({_viewId, _width, _height});
     DEFER({
-      ctx->pop();
-      assert(ctx->index() == _viewId);
+      ctx->popView();
+      assert(ctx->viewIndex() == _viewId);
     });
 
     // Touch _viewId

@@ -57,7 +57,16 @@
          (FS.Read :Bytes true) >= .fs_bytes
          (GFX.Shader :VertexShader .vs_bytes
                      :PixelShader .fs_bytes) >= .shader
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_update.bin")
+         (FS.Read :Bytes true) > .vs_bytes
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_update.bin")
+         (FS.Read :Bytes true) > .fs_bytes
+         (GFX.Shader :VertexShader .vs_bytes
+                     :PixelShader .fs_bytes) >= .tex-shader
          false (Set "checkBoxie")])
+      ; full screen quad pass
+      identity (GFX.Draw :Shader .tex-shader)
+      ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera :Width 1024 :Height 1024)
       identity (GFX.Draw :Shader .shader :Model .cube)
