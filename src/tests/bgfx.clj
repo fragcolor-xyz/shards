@@ -150,8 +150,8 @@
                                       (GUI.HexViewer)))))])))
 
 (schedule Root test-chain)
-;; (run Root 0.02 100)
-(run Root 0.02)
+(run Root 0.02 100)
+;; (run Root 0.02)
 
 (schedule Root test-chain)
 (run Root 0.02 100)
