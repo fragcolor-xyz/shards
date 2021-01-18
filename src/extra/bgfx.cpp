@@ -1606,10 +1606,7 @@ struct Draw : public BaseConsumer {
   }
 };
 
-struct RenderTexture : public BaseConsumer {
-  // to make it simple our render textures are always 16bit linear
-  // TODO we share same size/formats depth buffers, expose only color part
-
+struct RenderTarget : public BaseConsumer {
   static inline Parameters params{
       {"Width",
        CBCCSTR("The width of the texture to render."),
@@ -1623,7 +1620,6 @@ struct RenderTexture : public BaseConsumer {
   static CBParametersInfo parameters() { return params; }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
 
   BlocksVar _blocks;
   int _width{256};
@@ -1631,9 +1627,6 @@ struct RenderTexture : public BaseConsumer {
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   CBVar *_bgfx_context{nullptr};
   bgfx::ViewId _viewId;
-
-  Texture *_texture{nullptr}; // the color part we expose
-  Texture _depth{};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1663,6 +1656,16 @@ struct RenderTexture : public BaseConsumer {
       throw InvalidParameterIndex();
     }
   }
+};
+
+struct RenderTexture : public RenderTarget {
+  // to make it simple our render textures are always 16bit linear
+  // TODO we share same size/formats depth buffers, expose only color part
+
+  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
+
+  Texture *_texture{nullptr}; // the color part we expose
+  Texture _depth{};
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.onWorkerThread) {
@@ -1756,18 +1759,32 @@ EM_JS(bool, cb_emscripten_show_xr_dialog, (), {
 });
 #endif
 
-struct RenderXR : public RenderTexture {
+struct RenderXR : public RenderTarget {
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
 #ifdef __EMSCRIPTEN__
-  static EM_BOOL on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+  static EM_BOOL on_button_click(int eventType,
+                                 const EmscriptenMouseEvent *mouseEvent,
+                                 void *userData) {
     webxr_request_session();
     return true;
   }
 #endif
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+    _blocks.compose(data);
+    return CoreInfo::AnyType;
+  }
+
   void warmup(CBContext *context) {
 #ifdef __EMSCRIPTEN__
-    emscripten_set_click_callback("#chainblocks-webxr-dialog-ok", (void*)this, true, on_button_click);
-    if(!cb_emscripten_show_xr_dialog()) {
+    emscripten_set_click_callback("#chainblocks-webxr-dialog-ok", (void *)this,
+                                  true, on_button_click);
+    if (!cb_emscripten_show_xr_dialog()) {
       LOG(WARNING) << "Failed to enable XR session.";
     }
 #endif
