@@ -593,11 +593,11 @@ struct Texture2D : public BaseConsumer {
 
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
 
-  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
+  static CBTypesInfo outputTypes() { return Texture::ObjType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
-    return Texture::TextureHandleType;
+    return Texture::ObjType;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -1467,10 +1467,15 @@ struct Draw : public BaseConsumer {
   static inline Parameters params{
       {"Shader",
        CBCCSTR("The shader program to use for this draw."),
-       {ShaderHandle::VarType, CoreInfo::NoneType}},
+       {ShaderHandle::ObjType, ShaderHandle::VarType}},
+      {"Textures",
+       CBCCSTR("A texture or the textures to pass to the shaders."),
+       {Texture::ObjType, Texture::VarType, Texture::SeqType,
+        Texture::VarSeqType, CoreInfo::NoneType}},
       {"Model",
-       CBCCSTR("The model to draw."),
-       {ModelHandle::VarType, CoreInfo::NoneType}}};
+       CBCCSTR("The model to draw. If no model is specified a full screen quad "
+               "will be used."),
+       {ModelHandle::ObjType, ModelHandle::VarType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1480,6 +1485,9 @@ struct Draw : public BaseConsumer {
       _shader = value;
       break;
     case 1:
+      _textures = value;
+      break;
+    case 2:
       _model = value;
       break;
     default:
@@ -1492,6 +1500,8 @@ struct Draw : public BaseConsumer {
     case 0:
       return _shader;
     case 1:
+      return _textures;
+    case 2:
       return _model;
     default:
       return Var::Empty;
@@ -1499,9 +1509,10 @@ struct Draw : public BaseConsumer {
   }
 
   ParamVar _shader{};
+  ParamVar _textures{};
   ParamVar _model{};
   CBVar *_bgfx_context{nullptr};
-  std::array<CBExposedTypeInfo, 2> _exposing;
+  std::array<CBExposedTypeInfo, 4> _exposing;
 
   CBExposedTypesInfo requiredVariables() {
     int idx = -1;
@@ -1510,6 +1521,16 @@ struct Draw : public BaseConsumer {
       _exposing[idx].name = _shader.variableName();
       _exposing[idx].help = CBCCSTR("The required shader.");
       _exposing[idx].exposedType = ShaderHandle::ObjType;
+    }
+    if (_textures.isVariable()) {
+      idx++;
+      _exposing[idx].name = _textures.variableName();
+      _exposing[idx].help = CBCCSTR("The required texture.");
+      _exposing[idx].exposedType = Texture::ObjType;
+      idx++;
+      _exposing[idx].name = _textures.variableName();
+      _exposing[idx].help = CBCCSTR("The required textures.");
+      _exposing[idx].exposedType = Texture::SeqType;
     }
     if (_model.isVariable()) {
       idx++;
@@ -1526,12 +1547,14 @@ struct Draw : public BaseConsumer {
 
   void warmup(CBContext *context) {
     _shader.warmup(context);
+    _textures.warmup(context);
     _model.warmup(context);
     _bgfx_context = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
     _shader.cleanup();
+    _textures.cleanup();
     _model.cleanup();
     if (_bgfx_context) {
       releaseVariable(_bgfx_context);
@@ -1540,6 +1563,8 @@ struct Draw : public BaseConsumer {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+
     if (data.inputType.seqTypes.elements[0].basicType == CBType::Seq) {
       // TODO
       OVERRIDE_ACTIVATE(data, activate);
@@ -1547,6 +1572,81 @@ struct Draw : public BaseConsumer {
       OVERRIDE_ACTIVATE(data, activateSingle);
     }
     return data.inputType;
+  }
+
+  struct PosColorTexCoord0Vertex {
+    float m_x;
+    float m_y;
+    float m_z;
+    uint32_t m_rgba;
+    float m_u;
+    float m_v;
+
+    static void init() {
+      ms_layout.begin()
+          .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+          .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+          .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+          .end();
+    }
+
+    static inline bgfx::VertexLayout ms_layout;
+  };
+
+  static inline bool LayoutSetup{false};
+
+  void setup() {
+    if (!LayoutSetup) {
+      PosColorTexCoord0Vertex::init();
+      LayoutSetup = true;
+    }
+  }
+
+  void screenSpaceQuad(float _textureWidth, float _textureHeight,
+                       float _width = 1.0f, float _height = 1.0f) {
+    if (3 == bgfx::getAvailTransientVertexBuffer(
+                 3, PosColorTexCoord0Vertex::ms_layout)) {
+      bgfx::TransientVertexBuffer vb;
+      bgfx::allocTransientVertexBuffer(&vb, 3,
+                                       PosColorTexCoord0Vertex::ms_layout);
+      PosColorTexCoord0Vertex *vertex = (PosColorTexCoord0Vertex *)vb.data;
+
+      const float zz = 0.0f;
+
+      const float minx = -_width;
+      const float maxx = _width;
+      const float miny = 0.0f;
+      const float maxy = _height * 2.0f;
+
+      const float minu = -1.0f;
+      const float maxu = 1.0f;
+
+      float minv = 0.0f;
+      float maxv = 2.0f;
+
+      vertex[0].m_x = minx;
+      vertex[0].m_y = miny;
+      vertex[0].m_z = zz;
+      vertex[0].m_rgba = 0xffffffff;
+      vertex[0].m_u = minu;
+      vertex[0].m_v = minv;
+
+      vertex[1].m_x = maxx;
+      vertex[1].m_y = miny;
+      vertex[1].m_z = zz;
+      vertex[1].m_rgba = 0xffffffff;
+      vertex[1].m_u = maxu;
+      vertex[1].m_v = minv;
+
+      vertex[2].m_x = maxx;
+      vertex[2].m_y = maxy;
+      vertex[2].m_z = zz;
+      vertex[2].m_rgba = 0xffffffff;
+      vertex[2].m_u = maxu;
+      vertex[2].m_v = maxv;
+
+      bgfx::setVertexBuffer(0, &vb);
+    }
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
@@ -1662,18 +1762,15 @@ struct RenderTexture : public RenderTarget {
   // to make it simple our render textures are always 16bit linear
   // TODO we share same size/formats depth buffers, expose only color part
 
-  static CBTypesInfo outputTypes() { return Texture::TextureHandleType; }
+  static CBTypesInfo outputTypes() { return Texture::ObjType; }
 
   Texture *_texture{nullptr}; // the color part we expose
   Texture _depth{};
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
-    }
+    BaseConsumer::compose(data);
     _blocks.compose(data);
-    return Texture::TextureHandleType;
+    return Texture::ObjType;
   }
 
   void warmup(CBContext *context) {
@@ -1772,10 +1869,7 @@ struct RenderXR : public RenderTarget {
 #endif
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
-    }
+    BaseConsumer::compose(data);
     _blocks.compose(data);
     return CoreInfo::AnyType;
   }

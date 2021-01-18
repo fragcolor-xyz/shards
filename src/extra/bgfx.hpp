@@ -64,9 +64,12 @@ private:
 };
 
 struct Texture {
-  static inline Type TextureHandleType{
+  static inline Type ObjType{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxTextureHandleCC}}}};
+  static inline Type SeqType = Type::SeqOf(ObjType);
+  static inline Type VarType = Type::VariableOf(ObjType);
+  static inline Type VarSeqType = Type::VariableOf(SeqType);
 
   typedef ObjectVar<Texture> VarInfo;
   static inline VarInfo Var{"BGFX-Texture", CoreCC, BgfxTextureHandleCC};

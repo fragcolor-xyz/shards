@@ -1477,9 +1477,9 @@ struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
 
-  static CBTypesInfo inputTypes() { return BGFX::Texture::TextureHandleType; }
+  static CBTypesInfo inputTypes() { return BGFX::Texture::ObjType; }
 
-  static CBTypesInfo outputTypes() { return BGFX::Texture::TextureHandleType; }
+  static CBTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."),
