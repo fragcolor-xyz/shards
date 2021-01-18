@@ -455,7 +455,7 @@ void testDraw() {
                        .block("Get", "cam")
                        .block("GFX.Camera")
                        .let(identity)
-                       .block("GFX.Draw", Var::ContextVar("shader"),
+                       .block("GFX.Draw", Var::ContextVar("shader"), Var::Any,
                               Var::ContextVar("cube-model")));
     auto node = CBNode::make();
     node->schedule(chain);
