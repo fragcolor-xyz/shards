@@ -1443,9 +1443,9 @@ struct Camera : public BaseConsumer {
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
       // workaround for flipped Y render to textures
       if (currentView > 0) {
-        float scale[16];
-        bx::mtxScale(scale, 1.0, -1.0, 1.0);
-        bx::mtxMul(proj, proj, scale);
+        proj[5] = -proj[5];
+        proj[8] = -proj[8];
+        proj[9] = -proj[9];
       }
     }
 
