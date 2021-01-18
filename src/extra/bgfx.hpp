@@ -8,8 +8,17 @@
 #include "blocks/shared.hpp"
 
 using namespace chainblocks;
-
 namespace BGFX {
+enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
+
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+constexpr Renderer CurrentRenderer = Renderer::OpenGL;
+#elif defined(_WIN32)
+constexpr Renderer CurrentRenderer = Renderer::DirectX11;
+#elif defined(__APPLE__)
+constexpr Renderer CurrentRenderer = Renderer::Metal;
+#endif
+
 constexpr uint32_t BgfxTextureHandleCC = 'gfxT';
 constexpr uint32_t BgfxShaderHandleCC = 'gfxS';
 constexpr uint32_t BgfxModelHandleCC = 'gfxM';
