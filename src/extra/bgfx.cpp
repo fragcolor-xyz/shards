@@ -1429,6 +1429,8 @@ struct Camera : public BaseConsumer {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 
+    const auto currentView = ctx->currentView();
+
     float view[16];
     bx::Vec3 *bp = reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
     bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
@@ -1438,9 +1440,18 @@ struct Camera : public BaseConsumer {
     bx::mtxProj(proj, _fov, float(_width) / float(_height), _near, _far,
                 bgfx::getCaps()->homogeneousDepth);
 
-    bgfx::setViewTransform(ctx->currentView(), view, proj);
-    bgfx::setViewRect(ctx->currentView(), uint16_t(_offsetX),
-                      uint16_t(_offsetY), uint16_t(_width), uint16_t(_height));
+    if constexpr (CurrentRenderer == Renderer::OpenGL) {
+      // workaround for flipped Y render to textures
+      if (currentView > 0) {
+        float scale[16];
+        bx::mtxScale(scale, 1.0, -1.0, 1.0);
+        bx::mtxMul(proj, proj, scale);
+      }
+    }
+
+    bgfx::setViewTransform(currentView, view, proj);
+    bgfx::setViewRect(currentView, uint16_t(_offsetX), uint16_t(_offsetY),
+                      uint16_t(_width), uint16_t(_height));
 
     return input;
   }
@@ -1574,15 +1585,24 @@ struct Draw : public BaseConsumer {
         },
         model->model);
 
+    auto culling = BGFX_STATE_CULL_CW;
+    const auto currentView = ctx->currentView();
+
+    if constexpr (CurrentRenderer == Renderer::OpenGL) {
+      // workaround for flipped Y render to textures
+      if (currentView > 0) {
+        culling = BGFX_STATE_CULL_CCW;
+      }
+    }
+
     // set state, (it's auto reset after submit)
     uint64_t state = 0 | BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G |
                      BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A |
-                     BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                     BGFX_STATE_CULL_CW;
+                     BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | culling;
     bgfx::setState(state);
 
     // Submit primitive for rendering to the current view.
-    bgfx::submit(ctx->currentView(), shader->handle);
+    bgfx::submit(currentView, shader->handle);
 
     return input;
   }
@@ -1668,9 +1688,6 @@ struct RenderTexture : public BaseConsumer {
     _texture->height = _height;
     _texture->channels = 4;
     _texture->bpp = 2;
-#ifdef __EMSCRIPTEN__
-    _texture->flippedY = true;
-#endif
 
     _depth.handle = bgfx::createTexture2D(
         _width, _height, false, 1, bgfx::TextureFormat::D24S8,

@@ -8,8 +8,17 @@
 #include "blocks/shared.hpp"
 
 using namespace chainblocks;
-
 namespace BGFX {
+enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
+
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+constexpr Renderer CurrentRenderer = Renderer::OpenGL;
+#elif defined(_WIN32)
+constexpr Renderer CurrentRenderer = Renderer::DirectX11;
+#elif defined(__APPLE__)
+constexpr Renderer CurrentRenderer = Renderer::Metal;
+#endif
+
 constexpr uint32_t BgfxTextureHandleCC = 'gfxT';
 constexpr uint32_t BgfxShaderHandleCC = 'gfxS';
 constexpr uint32_t BgfxModelHandleCC = 'gfxM';
@@ -67,9 +76,6 @@ struct Texture {
   uint16_t height = 0;
   uint8_t channels = 0;
   int bpp = 1;
-  // this is a workaround for webgl and mostly ImGUI blocks, bgfx flips GL
-  // stuff, but webgl does not need basically
-  bool flippedY = false;
 
   ~Texture() {
     if (handle.idx != bgfx::kInvalidHandle) {
