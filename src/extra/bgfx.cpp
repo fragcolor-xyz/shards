@@ -1595,6 +1595,8 @@ struct Draw : public BaseConsumer {
 
   static inline bool LayoutSetup{false};
 
+  ThreadShared<std::deque<bgfx::UniformHandle>> samplers{};
+
   void setup() {
     if (!LayoutSetup) {
       PosColorTexCoord0Vertex::init();
@@ -1650,11 +1652,12 @@ struct Draw : public BaseConsumer {
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
+    auto *ctx = reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
+    assert(shader);
     auto model =
         reinterpret_cast<ModelHandle *>(_model.get().payload.objectValue);
-    auto *ctx = reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 
     if (input.payload.seqValue.len != 4) {
       throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
