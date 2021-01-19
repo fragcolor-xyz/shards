@@ -64,11 +64,9 @@
          (GFX.Shader :VertexShader .vs_bytes
                      :PixelShader .fs_bytes) >= .tex-shader
          false (Set "checkBoxie")])
-      ; full screen quad pass
-      ;; identity (GFX.Draw :Shader .tex-shader :Textures .image1)
       ; regular model render
       {"Position" (Float3 0 0 10)
-       "Target" (Float3 0 0 0)} (GFX.Camera :Width 1024 :Height 1024)
+       "Target" (Float3 0 0 0)} (GFX.Camera)
       identity (GFX.Draw :Shader .shader :Model .cube)
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :PosX 0 :PosY 0 :Contents
@@ -96,9 +94,21 @@
                    (GUI.Image (Float2 0.1 0.1))
 
                    (GFX.RenderTexture 256 256
-                                      (-> {"Position" (Float3 0 0 10)
-                                           "Target" (Float3 0 0 0)} (GFX.Camera 256 256)
-                                          identity (GFX.Draw :Shader .shader :Model .cube)))
+                                      (->
+                                       ; render the model
+                                       {"Position" (Float3 0 0 10)
+                                        "Target" (Float3 0 0 0)} (GFX.Camera)
+                                       identity (GFX.Draw :Shader .shader :Model .cube)))
+                   (GUI.Image (Float2 1.0 1.0))
+                   
+                   (GUI.SameLine)
+
+                   (GFX.RenderTexture 64 64
+                                      (->
+                                       ; full screen quad pass
+                                       nil (GFX.CameraOrtho) ; to set only projection
+                                       identity (GFX.Draw :Shader .shader) ; no model means full screen quad
+                                       ))
                    (GUI.Image (Float2 1.0 1.0))
 
                    (GUI.ChildWindow

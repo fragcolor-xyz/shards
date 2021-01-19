@@ -1303,43 +1303,38 @@ struct Model : public BaseConsumer {
   }
 };
 
-struct Camera : public BaseConsumer {
+struct CameraBase : public BaseConsumer {
   // TODO must expose view, proj and viewproj in a stack fashion probably
   static inline Types InputTableTypes{
       {CoreInfo::Float3Type, CoreInfo::Float3Type}};
   static inline std::array<CBString, 2> InputTableKeys{"Position", "Target"};
   static inline Type InputTable =
       Type::TableOf(InputTableTypes, InputTableKeys);
+  static inline Types InputTypes{{CoreInfo::NoneType, InputTable}};
 
-  static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return InputTable; }
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return InputTypes; }
 
-  int _width = 1024;
-  int _height = 768;
-  float _near = 0.1;
-  float _far = 1000.0;
-  float _fov = 60.0;
+  int _width = 0;
+  int _height = 0;
   int _offsetX = 0;
   int _offsetY = 0;
   CBVar *_bgfx_context{nullptr};
 
   static inline Parameters params{
-      {"Width", CBCCSTR("The width of the viewport."), {CoreInfo::IntType}},
-      {"Height", CBCCSTR("The height of the viewport."), {CoreInfo::IntType}},
-      {"Near",
-       CBCCSTR("The distance from the near clipping plane."),
-       {CoreInfo::FloatType}},
-      {"Far",
-       CBCCSTR("The distance from the far clipping plane."),
-       {CoreInfo::FloatType}},
-      {"FieldOfView",
-       CBCCSTR("The field of view of the camera."),
-       {CoreInfo::FloatType}},
       {"OffsetX",
        CBCCSTR("The horizontal offset of the viewport."),
        {CoreInfo::IntType}},
       {"OffsetY",
        CBCCSTR("The vertical offset of the viewport."),
+       {CoreInfo::IntType}},
+      {"Width",
+       CBCCSTR("The width of the viewport, if 0 it will use the full current "
+               "view width."),
+       {CoreInfo::IntType}},
+      {"Height",
+       CBCCSTR("The height of the viewport, if 0 it will use the full current "
+               "view height."),
        {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -1347,25 +1342,16 @@ struct Camera : public BaseConsumer {
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
-      _width = int(value.payload.intValue);
-      break;
-    case 1:
-      _height = int(value.payload.intValue);
-      break;
-    case 2:
-      _near = float(value.payload.floatValue);
-      break;
-    case 3:
-      _far = float(value.payload.floatValue);
-      break;
-    case 4:
-      _fov = float(value.payload.floatValue);
-      break;
-    case 5:
       _offsetX = int(value.payload.intValue);
       break;
-    case 6:
+    case 1:
       _offsetY = int(value.payload.intValue);
+      break;
+    case 2:
+      _width = int(value.payload.intValue);
+      break;
+    case 3:
+      _height = int(value.payload.intValue);
       break;
     default:
       break;
@@ -1375,19 +1361,13 @@ struct Camera : public BaseConsumer {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_width);
-    case 1:
-      return Var(_height);
-    case 2:
-      return Var(_near);
-    case 3:
-      return Var(_far);
-    case 4:
-      return Var(_fov);
-    case 5:
       return Var(_offsetX);
-    case 6:
+    case 1:
       return Var(_offsetY);
+    case 2:
+      return Var(_width);
+    case 3:
+      return Var(_height);
     default:
       throw InvalidParameterIndex();
     }
@@ -1403,48 +1383,104 @@ struct Camera : public BaseConsumer {
       _bgfx_context = nullptr;
     }
   }
+};
+
+struct Camera : public CameraBase {
+  float _near = 0.1;
+  float _far = 1000.0;
+  float _fov = 60.0;
+
+  static inline Parameters params{
+      {{"Near",
+        CBCCSTR("The distance from the near clipping plane."),
+        {CoreInfo::FloatType}},
+       {"Far",
+        CBCCSTR("The distance from the far clipping plane."),
+        {CoreInfo::FloatType}},
+       {"FieldOfView",
+        CBCCSTR("The field of view of the camera."),
+        {CoreInfo::FloatType}}},
+      CameraBase::params};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _near = float(value.payload.floatValue);
+      break;
+    case 1:
+      _far = float(value.payload.floatValue);
+      break;
+    case 2:
+      _fov = float(value.payload.floatValue);
+      break;
+    default:
+      CameraBase::setParam(index - 3, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_near);
+    case 1:
+      return Var(_far);
+    case 2:
+      return Var(_fov);
+    default:
+      return CameraBase::getParam(index - 3);
+    }
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    // this is the most efficient way to find items in table
-    // without hashing and possible allocations etc
-    CBTable table = input.payload.tableValue;
-    CBTableIterator it;
-    table.api->tableGetIterator(table, &it);
-    CBVar position{};
-    CBVar target{};
-    while (true) {
-      CBString k;
-      CBVar v;
-      if (!table.api->tableNext(table, &it, &k, &v))
-        break;
-
-      switch (k[0]) {
-      case 'P':
-        position = v;
-        break;
-      case 'T':
-        target = v;
-        break;
-      default:
-        break;
-      }
-    }
-
-    assert(position.valueType == CBType::Float3 &&
-           target.valueType == CBType::Float3);
-
     Context *ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 
     const auto currentView = ctx->currentView();
 
     float view[16];
-    bx::Vec3 *bp = reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
-    bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
-    bx::mtxLookAt(view, *bp, *bt);
+
+    if (input.valueType == CBType::Table) {
+      // this is the most efficient way to find items in table
+      // without hashing and possible allocations etc
+      CBTable table = input.payload.tableValue;
+      CBTableIterator it;
+      table.api->tableGetIterator(table, &it);
+      CBVar position{};
+      CBVar target{};
+      while (true) {
+        CBString k;
+        CBVar v;
+        if (!table.api->tableNext(table, &it, &k, &v))
+          break;
+
+        switch (k[0]) {
+        case 'P':
+          position = v;
+          break;
+        case 'T':
+          target = v;
+          break;
+        default:
+          break;
+        }
+      }
+
+      assert(position.valueType == CBType::Float3 &&
+             target.valueType == CBType::Float3);
+
+      bx::Vec3 *bp =
+          reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
+      bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
+      bx::mtxLookAt(view, *bp, *bt);
+    }
+
+    int width = _width != 0 ? _width : currentView.width;
+    int height = _height != 0 ? _height : currentView.height;
 
     float proj[16];
-    bx::mtxProj(proj, _fov, float(_width) / float(_height), _near, _far,
+    bx::mtxProj(proj, _fov, float(width) / float(height), _near, _far,
                 bgfx::getCaps()->homogeneousDepth);
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
@@ -1456,9 +1492,151 @@ struct Camera : public BaseConsumer {
       }
     }
 
-    bgfx::setViewTransform(currentView.id, view, proj);
+    bgfx::setViewTransform(currentView.id,
+                           input.valueType == CBType::Table ? view : nullptr,
+                           proj);
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
-                      uint16_t(_width), uint16_t(_height));
+                      uint16_t(width), uint16_t(height));
+
+    return input;
+  }
+};
+
+struct CameraOrtho : public CameraBase {
+  float _near = 0.0;
+  float _far = 100.0;
+  float _left = 0.0;
+  float _right = 1.0;
+  float _bottom = 1.0;
+  float _top = 0.0;
+
+  static inline Parameters params{
+      {{"Left", CBCCSTR("The left of the projection."), {CoreInfo::FloatType}},
+       {"Right",
+        CBCCSTR("The right of the projection."),
+        {CoreInfo::FloatType}},
+       {"Bottom",
+        CBCCSTR("The bottom of the projection."),
+        {CoreInfo::FloatType}},
+       {"Top", CBCCSTR("The top of the projection."), {CoreInfo::FloatType}},
+       {"Near",
+        CBCCSTR("The distance from the near clipping plane."),
+        {CoreInfo::FloatType}},
+       {"Far",
+        CBCCSTR("The distance from the far clipping plane."),
+        {CoreInfo::FloatType}}},
+      CameraBase::params};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _left = float(value.payload.floatValue);
+      break;
+    case 1:
+      _right = float(value.payload.floatValue);
+      break;
+    case 2:
+      _bottom = float(value.payload.floatValue);
+      break;
+    case 3:
+      _top = float(value.payload.floatValue);
+      break;
+    case 4:
+      _near = float(value.payload.floatValue);
+      break;
+    case 5:
+      _far = float(value.payload.floatValue);
+      break;
+    default:
+      CameraBase::setParam(index - 6, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_left);
+    case 1:
+      return Var(_right);
+    case 2:
+      return Var(_bottom);
+    case 3:
+      return Var(_top);
+    case 4:
+      return Var(_near);
+    case 5:
+      return Var(_far);
+    default:
+      return CameraBase::getParam(index - 6);
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+    const auto currentView = ctx->currentView();
+
+    float view[16];
+
+    if (input.valueType == CBType::Table) {
+      // this is the most efficient way to find items in table
+      // without hashing and possible allocations etc
+      CBTable table = input.payload.tableValue;
+      CBTableIterator it;
+      table.api->tableGetIterator(table, &it);
+      CBVar position{};
+      CBVar target{};
+      while (true) {
+        CBString k;
+        CBVar v;
+        if (!table.api->tableNext(table, &it, &k, &v))
+          break;
+
+        switch (k[0]) {
+        case 'P':
+          position = v;
+          break;
+        case 'T':
+          target = v;
+          break;
+        default:
+          break;
+        }
+      }
+
+      assert(position.valueType == CBType::Float3 &&
+             target.valueType == CBType::Float3);
+
+      bx::Vec3 *bp =
+          reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
+      bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
+      bx::mtxLookAt(view, *bp, *bt);
+    }
+
+    int width = _width != 0 ? _width : currentView.width;
+    int height = _height != 0 ? _height : currentView.height;
+
+    float proj[16];
+    bx::mtxOrtho(proj, _left, _right, _bottom, _top, _near, _far, 0.0,
+                 bgfx::getCaps()->homogeneousDepth);
+
+    if constexpr (CurrentRenderer == Renderer::OpenGL) {
+      // workaround for flipped Y render to textures
+      if (currentView.id > 0) {
+        proj[5] = -proj[5];
+        proj[8] = -proj[8];
+        proj[9] = -proj[9];
+      }
+    }
+
+    bgfx::setViewTransform(currentView.id,
+                           input.valueType == CBType::Table ? view : nullptr,
+                           proj);
+    bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
+                      uint16_t(width), uint16_t(height));
 
     return input;
   }
@@ -1630,8 +1808,7 @@ struct Draw : public BaseConsumer {
     }
   }
 
-  void screenSpaceQuad(float _textureWidth, float _textureHeight,
-                       float _width = 1.0f, float _height = 1.0f) {
+  void screenSpaceQuad(float width = 1.0f, float height = 1.0f) {
     if (3 == bgfx::getAvailTransientVertexBuffer(
                  3, PosColorTexCoord0Vertex::ms_layout)) {
       bgfx::TransientVertexBuffer vb;
@@ -1641,10 +1818,10 @@ struct Draw : public BaseConsumer {
 
       const float zz = 0.0f;
 
-      const float minx = -_width;
-      const float maxx = _width;
+      const float minx = -width;
+      const float maxx = width;
       const float miny = 0.0f;
-      const float maxy = _height * 2.0f;
+      const float maxy = height * 2.0f;
 
       const float minu = -1.0f;
       const float maxu = 1.0f;
@@ -1702,6 +1879,8 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(mat);
 
+    uint64_t depthFlags = 0;
+
     if (model) {
       std::visit(
           [](auto &m) {
@@ -1710,23 +1889,24 @@ struct Draw : public BaseConsumer {
             bgfx::setIndexBuffer(m.ib);
           },
           model->model);
-    } else {
-      screenSpaceQuad(float(currentView.width), float(currentView.height));
-    }
+      depthFlags = BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS;
 
-    auto culling = BGFX_STATE_CULL_CW;
-
-    if constexpr (CurrentRenderer == Renderer::OpenGL) {
-      // workaround for flipped Y render to textures
-      if (currentView.id > 0) {
-        culling = BGFX_STATE_CULL_CCW;
+      if constexpr (CurrentRenderer == Renderer::OpenGL) {
+        // workaround for flipped Y render to textures
+        if (currentView.id > 0) {
+          depthFlags |= BGFX_STATE_CULL_CCW;
+        } else {
+          depthFlags |= BGFX_STATE_CULL_CW;
+        }
+      } else {
+        depthFlags |= BGFX_STATE_CULL_CW;
       }
+    } else {
+      screenSpaceQuad();
     }
 
     // set state, (it's auto reset after submit)
-    uint64_t state = 0 | BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G |
-                     BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A |
-                     BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | culling;
+    uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | depthFlags;
     bgfx::setState(state);
 
     auto vtextures = _textures.get();
@@ -1892,10 +2072,7 @@ struct RenderTexture : public RenderTarget {
 
     // push _viewId
     ctx->pushView({_viewId, _width, _height});
-    DEFER({
-      ctx->popView();
-      assert(ctx->viewIndex() == _viewId);
-    });
+    DEFER({ ctx->popView(); });
 
     // Touch _viewId
     bgfx::touch(_viewId);
@@ -1959,6 +2136,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.ComputeShader", ComputeShader);
   REGISTER_CBLOCK("GFX.Model", Model);
   REGISTER_CBLOCK("GFX.Camera", Camera);
+  REGISTER_CBLOCK("GFX.CameraOrtho", CameraOrtho);
   REGISTER_CBLOCK("GFX.Draw", Draw);
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
 }
