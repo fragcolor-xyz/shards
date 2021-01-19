@@ -70,6 +70,8 @@ struct PlatformData {
   std::istream *sin;
   std::ostream *sout;
   std::ostream *serr;
+  std::vector<const char *> args;
+  int exit_code;
 };
 namespace WASI {
 typedef struct wasi_iovec_t {
@@ -269,15 +271,13 @@ m3ApiRawFunction(m3_wasi_unstable_args_get) {
 
   LOG(TRACE) << "WASI args_get";
 
-  if (runtime == NULL) {
-    m3ApiReturn(__WASI_ERRNO_INVAL);
-  }
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
-  for (u32 i = 0; i < runtime->argc; ++i) {
+  for (u32 i = 0; i < pd->args.size(); ++i) {
     m3ApiWriteMem32(&argv[i], m3ApiPtrToOffset(argv_buf));
 
-    size_t len = strlen(runtime->argv[i]);
-    memcpy(argv_buf, runtime->argv[i], len);
+    size_t len = strlen(pd->args[i]);
+    memcpy(argv_buf, pd->args[i], len);
     argv_buf += len;
     *argv_buf++ = 0;
   }
@@ -292,16 +292,14 @@ m3ApiRawFunction(m3_wasi_unstable_args_sizes_get) {
 
   LOG(TRACE) << "WASI args_sizes_get";
 
-  if (runtime == NULL) {
-    m3ApiReturn(__WASI_ERRNO_INVAL);
-  }
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
   __wasi_size_t buflen = 0;
-  for (u32 i = 0; i < runtime->argc; ++i) {
-    buflen += strlen(runtime->argv[i]) + 1;
+  for (u32 i = 0; i < pd->args.size(); ++i) {
+    buflen += strlen(pd->args[i]) + 1;
   }
 
-  m3ApiWriteMem32(argc, runtime->argc);
+  m3ApiWriteMem32(argc, pd->args.size());
   m3ApiWriteMem32(argv_buf_size, buflen);
 
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
@@ -905,7 +903,9 @@ m3ApiRawFunction(m3_wasi_unstable_proc_exit) {
 
   LOG(TRACE) << "WASI m3_wasi_unstable_proc_exit";
 
-  runtime->exit_code = code;
+  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+
+  pd->exit_code = code;
   m3ApiTrap(m3Err_trapExit);
 }
 
@@ -1150,6 +1150,7 @@ struct Run {
     _runtime.reset(m3_NewRuntime(_env.get(), _stackSize, &_data),
                    &m3_FreeRuntime);
     assert(_runtime.get());
+    assert(_runtime->userdata);
 
     std::ifstream wasmFile(p.string(), std::ios::binary);
     // apparently if we use std::copy we need to make sure this is set
@@ -1208,33 +1209,46 @@ struct Run {
       _data.serr = &serr;
       _data.sout = &sout;
 
-      _argsArray.clear();
+      M3Result result;
 
       // WASI modules need this
-      if (_entryPoint == "_start") {
+      if (_entryPoint != "_start") {
+        _argsArray.clear();
         _argsArray.push_back(_moduleFileName.c_str());
-      }
-
-      // add any arguments we have
-      auto argsVar = _arguments.get();
-      if (argsVar.valueType == Seq) {
-        IterableSeq args(argsVar.payload.seqValue);
-        for (auto &arg : args) {
-          _argsArray.push_back(arg.payload.stringValue);
+        // add any arguments we have
+        auto argsVar = _arguments.get();
+        if (argsVar.valueType == Seq) {
+          IterableSeq args(argsVar.payload.seqValue);
+          for (auto &arg : args) {
+            _argsArray.push_back(arg.payload.stringValue);
+          }
         }
-      }
 
-      auto result =
-          m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
+        result = m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
+      } else {
+        // assume _stary wasi
+        _data.args.clear();
+        _data.args.push_back(_moduleFileName.c_str());
+        // add any arguments we have
+        auto argsVar = _arguments.get();
+        if (argsVar.valueType == Seq) {
+          IterableSeq args(argsVar.payload.seqValue);
+          for (auto &arg : args) {
+            _data.args.push_back(arg.payload.stringValue);
+          }
+        }
+
+        result = m3_CallWithArgs(_mainFunc, 0, nullptr);
+      }
 
       if (result == m3Err_trapExit) {
-        if (_runtime->exit_code != 0) {
+        if (_data.exit_code != 0) {
           _serr.done();
           _sout.done();
           LOG(INFO) << _sout.str();
           LOG(ERROR) << _serr.str();
           std::string emsg("Wasm module run failed, exit code: " +
-                           std::to_string(_runtime->exit_code));
+                           std::to_string(_data.exit_code));
           throw ActivationError(emsg);
         }
       } else if (result) {
