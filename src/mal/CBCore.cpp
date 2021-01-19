@@ -807,6 +807,7 @@ BUILTIN("Node") {
   constBlock->setup(constBlock);                                               \
   constBlock->setParam(constBlock, 0, &_var_);                                 \
   auto mblock = new malCBlock(constBlock);                                     \
+  mblock->line = arg->line;                                                    \
   result.emplace_back(mblock);
 
 // Helper to generate const blocks automatically inferring types
@@ -893,7 +894,9 @@ malCBVarPtr varify(const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     CBVar var{};
-    return malCBVarPtr(new malCBVar(var));
+    auto v = new malCBVar(var);
+    v->line = arg->line;
+    return malCBVarPtr(v);
   } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
     auto &s = v->ref();
     CBVar var{};
@@ -901,6 +904,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     var.payload.stringValue = s.c_str();
     auto svar = new malCBVar(var);
     svar->reference(v);
+    svar->line = arg->line;
     return malCBVarPtr(svar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
@@ -912,7 +916,9 @@ malCBVarPtr varify(const malValuePtr &arg) {
       var.valueType = Float;
       var.payload.floatValue = value;
     }
-    return malCBVarPtr(new malCBVar(var));
+    auto res = new malCBVar(var);
+    res->line = arg->line;
+    return malCBVarPtr(res);
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     CBVar tmp{};
     tmp.valueType = Seq;
@@ -932,6 +938,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
     }
+    mvar->line = arg->line;
     return malCBVarPtr(mvar);
   } else if (const malHash *v = DYNAMIC_CAST(malHash, arg)) {
     chainblocks::CBMap cbMap;
@@ -951,25 +958,33 @@ malCBVarPtr varify(const malValuePtr &arg) {
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
     }
+    mvar->line = arg->line;
     return malCBVarPtr(mvar);
   } else if (arg == mal::trueValue()) {
     CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = true;
-    return malCBVarPtr(new malCBVar(var));
+    auto v = new malCBVar(var);
+    v->line = arg->line;
+    return malCBVarPtr(v);
   } else if (arg == mal::falseValue()) {
     CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = false;
-    return malCBVarPtr(new malCBVar(var));
+    auto v = new malCBVar(var);
+    v->line = arg->line;
+    return malCBVarPtr(v);
   } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
     CBVar var{};
     chainblocks::cloneVar(var, v->value());
-    return malCBVarPtr(new malCBVar(var, true));
+    auto res = new malCBVar(var, true);
+    res->line = arg->line;
+    return malCBVarPtr(res);
   } else if (malChainProvider *v = DYNAMIC_CAST(malChainProvider, arg)) {
     CBVar var = *v;
     auto providerVar = new malCBVar(var, false);
     providerVar->reference(v);
+    providerVar->line = arg->line;
     return malCBVarPtr(providerVar);
   } else if (malCBlock *v = DYNAMIC_CAST(malCBlock, arg)) {
     auto block = v->value();
@@ -979,6 +994,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     auto bvar = new malCBVar(var);
     v->consume();
     bvar->reference(v);
+    bvar->line = arg->line;
     return malCBVarPtr(bvar);
   } else if (malCBChain *v = DYNAMIC_CAST(malCBChain, arg)) {
     auto chain = v->value();
@@ -987,6 +1003,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     var.payload.chainValue = chain;
     auto cvar = new malCBVar(var);
     cvar->reference(v);
+    cvar->line = arg->line;
     return malCBVarPtr(cvar);
   } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
     return varify(v->deref());
@@ -1137,6 +1154,7 @@ malCBlock *makeVarBlock(malCBVar *v, const char *blockName) {
   b->setup(b);
   b->setParam(b, 0, &v->value());
   auto blk = new malCBlock(b);
+  blk->line = v->line;
   return blk;
 }
 

@@ -18,17 +18,17 @@ struct JointOp {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  static inline ParamsInfo joinOpParams = ParamsInfo(
-      ParamsInfo::Param(
-          "From",
-          CBCCSTR("The name of the sequence variable to edit in place."),
-          CoreInfo::AnyVarSeqType),
-      ParamsInfo::Param(
+  static inline Type anyVarSeq = Type::VariableOf(CoreInfo::AnySeqType);
+  static inline Type anyVarSeqSeq = Type::SeqOf(anyVarSeq);
 
-          "Join",
-          CBCCSTR("Other columns to join sort/filter using the input (they "
-                  "must be of the same length)."),
-          CoreInfo::AnyVarSeqType));
+  static inline Parameters joinOpParams{
+      {"From",
+       CBCCSTR("The name of the sequence variable to edit in place."),
+       {anyVarSeq}},
+      {"Join",
+       CBCCSTR("Other columns to join sort/filter using the input (they "
+               "must be of the same length)."),
+       {anyVarSeq, anyVarSeqSeq}}};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -140,20 +140,18 @@ struct Sort : public ActionJointOp {
 
   void setup() { blocksKeyFn._bu = this; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
+  static inline Parameters paramsInfo{
       joinOpParams,
-      ParamsInfo::Param(
-          "Desc",
-          CBCCSTR(
-              "If sorting should be in descending order, defaults ascending."),
-          CoreInfo::BoolType),
-      ParamsInfo::Param(
-          "Key",
-          CBCCSTR("The blocks to use to transform the collection's items "
-                  "before they are compared. Can be None."),
-          CoreInfo::BlocksOrNone));
+      {{"Desc",
+        CBCCSTR(
+            "If sorting should be in descending order, defaults ascending."),
+        {CoreInfo::BoolType}},
+       {"Key",
+        CBCCSTR("The blocks to use to transform the collection's items "
+                "before they are compared. Can be None."),
+        {CoreInfo::BlocksOrNone}}}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return paramsInfo; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -305,18 +303,18 @@ struct Sort : public ActionJointOp {
 struct Remove : public ActionJointOp {
   bool _fast = false;
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
+  static inline Parameters paramsInfo{
       joinOpParams,
-      ParamsInfo::Param("Predicate",
-                        CBCCSTR("The blocks to use as predicate, if true the "
-                                "item will be popped from the sequence."),
-                        CoreInfo::Blocks),
-      ParamsInfo::Param("Unordered",
-                        CBCCSTR("Turn on to remove items very quickly but will "
-                                "not preserve the sequence items order."),
-                        CoreInfo::BoolType));
+      {{"Predicate",
+        CBCCSTR("The blocks to use as predicate, if true the "
+                "item will be popped from the sequence."),
+        {CoreInfo::Blocks}},
+       {"Unordered",
+        CBCCSTR("Turn on to remove items very quickly but will "
+                "not preserve the sequence items order."),
+        {CoreInfo::BoolType}}}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return paramsInfo; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {

@@ -7,12 +7,13 @@
 #include "shared.hpp"
 
 namespace chainblocks {
+static Type condBlockSeqs = Type::SeqOf(CoreInfo::BlockSeqOrNone);
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(
         "Chains",
         CBCCSTR("A sequence of chains, interleaving condition test predicate "
                 "and action to execute if the condition matches."),
-        CoreInfo::BlockSeqOrNone),
+        condBlockSeqs),
     ParamsInfo::Param(
         "Passthrough",
         CBCCSTR("The input of this block will be the output. (default: true)"),

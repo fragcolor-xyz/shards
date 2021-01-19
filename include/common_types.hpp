@@ -87,23 +87,12 @@ struct CoreInfo {
 
   static inline Types RIndexables{{BytesType, StringType, AnySeqType}};
 
-  static inline Types FloatVectors{{
-      Float2Type,
-      Float2SeqType,
-      Float3Type,
-      Float3SeqType,
-      Float4Type,
-      Float4SeqType,
-  }};
+  static inline Types FloatVectors{{Float2Type, Float2SeqType, Float3Type,
+                                    Float3SeqType, Float4Type, Float4SeqType}};
   static inline Types FloatVectorsOrVar{FloatVectors,
-                                        {
-                                            Float2VarType,
-                                            Float2VarSeqType,
-                                            Float3VarType,
-                                            Float3VarSeqType,
-                                            Float4VarType,
-                                            Float4VarSeqType,
-                                        }};
+                                        {Float2VarType, Float2VarSeqType,
+                                         Float3VarType, Float3VarSeqType,
+                                         Float4VarType, Float4VarSeqType}};
 
   static inline Types IntOrNone{{IntType, NoneType}};
 
@@ -140,13 +129,12 @@ struct CoreInfo {
 
   static inline Types ColorOrNone{{ColorType, NoneType}};
 
-  static inline Types AnyNumbers{{
-      IntType,       IntSeqType,   Int2Type,      Int2SeqType,  Int3Type,
-      Int3SeqType,   Int4Type,     Int4SeqType,   Int8Type,     Int8SeqType,
-      Int16Type,     Int16SeqType, FloatType,     FloatSeqType, Float2Type,
-      Float2SeqType, Float3Type,   Float3SeqType, Float4Type,   Float4SeqType,
-      ColorType,     ColorSeqType,
-  }};
+  static inline Types AnyNumbers{
+      {IntType,       IntSeqType,   Int2Type,      Int2SeqType,  Int3Type,
+       Int3SeqType,   Int4Type,     Int4SeqType,   Int8Type,     Int8SeqType,
+       Int16Type,     Int16SeqType, FloatType,     FloatSeqType, Float2Type,
+       Float2SeqType, Float3Type,   Float3SeqType, Float4Type,   Float4SeqType,
+       ColorType,     ColorSeqType}};
 
   static inline Types StringOrBytesVarOrNone{
       {StringVarType, BytesVarType, NoneType}};

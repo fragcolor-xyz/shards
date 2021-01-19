@@ -1616,19 +1616,6 @@ bool validateSetParam(CBlock *block, int index, const CBVar &value,
     }
   }
 
-  // Failed until now but let's check if the type is a sequenced too
-  if (value.valueType == Seq) {
-    // Validate each type in the seq
-    for (uint32_t i = 0; value.payload.seqValue.len > i; i++) {
-      if (validateSetParam(block, index, value.payload.seqValue.elements[i],
-                           callback, userData)) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-  }
-
   std::string err("Parameter not accepting this kind of variable (" +
                   type2Name(value.valueType) + ")");
   callback(block, err.c_str(), false, userData);

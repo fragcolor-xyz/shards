@@ -100,20 +100,22 @@
                    (GFX.RenderTexture 256 256
                                       (->
                                        ; render the model
-                                       {"Position" (Float3 10 10 10)
+                                       {"Position" (Float3 5 5 5)
                                         "Target" (Float3 0 0 0)} (GFX.Camera)
-                                       identity (GFX.Draw :Shader .bump-shader :Textures .bump-textures :Model .cube)
-                                       ))
+                                       ; this model is not really idea, vertex layout is not correct
+                                       identity (GFX.Draw :Shader .bump-shader 
+                                                          :Textures .bump-textures
+                                                          :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
-                   
+
                    (GUI.SameLine)
 
                    (GFX.RenderTexture 64 64
                                       (->
                                        ; full screen quad pass
                                        nil (GFX.CameraOrtho) ; to set only projection
-                                       identity (GFX.Draw :Shader .shader) ; no model means full screen quad
-                                       ))
+                                       ; no model means full screen quad
+                                       identity (GFX.Draw :Shader .shader)))
                    (GUI.Image (Float2 1.0 1.0))
 
                    (GUI.ChildWindow
@@ -177,5 +179,5 @@
 (run Root 0.02 100)
 ;; (run Root 0.02)
 
-;; (schedule Root test-chain)
-;; (run Root 0.02 100)
+(schedule Root test-chain)
+(run Root 0.02 100)
