@@ -20,6 +20,9 @@ struct CoreInfo2 {
   static inline Type BasicTypesSeqType{
       {CBType::Seq, {.seqTypes = BasicTypesType}}};
   static inline Types BasicTypesTypes{{BasicTypesType, BasicTypesSeqType}};
+  static inline Type BasicTypesSeq = Type::SeqOf(BasicTypesTypes);
+  static inline Types BasicTypes{
+      {BasicTypesType, BasicTypesSeqType, BasicTypesSeq, CoreInfo::NoneType}};
 };
 
 struct Const {
@@ -1454,7 +1457,7 @@ struct Sequence : public SeqBase {
           CoreInfo::BoolType),
       ParamsInfo::Param("Types",
                         CBCCSTR("The sequence inner types to forward declare."),
-                        CoreInfo2::BasicTypesTypes));
+                        CoreInfo2::BasicTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
