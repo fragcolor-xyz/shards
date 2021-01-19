@@ -48,6 +48,10 @@
     ~[(Once
        ~[(LoadImage "../../assets/drawing.png")
          (GFX.Texture2D) >= .image1
+         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
+         (GFX.Texture2D :sRGB true) >> .bump-textures
+         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
+         (GFX.Texture2D) >> .bump-textures
          cube (GFX.Model
                :Layout [VertexAttribute.Position
                         VertexAttribute.Color0]) >= .cube
@@ -57,12 +61,12 @@
          (FS.Read :Bytes true) >= .fs_bytes
          (GFX.Shader :VertexShader .vs_bytes
                      :PixelShader .fs_bytes) >= .shader
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_update.bin")
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
          (FS.Read :Bytes true) > .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_update.bin")
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
          (FS.Read :Bytes true) > .fs_bytes
          (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .tex-shader
+                     :PixelShader .fs_bytes) >= .bump-shader
          false (Set "checkBoxie")])
       ; regular model render
       {"Position" (Float3 0 0 10)
@@ -96,9 +100,10 @@
                    (GFX.RenderTexture 256 256
                                       (->
                                        ; render the model
-                                       {"Position" (Float3 0 0 10)
+                                       {"Position" (Float3 10 10 10)
                                         "Target" (Float3 0 0 0)} (GFX.Camera)
-                                       identity (GFX.Draw :Shader .shader :Model .cube)))
+                                       identity (GFX.Draw :Shader .bump-shader :Textures .bump-textures :Model .cube)
+                                       ))
                    (GUI.Image (Float2 1.0 1.0))
                    
                    (GUI.SameLine)
@@ -172,5 +177,5 @@
 (run Root 0.02 100)
 ;; (run Root 0.02)
 
-(schedule Root test-chain)
-(run Root 0.02 100)
+;; (schedule Root test-chain)
+;; (run Root 0.02 100)
