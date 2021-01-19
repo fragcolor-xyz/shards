@@ -7,7 +7,7 @@
 #include "shared.hpp"
 
 namespace chainblocks {
-static Type condBlockSeqs = Type::SeqOf(CoreInfo::BlockSeqOrNone);
+static Type condBlockSeqs = Type::SeqOf(CoreInfo::BlocksOrNone);
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(
         "Chains",
