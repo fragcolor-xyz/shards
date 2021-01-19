@@ -127,14 +127,31 @@ struct Types {
 
   Types() {}
 
-  Types(std::initializer_list<CBTypeInfo> types) : _types(types) {}
+  Types(std::initializer_list<CBTypeInfo> types, bool addSelf = false)
+      : _types(types) {
+    if (addSelf) {
+      auto idx = _types.size();
+      // make sure the memory will stay valid
+      _types.resize(idx + 1);
+      // add self
+      _types[idx] = Type::SeqOf(CBTypesInfo(*this));
+    }
+  }
 
-  Types(const Types &others, std::initializer_list<CBTypeInfo> types) {
+  Types(const Types &others, std::initializer_list<CBTypeInfo> types,
+        bool addSelf = false) {
     for (auto &type : others._types) {
       _types.push_back(type);
     }
     for (auto &type : types) {
       _types.push_back(type);
+    }
+    if (addSelf) {
+      auto idx = _types.size();
+      // make sure the memory will stay valid
+      _types.resize(idx + 1);
+      // add self
+      _types[idx] = Type::SeqOf(CBTypesInfo(*this));
     }
   }
 
