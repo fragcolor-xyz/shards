@@ -417,8 +417,9 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
         for (uint32_t j = 0; j < b.seqTypes.len; j++) {
           // consider recursive self a match
           if (a.seqTypes.elements[i].recursiveSelf ==
-                  b.seqTypes.elements[j].recursiveSelf ||
-              a.seqTypes.elements[i] == b.seqTypes.elements[j])
+              b.seqTypes.elements[j].recursiveSelf)
+            goto matched_seq;
+          if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
             goto matched_seq;
         }
         return false;

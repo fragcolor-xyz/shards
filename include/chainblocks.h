@@ -402,11 +402,13 @@ struct CBTypeInfo {
 
   // used for Seq and Array only for now, to allow optimizations if the size is
   // known at compose time.
+  // Should not be considered when hashing this type
   uint32_t fixedSize;
   // Used by Array type, which is still not implemented properly and unstable.
   enum CBType innerType;
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
+  // Should not be considered when hashing this type
   CBBool recursiveSelf;
 };
 

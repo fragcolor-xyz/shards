@@ -1458,6 +1458,7 @@ uint64_t _deriveTypeHash(const CBVar &value);
 void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
   // this is not complete at all, missing Array and ContextVar for example
   XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
+  XXH3_64bits_update(state, &var.innerType, sizeof(var.innerType));
 
   switch (var.valueType) {
   case Object: {

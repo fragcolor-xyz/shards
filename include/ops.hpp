@@ -550,7 +550,6 @@ template <> struct hash<CBTypeInfo> {
     using std::string;
     auto res = hash<int>()(typeInfo.basicType);
     res = res ^ hash<int>()(typeInfo.innerType);
-    res = res ^ hash<uint32_t>()(typeInfo.fixedSize);
     if (typeInfo.basicType == Table) {
       if (typeInfo.table.keys.elements) {
         for (uint32_t i = 0; i < typeInfo.table.keys.len; i++) {
