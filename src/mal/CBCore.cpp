@@ -526,7 +526,7 @@ struct ChainFileWatcher {
         }
       } catch (const std::exception &e) {
         LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
-        throw e;
+        throw;
       } catch (...) {
         LOG(ERROR) << "Failed to init ChainFileWatcher.";
         throw;
