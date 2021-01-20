@@ -1538,6 +1538,7 @@ uint64_t deriveTypeHash(const CBTypeInfo &value);
 
 void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
   XXH3_64bits_update(state, &t.basicType, sizeof(t.basicType));
+  XXH3_64bits_update(state, &t.innerType, sizeof(t.innerType));
 
   switch (t.basicType) {
   case Object: {
