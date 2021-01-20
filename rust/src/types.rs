@@ -378,6 +378,7 @@ pub mod common_type {
       },
       fixedSize: 0,
       innerType: CBType_None,
+      recursiveSelf: false,
     }
   }
 
@@ -410,6 +411,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         innerType: CBType_None,
+        recursiveSelf: false,
       };
 
       pub static $name_table: CBTypeInfo = CBTypeInfo {
@@ -430,6 +432,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         innerType: CBType_None,
+        recursiveSelf: false,
       };
 
       pub static $name_var: CBTypeInfo = CBTypeInfo {
@@ -443,6 +446,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         innerType: CBType_None,
+        recursiveSelf: false,
       };
 
       pub static $name_table_var: CBTypeInfo = CBTypeInfo {
@@ -456,6 +460,7 @@ pub mod common_type {
         },
         fixedSize: 0,
         innerType: CBType_None,
+        recursiveSelf: false,
       };
     };
   }
@@ -556,6 +561,7 @@ impl Type {
       },
       fixedSize: 0,
       innerType: CBType_None,
+      recursiveSelf: false,
     }
   }
 
@@ -567,6 +573,7 @@ impl Type {
       },
       fixedSize: 0,
       innerType: CBType_None,
+      recursiveSelf: false,
     }
   }
 
@@ -589,6 +596,7 @@ impl Type {
       },
       fixedSize: 0,
       innerType: CBType_None,
+      recursiveSelf: false,
     }
   }
 }

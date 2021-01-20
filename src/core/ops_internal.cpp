@@ -1,5 +1,6 @@
 #include "ops_internal.hpp"
 #include "ops.hpp"
+#include <unordered_set>
 
 MAKE_LOGGABLE(CBVar, var, os) {
   switch (var.valueType) {
@@ -189,7 +190,12 @@ MAKE_LOGGABLE(CBTypeInfo, t, os) {
   if (t.basicType == CBType::Seq) {
     os << " [";
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
-      os << "(" << t.seqTypes.elements[i] << ")";
+      // avoid recursive types
+      if (t.seqTypes.elements[i].recursiveSelf) {
+        os << "(Self)";
+      } else {
+        os << "(" << t.seqTypes.elements[i] << ")";
+      }
       if (i < (t.seqTypes.len - 1)) {
         os << " ";
       }
@@ -209,7 +215,11 @@ MAKE_LOGGABLE(CBTypeInfo, t, os) {
     } else {
       os << " [";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
-        os << "(" << t.table.types.elements[i] << ")";
+        if (t.table.types.elements[i].recursiveSelf) {
+          os << "(Self)";
+        } else {
+          os << "(" << t.table.types.elements[i] << ")";
+        }
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
@@ -230,4 +240,230 @@ MAKE_LOGGABLE(CBTypesInfo, ts, os) {
   }
   os << "]";
   return os;
+}
+
+bool _seqEq(const CBVar &a, const CBVar &b) {
+  if (a.payload.seqValue.elements == b.payload.seqValue.elements)
+    return true;
+
+  if (a.payload.seqValue.len != b.payload.seqValue.len)
+    return false;
+
+  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
+    const auto &suba = a.payload.seqValue.elements[i];
+    const auto &subb = b.payload.seqValue.elements[i];
+    if (suba != subb)
+      return false;
+  }
+
+  return true;
+}
+
+bool _tableEq(const CBVar &a, const CBVar &b) {
+  auto &ta = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
+  if (ta.opaque == tb.opaque)
+    return true;
+
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
+    return false;
+
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    if (v != bval) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool _seqLess(const CBVar &a, const CBVar &b) {
+  auto alen = a.payload.seqValue.len;
+  auto blen = b.payload.seqValue.len;
+  auto len = std::min(alen, blen);
+
+  for (uint32_t i = 0; i < len; i++) {
+    auto c =
+        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+  }
+
+  if (alen < blen)
+    return true;
+  else
+    return false;
+}
+
+bool _tableLess(const CBVar &a, const CBVar &b) {
+  auto &ta = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
+  if (ta.opaque == tb.opaque)
+    return false;
+
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
+    return false;
+
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  size_t len = 0;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    auto c = cmp(v, bval);
+    if (c < 0) {
+      return true;
+    } else if (c > 0) {
+      return false;
+    }
+    len++;
+  }
+
+  if (ta.api->tableSize(ta) < len)
+    return true;
+  else
+    return false;
+}
+
+bool _seqLessEq(const CBVar &a, const CBVar &b) {
+  auto alen = a.payload.seqValue.len;
+  auto blen = b.payload.seqValue.len;
+  auto len = std::min(alen, blen);
+
+  for (uint32_t i = 0; i < len; i++) {
+    auto c =
+        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    if (c < 0)
+      return true;
+    else if (c > 0)
+      return false;
+  }
+
+  if (alen <= blen)
+    return true;
+  else
+    return false;
+}
+
+bool _tableLessEq(const CBVar &a, const CBVar &b) {
+  auto &ta = a.payload.tableValue;
+  auto &tb = b.payload.tableValue;
+  if (ta.opaque == tb.opaque)
+    return false;
+
+  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
+    return false;
+
+  CBTableIterator it;
+  ta.api->tableGetIterator(ta, &it);
+  CBString k;
+  CBVar v;
+  size_t len = 0;
+  while (ta.api->tableNext(ta, &it, &k, &v)) {
+    if (!tb.api->tableContains(tb, k)) {
+      return false;
+    }
+    auto &bval = *tb.api->tableAt(tb, k);
+    auto c = cmp(v, bval);
+    if (c < 0) {
+      return true;
+    } else if (c > 0) {
+      return false;
+    }
+    len++;
+  }
+
+  if (ta.api->tableSize(ta) <= len)
+    return true;
+  else
+    return false;
+}
+
+bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
+  if (a.basicType != b.basicType)
+    return false;
+  switch (a.basicType) {
+  case Object:
+    if (a.object.vendorId != b.object.vendorId)
+      return false;
+    return a.object.typeId == b.object.typeId;
+  case Enum:
+    if (a.enumeration.vendorId != b.enumeration.vendorId)
+      return false;
+    return a.enumeration.typeId == b.enumeration.typeId;
+  case Seq: {
+    if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
+      return true;
+
+    if (a.seqTypes.elements && b.seqTypes.elements) {
+      if (a.seqTypes.len != b.seqTypes.len)
+        return false;
+      // compare but allow different orders of elements
+      for (uint32_t i = 0; i < a.seqTypes.len; i++) {
+        for (uint32_t j = 0; j < b.seqTypes.len; j++) {
+          // consider recursive self a match
+          if (a.seqTypes.elements[i].recursiveSelf ==
+                  b.seqTypes.elements[j].recursiveSelf ||
+              a.seqTypes.elements[i] == b.seqTypes.elements[j])
+            goto matched_seq;
+        }
+        return false;
+      matched_seq:
+        continue;
+      }
+    } else {
+      return false;
+    }
+
+    return true;
+  }
+  case Table: {
+    auto atypes = a.table.types.len;
+    auto btypes = b.table.types.len;
+    if (atypes != btypes)
+      return false;
+
+    auto akeys = a.table.keys.len;
+    auto bkeys = b.table.keys.len;
+    if (akeys != bkeys)
+      return false;
+
+    // compare but allow different orders of elements
+    for (uint32_t i = 0; i < atypes; i++) {
+      for (uint32_t j = 0; j < btypes; j++) {
+        if (a.table.types.elements[i] == b.table.types.elements[j]) {
+          if (a.table.keys.elements) { // this is enough to know they exist
+            if (strcmp(a.table.keys.elements[i], b.table.keys.elements[j]) ==
+                0) {
+              goto matched_table;
+            }
+          } else {
+            goto matched_table;
+          }
+        }
+      }
+      return false;
+    matched_table:
+      continue;
+    }
+    return true;
+  }
+  default:
+    return true;
+  }
+  return true;
 }

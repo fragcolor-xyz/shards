@@ -135,6 +135,7 @@ struct Types {
       _types.resize(idx + 1);
       // add self
       _types[idx] = Type::SeqOf(CBTypesInfo(*this));
+      _types[idx].recursiveSelf = true;
     }
   }
 
@@ -152,6 +153,7 @@ struct Types {
       _types.resize(idx + 1);
       // add self
       _types[idx] = Type::SeqOf(CBTypesInfo(*this));
+      _types[idx].recursiveSelf = true;
     }
   }
 

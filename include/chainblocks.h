@@ -405,6 +405,9 @@ struct CBTypeInfo {
   uint32_t fixedSize;
   // Used by Array type, which is still not implemented properly and unstable.
   enum CBType innerType;
+  // used internally to make our live easy when types are recursive (aka Self is
+  // inside the seqTypes or so)
+  CBBool recursiveSelf;
 };
 
 // if outData is NULL will just give you a valid outLen

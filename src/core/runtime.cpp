@@ -1557,11 +1557,17 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
                        stack_allocator<uint64_t>>
         types;
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
-      // first derive the hash of the full type, mix only once per type
-      auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
-      if (!types.count(typeHash)) {
-        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
-        types.insert(typeHash);
+      if (t.seqTypes.elements[i].recursiveSelf) {
+        // just mix a integer to flag recursive self
+        uint32_t selfRecursive = UINT32_MAX;
+        XXH3_64bits_update(state, &selfRecursive, sizeof(uint32_t));
+      } else {
+        // first derive the hash of the full type, mix only once per type
+        auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
+        if (!types.count(typeHash)) {
+          XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
+          types.insert(typeHash);
+        }
       }
     }
     break;

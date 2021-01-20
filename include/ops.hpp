@@ -104,7 +104,7 @@ ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
 
-inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
+bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
 
 inline int cmp(const CBVar &a, const CBVar &b) {
@@ -116,50 +116,9 @@ inline int cmp(const CBVar &a, const CBVar &b) {
     return 1;
 }
 
-// recursive, likely not inlining
-inline bool _seqEq(const CBVar &a, const CBVar &b) {
-  if (a.payload.seqValue.elements == b.payload.seqValue.elements)
-    return true;
+bool _seqEq(const CBVar &a, const CBVar &b);
 
-  if (a.payload.seqValue.len != b.payload.seqValue.len)
-    return false;
-
-  for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-    const auto &suba = a.payload.seqValue.elements[i];
-    const auto &subb = b.payload.seqValue.elements[i];
-    if (suba != subb)
-      return false;
-  }
-
-  return true;
-}
-
-// recursive, likely not inlining
-inline bool _tableEq(const CBVar &a, const CBVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return true;
-
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
-
-  CBTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    auto &bval = *tb.api->tableAt(tb, k);
-    if (v != bval) {
-      return false;
-    }
-  }
-
-  return true;
-}
+bool _tableEq(const CBVar &a, const CBVar &b);
 
 ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
@@ -327,61 +286,9 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   return false;
 }
 
-// recursive, likely not inlining
-inline bool _seqLess(const CBVar &a, const CBVar &b) {
-  auto alen = a.payload.seqValue.len;
-  auto blen = b.payload.seqValue.len;
-  auto len = std::min(alen, blen);
+bool _seqLess(const CBVar &a, const CBVar &b);
 
-  for (uint32_t i = 0; i < len; i++) {
-    auto c =
-        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
-
-  if (alen < blen)
-    return true;
-  else
-    return false;
-}
-
-// recursive, likely not inlining
-inline bool _tableLess(const CBVar &a, const CBVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return false;
-
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
-
-  CBTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
-  size_t len = 0;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    auto &bval = *tb.api->tableAt(tb, k);
-    auto c = cmp(v, bval);
-    if (c < 0) {
-      return true;
-    } else if (c > 0) {
-      return false;
-    }
-    len++;
-  }
-
-  if (ta.api->tableSize(ta) < len)
-    return true;
-  else
-    return false;
-}
+bool _tableLess(const CBVar &a, const CBVar &b);
 
 // avoid trying to be smart with SIMDs here
 // compiler will outsmart us likely anyway.
@@ -491,59 +398,9 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   }
 }
 
-inline bool _seqLessEq(const CBVar &a, const CBVar &b) {
-  auto alen = a.payload.seqValue.len;
-  auto blen = b.payload.seqValue.len;
-  auto len = std::min(alen, blen);
+bool _seqLessEq(const CBVar &a, const CBVar &b);
 
-  for (uint32_t i = 0; i < len; i++) {
-    auto c =
-        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
-    if (c < 0)
-      return true;
-    else if (c > 0)
-      return false;
-  }
-
-  if (alen <= blen)
-    return true;
-  else
-    return false;
-}
-
-inline bool _tableLessEq(const CBVar &a, const CBVar &b) {
-  auto &ta = a.payload.tableValue;
-  auto &tb = b.payload.tableValue;
-  if (ta.opaque == tb.opaque)
-    return false;
-
-  if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
-    return false;
-
-  CBTableIterator it;
-  ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
-  size_t len = 0;
-  while (ta.api->tableNext(ta, &it, &k, &v)) {
-    if (!tb.api->tableContains(tb, k)) {
-      return false;
-    }
-    auto &bval = *tb.api->tableAt(tb, k);
-    auto c = cmp(v, bval);
-    if (c < 0) {
-      return true;
-    } else if (c > 0) {
-      return false;
-    }
-    len++;
-  }
-
-  if (ta.api->tableSize(ta) <= len)
-    return true;
-  else
-    return false;
-}
+bool _tableLessEq(const CBVar &a, const CBVar &b);
 
 ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   if (a.valueType != b.valueType)
@@ -656,78 +513,6 @@ ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) {
   return b <= a;
 }
 
-inline bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
-  if (a.basicType != b.basicType)
-    return false;
-  switch (a.basicType) {
-  case Object:
-    if (a.object.vendorId != b.object.vendorId)
-      return false;
-    return a.object.typeId == b.object.typeId;
-  case Enum:
-    if (a.enumeration.vendorId != b.enumeration.vendorId)
-      return false;
-    return a.enumeration.typeId == b.enumeration.typeId;
-  case Seq: {
-    if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
-      return true;
-
-    if (a.seqTypes.elements && b.seqTypes.elements) {
-      if (a.seqTypes.len != b.seqTypes.len)
-        return false;
-      // compare but allow different orders of elements
-      for (uint32_t i = 0; i < a.seqTypes.len; i++) {
-        for (uint32_t j = 0; j < b.seqTypes.len; j++) {
-          if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
-            goto matched_seq;
-        }
-        return false;
-      matched_seq:
-        continue;
-      }
-    } else {
-      return false;
-    }
-
-    return true;
-  }
-  case Table: {
-    auto atypes = a.table.types.len;
-    auto btypes = b.table.types.len;
-    if (atypes != btypes)
-      return false;
-
-    auto akeys = a.table.keys.len;
-    auto bkeys = b.table.keys.len;
-    if (akeys != bkeys)
-      return false;
-
-    // compare but allow different orders of elements
-    for (uint32_t i = 0; i < atypes; i++) {
-      for (uint32_t j = 0; j < btypes; j++) {
-        if (a.table.types.elements[i] == b.table.types.elements[j]) {
-          if (a.table.keys.elements) { // this is enough to know they exist
-            if (strcmp(a.table.keys.elements[i], b.table.keys.elements[j]) ==
-                0) {
-              goto matched_table;
-            }
-          } else {
-            goto matched_table;
-          }
-        }
-      }
-      return false;
-    matched_table:
-      continue;
-    }
-    return true;
-  }
-  default:
-    return true;
-  }
-  return true;
-}
-
 inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) {
   return !(a == b);
 }
@@ -764,6 +549,8 @@ template <> struct hash<CBTypeInfo> {
     using std::size_t;
     using std::string;
     auto res = hash<int>()(typeInfo.basicType);
+    res = res ^ hash<int>()(typeInfo.innerType);
+    res = res ^ hash<uint32_t>()(typeInfo.fixedSize);
     if (typeInfo.basicType == Table) {
       if (typeInfo.table.keys.elements) {
         for (uint32_t i = 0; i < typeInfo.table.keys.len; i++) {
@@ -777,7 +564,11 @@ template <> struct hash<CBTypeInfo> {
       }
     } else if (typeInfo.basicType == Seq) {
       for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
-        res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+        if (typeInfo.seqTypes.elements[i].recursiveSelf) {
+          res = res ^ hash<int>()(INT32_MAX);
+        } else {
+          res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+        }
       }
     } else if (typeInfo.basicType == Object) {
       res = res ^ hash<int>()(typeInfo.object.vendorId);
