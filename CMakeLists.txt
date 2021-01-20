@@ -110,11 +110,6 @@ else()
   if(EMSCRIPTEN_NODEFS)
     add_link_options(-lnodefs.js)
   endif()
-
-  ## webxr
-  if(NOT BUILD_CORE_ONLY)
-    add_subdirectory(${CHAINBLOCKS_DIR}/deps/emscripten-webxr)
-  endif()
 endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
