@@ -61,6 +61,3 @@
 [submodule "deps/Catch2"]
 	path = deps/Catch2
 	url = https://github.com/chainblocks/Catch2.git
-[submodule "deps/emscripten-webxr"]
-	path = deps/emscripten-webxr
-	url = https://github.com/chainblocks/emscripten-webxr.git
