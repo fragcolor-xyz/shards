@@ -2113,13 +2113,15 @@ struct RenderXR : public RenderTarget {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
   function window.cb_emscripten_wait_webxr_dialog = async function() { ... }
-  that shows a dialog the user has to accept and start a session like: let
-  glCanvas = document.getElementById('canvas'); // this is our already used SDL
-  canvas let gl = glCanvas.getContext('webgl'); // this is our already created
-  bgfx context let session = await navigator.xr.requestSession('immersive-vr');
-  let layer = new XRWebGLLayer(session, gl); // if we are here we know it's
-  defined session.updateRenderState({ baseLayer: layer }); resolve to true if
-  this is done, false otherwise.
+  that shows a dialog the user has to accept and start a session like:
+
+  let glCanvas = document.getElementById('canvas'); // this is SDL canvas
+  canvas let gl = glCanvas.getContext('webgl'); // this is our bgfx context
+  let session = await navigator.xr.requestSession('immersive-vr');
+  let layer = new XRWebGLLayer(session, gl);
+  session.updateRenderState({ baseLayer: layer });
+
+  resolve to true if this is done, false otherwise.
   */
 
   bool _vrEnabled{false};
@@ -2153,7 +2155,6 @@ struct RenderXR : public RenderTarget {
   void cleanup() {
     if (_vrEnabled) {
 #ifdef __EMSCRIPTEN__
-      // webxr_request_exit();
 #endif
     }
   }
