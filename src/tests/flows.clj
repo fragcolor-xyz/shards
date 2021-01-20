@@ -178,3 +178,29 @@
   (Msg "Done")))
 
 (run Root 0.1)
+
+(def test-case-step
+  (Chain
+   "test-case-step"
+   :Looped
+   (Get "x" :Default 0)
+   (Math.Inc) >= .x
+   (Log "x")))
+
+(prepare test-case-step)
+(start test-case-step)
+(tick test-case-step)
+(tick test-case-step)
+
+(schedule
+ Root
+ (Chain
+  "continue-stepping"
+  :Looped
+  (Step test-case-step)
+  (Assert.Is 3 true)
+  (Msg "Done")
+  (Stop)))
+
+(run Root 0.1)
+          
