@@ -25,6 +25,34 @@
 
 INITIALIZE_EASYLOGGINGPP
 
+#ifdef __EMSCRIPTEN__
+// clang-format off
+EM_JS(void, cb_emscripten_init, (), {
+  // inject some of our types
+  if(typeof globalThis.ChainblocksBonder === 'undefined') {
+    globalThis.ChainblocksBonder = class ChainblocksBonder {
+      constructor(promise) {
+        this.finished = false;
+        this.hadErrors = false;
+        this.promise = promise;
+        this.result = null;
+      }
+
+      async run() {
+        try {
+          this.result = await this.promise;
+        } catch (err) {
+          console.error(err);
+          this.hadErrors = true;
+        }
+        this.finished = true;
+      }
+    };
+  }
+});
+// clang-format on
+#endif
+
 namespace chainblocks {
 #ifdef CB_COMPRESSED_STRINGS
 CBOptionalString getCompiledCompressedString(uint32_t id) {
@@ -260,6 +288,10 @@ void registerCoreBlocks() {
 
   // set root path as current directory
   std::filesystem::current_path(Globals::RootPath);
+
+#ifdef __EMSCRIPTEN__
+  cb_emscripten_init();
+#endif
 }
 
 CBlock *createBlock(std::string_view name) {

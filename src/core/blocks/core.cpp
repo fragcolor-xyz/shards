@@ -1712,47 +1712,33 @@ CBVar emscriptenEvalActivation(const CBVar &input) {
   return Var(str);
 }
 
-// clang-format off
-EM_JS(char *, cb_emscripten_eval_async, (const char *code), {
-  return Asyncify.handleAsync(async() => {
-    try {
-      const scode = UTF8ToString(code);
-      const promise = eval(scode);
-      var result = await promise;
-      // if undefined just return null
-      if(result === undefined) {
-        return 0;
-      }
-      // if not undefined return a string
-      if(typeof(result) !== "string") {
-        result = JSON.stringify(result);
-      }
-      var len = lengthBytesUTF8(result) + 1;
-      var buffer = _malloc(len);
-      stringToUTF8(result, buffer, len);
-      return buffer;
-    } catch (error) {
-      console.error(error);
-      return -1;
-    }
-  });
-});
-// clang-format on
+struct EmscriptenAsyncEval {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-CBVar emscriptenEvalAsyncActivation(const CBVar &input) {
-  static thread_local std::string str;
-  auto res = cb_emscripten_eval_async(input.payload.stringValue);
-  const auto check = reinterpret_cast<intptr_t>(res);
-  if (check == -1) {
-    throw ActivationError("Failure on the javascript side, check console");
+  CBVar activate(CBContext *context, const CBVar &input) {
+    static thread_local std::string str;
+    const static emscripten::val eval = emscripten::val::global("eval");
+    const static emscripten::val futs =
+        emscripten::val::global("ChainblocksBonder");
+    emscripten::val promise = eval(emscripten::val(input.payload.stringValue));
+    emscripten::val fut = futs.new_(promise);
+    fut.call<void>("run");
+
+    while (!fut["finished"].as<bool>()) {
+      suspend(context, 0.0);
+    }
+
+    if (fut["hadErrors"].as<bool>()) {
+      throw ActivationError("A javascript async task has failed, check the "
+                            "console for more informations.");
+    }
+
+    str = fut["result"].as<std::string>();
+
+    return Var(str);
   }
-  str.clear();
-  if (res) {
-    str.assign(res);
-    free(res);
-  }
-  return Var(str);
-}
+};
 #endif
 
 void registerBlocksCoreBlocks() {
@@ -1881,12 +1867,8 @@ void registerBlocksCoreBlocks() {
                   CoreInfo::StringType>;
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
-
-  using EmscriptenEvalAsyncBlock =
-      LambdaBlock<emscriptenEvalAsyncActivation, CoreInfo::StringType,
-                  CoreInfo::StringType>;
   // _ prefix = internal block
-  REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenEvalAsyncBlock);
+  REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenAsyncEval);
 #endif
 
   REGISTER_CBLOCK("Return", Return);

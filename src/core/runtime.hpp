@@ -31,6 +31,10 @@ using CBDuration = std::chrono::duration<double>;
 #include <time.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/val.h>
+#endif
+
 #define CB_SUSPEND(_ctx_, _secs_)                                              \
   const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_);             \
   if (_suspend_state != CBChainState::Continue)                                \
@@ -145,6 +149,7 @@ bool validateSetParam(CBlock *block, int index, const CBVar &value,
 
 #include "blocks/core.hpp"
 #include "blocks/math.hpp"
+
 namespace chainblocks {
 
 void installSignalHandlers();

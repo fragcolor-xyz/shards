@@ -2086,14 +2086,14 @@ struct RenderTexture : public RenderTarget {
 
 #ifdef __EMSCRIPTEN__
 // clang-format off
-EM_JS(bool, cb_emscripten_wait_webxr_dialog, (), {
+EM_JS(bool, cb_emscripten_webxr_wait_dialog, (), {
   return Asyncify.handleAsync(async() => {
     console.log("Stop here and ask for XR permissions...");
     return await(window.chainblocks_webxr_dialog_open());;
   });
 });
 
-EM_JS(bool, cb_emscripten_check_webxr_supported, (), {
+EM_JS(bool, cb_emscripten_webxr_check_supported, (), {
   return Asyncify.handleAsync(async() => {
     if(typeof navigator !== 'undefined') {
       if(typeof navigator.xr !== 'undefined') {
@@ -2104,6 +2104,12 @@ EM_JS(bool, cb_emscripten_check_webxr_supported, (), {
     } else {
       return false;
     }
+  });
+});
+
+EM_JS(void, cb_emscripten_webxr_end, (), {
+  Asyncify.handleAsync(async() => {
+    await window.chainblocks.xrSession.end();
   });
 });
 // clang-format on
@@ -2136,9 +2142,9 @@ struct RenderXR : public RenderTarget {
 
   void warmup(CBContext *context) {
 #ifdef __EMSCRIPTEN__
-    auto xrSupported = cb_emscripten_check_webxr_supported();
+    auto xrSupported = cb_emscripten_webxr_check_supported();
     if (xrSupported) {
-      if (!cb_emscripten_wait_webxr_dialog()) {
+      if (!cb_emscripten_webxr_wait_dialog()) {
         LOG(WARNING) << "Failed to enable WebXR.";
         _vrEnabled = false;
       } else {
@@ -2155,6 +2161,7 @@ struct RenderXR : public RenderTarget {
   void cleanup() {
     if (_vrEnabled) {
 #ifdef __EMSCRIPTEN__
+      cb_emscripten_webxr_end();
 #endif
     }
   }
