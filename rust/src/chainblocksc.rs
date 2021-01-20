@@ -10,10 +10,8 @@ pub const __MINGW64_VERSION_RC: u32 = 0;
 pub const __MINGW64_VERSION_STATE: &'static [u8; 6usize] = b"alpha\0";
 pub const __MINGW32_MAJOR_VERSION: u32 = 3;
 pub const __MINGW32_MINOR_VERSION: u32 = 11;
-pub const _M_AMD64: u32 = 100;
-pub const _M_X64: u32 = 100;
-pub const __: u32 = 1;
-pub const __MINGW_USE_UNDERSCORE_PREFIX: u32 = 0;
+pub const _M_IX86: u32 = 300;
+pub const __MINGW_USE_UNDERSCORE_PREFIX: u32 = 1;
 pub const __MINGW_HAVE_ANSI_C99_PRINTF: u32 = 1;
 pub const __MINGW_HAVE_WIDE_C99_PRINTF: u32 = 1;
 pub const __MINGW_HAVE_ANSI_C99_SCANF: u32 = 1;
@@ -76,17 +74,17 @@ pub const UINT_FAST8_MAX: u32 = 255;
 pub const UINT_FAST16_MAX: u32 = 65535;
 pub const UINT_FAST32_MAX: u32 = 4294967295;
 pub const UINT_FAST64_MAX: i32 = -1;
-pub const INTPTR_MIN: i64 = -9223372036854775808;
-pub const INTPTR_MAX: u64 = 9223372036854775807;
-pub const UINTPTR_MAX: i32 = -1;
+pub const INTPTR_MIN: i32 = -2147483648;
+pub const INTPTR_MAX: u32 = 2147483647;
+pub const UINTPTR_MAX: u32 = 4294967295;
 pub const INTMAX_MIN: i64 = -9223372036854775808;
 pub const INTMAX_MAX: u64 = 9223372036854775807;
 pub const UINTMAX_MAX: i32 = -1;
-pub const PTRDIFF_MIN: i64 = -9223372036854775808;
-pub const PTRDIFF_MAX: u64 = 9223372036854775807;
+pub const PTRDIFF_MIN: i32 = -2147483648;
+pub const PTRDIFF_MAX: u32 = 2147483647;
 pub const SIG_ATOMIC_MIN: i32 = -2147483648;
 pub const SIG_ATOMIC_MAX: u32 = 2147483647;
-pub const SIZE_MAX: i32 = -1;
+pub const SIZE_MAX: u32 = 4294967295;
 pub const WCHAR_MIN: u32 = 0;
 pub const WCHAR_MAX: u32 = 65535;
 pub const WINT_MIN: u32 = 0;
@@ -102,26 +100,24 @@ pub const CBVAR_FLAGS_REF_COUNTED: u32 = 2;
 pub const CHAINBLOCKS_CURRENT_ABI: u32 = 538968321;
 pub const CHAINBLOCKS_CURRENT_ABI_STR: &'static [u8; 11usize] = b"0x20200101\0";
 pub const CB_DEBUG_MODE: u32 = 1;
-pub type size_t = ::std::os::raw::c_ulonglong;
+pub type size_t = ::std::os::raw::c_uint;
 pub type wchar_t = ::std::os::raw::c_ushort;
 #[repr(C)]
-#[repr(align(16))]
 #[derive(Debug, Default, Copy, Clone)]
 pub struct max_align_t {
     pub __clang_max_align_nonce1: ::std::os::raw::c_longlong,
-    pub __bindgen_padding_0: u64,
-    pub __clang_max_align_nonce2: u128,
+    pub __clang_max_align_nonce2: f64,
 }
 #[test]
 fn bindgen_test_layout_max_align_t() {
     assert_eq!(
         ::core::mem::size_of::<max_align_t>(),
-        32usize,
+        24usize,
         concat!("Size of: ", stringify!(max_align_t))
     );
     assert_eq!(
         ::core::mem::align_of::<max_align_t>(),
-        16usize,
+        8usize,
         concat!("Alignment of ", stringify!(max_align_t))
     );
     assert_eq!(
@@ -140,7 +136,7 @@ fn bindgen_test_layout_max_align_t() {
         unsafe {
             &(*(::core::ptr::null::<max_align_t>())).__clang_max_align_nonce2 as *const _ as usize
         },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(max_align_t),
@@ -157,14 +153,14 @@ extern "C" {
 extern "C" {
     pub fn __mingw_get_crt_info() -> *const ::std::os::raw::c_char;
 }
-pub type ssize_t = ::std::os::raw::c_longlong;
+pub type ssize_t = ::std::os::raw::c_int;
 pub type rsize_t = size_t;
 pub type wint_t = ::std::os::raw::c_ushort;
 pub type wctype_t = ::std::os::raw::c_ushort;
 pub type errno_t = ::std::os::raw::c_int;
 pub type __time32_t = ::std::os::raw::c_long;
 pub type __time64_t = ::std::os::raw::c_longlong;
-pub type time_t = __time64_t;
+pub type time_t = __time32_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct threadmbcinfostruct {
@@ -187,12 +183,12 @@ pub struct localeinfo_struct {
 fn bindgen_test_layout_localeinfo_struct() {
     assert_eq!(
         ::core::mem::size_of::<localeinfo_struct>(),
-        16usize,
+        8usize,
         concat!("Size of: ", stringify!(localeinfo_struct))
     );
     assert_eq!(
         ::core::mem::align_of::<localeinfo_struct>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(localeinfo_struct))
     );
     assert_eq!(
@@ -207,7 +203,7 @@ fn bindgen_test_layout_localeinfo_struct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<localeinfo_struct>())).mbcinfo as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(localeinfo_struct),
@@ -309,7 +305,7 @@ pub struct threadlocaleinfostruct__bindgen_ty_1 {
 fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
     assert_eq!(
         ::core::mem::size_of::<threadlocaleinfostruct__bindgen_ty_1>(),
-        32usize,
+        16usize,
         concat!(
             "Size of: ",
             stringify!(threadlocaleinfostruct__bindgen_ty_1)
@@ -317,7 +313,7 @@ fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
     );
     assert_eq!(
         ::core::mem::align_of::<threadlocaleinfostruct__bindgen_ty_1>(),
-        8usize,
+        4usize,
         concat!(
             "Alignment of ",
             stringify!(threadlocaleinfostruct__bindgen_ty_1)
@@ -341,7 +337,7 @@ fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
             &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).wlocale as *const _
                 as usize
         },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct__bindgen_ty_1),
@@ -354,7 +350,7 @@ fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
             &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).refcount as *const _
                 as usize
         },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct__bindgen_ty_1),
@@ -367,7 +363,7 @@ fn bindgen_test_layout_threadlocaleinfostruct__bindgen_ty_1() {
             &(*(::core::ptr::null::<threadlocaleinfostruct__bindgen_ty_1>())).wrefcount as *const _
                 as usize
         },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct__bindgen_ty_1),
@@ -385,12 +381,12 @@ impl Default for threadlocaleinfostruct__bindgen_ty_1 {
 fn bindgen_test_layout_threadlocaleinfostruct() {
     assert_eq!(
         ::core::mem::size_of::<threadlocaleinfostruct>(),
-        352usize,
+        216usize,
         concat!("Size of: ", stringify!(threadlocaleinfostruct))
     );
     assert_eq!(
         ::core::mem::align_of::<threadlocaleinfostruct>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(threadlocaleinfostruct))
     );
     assert_eq!(
@@ -467,7 +463,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
         unsafe {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_clike as *const _ as usize
         },
-        264usize,
+        168usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -479,7 +475,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
         unsafe {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).mb_cur_max as *const _ as usize
         },
-        268usize,
+        172usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -492,7 +488,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_intl_refcount as *const _
                 as usize
         },
-        272usize,
+        176usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -505,7 +501,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_num_refcount as *const _
                 as usize
         },
-        280usize,
+        180usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -518,7 +514,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv_mon_refcount as *const _
                 as usize
         },
-        288usize,
+        184usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -528,7 +524,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).lconv as *const _ as usize },
-        296usize,
+        188usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -540,7 +536,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
         unsafe {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).ctype1_refcount as *const _ as usize
         },
-        304usize,
+        192usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -550,7 +546,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).ctype1 as *const _ as usize },
-        312usize,
+        196usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -560,7 +556,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pctype as *const _ as usize },
-        320usize,
+        200usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -570,7 +566,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pclmap as *const _ as usize },
-        328usize,
+        204usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -580,7 +576,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<threadlocaleinfostruct>())).pcumap as *const _ as usize },
-        336usize,
+        208usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -592,7 +588,7 @@ fn bindgen_test_layout_threadlocaleinfostruct() {
         unsafe {
             &(*(::core::ptr::null::<threadlocaleinfostruct>())).lc_time_curr as *const _ as usize
         },
-        344usize,
+        212usize,
         concat!(
             "Offset of field: ",
             stringify!(threadlocaleinfostruct),
@@ -741,12 +737,12 @@ pub struct CBPayloadArray {
 fn bindgen_test_layout_CBPayloadArray() {
     assert_eq!(
         ::core::mem::size_of::<CBPayloadArray>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBPayloadArray))
     );
     assert_eq!(
         ::core::mem::align_of::<CBPayloadArray>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBPayloadArray))
     );
     assert_eq!(
@@ -761,7 +757,7 @@ fn bindgen_test_layout_CBPayloadArray() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBPayloadArray>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBPayloadArray),
@@ -771,7 +767,7 @@ fn bindgen_test_layout_CBPayloadArray() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBPayloadArray>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBPayloadArray),
@@ -796,12 +792,12 @@ pub struct CBSeq {
 fn bindgen_test_layout_CBSeq() {
     assert_eq!(
         ::core::mem::size_of::<CBSeq>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBSeq))
     );
     assert_eq!(
         ::core::mem::align_of::<CBSeq>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBSeq))
     );
     assert_eq!(
@@ -816,7 +812,7 @@ fn bindgen_test_layout_CBSeq() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBSeq>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBSeq),
@@ -826,7 +822,7 @@ fn bindgen_test_layout_CBSeq() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBSeq>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBSeq),
@@ -851,12 +847,12 @@ pub struct CBTable {
 fn bindgen_test_layout_CBTable() {
     assert_eq!(
         ::core::mem::size_of::<CBTable>(),
-        16usize,
+        8usize,
         concat!("Size of: ", stringify!(CBTable))
     );
     assert_eq!(
         ::core::mem::align_of::<CBTable>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBTable))
     );
     assert_eq!(
@@ -871,7 +867,7 @@ fn bindgen_test_layout_CBTable() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTable>())).api as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTable),
@@ -924,12 +920,12 @@ pub struct CBlocks {
 fn bindgen_test_layout_CBlocks() {
     assert_eq!(
         ::core::mem::size_of::<CBlocks>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBlocks))
     );
     assert_eq!(
         ::core::mem::align_of::<CBlocks>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBlocks))
     );
     assert_eq!(
@@ -944,7 +940,7 @@ fn bindgen_test_layout_CBlocks() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlocks>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlocks),
@@ -954,7 +950,7 @@ fn bindgen_test_layout_CBlocks() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlocks>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlocks),
@@ -979,12 +975,12 @@ pub struct CBTypesInfo {
 fn bindgen_test_layout_CBTypesInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBTypesInfo>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBTypesInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBTypesInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBTypesInfo))
     );
     assert_eq!(
@@ -999,7 +995,7 @@ fn bindgen_test_layout_CBTypesInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypesInfo>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypesInfo),
@@ -1009,7 +1005,7 @@ fn bindgen_test_layout_CBTypesInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypesInfo>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypesInfo),
@@ -1034,12 +1030,12 @@ pub struct CBParametersInfo {
 fn bindgen_test_layout_CBParametersInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBParametersInfo>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBParametersInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBParametersInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBParametersInfo))
     );
     assert_eq!(
@@ -1054,7 +1050,7 @@ fn bindgen_test_layout_CBParametersInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBParametersInfo>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBParametersInfo),
@@ -1064,7 +1060,7 @@ fn bindgen_test_layout_CBParametersInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBParametersInfo>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBParametersInfo),
@@ -1089,12 +1085,12 @@ pub struct CBExposedTypesInfo {
 fn bindgen_test_layout_CBExposedTypesInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBExposedTypesInfo>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBExposedTypesInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBExposedTypesInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBExposedTypesInfo))
     );
     assert_eq!(
@@ -1109,7 +1105,7 @@ fn bindgen_test_layout_CBExposedTypesInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypesInfo>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypesInfo),
@@ -1119,7 +1115,7 @@ fn bindgen_test_layout_CBExposedTypesInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypesInfo>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypesInfo),
@@ -1150,12 +1146,12 @@ pub struct CBStrings {
 fn bindgen_test_layout_CBStrings() {
     assert_eq!(
         ::core::mem::size_of::<CBStrings>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBStrings))
     );
     assert_eq!(
         ::core::mem::align_of::<CBStrings>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBStrings))
     );
     assert_eq!(
@@ -1170,7 +1166,7 @@ fn bindgen_test_layout_CBStrings() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBStrings>())).len as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBStrings),
@@ -1180,7 +1176,7 @@ fn bindgen_test_layout_CBStrings() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBStrings>())).cap as *const _ as usize },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBStrings),
@@ -1204,12 +1200,12 @@ pub struct _CBOptionalString {
 fn bindgen_test_layout__CBOptionalString() {
     assert_eq!(
         ::core::mem::size_of::<_CBOptionalString>(),
-        16usize,
+        8usize,
         concat!("Size of: ", stringify!(_CBOptionalString))
     );
     assert_eq!(
         ::core::mem::align_of::<_CBOptionalString>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(_CBOptionalString))
     );
     assert_eq!(
@@ -1224,7 +1220,7 @@ fn bindgen_test_layout__CBOptionalString() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBOptionalString>())).crc as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBOptionalString),
@@ -1321,12 +1317,12 @@ pub struct CBImage {
 fn bindgen_test_layout_CBImage() {
     assert_eq!(
         ::core::mem::size_of::<CBImage>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBImage))
     );
     assert_eq!(
         ::core::mem::align_of::<CBImage>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBImage))
     );
     assert_eq!(
@@ -1397,12 +1393,12 @@ pub struct CBAudio {
 fn bindgen_test_layout_CBAudio() {
     assert_eq!(
         ::core::mem::size_of::<CBAudio>(),
-        16usize,
+        12usize,
         concat!("Size of: ", stringify!(CBAudio))
     );
     assert_eq!(
         ::core::mem::align_of::<CBAudio>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBAudio))
     );
     assert_eq!(
@@ -1501,12 +1497,12 @@ pub struct CBTableInterface {
 fn bindgen_test_layout_CBTableInterface() {
     assert_eq!(
         ::core::mem::size_of::<CBTableInterface>(),
-        72usize,
+        36usize,
         concat!("Size of: ", stringify!(CBTableInterface))
     );
     assert_eq!(
         ::core::mem::align_of::<CBTableInterface>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBTableInterface))
     );
     assert_eq!(
@@ -1523,7 +1519,7 @@ fn bindgen_test_layout_CBTableInterface() {
         unsafe {
             &(*(::core::ptr::null::<CBTableInterface>())).tableGetIterator as *const _ as usize
         },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1533,7 +1529,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableNext as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1543,7 +1539,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableSize as *const _ as usize },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1553,7 +1549,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableContains as *const _ as usize },
-        32usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1563,7 +1559,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableAt as *const _ as usize },
-        40usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1573,7 +1569,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableRemove as *const _ as usize },
-        48usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1583,7 +1579,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableClear as *const _ as usize },
-        56usize,
+        28usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1593,7 +1589,7 @@ fn bindgen_test_layout_CBTableInterface() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTableInterface>())).tableFree as *const _ as usize },
-        64usize,
+        32usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTableInterface),
@@ -1622,7 +1618,7 @@ pub union CBTypeInfo_Details {
     pub path: CBTypeInfo_Details_Path,
     pub integers: CBTypeInfo_Details_Integers,
     pub real: CBTypeInfo_Details_Real,
-    _bindgen_union_align: [u64; 4usize],
+    _bindgen_union_align: [u64; 3usize],
 }
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone)]
@@ -1718,12 +1714,12 @@ pub struct CBTypeInfo_Details_Table {
 fn bindgen_test_layout_CBTypeInfo_Details_Table() {
     assert_eq!(
         ::core::mem::size_of::<CBTypeInfo_Details_Table>(),
-        32usize,
+        24usize,
         concat!("Size of: ", stringify!(CBTypeInfo_Details_Table))
     );
     assert_eq!(
         ::core::mem::align_of::<CBTypeInfo_Details_Table>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBTypeInfo_Details_Table))
     );
     assert_eq!(
@@ -1738,7 +1734,7 @@ fn bindgen_test_layout_CBTypeInfo_Details_Table() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypeInfo_Details_Table>())).types as *const _ as usize },
-        16usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo_Details_Table),
@@ -1764,12 +1760,12 @@ pub struct CBTypeInfo_Details_Path {
 fn bindgen_test_layout_CBTypeInfo_Details_Path() {
     assert_eq!(
         ::core::mem::size_of::<CBTypeInfo_Details_Path>(),
-        24usize,
+        16usize,
         concat!("Size of: ", stringify!(CBTypeInfo_Details_Path))
     );
     assert_eq!(
         ::core::mem::align_of::<CBTypeInfo_Details_Path>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBTypeInfo_Details_Path))
     );
     assert_eq!(
@@ -1786,7 +1782,7 @@ fn bindgen_test_layout_CBTypeInfo_Details_Path() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypeInfo_Details_Path>())).isFile as *const _ as usize },
-        16usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo_Details_Path),
@@ -1798,7 +1794,7 @@ fn bindgen_test_layout_CBTypeInfo_Details_Path() {
         unsafe {
             &(*(::core::ptr::null::<CBTypeInfo_Details_Path>())).existing as *const _ as usize
         },
-        17usize,
+        13usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo_Details_Path),
@@ -1810,7 +1806,7 @@ fn bindgen_test_layout_CBTypeInfo_Details_Path() {
         unsafe {
             &(*(::core::ptr::null::<CBTypeInfo_Details_Path>())).relative as *const _ as usize
         },
-        18usize,
+        14usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo_Details_Path),
@@ -1934,7 +1930,7 @@ fn bindgen_test_layout_CBTypeInfo_Details_Real() {
 fn bindgen_test_layout_CBTypeInfo_Details() {
     assert_eq!(
         ::core::mem::size_of::<CBTypeInfo_Details>(),
-        32usize,
+        24usize,
         concat!("Size of: ", stringify!(CBTypeInfo_Details))
     );
     assert_eq!(
@@ -2034,7 +2030,7 @@ impl Default for CBTypeInfo_Details {
 fn bindgen_test_layout_CBTypeInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBTypeInfo>(),
-        48usize,
+        40usize,
         concat!("Size of: ", stringify!(CBTypeInfo))
     );
     assert_eq!(
@@ -2064,7 +2060,7 @@ fn bindgen_test_layout_CBTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypeInfo>())).fixedSize as *const _ as usize },
-        40usize,
+        32usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo),
@@ -2074,7 +2070,7 @@ fn bindgen_test_layout_CBTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypeInfo>())).innerType as *const _ as usize },
-        44usize,
+        36usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo),
@@ -2084,7 +2080,7 @@ fn bindgen_test_layout_CBTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBTypeInfo>())).recursiveSelf as *const _ as usize },
-        45usize,
+        37usize,
         concat!(
             "Offset of field: ",
             stringify!(CBTypeInfo),
@@ -2128,12 +2124,12 @@ pub struct CBObjectInfo {
 fn bindgen_test_layout_CBObjectInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBObjectInfo>(),
-        56usize,
+        28usize,
         concat!("Size of: ", stringify!(CBObjectInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBObjectInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBObjectInfo))
     );
     assert_eq!(
@@ -2148,7 +2144,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).serialize as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2158,7 +2154,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).free as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2168,7 +2164,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).deserialize as *const _ as usize },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2178,7 +2174,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).reference as *const _ as usize },
-        32usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2188,7 +2184,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).release as *const _ as usize },
-        40usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2198,7 +2194,7 @@ fn bindgen_test_layout_CBObjectInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBObjectInfo>())).hash as *const _ as usize },
-        48usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBObjectInfo),
@@ -2222,12 +2218,12 @@ pub struct CBEnumInfo {
 fn bindgen_test_layout_CBEnumInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBEnumInfo>(),
-        24usize,
+        16usize,
         concat!("Size of: ", stringify!(CBEnumInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBEnumInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBEnumInfo))
     );
     assert_eq!(
@@ -2242,7 +2238,7 @@ fn bindgen_test_layout_CBEnumInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBEnumInfo>())).labels as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBEnumInfo),
@@ -2267,12 +2263,12 @@ pub struct CBParameterInfo {
 fn bindgen_test_layout_CBParameterInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBParameterInfo>(),
-        40usize,
+        24usize,
         concat!("Size of: ", stringify!(CBParameterInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBParameterInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBParameterInfo))
     );
     assert_eq!(
@@ -2287,7 +2283,7 @@ fn bindgen_test_layout_CBParameterInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBParameterInfo>())).help as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBParameterInfo),
@@ -2297,7 +2293,7 @@ fn bindgen_test_layout_CBParameterInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBParameterInfo>())).valueTypes as *const _ as usize },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBParameterInfo),
@@ -2327,7 +2323,7 @@ pub struct CBExposedTypeInfo {
 fn bindgen_test_layout_CBExposedTypeInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBExposedTypeInfo>(),
-        88usize,
+        64usize,
         concat!("Size of: ", stringify!(CBExposedTypeInfo))
     );
     assert_eq!(
@@ -2347,7 +2343,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).help as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2357,7 +2353,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).exposedType as *const _ as usize },
-        24usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2367,7 +2363,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isMutable as *const _ as usize },
-        72usize,
+        56usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2377,7 +2373,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isProtected as *const _ as usize },
-        73usize,
+        57usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2387,7 +2383,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).isTableEntry as *const _ as usize },
-        74usize,
+        58usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2397,7 +2393,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).global as *const _ as usize },
-        75usize,
+        59usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2407,7 +2403,7 @@ fn bindgen_test_layout_CBExposedTypeInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBExposedTypeInfo>())).scope as *const _ as usize },
-        80usize,
+        60usize,
         concat!(
             "Offset of field: ",
             stringify!(CBExposedTypeInfo),
@@ -2430,12 +2426,12 @@ pub struct CBFlow {
 fn bindgen_test_layout_CBFlow() {
     assert_eq!(
         ::core::mem::size_of::<CBFlow>(),
-        8usize,
+        4usize,
         concat!("Size of: ", stringify!(CBFlow))
     );
     assert_eq!(
         ::core::mem::align_of::<CBFlow>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBFlow))
     );
     assert_eq!(
@@ -2500,7 +2496,7 @@ pub struct CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
 fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_1() {
     assert_eq!(
         ::core::mem::size_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_1>(),
-        16usize,
+        12usize,
         concat!(
             "Size of: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_1)
@@ -2508,7 +2504,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_1() {
     );
     assert_eq!(
         ::core::mem::align_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_1>(),
-        8usize,
+        4usize,
         concat!(
             "Alignment of ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_1)
@@ -2532,7 +2528,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_1() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_1>())).objectVendorId
                 as *const _ as usize
         },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_1),
@@ -2545,7 +2541,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_1() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_1>())).objectTypeId
                 as *const _ as usize
         },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_1),
@@ -2570,7 +2566,7 @@ pub struct CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
 fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_2() {
     assert_eq!(
         ::core::mem::size_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_2>(),
-        16usize,
+        12usize,
         concat!(
             "Size of: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_2)
@@ -2578,7 +2574,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_2() {
     );
     assert_eq!(
         ::core::mem::align_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_2>(),
-        8usize,
+        4usize,
         concat!(
             "Alignment of ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_2)
@@ -2602,7 +2598,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_2() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_2>())).stringLen
                 as *const _ as usize
         },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_2),
@@ -2615,7 +2611,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_2() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_2>())).stringCapacity
                 as *const _ as usize
         },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_2),
@@ -2705,7 +2701,7 @@ pub struct CBVarPayload__bindgen_ty_1__bindgen_ty_4 {
 fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_4() {
     assert_eq!(
         ::core::mem::size_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_4>(),
-        16usize,
+        12usize,
         concat!(
             "Size of: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_4)
@@ -2713,7 +2709,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_4() {
     );
     assert_eq!(
         ::core::mem::align_of::<CBVarPayload__bindgen_ty_1__bindgen_ty_4>(),
-        8usize,
+        4usize,
         concat!(
             "Alignment of ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_4)
@@ -2737,7 +2733,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_4() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_4>())).bytesSize
                 as *const _ as usize
         },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_4),
@@ -2750,7 +2746,7 @@ fn bindgen_test_layout_CBVarPayload__bindgen_ty_1__bindgen_ty_4() {
             &(*(::core::ptr::null::<CBVarPayload__bindgen_ty_1__bindgen_ty_4>())).bytesCapacity
                 as *const _ as usize
         },
-        12usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVarPayload__bindgen_ty_1__bindgen_ty_4),
@@ -3073,7 +3069,7 @@ fn bindgen_test_layout_CBVar() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBVar>())).refcount as *const _ as usize },
-        24usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVar),
@@ -3083,7 +3079,7 @@ fn bindgen_test_layout_CBVar() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBVar>())).valueType as *const _ as usize },
-        28usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVar),
@@ -3093,7 +3089,7 @@ fn bindgen_test_layout_CBVar() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBVar>())).innerType as *const _ as usize },
-        29usize,
+        25usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVar),
@@ -3103,7 +3099,7 @@ fn bindgen_test_layout_CBVar() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBVar>())).flags as *const _ as usize },
-        30usize,
+        26usize,
         concat!(
             "Offset of field: ",
             stringify!(CBVar),
@@ -3173,7 +3169,7 @@ impl Default for CBRunChainOutput {
 pub struct CBComposeResult {
     pub outputType: CBTypeInfo,
     pub failed: CBBool,
-    pub __bindgen_padding_0: u64,
+    pub __bindgen_padding_0: [u64; 0usize],
     pub failureMessage: CBVar,
     pub exposedInfo: CBExposedTypesInfo,
     pub requiredInfo: CBExposedTypesInfo,
@@ -3183,7 +3179,7 @@ pub struct CBComposeResult {
 fn bindgen_test_layout_CBComposeResult() {
     assert_eq!(
         ::core::mem::size_of::<CBComposeResult>(),
-        144usize,
+        112usize,
         concat!("Size of: ", stringify!(CBComposeResult))
     );
     assert_eq!(
@@ -3203,7 +3199,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).failed as *const _ as usize },
-        48usize,
+        40usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -3213,7 +3209,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).failureMessage as *const _ as usize },
-        64usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -3223,7 +3219,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).exposedInfo as *const _ as usize },
-        96usize,
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -3233,7 +3229,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).requiredInfo as *const _ as usize },
-        112usize,
+        92usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -3243,7 +3239,7 @@ fn bindgen_test_layout_CBComposeResult() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBComposeResult>())).flowStopper as *const _ as usize },
-        128usize,
+        104usize,
         concat!(
             "Offset of field: ",
             stringify!(CBComposeResult),
@@ -3280,7 +3276,7 @@ pub struct CBInstanceData {
 fn bindgen_test_layout_CBInstanceData() {
     assert_eq!(
         ::core::mem::size_of::<CBInstanceData>(),
-        120usize,
+        88usize,
         concat!("Size of: ", stringify!(CBInstanceData))
     );
     assert_eq!(
@@ -3300,7 +3296,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).chain as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3310,7 +3306,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).inputType as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3320,7 +3316,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).shared as *const _ as usize },
-        64usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3330,7 +3326,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).onWorkerThread as *const _ as usize },
-        80usize,
+        60usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3340,7 +3336,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).outputTypes as *const _ as usize },
-        88usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3350,7 +3346,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).reportError as *const _ as usize },
-        104usize,
+        76usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3360,7 +3356,7 @@ fn bindgen_test_layout_CBInstanceData() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBInstanceData>())).privateContext as *const _ as usize },
-        112usize,
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(CBInstanceData),
@@ -3451,12 +3447,12 @@ pub struct CBlock {
 fn bindgen_test_layout_CBlock() {
     assert_eq!(
         ::core::mem::size_of::<CBlock>(),
-        184usize,
+        96usize,
         concat!("Size of: ", stringify!(CBlock))
     );
     assert_eq!(
         ::core::mem::align_of::<CBlock>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBlock))
     );
     assert_eq!(
@@ -3491,7 +3487,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).hash as *const _ as usize },
-        16usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3501,7 +3497,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).help as *const _ as usize },
-        24usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3511,7 +3507,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).setup as *const _ as usize },
-        32usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3521,7 +3517,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).destroy as *const _ as usize },
-        40usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3531,7 +3527,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).inputTypes as *const _ as usize },
-        48usize,
+        28usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3541,7 +3537,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).outputTypes as *const _ as usize },
-        56usize,
+        32usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3551,7 +3547,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).exposedVariables as *const _ as usize },
-        64usize,
+        36usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3561,7 +3557,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).requiredVariables as *const _ as usize },
-        72usize,
+        40usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3571,7 +3567,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).compose as *const _ as usize },
-        80usize,
+        44usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3581,7 +3577,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).composed as *const _ as usize },
-        88usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3591,7 +3587,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).parameters as *const _ as usize },
-        96usize,
+        52usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3601,7 +3597,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).setParam as *const _ as usize },
-        104usize,
+        56usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3611,7 +3607,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).getParam as *const _ as usize },
-        112usize,
+        60usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3621,7 +3617,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).warmup as *const _ as usize },
-        120usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3631,7 +3627,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).activate as *const _ as usize },
-        128usize,
+        68usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3641,7 +3637,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).cleanup as *const _ as usize },
-        136usize,
+        72usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3651,7 +3647,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).mutate as *const _ as usize },
-        144usize,
+        76usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3661,7 +3657,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).crossover as *const _ as usize },
-        152usize,
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3671,7 +3667,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).getState as *const _ as usize },
-        160usize,
+        84usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3681,7 +3677,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).setState as *const _ as usize },
-        168usize,
+        88usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3691,7 +3687,7 @@ fn bindgen_test_layout_CBlock() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBlock>())).resetState as *const _ as usize },
-        176usize,
+        92usize,
         concat!(
             "Offset of field: ",
             stringify!(CBlock),
@@ -3715,12 +3711,12 @@ pub struct CBChainProviderUpdate {
 fn bindgen_test_layout_CBChainProviderUpdate() {
     assert_eq!(
         ::core::mem::size_of::<CBChainProviderUpdate>(),
-        16usize,
+        8usize,
         concat!("Size of: ", stringify!(CBChainProviderUpdate))
     );
     assert_eq!(
         ::core::mem::align_of::<CBChainProviderUpdate>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBChainProviderUpdate))
     );
     assert_eq!(
@@ -3735,7 +3731,7 @@ fn bindgen_test_layout_CBChainProviderUpdate() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProviderUpdate>())).chain as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProviderUpdate),
@@ -3779,12 +3775,12 @@ pub struct CBChainProvider {
 fn bindgen_test_layout_CBChainProvider() {
     assert_eq!(
         ::core::mem::size_of::<CBChainProvider>(),
-        56usize,
+        28usize,
         concat!("Size of: ", stringify!(CBChainProvider))
     );
     assert_eq!(
         ::core::mem::align_of::<CBChainProvider>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBChainProvider))
     );
     assert_eq!(
@@ -3799,7 +3795,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).ready as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -3809,7 +3805,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).setup as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -3819,7 +3815,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).updated as *const _ as usize },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -3829,7 +3825,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).acquire as *const _ as usize },
-        32usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -3839,7 +3835,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).release as *const _ as usize },
-        40usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -3849,7 +3845,7 @@ fn bindgen_test_layout_CBChainProvider() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainProvider>())).userData as *const _ as usize },
-        48usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainProvider),
@@ -4080,12 +4076,12 @@ pub struct CBChainInfo {
 fn bindgen_test_layout_CBChainInfo() {
     assert_eq!(
         ::core::mem::size_of::<CBChainInfo>(),
-        48usize,
+        28usize,
         concat!("Size of: ", stringify!(CBChainInfo))
     );
     assert_eq!(
         ::core::mem::align_of::<CBChainInfo>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(CBChainInfo))
     );
     assert_eq!(
@@ -4100,7 +4096,7 @@ fn bindgen_test_layout_CBChainInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainInfo>())).looped as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainInfo),
@@ -4110,7 +4106,7 @@ fn bindgen_test_layout_CBChainInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainInfo>())).unsafe_ as *const _ as usize },
-        9usize,
+        5usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainInfo),
@@ -4120,7 +4116,7 @@ fn bindgen_test_layout_CBChainInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainInfo>())).chain as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainInfo),
@@ -4130,7 +4126,7 @@ fn bindgen_test_layout_CBChainInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainInfo>())).blocks as *const _ as usize },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainInfo),
@@ -4140,7 +4136,7 @@ fn bindgen_test_layout_CBChainInfo() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<CBChainInfo>())).isRunning as *const _ as usize },
-        40usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(CBChainInfo),
@@ -4281,12 +4277,12 @@ pub struct _CBCore {
 fn bindgen_test_layout__CBCore() {
     assert_eq!(
         ::core::mem::size_of::<_CBCore>(),
-        696usize,
+        348usize,
         concat!("Size of: ", stringify!(_CBCore))
     );
     assert_eq!(
         ::core::mem::align_of::<_CBCore>(),
-        8usize,
+        4usize,
         concat!("Alignment of ", stringify!(_CBCore))
     );
     assert_eq!(
@@ -4301,7 +4297,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).registerObjectType as *const _ as usize },
-        8usize,
+        4usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4311,7 +4307,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).registerEnumType as *const _ as usize },
-        16usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4323,7 +4319,7 @@ fn bindgen_test_layout__CBCore() {
         unsafe {
             &(*(::core::ptr::null::<_CBCore>())).registerRunLoopCallback as *const _ as usize
         },
-        24usize,
+        12usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4335,7 +4331,7 @@ fn bindgen_test_layout__CBCore() {
         unsafe {
             &(*(::core::ptr::null::<_CBCore>())).unregisterRunLoopCallback as *const _ as usize
         },
-        32usize,
+        16usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4345,7 +4341,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).registerExitCallback as *const _ as usize },
-        40usize,
+        20usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4355,7 +4351,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).unregisterExitCallback as *const _ as usize },
-        48usize,
+        24usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4365,7 +4361,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).referenceVariable as *const _ as usize },
-        56usize,
+        28usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4375,7 +4371,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).referenceChainVariable as *const _ as usize },
-        64usize,
+        32usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4385,7 +4381,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).releaseVariable as *const _ as usize },
-        72usize,
+        36usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4395,7 +4391,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).suspend as *const _ as usize },
-        80usize,
+        40usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4405,7 +4401,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).getState as *const _ as usize },
-        88usize,
+        44usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4415,7 +4411,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).abortChain as *const _ as usize },
-        96usize,
+        48usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4425,7 +4421,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).cloneVar as *const _ as usize },
-        104usize,
+        52usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4435,7 +4431,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).destroyVar as *const _ as usize },
-        112usize,
+        56usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4445,7 +4441,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqFree as *const _ as usize },
-        120usize,
+        60usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4455,7 +4451,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqPush as *const _ as usize },
-        128usize,
+        64usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4465,7 +4461,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqInsert as *const _ as usize },
-        136usize,
+        68usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4475,7 +4471,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqPop as *const _ as usize },
-        144usize,
+        72usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4485,7 +4481,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqResize as *const _ as usize },
-        152usize,
+        76usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4495,7 +4491,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqFastDelete as *const _ as usize },
-        160usize,
+        80usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4505,7 +4501,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).seqSlowDelete as *const _ as usize },
-        168usize,
+        84usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4515,7 +4511,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesFree as *const _ as usize },
-        176usize,
+        88usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4525,7 +4521,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesPush as *const _ as usize },
-        184usize,
+        92usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4535,7 +4531,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesInsert as *const _ as usize },
-        192usize,
+        96usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4545,7 +4541,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesPop as *const _ as usize },
-        200usize,
+        100usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4555,7 +4551,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesResize as *const _ as usize },
-        208usize,
+        104usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4565,7 +4561,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesFastDelete as *const _ as usize },
-        216usize,
+        108usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4575,7 +4571,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).typesSlowDelete as *const _ as usize },
-        224usize,
+        112usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4585,7 +4581,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsFree as *const _ as usize },
-        232usize,
+        116usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4595,7 +4591,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsPush as *const _ as usize },
-        240usize,
+        120usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4605,7 +4601,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsInsert as *const _ as usize },
-        248usize,
+        124usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4615,7 +4611,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsPop as *const _ as usize },
-        256usize,
+        128usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4625,7 +4621,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsResize as *const _ as usize },
-        264usize,
+        132usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4635,7 +4631,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsFastDelete as *const _ as usize },
-        272usize,
+        136usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4645,7 +4641,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).paramsSlowDelete as *const _ as usize },
-        280usize,
+        140usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4655,7 +4651,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksFree as *const _ as usize },
-        288usize,
+        144usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4665,7 +4661,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksPush as *const _ as usize },
-        296usize,
+        148usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4675,7 +4671,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksInsert as *const _ as usize },
-        304usize,
+        152usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4685,7 +4681,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksPop as *const _ as usize },
-        312usize,
+        156usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4695,7 +4691,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksResize as *const _ as usize },
-        320usize,
+        160usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4705,7 +4701,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksFastDelete as *const _ as usize },
-        328usize,
+        164usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4715,7 +4711,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).blocksSlowDelete as *const _ as usize },
-        336usize,
+        168usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4725,7 +4721,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesFree as *const _ as usize },
-        344usize,
+        172usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4735,7 +4731,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesPush as *const _ as usize },
-        352usize,
+        176usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4745,7 +4741,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesInsert as *const _ as usize },
-        360usize,
+        180usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4755,7 +4751,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesPop as *const _ as usize },
-        368usize,
+        184usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4765,7 +4761,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesResize as *const _ as usize },
-        376usize,
+        188usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4775,7 +4771,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesFastDelete as *const _ as usize },
-        384usize,
+        192usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4785,7 +4781,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).expTypesSlowDelete as *const _ as usize },
-        392usize,
+        196usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4795,7 +4791,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsFree as *const _ as usize },
-        400usize,
+        200usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4805,7 +4801,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsPush as *const _ as usize },
-        408usize,
+        204usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4815,7 +4811,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsInsert as *const _ as usize },
-        416usize,
+        208usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4825,7 +4821,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsPop as *const _ as usize },
-        424usize,
+        212usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4835,7 +4831,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsResize as *const _ as usize },
-        432usize,
+        216usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4845,7 +4841,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsFastDelete as *const _ as usize },
-        440usize,
+        220usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4855,7 +4851,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsSlowDelete as *const _ as usize },
-        448usize,
+        224usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4865,7 +4861,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).tableNew as *const _ as usize },
-        456usize,
+        228usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4875,7 +4871,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).composeBlocks as *const _ as usize },
-        464usize,
+        232usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4885,7 +4881,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).runBlocks as *const _ as usize },
-        472usize,
+        236usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4895,7 +4891,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).log as *const _ as usize },
-        480usize,
+        240usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4905,7 +4901,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setLoggingOptions as *const _ as usize },
-        488usize,
+        244usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4915,7 +4911,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).createBlock as *const _ as usize },
-        496usize,
+        248usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4925,7 +4921,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).validateSetParam as *const _ as usize },
-        504usize,
+        252usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4935,7 +4931,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).createChain as *const _ as usize },
-        512usize,
+        256usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4945,7 +4941,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setChainName as *const _ as usize },
-        520usize,
+        260usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4955,7 +4951,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setChainLooped as *const _ as usize },
-        528usize,
+        264usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4965,7 +4961,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setChainUnsafe as *const _ as usize },
-        536usize,
+        268usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4975,7 +4971,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).addBlock as *const _ as usize },
-        544usize,
+        272usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4985,7 +4981,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).removeBlock as *const _ as usize },
-        552usize,
+        276usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -4995,7 +4991,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).destroyChain as *const _ as usize },
-        560usize,
+        280usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5005,7 +5001,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).stopChain as *const _ as usize },
-        568usize,
+        284usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5015,7 +5011,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).composeChain as *const _ as usize },
-        576usize,
+        288usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5025,7 +5021,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).runChain as *const _ as usize },
-        584usize,
+        292usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5035,7 +5031,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).getChainInfo as *const _ as usize },
-        592usize,
+        296usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5045,7 +5041,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).createNode as *const _ as usize },
-        600usize,
+        300usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5055,7 +5051,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).destroyNode as *const _ as usize },
-        608usize,
+        304usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5065,7 +5061,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).schedule as *const _ as usize },
-        616usize,
+        308usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5075,7 +5071,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).unschedule as *const _ as usize },
-        624usize,
+        312usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5085,7 +5081,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).tick as *const _ as usize },
-        632usize,
+        316usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5095,7 +5091,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).sleep as *const _ as usize },
-        640usize,
+        320usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5105,7 +5101,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).getRootPath as *const _ as usize },
-        648usize,
+        324usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5115,7 +5111,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setRootPath as *const _ as usize },
-        656usize,
+        328usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5125,7 +5121,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).asyncActivate as *const _ as usize },
-        664usize,
+        332usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5135,7 +5131,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).getBlocks as *const _ as usize },
-        672usize,
+        336usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5145,7 +5141,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).getString as *const _ as usize },
-        680usize,
+        340usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
@@ -5155,7 +5151,7 @@ fn bindgen_test_layout__CBCore() {
     );
     assert_eq!(
         unsafe { &(*(::core::ptr::null::<_CBCore>())).setString as *const _ as usize },
-        688usize,
+        344usize,
         concat!(
             "Offset of field: ",
             stringify!(_CBCore),
