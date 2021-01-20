@@ -10,7 +10,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/html5.h>
-#include <webxr.h>
 #endif
 
 using namespace chainblocks;
@@ -2086,23 +2085,46 @@ struct RenderTexture : public RenderTarget {
 };
 
 #ifdef __EMSCRIPTEN__
-EM_JS(bool, cb_emscripten_show_xr_dialog, (), {
-  console.log("Stop here and ask for XR permissions...");
-  return false;
+// clang-format off
+EM_JS(bool, cb_emscripten_wait_webxr_dialog, (), {
+  return Asyncify.handleAsync(async() => {
+    console.log("Stop here and ask for XR permissions...");
+    return await(window.chainblocks_webxr_dialog_open());;
+  });
 });
+
+EM_JS(bool, cb_emscripten_check_webxr_supported, (), {
+  return Asyncify.handleAsync(async() => {
+    if(typeof navigator !== 'undefined') {
+      if(typeof navigator.xr !== 'undefined') {
+        return await navigator.xr.isSessionSupported('immersive-vr');
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  });
+});
+// clang-format on
 #endif
 
 struct RenderXR : public RenderTarget {
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  /*
+  VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
+  function window.cb_emscripten_wait_webxr_dialog = async function() { ... }
+  that shows a dialog the user has to accept and start a session like: let
+  glCanvas = document.getElementById('canvas'); // this is our already used SDL
+  canvas let gl = glCanvas.getContext('webgl'); // this is our already created
+  bgfx context let session = await navigator.xr.requestSession('immersive-vr');
+  let layer = new XRWebGLLayer(session, gl); // if we are here we know it's
+  defined session.updateRenderState({ baseLayer: layer }); resolve to true if
+  this is done, false otherwise.
+  */
 
-#ifdef __EMSCRIPTEN__
-  static EM_BOOL on_button_click(int eventType,
-                                 const EmscriptenMouseEvent *mouseEvent,
-                                 void *userData) {
-    webxr_request_session();
-    return true;
-  }
-#endif
+  bool _vrEnabled{false};
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
@@ -2112,19 +2134,31 @@ struct RenderXR : public RenderTarget {
 
   void warmup(CBContext *context) {
 #ifdef __EMSCRIPTEN__
-    emscripten_set_click_callback("#chainblocks-webxr-dialog-ok", (void *)this,
-                                  true, on_button_click);
-    if (!cb_emscripten_show_xr_dialog()) {
-      LOG(WARNING) << "Failed to enable XR session.";
+    auto xrSupported = cb_emscripten_check_webxr_supported();
+    if (xrSupported) {
+      if (!cb_emscripten_wait_webxr_dialog()) {
+        LOG(WARNING) << "Failed to enable WebXR.";
+        _vrEnabled = false;
+      } else {
+        LOG(INFO) << "WebXR enabled.";
+        _vrEnabled = true;
+      }
+    } else {
+      LOG(WARNING) << "WebXR not supported.";
+      _vrEnabled = false;
     }
 #endif
   }
 
   void cleanup() {
+    if (_vrEnabled) {
 #ifdef __EMSCRIPTEN__
-    webxr_request_exit();
+      // webxr_request_exit();
 #endif
+    }
   }
+
+  CBVar activate(CBContext *context, const CBVar &input) { return Var::Empty; }
 };
 
 void registerBGFXBlocks() {
@@ -2139,6 +2173,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.CameraOrtho", CameraOrtho);
   REGISTER_CBLOCK("GFX.Draw", Draw);
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
+  REGISTER_CBLOCK("GFX.RenderXR", RenderXR);
 }
 }; // namespace BGFX
 
