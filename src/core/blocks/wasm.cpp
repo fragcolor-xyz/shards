@@ -1214,7 +1214,6 @@ struct Run {
       // WASI modules need this
       if (_entryPoint != "_start") {
         _argsArray.clear();
-        _argsArray.push_back(_moduleFileName.c_str());
         // add any arguments we have
         auto argsVar = _arguments.get();
         if (argsVar.valueType == Seq) {
