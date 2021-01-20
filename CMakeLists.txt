@@ -887,8 +887,6 @@ if(NOT BUILD_CORE_ONLY)
     add_dependencies(cb_shared libsdl)
     set(EXTRA_LIBS ${EXTRA_LIBS} libsdl)
   else()
-    # for includes
-    target_link_libraries(cb_static webxr)
   endif()
 
   add_dependencies(cb_static libsnappy)
@@ -932,9 +930,6 @@ add_dependencies(cbl cb_static)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET cbl PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cbl ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
-if(EMSCRIPTEN AND NOT BUILD_CORE_ONLY)
-  target_link_libraries(cbl webxr)
-endif()
 ###
 
 ### our experimental edn eval
