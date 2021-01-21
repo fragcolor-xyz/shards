@@ -2084,37 +2084,6 @@ struct RenderTexture : public RenderTarget {
   }
 };
 
-#ifdef __EMSCRIPTEN__
-// clang-format off
-EM_JS(bool, cb_emscripten_webxr_wait_dialog, (), {
-  return Asyncify.handleAsync(async() => {
-    console.log("Stop here and ask for XR permissions...");
-    return await(window.chainblocks_webxr_dialog_open());;
-  });
-});
-
-EM_JS(bool, cb_emscripten_webxr_check_supported, (), {
-  return Asyncify.handleAsync(async() => {
-    if(typeof navigator !== 'undefined') {
-      if(typeof navigator.xr !== 'undefined') {
-        return await navigator.xr.isSessionSupported('immersive-vr');
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  });
-});
-
-EM_JS(void, cb_emscripten_webxr_end, (), {
-  Asyncify.handleAsync(async() => {
-    await window.chainblocks.xrSession.end();
-  });
-});
-// clang-format on
-#endif
-
 struct RenderXR : public RenderTarget {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
@@ -2142,9 +2111,27 @@ struct RenderXR : public RenderTarget {
 
   void warmup(CBContext *context) {
 #ifdef __EMSCRIPTEN__
-    auto xrSupported = cb_emscripten_webxr_check_supported();
+    auto xrSupported = false;
+    emscripten::val navigator = emscripten::val::global("navigator");
+    if (navigator.as<bool>()) {
+      emscripten::val xr = navigator["xr"];
+      if (xr.as<bool>()) {
+        emscripten::val supported =
+            xr.call<emscripten::val>("isSessionSupported",
+                                     emscripten::val("immersive-vr"))
+                .await();
+        xrSupported = supported.as<bool>();
+      }
+    }
     if (xrSupported) {
-      if (!cb_emscripten_webxr_wait_dialog()) {
+      emscripten::val dialog =
+          emscripten::val::global("chainblocks_webxr_dialog_open");
+      if (!dialog.as<bool>()) {
+        throw ActivationError("Failed to find webxr permissions call "
+                              "(window.chainblocks_webxr_dialog_open).");
+      }
+      emscripten::val res = dialog().await();
+      if (!res.as<bool>()) {
         LOG(WARNING) << "Failed to enable WebXR.";
         _vrEnabled = false;
       } else {
@@ -2161,7 +2148,9 @@ struct RenderXR : public RenderTarget {
   void cleanup() {
     if (_vrEnabled) {
 #ifdef __EMSCRIPTEN__
-      cb_emscripten_webxr_end();
+      emscripten::val session =
+          emscripten::val::module_property("WebXRSession");
+      session.call<emscripten::val>("end").await();
 #endif
     }
   }
