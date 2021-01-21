@@ -948,6 +948,55 @@ typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 typedef void(__cdecl *CBSetLoggingOptions)(struct CBLoggingOptions options);
 
 typedef struct _CBCore {
+  // CBTable interface
+  CBTableNew tableNew;
+
+  // Utility to use blocks within blocks
+  CBComposeBlocks composeBlocks;
+  CBRunBlocks runBlocks;
+
+  // Logging
+  CBLog log;
+  CBSetLoggingOptions setLoggingOptions;
+
+  // Chain creation
+  CBCreateBlock createBlock;
+  CBValidateSetParam validateSetParam;
+
+  CBCreateChain createChain;
+  CBSetChainName setChainName;
+  CBSetChainLooped setChainLooped;
+  CBSetChainUnsafe setChainUnsafe;
+  CBAddBlock addBlock;
+  CBRemBlock removeBlock;
+  CBDestroyChain destroyChain;
+  CBStopChain stopChain; // must destroyVar once done
+  CBComposeChain composeChain;
+  CBRunChain runChain;
+  CBGetChainInfo getChainInfo;
+
+  // Chain scheduling
+  CBCreateNode createNode;
+  CBDestroyNode destroyNode;
+  CBSchedule schedule;
+  CBSchedule unschedule;
+  CBTick tick; // returns false if all chains are done!
+  CBSleep sleep;
+
+  // Environment utilities
+  CBGetRootPath getRootPath;
+  CBSetRootPath setRootPath;
+
+  // async execution
+  CBRunAsyncActivate asyncActivate;
+
+  // Blocks discovery (free after use, only the array, not the strings)
+  CBGetBlocks getBlocks;
+
+  // interned strings management
+  CBGetString getString;
+  CBSetString setString;
+
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
   // Adds a custom object type to the runtime database
@@ -1000,55 +1049,6 @@ typedef struct _CBCore {
 
   // Utility to deal with CBStrings
   CB_ARRAY_PROCS(CBStrings, strings);
-
-  // CBTable interface
-  CBTableNew tableNew;
-
-  // Utility to use blocks within blocks
-  CBComposeBlocks composeBlocks;
-  CBRunBlocks runBlocks;
-
-  // Logging
-  CBLog log;
-  CBSetLoggingOptions setLoggingOptions;
-
-  // Chain creation
-  CBCreateBlock createBlock;
-  CBValidateSetParam validateSetParam;
-
-  CBCreateChain createChain;
-  CBSetChainName setChainName;
-  CBSetChainLooped setChainLooped;
-  CBSetChainUnsafe setChainUnsafe;
-  CBAddBlock addBlock;
-  CBRemBlock removeBlock;
-  CBDestroyChain destroyChain;
-  CBStopChain stopChain; // must destroyVar once done
-  CBComposeChain composeChain;
-  CBRunChain runChain;
-  CBGetChainInfo getChainInfo;
-
-  // Chain scheduling
-  CBCreateNode createNode;
-  CBDestroyNode destroyNode;
-  CBSchedule schedule;
-  CBSchedule unschedule;
-  CBTick tick; // returns false if all chains are done!
-  CBSleep sleep;
-
-  // Environment utilities
-  CBGetRootPath getRootPath;
-  CBSetRootPath setRootPath;
-
-  // async execution
-  CBRunAsyncActivate asyncActivate;
-
-  // Blocks discovery (free after use, only the array, not the strings)
-  CBGetBlocks getBlocks;
-
-  // interned strings management
-  CBGetString getString;
-  CBSetString setString;
 } CBCore;
 
 typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);

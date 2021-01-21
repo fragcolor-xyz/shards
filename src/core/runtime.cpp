@@ -291,6 +291,19 @@ void registerCoreBlocks() {
 
 #ifdef __EMSCRIPTEN__
   cb_emscripten_init();
+  // fill up some interface so we don't need to know mem offsets JS side
+  EM_ASM({
+    Module["CBCore"] = {};
+  });
+  emscripten::val cbInterface = emscripten::val::module_property("CBCore");
+  CBCore *iface = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
+  cbInterface.set("log", emscripten::val(reinterpret_cast<uintptr_t>(iface->log)));
+  cbInterface.set("createNode", emscripten::val(reinterpret_cast<uintptr_t>(iface->createNode)));
+  cbInterface.set("destroyNode", emscripten::val(reinterpret_cast<uintptr_t>(iface->destroyNode)));
+  cbInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->schedule)));
+  cbInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
+  cbInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
+  cbInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
 #endif
 }
 
