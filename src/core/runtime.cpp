@@ -292,18 +292,25 @@ void registerCoreBlocks() {
 #ifdef __EMSCRIPTEN__
   cb_emscripten_init();
   // fill up some interface so we don't need to know mem offsets JS side
-  EM_ASM({
-    Module["CBCore"] = {};
-  });
+  EM_ASM({ Module["CBCore"] = {}; });
   emscripten::val cbInterface = emscripten::val::module_property("CBCore");
   CBCore *iface = chainblocksInterface(CHAINBLOCKS_CURRENT_ABI);
-  cbInterface.set("log", emscripten::val(reinterpret_cast<uintptr_t>(iface->log)));
-  cbInterface.set("createNode", emscripten::val(reinterpret_cast<uintptr_t>(iface->createNode)));
-  cbInterface.set("destroyNode", emscripten::val(reinterpret_cast<uintptr_t>(iface->destroyNode)));
-  cbInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->schedule)));
-  cbInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
-  cbInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
-  cbInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
+  cbInterface.set("log",
+                  emscripten::val(reinterpret_cast<uintptr_t>(iface->log)));
+  cbInterface.set("createNode", emscripten::val(reinterpret_cast<uintptr_t>(
+                                    iface->createNode)));
+  cbInterface.set("destroyNode", emscripten::val(reinterpret_cast<uintptr_t>(
+                                     iface->destroyNode)));
+  cbInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(
+                                  iface->schedule)));
+  cbInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(
+                                    iface->unschedule)));
+  cbInterface.set("tick",
+                  emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
+  cbInterface.set("sleep",
+                  emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
+  cbInterface.set("getGlobalChain", emscripten::val(reinterpret_cast<uintptr_t>(
+                                        iface->getGlobalChain)));
 #endif
 }
 
@@ -2874,6 +2881,26 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->destroyChain = [](CBChainRef chain) noexcept {
     CBChain::deleteRef(chain);
+  };
+
+  result->getGlobalChain = [](CBString name) noexcept {
+    auto it = chainblocks::Globals::GlobalChains.find(name);
+    if (it != chainblocks::Globals::GlobalChains.end()) {
+      return CBChain::weakRef(it->second);
+    } else {
+      return (CBChainRef) nullptr;
+    }
+  };
+
+  result->setGlobalChain = [](CBString name, CBChainRef chain) noexcept {
+    chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(chain);
+  };
+
+  result->unsetGlobalChain = [](CBString name) noexcept {
+    auto it = chainblocks::Globals::GlobalChains.find(name);
+    if (it != chainblocks::Globals::GlobalChains.end()) {
+      chainblocks::Globals::GlobalChains.erase(it);
+    }
   };
 
   result->createNode = []() noexcept {

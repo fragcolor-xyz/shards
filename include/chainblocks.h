@@ -880,6 +880,9 @@ typedef struct CBComposeResult(__cdecl *CBComposeChain)(
 typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain,
                                                      struct CBContext *context,
                                                      const struct CBVar *input);
+typedef CBChainRef(__cdecl *CBGetGlobalChain)(CBString name);
+typedef void(__cdecl *CBSetGlobalChain)(CBString name, CBChainRef chain);
+typedef void(__cdecl *CBUnsetGlobalChain)(CBString name);
 
 typedef CBNodeRef(__cdecl *CBCreateNode)();
 typedef void(__cdecl *CBDestroyNode)(CBNodeRef node);
@@ -974,6 +977,9 @@ typedef struct _CBCore {
   CBComposeChain composeChain;
   CBRunChain runChain;
   CBGetChainInfo getChainInfo;
+  CBGetGlobalChain getGlobalChain;
+  CBSetGlobalChain setGlobalChain;
+  CBUnsetGlobalChain unsetGlobalChain;
 
   // Chain scheduling
   CBCreateNode createNode;

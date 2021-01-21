@@ -1386,6 +1386,37 @@ BUILTIN("prepare") {
   return mal::nilValue();
 }
 
+BUILTIN("set-global-chain") {
+  CHECK_ARGS_IS(1);
+  auto first = *argsBegin;
+  if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
+    auto chain = CBChain::sharedFromRef(v->value());
+    chainblocks::Globals::GlobalChains[chain->name] = chain;
+    return mal::trueValue();
+  }
+  return mal::falseValue();
+}
+
+BUILTIN("unset-global-chain") {
+  CHECK_ARGS_IS(1);
+  auto first = *argsBegin;
+  if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
+    auto chain = CBChain::sharedFromRef(v->value());
+    auto it = chainblocks::Globals::GlobalChains.find(chain->name);
+    if (it != chainblocks::Globals::GlobalChains.end()) {
+      chainblocks::Globals::GlobalChains.erase(it);
+      return mal::trueValue();
+    }
+  }
+  return mal::falseValue();
+}
+
+BUILTIN("run-empty-forever") {
+  while (true) {
+    chainblocks::sleep(1.0, false);
+  }
+}
+
 BUILTIN("start") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malCBChain, chainvar);
