@@ -129,7 +129,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
         ninja rust_blocks && ninja cbl
     - name: Test
       env:
@@ -162,7 +162,7 @@ jobs:
       with:
         working-directory: ./build
         run: |
-          glxinfo
+          ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
@@ -189,7 +189,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
         ninja rust_blocks && ninja test_runtime && ninja test_extra
     - name: Test
       env:
