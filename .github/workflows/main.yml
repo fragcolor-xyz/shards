@@ -163,7 +163,6 @@ jobs:
         working-directory: ./build
         run: |
           glxinfo
-          ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
@@ -203,7 +202,6 @@ jobs:
       with:
         working-directory: ./build
         run: |
-          glxinfo
           ./test_extra
     - name: CodeCov
       run: |
