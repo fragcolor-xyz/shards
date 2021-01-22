@@ -2099,7 +2099,11 @@ struct RenderXR : public RenderTarget {
   resolve to true if this is done, false otherwise.
   */
 
-  bool _vrEnabled{false};
+#ifdef __EMSCRIPTEN__
+  std::optional<emscripten::val> _sessionPromise;
+  std::optional<emscripten::val> _xrSession;
+  std::optional<emscripten::val> _glLayer;
+#endif
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -2130,33 +2134,63 @@ struct RenderXR : public RenderTarget {
         throw ActivationError("Failed to find webxr permissions call "
                               "(window.chainblocks_webxr_dialog_open).");
       }
-      emscripten::val res = dialog().await();
-      if (!res.as<bool>()) {
-        LOG(WARNING) << "Failed to enable WebXR.";
-        _vrEnabled = false;
-      } else {
-        LOG(INFO) << "WebXR enabled.";
-        _vrEnabled = true;
-      }
-    } else {
-      LOG(WARNING) << "WebXR not supported.";
-      _vrEnabled = false;
-    }
+      _sessionPromise = dialog();
+      // check result in activate
 #endif
+    }
   }
 
   void cleanup() {
-    if (_vrEnabled) {
 #ifdef __EMSCRIPTEN__
-      emscripten::val session =
-          emscripten::val::module_property("WebXRSession");
-      session.call<emscripten::val>("end").await();
-#endif
+    if (_xrSession) {
+      // if we have session.chainblocks.nextFrame, cancel it
+      auto cb = (*_xrSession)["chainblocks"];
+      if (cb.as<bool>()) {
+        auto nf = cb["nextFrame"];
+        if (nf.as<bool>()) {
+          _xrSession->call<void>("cancelAnimationFrame", nf);
+        }
+        auto restoreRunLoop = cb["restoreRunLoop"];
+        if (restoreRunLoop.as<bool>()) {
+          restoreRunLoop();
+        }
+      }
+      // this seems to not trigger any event tho...
+      _xrSession->call<emscripten::val>("end").await();
+      _xrSession.reset();
+      LOG(INFO) << "Cleaned up WebXR session.";
     }
+#endif
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return Var::Empty; }
-};
+  CBVar activate(CBContext *context, const CBVar &input) {
+#ifdef __EMSCRIPTEN__
+    if (_sessionPromise) {
+      auto session =
+          emscripten_wait<emscripten::val>(context, *_sessionPromise);
+      _sessionPromise.reset();
+      if (session.as<bool>()) {
+        _xrSession = session;
+        LOG(INFO) << "Entering immersive VR mode.";
+
+        // ok this is a bit tricky, we are going to swap run loop
+        // the next node tick will be inside the VR callback
+        // to do so we simply yield here once
+        suspend(context, 0);
+
+        // we should be resuming inside the VR loop
+        _glLayer =
+            (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
+        if (!_glLayer->as<bool>()) {
+          throw ActivationError("Failed to fetch render state baseLayer.");
+        }
+      }
+    }
+#endif
+
+    return Var::Empty;
+  }
+}; // namespace BGFX
 
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);

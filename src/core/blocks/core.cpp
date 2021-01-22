@@ -1719,23 +1719,8 @@ struct EmscriptenAsyncEval {
   CBVar activate(CBContext *context, const CBVar &input) {
     static thread_local std::string str;
     const static emscripten::val eval = emscripten::val::global("eval");
-    const static emscripten::val futs =
-        emscripten::val::global("ChainblocksBonder");
-    emscripten::val promise = eval(emscripten::val(input.payload.stringValue));
-    emscripten::val fut = futs.new_(promise);
-    fut.call<void>("run");
-
-    while (!fut["finished"].as<bool>()) {
-      suspend(context, 0.0);
-    }
-
-    if (fut["hadErrors"].as<bool>()) {
-      throw ActivationError("A javascript async task has failed, check the "
-                            "console for more informations.");
-    }
-
-    str = fut["result"].as<std::string>();
-
+    str = emscripten_wait<std::string>(
+        context, eval(emscripten::val(input.payload.stringValue)));
     return Var(str);
   }
 };

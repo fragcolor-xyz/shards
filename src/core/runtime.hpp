@@ -1565,6 +1565,27 @@ private:
   std::vector<std::shared_ptr<T>> _avail;
   std::string _chainStr;
 };
+
+#ifdef __EMSCRIPTEN__
+template <typename T>
+inline T emscripten_wait(CBContext *context, emscripten::val promise) {
+  const static emscripten::val futs =
+      emscripten::val::global("ChainblocksBonder");
+  emscripten::val fut = futs.new_(promise);
+  fut.call<void>("run");
+
+  while (!fut["finished"].as<bool>()) {
+    suspend(context, 0.0);
+  }
+
+  if (fut["hadErrors"].as<bool>()) {
+    throw ActivationError("A javascript async task has failed, check the "
+                          "console for more informations.");
+  }
+
+  return fut["result"].as<T>();
+}
+#endif
 } // namespace chainblocks
 
 #endif
