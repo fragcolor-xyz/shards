@@ -2103,6 +2103,8 @@ struct RenderXR : public RenderTarget {
   std::optional<emscripten::val> _sessionPromise;
   std::optional<emscripten::val> _xrSession;
   std::optional<emscripten::val> _glLayer;
+  std::optional<emscripten::val> _refSpace;
+  std::optional<emscripten::val> _cb;
 #endif
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -2142,24 +2144,32 @@ struct RenderXR : public RenderTarget {
 
   void cleanup() {
 #ifdef __EMSCRIPTEN__
-    if (_xrSession) {
+    if (_cb) {
       // if we have session.chainblocks.nextFrame, cancel it
-      auto cb = (*_xrSession)["chainblocks"];
-      if (cb.as<bool>()) {
-        auto nf = cb["nextFrame"];
-        if (nf.as<bool>()) {
-          _xrSession->call<void>("cancelAnimationFrame", nf);
-        }
-        auto restoreRunLoop = cb["restoreRunLoop"];
-        if (restoreRunLoop.as<bool>()) {
-          restoreRunLoop();
-        }
+      auto nf = (*_cb)["nextFrame"];
+      if (nf.as<bool>()) {
+        _xrSession->call<void>("cancelAnimationFrame", nf);
       }
+
+      auto restoreRunLoop = (*_cb)["restoreRunLoop"];
+      if (restoreRunLoop.as<bool>()) {
+        restoreRunLoop();
+      }
+    }
+
+    if (_xrSession) {
+      // null our internal object to cut all references
+      (*_xrSession).set("chainblocks", nullptr);
       // this seems to not trigger any event tho...
       _xrSession->call<emscripten::val>("end").await();
-      _xrSession.reset();
       LOG(INFO) << "Cleaned up WebXR session.";
     }
+
+    _cb.reset();
+    _glLayer.reset();
+    _refSpace.reset();
+    _xrSession.reset();
+    _sessionPromise.reset();
 #endif
   }
 
@@ -2171,6 +2181,14 @@ struct RenderXR : public RenderTarget {
       _sessionPromise.reset();
       if (session.as<bool>()) {
         _xrSession = session;
+
+        auto refspacePromise = _xrSession->call<emscripten::val>(
+            "requestReferenceSpace", emscripten::val("local"));
+        _refSpace = emscripten_wait<emscripten::val>(context, refspacePromise);
+        if (!_refSpace->as<bool>()) {
+          throw ActivationError("Failed to request reference space.");
+        }
+
         LOG(INFO) << "Entering immersive VR mode.";
 
         // ok this is a bit tricky, we are going to swap run loop
@@ -2182,7 +2200,56 @@ struct RenderXR : public RenderTarget {
         _glLayer =
             (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
         if (!_glLayer->as<bool>()) {
-          throw ActivationError("Failed to fetch render state baseLayer.");
+          throw ActivationError("Failed to get render state baseLayer.");
+        }
+
+        _cb = (*_xrSession)["chainblocks"];
+        if (!_cb->as<bool>()) {
+          throw ActivationError(
+              "Failed to get internal session.chainblocks object.");
+        }
+
+        LOG(INFO) << "Entered immersive VR mode.";
+      }
+    }
+
+    if (_cb) {
+      const auto frame = (*_cb)["frame"];
+      if (!frame.as<bool>()) {
+        throw ActivationError("WebXR frame data not found.");
+      }
+      const auto pose =
+          frame.call<emscripten::val>("getViewerPose", *_refSpace);
+      // pose might not be available
+      if (pose.as<bool>()) {
+        const auto views = pose["views"];
+        if (!views.as<bool>()) {
+          throw ActivationError("WebXR pose had no views.");
+        }
+
+        auto len = views["length"].as<size_t>();
+        for (size_t i = 0; i < len; i++) {
+          const auto view = views[i].as<emscripten::val>();
+          const auto viewport =
+              _glLayer->call<emscripten::val>("getViewport", view);
+          const auto vX = viewport["x"].as<int>();
+          const auto vY = viewport["y"].as<int>();
+          const auto vWidth = viewport["width"].as<int>();
+          const auto vHeight = viewport["height"].as<int>();
+          float viewMat[16];
+          {
+            const auto jview = view["transform"]["inverse"]["matrix"];
+            for (size_t j = 0; j < len; j++) {
+              viewMat[j] = jview[i].as<float>();
+            }
+          }
+          float projMat[16];
+          {
+            const auto jproj = view["projectionMatrix"];
+            for (size_t j = 0; j < len; j++) {
+              projMat[j] = jproj[i].as<float>();
+            }
+          }
         }
       }
     }
