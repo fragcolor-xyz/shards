@@ -123,7 +123,7 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb
+        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
         rustup update
     - name: Build
       run: |
@@ -161,7 +161,9 @@ jobs:
       uses: chainblocks/xvfb-action@v1
       with:
         working-directory: ./build
-        run: ./cbl ../src/tests/bgfx.clj
+        run: |
+          glxinfo
+          ./cbl ../src/tests/bgfx.clj
     - name: CodeCov
       run: |
         mkdir coverage
@@ -182,7 +184,7 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb
+        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
         rustup update
     - name: Build
       run: |
@@ -201,6 +203,7 @@ jobs:
       with:
         working-directory: ./build
         run: |
+          glxinfo
           ./test_extra
     - name: CodeCov
       run: |
