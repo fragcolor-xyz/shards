@@ -2136,8 +2136,8 @@ struct RenderXR : public RenderTarget {
       }
       _sessionPromise = dialog();
       // check result in activate
-#endif
     }
+#endif
   }
 
   void cleanup() {
@@ -2190,7 +2190,7 @@ struct RenderXR : public RenderTarget {
 
     return Var::Empty;
   }
-}; // namespace BGFX
+};
 
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
