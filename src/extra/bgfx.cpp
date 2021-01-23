@@ -458,8 +458,9 @@ struct MainWindow : public BaseWindow {
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
 
     bgfx::setViewRect(0, 0, 0, _width, _height);
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF, 1.0f,
-                       0);
+    bgfx::setViewClear(0,
+                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+                       0x303030FF, 1.0f, 0);
 
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
     _bgfxCtx = referenceVariable(context, "GFX.Context");
@@ -2035,8 +2036,9 @@ struct RenderTexture : public RenderTarget {
     _viewId = ctx->nextViewId();
     bgfx::setViewFrameBuffer(_viewId, _framebuffer);
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
-    bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030FF,
-                       1.0f, 0);
+    bgfx::setViewClear(_viewId,
+                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+                       0x303030FF, 1.0f, 0);
 
     _blocks.warmup(context);
   }
@@ -2107,6 +2109,10 @@ struct RenderXR : public RenderTarget {
   std::optional<emscripten::val> _cb;
 #endif
 
+  bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
+  bgfx::ViewId _views[2];
+  CBVar *_bgfx_context{nullptr};
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -2116,6 +2122,9 @@ struct RenderXR : public RenderTarget {
   }
 
   void warmup(CBContext *context) {
+    _bgfx_context = referenceVariable(context, "GFX.Context");
+    assert(_bgfx_context->valueType == CBType::Object);
+
 #ifdef __EMSCRIPTEN__
     auto xrSupported = false;
     emscripten::val navigator = emscripten::val::global("navigator");
@@ -2170,10 +2179,17 @@ struct RenderXR : public RenderTarget {
     _refSpace.reset();
     _xrSession.reset();
     _sessionPromise.reset();
+
+    if (_bgfx_context) {
+      releaseVariable(_bgfx_context);
+      _bgfx_context = nullptr;
+    }
 #endif
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 #ifdef __EMSCRIPTEN__
     if (_sessionPromise) {
       auto session =
@@ -2203,6 +2219,32 @@ struct RenderXR : public RenderTarget {
           throw ActivationError("Failed to get render state baseLayer.");
         }
 
+        _views[0] = ctx->nextViewId();
+        _views[1] = ctx->nextViewId();
+
+        const auto gframebuffer = (*_glLayer)["framebuffer"];
+        if (gframebuffer.as<bool>()) {
+          // ok we have a real framebuffer, that is opaque so we need to do some
+          // magic to make it usable by bgfx
+          _framebuffer =
+              bgfx::createFrameBuffer(64, 64, bgfx::TextureFormat::RGBA8);
+          const auto pframebuffer = uintptr_t(gframebuffer.as<uint>());
+          if (bgfx::overrideInternal(_framebuffer, pframebuffer) !=
+              pframebuffer) {
+            throw ActivationError("Failed to override internal framebuffer.");
+          }
+
+          bgfx::setViewFrameBuffer(_views[0], _framebuffer);
+          bgfx::setViewFrameBuffer(_views[1], _framebuffer);
+        }
+
+        bgfx::setViewClear(
+            _views[0], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+            0x303030FF, 1.0f, 0);
+        bgfx::setViewClear(
+            _views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+            0x303030FF, 1.0f, 0);
+
         _cb = (*_xrSession)["chainblocks"];
         if (!_cb->as<bool>()) {
           throw ActivationError(
@@ -2228,7 +2270,11 @@ struct RenderXR : public RenderTarget {
         }
 
         auto len = views["length"].as<size_t>();
-        for (size_t i = 0; i < len; i++) {
+        if (len != 2) {
+          throw ActivationError("WebXR views length was not 2.");
+        }
+
+        for (size_t i = 0; i < 2; i++) {
           const auto view = views[i].as<emscripten::val>();
           const auto viewport =
               _glLayer->call<emscripten::val>("getViewport", view);
@@ -2236,6 +2282,17 @@ struct RenderXR : public RenderTarget {
           const auto vY = viewport["y"].as<int>();
           const auto vWidth = viewport["width"].as<int>();
           const auto vHeight = viewport["height"].as<int>();
+
+          // push _viewId
+          ctx->pushView({_views[i], vWidth, vHeight});
+          DEFER({ ctx->popView(); });
+
+          bgfx::setViewRect(_views[i], uint16_t(vX), uint16_t(vY),
+                            uint16_t(vWidth), uint16_t(vHeight));
+
+          // Touch _viewId
+          bgfx::touch(_views[i]);
+
           float viewMat[16];
           {
             const auto jview = view["transform"]["inverse"]["matrix"];
