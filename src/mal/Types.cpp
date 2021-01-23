@@ -395,10 +395,10 @@ String malString::print(bool readably) const {
 
 malValuePtr malSymbol::eval(malEnvPtr env) {
   try {
-  return env->get(value());
+    return env->get(value());
   } catch(String &s) {
     s += ", line: " + std::to_string(line);
-    throw s;
+    throw;
   }
 }
 
