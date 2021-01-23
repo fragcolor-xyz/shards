@@ -2086,7 +2086,7 @@ struct RenderTexture : public RenderTarget {
   }
 };
 
-struct RenderXR : public RenderTarget {
+struct RenderXR : public BaseConsumer {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
   function window.cb_emscripten_wait_webxr_dialog = async function() { ... }
@@ -2101,6 +2101,16 @@ struct RenderXR : public RenderTarget {
   resolve to true if this is done, false otherwise.
   */
 
+  static inline Parameters params{
+      {"Contents",
+       CBCCSTR("The blocks expressing the contents to render."),
+       {CoreInfo::BlocksOrNone}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
 #ifdef __EMSCRIPTEN__
   std::optional<emscripten::val> _sessionPromise;
   std::optional<emscripten::val> _xrSession;
@@ -2112,7 +2122,9 @@ struct RenderXR : public RenderTarget {
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _views[2];
   CBVar *_bgfx_context{nullptr};
+  BlocksVar _blocks;
 
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -2122,6 +2134,8 @@ struct RenderXR : public RenderTarget {
   }
 
   void warmup(CBContext *context) {
+    _blocks.warmup(context);
+
     _bgfx_context = referenceVariable(context, "GFX.Context");
     assert(_bgfx_context->valueType == CBType::Object);
 
@@ -2152,6 +2166,8 @@ struct RenderXR : public RenderTarget {
   }
 
   void cleanup() {
+    _blocks.cleanup();
+
 #ifdef __EMSCRIPTEN__
     if (_cb) {
       // if we have session.chainblocks.nextFrame, cancel it
@@ -2287,26 +2303,32 @@ struct RenderXR : public RenderTarget {
           ctx->pushView({_views[i], vWidth, vHeight});
           DEFER({ ctx->popView(); });
 
-          bgfx::setViewRect(_views[i], uint16_t(vX), uint16_t(vY),
-                            uint16_t(vWidth), uint16_t(vHeight));
-
           // Touch _viewId
           bgfx::touch(_views[i]);
+
+          // Set viewport
+          bgfx::setViewRect(_views[i], uint16_t(vX), uint16_t(vY),
+                            uint16_t(vWidth), uint16_t(vHeight));
 
           float viewMat[16];
           {
             const auto jview = view["transform"]["inverse"]["matrix"];
-            for (size_t j = 0; j < len; j++) {
-              viewMat[j] = jview[i].as<float>();
+            for (int j = 0; j < 16; j++) {
+              viewMat[j] = jview[j].as<float>();
             }
           }
           float projMat[16];
           {
             const auto jproj = view["projectionMatrix"];
-            for (size_t j = 0; j < len; j++) {
-              projMat[j] = jproj[i].as<float>();
+            for (int j = 0; j < 16; j++) {
+              projMat[j] = jproj[j].as<float>();
             }
           }
+          bgfx::setViewTransform(_views[i], viewMat, projMat);
+
+          // activate the blocks and render
+          CBVar output{};
+          _blocks.activate(context, input, output);
         }
       }
     }
