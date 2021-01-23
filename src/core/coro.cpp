@@ -31,7 +31,7 @@ static struct Globals {
   coro->func();
   // If entry_func returns, the entire program will end, as if main had
   // returned.
-  throw;
+  abort();
 }
 
 void CBCoro::init(const std::function<void()> &func) {

@@ -466,5 +466,4 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   default:
     return true;
   }
-  return true;
 }

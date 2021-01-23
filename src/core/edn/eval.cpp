@@ -271,7 +271,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
       } break;
       default: {
         return ast;
-      } break;
+      };
       }
     }
   }

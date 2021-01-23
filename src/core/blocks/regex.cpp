@@ -32,7 +32,6 @@ struct Common {
     switch (index) {
     case 0:
       return Var(_re_str);
-      break;
     default:
       return CBVar();
     }

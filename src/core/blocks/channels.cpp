@@ -332,7 +332,7 @@ struct Consume : public Consumers {
         _seqType.seqTypes.len = 1;
         return _seqType;
       }
-    } break;
+    };
     default:
       throw CBException("Produce/Consume channel type expected.");
     }
@@ -405,7 +405,7 @@ struct Listen : public Consumers {
         _seqType.seqTypes.len = 1;
         return _seqType;
       }
-    } break;
+    };
     default:
       throw CBException("Broadcast/Listen channel type expected.");
     }
