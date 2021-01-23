@@ -3,6 +3,7 @@
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
 #include "../core/runtime.hpp"
+#include <linalg.h>
 
 #undef CHECK
 
@@ -859,4 +860,34 @@ TEST_CASE("ObjectVar") {
     REQUIRE(node->tick());       // false is chain errors happened
     REQUIRE(or1->refcount == 1); // will be 0 when chain goes out of scope
   }
+}
+
+TEST_CASE("linalg compatibility") {
+  static_assert(sizeof(linalg::aliases::double2) == 32);
+  static_assert(sizeof(linalg::aliases::float3) == 32);
+  static_assert(sizeof(linalg::aliases::float4) == 32);
+  Var a{1.0, 2.0, 3.0, 4.0};
+  Var b{4.0, 3.0, 2.0, 1.0};
+  const linalg::aliases::float4 *va =
+      reinterpret_cast<linalg::aliases::float4 *>(&a.payload.float4Value);
+  const linalg::aliases::float4 *vb =
+      reinterpret_cast<linalg::aliases::float4 *>(&b.payload.float4Value);
+  auto c = (*va) + (*vb);
+  linalg::aliases::float4 rc{5.0, 5.0, 5.0, 5.0};
+  REQUIRE(c == rc);
+  c = (*va) * (*vb);
+  rc = {4.0, 6.0, 6.0, 4.0};
+  REQUIRE(c == rc);
+
+  std::vector<Var> ad{Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0),
+                      Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0)};
+  Var d(ad);
+  const linalg::aliases::float4x4 *md =
+      reinterpret_cast<linalg::aliases::float4x4 *>(
+          &d.payload.seqValue.elements[0]);
+  linalg::aliases::float4x4 rd{{1.0, 2.0, 3.0, 4.0},
+                               {1.0, 2.0, 3.0, 4.0},
+                               {1.0, 2.0, 3.0, 4.0},
+                               {1.0, 2.0, 3.0, 4.0}};
+  REQUIRE((*md) == rd);
 }

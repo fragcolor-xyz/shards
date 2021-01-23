@@ -315,7 +315,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/pdqsort
   -I${CHAINBLOCKS_DIR}/deps/filesystem/include
   -I${CHAINBLOCKS_DIR}/deps/wasm3/source
-  -I${CHAINBLOCKS_DIR}/deps/wasm3/platforms/cpp/wasm3_cpp/include
+  -I${CHAINBLOCKS_DIR}/deps/linalg
   )
 
 ### setup clang format
@@ -427,6 +427,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/filesystem/include
   ${CHAINBLOCKS_DIR}/deps/wasm3/source
   ${CHAINBLOCKS_DIR}/deps/xxhash
+  ${CHAINBLOCKS_DIR}/deps/linalg
   )
 
 # wasm3
