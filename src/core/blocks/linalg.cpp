@@ -3,6 +3,7 @@
 
 #include "math.h"
 #include "shared.hpp"
+#include <linalg.h>
 
 namespace chainblocks {
 namespace Math {
@@ -268,74 +269,62 @@ struct MatMul : public VectorBinaryBase {
     }
   }
 
-  CBVar mvmul(const CBVar &a, const CBVar &b) {
-    CBVar output;
-    output.valueType = b.valueType;
-    auto dims = a.payload.seqValue.len;
-    for (uint32_t i = 0; i < dims; i++) {
-      const auto &x = a.payload.seqValue.elements[i];
-      if (x.valueType != b.valueType) {
-        // tbh this should be supported tho...
-        throw ActivationError("MatMul expected same Float vector types");
-      }
-
-      switch (x.valueType) {
-      case Float2: {
-        output.payload.float2Value[i] =
-            x.payload.float2Value[0] * b.payload.float2Value[0];
-        output.payload.float2Value[i] +=
-            x.payload.float2Value[1] * b.payload.float2Value[1];
-      } break;
-      case Float3: {
-        output.payload.float3Value[i] =
-            x.payload.float3Value[0] * b.payload.float3Value[0];
-        output.payload.float3Value[i] +=
-            x.payload.float3Value[1] * b.payload.float3Value[1];
-        output.payload.float3Value[i] +=
-            x.payload.float3Value[2] * b.payload.float3Value[2];
-      } break;
-      case Float4: {
-        output.payload.float4Value[i] =
-            x.payload.float4Value[0] * b.payload.float4Value[0];
-        output.payload.float4Value[i] +=
-            x.payload.float4Value[1] * b.payload.float4Value[1];
-        output.payload.float4Value[i] +=
-            x.payload.float4Value[2] * b.payload.float4Value[2];
-        output.payload.float4Value[i] +=
-            x.payload.float4Value[3] * b.payload.float4Value[3];
-      } break;
-      default:
-        break;
-      }
-    }
-    return output;
-  }
-
-  void mmmul(const CBVar &a, const CBVar &b) {
-    size_t dima = a.payload.seqValue.len;
-    size_t dimb = a.payload.seqValue.len;
-    if (dima != dimb) {
-      throw ActivationError(
-          "MatMul expected 2 arrays with the same number of columns");
-    }
-
-    _result.valueType = Seq;
-    chainblocks::arrayResize(_result.payload.seqValue, dima);
-    for (size_t i = 0; i < dima; i++) {
-      const auto &y = b.payload.seqValue.elements[i];
-      const auto r = mvmul(a, y);
-      _result.payload.seqValue.elements[i] = r;
-    }
-  }
-
   CBVar activate(CBContext *context, const CBVar &input) {
-    const auto &operand = _operand.get();
+    auto &operand = _operand.get();
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
-      mmmul(input, operand);
+#define MATMUL_OP(_v1_, _v2_, _n_)                                             \
+  chainblocks::arrayResize(_result.payload.seqValue, _n_);                     \
+  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(        \
+      &input.payload.seqValue.elements[0]);                                    \
+  linalg::aliases::_v1_ *b = reinterpret_cast<linalg::aliases::_v1_ *>(        \
+      &operand.payload.seqValue.elements[0]);                                  \
+  linalg::aliases::_v1_ *c = reinterpret_cast<linalg::aliases::_v1_ *>(        \
+      &_result.payload.seqValue.elements[0]);                                  \
+  *c = linalg::mul(*a, *b);                                                    \
+  for (auto i = 0; i < _n_; i++) {                                             \
+    _result.payload.seqValue.elements[i].valueType = _v2_;                     \
+  }
+      _result.valueType = Seq;
+      switch (input.payload.seqValue.elements[0].valueType) {
+      case Float2: {
+        MATMUL_OP(float2x2, Float2, 2);
+      } break;
+      case Float3: {
+        MATMUL_OP(float3x3, Float3, 3);
+      } break;
+      case Float4: {
+        MATMUL_OP(float4x4, Float4, 4);
+      } break;
+      default:
+        throw ActivationError("Invalid value type for MatMul");
+      }
+#undef MATMUL_OP
       return _result;
     } else if (_opType == Seq1) {
-      return mvmul(input, operand);
+#define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                                \
+  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(        \
+      &input.payload.seqValue.elements[0]);                                    \
+  linalg::aliases::_v3_ *b =                                                   \
+      reinterpret_cast<linalg::aliases::_v3_ *>(&operand.payload._v3v_);       \
+  linalg::aliases::_v3_ *c =                                                   \
+      reinterpret_cast<linalg::aliases::_v3_ *>(&_result.payload._v3v_);       \
+  *c = linalg::mul(*a, *b);                                                    \
+  _result.valueType = _v2_;
+      switch (input.payload.seqValue.elements[0].valueType) {
+      case Float2: {
+        MATMUL_OP(float2x2, Float2, 2, float2, float2Value);
+      } break;
+      case Float3: {
+        MATMUL_OP(float3x3, Float3, 3, float3, float3Value);
+      } break;
+      case Float4: {
+        MATMUL_OP(float4x4, Float4, 4, float4, float4Value);
+      } break;
+      default:
+        throw ActivationError("Invalid value type for MatMul");
+      }
+      return _result;
     } else {
       throw ActivationError(
           "MatMul expects either Mat (Seq of FloatX) @ Mat or "
