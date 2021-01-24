@@ -2150,7 +2150,12 @@ struct RenderXR : public BaseConsumer {
                                      emscripten::val("immersive-vr"))
                 .await();
         xrSupported = supported.as<bool>();
+        LOG(INFO) << "WebXR session supported: " << xrSupported;
+      } else {
+        LOG(INFO) << "WebXR navigator.xr not available.";
       }
+    } else {
+      LOG(INFO) << "WebXR navigator not available.";
     }
     if (xrSupported) {
       emscripten::val dialog =
@@ -2228,6 +2233,8 @@ struct RenderXR : public BaseConsumer {
         // to do so we simply yield here once
         suspend(context, 0);
 
+        LOG(INFO) << "Entered immersive VR mode.";
+
         // we should be resuming inside the VR loop
         _glLayer =
             (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
@@ -2238,13 +2245,31 @@ struct RenderXR : public BaseConsumer {
         _views[0] = ctx->nextViewId();
         _views[1] = ctx->nextViewId();
 
-        const auto gframebuffer = (*_glLayer)["framebuffer"];
+        auto gframebuffer = (*_glLayer)["framebuffer"];
         if (gframebuffer.as<bool>()) {
+          // first of all we need to make this WebGLFramebuffer object
+          // compatible with emscripten traditional gl emulated uint IDs This is
+          // hacky cos requires internal emscripten knowledge and might change
+          // any time as its private code
+          const auto GL = emscripten::val::module_property("GL");
+          if (!GL.as<bool>()) {
+            throw ActivationError("Failed to get GL from module.");
+          }
+          auto framebuffers = GL["framebuffers"];
+          if (!framebuffers.as<bool>()) {
+            throw ActivationError("Failed to get GL.framebuffers.");
+          }
+          auto jnewFbId = GL.call<emscripten::val>("getNewId", framebuffers);
+          framebuffers.set(jnewFbId, gframebuffer);
+          gframebuffer.set("name", jnewFbId);
           // ok we have a real framebuffer, that is opaque so we need to do some
           // magic to make it usable by bgfx
           _framebuffer =
               bgfx::createFrameBuffer(64, 64, bgfx::TextureFormat::RGBA8);
-          const auto pframebuffer = uintptr_t(gframebuffer.as<uint>());
+          // we need to make sure the above buffer has been created...
+          // to do so we draw here a frame (might create artifacts)
+          bgfx::frame();
+          const auto pframebuffer = uintptr_t(jnewFbId.as<uint32_t>());
           if (bgfx::overrideInternal(_framebuffer, pframebuffer) !=
               pframebuffer) {
             throw ActivationError("Failed to override internal framebuffer.");
@@ -2267,7 +2292,7 @@ struct RenderXR : public BaseConsumer {
               "Failed to get internal session.chainblocks object.");
         }
 
-        LOG(INFO) << "Entered immersive VR mode.";
+        LOG(INFO) << "Started immersive VR rendering.";
       }
     }
 
@@ -2330,7 +2355,11 @@ struct RenderXR : public BaseConsumer {
           CBVar output{};
           _blocks.activate(context, input, output);
         }
+      } else {
+        LOG_EVERY_N(200, INFO) << "XR pose not available.";
       }
+    } else {
+      LOG_EVERY_N(200, INFO) << "Skipping XR rendering, not initialized.";
     }
 #endif
 
