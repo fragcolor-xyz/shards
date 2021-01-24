@@ -2212,7 +2212,7 @@ struct RenderXR : public BaseConsumer {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 #ifdef __EMSCRIPTEN__
-    if (_sessionPromise) {
+    if (unlikely(bool(_sessionPromise))) {
       auto session =
           emscripten_wait<emscripten::val>(context, *_sessionPromise);
       _sessionPromise.reset();
@@ -2247,6 +2247,8 @@ struct RenderXR : public BaseConsumer {
 
         auto gframebuffer = (*_glLayer)["framebuffer"];
         if (gframebuffer.as<bool>()) {
+          auto width = (*_glLayer)["framebufferWidth"].as<int>();
+          auto height = (*_glLayer)["framebufferHeight"].as<int>();
           // first of all we need to make this WebGLFramebuffer object
           // compatible with emscripten traditional gl emulated uint IDs This is
           // hacky cos requires internal emscripten knowledge and might change
@@ -2264,8 +2266,10 @@ struct RenderXR : public BaseConsumer {
           gframebuffer.set("name", jnewFbId);
           // ok we have a real framebuffer, that is opaque so we need to do some
           // magic to make it usable by bgfx
-          _framebuffer =
-              bgfx::createFrameBuffer(64, 64, bgfx::TextureFormat::RGBA8);
+          // Also here set real size cos internally bgfx won't clear that on
+          // internal framebuffer destroy when replaced
+          _framebuffer = bgfx::createFrameBuffer(
+              uint16_t(width), uint16_t(height), bgfx::TextureFormat::RGBA8);
           // we need to make sure the above buffer has been created...
           // to do so we draw here a frame (might create artifacts)
           bgfx::frame();
@@ -2296,22 +2300,22 @@ struct RenderXR : public BaseConsumer {
       }
     }
 
-    if (_cb) {
+    if (likely(bool(_cb))) {
       const auto frame = (*_cb)["frame"];
-      if (!frame.as<bool>()) {
+      if (unlikely(!frame.as<bool>())) {
         throw ActivationError("WebXR frame data not found.");
       }
       const auto pose =
           frame.call<emscripten::val>("getViewerPose", *_refSpace);
       // pose might not be available
-      if (pose.as<bool>()) {
+      if (likely(pose.as<bool>())) {
         const auto views = pose["views"];
-        if (!views.as<bool>()) {
+        if (unlikely(!views.as<bool>())) {
           throw ActivationError("WebXR pose had no views.");
         }
 
         auto len = views["length"].as<size_t>();
-        if (len != 2) {
+        if (unlikely(len != 2)) {
           throw ActivationError("WebXR views length was not 2.");
         }
 
