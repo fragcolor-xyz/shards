@@ -12,6 +12,8 @@
 #include <catch2/catch_all.hpp>
 
 int main(int argc, char *argv[]) {
+  chainblocks::Globals::RootPath = "./";
+  registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
 #ifdef __EMSCRIPTEN_PTHREADS__
   // in this case we need to call exit our self
@@ -736,9 +738,6 @@ TEST_CASE("CBSet") {
 }
 
 TEST_CASE("CXX-Chain-DSL") {
-  chainblocks::Globals::RootPath = "./";
-  registerCoreBlocks();
-
   // TODO, improve this
   auto chain = chainblocks::Chain("test-chain")
                    .looped(true)

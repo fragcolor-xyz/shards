@@ -61,9 +61,6 @@ void testVertexAttribute() {
 }
 
 void testModel() {
-  chainblocks::Globals::RootPath = "./";
-  registerCoreBlocks();
-
   std::vector<Var> layout = {
       Var::Enum(BGFX::Model::VertexAttribute::Position, CoreCC, 'gfxV'),
       Var::Enum(BGFX::Model::VertexAttribute::Color0, CoreCC, 'gfxV')};
@@ -369,9 +366,6 @@ void testModel() {
 }
 
 void testCamera() {
-  chainblocks::Globals::RootPath = "./";
-  registerCoreBlocks();
-
   SECTION("Working") {
     auto chain = chainblocks::Chain("test-chain")
                      .looped(true)
@@ -394,9 +388,6 @@ void testCamera() {
 }
 
 void testDraw() {
-  chainblocks::Globals::RootPath = "./";
-  registerCoreBlocks();
-
   SECTION("Working") {
     std::vector<Var> cubeVertices = {
         Var(-1.0, 1.0, 1.0),   Var(0xff000000),      Var(1.0, 1.0, 1.0),

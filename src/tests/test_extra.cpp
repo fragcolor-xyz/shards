@@ -6,7 +6,20 @@
 
 #undef CHECK
 
+#define CATCH_CONFIG_RUNNER
+
 #include <catch2/catch_all.hpp>
+
+int main(int argc, char *argv[]) {
+  chainblocks::Globals::RootPath = "./";
+  registerCoreBlocks();
+  int result = Catch::Session().run(argc, argv);
+#ifdef __EMSCRIPTEN_PTHREADS__
+  // in this case we need to call exit our self
+  exit(0);
+#endif
+  return result;
+}
 
 namespace chainblocks {
 namespace BGFX_Tests {
