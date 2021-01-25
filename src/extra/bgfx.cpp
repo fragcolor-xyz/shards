@@ -460,7 +460,7 @@ struct MainWindow : public BaseWindow {
     bgfx::setViewRect(0, 0, 0, _width, _height);
     bgfx::setViewClear(0,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-                       0x303030FF, 1.0f, 0);
+                       0xC0C0AAFF, 1.0f, 0);
 
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
     _bgfxCtx = referenceVariable(context, "GFX.Context");
@@ -2145,10 +2145,9 @@ struct RenderXR : public BaseConsumer {
     if (navigator.as<bool>()) {
       emscripten::val xr = navigator["xr"];
       if (xr.as<bool>()) {
-        emscripten::val supported =
-            xr.call<emscripten::val>("isSessionSupported",
-                                     emscripten::val("immersive-vr"))
-                .await();
+        auto supported = emscripten_wait<emscripten::val>(
+            context, xr.call<emscripten::val>("isSessionSupported",
+                                              emscripten::val("immersive-vr")));
         xrSupported = supported.as<bool>();
         LOG(INFO) << "WebXR session supported: " << xrSupported;
       } else {
@@ -2285,10 +2284,10 @@ struct RenderXR : public BaseConsumer {
 
         bgfx::setViewClear(
             _views[0], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-            0x303030FF, 1.0f, 0);
+            0xC0FFEEFF, 1.0f, 0);
         bgfx::setViewClear(
             _views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-            0x303030FF, 1.0f, 0);
+            0xC0FFEEFF, 1.0f, 0);
 
         _cb = (*_xrSession)["chainblocks"];
         if (!_cb->as<bool>()) {
@@ -2338,6 +2337,8 @@ struct RenderXR : public BaseConsumer {
           // Set viewport
           bgfx::setViewRect(_views[i], uint16_t(vX), uint16_t(vY),
                             uint16_t(vWidth), uint16_t(vHeight));
+          bgfx::setViewScissor(_views[i], uint16_t(vX), uint16_t(vY),
+                               uint16_t(vWidth), uint16_t(vHeight));
 
           float viewMat[16];
           {
