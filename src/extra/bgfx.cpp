@@ -16,6 +16,11 @@
 
 using namespace chainblocks;
 
+#define STB_RECT_PACK_IMPLEMENTATION
+#include <stb/stb_rect_pack.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include <stb/stb_truetype.h>
+
 #include "fs_imgui_image.bin.h"
 #include "fs_ocornut_imgui.bin.h"
 #include "vs_imgui_image.bin.h"
@@ -44,7 +49,6 @@ static FontRangeMerge s_fontRangeMerge[] = {
      sizeof(s_iconsFontAwesomeTtf),
      {ICON_MIN_FA, ICON_MAX_FA, 0}}};
 
-namespace BGFX {
 struct OcornutImguiContext {
 #define IMGUI_FLAGS_NONE UINT8_C(0x00)
 #define IMGUI_FLAGS_ALPHA_BLEND UINT8_C(0x01)
@@ -87,12 +91,12 @@ struct OcornutImguiContext {
       uint32_t numVertices = (uint32_t)drawList->VtxBuffer.size();
       uint32_t numIndices = (uint32_t)drawList->IdxBuffer.size();
 
-      if (!checkAvailTransientBuffers(numVertices, m_layout, numIndices)) {
+      if (!checkAvailTransientBuffers(numVertices, s_layout, numIndices)) {
         // not enough space in transient buffer just quit drawing the rest...
         break;
       }
 
-      bgfx::allocTransientVertexBuffer(&tvb, numVertices, m_layout);
+      bgfx::allocTransientVertexBuffer(&tvb, numVertices, s_layout);
       bgfx::allocTransientIndexBuffer(&tib, numIndices, sizeof(ImDrawIdx) == 4);
 
       ImDrawVert *verts = (ImDrawVert *)tvb.data;
@@ -113,8 +117,8 @@ struct OcornutImguiContext {
           uint64_t state =
               0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_MSAA;
 
-          bgfx::TextureHandle th = m_texture;
-          bgfx::ProgramHandle program = m_program;
+          bgfx::TextureHandle th = s_texture;
+          bgfx::ProgramHandle program = s_program;
 
           if (NULL != cmd->TextureId) {
             union {
@@ -133,8 +137,8 @@ struct OcornutImguiContext {
             if (0 != texture.s.mip) {
               const float lodEnabled[4] = {float(texture.s.mip), 1.0f, 0.0f,
                                            0.0f};
-              bgfx::setUniform(u_imageLodEnabled, lodEnabled);
-              program = m_imageProgram;
+              bgfx::setUniform(s_imageLodEnabled, lodEnabled);
+              program = s_imageProgram;
             }
           } else {
             state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA,
@@ -164,8 +168,6 @@ struct OcornutImguiContext {
     m_lastScroll = 0;
     m_last = bx::getHPCounter();
 
-    // ::ImGui::SetAllocatorFunctions(memAlloc, memFree, NULL);
-
     m_imgui = ::ImGui::CreateContext();
 
     ImGuiIO &io = ::ImGui::GetIO();
@@ -176,74 +178,83 @@ struct OcornutImguiContext {
 
     setupStyle(true);
 
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-    m_program = bgfx::createProgram(
-        bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_ocornut_imgui"),
-        bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_ocornut_imgui"),
-        true);
+    if (s_useCount == 0) {
+      bgfx::RendererType::Enum type = bgfx::getRendererType();
+      s_program =
+          bgfx::createProgram(bgfx::createEmbeddedShader(
+                                  s_embeddedShaders, type, "vs_ocornut_imgui"),
+                              bgfx::createEmbeddedShader(
+                                  s_embeddedShaders, type, "fs_ocornut_imgui"),
+                              true);
 
-    u_imageLodEnabled =
-        bgfx::createUniform("u_imageLodEnabled", bgfx::UniformType::Vec4);
-    m_imageProgram = bgfx::createProgram(
-        bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_imgui_image"),
-        bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_imgui_image"),
-        true);
+      s_imageLodEnabled =
+          bgfx::createUniform("u_imageLodEnabled", bgfx::UniformType::Vec4);
+      s_imageProgram = bgfx::createProgram(
+          bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_imgui_image"),
+          bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_imgui_image"),
+          true);
 
-    m_layout.begin()
-        .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
-        .end();
+      s_layout.begin()
+          .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+          .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+          .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+          .end();
 
-    s_tex = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
+      s_tex = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
 
-    uint8_t *data;
-    int32_t width;
-    int32_t height;
-    {
-      ImFontConfig config;
-      config.FontDataOwnedByAtlas = false;
-      config.MergeMode = false;
-      //			config.MergeGlyphCenterV = true;
+      uint8_t *data;
+      int32_t width;
+      int32_t height;
+      {
+        ImFontConfig config;
+        config.FontDataOwnedByAtlas = false;
+        config.MergeMode = false;
+        //			config.MergeGlyphCenterV = true;
 
-      const ImWchar *ranges = io.Fonts->GetGlyphRangesCyrillic();
-      m_font[::ImGui::Font::Regular] = io.Fonts->AddFontFromMemoryTTF(
-          (void *)s_robotoRegularTtf, sizeof(s_robotoRegularTtf), _fontSize,
-          &config, ranges);
-      m_font[::ImGui::Font::Mono] = io.Fonts->AddFontFromMemoryTTF(
-          (void *)s_robotoMonoRegularTtf, sizeof(s_robotoMonoRegularTtf),
-          _fontSize - 3.0f, &config, ranges);
+        const ImWchar *ranges = io.Fonts->GetGlyphRangesCyrillic();
+        s_font[::ImGui::Font::Regular] = io.Fonts->AddFontFromMemoryTTF(
+            (void *)s_robotoRegularTtf, sizeof(s_robotoRegularTtf), _fontSize,
+            &config, ranges);
+        s_font[::ImGui::Font::Mono] = io.Fonts->AddFontFromMemoryTTF(
+            (void *)s_robotoMonoRegularTtf, sizeof(s_robotoMonoRegularTtf),
+            _fontSize - 3.0f, &config, ranges);
 
-      config.MergeMode = true;
-      config.DstFont = m_font[::ImGui::Font::Regular];
+        config.MergeMode = true;
+        config.DstFont = s_font[::ImGui::Font::Regular];
 
-      for (uint32_t ii = 0; ii < BX_COUNTOF(s_fontRangeMerge); ++ii) {
-        const FontRangeMerge &frm = s_fontRangeMerge[ii];
+        for (uint32_t ii = 0; ii < BX_COUNTOF(s_fontRangeMerge); ++ii) {
+          const FontRangeMerge &frm = s_fontRangeMerge[ii];
 
-        io.Fonts->AddFontFromMemoryTTF((void *)frm.data, (int)frm.size,
-                                       _fontSize - 3.0f, &config, frm.ranges);
+          io.Fonts->AddFontFromMemoryTTF((void *)frm.data, (int)frm.size,
+                                         _fontSize - 3.0f, &config, frm.ranges);
+        }
       }
+
+      io.Fonts->GetTexDataAsRGBA32(&data, &width, &height);
+
+      s_texture = bgfx::createTexture2D((uint16_t)width, (uint16_t)height,
+                                        false, 1, bgfx::TextureFormat::BGRA8, 0,
+                                        bgfx::copy(data, width * height * 4));
     }
 
-    io.Fonts->GetTexDataAsRGBA32(&data, &width, &height);
-
-    m_texture = bgfx::createTexture2D((uint16_t)width, (uint16_t)height, false,
-                                      1, bgfx::TextureFormat::BGRA8, 0,
-                                      bgfx::copy(data, width * height * 4));
+    s_useCount++;
 
     ::ImGui::InitDockContext();
   }
 
   void destroy() {
+    s_useCount--;
+
     ::ImGui::ShutdownDockContext();
     ::ImGui::DestroyContext(m_imgui);
 
-    bgfx::destroy(s_tex);
-    bgfx::destroy(m_texture);
-
-    bgfx::destroy(u_imageLodEnabled);
-    bgfx::destroy(m_imageProgram);
-    bgfx::destroy(m_program);
+    if (s_useCount == 0) {
+      bgfx::destroy(s_tex);
+      bgfx::destroy(s_texture);
+      bgfx::destroy(s_imageLodEnabled);
+      bgfx::destroy(s_imageProgram);
+      bgfx::destroy(s_program);
+    }
   }
 
   void setupStyle(bool _dark) {
@@ -290,18 +301,27 @@ struct OcornutImguiContext {
   }
 
   ImGuiContext *m_imgui;
-  bgfx::VertexLayout m_layout;
-  bgfx::ProgramHandle m_program;
-  bgfx::ProgramHandle m_imageProgram;
-  bgfx::TextureHandle m_texture;
-  bgfx::UniformHandle s_tex;
-  bgfx::UniformHandle u_imageLodEnabled;
-  ImFont *m_font[::ImGui::Font::Count];
   int64_t m_last;
   int32_t m_lastScroll;
   bgfx::ViewId m_viewId;
+
+  static inline bgfx::VertexLayout s_layout;
+  static inline bgfx::ProgramHandle s_program;
+  static inline bgfx::ProgramHandle s_imageProgram;
+  static inline bgfx::UniformHandle s_imageLodEnabled;
+  static inline bgfx::TextureHandle s_texture;
+  static inline bgfx::UniformHandle s_tex;
+  static inline ImFont *s_font[::ImGui::Font::Count];
+  static inline int s_useCount{0};
 };
 
+namespace ImGui {
+void PushFont(Font::Enum _font) {
+  PushFont(OcornutImguiContext::s_font[_font]);
+}
+} // namespace ImGui
+
+namespace BGFX {
 struct Base {
   CBVar *_bgfxCtx;
 };
