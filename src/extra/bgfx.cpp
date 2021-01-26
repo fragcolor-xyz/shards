@@ -243,18 +243,18 @@ struct OcornutImguiContext {
   }
 
   void destroy() {
-    s_useCount--;
-
     ::ImGui::ShutdownDockContext();
     ::ImGui::DestroyContext(m_imgui);
 
-    if (s_useCount == 0) {
+    if (--s_useCount == 0) {
       bgfx::destroy(s_tex);
       bgfx::destroy(s_texture);
       bgfx::destroy(s_imageLodEnabled);
       bgfx::destroy(s_imageProgram);
       bgfx::destroy(s_program);
     }
+
+    assert(s_useCount >= 0);
   }
 
   void setupStyle(bool _dark) {
@@ -2281,6 +2281,7 @@ struct RenderTarget : public BaseConsumer {
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   CBVar *_bgfx_context{nullptr};
   bgfx::ViewId _viewId;
+  std::optional<OcornutImguiContext> _imguiBgfxCtx;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -2384,6 +2385,10 @@ struct RenderTexture : public RenderTarget {
     if (_texture) {
       Texture::Var.Release(_texture);
       _texture = nullptr;
+    }
+
+    if (_imguiBgfxCtx) {
+      _imguiBgfxCtx->destroy();
     }
   }
 
