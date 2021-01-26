@@ -2437,8 +2437,8 @@ struct RenderXR : public BaseConsumer {
   CBVar getParam(int index) { return _blocks; }
 
 #ifdef __EMSCRIPTEN__
-  std::optional<emscripten::val> _sessionPromise;
-  std::optional<emscripten::val> _xrSession;
+  static inline std::optional<emscripten::val> _xrSession;
+
   std::optional<emscripten::val> _glLayer;
   std::optional<emscripten::val> _refSpace;
   std::optional<emscripten::val> _cb;
@@ -2465,31 +2465,137 @@ struct RenderXR : public BaseConsumer {
     assert(_bgfx_context->valueType == CBType::Object);
 
 #ifdef __EMSCRIPTEN__
-    auto xrSupported = false;
-    emscripten::val navigator = emscripten::val::global("navigator");
-    if (navigator.as<bool>()) {
-      emscripten::val xr = navigator["xr"];
-      if (xr.as<bool>()) {
-        auto supported = emscripten_wait<emscripten::val>(
-            context, xr.call<emscripten::val>("isSessionSupported",
-                                              emscripten::val("immersive-vr")));
-        xrSupported = supported.as<bool>();
-        LOG(INFO) << "WebXR session supported: " << xrSupported;
+    if (!bool(_xrSession)) {
+      // session is lazy loaded and unique
+      // check globals first
+      auto session = emscripten::val::global("ChainblocksWebXRSession");
+      if (session.as<bool>()) {
+        _xrSession = session;
       } else {
-        LOG(INFO) << "WebXR navigator.xr not available.";
+        // if not avail try to init it
+        auto xrSupported = false;
+        emscripten::val navigator = emscripten::val::global("navigator");
+        if (navigator.as<bool>()) {
+          emscripten::val xr = navigator["xr"];
+          if (xr.as<bool>()) {
+            auto supported = emscripten_wait<emscripten::val>(
+                context,
+                xr.call<emscripten::val>("isSessionSupported",
+                                         emscripten::val("immersive-vr")));
+            xrSupported = supported.as<bool>();
+            LOG(INFO) << "WebXR session supported: " << xrSupported;
+          } else {
+            LOG(INFO) << "WebXR navigator.xr not available.";
+          }
+        } else {
+          LOG(INFO) << "WebXR navigator not available.";
+        }
+        if (xrSupported) {
+          emscripten::val dialog =
+              emscripten::val::global("chainblocks_webxr_dialog_open");
+          if (!dialog.as<bool>()) {
+            throw ActivationError("Failed to find webxr permissions call "
+                                  "(window.chainblocks_webxr_dialog_open).");
+          }
+          // if we are the first users of session this will be true
+          // and we need to fetch session
+          auto session = emscripten_wait<emscripten::val>(context, dialog());
+          if (session.as<bool>()) {
+            emscripten::val::global("ChainblocksWebXRSession") = session;
+            _xrSession = session;
+          }
+        }
       }
-    } else {
-      LOG(INFO) << "WebXR navigator not available.";
     }
-    if (xrSupported) {
-      emscripten::val dialog =
-          emscripten::val::global("chainblocks_webxr_dialog_open");
-      if (!dialog.as<bool>()) {
-        throw ActivationError("Failed to find webxr permissions call "
-                              "(window.chainblocks_webxr_dialog_open).");
+
+    if (bool(_xrSession)) {
+      _cb = (*_xrSession)["chainblocks"];
+      if (!_cb->as<bool>()) {
+        throw ActivationError(
+            "Failed to get internal session.chainblocks object.");
       }
-      _sessionPromise = dialog();
-      // check result in activate
+
+      // this call should stop the regular run loop
+      // and start requesting XR frames via requestAnimationFrame
+      _cb->call<void>("warmup");
+
+      Context *ctx =
+          reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
+      // first time per block initialization
+      const auto refspacePromise = _xrSession->call<emscripten::val>(
+          "requestReferenceSpace", emscripten::val("local"));
+      _refSpace = emscripten_wait<emscripten::val>(context, refspacePromise);
+      if (!_refSpace->as<bool>()) {
+        throw ActivationError("Failed to request reference space.");
+      }
+
+      LOG(INFO) << "Entering immersive VR mode.";
+
+      // ok this is a bit tricky, we are going to swap run loop
+      // the next node tick will be inside the VR callback
+      // to do so we simply yield here once
+      suspend(context, 0);
+
+      LOG(INFO) << "Entered immersive VR mode.";
+
+      // we should be resuming inside the VR loop
+      _glLayer =
+          (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
+      if (!_glLayer->as<bool>()) {
+        throw ActivationError("Failed to get render state baseLayer.");
+      }
+
+      _views[0] = ctx->nextViewId();
+      _views[1] = ctx->nextViewId();
+
+      auto gframebuffer = (*_glLayer)["framebuffer"];
+      if (gframebuffer.as<bool>()) {
+        const auto width = (*_glLayer)["framebufferWidth"].as<int>();
+        const auto height = (*_glLayer)["framebufferHeight"].as<int>();
+        // first of all we need to make this WebGLFramebuffer object
+        // compatible with emscripten traditional gl emulated uint IDs This is
+        // hacky cos requires internal emscripten knowledge and might change
+        // any time as its private code
+        const auto GL = emscripten::val::module_property("GL");
+        if (!GL.as<bool>()) {
+          throw ActivationError("Failed to get GL from module.");
+        }
+        auto framebuffers = GL["framebuffers"];
+        if (!framebuffers.as<bool>()) {
+          throw ActivationError("Failed to get GL.framebuffers.");
+        }
+        const auto jnewFbId =
+            GL.call<emscripten::val>("getNewId", framebuffers);
+        framebuffers.set(jnewFbId, gframebuffer);
+        gframebuffer.set("name", jnewFbId);
+        // ok we have a real framebuffer, that is opaque so we need to do some
+        // magic to make it usable by bgfx
+        // Also here set real size cos internally bgfx won't clear that on
+        // internal framebuffer destroy when replaced
+        _framebuffer = bgfx::createFrameBuffer(
+            uint16_t(width), uint16_t(height), bgfx::TextureFormat::RGBA8);
+        // we need to make sure the above buffer has been created...
+        // to do so we draw here a frame (might create artifacts)
+        bgfx::frame();
+        const auto pframebuffer = uintptr_t(jnewFbId.as<uint32_t>());
+        if (bgfx::overrideInternal(_framebuffer, pframebuffer) !=
+            pframebuffer) {
+          throw ActivationError("Failed to override internal framebuffer.");
+        }
+
+        bgfx::setViewFrameBuffer(_views[0], _framebuffer);
+        bgfx::setViewFrameBuffer(_views[1], _framebuffer);
+      }
+
+      bgfx::setViewClear(
+          _views[0], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+          0xC0FFEEFF, 1.0f, 0);
+      bgfx::setViewClear(
+          _views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+          0xC0FFEEFF, 1.0f, 0);
+
+      LOG(INFO) << "Started immersive VR rendering.";
     }
 #endif
   }
@@ -2499,31 +2605,16 @@ struct RenderXR : public BaseConsumer {
 
 #ifdef __EMSCRIPTEN__
     if (_cb) {
-      // if we have session.chainblocks.nextFrame, cancel it
-      auto nf = (*_cb)["nextFrame"];
-      if (nf.as<bool>()) {
-        _xrSession->call<void>("cancelAnimationFrame", nf);
-      }
-
-      auto restoreRunLoop = (*_cb)["restoreRunLoop"];
-      if (restoreRunLoop.as<bool>()) {
-        restoreRunLoop();
-      }
-    }
-
-    if (_xrSession) {
-      // null our internal object to cut all references
-      (*_xrSession).set("chainblocks", nullptr);
-      // this seems to not trigger any event tho...
-      _xrSession->call<emscripten::val>("end").await();
-      LOG(INFO) << "Cleaned up WebXR session.";
+      // on the JS side this should also do:
+      // 1. call cancelAnimationFrame
+      // 2. make sure we don't queue another VR frame
+      // 3. do not close the session
+      _cb->call<void>("cleanup");
     }
 
     _cb.reset();
     _glLayer.reset();
     _refSpace.reset();
-    _xrSession.reset();
-    _sessionPromise.reset();
 
     if (_bgfx_context) {
       releaseVariable(_bgfx_context);
@@ -2536,94 +2627,6 @@ struct RenderXR : public BaseConsumer {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 #ifdef __EMSCRIPTEN__
-    if (unlikely(bool(_sessionPromise))) {
-      auto session =
-          emscripten_wait<emscripten::val>(context, *_sessionPromise);
-      _sessionPromise.reset();
-      if (session.as<bool>()) {
-        _xrSession = session;
-
-        auto refspacePromise = _xrSession->call<emscripten::val>(
-            "requestReferenceSpace", emscripten::val("local"));
-        _refSpace = emscripten_wait<emscripten::val>(context, refspacePromise);
-        if (!_refSpace->as<bool>()) {
-          throw ActivationError("Failed to request reference space.");
-        }
-
-        LOG(INFO) << "Entering immersive VR mode.";
-
-        // ok this is a bit tricky, we are going to swap run loop
-        // the next node tick will be inside the VR callback
-        // to do so we simply yield here once
-        suspend(context, 0);
-
-        LOG(INFO) << "Entered immersive VR mode.";
-
-        // we should be resuming inside the VR loop
-        _glLayer =
-            (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
-        if (!_glLayer->as<bool>()) {
-          throw ActivationError("Failed to get render state baseLayer.");
-        }
-
-        _views[0] = ctx->nextViewId();
-        _views[1] = ctx->nextViewId();
-
-        auto gframebuffer = (*_glLayer)["framebuffer"];
-        if (gframebuffer.as<bool>()) {
-          auto width = (*_glLayer)["framebufferWidth"].as<int>();
-          auto height = (*_glLayer)["framebufferHeight"].as<int>();
-          // first of all we need to make this WebGLFramebuffer object
-          // compatible with emscripten traditional gl emulated uint IDs This is
-          // hacky cos requires internal emscripten knowledge and might change
-          // any time as its private code
-          const auto GL = emscripten::val::module_property("GL");
-          if (!GL.as<bool>()) {
-            throw ActivationError("Failed to get GL from module.");
-          }
-          auto framebuffers = GL["framebuffers"];
-          if (!framebuffers.as<bool>()) {
-            throw ActivationError("Failed to get GL.framebuffers.");
-          }
-          auto jnewFbId = GL.call<emscripten::val>("getNewId", framebuffers);
-          framebuffers.set(jnewFbId, gframebuffer);
-          gframebuffer.set("name", jnewFbId);
-          // ok we have a real framebuffer, that is opaque so we need to do some
-          // magic to make it usable by bgfx
-          // Also here set real size cos internally bgfx won't clear that on
-          // internal framebuffer destroy when replaced
-          _framebuffer = bgfx::createFrameBuffer(
-              uint16_t(width), uint16_t(height), bgfx::TextureFormat::RGBA8);
-          // we need to make sure the above buffer has been created...
-          // to do so we draw here a frame (might create artifacts)
-          bgfx::frame();
-          const auto pframebuffer = uintptr_t(jnewFbId.as<uint32_t>());
-          if (bgfx::overrideInternal(_framebuffer, pframebuffer) !=
-              pframebuffer) {
-            throw ActivationError("Failed to override internal framebuffer.");
-          }
-
-          bgfx::setViewFrameBuffer(_views[0], _framebuffer);
-          bgfx::setViewFrameBuffer(_views[1], _framebuffer);
-        }
-
-        bgfx::setViewClear(
-            _views[0], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-            0xC0FFEEFF, 1.0f, 0);
-        bgfx::setViewClear(
-            _views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-            0xC0FFEEFF, 1.0f, 0);
-
-        _cb = (*_xrSession)["chainblocks"];
-        if (!_cb->as<bool>()) {
-          throw ActivationError(
-              "Failed to get internal session.chainblocks object.");
-        }
-
-        LOG(INFO) << "Started immersive VR rendering.";
-      }
-    }
-
     if (likely(bool(_cb))) {
       const auto frame = (*_cb)["frame"];
       if (unlikely(!frame.as<bool>())) {
