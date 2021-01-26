@@ -4,6 +4,7 @@
 set -e
 
 # rustup update # causes issues with CI
+export RUSTUP_USE_CURL=1
 rustup default stable-i686-pc-windows-gnu
 
 pacman -S --needed --noconfirm base-devel mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-boost mingw-w64-i686-ninja mingw-w64-i686-clang mingw-w64-i686-lld wget
