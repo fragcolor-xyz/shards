@@ -2429,12 +2429,43 @@ struct RenderXR : public BaseConsumer {
   static inline Parameters params{
       {"Contents",
        CBCCSTR("The blocks expressing the contents to render."),
-       {CoreInfo::BlocksOrNone}}};
+       {CoreInfo::BlocksOrNone}},
+      {"Near",
+       CBCCSTR("The distance from the near clipping plane."),
+       {CoreInfo::FloatType}},
+      {"Far",
+       CBCCSTR("The distance from the far clipping plane."),
+       {CoreInfo::FloatType}}};
   static CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) { _blocks = value; }
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _blocks = value;
+      break;
+    case 1:
+      _near = value.payload.floatValue;
+      break;
+    case 2:
+      _far = value.payload.floatValue;
+      break;
+    default:
+      break;
+    }
+  }
 
-  CBVar getParam(int index) { return _blocks; }
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    case 1:
+      return Var(_near);
+    case 2:
+      return Var(_far);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
 
 #ifdef __EMSCRIPTEN__
   static inline std::optional<emscripten::val> _xrSession;
@@ -2447,6 +2478,8 @@ struct RenderXR : public BaseConsumer {
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _views[2];
   CBVar *_bgfx_context{nullptr};
+  float _near{0.1};
+  float _far{1000.0};
   BlocksVar _blocks;
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -2474,11 +2507,11 @@ struct RenderXR : public BaseConsumer {
       } else {
         // if not avail try to init it
         auto xrSupported = false;
-        emscripten::val navigator = emscripten::val::global("navigator");
+        const auto navigator = emscripten::val::global("navigator");
         if (navigator.as<bool>()) {
-          emscripten::val xr = navigator["xr"];
+          const auto xr = navigator["xr"];
           if (xr.as<bool>()) {
-            auto supported = emscripten_wait<emscripten::val>(
+            const auto supported = emscripten_wait<emscripten::val>(
                 context,
                 xr.call<emscripten::val>("isSessionSupported",
                                          emscripten::val("immersive-vr")));
@@ -2491,15 +2524,16 @@ struct RenderXR : public BaseConsumer {
           LOG(INFO) << "WebXR navigator not available.";
         }
         if (xrSupported) {
-          emscripten::val dialog =
-              emscripten::val::global("chainblocks_webxr_dialog_open");
+          const auto dialog =
+              emscripten::val::global("ChainblocksWebXROpenDialog");
           if (!dialog.as<bool>()) {
             throw ActivationError("Failed to find webxr permissions call "
-                                  "(window.chainblocks_webxr_dialog_open).");
+                                  "(window.ChainblocksWebXROpenDialog).");
           }
           // if we are the first users of session this will be true
           // and we need to fetch session
-          auto session = emscripten_wait<emscripten::val>(context, dialog());
+          auto session =
+              emscripten_wait<emscripten::val>(context, dialog(_near, _far));
           if (session.as<bool>()) {
             emscripten::val::global("ChainblocksWebXRSession") = session;
             _xrSession = session;
@@ -2509,18 +2543,14 @@ struct RenderXR : public BaseConsumer {
     }
 
     if (bool(_xrSession)) {
+      auto ctx =
+          reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+
       _cb = (*_xrSession)["chainblocks"];
       if (!_cb->as<bool>()) {
         throw ActivationError(
             "Failed to get internal session.chainblocks object.");
       }
-
-      // this call should stop the regular run loop
-      // and start requesting XR frames via requestAnimationFrame
-      _cb->call<void>("warmup");
-
-      Context *ctx =
-          reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 
       // first time per block initialization
       const auto refspacePromise = _xrSession->call<emscripten::val>(
@@ -2531,6 +2561,10 @@ struct RenderXR : public BaseConsumer {
       }
 
       LOG(INFO) << "Entering immersive VR mode.";
+
+      // this call should stop the regular run loop
+      // and start requesting XR frames via requestAnimationFrame
+      _cb->call<void>("warmup");
 
       // ok this is a bit tricky, we are going to swap run loop
       // the next node tick will be inside the VR callback
@@ -2624,7 +2658,7 @@ struct RenderXR : public BaseConsumer {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    Context *ctx =
+    const auto ctx =
         reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
 #ifdef __EMSCRIPTEN__
     if (likely(bool(_cb))) {
@@ -2641,7 +2675,7 @@ struct RenderXR : public BaseConsumer {
           throw ActivationError("WebXR pose had no views.");
         }
 
-        auto len = views["length"].as<size_t>();
+        const auto len = views["length"].as<size_t>();
         if (unlikely(len != 2)) {
           throw ActivationError("WebXR views length was not 2.");
         }
