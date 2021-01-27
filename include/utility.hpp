@@ -256,7 +256,10 @@ public:
   }
 };
 
-template <class CB_CORE, typename E> class TObjectVar {
+template <class CB_CORE, typename E,
+          std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
+          E (*Deserializer)(const std::string_view &) = nullptr>
+class TObjectVar {
 private:
   CBObjectInfo info;
   int32_t vendorId;
@@ -270,6 +273,7 @@ private:
 public:
   TObjectVar(const char *name, int32_t vendorId, int32_t typeId)
       : vendorId(vendorId), typeId(typeId) {
+    info = {};
     info.name = name;
     info.reference = [](CBPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
@@ -282,6 +286,28 @@ public:
         delete p;
       }
     };
+    if constexpr (Serializer != nullptr && Deserializer != nullptr) {
+      info.serialize = [](CBPointer obj, uint8_t **outData, size_t *outLen,
+                          CBPointer *customHandle) {
+        auto tobj = reinterpret_cast<E *>(obj);
+        auto holder = new std::vector<uint8_t>();
+        *holder = Serializer(*tobj);
+        *customHandle = holder;
+        *outData = holder->data();
+        *outLen = holder->size();
+        return true;
+      };
+      info.free = [](CBPointer handle) {
+        auto holder = reinterpret_cast<std::vector<uint8_t> *>(handle);
+        delete holder;
+      };
+      info.deserialize = [](uint8_t *data, size_t len) {
+        auto r = new ObjectRef();
+        r->shared = Deserializer(std::string_view((char *)data, len));
+        // don't bump ref count, deserializer is supposed to do that
+        return (CBPointer)r;
+      };
+    }
     CB_CORE::registerObjectType(vendorId, typeId, info);
   }
 

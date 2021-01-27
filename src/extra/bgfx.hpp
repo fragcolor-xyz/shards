@@ -79,8 +79,8 @@ struct Texture {
   static inline Type VarType = Type::VariableOf(ObjType);
   static inline Type VarSeqType = Type::VariableOf(SeqType);
 
-  typedef ObjectVar<Texture> VarInfo;
-  static inline VarInfo Var{"BGFX-Texture", CoreCC, BgfxTextureHandleCC};
+  static inline ObjectVar<Texture> Var{"BGFX-Texture", CoreCC,
+                                       BgfxTextureHandleCC};
 
   bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
   uint16_t width = 0;
@@ -101,8 +101,8 @@ struct ShaderHandle {
        {.object = {.vendorId = CoreCC, .typeId = BgfxShaderHandleCC}}}};
   static inline Type VarType = Type::VariableOf(ObjType);
 
-  typedef ObjectVar<ShaderHandle> VarInfo;
-  static inline VarInfo Var{"BGFX-Shader", CoreCC, BgfxShaderHandleCC};
+  static inline ObjectVar<ShaderHandle> Var{"BGFX-Shader", CoreCC,
+                                            BgfxShaderHandleCC};
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
 
@@ -119,8 +119,8 @@ struct ModelHandle {
        {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
   static inline Type VarType = Type::VariableOf(ObjType);
 
-  typedef ObjectVar<ModelHandle> VarInfo;
-  static inline VarInfo Var{"BGFX-Model", CoreCC, BgfxModelHandleCC};
+  static inline ObjectVar<ModelHandle> Var{"BGFX-Model", CoreCC,
+                                           BgfxModelHandleCC};
 
   struct StaticModel {
     bgfx::VertexBufferHandle vb;

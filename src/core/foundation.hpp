@@ -874,10 +874,13 @@ public:
       : TEnumInfo<InternalCore, E>(name, vendorId, enumId) {}
 };
 
-template <typename E> class ObjectVar : public TObjectVar<InternalCore, E> {
+template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
+          E (*Deserializer)(const std::string_view &) = nullptr>
+class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer> {
 public:
   ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<InternalCore, E>(name, vendorId, objectId) {}
+      : TObjectVar<InternalCore, E, Serializer, Deserializer>(name, vendorId,
+                                                              objectId) {}
 };
 
 typedef TBlocksVar<InternalCore> BlocksVar;

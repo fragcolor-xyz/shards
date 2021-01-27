@@ -553,13 +553,14 @@ struct NaNTo0 {
 };
 
 struct VariableBase {
-  CBVar *_target = nullptr;
-  CBVar *_cell = nullptr;
+  CBVar *_target{nullptr};
+  CBVar *_cell{nullptr};
   std::string _name;
   ParamVar _key{};
   ExposedInfo _exposedInfo{};
-  bool _isTable = false;
-  bool _global = false;
+  bool _isTable{false};
+  bool _global{false};
+  bool _serialized{false};
 
   static inline ParamsInfo variableParamsInfo = ParamsInfo(
       ParamsInfo::Param("Name", CBCCSTR("The name of the variable."),
@@ -572,7 +573,16 @@ struct VariableBase {
       ParamsInfo::Param("Global",
                         CBCCSTR("If the variable is or should be available to "
                                 "all of the chains in the same node."),
-                        CoreInfo::BoolType));
+                        CoreInfo::BoolType),
+      ParamsInfo::Param(
+          "Serialized",
+          CBCCSTR("If the variable should be serialized as chain variable when "
+                  "the parent chain is serialized, e.g. (ToBytes), this option "
+                  "is mostly to be used with (Once) blocks with serialization "
+                  "turned off or (Get) blocks with default values set."),
+          CoreInfo::BoolType));
+
+  static constexpr int variableParamsInfoLen = 4;
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(variableParamsInfo);
@@ -588,27 +598,40 @@ struct VariableBase {
   }
 
   void setParam(int index, const CBVar &value) {
-    if (index == 0) {
+    switch (index) {
+    case 0:
       _name = value.payload.stringValue;
-    } else if (index == 1) {
+      break;
+    case 1:
       if (value.valueType == None) {
         _isTable = false;
       } else {
         _isTable = true;
       }
       _key = value;
-    } else {
+      break;
+    case 2:
       _global = value.payload.boolValue;
+      break;
+    case 3:
+      _serialized = value.payload.boolValue;
+      break;
     }
   }
 
   CBVar getParam(int index) {
-    if (index == 0)
-      return Var(_name.c_str());
-    else if (index == 1)
+    switch (index) {
+    case 0:
+      return Var(_name);
+    case 1:
       return _key;
-    else
+    case 2:
       return Var(_global);
+    case 3:
+      return Var(_serialized);
+    default:
+      throw InvalidParameterIndex();
+    }
   }
 };
 
@@ -659,6 +682,8 @@ struct SetBase : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    if (_serialized)
+      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
   }
 
@@ -931,9 +956,9 @@ struct Get : public VariableBase {
       variableParamsInfo,
       ParamsInfo::Param(
           "Default",
-          CBCCSTR(
-              "The default value to use to infer types and output if the "
-              "variable is not set, key is not there and/or type mismatches."),
+          CBCCSTR("The default value to use to infer types and output if the "
+                  "variable is not set, key is not there and/or type "
+                  "mismatches."),
           CoreInfo::AnyType));
 
   static CBParametersInfo parameters() {
@@ -941,17 +966,17 @@ struct Get : public VariableBase {
   }
 
   void setParam(int index, const CBVar &value) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == variableParamsInfoLen + 0) {
       cloneVar(_defaultValue, value);
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == variableParamsInfoLen + 0)
       return _defaultValue;
     throw CBException("Param index out of range.");
   }
@@ -1088,9 +1113,9 @@ struct Get : public VariableBase {
     auto warn = false;
     DEFER({
       if (warn) {
-        LOG(INFO)
-            << "Get found a variable but it's using the default value because "
-               "the type found did not match with the default type.";
+        LOG(INFO) << "Get found a variable but it's using the default value "
+                     "because "
+                     "the type found did not match with the default type.";
       }
     });
     if (value.valueType != _defaultValue.valueType)
@@ -1114,6 +1139,8 @@ struct Get : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    if (_serialized)
+      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
   }
 
@@ -1295,6 +1322,8 @@ struct SeqBase : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    if (_serialized)
+      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
     initSeq();
   }
@@ -1331,17 +1360,17 @@ struct Push : public SeqBase {
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, const CBVar &value) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == variableParamsInfoLen + 0) {
       _clear = value.payload.boolValue;
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == variableParamsInfoLen + 0)
       return Var(_clear);
     throw CBException("Param index out of range.");
   }
@@ -1460,21 +1489,21 @@ struct Sequence : public SeqBase {
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, const CBVar &value) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == variableParamsInfoLen + 0) {
       _clear = value.payload.boolValue;
-    } else if (index == 4) {
+    } else if (index == variableParamsInfoLen + 1) {
       _types = value;
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == variableParamsInfoLen + 0)
       return Var(_clear);
-    else if (index == 4)
+    else if (index == variableParamsInfoLen + 1)
       return _types;
     throw CBException("Param index out of range.");
   }
@@ -1707,6 +1736,8 @@ struct TableDecl : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    if (_serialized)
+      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
     initTable();
   }
@@ -1739,17 +1770,17 @@ struct TableDecl : public VariableBase {
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
   void setParam(int index, const CBVar &value) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    else if (index == 3) {
+    else if (index == variableParamsInfoLen + 0) {
       _types = value;
     }
   }
 
   CBVar getParam(int index) {
-    if (index <= 2)
+    if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
-    else if (index == 3)
+    else if (index == variableParamsInfoLen + 0)
       return _types;
     throw CBException("Param index out of range.");
   }
@@ -1962,6 +1993,8 @@ struct SeqUser : VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+    if (_serialized)
+      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
     initSeq();
   }
@@ -3111,6 +3144,7 @@ struct Once {
   bool _repeat{false};
   double _repeatTime{0.0};
   CBlock *self{nullptr};
+  bool _serialized{true};
 
   void cleanup() {
     _blks.cleanup();
@@ -3126,7 +3160,13 @@ struct Once {
       {"Every",
        CBCCSTR("The number of seconds to wait until repeating the action, if 0 "
                "the action will happen only once per chain flow execution."),
-       {CoreInfo::FloatType}}};
+       {CoreInfo::FloatType}},
+      {"Serialized",
+       CBCCSTR(
+           "If false, when the parent chain is serialized this block will be "
+           "removed, the exposed variables in the current chain if populated "
+           "will be serialized."),
+       {CoreInfo::BoolType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -3143,6 +3183,9 @@ struct Once {
       _repeatTime = value.payload.floatValue;
       _repeat = _repeatTime != 0.0;
       break;
+    case 2:
+      _serialized = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -3154,6 +3197,8 @@ struct Once {
       return _blks;
     case 1:
       return Var(_repeatTime);
+    case 2:
+      return Var(_serialized);
     default:
       break;
     }

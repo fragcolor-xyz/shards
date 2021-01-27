@@ -127,10 +127,12 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
     add_link_options(-static)
   endif()
+
   add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
-  add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
+  endif()
 else()
-  # add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
   if(NOT WIN32 AND NOT EMSCRIPTEN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
@@ -181,7 +183,6 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  # custom allocator
   if(NOT EMSCRIPTEN)
     # aggressive inlining
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

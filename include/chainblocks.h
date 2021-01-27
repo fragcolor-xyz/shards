@@ -576,6 +576,7 @@ struct CBVarPayload {
 #define CBVAR_FLAGS_NONE (0)
 #define CBVAR_FLAGS_USES_OBJINFO (1 << 0)
 #define CBVAR_FLAGS_REF_COUNTED (1 << 1)
+#define CBVAR_FLAGS_SHOULD_SERIALIZE (1 << 2)
 
 struct CBVar {
   struct CBVarPayload payload;
