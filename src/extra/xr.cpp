@@ -9,16 +9,23 @@ namespace XR {
 struct RenderXR : public BGFX::BaseConsumer {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
-  function window.cb_emscripten_wait_webxr_dialog = async function() { ... }
+  function window.ChainblocksWebXROpenDialog = async function(near, far) { ... }
   that shows a dialog the user has to accept and start a session like:
 
   let glCanvas = document.getElementById('canvas'); // this is SDL canvas
   canvas let gl = glCanvas.getContext('webgl'); // this is our bgfx context
+  await gl.makeXRCompatible();
   let session = await navigator.xr.requestSession('immersive-vr');
   let layer = new XRWebGLLayer(session, gl);
-  session.updateRenderState({ baseLayer: layer });
-
-  resolve to true if this is done, false otherwise.
+  session.updateRenderState({
+    baseLayer: layer,
+    depthFar: far,
+    depthNear: near
+  });
+  resolve with the new session if this is done, null otherwise.
+  Also populate:
+  session.chainblocks.warmup and session.chainblocks.cleanup
+  check cleanup and warmup for more details under
   */
 
   static inline Parameters params{
