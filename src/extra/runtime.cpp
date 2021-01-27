@@ -26,11 +26,16 @@ namespace Brotli {
 extern void registerBlocks();
 }
 
+namespace XR {
+extern void registerBlocks();
+}
+
 extern "C" void registerRustBlocks(CBCore *core);
 
 void cbInitExtras() {
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
+  XR::registerBlocks();
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif

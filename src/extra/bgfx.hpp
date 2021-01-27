@@ -152,4 +152,30 @@ struct ModelHandle {
 
   ~ModelHandle() { reset(); }
 };
+
+constexpr uint32_t windowCC = 'hwnd';
+
+struct Base {
+  CBVar *_bgfxCtx;
+};
+
+struct BaseConsumer : public Base {
+  static inline Type windowType{
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
+
+  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
+      "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
+
+  CBExposedTypesInfo requiredVariables() {
+    return CBExposedTypesInfo(requiredInfo);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+    return data.inputType;
+  }
+};
 }; // namespace BGFX

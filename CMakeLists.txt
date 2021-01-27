@@ -289,6 +289,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx_tests.cpp
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
@@ -710,6 +711,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image_gnf.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
