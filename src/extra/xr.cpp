@@ -18,9 +18,58 @@ struct Context {
   RenderXR *xr{nullptr};
 };
 
+struct GamePadButtonData {
+  double value{0.0};
+  bool pressed{false};
+  bool touched{false};
+};
+
+struct GamePadButtonTable : public TableVar {
+  GamePadButtonTable()
+      : TableVar(),                  // create and add pointer to values
+        value((*this)["value"]),     //
+        pressed((*this)["pressed"]), //
+        touched((*this)["touched"])  //
+  {
+    value = Var(0.0);
+    pressed = Var(false);
+    touched = Var(false);
+  }
+
+  CBVar &value;
+  CBVar &pressed;
+  CBVar &touched;
+};
+
+struct GamePadData {
+  std::vector<GamePadButtonData> buttons;
+  std::vector<CBFloat2> sticks;
+  std::string id;
+  bool connected{false};
+};
+
+struct GamePadTable : public TableVar {
+  GamePadTable()
+      : TableVar(),                     //
+        buttons((*this)["buttons"]),    //
+        sticks((*this)["sticks"]),      //
+        id((*this)["id"]),              //
+        connected((*this)["connected"]) //
+  {
+    // TODO Seqs
+    id = Var("generic");
+    connected = Var(false);
+  }
+
+  CBVar &buttons;
+  CBVar &sticks;
+  CBVar &id;
+  CBVar &connected;
+};
+
 enum class XRHand { Left, Right };
 
-struct HandData {
+struct HandData : public GamePadData {
   static inline Type HandEnumType{
       {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'xrha'}}}};
   static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, 'xrha'};
@@ -308,6 +357,44 @@ struct RenderXR : public BGFX::BaseConsumer {
   }
 
   void populateInputsData() {
+#ifdef __EMSCRIPTEN__
+    const auto populateGamePadData = [](const emscripten::val &source,
+                                        GamePadData &data) {
+      const auto gamepad = source["gamepad"];
+      if (gamepad.as<bool>()) {
+        if (data.id.size() == 0) {
+          data.id = gamepad["id"].as<std::string>();
+        }
+
+        data.connected = gamepad["connected"].as<bool>();
+
+        const auto buttons = gamepad["buttons"];
+        const auto nbuttons = buttons["length"].as<size_t>();
+        data.buttons.clear();
+        for (size_t i = 0; i < nbuttons; ++i) {
+          const auto button = buttons[i];
+          data.buttons.emplace_back(GamePadButtonData{
+              button["value"].as<double>(),
+              button["pressed"].as<bool>(),
+              button["touched"].as<bool>(),
+          });
+        }
+
+        const auto axes = gamepad["axes"];
+        const auto naxes = axes["length"].as<size_t>();
+        if ((naxes % 2) != 0) {
+          throw ActivationError("Expected a controller with 2 axis sticks.");
+        }
+        data.sticks.clear();
+        for (size_t i = 0; i < naxes; i += 2) {
+          data.sticks.emplace_back(CBFloat2{
+              axes[i + 0].as<double>(), // X
+              axes[i + 1].as<double>(), // Y
+          });
+        }
+      }
+    };
+
     const auto inputSources = (*_xrSession)["inputSources"];
     const auto len = inputSources["length"].as<size_t>();
     for (size_t i = 0; i < len; i++) {
@@ -341,10 +428,12 @@ struct RenderXR : public BGFX::BaseConsumer {
                 }
               }
             }
+            populateGamePadData(source, _hands[(int)hand]);
           }
         }
       }
     }
+#endif
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
