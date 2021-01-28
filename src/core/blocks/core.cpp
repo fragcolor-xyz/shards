@@ -187,9 +187,8 @@ struct Sort : public ActionJointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo shared(data.shared);
     CBExposedTypeInfo info{};
-    for (auto &reference : shared) {
+    for (auto &reference : data.shared) {
       if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
         info = reference;
         goto found;
@@ -350,9 +349,8 @@ struct Remove : public ActionJointOp {
     if (_inputVar.valueType != ContextVar)
       throw CBException("From variable was empty!");
 
-    IterableExposedInfo shared(data.shared);
     CBExposedTypeInfo info{};
-    for (auto &reference : shared) {
+    for (auto &reference : data.shared) {
       if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
         info = reference;
         goto found;
@@ -500,8 +498,7 @@ struct XpendTo : public XPendBase {
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    auto conss = IterableExposedInfo(data.shared);
-    for (auto &cons : conss) {
+    for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != CBType::Seq &&
             cons.exposedType.basicType != CBType::Bytes &&
@@ -893,8 +890,7 @@ struct Erase : SeqUser {
                (_isTable && _indices->valueType == String)) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.shared);
-      for (auto &info : infos) {
+      for (auto &info : data.shared) {
         if (strcmp(info.name, _indices->payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq &&
               info.exposedType.seqTypes.len == 1 &&

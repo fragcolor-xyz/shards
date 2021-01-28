@@ -562,8 +562,7 @@ struct Recur : public ChainBase {
 
     // find all variables to store in current chain
     // use vector in the end.. cos slightly faster
-    IterableExposedInfo shares(data.shared);
-    for (CBExposedTypeInfo &shared : shares) {
+    for (auto &shared : data.shared) {
       if (shared.scope == data.chain && shared.isMutable) {
         CBVar ctxVar{};
         ctxVar.valueType = ContextVar;

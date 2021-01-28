@@ -496,32 +496,4 @@ template <class Function> struct Defer {
 #define DEFER(body) DEFER_DEF(__LINE__, body)
 }; // namespace chainblocks
 
-inline CBVar *begin(CBVar &a) {
-  if (a.valueType != CBType::Seq) {
-    throw chainblocks::CBException("begin expected a Seq");
-  }
-  return &a.payload.seqValue.elements[0];
-}
-
-inline const CBVar *begin(const CBVar &a) {
-  if (a.valueType != CBType::Seq) {
-    throw chainblocks::CBException("begin expected a Seq");
-  }
-  return &a.payload.seqValue.elements[0];
-}
-
-inline CBVar *end(CBVar &a) {
-  if (a.valueType != CBType::Seq) {
-    throw chainblocks::CBException("begin expected a Seq");
-  }
-  return begin(a) + a.payload.seqValue.len;
-}
-
-inline const CBVar *end(const CBVar &a) {
-  if (a.valueType != CBType::Seq) {
-    throw chainblocks::CBException("begin expected a Seq");
-  }
-  return begin(a) + a.payload.seqValue.len;
-}
-
 #endif

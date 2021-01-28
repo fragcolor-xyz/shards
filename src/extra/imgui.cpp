@@ -766,10 +766,9 @@ template <CBType CT> struct Variable : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_variable_name.size() > 0) {
-      IterableExposedInfo vars(data.shared);
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
-      for (auto &var : vars) {
+      for (auto &var : data.shared) {
         if (strcmp(var.name, _variable_name.c_str()) == 0) {
           // we found a variable, make sure it's the right type and mark
           // exposing off

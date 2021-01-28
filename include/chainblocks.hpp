@@ -1090,4 +1090,56 @@ private:
 };
 } // namespace chainblocks
 
+inline CBVar *begin(CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return &a.payload.seqValue.elements[0];
+}
+
+inline const CBVar *begin(const CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return &a.payload.seqValue.elements[0];
+}
+
+inline CBVar *end(CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return begin(a) + a.payload.seqValue.len;
+}
+
+inline const CBVar *end(const CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return begin(a) + a.payload.seqValue.len;
+}
+
+inline CBExposedTypeInfo *begin(CBExposedTypesInfo &a) {
+  return &a.elements[0];
+}
+
+inline const CBExposedTypeInfo *begin(const CBExposedTypesInfo &a) {
+  return &a.elements[0];
+}
+
+inline CBExposedTypeInfo *end(CBExposedTypesInfo &a) {
+  return begin(a) + a.len;
+}
+
+inline const CBExposedTypeInfo *end(const CBExposedTypesInfo &a) {
+  return begin(a) + a.len;
+}
+
+inline CBTypeInfo *begin(CBTypesInfo &a) { return &a.elements[0]; }
+
+inline const CBTypeInfo *begin(const CBTypesInfo &a) { return &a.elements[0]; }
+
+inline CBTypeInfo *end(CBTypesInfo &a) { return begin(a) + a.len; }
+
+inline const CBTypeInfo *end(const CBTypesInfo &a) { return begin(a) + a.len; }
+
 #endif

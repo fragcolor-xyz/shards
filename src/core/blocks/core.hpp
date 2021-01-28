@@ -2330,8 +2330,7 @@ struct Take {
       _seqOutput = false;
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.shared);
-      for (auto &info : infos) {
+      for (auto &info : data.shared) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq &&
               info.exposedType.seqTypes.len == 1 &&
@@ -2727,8 +2726,7 @@ struct Slice {
     if (_from.valueType == Int) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.shared);
-      for (auto &info : infos) {
+      for (auto &info : data.shared) {
         if (strcmp(info.name, _from.payload.stringValue) == 0) {
           valid = true;
           break;
@@ -2742,8 +2740,7 @@ struct Slice {
     if (_to.valueType == Int || _to.valueType == None) {
       valid = true;
     } else { // ContextVar
-      IterableExposedInfo infos(data.shared);
-      for (auto &info : infos) {
+      for (auto &info : data.shared) {
         if (strcmp(info.name, _to.payload.stringValue) == 0) {
           valid = true;
           break;

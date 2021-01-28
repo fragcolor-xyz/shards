@@ -1368,8 +1368,7 @@ CBComposeResult composeChain(const CBChain *chain,
   }
 
   // add variables
-  chainblocks::IterableExposedInfo reqs(res.requiredInfo);
-  for (auto req : reqs) {
+  for (auto req : res.requiredInfo) {
     chain->requiredVariables.emplace_back(req.name);
   }
 
