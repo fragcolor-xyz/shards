@@ -18,65 +18,42 @@ struct Context {
   RenderXR *xr{nullptr};
 };
 
-struct GamePadButtonData {
-  double value{0.0};
-  bool pressed{false};
-  bool touched{false};
-};
-
-struct GamePadButtonTable : public TableVar {
-  GamePadButtonTable()
-      : TableVar(),                  // create and add pointer to values
-        value((*this)["value"]),     //
-        pressed((*this)["pressed"]), //
-        touched((*this)["touched"])  //
-  {
-    value = Var(0.0);
-    pressed = Var(false);
-    touched = Var(false);
-  }
-
-  CBVar &value;
-  CBVar &pressed;
-  CBVar &touched;
-};
-
-struct GamePadData {
-  std::vector<GamePadButtonData> buttons;
-  std::vector<CBFloat2> sticks;
-  std::string id;
-  bool connected{false};
-};
+enum class XRHand { Left, Right };
 
 struct GamePadTable : public TableVar {
   GamePadTable()
-      : TableVar(),                     //
-        buttons((*this)["buttons"]),    //
-        sticks((*this)["sticks"]),      //
-        id((*this)["id"]),              //
-        connected((*this)["connected"]) //
-  {
-    // TODO Seqs
-    id = Var("generic");
+      : TableVar(),                      //
+        buttons(get<SeqVar>("buttons")), //
+        sticks(get<SeqVar>("sticks")),   //
+        id((*this)["id"]),               //
+        connected((*this)["connected"]) {
     connected = Var(false);
   }
 
-  CBVar &buttons;
-  CBVar &sticks;
+  SeqVar &buttons;
+  SeqVar &sticks;
   CBVar &id;
   CBVar &connected;
 };
 
-enum class XRHand { Left, Right };
-
-struct HandData : public GamePadData {
+struct ControllerTable : public GamePadTable {
+  static constexpr uint32_t HandednessCC = 'xrha';
   static inline Type HandEnumType{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'xrha'}}}};
-  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, 'xrha'};
+      {CBType::Enum,
+       {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
+  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
 
-  XRHand handedness;
-  Float4x4 transform;
-  Float4x4 inverseTransform;
+  ControllerTable()
+      : GamePadTable(),                      //
+        handedness((*this)["handedness"]),   //
+        transform(get<SeqVar>("transform")), //
+        inverseTransform(get<SeqVar>("inverseTransform")) {
+    handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
+  }
+
+  CBVar &handedness;
+  SeqVar &transform;
+  SeqVar &inverseTransform;
 };
 
 struct Consumer {
@@ -359,25 +336,23 @@ struct RenderXR : public BGFX::BaseConsumer {
   void populateInputsData() {
 #ifdef __EMSCRIPTEN__
     const auto populateGamePadData = [](const emscripten::val &source,
-                                        GamePadData &data) {
+                                        GamePadTable &data) {
       const auto gamepad = source["gamepad"];
       if (gamepad.as<bool>()) {
-        if (data.id.size() == 0) {
-          data.id = gamepad["id"].as<std::string>();
+        if (data.id.valueType == CBType::None) {
+          cloneVar(data.id, Var(gamepad["id"].as<std::string>()));
         }
 
-        data.connected = gamepad["connected"].as<bool>();
+        data.connected = Var(gamepad["connected"].as<bool>());
 
         const auto buttons = gamepad["buttons"];
         const auto nbuttons = buttons["length"].as<size_t>();
-        data.buttons.clear();
+        data.buttons.resize(nbuttons);
         for (size_t i = 0; i < nbuttons; ++i) {
           const auto button = buttons[i];
-          data.buttons.emplace_back(GamePadButtonData{
-              button["value"].as<double>(),
-              button["pressed"].as<bool>(),
-              button["touched"].as<bool>(),
-          });
+          data.buttons[i] =
+              Var(button["pressed"].as<double>(),
+                  button["touched"].as<double>(), button["value"].as<double>());
         }
 
         const auto axes = gamepad["axes"];
@@ -385,12 +360,10 @@ struct RenderXR : public BGFX::BaseConsumer {
         if ((naxes % 2) != 0) {
           throw ActivationError("Expected a controller with 2 axis sticks.");
         }
-        data.sticks.clear();
+        data.sticks.resize(naxes / 2);
         for (size_t i = 0; i < naxes; i += 2) {
-          data.sticks.emplace_back(CBFloat2{
-              axes[i + 0].as<double>(), // X
-              axes[i + 1].as<double>(), // Y
-          });
+          data.sticks[i / 2] =
+              Var(axes[i + 0].as<double>(), axes[i + 1].as<double>());
         }
       }
     };
@@ -412,20 +385,20 @@ struct RenderXR : public BGFX::BaseConsumer {
             const auto transform = pose["transform"];
             {
               const auto mat = transform["matrix"];
+              _hands[(int)hand].transform.resize(4);
               for (int j = 0; j < 4; j++) {
-                for (int k = 0; k < 4; k++) {
-                  _hands[(int)hand].transform[j][k] =
-                      mat[(j * 4) + k].as<float>();
-                }
+                _hands[(int)hand].transform[j] = Var(
+                    mat[(j * 4) + 0].as<float>(), mat[(j * 4) + 1].as<float>(),
+                    mat[(j * 4) + 2].as<float>(), mat[(j * 4) + 3].as<float>());
               }
             }
             {
               const auto mat = transform["inverse"]["matrix"];
+              _hands[(int)hand].inverseTransform.resize(4);
               for (int j = 0; j < 4; j++) {
-                for (int k = 0; k < 4; k++) {
-                  _hands[(int)hand].inverseTransform[j][k] =
-                      mat[(j * 4) + k].as<float>();
-                }
+                _hands[(int)hand].inverseTransform[j] = Var(
+                    mat[(j * 4) + 0].as<float>(), mat[(j * 4) + 1].as<float>(),
+                    mat[(j * 4) + 2].as<float>(), mat[(j * 4) + 3].as<float>());
               }
             }
             populateGamePadData(source, _hands[(int)hand]);
@@ -515,7 +488,9 @@ struct RenderXR : public BGFX::BaseConsumer {
     return Var::Empty;
   }
 
-  const HandData &getHandData(XRHand hand) const { return _hands[(int)hand]; }
+  const ControllerTable &getHandData(XRHand hand) const {
+    return _hands[(int)hand];
+  }
 
 private:
 #ifdef __EMSCRIPTEN__
@@ -535,23 +510,22 @@ private:
   BlocksVar _blocks;
   Context _xrContext{this};
   CBVar *_xrContextPVar{nullptr};
-  std::array<HandData, 2> _hands;
+  std::array<ControllerTable, 2> _hands;
 };
 
-struct HandTransform : public Consumer {
+struct Controller : public Consumer {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
 
   static inline Parameters params{
       {"Hand",
        CBCCSTR("Which hand we want to track."),
-       {HandData::HandEnumType}},
+       {ControllerTable::HandEnumType}},
       {"Inverse",
        CBCCSTR("If the output should be the inverse transformation matrix."),
        {CoreInfo::BoolType}}};
 
   CBVar *_xrContext{nullptr};
-  Float4x4 _output;
   XRHand _hand{XRHand::Left};
   bool _inverse{false};
 
@@ -579,12 +553,7 @@ struct HandTransform : public Consumer {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     Consumer::compose(data);
-    if (_inverse) {
-      OVERRIDE_ACTIVATE(data, activateInverted);
-    } else {
-      OVERRIDE_ACTIVATE(data, activate);
-    }
-    return CoreInfo::Float4x4Type;
+    return CoreInfo::AnyTableType;
   }
 
   void warmup(CBContext *context) {
@@ -603,20 +572,13 @@ struct HandTransform : public Consumer {
     const auto xrCtx =
         reinterpret_cast<Context *>(_xrContext->payload.objectValue);
     auto &handData = xrCtx->xr->getHandData(_hand);
-    return handData.transform;
-  }
-
-  CBVar activateInverted(CBContext *context, const CBVar &input) {
-    const auto xrCtx =
-        reinterpret_cast<Context *>(_xrContext->payload.objectValue);
-    auto &handData = xrCtx->xr->getHandData(_hand);
-    return handData.inverseTransform;
+    return handData;
   }
 };
 
 void registerBlocks() {
   REGISTER_CBLOCK("XR.Render", RenderXR);
-  REGISTER_CBLOCK("XR.HandTransform", HandTransform);
+  REGISTER_CBLOCK("XR.Controller", Controller);
 }
 } // namespace XR
 } // namespace chainblocks

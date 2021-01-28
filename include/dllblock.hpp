@@ -302,9 +302,16 @@ public:
     }
   }
 
+  IterableArray &operator=(CBVar &var) {
+    assert(var.valueType == Seq);
+    _seq = var.payload.seqValue;
+    _owned = false;
+    return *this;
+  }
+
   IterableArray &operator=(IterableArray &other) {
-    std::swap(_seq, other._seq);
-    std::swap(_owned, other._owned);
+    _seq = other._seq;
+    _owned = other._owned;
     return *this;
   }
 

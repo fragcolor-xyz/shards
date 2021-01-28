@@ -894,3 +894,47 @@ TEST_CASE("linalg compatibility") {
   REQUIRE(sm.x == rd.x);
   REQUIRE(sm.y == rd.y);
 }
+
+enum class XRHand { Left, Right };
+
+struct GamePadTable : public TableVar {
+  GamePadTable()
+      : TableVar(),                      //
+        buttons(get<SeqVar>("buttons")), //
+        sticks(get<SeqVar>("sticks")),   //
+        id((*this)["id"]),               //
+        connected((*this)["connected"]) {
+    connected = Var(false);
+  }
+
+  SeqVar &buttons;
+  SeqVar &sticks;
+  CBVar &id;
+  CBVar &connected;
+};
+
+struct HandTable : public GamePadTable {
+  static constexpr uint32_t HandednessCC = 'xrha';
+  static inline Type HandEnumType{
+      {CBType::Enum,
+       {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
+  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
+
+  HandTable()
+      : GamePadTable(),                      //
+        handedness((*this)["handedness"]),   //
+        transform(get<SeqVar>("transform")), //
+        inverseTransform(get<SeqVar>("inverseTransform")) {
+    handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
+  }
+
+  CBVar &handedness;
+  SeqVar &transform;
+  SeqVar &inverseTransform;
+};
+
+TEST_CASE("TableVar") {
+  HandTable hand;
+  hand.buttons.push_back(Var(0.6, 1.0, 1.0));
+  LOG(INFO) << hand;
+}
