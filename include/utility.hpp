@@ -467,6 +467,22 @@ template <class CB_CORE> struct TOwnedVar : public CBVar {
   ~TOwnedVar() { CB_CORE::destroyVar(*this); }
 };
 
+// helper to create structured data tables
+// see XR's GamePadButtonTable for an example
+template <class CB_CORE> struct TTableVar : public CBVar {
+  TTableVar() : CBVar() {
+    valueType = CBType::Table;
+    payload.tableValue = CB_CORE::tableNew();
+  }
+
+  ~TTableVar() { CB_CORE::destroyVar(*this); }
+
+  CBVar &operator[](std::string_view key) {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    return *vp;
+  }
+};
+
 // https://godbolt.org/z/I72ctd
 template <class Function> struct Defer {
   Function _f;
@@ -479,5 +495,33 @@ template <class Function> struct Defer {
   ::chainblocks::Defer DEFER_NAME(uniq)([&]() { body; })
 #define DEFER(body) DEFER_DEF(__LINE__, body)
 }; // namespace chainblocks
+
+inline CBVar *begin(CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return &a.payload.seqValue.elements[0];
+}
+
+inline const CBVar *begin(const CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return &a.payload.seqValue.elements[0];
+}
+
+inline CBVar *end(CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return begin(a) + a.payload.seqValue.len;
+}
+
+inline const CBVar *end(const CBVar &a) {
+  if (a.valueType != CBType::Seq) {
+    throw chainblocks::CBException("begin expected a Seq");
+  }
+  return begin(a) + a.payload.seqValue.len;
+}
 
 #endif

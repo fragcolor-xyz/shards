@@ -79,8 +79,7 @@ struct JointOp {
       auto len = _input->payload.seqValue.len;
       if (_multiSortColumns.size() == 0) {
         if (_columns.valueType == Seq) {
-          auto seq = IterableSeq(_columns.payload.seqValue);
-          for (const auto &col : seq) {
+          for (const auto &col : _columns) {
             auto target = referenceVariable(context, col.payload.stringValue);
             if (target && target->valueType == Seq) {
               auto mseqLen = target->payload.seqValue.len;
@@ -659,9 +658,8 @@ struct ForEachBlock {
   void cleanup() { _blocks.cleanup(); }
 
   CBVar activateSeq(CBContext *context, const CBVar &input) {
-    IterableSeq in(input);
     CBVar output{};
-    for (auto &item : in) {
+    for (auto &item : input) {
       auto state = _blocks.activate(context, item, output, true);
       // handle return short circuit, assume it was for us
       if (state != CBChainState::Continue)
@@ -738,10 +736,9 @@ struct Map {
   void cleanup() { _blocks.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    IterableSeq in(input);
     CBVar output{};
     arrayResize(_output.payload.seqValue, 0);
-    for (auto &item : in) {
+    for (auto &item : input) {
       // handle return short circuit, assume it was for us
       auto state = _blocks.activate(context, item, output, true);
       if (state != CBChainState::Continue)

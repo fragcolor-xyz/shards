@@ -812,6 +812,13 @@ ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
 
 struct InternalCore {
   // need to emulate dllblock Core a bit
+  static CBTable tableNew() {
+    CBTable res;
+    res.api = &chainblocks::Globals::TableInterface;
+    res.opaque = new chainblocks::CBMap();
+    return res;
+  }
+
   static CBVar *referenceVariable(CBContext *context, const char *name) {
     return chainblocks::referenceVariable(context, name);
   }
@@ -884,6 +891,8 @@ public:
 };
 
 typedef TBlocksVar<InternalCore> BlocksVar;
+
+typedef TTableVar<InternalCore> TableVar;
 
 struct ParamsInfo {
   /*

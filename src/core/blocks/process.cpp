@@ -80,8 +80,7 @@ struct Run {
       std::vector<std::string> argsArray;
       auto argsVar = _arguments.get();
       if (argsVar.valueType == Seq) {
-        IterableSeq args(argsVar.payload.seqValue);
-        for (auto &arg : args) {
+        for (auto &arg : argsVar) {
           argsArray.emplace_back(arg.payload.stringValue);
         }
       }

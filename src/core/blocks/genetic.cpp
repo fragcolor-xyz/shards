@@ -656,14 +656,12 @@ struct Mutant {
       destroyBlocks();
       _mutations = value;
       if (_mutations.valueType == Seq) {
-        IterableSeq muts(_mutations);
-        for (auto &mut : muts) {
+        for (auto &mut : _mutations) {
           if (mut.valueType == Block) {
             auto blk = mut.payload.blockValue;
             blk->owned = true;
           } else if (mut.valueType == Seq) {
-            IterableSeq blks(mut);
-            for (auto &bv : blks) {
+            for (auto &bv : mut) {
               auto blk = bv.payload.blockValue;
               blk->owned = true;
             }
@@ -696,14 +694,12 @@ struct Mutant {
 
   void cleanupMutations() const {
     if (_mutations.valueType == Seq) {
-      IterableSeq muts(_mutations);
-      for (auto &mut : muts) {
+      for (auto &mut : _mutations) {
         if (mut.valueType == Block) {
           auto blk = mut.payload.blockValue;
           blk->cleanup(blk);
         } else if (mut.valueType == Seq) {
-          IterableSeq blks(mut);
-          for (auto &bv : blks) {
+          for (auto &bv : mut) {
             auto blk = bv.payload.blockValue;
             blk->cleanup(blk);
           }
@@ -714,15 +710,13 @@ struct Mutant {
 
   void warmupMutations(CBContext *ctx) const {
     if (_mutations.valueType == Seq) {
-      IterableSeq muts(_mutations);
-      for (auto &mut : muts) {
+      for (auto &mut : _mutations) {
         if (mut.valueType == Block) {
           auto blk = mut.payload.blockValue;
           if (blk->warmup)
             blk->warmup(blk, ctx);
         } else if (mut.valueType == Seq) {
-          IterableSeq blks(mut);
-          for (auto &bv : blks) {
+          for (auto &bv : mut) {
             auto blk = bv.payload.blockValue;
             if (blk->warmup)
               blk->warmup(blk, ctx);
@@ -739,15 +733,13 @@ struct Mutant {
 
   void destroyBlocks() {
     if (_mutations.valueType == Seq) {
-      IterableSeq muts(_mutations);
-      for (auto &mut : muts) {
+      for (auto &mut : _mutations) {
         if (mut.valueType == Block) {
           auto blk = mut.payload.blockValue;
           blk->cleanup(blk);
           blk->destroy(blk);
         } else if (mut.valueType == Seq) {
-          IterableSeq blks(mut);
-          for (auto &bv : blks) {
+          for (auto &bv : mut) {
             auto blk = bv.payload.blockValue;
             blk->cleanup(blk);
             blk->destroy(blk);
@@ -766,10 +758,9 @@ struct Mutant {
     // validate parameters
     if (_mutations.valueType == Seq && inner) {
       auto dataCopy = data;
-      IterableSeq muts(_mutations);
       int idx = 0;
       auto innerParams = inner->parameters(inner);
-      for (auto &mut : muts) {
+      for (auto &mut : _mutations) {
         if (idx >= int(innerParams.len))
           break;
         TypeInfo ptype(inner->getParam(inner, idx));
@@ -923,8 +914,7 @@ inline void Evolve::gatherMutants(CBChain *chain,
       auto &minfo = out.emplace_back(mutator->block);
       auto mutant = mutator->block.mutant();
       if (mutator->block._indices.valueType == Seq) {
-        IterableSeq indices(mutator->block._indices);
-        for (auto &idx : indices) {
+        for (auto &idx : mutator->block._indices) {
           auto i = int(idx.payload.intValue);
           minfo.originalParams.emplace_back(i, mutant->getParam(mutant, i));
         }
@@ -954,8 +944,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0,
       // check if we have mutant params and cross them over
       auto &indices = cmuts->block.get()._indices;
       if (indices.valueType == Seq) {
-        IterableSeq idxs(indices);
-        for (auto &idx : idxs) {
+        for (auto &idx : indices) {
           const auto i = int(idx.payload.intValue);
           const auto r = Random::nextDouble();
           if (r < 0.33) {
@@ -1085,9 +1074,8 @@ struct DBlock {
       }
     } break;
     case 1: {
-      IterableSeq s(value);
       _wrappedParams.clear();
-      for (auto &v : s) {
+      for (auto &v : value) {
         _wrappedParams.emplace_back(v);
       }
     } break;

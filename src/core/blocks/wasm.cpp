@@ -1217,8 +1217,7 @@ struct Run {
         // add any arguments we have
         auto argsVar = _arguments.get();
         if (argsVar.valueType == Seq) {
-          IterableSeq args(argsVar.payload.seqValue);
-          for (auto &arg : args) {
+          for (auto &arg : argsVar) {
             _argsArray.push_back(arg.payload.stringValue);
           }
         }
@@ -1231,8 +1230,7 @@ struct Run {
         // add any arguments we have
         auto argsVar = _arguments.get();
         if (argsVar.valueType == Seq) {
-          IterableSeq args(argsVar.payload.seqValue);
-          for (auto &arg : args) {
+          for (auto &arg : argsVar) {
             _data.args.push_back(arg.payload.stringValue);
           }
         }
