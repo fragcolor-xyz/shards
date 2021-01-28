@@ -119,7 +119,7 @@ struct Style : public Base {
   };
 
   typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
-  static inline ImGuiStyleInfo imguiEnumInfo{"ImGuiStyle", CoreCC, 'guiS'};
+  static inline ImGuiStyleInfo imguiEnumInfo{"GuiStyle", CoreCC, 'guiS'};
 
   ImGuiStyle _key{};
 

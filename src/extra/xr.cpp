@@ -3,9 +3,50 @@
 
 #include "./bgfx.hpp"
 #include "blocks/shared.hpp"
+#include <linalg-shim.hpp>
 
 namespace chainblocks {
 namespace XR {
+constexpr uint32_t XRContextCC = 'xr  ';
+struct RenderXR;
+struct Context {
+  static inline Type ObjType{
+      {CBType::Object,
+       {.object = {.vendorId = CoreCC, .typeId = XRContextCC}}}};
+  static inline Type VarType = Type::VariableOf(ObjType);
+
+  RenderXR *xr{nullptr};
+};
+
+enum class XRHand { Left, Right };
+
+struct HandData {
+  static inline Type HandEnumType{
+      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'xrha'}}}};
+  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, 'xrha'};
+
+  XRHand handedness;
+  Float4x4 transform;
+  Float4x4 inverseTransform;
+};
+
+struct Consumer {
+  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
+      "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
+
+  CBExposedTypesInfo requiredVariables() {
+    return CBExposedTypesInfo(requiredInfo);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("XR Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+    return data.inputType;
+  }
+};
+
 struct RenderXR : public BGFX::BaseConsumer {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
@@ -69,35 +110,42 @@ struct RenderXR : public BGFX::BaseConsumer {
     }
   }
 
-#ifdef __EMSCRIPTEN__
-  static inline std::optional<emscripten::val> _xrSession;
-
-  std::optional<emscripten::val> _glLayer;
-  std::optional<emscripten::val> _refSpace;
-  std::optional<emscripten::val> _cb;
-#endif
-
-  bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
-  bgfx::ViewId _views[2];
-  CBVar *_bgfx_context{nullptr};
-  float _near{0.1};
-  float _far{1000.0};
-  BlocksVar _blocks;
-
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    BaseConsumer::compose(data);
-    _blocks.compose(data);
+    if (data.onWorkerThread) {
+      throw ComposeError("XR Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
+    }
+
+    // Make sure MainWindow is UNIQUE
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      if (strcmp(data.shared.elements[i].name, "XR.Context") == 0) {
+        throw CBException("XR.Context must be unique, found another use!");
+      }
+    }
+
+    CBInstanceData dataCopy = data;
+    arrayPush(dataCopy.shared,
+              ExposedInfo::ProtectedVariable(
+                  "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
+
+    _blocks.compose(dataCopy);
     return CoreInfo::AnyType;
   }
 
   void warmup(CBContext *context) {
     _blocks.warmup(context);
 
-    _bgfx_context = referenceVariable(context, "GFX.Context");
-    assert(_bgfx_context->valueType == CBType::Object);
+    _bgfxContext = referenceVariable(context, "GFX.Context");
+    assert(_bgfxContext->valueType == CBType::Object);
+
+    _xrContextPVar = referenceVariable(context, "XR.Context");
+    _xrContextPVar->valueType = CBType::Object;
+    _xrContextPVar->payload.objectVendorId = CoreCC;
+    _xrContextPVar->payload.objectTypeId = XRContextCC;
+    _xrContextPVar->payload.objectValue = &_xrContext;
 
 #ifdef __EMSCRIPTEN__
     if (!bool(_xrSession)) {
@@ -146,7 +194,7 @@ struct RenderXR : public BGFX::BaseConsumer {
 
     if (bool(_xrSession)) {
       auto ctx =
-          reinterpret_cast<BGFX::Context *>(_bgfx_context->payload.objectValue);
+          reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
 
       _cb = (*_xrSession)["chainblocks"];
       if (!_cb->as<bool>()) {
@@ -252,24 +300,65 @@ struct RenderXR : public BGFX::BaseConsumer {
     _glLayer.reset();
     _refSpace.reset();
 
-    if (_bgfx_context) {
-      releaseVariable(_bgfx_context);
-      _bgfx_context = nullptr;
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
     }
 #endif
   }
 
+  void populateInputsData() {
+    const auto inputSources = (*_xrSession)["inputSources"];
+    const auto len = inputSources["length"].as<size_t>();
+    for (size_t i = 0; i < len; i++) {
+      const auto source = inputSources[i];
+      const auto gripSpace = source["gripSpace"];
+      if (gripSpace.as<bool>()) {
+        auto isHand = source["handedness"] != emscripten::val("none");
+        if (isHand) {
+          auto hand = source["handedness"] == emscripten::val("left")
+                          ? XRHand::Left
+                          : XRHand::Right;
+          const auto pose =
+              _frame->call<emscripten::val>("getPose", gripSpace, *_refSpace);
+          if (pose.as<bool>()) {
+            const auto transform = pose["transform"];
+            {
+              const auto mat = transform["matrix"];
+              for (int j = 0; j < 4; j++) {
+                for (int k = 0; k < 4; k++) {
+                  _hands[(int)hand].transform[j][k] =
+                      mat[(j * 4) + k].as<float>();
+                }
+              }
+            }
+            {
+              const auto mat = transform["inverse"]["matrix"];
+              for (int j = 0; j < 4; j++) {
+                for (int k = 0; k < 4; k++) {
+                  _hands[(int)hand].inverseTransform[j][k] =
+                      mat[(j * 4) + k].as<float>();
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfx_context->payload.objectValue);
+        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
 #ifdef __EMSCRIPTEN__
     if (likely(bool(_cb))) {
-      const auto frame = (*_cb)["frame"];
-      if (unlikely(!frame.as<bool>())) {
+      _frame = (*_cb)["frame"];
+      DEFER(_frame.reset()); // let's not hold this reference
+      if (unlikely(!_frame->as<bool>())) {
         throw ActivationError("WebXR frame data not found.");
       }
       const auto pose =
-          frame.call<emscripten::val>("getViewerPose", *_refSpace);
+          _frame->call<emscripten::val>("getViewerPose", *_refSpace);
       // pose might not be available
       if (likely(pose.as<bool>())) {
         const auto views = pose["views"];
@@ -283,7 +372,7 @@ struct RenderXR : public BGFX::BaseConsumer {
         }
 
         for (size_t i = 0; i < 2; i++) {
-          const auto view = views[i].as<emscripten::val>();
+          const auto view = views[i];
           const auto viewport =
               _glLayer->call<emscripten::val>("getViewport", view);
           const auto vX = viewport["x"].as<int>();
@@ -320,6 +409,8 @@ struct RenderXR : public BGFX::BaseConsumer {
           }
           bgfx::setViewTransform(_views[i], viewMat, projMat);
 
+          populateInputsData();
+
           // activate the blocks and render
           CBVar output{};
           _blocks.activate(context, input, output);
@@ -334,8 +425,109 @@ struct RenderXR : public BGFX::BaseConsumer {
 
     return Var::Empty;
   }
+
+  const HandData &getHandData(XRHand hand) const { return _hands[(int)hand]; }
+
+private:
+#ifdef __EMSCRIPTEN__
+  static inline std::optional<emscripten::val> _xrSession;
+
+  std::optional<emscripten::val> _glLayer;
+  std::optional<emscripten::val> _refSpace;
+  std::optional<emscripten::val> _cb;
+  std::optional<emscripten::val> _frame;
+#endif
+
+  bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
+  bgfx::ViewId _views[2];
+  CBVar *_bgfxContext{nullptr};
+  float _near{0.1};
+  float _far{1000.0};
+  BlocksVar _blocks;
+  Context _xrContext{this};
+  CBVar *_xrContextPVar{nullptr};
+  std::array<HandData, 2> _hands;
 };
 
-void registerBlocks() { REGISTER_CBLOCK("XR.Render", RenderXR); }
+struct HandTransform : public Consumer {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  static inline Parameters params{
+      {"Hand",
+       CBCCSTR("Which hand we want to track."),
+       {HandData::HandEnumType}},
+      {"Inverse",
+       CBCCSTR("If the output should be the inverse transformation matrix."),
+       {CoreInfo::BoolType}}};
+
+  CBVar *_xrContext{nullptr};
+  Float4x4 _output;
+  XRHand _hand{XRHand::Left};
+  bool _inverse{false};
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _hand = XRHand(value.payload.enumValue);
+      break;
+    case 1:
+      _inverse = value.payload.boolValue;
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var::Enum(_hand, CoreCC, 'xrha');
+    case 1:
+      return Var(_inverse);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    Consumer::compose(data);
+    if (_inverse) {
+      OVERRIDE_ACTIVATE(data, activateInverted);
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+    }
+    return CoreInfo::Float4x4Type;
+  }
+
+  void warmup(CBContext *context) {
+    _xrContext = referenceVariable(context, "XR.Context");
+    assert(_xrContext->valueType == CBType::Object);
+  }
+
+  void cleanup() {
+    if (_xrContext) {
+      releaseVariable(_xrContext);
+      _xrContext = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto xrCtx =
+        reinterpret_cast<Context *>(_xrContext->payload.objectValue);
+    auto &handData = xrCtx->xr->getHandData(_hand);
+    return handData.transform;
+  }
+
+  CBVar activateInverted(CBContext *context, const CBVar &input) {
+    const auto xrCtx =
+        reinterpret_cast<Context *>(_xrContext->payload.objectValue);
+    auto &handData = xrCtx->xr->getHandData(_hand);
+    return handData.inverseTransform;
+  }
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("XR.Render", RenderXR);
+  REGISTER_CBLOCK("XR.HandTransform", HandTransform);
+}
 } // namespace XR
 } // namespace chainblocks

@@ -497,8 +497,8 @@ struct MainWindow : public BaseWindow {
                               uint32_t /*_size*/) override {}
   };
 
-  Context _bgfx_context{};
-  chainblocks::ImGui::Context _imgui_context{};
+  Context _bgfxContext{};
+  chainblocks::ImGui::Context _imguiContext{};
   int32_t _wheelScroll = 0;
   bool _bgfxInit{false};
   float _windowScalingW{1.0};
@@ -540,8 +540,8 @@ struct MainWindow : public BaseWindow {
     // cleanup before releasing the resources
     _blocks.cleanup();
 
-    // _imgui_context.Reset();
-    _bgfx_context.reset();
+    // _imguiContext.Reset();
+    _bgfxContext.reset();
 
     if (_bgfxInit) {
       _imguiBgfxCtx.destroy();
@@ -704,8 +704,8 @@ struct MainWindow : public BaseWindow {
               << bgfx::getRendererName(bgfx::RendererType::OpenGLES);
 #endif
 
-    // _imgui_context.Reset();
-    // _imgui_context.Set();
+    // _imguiContext.Reset();
+    // _imguiContext.Set();
 
     _imguiBgfxCtx.create(18.0, 255);
 
@@ -758,12 +758,12 @@ struct MainWindow : public BaseWindow {
     _sdlWinVar->payload.objectValue = _sysWnd;
 
     _bgfxCtx->payload.objectTypeId = BgfxContextCC;
-    _bgfxCtx->payload.objectValue = &_bgfx_context;
+    _bgfxCtx->payload.objectValue = &_bgfxContext;
 
     _imguiCtx->payload.objectTypeId = chainblocks::ImGui::ImGuiContextCC;
-    _imguiCtx->payload.objectValue = &_imgui_context;
+    _imguiCtx->payload.objectValue = &_imguiContext;
 
-    auto viewId = _bgfx_context.nextViewId();
+    auto viewId = _bgfxContext.nextViewId();
     assert(viewId == 0); // always 0 in MainWindow
 
     // init blocks after we initialize the system
@@ -772,15 +772,15 @@ struct MainWindow : public BaseWindow {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // push view 0
-    _bgfx_context.pushView({0, _width, _height});
+    _bgfxContext.pushView({0, _width, _height});
     DEFER({
-      _bgfx_context.popView();
-      assert(_bgfx_context.viewIndex() == 0);
+      _bgfxContext.popView();
+      assert(_bgfxContext.viewIndex() == 0);
     });
     // Touch view 0
     bgfx::touch(0);
 
-    // _imgui_context.Set();
+    // _imguiContext.Set();
 
     ImGuiIO &io = ::ImGui::GetIO();
 
@@ -1602,7 +1602,7 @@ struct CameraBase : public BaseConsumer {
   int _height = 0;
   int _offsetX = 0;
   int _offsetY = 0;
-  CBVar *_bgfx_context{nullptr};
+  CBVar *_bgfxContext{nullptr};
 
   static inline Parameters params{
       {"OffsetX",
@@ -1657,13 +1657,13 @@ struct CameraBase : public BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    _bgfx_context = referenceVariable(context, "GFX.Context");
+    _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
-    if (_bgfx_context) {
-      releaseVariable(_bgfx_context);
-      _bgfx_context = nullptr;
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
     }
   }
 };
@@ -1718,7 +1718,7 @@ struct Camera : public CameraBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     Context *ctx =
-        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
     const auto currentView = ctx->currentView();
 
@@ -1858,7 +1858,7 @@ struct CameraOrtho : public CameraBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     Context *ctx =
-        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
     const auto currentView = ctx->currentView();
 
@@ -1983,7 +1983,7 @@ struct Draw : public BaseConsumer {
   ParamVar _shader{};
   ParamVar _textures{};
   ParamVar _model{};
-  CBVar *_bgfx_context{nullptr};
+  CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 4> _exposing;
 
   CBExposedTypesInfo requiredVariables() {
@@ -2025,7 +2025,7 @@ struct Draw : public BaseConsumer {
     _textures.warmup(context);
     _model.warmup(context);
 
-    _bgfx_context = referenceVariable(context, "GFX.Context");
+    _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
@@ -2043,9 +2043,9 @@ struct Draw : public BaseConsumer {
     _textures.cleanup();
     _model.cleanup();
 
-    if (_bgfx_context) {
-      releaseVariable(_bgfx_context);
-      _bgfx_context = nullptr;
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
     }
   }
 
@@ -2138,7 +2138,7 @@ struct Draw : public BaseConsumer {
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
-    auto *ctx = reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+    auto *ctx = reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
     assert(shader);
@@ -2253,7 +2253,7 @@ struct RenderTarget : public BaseConsumer {
   int _height{256};
   bool _gui{false};
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
-  CBVar *_bgfx_context{nullptr};
+  CBVar *_bgfxContext{nullptr};
   bgfx::ViewId _viewId;
   std::optional<OcornutImguiContext> _imguiBgfxCtx;
 
@@ -2324,10 +2324,10 @@ struct RenderTexture : public RenderTarget {
     bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
     _framebuffer = bgfx::createFrameBuffer(2, textures, false);
 
-    _bgfx_context = referenceVariable(context, "GFX.Context");
-    assert(_bgfx_context->valueType == CBType::Object);
+    _bgfxContext = referenceVariable(context, "GFX.Context");
+    assert(_bgfxContext->valueType == CBType::Object);
     Context *ctx =
-        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     _viewId = ctx->nextViewId();
     bgfx::setViewFrameBuffer(_viewId, _framebuffer);
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
@@ -2341,9 +2341,9 @@ struct RenderTexture : public RenderTarget {
   void cleanup() {
     _blocks.cleanup();
 
-    if (_bgfx_context) {
-      releaseVariable(_bgfx_context);
-      _bgfx_context = nullptr;
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
     }
 
     if (_framebuffer.idx != bgfx::kInvalidHandle) {
@@ -2368,7 +2368,7 @@ struct RenderTexture : public RenderTarget {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     Context *ctx =
-        reinterpret_cast<Context *>(_bgfx_context->payload.objectValue);
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
     // push _viewId
     ctx->pushView({_viewId, _width, _height});

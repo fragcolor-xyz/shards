@@ -74,6 +74,8 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(Path);
   CB_CORE_TYPE_DEF(Image);
 
+  static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
+
   static inline Types IntOrFloat{{IntType, FloatType}};
 
   static inline Types FloatOrFloatSeq{{FloatType, FloatSeqType}};

@@ -3,7 +3,7 @@
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
 #include "../core/runtime.hpp"
-#include <linalg.h>
+#include <linalg-shim.hpp>
 
 #undef CHECK
 
@@ -889,4 +889,8 @@ TEST_CASE("linalg compatibility") {
                                {1.0, 2.0, 3.0, 4.0},
                                {1.0, 2.0, 3.0, 4.0}};
   REQUIRE((*md) == rd);
+
+  Float4x4 sm{rd};
+  REQUIRE(sm.x == rd.x);
+  REQUIRE(sm.y == rd.y);
 }
