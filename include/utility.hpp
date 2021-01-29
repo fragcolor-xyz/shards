@@ -481,6 +481,57 @@ template <class CB_CORE> struct TTableVar : public CBVar {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
     return *vp;
   }
+
+  template <typename T> T &get(std::string_view key) {
+    static_assert(sizeof(T) == sizeof(CBVar),
+                  "Invalid T size, should be sizeof(CBVar)");
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    if (vp->valueType == CBType::None) {
+      // try initialize in this case
+      new (vp) T();
+    }
+    return (T &)*vp;
+  }
+};
+
+template <class CB_CORE> struct TSeqVar : public CBVar {
+  TSeqVar() : CBVar() { valueType = CBType::Seq; }
+
+  ~TSeqVar() { CB_CORE::destroyVar(*this); }
+
+  CBVar &operator[](int index) { return payload.seqValue.elements[index]; }
+  const CBVar &operator[](int index) const {
+    return payload.seqValue.elements[index];
+  }
+
+  CBVar *data() {
+    return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0];
+  }
+
+  size_t size() const { return payload.seqValue.len; }
+
+  void resize(size_t nsize) { CB_CORE::seqResize(&payload.seqValue, nsize); }
+
+  void push_back(const CBVar &value) {
+    CB_CORE::seqPush(&payload.seqValue, &value);
+  }
+  void push_back(CBVar &&value) {
+    CB_CORE::seqPush(&payload.seqValue, &value);
+    value.valueType = CBType::None;
+  }
+
+  void clear() { CB_CORE::seqResize(payload.seqValue, 0); }
+
+  template <typename T> T &get(int index) {
+    static_assert(sizeof(T) == sizeof(CBVar),
+                  "Invalid T size, should be sizeof(CBVar)");
+    auto vp = &payload.seqValue.elements[index];
+    if (vp->valueType == CBType::None) {
+      // try initialize in this case
+      new (vp) T();
+    }
+    return (T &)*vp;
+  }
 };
 
 // https://godbolt.org/z/I72ctd

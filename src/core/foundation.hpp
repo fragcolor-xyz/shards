@@ -676,9 +676,16 @@ public:
     }
   }
 
+  IterableArray &operator=(CBVar &var) {
+    assert(var.valueType == Seq);
+    _seq = var.payload.seqValue;
+    _owned = false;
+    return *this;
+  }
+
   IterableArray &operator=(IterableArray &other) {
-    std::swap(_seq, other._seq);
-    std::swap(_owned, other._owned);
+    _seq = other._seq;
+    _owned = other._owned;
     return *this;
   }
 
@@ -698,6 +705,8 @@ public:
       arrayFree(_seq);
     }
   }
+
+  bool isOwned() const { return _owned; }
 
 private:
   seq_type _seq;
@@ -837,6 +846,10 @@ struct InternalCore {
     chainblocks::arrayFree<T>(arr);
   }
 
+  static void seqPush(CBSeq *s, const CBVar *v) { arrayPush(*s, *v); }
+
+  static void seqResize(CBSeq *s, uint32_t size) { arrayResize(*s, size); }
+
   static void expTypesFree(CBExposedTypesInfo &arr) { arrayFree(arr); }
 
   static void log(const char *msg) { LOG(INFO) << msg; }
@@ -893,6 +906,7 @@ public:
 typedef TBlocksVar<InternalCore> BlocksVar;
 
 typedef TTableVar<InternalCore> TableVar;
+typedef TSeqVar<InternalCore> SeqVar;
 
 struct ParamsInfo {
   /*
