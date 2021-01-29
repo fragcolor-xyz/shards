@@ -959,10 +959,7 @@ struct ParamsInfo {
     return res;
   }
 
-  ~ParamsInfo() {
-    if (_innerInfo.elements)
-      chainblocks::arrayFree(_innerInfo);
-  }
+  ~ParamsInfo() { chainblocks::arrayFree(_innerInfo); }
 
   explicit operator CBParametersInfo() const { return _innerInfo; }
 
@@ -975,10 +972,9 @@ struct ExposedInfo {
    IT WAS USEFUL WHEN DYNAMIC ARRAYS WERE STB ARRAYS
    BUT NOW WE CAN JUST USE DESIGNATED/AGGREGATE INITIALIZERS
  */
-  ExposedInfo() { _innerInfo = {}; }
+  ExposedInfo() {}
 
   ExposedInfo(const ExposedInfo &other) {
-    _innerInfo = {};
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
       chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
@@ -994,8 +990,6 @@ struct ExposedInfo {
 
   template <typename... Types>
   explicit ExposedInfo(const ExposedInfo &other, Types... types) {
-    _innerInfo = {};
-
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
       chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
@@ -1008,8 +1002,6 @@ struct ExposedInfo {
 
   template <typename... Types>
   explicit ExposedInfo(const CBExposedTypesInfo other, Types... types) {
-    _innerInfo = {};
-
     for (uint32_t i = 0; i < other.len; i++) {
       chainblocks::arrayPush(_innerInfo, other.elements[i]);
     }
@@ -1023,7 +1015,6 @@ struct ExposedInfo {
   template <typename... Types>
   explicit ExposedInfo(const CBExposedTypeInfo first, Types... types) {
     std::vector<CBExposedTypeInfo> vec = {first, types...};
-    _innerInfo = {};
     for (auto pi : vec) {
       chainblocks::arrayPush(_innerInfo, pi);
     }
@@ -1053,14 +1044,11 @@ struct ExposedInfo {
     return res;
   }
 
-  ~ExposedInfo() {
-    if (_innerInfo.elements)
-      chainblocks::arrayFree(_innerInfo);
-  }
+  ~ExposedInfo() { chainblocks::arrayFree(_innerInfo); }
 
   explicit operator CBExposedTypesInfo() const { return _innerInfo; }
 
-  CBExposedTypesInfo _innerInfo;
+  CBExposedTypesInfo _innerInfo{};
 };
 
 struct CachedStreamBuf : std::streambuf {

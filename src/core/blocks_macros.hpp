@@ -187,7 +187,9 @@
   });
 #define RUNTIME_BLOCK_destroy(_name_)                                          \
   result->destroy = static_cast<CBDestroyProc>([](CBlock *block) {             \
+    auto blk = (_name_##Runtime *)block;                                       \
     reinterpret_cast<_name_##Runtime *>(block)->core.destroy();                \
+    blk->_name_##Runtime::~_name_##Runtime();                                  \
     ::operator delete ((_name_##Runtime *)block, std::align_val_t{16});        \
   });
 

@@ -846,7 +846,7 @@ TEST_CASE("ObjectVar") {
     auto or1 = reinterpret_cast<ObjectRef *>(o1);
     REQUIRE(or1->refcount == 1);
 
-    auto chain = chainblocks::Chain("test-chain")
+    auto chain = chainblocks::Chain("test-chain-ObjectVar")
                      .let(v1)
                      .block("Set", "v1")
                      .block("Set", "v2")
