@@ -563,7 +563,7 @@ struct Recur : public ChainBase {
     // find all variables to store in current chain
     // use vector in the end.. cos slightly faster
     for (auto &shared : data.shared) {
-      if (shared.scope == data.chain && shared.isMutable) {
+      if (shared.scope == data.chain) {
         CBVar ctxVar{};
         ctxVar.valueType = ContextVar;
         ctxVar.payload.stringValue = shared.name;

@@ -659,12 +659,6 @@ struct SetBase : public VariableBase {
                              "type: " +
                              _name);
         }
-        if (!_isTable && warnIfExists) {
-          LOG(INFO)
-              << "Set/Ref - Warning: setting an already exposed variable, "
-                 "use Update to avoid this warning, variable: "
-              << _name;
-        }
         if (!reference.isMutable) {
           throw ComposeError(
               "Set/Ref/Update, attempted to write an immutable variable.");
@@ -672,6 +666,11 @@ struct SetBase : public VariableBase {
         if (reference.isProtected) {
           throw ComposeError(
               "Set/Ref/Update, attempted to write a protected variable.");
+        }
+        if (!_isTable && warnIfExists) {
+          LOG(INFO) << "Set - Warning: setting an already exposed variable, "
+                       "use Update to avoid this warning, variable: "
+                    << _name;
         }
       }
     }
@@ -799,11 +798,18 @@ struct Ref : public SetBase {
       _exposedInfo = ExposedInfo(
           ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed table."),
                                 _tableTypeInfo, false, true));
+
+      // properly link the right call
+      const_cast<CBlock *>(data.block)->inlineBlockId =
+          CBInlineBlocks::CoreRefTable;
     } else {
       // just a variable!
       _exposedInfo = ExposedInfo(
           ExposedInfo::Variable(_name.c_str(), CBCCSTR("The exposed variable."),
-                                CBTypeInfo(data.inputType)));
+                                CBTypeInfo(data.inputType), false));
+
+      const_cast<CBlock *>(data.block)->inlineBlockId =
+          CBInlineBlocks::CoreRefRegular;
     }
     return data.inputType;
   }
@@ -829,17 +835,14 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_cell != nullptr)) {
-      // must keep refcount!
-      auto rc = _cell->refcount;
-      auto rcflag = _cell->flags & CBVAR_FLAGS_REF_COUNTED;
-      memcpy(_cell, &input, sizeof(CBVar));
-      _cell->refcount = rc;
-      _cell->flags |= rcflag;
-      return input;
-    }
+    throw ActivationError("Invalid Ref activation function.");
+  }
 
-    if (_isTable) {
+  ALWAYS_INLINE CBVar activateTable(CBContext *context, const CBVar &input) {
+    if (likely(_cell != nullptr)) {
+      memcpy(_cell, &input, sizeof(CBVar));
+      return input;
+    } else {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
@@ -852,24 +855,23 @@ struct Ref : public SetBase {
           _target->payload.tableValue, kv.payload.stringValue);
 
       // Notice, NO Cloning!
-      *vptr = input;
+      memcpy(vptr, &input, sizeof(CBVar));
 
       // use fast cell from now
       if (!_key.isVariable())
         _cell = vptr;
-    } else {
-      // use fast cell from now
-      _cell = _target;
 
-      // Notice, NO Cloning!
-      // must keep refcount!
-      auto rc = _cell->refcount;
-      auto rcflag = _cell->flags & CBVAR_FLAGS_REF_COUNTED;
-      memcpy(_cell, &input, sizeof(CBVar));
-      _cell->refcount = rc;
-      _cell->flags |= rcflag;
+      return input;
     }
+  }
 
+  ALWAYS_INLINE CBVar activateRegular(CBContext *context, const CBVar &input) {
+    // must keep refcount!
+    const auto rc = _target->refcount;
+    const auto rcflag = _target->flags & CBVAR_FLAGS_REF_COUNTED;
+    memcpy(_target, &input, sizeof(CBVar));
+    _target->refcount = rc;
+    _target->flags |= rcflag;
     return input;
   }
 };

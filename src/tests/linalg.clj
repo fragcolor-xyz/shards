@@ -58,15 +58,15 @@
   (Math.LinAlg.Normalize)
   (Log)
 
-  (Float3 4270.56 4602.19 188) (Set "playerPos")
+  (Float3 4270.56 4602.19 188) (Ref "playerPos")
   ; (Float3 4277.35 4596.54 188) (Set "targetPos")
-  (Float3 4283.18 4604.73 188) (Set "targetPos")
+  (Float3 4283.18 4604.73 188) (Ref "targetPos")
   (Get "targetPos") (Math.Subtract .playerPos)
   (Math.LinAlg.Normalize)
   (Log)
 
   (Float4 2 3 4 5)
-  (Set "vec4.1")
+  (Ref "vec4.1")
   
   (Const identity)
   (Math.LinAlg.MatMul (Float4 1 2 3 4))
@@ -77,7 +77,7 @@
   (Math.LinAlg.MatMul .vec4.1)
   (Log)
   (Assert.Is (Float4 2 3 4 5) true)
-  (Set "vec4.2")
+  (Ref "vec4.2")
 
   (Const identity)
   (Math.LinAlg.MatMul .vec4.2)

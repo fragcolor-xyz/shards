@@ -7,30 +7,18 @@
   (Chain
    "build-tree"
                                         ; organize args from stack
-   (Pop)
-   (ExpectInt)
-   (Set "depth")
-   (Pop)
-   (Set "points")
-   (ExpectSeq)
+   (Pop) (ExpectInt) &> .depth
+   (Pop) &> .points
                                         ; count points
-   (Count "points")
+   (Count .points)
    (Cond
-    [(-> (IsNot 0))
+    [(-> (IsNot 0))                     ; if empty don't bother going further
      (->
-                                        ; if empty don't bother going further
-      (Set "point-count")
-                                        ; find median
-      (Get "point-count")
-      (Math.Divide 2)
-      (Set "median")
+      (Math.Divide 2) &> .median
                                         ; store also median+1 for later use
-      (Math.Add 1)
-      (Set "median+1")
+      (Math.Add 1)  &> .median+1
                                         ; find dimension
-      (Get "depth")
-      (Math.Mod k)
-      (Set "dimension")
+      .depth (Math.Mod k) &> .dimension
                                         ; sort points
       (Sort .points :Key (-> (Take .dimension)))
                                         ; split left and right, push points
@@ -38,40 +26,34 @@
                                         ; left points arg
       (Push)
                                         ; depth arg
-      (Get "depth")
-      (Math.Add 1)
+      .depth (Math.Add 1)
       (Push)
                                         ; recurse to build deeper tree
       (Recur)
-      (Push "left-mem" :Clear false)
+      (Push .left-mem :Clear false)
                                         ; pop points
-      (Get "points")
+      .points
       (Slice :From .median+1)
                                         ; left points arg
       (Push)
                                         ; depth arg
-      (Get "depth")
-      (Math.Add 1)
+      .depth (Math.Add 1)
       (Push)
                                         ; recurse to build deeper tree
       (Recur)
-      (Push "right-mem" :Clear false)
+      (Push .right-mem :Clear false)
                                         ; compose our result "tuple" seq
-      (Clear "result")
+      (Clear .result)
                                         ; top
-      (Get "points")
-      (Take .median)
-      (Push "result")
+      .points (Take .median) >> .result
                                         ;start with left
-      (Pop "left-mem")
-      (Push "result")
+      (Pop .left-mem) >> .result
                                         ; right
-      (Pop "right-mem")
-      (Push "result"))
+      (Pop .right-mem) >> .result)
      (-> true)
-     (Clear "result")
+     (Clear .result)
      ])
-   (Get "result" :Default [])
+   (Get .result :Default [])
    ))
 
 (def Root (Node))
@@ -80,7 +62,7 @@
  (Chain
   "kdtree"
                                         ; points
-  (Const [[7 2] [5 4] [9 6] [4 7] [8 1] [2 3]])
+  [[7 2] [5 4] [9 6] [4 7] [8 1] [2 3]]
   (Push)
                                         ; depth
   0

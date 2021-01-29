@@ -343,8 +343,6 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (name == "Set") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
-  } else if (name == "Ref") {
-    blkp->inlineBlockId = CBInlineBlocks::CoreRef;
   } else if (name == "Update") {
     blkp->inlineBlockId = CBInlineBlocks::CoreUpdate;
   } else if (name == "Swap") {

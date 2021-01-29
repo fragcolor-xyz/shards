@@ -239,9 +239,13 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
-  case CoreRef: {
+  case CoreRefTable: {
     auto cblock = reinterpret_cast<chainblocks::RefRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateTable(context, input);
+  }
+  case CoreRefRegular: {
+    auto cblock = reinterpret_cast<chainblocks::RefRuntime *>(blk);
+    return cblock->core.activateRegular(context, input);
   }
   case CoreUpdate: {
     auto cblock = reinterpret_cast<chainblocks::UpdateRuntime *>(blk);
