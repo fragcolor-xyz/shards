@@ -651,6 +651,10 @@
    (Slice 3 -1)
    (Assert.Is [4] true)
 
+   [1 2 3 4 5 6 6 7] (IntsToBytes) 
+   (Slice 2 5) 
+   (BytesToInts) (Assert.Is [3 4 5] true)
+
    "passing by..."
    (Drop "s2")
    (Assert.Is "passing by..." true)
