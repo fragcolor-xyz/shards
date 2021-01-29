@@ -258,9 +258,12 @@
    .htable1 (Take "key1") (Assert.Is 10 true)
    .htable1 (Take "key2") (Assert.Is 20 true)
 
-   (Const {"key1" 10 "key2" 20}) >= ; tests varify
-   .htable2 (Take "key1") (Assert.Is 10 true)
-   .htable2 (Take "key2") (Assert.Is 20 true)
+   (Const {"key1" 10 "key2" 20.0}) >= ; tests varify
+   ; also test correct take deducting table type
+   .htable2 (Take "key1") (Math.Multiply 2) (Assert.Is 20 true)
+   .htable2 (Take "key2") (Math.Multiply 2.0) (Assert.Is 40.0 true)
+   .htable2 (Take ["key1" "key2"]) (Math.Multiply [2 2.0]) 
+   (Log) (Assert.Is [20 40.0] true)
 
    (Int 10) (ToFloat) (Set "fx")
    (Get "fx") (Assert.Is (Float 10) true)
