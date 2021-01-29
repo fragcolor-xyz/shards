@@ -553,6 +553,7 @@ struct Controller : public Consumer {
       {"Inverse",
        CBCCSTR("If the output should be the inverse transformation matrix."),
        {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return params; }
 
   CBVar *_xrContext{nullptr};
   XRHand _hand{XRHand::Left};

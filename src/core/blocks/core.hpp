@@ -2280,13 +2280,15 @@ struct Take {
   CBSeq _cachedSeq{};
   CBVar _output{};
   CBVar _indices{};
-  CBVar *_indicesVar = nullptr;
+  CBVar *_indicesVar{nullptr};
   ExposedInfo _exposedInfo{};
-  bool _seqOutput = false;
-  bool _tableOutput = false;
+  bool _seqOutput{false};
+  bool _tableOutput{false};
   CBVar _vectorOutput{};
-  uint8_t _vectorInputLen = 0;
-  uint8_t _vectorOutputLen = 0;
+  uint8_t _vectorInputLen{0};
+  uint8_t _vectorOutputLen{0};
+  Type _seqOutputType{};
+  std::vector<CBTypeInfo> _seqOutputTypes;
 
   void destroy() {
     destroyVar(_indices);
@@ -2422,15 +2424,67 @@ struct Take {
     } else if (data.inputType.basicType == String) {
       // todo
     } else if (data.inputType.basicType == Table) {
-      if (_seqOutput) {
-        // multiple values, leave Seq
-        return CoreInfo::AnySeqType;
-      } else if (data.inputType.table.types.len == 1) {
-        // single unique seq type
-        return data.inputType.table.types.elements[0];
+      if (data.inputType.table.keys.len > 0 &&
+          (_indices.valueType == String || _indices.valueType == Seq)) {
+        // we can fully reconstruct a type in this case
+        if (data.inputType.table.keys.len != data.inputType.table.types.len) {
+          LOG(ERROR) << "Table input type: " << data.inputType;
+          throw ComposeError("Take: Expected same number of types for numer of "
+                             "keys in table input.");
+        }
+
+        if (_seqOutput) {
+          _seqOutputTypes.clear();
+          for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
+            auto &record = _indices.payload.seqValue.elements[j];
+            if (record.valueType != String) {
+              LOG(ERROR) << "Expected a sequence of strings, but found: "
+                         << _indices;
+              throw ComposeError(
+                  "Take: Expected a sequence of strings as keys.");
+            }
+            for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
+              if (strcmp(record.payload.stringValue,
+                         data.inputType.table.keys.elements[i]) == 0) {
+                _seqOutputTypes.emplace_back(
+                    data.inputType.table.types.elements[i]);
+              }
+            }
+          }
+          // if types is 0 we did not match any
+          if (_seqOutputTypes.size() == 0) {
+            LOG(ERROR) << "Table input type: " << data.inputType
+                       << " missing keys: " << _indices;
+            throw ComposeError(
+                "Take: Failed to find a matching keys in the input type table");
+          }
+          _seqOutputType = Type::SeqOf(CBTypesInfo{
+              _seqOutputTypes.data(), uint32_t(_seqOutputTypes.size()), 0});
+          return _seqOutputType;
+        } else {
+          for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
+            if (strcmp(_indices.payload.stringValue,
+                       data.inputType.table.keys.elements[i]) == 0) {
+              return data.inputType.table.types.elements[i];
+            }
+          }
+          // we didn't match any key... error
+          LOG(ERROR) << "Table input type: " << data.inputType
+                     << " missing key: " << _indices.payload.stringValue;
+          throw ComposeError(
+              "Take: Failed to find a matching key in the input type table");
+        }
       } else {
-        // value from seq but not unique
-        return CoreInfo::AnyType;
+        if (_seqOutput) {
+          // multiple values, leave Seq
+          return CoreInfo::AnySeqType;
+        } else if (data.inputType.table.types.len == 1) {
+          // single unique seq type
+          return data.inputType.table.types.elements[0];
+        } else {
+          // value from seq but not unique
+          return CoreInfo::AnyType;
+        }
       }
     }
 
