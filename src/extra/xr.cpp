@@ -21,6 +21,20 @@ struct Context {
 enum class XRHand { Left, Right };
 
 struct GamePadTable : public TableVar {
+  static constexpr std::array<CBString, 4> _keys{
+      "buttons",
+      "sticks",
+      "id",
+      "connected",
+  };
+  static inline Types _types{{
+      CoreInfo::Float3SeqType,
+      CoreInfo::Float2SeqType,
+      CoreInfo::StringType,
+      CoreInfo::BoolType,
+  }};
+  static inline Type ValueType = Type::TableOf(_types, _keys);
+
   GamePadTable()
       : TableVar(),                      //
         buttons(get<SeqVar>("buttons")), //
@@ -42,6 +56,21 @@ struct ControllerTable : public GamePadTable {
       {CBType::Enum,
        {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
   static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
+
+  static constexpr std::array<CBString, 7> _keys{
+      "handedness", "transform", "inverseTransform", "buttons",
+      "sticks",     "id",        "connected",
+  };
+  static inline Types _types{{
+      HandEnumType,
+      CoreInfo::Float4x4Type,
+      CoreInfo::Float4x4Type,
+      CoreInfo::Float3SeqType,
+      CoreInfo::Float2SeqType,
+      CoreInfo::StringType,
+      CoreInfo::BoolType,
+  }};
+  static inline Type ValueType = Type::TableOf(_types, _keys);
 
   ControllerTable()
       : GamePadTable(),                      //
@@ -515,7 +544,7 @@ private:
 
 struct Controller : public Consumer {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+  static CBTypesInfo outputTypes() { return ControllerTable::ValueType; }
 
   static inline Parameters params{
       {"Hand",
@@ -553,7 +582,7 @@ struct Controller : public Consumer {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     Consumer::compose(data);
-    return CoreInfo::AnyTableType;
+    return ControllerTable::ValueType;
   }
 
   void warmup(CBContext *context) {
