@@ -139,6 +139,12 @@ else()
   endif()
 endif()
 
+if(USE_GCC_ANALYZER)
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_compile_options(-fanalyzer)
+  endif()
+endif()
+
 if(USE_LTO)
   ## this is nice but sets thin LTO, we don't want that
   # set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
