@@ -53,11 +53,11 @@
 (def fib4
   (Chain
    "fib4"
-   (Math.Subtract 3) >= .n
+   (Math.Subtract 3) = .n
    1 >= .a
    2 >= .b
    (Repeat
-    ~[.a (Math.Add .b) >= .c
+    ~[.a (Math.Add .b) = .c
       .b > .a
       .c > .b]
     :Times .n)

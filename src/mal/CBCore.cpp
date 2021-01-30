@@ -1216,7 +1216,7 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         state = SetGlobal;
       } else if (v->name() == ">") {
         state = Update;
-      } else if (v->name() == "&>") {
+      } else if (v->name() == "&>" || v->name() == "=") {
         state = Ref;
       } else if (v->name() == ">>") {
         state = Push;

@@ -7,18 +7,18 @@
   (Chain
    "build-tree"
                                         ; organize args from stack
-   (Pop) (ExpectInt) &> .depth
-   (Pop) &> .points
+   (Pop) (ExpectInt) = .depth
+   (Pop) = .points
                                         ; count points
    (Count .points)
    (Cond
     [(-> (IsNot 0))                     ; if empty don't bother going further
      (->
-      (Math.Divide 2) &> .median
+      (Math.Divide 2) = .median
                                         ; store also median+1 for later use
-      (Math.Add 1)  &> .median+1
+      (Math.Add 1) = .median+1
                                         ; find dimension
-      .depth (Math.Mod k) &> .dimension
+      .depth (Math.Mod k) = .dimension
                                         ; sort points
       (Sort .points :Key (-> (Take .dimension)))
                                         ; split left and right, push points
