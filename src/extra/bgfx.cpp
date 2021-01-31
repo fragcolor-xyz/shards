@@ -2385,6 +2385,188 @@ struct RenderTexture : public RenderTarget {
   }
 };
 
+struct SetUniform : public BaseConsumer {
+  static inline Types InputTypes{
+      {CoreInfo::Float4Type, CoreInfo::Float4x4Type, CoreInfo::Float3x3Type,
+       CoreInfo::Float4SeqType, CoreInfo::Float4x4SeqType,
+       CoreInfo::Float3x3SeqType}};
+
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return InputTypes; }
+
+  std::string _name;
+  bgfx::UniformType::Enum _type;
+  bool _isArray{false};
+  int _elems{1};
+  CBTypeInfo _expectedType;
+  bgfx::UniformHandle _handle = BGFX_INVALID_HANDLE;
+  std::vector<float> _scratch;
+
+  static inline Parameters Params{
+      {"Name",
+       CBCCSTR("The name of the uniform shader variable. Uniforms are so named "
+               "because they do not change from one shader invocation to the "
+               "next within a particular rendering call thus their value is "
+               "uniform among all invocations. Uniform names are unique."),
+       {CoreInfo::StringType}},
+      {"MaxSize",
+       CBCCSTR("If the input contains multiple values, the maximum expected "
+               "size of the input."),
+       {CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _name = value.payload.stringValue;
+      break;
+    case 1:
+      _elems = value.payload.intValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+    case 1:
+      return Var(_elems);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void findType(const CBTypeInfo &t) {
+    switch (t.basicType) {
+    case CBType::Float4: {
+      _type = bgfx::UniformType::Vec4;
+    } break;
+    case CBType::Seq: {
+      if (t.seqTypes.len >= 1 &&
+          t.seqTypes.elements[0].basicType == CBType::Seq) {
+        findType(t.seqTypes.elements[0]);
+        _isArray = true;
+      } else {
+        if (t.fixedSize == 4) {
+          _type = bgfx::UniformType::Mat4;
+        } else {
+          _type = bgfx::UniformType::Mat3;
+        }
+      }
+    } break;
+    default:
+      throw ComposeError("Invalid input type for GFX.SetUniform");
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _expectedType = data.inputType;
+    _isArray = false;
+    findType(data.inputType);
+    return data.inputType;
+  }
+
+  void warmup(CBContext *context) {
+    _handle = bgfx::createUniform(_name.c_str(), _type, !_isArray ? 1 : _elems);
+  }
+
+  void cleanup() {
+    if (_handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_handle);
+      _handle.idx = bgfx::kInvalidHandle;
+    }
+  }
+
+  void fillElement(const CBVar &elem, int &offset) {
+    if (elem.valueType == CBType::Float4) {
+      memcpy(_scratch.data() + offset, &elem.payload.float4Value,
+             sizeof(float) * 4);
+      offset += 4;
+    } else {
+      // Seq
+      if (_type == bgfx::UniformType::Mat3) {
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[0],
+               sizeof(float) * 3);
+        offset += 3;
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[1],
+               sizeof(float) * 3);
+        offset += 3;
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[2],
+               sizeof(float) * 3);
+        offset += 3;
+      } else {
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[0],
+               sizeof(float) * 4);
+        offset += 4;
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[1],
+               sizeof(float) * 4);
+        offset += 4;
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[2],
+               sizeof(float) * 4);
+        offset += 4;
+        memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[3],
+               sizeof(float) * 4);
+        offset += 4;
+      }
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _scratch.clear();
+    uint16_t elems = 0;
+    if (unlikely(_isArray)) {
+      const int len = int(input.payload.seqValue.len);
+      if (len > _elems) {
+        throw ActivationError(
+            "Input array size exceeded maximum uniform array size.");
+      }
+      int offset = 0;
+      switch (_type) {
+      case bgfx::UniformType::Vec4:
+        _scratch.resize(4 * len);
+        break;
+      case bgfx::UniformType::Mat3:
+        _scratch.resize(3 * 3 * len);
+        break;
+      case bgfx::UniformType::Mat4:
+        _scratch.resize(4 * 4 * len);
+        break;
+      default:
+        throw InvalidParameterIndex();
+      }
+      for (auto &elem : input) {
+        fillElement(elem, offset);
+        elems++;
+      }
+    } else {
+      int offset = 0;
+      switch (_type) {
+      case bgfx::UniformType::Vec4:
+        _scratch.resize(4);
+        break;
+      case bgfx::UniformType::Mat3:
+        _scratch.resize(3 * 3);
+        break;
+      case bgfx::UniformType::Mat4:
+        _scratch.resize(4 * 4);
+        break;
+      default:
+        throw InvalidParameterIndex();
+      }
+      fillElement(input, offset);
+      elems++;
+    }
+
+    bgfx::setUniform(_handle, _scratch.data(), elems);
+
+    return input;
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -2397,6 +2579,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.CameraOrtho", CameraOrtho);
   REGISTER_CBLOCK("GFX.Draw", Draw);
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
+  REGISTER_CBLOCK("GFX.SetUniform", SetUniform);
 }
 }; // namespace BGFX
 

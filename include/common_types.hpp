@@ -75,6 +75,9 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(Image);
 
   static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
+  static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
+  static inline Type Float3x3Type{{CBType::Seq, {.seqTypes = Float3Type}, 3}};
+  static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
 
   static inline Types IntOrFloat{{IntType, FloatType}};
 
