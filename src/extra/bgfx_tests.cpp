@@ -419,35 +419,36 @@ void testDraw() {
     auto chain =
         chainblocks::Chain("test-chain")
             .looped(true)
-            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                   Blocks()
-                       .block("Once", Blocks()
-                                          .let(vs)
-                                          .block("FS.Read", true)
-                                          .block("Set", "vs_bytes")
-                                          .let(fs)
-                                          .block("FS.Read", true)
-                                          .block("Set", "fs_bytes")
-                                          .block("GFX.Shader",
-                                                 Var::ContextVar("vs_bytes"),
-                                                 Var::ContextVar("fs_bytes"))
-                                          .block("Set", "shader")
-                                          .let(cubeVertices)
-                                          .block("Set", "cube", "Vertices")
-                                          .let(cubeIndices)
-                                          .block("Set", "cube", "Indices")
-                                          .block("Get", "cube")
-                                          .block("GFX.Model", Var(layout))
-                                          .block("Set", "cube-model"))
-                       .let(0.0, 0.0, 10.0)
-                       .block("Set", "cam", "Position")
-                       .let(0.0, 0.0, 0.0)
-                       .block("Set", "cam", "Target")
-                       .block("Get", "cam")
-                       .block("GFX.Camera")
-                       .let(identity)
-                       .block("GFX.Draw", Var::ContextVar("shader"), Var::Any,
-                              Var::ContextVar("cube-model")));
+            .block(
+                "GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                Blocks()
+                    .block("Once",
+                           Blocks() //
+                               .let(vs)
+                               .block("FS.Read", true)
+                               .block("Set", "vs_bytes")
+                               .let(fs)
+                               .block("FS.Read", true)
+                               .block("Set", "fs_bytes")
+                               .block("GFX.Shader", Var::ContextVar("vs_bytes"),
+                                      Var::ContextVar("fs_bytes"))
+                               .block("Set", "shader")
+                               .let(cubeVertices)
+                               .block("Set", "cube", "Vertices")
+                               .let(cubeIndices)
+                               .block("Set", "cube", "Indices")
+                               .block("Get", "cube")
+                               .block("GFX.Model", Var(layout))
+                               .block("Set", "cube-model"))
+                    .let(0.0, 0.0, 10.0)
+                    .block("Set", "cam", "Position")
+                    .let(0.0, 0.0, 0.0)
+                    .block("Set", "cam", "Target")
+                    .block("Get", "cam")
+                    .block("GFX.Camera")
+                    .let(identity)
+                    .block("GFX.Draw", Var::ContextVar("shader"), Var::Any,
+                           Var::ContextVar("cube-model")));
     auto node = CBNode::make();
     node->schedule(chain);
     auto count = 100;
