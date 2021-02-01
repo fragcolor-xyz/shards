@@ -659,11 +659,11 @@ struct SetBase : public VariableBase {
                              "type: " +
                              _name);
         }
-        if (!reference.isMutable) {
+        if (!_isTable && !reference.isMutable) {
           throw ComposeError(
               "Set/Ref/Update, attempted to write an immutable variable.");
         }
-        if (reference.isProtected) {
+        if (!_isTable && reference.isProtected) {
           throw ComposeError(
               "Set/Ref/Update, attempted to write a protected variable.");
         }
@@ -824,7 +824,9 @@ struct Ref : public SetBase {
     // And so we are almost sure the memory will be junk after this..
     // so if we detect refcount > 1, we except signaling a dangling reference
     if (_target) {
-      if (_target->refcount > 1) {
+      if (_target->refcount > 1 && !_isTable) {
+        // in the case of table multiple refs might happen,
+        // at some point TODO detect those too
         throw CBException("Ref - detected a dangling reference: " + _name);
       }
       memset(_target, 0x0, sizeof(CBVar));
