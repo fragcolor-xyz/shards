@@ -4,8 +4,18 @@
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
-#define CGLTF_IMPLEMENTATION
-#include <cgltf.h>
+#include <nlohmann/json.hpp>
+#include <stb_image.h>
+#include <stb_image_write.h>
+
+#define TINYGLTF_NO_INCLUDE_JSON
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE_WRITE
+#define TINYGLTF_USE_CPP14
+// #define TINYGLTF_ENABLE_DRACO
+#include <tinygltf/tiny_gltf.h>
+
+using namespace tinygltf;
 
 // A gltf model can contain a lot of things...
 // Let's go over them in few iterations...
@@ -35,25 +45,26 @@ struct Load {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     return awaitne(context, [&]() {
-      cgltf_options options{};
-      cgltf_data *data{nullptr};
-      cgltf_result result =
-          cgltf_parse_file(&options, input.payload.stringValue, &data);
-      if (result == cgltf_result_success) {
-        for (auto type : _types) {
-          switch (type) {
-          case DataType::Meshes: {
-            const auto nmeshes = data->meshes_count;
-            for (cgltf_size i = 0; i < nmeshes; i++) {
-              const cgltf_mesh &mesh = data->meshes[i];
-            }
-          } break;
-          default:
-            throw ActivationError("GLTF data type not yet supported.");
-          }
-        }
-        DEFER(cgltf_free(data));
+      Model model;
+      TinyGLTF loader;
+      std::string err;
+      std::string warn;
+
+      bool ret = loader.LoadASCIIFromFile(&model, &err, &warn,
+                                          input.payload.stringValue);
+      // bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); //
+      // for binary glTF(.glb)
+
+      if (!warn.empty()) {
+        LOG(WARNING) << "GLTF warning: " << warn;
       }
+      if (!err.empty()) {
+        LOG(ERROR) << "GLTF error: " << err;
+      }
+      if (!ret) {
+        throw ActivationError("Failed to parse glTF.");
+      }
+
       return Var::Empty;
     });
   }

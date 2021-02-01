@@ -479,7 +479,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
-    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/cgltf
+    ${CHAINBLOCKS_DIR}/deps
     )
 
   if(WIN32)
