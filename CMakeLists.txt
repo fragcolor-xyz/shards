@@ -189,17 +189,15 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  if(NOT EMSCRIPTEN)
-    # aggressive inlining
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-      set(INLINING_FLAGS -mllvm -inline-threshold=100000)
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      set(INLINING_FLAGS -finline-limit=100000)
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-      # using Intel C++
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-      # using Visual Studio C++
-    endif()
+  # aggressive inlining
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(INLINING_FLAGS -mllvm -inline-threshold=100000)
+  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(INLINING_FLAGS -finline-limit=100000)
+  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    # using Intel C++
+  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    # using Visual Studio C++
   endif()
 endif()
 ###
