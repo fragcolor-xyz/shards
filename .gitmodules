@@ -64,3 +64,6 @@
 [submodule "deps/linalg"]
 	path = deps/linalg
 	url = https://github.com/chainblocks/linalg.git
+[submodule "deps/tinygltf"]
+	path = deps/tinygltf
+	url = https://github.com/chainblocks/tinygltf.git
