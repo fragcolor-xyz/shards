@@ -14,9 +14,24 @@
 
 namespace chainblocks {
 namespace gltf {
+enum class DataType {
+  Meshes,
+  Materials,
+  Animations,
+};
+
 struct Load {
+  static constexpr uint32_t GLTFTypesCC = 'gltf';
+  static inline Type DataTypeType{
+      {CBType::Enum,
+       {.enumeration = {.vendorId = CoreCC, .typeId = GLTFTypesCC}}}};
+  static inline EnumInfo<DataType> DataTypeInfo{"GLTFData", CoreCC,
+                                                GLTFTypesCC};
+
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  std::vector<DataType> _types;
 
   CBVar activate(CBContext *context, const CBVar &input) {
     return awaitne(context, [&]() {
@@ -25,6 +40,18 @@ struct Load {
       cgltf_result result =
           cgltf_parse_file(&options, input.payload.stringValue, &data);
       if (result == cgltf_result_success) {
+        for (auto type : _types) {
+          switch (type) {
+          case DataType::Meshes: {
+            const auto nmeshes = data->meshes_count;
+            for (cgltf_size i = 0; i < nmeshes; i++) {
+              const cgltf_mesh &mesh = data->meshes[i];
+            }
+          } break;
+          default:
+            throw ActivationError("GLTF data type not yet supported.");
+          }
+        }
         DEFER(cgltf_free(data));
       }
       return Var::Empty;
