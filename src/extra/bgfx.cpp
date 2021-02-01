@@ -2440,33 +2440,33 @@ struct SetUniform : public BaseConsumer {
     }
   }
 
-  void findType(const CBTypeInfo &t) {
-    switch (t.basicType) {
-    case CBType::Float4: {
-      _type = bgfx::UniformType::Vec4;
-    } break;
-    case CBType::Seq: {
-      if (t.seqTypes.len >= 1 &&
-          t.seqTypes.elements[0].basicType == CBType::Seq) {
-        findType(t.seqTypes.elements[0]);
-        _isArray = true;
-      } else {
-        if (t.fixedSize == 4) {
-          _type = bgfx::UniformType::Mat4;
-        } else {
-          _type = bgfx::UniformType::Mat3;
-        }
+  bgfx::UniformType::Enum findSingleType(const CBTypeInfo &t) {
+    if (t.basicType == CBType::Float4) {
+      return bgfx::UniformType::Vec4;
+    } else if (t.basicType == CBType::Seq) {
+      if (t.fixedSize == 4 &&
+          t.seqTypes.elements[0].basicType == CBType::Float4) {
+        return bgfx::UniformType::Mat4;
+      } else if (t.fixedSize == 3 &&
+                 t.seqTypes.elements[0].basicType == CBType::Float3) {
+        return bgfx::UniformType::Mat3;
       }
-    } break;
-    default:
-      throw ComposeError("Invalid input type for GFX.SetUniform");
     }
+    throw ComposeError("Invalid input type for GFX.SetUniform");
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _expectedType = data.inputType;
-    _isArray = false;
-    findType(data.inputType);
+    if (_elems == 1) {
+      _type = findSingleType(data.inputType);
+      _isArray = false;
+    } else {
+      if (data.inputType.basicType != CBType::Seq ||
+          data.inputType.seqTypes.len == 0)
+        throw ComposeError("Invalid input type for GFX.SetUniform");
+      _type = findSingleType(data.inputType.seqTypes.elements[0]);
+      _isArray = true;
+    }
     return data.inputType;
   }
 

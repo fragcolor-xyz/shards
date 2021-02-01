@@ -74,6 +74,10 @@
       [(Float4 1.0 0.7 0.2 0.8)
        (Float4 0.7 0.2 1.0 0.8)
        (Float4 0.2 1.0 0.7 0.8)
+       (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightPosRadius" 4)
+      [(Float4 1.0 0.7 0.2 0.8)
+       (Float4 0.7 0.2 1.0 0.8)
+       (Float4 0.2 1.0 0.7 0.8)
        (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
       identity (GFX.Draw :Shader .shader :Model .cube)
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
