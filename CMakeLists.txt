@@ -190,14 +190,16 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # aggressive inlining
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(INLINING_FLAGS -mllvm -inline-threshold=100000)
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(INLINING_FLAGS -finline-limit=100000)
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    # using Intel C++
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-    # using Visual Studio C++
+  if(NOT EMSCRIPTEN)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+      set(INLINING_FLAGS -mllvm -inline-threshold=100000)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      set(INLINING_FLAGS -finline-limit=100000)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+      # using Intel C++
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+      # using Visual Studio C++
+    endif()
   endif()
 endif()
 ###
@@ -296,6 +298,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/bgfx_tests.cpp
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
@@ -470,6 +473,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
+    ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/cgltf
     )
 
   if(WIN32)
@@ -718,6 +722,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image_gnf.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp
