@@ -27,6 +27,7 @@ namespace BGFX_Tests {
   extern void testModel();
   extern void testCamera();
   extern void testDraw();
+  extern void testUniforms();
 }
 }
 
@@ -46,4 +47,8 @@ TEST_CASE("GFX-Camera", "[gfx]") {
 
 TEST_CASE("GFX-Draw", "[gfx]") {
   BGFX_Tests::testDraw();
+}
+
+TEST_CASE("GFX-Uniforms", "[gfx]") {
+  BGFX_Tests::testUniforms();
 }

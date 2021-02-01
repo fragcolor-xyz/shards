@@ -459,5 +459,96 @@ void testDraw() {
   }
 }
 
+void testUniforms() {
+  SECTION("Working") {
+    std::vector<Var> cubeVertices = {
+        Var(-1.0, 1.0, 1.0),   Var(0xff000000),      Var(1.0, 1.0, 1.0),
+        Var(0xff0000ff),       Var(-1.0, -1.0, 1.0), Var(0xff00ff00),
+        Var(1.0, -1.0, 1.0),   Var(0xff00ffff),      Var(-1.0, 1.0, -1.0),
+        Var(0xffff0000),       Var(1.0, 1.0, -1.0),  Var(0xffff00ff),
+        Var(-1.0, -1.0, -1.0), Var(0xffffff00),      Var(1.0, -1.0, -1.0),
+        Var(0xffffffff),
+    };
+    std::vector<Var> cubeIndices = {
+        Var(0, 1, 2), Var(1, 3, 2), Var(4, 6, 5), Var(5, 6, 7),
+        Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
+        Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
+    };
+
+    std::vector<Var> layout = {
+        Var::Enum(BGFX::Model::VertexAttribute::Position, CoreCC, 'gfxV'),
+        Var::Enum(BGFX::Model::VertexAttribute::Color0, CoreCC, 'gfxV')};
+
+    std::vector<Var> identity = {
+        Var(1.0, 0.0, 0.0, 0.0), Var(0.0, 1.0, 0.0, 0.0),
+        Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
+
+    std::vector<Var> uniformParamsArray = {
+        Var(1.0, 0.7, 0.2, 0.8), Var(0.7, 0.2, 1.0, 0.8),
+        Var(0.2, 1.0, 0.7, 0.8), Var(1.0, 0.4, 0.2, 0.8)};
+
+    const auto vs =
+        "../deps/bgfx/examples/runtime/shaders/" SHADERS_FOLDER "/vs_bump.bin";
+    const auto fs =
+        "../deps/bgfx/examples/runtime/shaders/" SHADERS_FOLDER "/fs_bump.bin";
+
+#define GFX_Texture2D block("GFX.Texture2D")
+#define GFX_SetUniform(_name, _elems) block("GFX.SetUniform", _name, _elems)
+
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block(
+                "GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                Blocks()
+                    .block(
+                        "Once",
+                        Blocks() //
+                            .block("LoadImage", "../deps/bgfx/examples/06-bump/"
+                                                "fieldstone-rgba.tga")
+                            .GFX_Texture2D.block("Push", "textures")
+                            .block("LoadImage", "../deps/bgfx/examples/06-bump/"
+                                                "fieldstone-n.tga")
+                            .GFX_Texture2D.block("Push", "textures")
+                            .let(vs)
+                            .block("FS.Read", true)
+                            .block("Ref", "vs_bytes")
+                            .let(fs)
+                            .block("FS.Read", true)
+                            .block("Ref", "fs_bytes")
+                            .block("GFX.Shader", Var::ContextVar("vs_bytes"),
+                                   Var::ContextVar("fs_bytes"))
+                            .block("Ref", "shader")
+                            .let(cubeVertices)
+                            .block("Ref", "cube", "Vertices")
+                            .let(cubeIndices)
+                            .block("Ref", "cube", "Indices")
+                            .block("Get", "cube")
+                            .block("GFX.Model", Var(layout))
+                            .block("Ref", "cube-model"))
+                    .let(uniformParamsArray)
+                    .GFX_SetUniform("u_lightPosRadius", 4)
+                    .let(uniformParamsArray)
+                    .GFX_SetUniform("u_lightRgbInnerR", 4)
+                    .let(10.0, 10.0, 10.0)
+                    .block("Ref", "cam", "Position")
+                    .let(0.0, 0.0, 0.0)
+                    .block("Ref", "cam", "Target")
+                    .block("Get", "cam")
+                    .block("GFX.Camera")
+                    .let(identity)
+                    .block("GFX.Draw", Var::ContextVar("shader"),
+                           Var::ContextVar("textures"),
+                           Var::ContextVar("cube-model")));
+    auto node = CBNode::make();
+    node->schedule(chain);
+    auto count = 100;
+    while (count--) {
+      REQUIRE(node->tick()); // false is chain errors happened
+      chainblocks::sleep(0.016);
+    }
+  }
+}
+
 } // namespace BGFX_Tests
 } // namespace chainblocks
