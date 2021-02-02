@@ -29,6 +29,9 @@ namespace BGFX_Tests {
   extern void testDraw();
   extern void testUniforms();
 }
+namespace GLTF_Tests {
+  extern void testLoad();
+}
 }
 
 using namespace chainblocks;
@@ -51,4 +54,8 @@ TEST_CASE("GFX-Draw", "[gfx]") {
 
 TEST_CASE("GFX-Uniforms", "[gfx]") {
   BGFX_Tests::testUniforms();
+}
+
+TEST_CASE("GLTF-Load", "[gltf]") {
+  GLTF_Tests::testLoad();
 }

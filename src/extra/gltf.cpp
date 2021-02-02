@@ -6,14 +6,19 @@
 #include "linalg-shim.hpp"
 #include "runtime.hpp"
 
+#include <deque>
 #include <filesystem>
+#include <optional>
 namespace fs = std::filesystem;
 using LastWriteTime = decltype(fs::last_write_time(fs::path()));
+
+#include <boost/algorithm/string.hpp>
 
 #include <nlohmann/json.hpp>
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_INCLUDE_JSON
 #define TINYGLTF_NO_INCLUDE_STB_IMAGE
 #define TINYGLTF_NO_INCLUDE_STB_IMAGE_WRITE
@@ -34,25 +39,51 @@ namespace gltf {
 struct GFXPrimitive {
   bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
+  bgfx::VertexLayout layout{};
+
+  GFXPrimitive() {}
+
+  GFXPrimitive(GFXPrimitive &&other) {
+    std::swap(vb, other.vb);
+    std::swap(ib, other.ib);
+    std::swap(layout, other.layout);
+  }
+
+  ~GFXPrimitive() {
+    if (vb.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(vb);
+    }
+    if (ib.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(ib);
+    }
+  }
 };
 
+using GFXPrimitiveRef = std::reference_wrapper<GFXPrimitive>;
+
 struct GFXMesh {
-  std::vector<int> primitiveIndices;
+  std::string name;
+  std::deque<GFXPrimitiveRef> primitives;
 };
+
+using GFXMeshRef = std::reference_wrapper<GFXMesh>;
+
+struct Node;
+using NodeRef = std::reference_wrapper<Node>;
 
 struct Node {
   std::string name;
-  Float4x4 transform;
+  Mat4 transform;
 
-  int gfxMeshIdx{-1};
+  std::optional<GFXMeshRef> mesh;
 
-  std::vector<int> childIndices;
+  std::deque<NodeRef> children;
 };
 
 struct Model {
-  std::vector<Node> nodes;
-  std::vector<GFXMesh> gfxMeshes;
-  std::vector<GFXPrimitive> gfxPrimitives;
+  std::deque<Node> nodes;
+  std::deque<GFXMesh> gfxMeshes;
+  std::deque<GFXPrimitive> gfxPrimitives;
 };
 
 struct Load {
@@ -88,6 +119,10 @@ struct Load {
       const auto &ext = filepath.extension();
       const auto hash = std::hash<std::string_view>()(filename);
 
+      if (!fs::exists(filepath)) {
+        throw ActivationError("GLTF model file does not exist.");
+      }
+
       if (_model) {
         Var.Release(_model);
         _model = nullptr;
@@ -97,9 +132,9 @@ struct Load {
       _fileNameHash = hash;
       _fileLastWrite = fs::last_write_time(filepath);
       if (ext == ".glb") {
-        _loader.LoadBinaryFromFile(&gltf, &err, &warn, filename);
+        success = _loader.LoadBinaryFromFile(&gltf, &err, &warn, filename);
       } else {
-        _loader.LoadASCIIFromFile(&gltf, &err, &warn, filename);
+        success = _loader.LoadASCIIFromFile(&gltf, &err, &warn, filename);
       }
 
       if (!warn.empty()) {
@@ -117,9 +152,83 @@ struct Load {
       }
 
       const auto &scene = gltf.scenes[gltf.defaultScene];
-      int nodeIdx = 0;
       for (const int gltfNodeIdx : scene.nodes) {
-        Node node{gltf.nodes[gltfNodeIdx].name};
+        const auto &glnode = gltf.nodes[gltfNodeIdx];
+        Node node{glnode.name};
+
+        if (glnode.matrix.size() != 0) {
+          node.transform = Mat4::FromVector(glnode.matrix);
+        } else {
+          const auto t = linalg::translation_matrix(
+              glnode.translation.size() != 0
+                  ? Vec3::FromVector(glnode.translation)
+                  : Vec3());
+          const auto r = linalg::rotation_matrix(
+              glnode.rotation.size() != 0 ? Vec4::FromVector(glnode.rotation)
+                                          : Vec4::Quaternion());
+          const auto s = linalg::scaling_matrix(
+              glnode.scale.size() != 0 ? Vec3::FromVector(glnode.scale)
+                                       : Vec3(1.0, 1.0, 1.0));
+          node.transform = linalg::mul(linalg::mul(t, r), s);
+        }
+
+        // if (glnode.skin != -1) {
+        //   // TODO
+        // }
+
+        if (glnode.mesh != -1) {
+          const auto &glmesh = gltf.meshes[glnode.mesh];
+          GFXMesh mesh{glmesh.name};
+          for (const auto &glprims : glmesh.primitives) {
+            GFXPrimitive prims{};
+            // we gotta do few things here
+            // build a layout
+            // populate vb and ib
+            for (const auto &[attributeName, attributeIdx] :
+                 glprims.attributes) {
+              if (attributeName == "POSITION") {
+                prims.layout.add(bgfx::Attrib::Position, 3,
+                                 bgfx::AttribType::Float);
+              } else if (attributeName == "NORMAL") {
+                prims.layout.add(bgfx::Attrib::Normal, 3,
+                                 bgfx::AttribType::Float);
+              } else if (attributeName == "TANGENT") {
+                prims.layout.add(bgfx::Attrib::Tangent, 3,
+                                 bgfx::AttribType::Float);
+                // we also precompute bitangents here
+                prims.layout.add(bgfx::Attrib::Bitangent, 3,
+                                 bgfx::AttribType::Float);
+              } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
+                int strIndex = std::stoi(attributeName.substr(9));
+                if (strIndex >= 8) {
+                  throw ActivationError("GLTF TEXCOORD_ limit exceeded.");
+                }
+                auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
+                    int(bgfx::Attrib::TexCoord0) + strIndex);
+                prims.layout.add(texcoord, 2, bgfx::AttribType::Float);
+              } else if (boost::starts_with(attributeName, "COLOR_")) {
+                int strIndex = std::stoi(attributeName.substr(6));
+                if (strIndex >= 4) {
+                  throw ActivationError("GLTF COLOR_ limit exceeded.");
+                }
+                auto texcoord = decltype(bgfx::Attrib::Color0)(
+                    int(bgfx::Attrib::Color0) + strIndex);
+                prims.layout.add(texcoord, 4, bgfx::AttribType::Uint8, true);
+              }
+              // TODO JOINTS_ and WEIGHTS_
+            }
+            prims.layout.end();
+
+            mesh.primitives.emplace_back(
+                _model->gfxPrimitives.emplace_back(std::move(prims)));
+          }
+          node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
+        }
+
+        // if (glnode.camera != -1) {
+        //   // TODO
+        // }
+
         _model->nodes.emplace_back(std::move(node));
       }
 
@@ -155,7 +264,6 @@ struct Draw : public BGFX::BaseConsumer {
     switch (index) {
     case 0:
       return _model;
-      break;
     default:
       throw InvalidParameterIndex();
     }
@@ -206,3 +314,7 @@ void registerBlocks() {
 }
 } // namespace gltf
 } // namespace chainblocks
+
+#ifdef CB_INTERNAL_TESTS
+#include "gltf_tests.cpp"
+#endif

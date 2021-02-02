@@ -302,6 +302,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx_tests.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/gltf_tests.cpp
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
   ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
@@ -987,6 +988,7 @@ add_dependencies(libCatch2Main catch2)
 # when building tests override some defines to enable internal (inside .cpp) tests
 if(BUILD_INTERNAL_TESTS)
   set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp PROPERTIES COMPILE_FLAGS -DCB_INTERNAL_TESTS)
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/gltf.cpp PROPERTIES COMPILE_FLAGS -DCB_INTERNAL_TESTS)
 endif()
 
 add_executable(

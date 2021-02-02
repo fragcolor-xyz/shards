@@ -3,6 +3,11 @@
 
 // included in bgfx.cpp
 
+#ifndef CB_INTERNAL_TESTS
+// just for linting purposes
+#include "./bgfx.cpp"
+#endif
+
 #ifdef CHECK
 #undef CHECK
 #endif
@@ -24,7 +29,9 @@ void testVertexAttribute() {
           bgfx::Attrib::Position);
   REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Normal) ==
           bgfx::Attrib::Normal);
-  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Tangent) ==
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Tangent3) ==
+          bgfx::Attrib::Tangent);
+  REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Tangent4) ==
           bgfx::Attrib::Tangent);
   REQUIRE(BGFX::Model::toBgfx(BGFX::Model::VertexAttribute::Bitangent) ==
           bgfx::Attrib::Bitangent);

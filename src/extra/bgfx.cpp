@@ -1199,7 +1199,8 @@ struct Model : public BaseConsumer {
   enum class VertexAttribute {
     Position,  //!< a_position
     Normal,    //!< a_normal
-    Tangent,   //!< a_tangent
+    Tangent3,  //!< a_tangent
+    Tangent4,  //!< a_tangent with handedness
     Bitangent, //!< a_bitangent
     Color0,    //!< a_color0
     Color1,    //!< a_color1
@@ -1224,7 +1225,8 @@ struct Model : public BaseConsumer {
       return bgfx::Attrib::Position;
     case VertexAttribute::Normal:
       return bgfx::Attrib::Normal;
-    case VertexAttribute::Tangent:
+    case VertexAttribute::Tangent3:
+    case VertexAttribute::Tangent4:
       return bgfx::Attrib::Tangent;
     case VertexAttribute::Bitangent:
       return bgfx::Attrib::Bitangent;
@@ -1356,13 +1358,15 @@ struct Model : public BaseConsumer {
         continue;
       case VertexAttribute::Position:
       case VertexAttribute::Normal:
-      case VertexAttribute::Tangent:
+      case VertexAttribute::Tangent3:
       case VertexAttribute::Bitangent: {
         elems = 3;
         atype = bgfx::AttribType::Float;
         _expectedTypes.emplace_back(CBType::Float3);
         _elemSize += 12;
       } break;
+      case VertexAttribute::Tangent4:
+      // w includes handedness
       case VertexAttribute::Weight: {
         elems = 4;
         atype = bgfx::AttribType::Float;

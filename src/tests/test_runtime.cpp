@@ -890,7 +890,7 @@ TEST_CASE("linalg compatibility") {
                                {1.0, 2.0, 3.0, 4.0}};
   REQUIRE((*md) == rd);
 
-  Float4x4 sm{rd};
+  Mat4 sm{rd};
   REQUIRE(sm.x == rd.x);
   REQUIRE(sm.y == rd.y);
 }
