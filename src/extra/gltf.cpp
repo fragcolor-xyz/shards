@@ -3,6 +3,7 @@
 
 #include "./bgfx.hpp"
 #include "blocks/shared.hpp"
+#include "linalg-shim.hpp"
 #include "runtime.hpp"
 
 #include <filesystem>
@@ -30,14 +31,28 @@ GLTF.Simulate - depending on physics simulation blocks
 */
 namespace chainblocks {
 namespace gltf {
-struct Model {
-  struct {
-    bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
-  } gfx;
+struct GFXPrimitive {
+  bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
+  bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
+};
 
-  size_t fileNameHash;
-  LastWriteTime fileLastWrite;
+struct GFXMesh {
+  std::vector<int> primitiveIndices;
+};
+
+struct Node {
+  std::string name;
+  Float4x4 transform;
+
+  int gfxMeshIdx{-1};
+
+  std::vector<int> childIndices;
+};
+
+struct Model {
+  std::vector<Node> nodes;
+  std::vector<GFXMesh> gfxMeshes;
+  std::vector<GFXPrimitive> gfxPrimitives;
 };
 
 struct Load {
@@ -52,6 +67,8 @@ struct Load {
 
   Model *_model{nullptr};
   TinyGLTF _loader;
+  size_t _fileNameHash;
+  LastWriteTime _fileLastWrite;
 
   void cleanup() {
     if (_model) {
@@ -77,8 +94,8 @@ struct Load {
       }
       _model = Var.New();
 
-      _model->fileNameHash = hash;
-      _model->fileLastWrite = fs::last_write_time(filepath);
+      _fileNameHash = hash;
+      _fileLastWrite = fs::last_write_time(filepath);
       if (ext == ".glb") {
         _loader.LoadBinaryFromFile(&gltf, &err, &warn, filename);
       } else {
@@ -92,7 +109,18 @@ struct Load {
         LOG(ERROR) << "GLTF error: " << err;
       }
       if (!success) {
-        throw ActivationError("Failed to parse glTF.");
+        throw ActivationError("Failed to parse GLTF.");
+      }
+
+      if (gltf.defaultScene == -1) {
+        throw ActivationError("GLTF model had no default scene.");
+      }
+
+      const auto &scene = gltf.scenes[gltf.defaultScene];
+      int nodeIdx = 0;
+      for (const int gltfNodeIdx : scene.nodes) {
+        Node node{gltf.nodes[gltfNodeIdx].name};
+        _model->nodes.emplace_back(std::move(node));
       }
 
       return Var.Get(_model);
