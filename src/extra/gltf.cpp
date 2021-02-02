@@ -4,6 +4,10 @@
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
+#include <filesystem>
+namespace fs = std::filesystem;
+using LastWriteTime = decltype(fs::last_write_time(fs::path()));
+
 #include <nlohmann/json.hpp>
 #include <stb_image.h>
 #include <stb_image_write.h>
@@ -14,8 +18,9 @@
 #define TINYGLTF_USE_CPP14
 // #define TINYGLTF_ENABLE_DRACO
 #include <tinygltf/tiny_gltf.h>
-
+using GLTFModel = tinygltf::Model;
 using namespace tinygltf;
+#undef Model
 
 // A gltf model can contain a lot of things...
 // Let's go over them in few iterations...
@@ -24,36 +29,55 @@ using namespace tinygltf;
 
 namespace chainblocks {
 namespace gltf {
-enum class DataType {
-  Meshes,
-  Materials,
-  Animations,
+struct Model {
+  GLTFModel gltf;
+  size_t fileNameHash;
+  LastWriteTime fileLastWrite;
 };
 
 struct Load {
-  static constexpr uint32_t GLTFTypesCC = 'gltf';
-  static inline Type DataTypeType{
-      {CBType::Enum,
-       {.enumeration = {.vendorId = CoreCC, .typeId = GLTFTypesCC}}}};
-  static inline EnumInfo<DataType> DataTypeInfo{"GLTFData", CoreCC,
-                                                GLTFTypesCC};
+  static constexpr uint32_t ModelCC = 'gltf';
+  static inline Type ModelType{
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = ModelCC}}}};
+  static inline Type ModelVarType = Type::VariableOf(ModelType);
+  static inline ObjectVar<Model> Var{"GLTF-Model", CoreCC, ModelCC};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+  static CBTypesInfo outputTypes() { return ModelType; }
 
-  std::vector<DataType> _types;
+  Model *_model{nullptr};
+  TinyGLTF _loader;
+
+  void cleanup() {
+    if (_model) {
+      Var.Release(_model);
+      _model = nullptr;
+    }
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     return awaitne(context, [&]() {
-      Model model;
-      TinyGLTF loader;
       std::string err;
       std::string warn;
+      bool success = false;
+      const auto filename = input.payload.stringValue;
+      fs::path filepath(filename);
+      const auto &ext = filepath.extension();
+      const auto hash = std::hash<std::string_view>()(filename);
 
-      bool ret = loader.LoadASCIIFromFile(&model, &err, &warn,
-                                          input.payload.stringValue);
-      // bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); //
-      // for binary glTF(.glb)
+      if (_model) {
+        Var.Release(_model);
+        _model = nullptr;
+      }
+      _model = Var.New();
+
+      _model->fileNameHash = hash;
+      _model->fileLastWrite = fs::last_write_time(filepath);
+      if (ext == ".glb") {
+        _loader.LoadBinaryFromFile(&_model->gltf, &err, &warn, filename);
+      } else {
+        _loader.LoadASCIIFromFile(&_model->gltf, &err, &warn, filename);
+      }
 
       if (!warn.empty()) {
         LOG(WARNING) << "GLTF warning: " << warn;
@@ -61,11 +85,11 @@ struct Load {
       if (!err.empty()) {
         LOG(ERROR) << "GLTF error: " << err;
       }
-      if (!ret) {
+      if (!success) {
         throw ActivationError("Failed to parse glTF.");
       }
 
-      return Var::Empty;
+      return Var.Get(_model);
     });
   }
 };

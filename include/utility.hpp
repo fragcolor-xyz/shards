@@ -258,7 +258,8 @@ public:
 
 template <class CB_CORE, typename E,
           std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr>
+          E (*Deserializer)(const std::string_view &) = nullptr,
+          void (*BeforeDelete)(const E &) = nullptr>
 class TObjectVar {
 private:
   CBObjectInfo info;
@@ -325,6 +326,9 @@ public:
     auto r = reinterpret_cast<ObjectRef *>(obj);
     r->refcount--;
     if (r->refcount == 0) {
+      if constexpr (BeforeDelete != nullptr) {
+        BeforeDelete(*obj);
+      }
       delete r;
     }
   }

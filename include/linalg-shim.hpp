@@ -2,9 +2,22 @@
 /* Copyright © 2021 Giovanni Petrantoni */
 
 #include <linalg.h>
+#include <vector>
 
 namespace chainblocks {
 struct Float4x4 : public linalg::aliases::float4x4 {
+  template <typename NUMBER> Float4x4(const std::vector<NUMBER> &mat) {
+    // used by gltf
+    assert(mat.size() == 16);
+    int idx = 0;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        (*this)[i][j] = float(mat[idx]);
+        idx++;
+      }
+    }
+  }
+
   operator CBVar() const {
     CBVar res{};
     res.valueType = CBType::Seq;

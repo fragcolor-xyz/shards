@@ -895,12 +895,14 @@ public:
 };
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr>
-class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer> {
+          E (*Deserializer)(const std::string_view &) = nullptr,
+          void (*BeforeDelete)(const E &) = nullptr>
+class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer,
+                                    BeforeDelete> {
 public:
   ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<InternalCore, E, Serializer, Deserializer>(name, vendorId,
-                                                              objectId) {}
+      : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete>(
+            name, vendorId, objectId) {}
 };
 
 typedef TBlocksVar<InternalCore> BlocksVar;
