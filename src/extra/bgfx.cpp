@@ -1928,11 +1928,8 @@ struct CameraOrtho : public CameraBase {
 struct Draw : public BaseConsumer {
   // a matrix (in the form of 4 float4s)
   // or multiple matrices (will draw multiple times, instanced TODO)
-  static inline Type InputSeqType = Type::SeqOf(CoreInfo::Float4SeqType);
-  static inline Types InputTypes{{CoreInfo::Float4SeqType, InputSeqType}};
-
-  static CBTypesInfo inputTypes() { return InputTypes; }
-  static CBTypesInfo outputTypes() { return InputTypes; }
+  static CBTypesInfo inputTypes() { return CoreInfo::Float4x4Types; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Types; }
 
   // keep in mind that bgfx does its own sorting, so we don't need to make this
   // block way too smart

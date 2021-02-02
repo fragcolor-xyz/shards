@@ -76,8 +76,12 @@ struct CoreInfo {
 
   static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
+  static inline Types Float4x4Types{
+      {CoreInfo::Float4x4Type, CoreInfo::Float4x4SeqType}};
   static inline Type Float3x3Type{{CBType::Seq, {.seqTypes = Float3Type}, 3}};
   static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
+  static inline Types Float3x3Types{
+      {CoreInfo::Float3x3Type, CoreInfo::Float3x3SeqType}};
 
   static inline Types IntOrFloat{{IntType, FloatType}};
 

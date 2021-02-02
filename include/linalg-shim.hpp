@@ -6,16 +6,19 @@
 
 namespace chainblocks {
 struct Float4x4 : public linalg::aliases::float4x4 {
-  template <typename NUMBER> Float4x4(const std::vector<NUMBER> &mat) {
+  template <typename NUMBER>
+  static Float4x4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
     assert(mat.size() == 16);
     int idx = 0;
+    Float4x4 res;
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
-        (*this)[i][j] = float(mat[idx]);
+        res[i][j] = float(mat[idx]);
         idx++;
       }
     }
+    return res;
   }
 
   operator CBVar() const {
