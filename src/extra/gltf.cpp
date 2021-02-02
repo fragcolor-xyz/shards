@@ -63,7 +63,7 @@ using GFXPrimitiveRef = std::reference_wrapper<GFXPrimitive>;
 
 struct GFXMesh {
   std::string name;
-  std::deque<GFXPrimitiveRef> primitives;
+  std::vector<GFXPrimitiveRef> primitives;
 };
 
 using GFXMeshRef = std::reference_wrapper<GFXMesh>;
@@ -77,13 +77,14 @@ struct Node {
 
   std::optional<GFXMeshRef> mesh;
 
-  std::deque<NodeRef> children;
+  std::vector<NodeRef> children;
 };
 
 struct Model {
   std::deque<Node> nodes;
   std::deque<GFXMesh> gfxMeshes;
   std::deque<GFXPrimitive> gfxPrimitives;
+  std::optional<NodeRef> rootNode;
 };
 
 struct Load {
@@ -154,82 +155,93 @@ struct Load {
       const auto &scene = gltf.scenes[gltf.defaultScene];
       for (const int gltfNodeIdx : scene.nodes) {
         const auto &glnode = gltf.nodes[gltfNodeIdx];
-        Node node{glnode.name};
+        const std::function<NodeRef(const tinygltf::Node)> processNode =
+            [this, &gltf, &processNode](const tinygltf::Node &glnode) {
+              Node node{glnode.name};
 
-        if (glnode.matrix.size() != 0) {
-          node.transform = Mat4::FromVector(glnode.matrix);
-        } else {
-          const auto t = linalg::translation_matrix(
-              glnode.translation.size() != 0
-                  ? Vec3::FromVector(glnode.translation)
-                  : Vec3());
-          const auto r = linalg::rotation_matrix(
-              glnode.rotation.size() != 0 ? Vec4::FromVector(glnode.rotation)
-                                          : Vec4::Quaternion());
-          const auto s = linalg::scaling_matrix(
-              glnode.scale.size() != 0 ? Vec3::FromVector(glnode.scale)
-                                       : Vec3(1.0, 1.0, 1.0));
-          node.transform = linalg::mul(linalg::mul(t, r), s);
-        }
-
-        // if (glnode.skin != -1) {
-        //   // TODO
-        // }
-
-        if (glnode.mesh != -1) {
-          const auto &glmesh = gltf.meshes[glnode.mesh];
-          GFXMesh mesh{glmesh.name};
-          for (const auto &glprims : glmesh.primitives) {
-            GFXPrimitive prims{};
-            // we gotta do few things here
-            // build a layout
-            // populate vb and ib
-            for (const auto &[attributeName, attributeIdx] :
-                 glprims.attributes) {
-              if (attributeName == "POSITION") {
-                prims.layout.add(bgfx::Attrib::Position, 3,
-                                 bgfx::AttribType::Float);
-              } else if (attributeName == "NORMAL") {
-                prims.layout.add(bgfx::Attrib::Normal, 3,
-                                 bgfx::AttribType::Float);
-              } else if (attributeName == "TANGENT") {
-                prims.layout.add(bgfx::Attrib::Tangent, 3,
-                                 bgfx::AttribType::Float);
-                // we also precompute bitangents here
-                prims.layout.add(bgfx::Attrib::Bitangent, 3,
-                                 bgfx::AttribType::Float);
-              } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
-                int strIndex = std::stoi(attributeName.substr(9));
-                if (strIndex >= 8) {
-                  throw ActivationError("GLTF TEXCOORD_ limit exceeded.");
-                }
-                auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
-                    int(bgfx::Attrib::TexCoord0) + strIndex);
-                prims.layout.add(texcoord, 2, bgfx::AttribType::Float);
-              } else if (boost::starts_with(attributeName, "COLOR_")) {
-                int strIndex = std::stoi(attributeName.substr(6));
-                if (strIndex >= 4) {
-                  throw ActivationError("GLTF COLOR_ limit exceeded.");
-                }
-                auto texcoord = decltype(bgfx::Attrib::Color0)(
-                    int(bgfx::Attrib::Color0) + strIndex);
-                prims.layout.add(texcoord, 4, bgfx::AttribType::Uint8, true);
+              if (glnode.matrix.size() != 0) {
+                node.transform = Mat4::FromVector(glnode.matrix);
+              } else {
+                const auto t = linalg::translation_matrix(
+                    glnode.translation.size() != 0
+                        ? Vec3::FromVector(glnode.translation)
+                        : Vec3());
+                const auto r = linalg::rotation_matrix(
+                    glnode.rotation.size() != 0
+                        ? Vec4::FromVector(glnode.rotation)
+                        : Vec4::Quaternion());
+                const auto s = linalg::scaling_matrix(
+                    glnode.scale.size() != 0 ? Vec3::FromVector(glnode.scale)
+                                             : Vec3(1.0, 1.0, 1.0));
+                node.transform = linalg::mul(linalg::mul(t, r), s);
               }
-              // TODO JOINTS_ and WEIGHTS_
-            }
-            prims.layout.end();
 
-            mesh.primitives.emplace_back(
-                _model->gfxPrimitives.emplace_back(std::move(prims)));
-          }
-          node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
-        }
+              // if (glnode.skin != -1) {
+              //   // TODO
+              // }
 
-        // if (glnode.camera != -1) {
-        //   // TODO
-        // }
+              if (glnode.mesh != -1) {
+                const auto &glmesh = gltf.meshes[glnode.mesh];
+                GFXMesh mesh{glmesh.name};
+                for (const auto &glprims : glmesh.primitives) {
+                  GFXPrimitive prims{};
+                  // we gotta do few things here
+                  // build a layout
+                  // populate vb and ib
+                  for (const auto &[attributeName, attributeIdx] :
+                       glprims.attributes) {
+                    if (attributeName == "POSITION") {
+                      prims.layout.add(bgfx::Attrib::Position, 3,
+                                       bgfx::AttribType::Float);
+                    } else if (attributeName == "NORMAL") {
+                      prims.layout.add(bgfx::Attrib::Normal, 3,
+                                       bgfx::AttribType::Float);
+                    } else if (attributeName == "TANGENT") {
+                      prims.layout.add(bgfx::Attrib::Tangent, 3,
+                                       bgfx::AttribType::Float);
+                      // we also precompute bitangents here
+                      prims.layout.add(bgfx::Attrib::Bitangent, 3,
+                                       bgfx::AttribType::Float);
+                    } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
+                      int strIndex = std::stoi(attributeName.substr(9));
+                      if (strIndex >= 8) {
+                        throw ActivationError("GLTF TEXCOORD_ limit exceeded.");
+                      }
+                      auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
+                          int(bgfx::Attrib::TexCoord0) + strIndex);
+                      prims.layout.add(texcoord, 2, bgfx::AttribType::Float);
+                    } else if (boost::starts_with(attributeName, "COLOR_")) {
+                      int strIndex = std::stoi(attributeName.substr(6));
+                      if (strIndex >= 4) {
+                        throw ActivationError("GLTF COLOR_ limit exceeded.");
+                      }
+                      auto texcoord = decltype(bgfx::Attrib::Color0)(
+                          int(bgfx::Attrib::Color0) + strIndex);
+                      prims.layout.add(texcoord, 4, bgfx::AttribType::Uint8,
+                                       true);
+                    }
+                    // TODO JOINTS_ and WEIGHTS_
+                  }
+                  prims.layout.end();
 
-        _model->nodes.emplace_back(std::move(node));
+                  mesh.primitives.emplace_back(
+                      _model->gfxPrimitives.emplace_back(std::move(prims)));
+                }
+                node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
+              }
+
+              // if (glnode.camera != -1) {
+              //   // TODO
+              // }
+
+              for (const auto childIndex : glnode.children) {
+                const auto &subglnode = gltf.nodes[childIndex];
+                node.children.emplace_back(processNode(subglnode));
+              }
+
+              return NodeRef(_model->nodes.emplace_back(std::move(node)));
+            };
+        _model->rootNode = processNode(glnode);
       }
 
       return Var.Get(_model);

@@ -42,10 +42,27 @@ void testLoad() {
     REQUIRE(errors[0] == "GLTF model file does not exist.");
   }
 
-  SECTION("Cube-Text") {
+  SECTION("Cube1-Text") {
     auto chain = CHAIN("test-chain")
                      .Const("../deps/tinygltf/models/Cube/Cube.gltf")
                      .GLTF_Load.Log;
+    auto node = CBNode::make();
+    node->schedule(chain);
+    while (true) {
+      REQUIRE(node->tick());
+      if (node->empty())
+        break;
+      sleep(0.1);
+    }
+    auto errors = node->errors();
+    REQUIRE(errors.size() == 0);
+  }
+
+  SECTION("Cube2-Text") {
+    auto chain =
+        CHAIN("test-chain")
+            .Const("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+            .GLTF_Load.Log;
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
