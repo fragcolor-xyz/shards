@@ -89,14 +89,26 @@ void testLoad() {
   }
 
   SECTION("Cube1-Text-NoBitangents") {
-    auto chain = CHAIN("test-chain")
-                     .GFX_MainWindow(
-                         "window", let("../deps/tinygltf/models/Cube/Cube.gltf")
-                                       .GLTF_Load_NoBitangents()
-                                       .Log());
+    auto chain =
+        CHAIN("test-chain")
+            .looped(true)
+            .GFX_MainWindow("window",
+                            Once(let("../deps/tinygltf/models/Cube/Cube.gltf")
+                                     .GLTF_Load_NoBitangents()
+                                     .Ref(model)
+                                     .Log())
+                                .let(0.0, 0.0, 10.0)
+                                .RefTable(cam, Position)
+                                .let(0.0, 0.0, 0.0)
+                                .RefTable(cam, Target)
+                                .Get(cam)
+                                .GFX_Camera()
+                                .let(identity)
+                                .GFX_Draw(model));
     auto node = CBNode::make();
     node->schedule(chain);
-    while (true) {
+    auto count = 50;
+    while (count--) {
       REQUIRE(node->tick());
       if (node->empty())
         break;

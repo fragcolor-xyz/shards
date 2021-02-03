@@ -274,7 +274,6 @@ struct Load {
                     const auto vertexCount = ar.get().count;
                     const auto totalSize = uint32_t(vertexCount) * vertexSize;
                     auto vbuffer = bgfx::alloc(totalSize);
-                    auto accessorIdx = 0;
                     auto offsetSize = 0;
                     std::vector<Vec3>
                         normals; // store normals to generate bitangents
@@ -563,13 +562,13 @@ struct Load {
                         prims.layout.add(attrib, 2, bgfx::AttribType::Float);
                       } break;
                       default:
-                        // throw std::runtime_error("Invalid attribute.");
+                        throw std::runtime_error("Invalid attribute.");
                         break;
                       }
-                      accessorIdx++;
                     }
                     // wrap up layout
                     prims.layout.end();
+                    assert(prims.layout.getSize(1) == vertexSize);
                     prims.vb = bgfx::createVertexBuffer(vbuffer, prims.layout);
 
                     // check if we have indices
