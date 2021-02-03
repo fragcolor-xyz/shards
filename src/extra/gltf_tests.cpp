@@ -25,6 +25,7 @@
 #define CHAIN(name) chainblocks::Chain(name)
 #define Const(val) block("Const", val)
 #define GLTF_Load block("GLTF.Load")
+#define GLTF_Load_NoBitangents block("GLTF.Load", false)
 #define Log block("Log")
 #define GFX_MainWindow(name, blocks)                                           \
   block("GFX.MainWindow", name, Var::Any, Var::Any, Blocks().blocks)
@@ -52,6 +53,24 @@ void testLoad() {
             .GFX_MainWindow(
                 "window",
                 Const("../deps/tinygltf/models/Cube/Cube.gltf").GLTF_Load.Log);
+    auto node = CBNode::make();
+    node->schedule(chain);
+    while (true) {
+      REQUIRE(node->tick());
+      if (node->empty())
+        break;
+      sleep(0.1);
+    }
+    auto errors = node->errors();
+    REQUIRE(errors.size() == 0);
+  }
+
+  SECTION("Cube1-Text-NoBitangents") {
+    auto chain =
+        CHAIN("test-chain")
+            .GFX_MainWindow("window",
+                            Const("../deps/tinygltf/models/Cube/Cube.gltf")
+                                .GLTF_Load_NoBitangents.Log);
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {

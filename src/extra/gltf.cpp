@@ -40,6 +40,7 @@ struct GFXPrimitive {
   bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
   bgfx::VertexLayout layout{};
+  uint64_t stateFlags{0};
 
   GFXPrimitive() {}
 
@@ -92,19 +93,45 @@ struct Load {
   static inline Type ModelType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = ModelCC}}}};
   static inline Type ModelVarType = Type::VariableOf(ModelType);
-  static inline ObjectVar<Model> Var{"GLTF-Model", CoreCC, ModelCC};
+  static inline ObjectVar<Model> ModelVar{"GLTF-Model", CoreCC, ModelCC};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return ModelType; }
+
+  static inline Parameters Params{
+      {"Bitangents",
+       CBCCSTR("If we should generate bitangents when loading the model, from "
+               "normals and tangent data. Default is true"),
+       {CoreInfo::BoolType}}};
 
   Model *_model{nullptr};
   TinyGLTF _loader;
   size_t _fileNameHash;
   LastWriteTime _fileLastWrite;
+  bool _bitangents{true};
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _bitangents = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_bitangents);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
 
   void cleanup() {
     if (_model) {
-      Var.Release(_model);
+      ModelVar.Release(_model);
       _model = nullptr;
     }
   }
@@ -125,10 +152,10 @@ struct Load {
       }
 
       if (_model) {
-        Var.Release(_model);
+        ModelVar.Release(_model);
         _model = nullptr;
       }
-      _model = Var.New();
+      _model = ModelVar.New();
 
       _fileNameHash = hash;
       _fileLastWrite = fs::last_write_time(filepath);
@@ -205,7 +232,10 @@ struct Load {
                     } else if (attributeName == "TANGENT") {
                       accessors.emplace_back(bgfx::Attrib::Tangent,
                                              gltf.accessors[attributeIdx]);
-                      vertexSize += sizeof(float) * 6;
+                      if (_bitangents)
+                        vertexSize += sizeof(float) * 6;
+                      else
+                        vertexSize += sizeof(float) * 4;
                     } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
                       int strIndex = std::stoi(attributeName.substr(9));
                       if (strIndex >= 8) {
@@ -302,48 +332,234 @@ struct Load {
                         prims.layout.add(attrib, 3, bgfx::AttribType::Float);
                       } break;
                       case bgfx::Attrib::Tangent: {
-                        const auto gsize = sizeof(float) * 4;
+                        if (_bitangents) {
+                          const auto gsize = sizeof(float) * 4;
+                          const auto gskips = gsize + view.byteStride;
+                          const auto osize = sizeof(float) * 6;
+                          const auto ssize = sizeof(float) * 3;
+                          auto vbufferOffset = offsetSize;
+                          offsetSize += osize;
+
+                          if (accessor.componentType !=
+                                  TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                              accessor.type != TINYGLTF_TYPE_VEC4) {
+                            throw ActivationError(
+                                "Tangent vector data was not a "
+                                "float32 vector of 4");
+                          }
+
+                          if (normals.size() == 0) {
+                            throw ActivationError(
+                                "Got Tangent without normals");
+                          }
+
+                          auto idx = 0;
+                          for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                            const float *chunk = (float *)&(*it);
+                            memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
+
+                            auto &normal = normals[idx];
+                            Vec3 tangent(chunk[0], chunk[1], chunk[2]);
+                            float w = chunk[3];
+                            auto bitangent =
+                                linalg::cross(linalg::normalize(normal),
+                                              linalg::normalize(tangent)) *
+                                w;
+                            memcpy(vbuffer->data + vbufferOffset + ssize,
+                                   &bitangent[0], ssize);
+
+                            vbufferOffset += vertexSize;
+                            idx++;
+                          }
+
+                          // also update layout
+                          prims.layout.add(bgfx::Attrib::Tangent, 3,
+                                           bgfx::AttribType::Float);
+                          prims.layout.add(bgfx::Attrib::Bitangent, 3,
+                                           bgfx::AttribType::Float);
+                        } else {
+                          // w is handedness
+                          const auto size = sizeof(float) * 4;
+                          const auto skips = size + view.byteStride;
+                          auto vbufferOffset = offsetSize;
+                          offsetSize += size;
+
+                          if (accessor.componentType !=
+                                  TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                              accessor.type != TINYGLTF_TYPE_VEC4) {
+                            throw ActivationError(
+                                "Tangent vector data was not a "
+                                "float32 vector of 4");
+                          }
+
+                          for (auto it = dataBeg; it != dataEnd; it += skips) {
+                            const float *chunk = (float *)&(*it);
+                            memcpy(vbuffer->data + vbufferOffset, chunk, size);
+                            vbufferOffset += vertexSize;
+                          }
+
+                          // also update layout
+                          prims.layout.add(attrib, 4, bgfx::AttribType::Float);
+                        }
+                      } break;
+                      case bgfx::Attrib::Color0:
+                      case bgfx::Attrib::Color1:
+                      case bgfx::Attrib::Color2:
+                      case bgfx::Attrib::Color3: {
+                        const auto elemSize = [&]() {
+                          if (accessor.componentType ==
+                              TINYGLTF_COMPONENT_TYPE_FLOAT)
+                            return 4;
+                          else if (accessor.componentType ==
+                                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                            return 2;
+                          else // BYTE
+                            return 1;
+                        }();
+                        const auto elemNum = [&]() {
+                          if (accessor.type == TINYGLTF_TYPE_VEC3)
+                            return 3;
+                          else // VEC4
+                            return 4;
+                        }();
+                        const auto gsize = elemSize * elemNum;
                         const auto gskips = gsize + view.byteStride;
-                        const auto osize = sizeof(float) * 6;
-                        const auto ssize = sizeof(float) * 3;
+                        const auto osize = 4;
                         auto vbufferOffset = offsetSize;
                         offsetSize += osize;
 
-                        if (accessor.componentType !=
-                                TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                            accessor.type != TINYGLTF_TYPE_VEC4) {
-                          throw ActivationError("Tangent vector data was not a "
-                                                "float32 vector of 4");
-                        }
-
-                        if (normals.size() == 0) {
-                          throw ActivationError("Got Tangent without normals");
-                        }
-
-                        auto idx = 0;
                         for (auto it = dataBeg; it != dataEnd; it += gskips) {
-                          const float *chunk = (float *)&(*it);
-                          memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
-
-                          auto &normal = normals[idx];
-                          Vec3 tangent(chunk[0], chunk[1], chunk[2]);
-                          float w = chunk[3];
-                          auto bitangent =
-                              linalg::cross(linalg::normalize(normal),
-                                            linalg::normalize(tangent)) *
-                              w;
-                          memcpy(vbuffer->data + vbufferOffset + ssize,
-                                 &bitangent[0], ssize);
-
+                          switch (elemNum) {
+                          case 3: {
+                            switch (elemSize) {
+                            case 4: { // float
+                              const float *chunk = (float *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              buf[0] = uint8_t(chunk[0] * 255);
+                              buf[1] = uint8_t(chunk[1] * 255);
+                              buf[2] = uint8_t(chunk[2] * 255);
+                              buf[3] = 255;
+                            } break;
+                            case 2: {
+                              const uint16_t *chunk = (uint16_t *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              buf[0] = uint8_t(
+                                  (float(chunk[0]) / float(UINT16_MAX)) * 255);
+                              buf[1] = uint8_t(
+                                  (float(chunk[1]) / float(UINT16_MAX)) * 255);
+                              buf[2] = uint8_t(
+                                  (float(chunk[2]) / float(UINT16_MAX)) * 255);
+                              buf[3] = 255;
+                            } break;
+                            case 1: {
+                              const uint8_t *chunk = (uint8_t *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              memcpy(buf, chunk, 3);
+                              buf[3] = 255;
+                            } break;
+                            default:
+                              assert(false);
+                              break;
+                            }
+                          } break;
+                          case 4: {
+                            switch (elemSize) {
+                            case 4: { // float
+                              const float *chunk = (float *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              buf[0] = uint8_t(chunk[0] * 255);
+                              buf[1] = uint8_t(chunk[1] * 255);
+                              buf[2] = uint8_t(chunk[2] * 255);
+                              buf[3] = uint8_t(chunk[3] * 255);
+                            } break;
+                            case 2: {
+                              const uint16_t *chunk = (uint16_t *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              buf[0] = uint8_t(
+                                  (float(chunk[0]) / float(UINT16_MAX)) * 255);
+                              buf[1] = uint8_t(
+                                  (float(chunk[1]) / float(UINT16_MAX)) * 255);
+                              buf[2] = uint8_t(
+                                  (float(chunk[2]) / float(UINT16_MAX)) * 255);
+                              buf[3] = uint8_t(
+                                  (float(chunk[3]) / float(UINT16_MAX)) * 255);
+                            } break;
+                            case 1: {
+                              const uint8_t *chunk = (uint8_t *)&(*it);
+                              uint8_t *buf = vbuffer->data + vbufferOffset;
+                              memcpy(buf, chunk, 4);
+                            } break;
+                            default:
+                              assert(false);
+                              break;
+                            }
+                          } break;
+                          default:
+                            assert(false);
+                            break;
+                          }
                           vbufferOffset += vertexSize;
-                          idx++;
                         }
 
-                        // also update layout
-                        prims.layout.add(bgfx::Attrib::Tangent, 3,
-                                         bgfx::AttribType::Float);
-                        prims.layout.add(bgfx::Attrib::Bitangent, 3,
-                                         bgfx::AttribType::Float);
+                        prims.layout.add(attrib, 4, bgfx::AttribType::Uint8,
+                                         true);
+                      } break;
+                      case bgfx::Attrib::TexCoord0:
+                      case bgfx::Attrib::TexCoord1:
+                      case bgfx::Attrib::TexCoord2:
+                      case bgfx::Attrib::TexCoord3:
+                      case bgfx::Attrib::TexCoord4:
+                      case bgfx::Attrib::TexCoord5:
+                      case bgfx::Attrib::TexCoord6:
+                      case bgfx::Attrib::TexCoord7: {
+                        const auto elemSize = [&]() {
+                          if (accessor.componentType ==
+                              TINYGLTF_COMPONENT_TYPE_FLOAT)
+                            return 4;
+                          else if (accessor.componentType ==
+                                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                            return 2;
+                          else // BYTE
+                            return 1;
+                        }();
+                        const auto elemNum = 2;
+                        const auto gsize = elemSize * elemNum;
+                        const auto gskips = gsize + view.byteStride;
+                        const auto osize = sizeof(float) * 2;
+                        auto vbufferOffset = offsetSize;
+                        offsetSize += osize;
+
+                        for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                          switch (elemSize) {
+                          case 4: { // float
+                            const float *chunk = (float *)&(*it);
+                            float *buf =
+                                (float *)(vbuffer->data + vbufferOffset);
+                            buf[0] = chunk[0];
+                            buf[1] = chunk[1];
+                          } break;
+                          case 2: {
+                            const uint16_t *chunk = (uint16_t *)&(*it);
+                            float *buf =
+                                (float *)(vbuffer->data + vbufferOffset);
+                            buf[0] = float(chunk[0]) / float(UINT16_MAX);
+                            buf[1] = float(chunk[1]) / float(UINT16_MAX);
+                          } break;
+                          case 1: {
+                            const uint8_t *chunk = (uint8_t *)&(*it);
+                            float *buf =
+                                (float *)(vbuffer->data + vbufferOffset);
+                            buf[0] = float(chunk[0]) / float(255);
+                            buf[1] = float(chunk[1]) / float(255);
+                          } break;
+                          default:
+                            assert(false);
+                            break;
+                          }
+                          vbufferOffset += vertexSize;
+                        }
+
+                        prims.layout.add(attrib, 2, bgfx::AttribType::Float);
                       } break;
                       default:
                         // throw std::runtime_error("Invalid attribute.");
@@ -353,6 +569,70 @@ struct Load {
                     }
                     // wrap up layout
                     prims.layout.end();
+                    prims.vb = bgfx::createVertexBuffer(vbuffer, prims.layout);
+
+                    // check if we have indices
+                    if (glprims.indices != -1) {
+                      // alright we also use the IB
+                      const auto &indices = gltf.accessors[glprims.indices];
+                      const auto count = indices.count;
+                      int esize;
+                      if (count < UINT16_MAX) {
+                        esize = 2;
+                      } else {
+                        esize = 4;
+                      }
+                      auto ibuffer = bgfx::alloc(esize * count);
+                      auto offset = 0;
+                      int gsize;
+                      // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#indices
+                      if (TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                        gsize = 4;
+                      } else if (TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                        gsize = 2;
+                      } else {
+                        gsize = 1;
+                      }
+                      const auto &view = gltf.bufferViews[indices.bufferView];
+                      const auto &buffer = gltf.buffers[view.buffer];
+                      const auto dataBeg =
+                          buffer.data.begin() + view.byteOffset;
+                      const auto dataEnd = dataBeg + view.byteLength;
+
+#define FILL_INDEX                                                             \
+  if (esize == 4) {                                                            \
+    uint32_t *ibuf = (uint32_t *)(ibuffer->data + offset);                     \
+    *ibuf = uint32_t(*chunk);                                                  \
+  } else {                                                                     \
+    uint16_t *ibuf = (uint16_t *)(ibuffer->data + offset);                     \
+    *ibuf = uint16_t(*chunk);                                                  \
+  }
+                      for (auto it = dataBeg; it != dataEnd; it += gsize) {
+                        switch (gsize) {
+                        case 4: {
+                          const uint32_t *chunk = (uint32_t *)&(*it);
+                          FILL_INDEX;
+                        } break;
+                        case 2: {
+                          const uint16_t *chunk = (uint16_t *)&(*it);
+                          FILL_INDEX;
+                        } break;
+                        case 1: {
+                          const uint8_t *chunk = (uint8_t *)&(*it);
+                          FILL_INDEX;
+                        } break;
+                        default:
+                          assert(false);
+                          break;
+                        }
+                        offset += esize;
+                      }
+#undef FILL_INDEX
+                      prims.ib = bgfx::createIndexBuffer(
+                          ibuffer, esize == 4 ? BGFX_BUFFER_INDEX32 : 0);
+                    } else {
+                      prims.stateFlags = BGFX_STATE_PT_TRISTRIP;
+                    }
                   }
 
                   mesh.primitives.emplace_back(
@@ -375,7 +655,7 @@ struct Load {
         _model->rootNode = processNode(glnode);
       }
 
-      return Var.Get(_model);
+      return ModelVar.Get(_model);
     });
   }
 };
