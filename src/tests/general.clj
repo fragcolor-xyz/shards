@@ -84,7 +84,7 @@
           (-> (Is 10)) (-> (Msg "Cond was false!") true)] :Threading false :Passthrough false)
    (Assert.Is false true)
    (Log)
-   
+
    [10 20 30 40 50]
    (ExpectIntSeq)
    (ExpectLike [1 2 3 4])
@@ -195,7 +195,7 @@
    (Do inner1)
    (Assert.Is "My input 2" true)
    (Log)
-   
+
    ; test some casting
    (ToBytes)
    (BytesToInts)
@@ -262,7 +262,7 @@
    ; also test correct take deducting table type
    .htable2 (Take "key1") (Math.Multiply 2) (Assert.Is 20 true)
    .htable2 (Take "key2") (Math.Multiply 2.0) (Assert.Is 40.0 true)
-   .htable2 (Take ["key1" "key2"]) (Math.Multiply [2 2.0]) 
+   .htable2 (Take ["key1" "key2"]) (Math.Multiply [2 2.0])
    (Log) (Assert.Is [20 40.0] true)
 
    (Int 10) (ToFloat) (Set "fx")
@@ -513,7 +513,7 @@
    "Hello file append..."
    (WriteFile "test.bin" :Append true)
 
-   "Hello Pandas"
+   "Hello Pandas" = .pandas
    (ToBytes)
    (ToBase64) (Log "base64")
    (FromBase64)
@@ -528,6 +528,26 @@
    (Math.Xor [77 78 77 11 16])
    (Assert.Is [72 101 108 108 111 32 80 97 110 100 97 115 0] true)
    (Log)
+
+   .pandas
+   (ToBytes)
+   (ToHex)
+   (Log "hex pandas")
+   (HexToBytes)
+   (FromBytes)
+   (ExpectString)
+   (Assert.Is "Hello Pandas" true)
+
+   .pandas
+   (ToBytes)
+   (ToHex) >= .hex-pandas
+   "0x" (PrependTo .hex-pandas)
+   .hex-pandas
+   (Log "hex pandas")
+   (HexToBytes)
+   (FromBytes)
+   (ExpectString)
+   (Assert.Is "Hello Pandas" true)
 
   ; show induced mutability with Ref
    "Hello reference" ; Const
@@ -651,8 +671,8 @@
    (Slice 3 -1)
    (Assert.Is [4] true)
 
-   [1 2 3 4 5 6 6 7] (IntsToBytes) 
-   (Slice 2 5) 
+   [1 2 3 4 5 6 6 7] (IntsToBytes)
+   (Slice 2 5)
    (BytesToInts) (Assert.Is [3 4 5] true)
 
    "passing by..."

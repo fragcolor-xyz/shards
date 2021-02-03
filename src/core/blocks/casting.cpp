@@ -805,6 +805,35 @@ struct FromBase64 {
   }
 };
 
+struct HexToBytes {
+  std::vector<uint8_t> output;
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  static int char2int(char input) {
+    if (input >= '0' && input <= '9')
+      return input - '0';
+    if (input >= 'A' && input <= 'F')
+      return input - 'A' + 10;
+    if (input >= 'a' && input <= 'f')
+      return input - 'a' + 10;
+    throw std::invalid_argument("Invalid input string");
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    output.clear();
+    auto src = input.payload.stringValue;
+    // allow 0x prefix
+    if (src[0] == '0' && src[1] == 'x' || src[1] == 'X')
+      src += 2;
+    while (*src && src[1]) {
+      output.emplace_back(char2int(*src) * 16 + char2int(src[1]));
+      src += 2;
+    }
+    return Var(output.data(), output.size());
+  }
+};
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -859,5 +888,6 @@ void registerCastingBlocks() {
 
   REGISTER_CBLOCK("ToBase64", ToBase64);
   REGISTER_CBLOCK("FromBase64", FromBase64);
+  REGISTER_CBLOCK("HexToBytes", HexToBytes);
 }
 }; // namespace chainblocks
