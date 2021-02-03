@@ -278,6 +278,7 @@ struct Load {
                     auto offsetSize = 0;
                     std::vector<Vec3>
                         normals; // store normals to generate bitangents
+                    prims.layout.begin();
                     for (const auto &[attrib, accessorRef] : accessors) {
                       const auto &accessor = accessorRef.get();
                       const auto &view = gltf.bufferViews[accessor.bufferView];
@@ -719,16 +720,83 @@ struct Draw : public BGFX::BaseConsumer {
     return data.inputType;
   }
 
-  void warmup(CBContext *context) { _model.warmup(context); }
+  void warmup(CBContext *context) {
+    _model.warmup(context);
+    _bgfxContext = referenceVariable(context, "GFX.Context");
+  }
 
-  void cleanup() { _model.cleanup(); }
+  void cleanup() {
+    _model.cleanup();
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
+    }
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     throw ActivationError("Not yet implemented.");
     return input;
   }
 
-  CBVar activateSingle(CBContext *context, const CBVar &input) { return input; }
+  void renderNode(BGFX::Context *ctx, const Node &node) {
+    if (node.mesh) {
+      for (const auto &primsRef : node.mesh->get().primitives) {
+        const auto &prims = primsRef.get();
+        if (prims.vb.idx != bgfx::kInvalidHandle) {
+          const auto currentView = ctx->currentView();
+
+          uint64_t state = prims.stateFlags | BGFX_STATE_WRITE_RGB |
+                           BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
+                           BGFX_STATE_DEPTH_TEST_LESS;
+          if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
+            // workaround for flipped Y render to textures
+            if (currentView.id > 0) {
+              state |= BGFX_STATE_CULL_CCW;
+            } else {
+              state |= BGFX_STATE_CULL_CW;
+            }
+          } else {
+            state |= BGFX_STATE_CULL_CW;
+          }
+          bgfx::setState(state);
+
+          bgfx::setVertexBuffer(0, prims.vb);
+          if (prims.ib.idx != bgfx::kInvalidHandle) {
+            bgfx::setIndexBuffer(prims.ib);
+          }
+
+          // // Submit primitive for rendering to the current view.
+          bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+          bgfx::submit(currentView.id, handle);
+        }
+      }
+    }
+
+    for (const auto &snode : node.children) {
+      renderNode(ctx, snode);
+    }
+  }
+
+  CBVar activateSingle(CBContext *context, const CBVar &input) {
+    auto *ctx =
+        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+    const auto &modelVar = _model.get();
+    const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
+    float mat[16];
+    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
+           sizeof(float) * 4);
+    bgfx::setTransform(mat);
+    if (model->rootNode) {
+      renderNode(ctx, *model->rootNode);
+    }
+    return input;
+  }
 };
 
 void registerBlocks() {

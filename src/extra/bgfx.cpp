@@ -2163,7 +2163,7 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(mat);
 
-    uint64_t depthFlags = 0;
+    uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
     if (model) {
       std::visit(
@@ -2173,24 +2173,23 @@ struct Draw : public BaseConsumer {
             bgfx::setIndexBuffer(m.ib);
           },
           model->model);
-      depthFlags = BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS;
+      state |= BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS;
 
       if constexpr (CurrentRenderer == Renderer::OpenGL) {
         // workaround for flipped Y render to textures
         if (currentView.id > 0) {
-          depthFlags |= BGFX_STATE_CULL_CCW;
+          state |= BGFX_STATE_CULL_CCW;
         } else {
-          depthFlags |= BGFX_STATE_CULL_CW;
+          state |= BGFX_STATE_CULL_CW;
         }
       } else {
-        depthFlags |= BGFX_STATE_CULL_CW;
+        state |= BGFX_STATE_CULL_CW;
       }
     } else {
       screenSpaceQuad();
     }
 
     // set state, (it's auto reset after submit)
-    uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | depthFlags;
     bgfx::setState(state);
 
     auto vtextures = _textures.get();

@@ -23,20 +23,31 @@
 #include <catch2/catch_all.hpp>
 
 #define CHAIN(name) chainblocks::Chain(name)
-#define Const(val) block("Const", val)
-#define GLTF_Load block("GLTF.Load")
-#define GLTF_Load_NoBitangents block("GLTF.Load", false)
-#define Log block("Log")
+#define GLTF_Load() block("GLTF.Load")
+#define GLTF_Load_NoBitangents() block("GLTF.Load", false)
+#define Log() block("Log")
 #define GFX_MainWindow(name, blocks)                                           \
   block("GFX.MainWindow", name, Var::Any, Var::Any, Blocks().blocks)
+#define Once(blocks) block("Once", Blocks().blocks)
+#define Set(name) block("Set", #name)
+#define Ref(name) block("Ref", #name)
+#define Get(name) block("Get", #name)
+#define SetTable(name, key) block("Set", #name, #key)
+#define RefTable(name, key) block("Ref", #name, #key)
+#define GFX_Draw(model) block("GLTF.Draw", Var::ContextVar(#model))
+#define GFX_Camera() block("GFX.Camera")
 
 namespace chainblocks {
 namespace GLTF_Tests {
 void testLoad() {
+  std::vector<Var> identity = {Var(1.0, 0.0, 0.0, 0.0), Var(0.0, 1.0, 0.0, 0.0),
+                               Var(0.0, 0.0, 1.0, 0.0),
+                               Var(0.0, 0.0, 0.0, 1.0)};
+
   SECTION("Fail-Not-Existing") {
     auto chain =
         CHAIN("test-chain")
-            .GFX_MainWindow("window", Const("../Cube.gltf").GLTF_Load.Log);
+            .GFX_MainWindow("window", let("../Cube.gltf").GLTF_Load().Log());
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
@@ -50,12 +61,24 @@ void testLoad() {
   SECTION("Cube1-Text") {
     auto chain =
         CHAIN("test-chain")
-            .GFX_MainWindow(
-                "window",
-                Const("../deps/tinygltf/models/Cube/Cube.gltf").GLTF_Load.Log);
+            .looped(true)
+            .GFX_MainWindow("window",
+                            Once(let("../deps/tinygltf/models/Cube/Cube.gltf")
+                                     .GLTF_Load()
+                                     .Ref(model)
+                                     .Log())
+                                .let(0.0, 0.0, 10.0)
+                                .RefTable(cam, Position)
+                                .let(0.0, 0.0, 0.0)
+                                .RefTable(cam, Target)
+                                .Get(cam)
+                                .GFX_Camera()
+                                .let(identity)
+                                .GFX_Draw(model));
     auto node = CBNode::make();
     node->schedule(chain);
-    while (true) {
+    auto count = 50;
+    while (count--) {
       REQUIRE(node->tick());
       if (node->empty())
         break;
@@ -66,11 +89,11 @@ void testLoad() {
   }
 
   SECTION("Cube1-Text-NoBitangents") {
-    auto chain =
-        CHAIN("test-chain")
-            .GFX_MainWindow("window",
-                            Const("../deps/tinygltf/models/Cube/Cube.gltf")
-                                .GLTF_Load_NoBitangents.Log);
+    auto chain = CHAIN("test-chain")
+                     .GFX_MainWindow(
+                         "window", let("../deps/tinygltf/models/Cube/Cube.gltf")
+                                       .GLTF_Load_NoBitangents()
+                                       .Log());
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
@@ -88,8 +111,9 @@ void testLoad() {
         CHAIN("test-chain")
             .GFX_MainWindow(
                 "window",
-                Const("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
-                    .GLTF_Load.Log);
+                let("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+                    .GLTF_Load()
+                    .Log());
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
