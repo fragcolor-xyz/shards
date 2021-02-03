@@ -293,6 +293,25 @@ impl ParameterInfo {
   }
 }
 
+impl From<&str> for OptionalString {
+  fn from(s: &str) -> OptionalString {
+    let cos = CBOptionalString {
+      string: s.as_ptr() as *const i8,
+      crc: 0, // TODO
+    };
+    OptionalString(cos)
+  }
+}
+
+impl From<&str> for CBOptionalString {
+  fn from(s: &str) -> CBOptionalString {
+    CBOptionalString {
+      string: s.as_ptr() as *const i8,
+      crc: 0, // TODO
+    }
+  }
+}
+
 impl From<(&str, Types)> for ParameterInfo {
   fn from(v: (&str, Types)) -> ParameterInfo {
     ParameterInfo::new(v.0, v.1)
@@ -307,13 +326,13 @@ impl From<(&str, &str, Types)> for ParameterInfo {
 
 impl Drop for ParameterInfo {
   fn drop(&mut self) {
-    if self.0.name != core::ptr::null() {
+    if !self.0.name.is_null() {
       unsafe {
         let cname = CString::from_raw(self.0.name as *mut i8);
         drop(cname);
       }
     }
-    if self.0.help.string != core::ptr::null() {
+    if !self.0.help.string.is_null() {
       unsafe {
         let chelp = CString::from_raw(self.0.help.string as *mut i8);
         drop(chelp);
@@ -670,7 +689,7 @@ impl From<&[ClonedVar]> for ClonedVar {
   fn from(vec: &[ClonedVar]) -> Self {
     let res = ClonedVar(Var::default());
     unsafe {
-      let src: &[Var] = std::mem::transmute(vec);
+      let src: &[Var] = &*(vec as *const [ClonedVar] as *const [CBVar]);
       let vsrc: Var = src.into();
       let rv = &res.0 as *const CBVar as *mut CBVar;
       let sv = &vsrc as *const CBVar;
@@ -859,10 +878,10 @@ impl From<&CString> for Var {
 impl From<Option<&CString>> for Var {
   #[inline(always)]
   fn from(v: Option<&CString>) -> Self {
-    if v.is_none() {
-      Var::default()
+    if let Some(v) = v {
+      Var::from(v)
     } else {
-      Var::from(v.unwrap())
+      Var::default()
     }
   }
 }
@@ -1115,7 +1134,9 @@ impl TryFrom<&Var> for Option<CString> {
     } else if var.is_none() {
       Ok(None)
     } else {
-      Ok(Some(var.try_into().unwrap_or(CString::new("").unwrap())))
+      Ok(Some(
+        var.try_into().unwrap_or_else(|_| CString::new("").unwrap()),
+      ))
     }
   }
 }
@@ -1149,9 +1170,7 @@ impl TryFrom<&Var> for &str {
       unsafe {
         let cstr =
           CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8);
-        cstr
-          .to_str()
-          .or_else(|_| Err("UTF8 string conversion failed!"))
+        cstr.to_str().map_err(|_| "UTF8 string conversion failed!")
       }
     }
   }
@@ -1184,7 +1203,7 @@ impl TryFrom<&Var> for u64 {
           .__bindgen_anon_1
           .intValue
           .try_into()
-          .or_else(|_| Err("i64 -> u64 conversion failed, possible overflow."))?;
+          .map_err(|_| "i64 -> u64 conversion failed, possible overflow.")?;
         Ok(u)
       }
     }
@@ -1205,7 +1224,7 @@ impl TryFrom<&Var> for usize {
           .__bindgen_anon_1
           .intValue
           .try_into()
-          .or_else(|_| Err("Int conversion failed, likely out of range (usize)"))
+          .map_err(|_| "Int conversion failed, likely out of range (usize)")
       }
     }
   }
@@ -1392,7 +1411,7 @@ impl Iterator for SeqIterator {
     } else {
       None
     };
-    self.i = self.i + 1;
+    self.i += 1;
     res
   }
   type Item = Var;
@@ -1463,9 +1482,13 @@ impl Seq {
     self.s.len.try_into().unwrap()
   }
 
+  pub fn is_empty(&self) -> bool{
+    self.s.len == 0
+  }
+
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
-      if self.len() > 0 {
+      if !self.is_empty() {
         let v = (*Core).seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
         Some(transmute(v))
       } else {
