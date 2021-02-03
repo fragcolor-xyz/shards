@@ -188,20 +188,24 @@ struct Load {
                   // we gotta do few things here
                   // build a layout
                   // populate vb and ib
+                  std::vector<std::pair<bgfx::Attrib::Enum,
+                                        std::reference_wrapper<Accessor>>>
+                      accessors;
+                  uint32_t vertexSize = 0;
                   for (const auto &[attributeName, attributeIdx] :
                        glprims.attributes) {
                     if (attributeName == "POSITION") {
-                      prims.layout.add(bgfx::Attrib::Position, 3,
-                                       bgfx::AttribType::Float);
+                      accessors.emplace_back(bgfx::Attrib::Position,
+                                             gltf.accessors[attributeIdx]);
+                      vertexSize += sizeof(float) * 3;
                     } else if (attributeName == "NORMAL") {
-                      prims.layout.add(bgfx::Attrib::Normal, 3,
-                                       bgfx::AttribType::Float);
+                      accessors.emplace_back(bgfx::Attrib::Normal,
+                                             gltf.accessors[attributeIdx]);
+                      vertexSize += sizeof(float) * 3;
                     } else if (attributeName == "TANGENT") {
-                      prims.layout.add(bgfx::Attrib::Tangent, 3,
-                                       bgfx::AttribType::Float);
-                      // we also precompute bitangents here
-                      prims.layout.add(bgfx::Attrib::Bitangent, 3,
-                                       bgfx::AttribType::Float);
+                      accessors.emplace_back(bgfx::Attrib::Tangent,
+                                             gltf.accessors[attributeIdx]);
+                      vertexSize += sizeof(float) * 6;
                     } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
                       int strIndex = std::stoi(attributeName.substr(9));
                       if (strIndex >= 8) {
@@ -209,20 +213,147 @@ struct Load {
                       }
                       auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
                           int(bgfx::Attrib::TexCoord0) + strIndex);
-                      prims.layout.add(texcoord, 2, bgfx::AttribType::Float);
+                      accessors.emplace_back(texcoord,
+                                             gltf.accessors[attributeIdx]);
+                      vertexSize += sizeof(float) * 2;
                     } else if (boost::starts_with(attributeName, "COLOR_")) {
                       int strIndex = std::stoi(attributeName.substr(6));
                       if (strIndex >= 4) {
                         throw ActivationError("GLTF COLOR_ limit exceeded.");
                       }
-                      auto texcoord = decltype(bgfx::Attrib::Color0)(
+                      auto color = decltype(bgfx::Attrib::Color0)(
                           int(bgfx::Attrib::Color0) + strIndex);
-                      prims.layout.add(texcoord, 4, bgfx::AttribType::Uint8,
-                                       true);
+                      accessors.emplace_back(color,
+                                             gltf.accessors[attributeIdx]);
+                      vertexSize += 4;
+                    } else {
+                      // TODO JOINTS_ and WEIGHTS_
+                      LOG(WARNING)
+                          << "Ignored a primitive attribute: " << attributeName;
                     }
-                    // TODO JOINTS_ and WEIGHTS_
                   }
-                  prims.layout.end();
+
+                  // lay our data following enum order, pos, normals etc
+                  std::sort(accessors.begin(), accessors.end(),
+                            [](const auto &a, const auto &b) {
+                              return a.first < b.first;
+                            });
+
+                  if (accessors.size() > 0) {
+                    const auto &[_, ar] = accessors[0];
+                    const auto vertexCount = ar.get().count;
+                    const auto totalSize = uint32_t(vertexCount) * vertexSize;
+                    auto vbuffer = bgfx::alloc(totalSize);
+                    auto accessorIdx = 0;
+                    auto offsetSize = 0;
+                    std::vector<Vec3>
+                        normals; // store normals to generate bitangents
+                    for (const auto &[attrib, accessorRef] : accessors) {
+                      const auto &accessor = accessorRef.get();
+                      const auto &view = gltf.bufferViews[accessor.bufferView];
+                      const auto &buffer = gltf.buffers[view.buffer];
+                      const auto dataBeg =
+                          buffer.data.begin() + view.byteOffset;
+                      const auto dataEnd = dataBeg + view.byteLength;
+                      switch (attrib) {
+                      case bgfx::Attrib::Position: {
+                        const auto size = sizeof(float) * 3;
+                        const auto skips = size + view.byteStride;
+                        auto vbufferOffset = offsetSize;
+                        offsetSize += size;
+
+                        if (accessor.componentType !=
+                                TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                            accessor.type != TINYGLTF_TYPE_VEC3) {
+                          throw ActivationError("Position vector data was not "
+                                                "a float32 vector of 3");
+                        }
+
+                        for (auto it = dataBeg; it != dataEnd; it += skips) {
+                          const uint8_t *chunk = &(*it);
+                          memcpy(vbuffer->data + vbufferOffset, chunk, size);
+                          vbufferOffset += vertexSize;
+                        }
+
+                        // also update layout
+                        prims.layout.add(attrib, 3, bgfx::AttribType::Float);
+                      } break;
+                      case bgfx::Attrib::Normal: {
+                        const auto size = sizeof(float) * 3;
+                        const auto skips = size + view.byteStride;
+                        auto vbufferOffset = offsetSize;
+                        offsetSize += size;
+
+                        if (accessor.componentType !=
+                                TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                            accessor.type != TINYGLTF_TYPE_VEC3) {
+                          throw ActivationError("Normal vector data was not a "
+                                                "float32 vector of 3");
+                        }
+
+                        for (auto it = dataBeg; it != dataEnd; it += skips) {
+                          const float *chunk = (float *)&(*it);
+                          memcpy(vbuffer->data + vbufferOffset, chunk, size);
+                          vbufferOffset += vertexSize;
+                          normals.emplace_back(chunk[0], chunk[1], chunk[2]);
+                        }
+
+                        // also update layout
+                        prims.layout.add(attrib, 3, bgfx::AttribType::Float);
+                      } break;
+                      case bgfx::Attrib::Tangent: {
+                        const auto gsize = sizeof(float) * 4;
+                        const auto gskips = gsize + view.byteStride;
+                        const auto osize = sizeof(float) * 6;
+                        const auto ssize = sizeof(float) * 3;
+                        auto vbufferOffset = offsetSize;
+                        offsetSize += osize;
+
+                        if (accessor.componentType !=
+                                TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                            accessor.type != TINYGLTF_TYPE_VEC4) {
+                          throw ActivationError("Tangent vector data was not a "
+                                                "float32 vector of 4");
+                        }
+
+                        if (normals.size() == 0) {
+                          throw ActivationError("Got Tangent without normals");
+                        }
+
+                        auto idx = 0;
+                        for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                          const float *chunk = (float *)&(*it);
+                          memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
+
+                          auto &normal = normals[idx];
+                          Vec3 tangent(chunk[0], chunk[1], chunk[2]);
+                          float w = chunk[3];
+                          auto bitangent =
+                              linalg::cross(linalg::normalize(normal),
+                                            linalg::normalize(tangent)) *
+                              w;
+                          memcpy(vbuffer->data + vbufferOffset + ssize,
+                                 &bitangent[0], ssize);
+
+                          vbufferOffset += vertexSize;
+                          idx++;
+                        }
+
+                        // also update layout
+                        prims.layout.add(bgfx::Attrib::Tangent, 3,
+                                         bgfx::AttribType::Float);
+                        prims.layout.add(bgfx::Attrib::Bitangent, 3,
+                                         bgfx::AttribType::Float);
+                      } break;
+                      default:
+                        // throw std::runtime_error("Invalid attribute.");
+                        break;
+                      }
+                      accessorIdx++;
+                    }
+                    // wrap up layout
+                    prims.layout.end();
+                  }
 
                   mesh.primitives.emplace_back(
                       _model->gfxPrimitives.emplace_back(std::move(prims)));

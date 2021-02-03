@@ -26,12 +26,16 @@
 #define Const(val) block("Const", val)
 #define GLTF_Load block("GLTF.Load")
 #define Log block("Log")
+#define GFX_MainWindow(name, blocks)                                           \
+  block("GFX.MainWindow", name, Var::Any, Var::Any, Blocks().blocks)
 
 namespace chainblocks {
 namespace GLTF_Tests {
 void testLoad() {
   SECTION("Fail-Not-Existing") {
-    auto chain = CHAIN("test-chain").Const("../Cube.gltf").GLTF_Load.Log;
+    auto chain =
+        CHAIN("test-chain")
+            .GFX_MainWindow("window", Const("../Cube.gltf").GLTF_Load.Log);
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
@@ -43,9 +47,11 @@ void testLoad() {
   }
 
   SECTION("Cube1-Text") {
-    auto chain = CHAIN("test-chain")
-                     .Const("../deps/tinygltf/models/Cube/Cube.gltf")
-                     .GLTF_Load.Log;
+    auto chain =
+        CHAIN("test-chain")
+            .GFX_MainWindow(
+                "window",
+                Const("../deps/tinygltf/models/Cube/Cube.gltf").GLTF_Load.Log);
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {
@@ -61,8 +67,10 @@ void testLoad() {
   SECTION("Cube2-Text") {
     auto chain =
         CHAIN("test-chain")
-            .Const("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
-            .GLTF_Load.Log;
+            .GFX_MainWindow(
+                "window",
+                Const("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+                    .GLTF_Load.Log);
     auto node = CBNode::make();
     node->schedule(chain);
     while (true) {

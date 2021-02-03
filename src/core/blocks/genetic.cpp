@@ -270,8 +270,10 @@ struct Evolve {
                 parent0->parent1Idx != currentIdx &&
                 parent1->parent0Idx != currentIdx &&
                 parent1->parent1Idx != currentIdx) {
-              ind->crossoverTask = crossoverFlow.emplace(
-                  [=]() { crossover(*ind, *parent0, *parent1); });
+              ind->crossoverTask =
+                  crossoverFlow.emplace([this, ind, parent0, parent1]() {
+                    crossover(*ind, *parent0, *parent1);
+                  });
 #if 0
               ind.get().crossoverTask.name(std::to_string(currentIdx) + " = " +
                                            std::to_string(parent0Idx) + " + " +

@@ -764,7 +764,7 @@ struct SendFile {
 
     http::file_body::value_type file;
     boost::beast::error_code ec;
-    auto pstr = p.generic_u8string();
+    auto pstr = p.generic_string();
     file.open(pstr.c_str(), boost::beast::file_mode::read, ec);
     if (unlikely(bool(ec))) {
       _404_response.clear();
