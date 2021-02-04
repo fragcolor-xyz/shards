@@ -781,7 +781,10 @@ struct Draw : public BGFX::BaseConsumer {
     return input;
   }
 
-  void renderNode(BGFX::Context *ctx, const Node &node, const CBTable *mats) {
+  void renderNode(BGFX::Context *ctx, const Node &node,
+                  const linalg::aliases::float4x4 &parentTransform,
+                  const CBTable *mats) {
+    const auto transform = linalg::mul(parentTransform, node.transform);
     if (node.mesh) {
       for (const auto &primsRef : node.mesh->get().primitives) {
         const auto &prims = primsRef.get();
@@ -841,13 +844,20 @@ struct Draw : public BGFX::BaseConsumer {
             }
           }
 
+          float mat[16];
+          memcpy(&mat[0], &transform.x, sizeof(float) * 4);
+          memcpy(&mat[4], &transform.y, sizeof(float) * 4);
+          memcpy(&mat[8], &transform.z, sizeof(float) * 4);
+          memcpy(&mat[12], &transform.w, sizeof(float) * 4);
+          bgfx::setTransform(mat);
+
           bgfx::submit(currentView.id, handle);
         }
       }
     }
 
     for (const auto &snode : node.children) {
-      renderNode(ctx, snode, mats);
+      renderNode(ctx, snode, transform, mats);
     }
   }
 
@@ -862,19 +872,10 @@ struct Draw : public BGFX::BaseConsumer {
                           ? &matsVar.payload.tableValue
                           : nullptr;
 
-    float mat[16];
-    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
-           sizeof(float) * 4);
-    bgfx::setTransform(mat);
-
+    auto rootTransform =
+        reinterpret_cast<Mat4 *>(&input.payload.seqValue.elements[0]);
     if (model->rootNode) {
-      renderNode(ctx, *model->rootNode, mats);
+      renderNode(ctx, *model->rootNode, *rootTransform, mats);
     }
     return input;
   }
