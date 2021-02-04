@@ -295,9 +295,9 @@ struct Load {
                       const auto &accessor = accessorRef.get();
                       const auto &view = gltf.bufferViews[accessor.bufferView];
                       const auto &buffer = gltf.buffers[view.buffer];
-                      const auto dataBeg =
-                          buffer.data.begin() + view.byteOffset;
-                      const auto dataEnd = dataBeg + view.byteLength;
+                      const auto dataBeg = buffer.data.begin() +
+                                           view.byteOffset +
+                                           accessor.byteOffset;
                       const auto stride = accessor.ByteStride(view);
                       switch (attrib) {
                       case bgfx::Attrib::Position: {
@@ -312,10 +312,15 @@ struct Load {
                                                 "a float32 vector of 3");
                         }
 
-                        for (auto it = dataBeg; it != dataEnd; it += stride) {
+                        size_t idx = 0;
+                        auto it = dataBeg;
+                        while (idx < vertexCount) {
                           const uint8_t *chunk = &(*it);
                           memcpy(vbuffer->data + vbufferOffset, chunk, size);
+
                           vbufferOffset += vertexSize;
+                          it += stride;
+                          idx++;
                         }
 
                         // also update layout
@@ -333,14 +338,18 @@ struct Load {
                                                 "float32 vector of 3");
                         }
 
-                        auto idx = 0;
-                        for (auto it = dataBeg; it != dataEnd; it += stride) {
+                        size_t idx = 0;
+                        auto it = dataBeg;
+                        while (idx < vertexCount) {
                           const float *chunk = (float *)&(*it);
                           memcpy(vbuffer->data + vbufferOffset, chunk, size);
-                          vbufferOffset += vertexSize;
+
                           normals[idx].x = chunk[0];
                           normals[idx].y = chunk[1];
                           normals[idx].z = chunk[2];
+
+                          vbufferOffset += vertexSize;
+                          it += stride;
                           idx++;
                         }
 
@@ -368,8 +377,9 @@ struct Load {
                                 "Got Tangent without normals");
                           }
 
-                          auto idx = 0;
-                          for (auto it = dataBeg; it != dataEnd; it += stride) {
+                          size_t idx = 0;
+                          auto it = dataBeg;
+                          while (idx < vertexCount) {
                             const float *chunk = (float *)&(*it);
                             memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
 
@@ -384,6 +394,7 @@ struct Load {
                                    &bitangent[0], ssize);
 
                             vbufferOffset += vertexSize;
+                            it += stride;
                             idx++;
                           }
 
@@ -406,10 +417,15 @@ struct Load {
                                 "float32 vector of 4");
                           }
 
-                          for (auto it = dataBeg; it != dataEnd; it += stride) {
+                          size_t idx = 0;
+                          auto it = dataBeg;
+                          while (idx < vertexCount) {
                             const float *chunk = (float *)&(*it);
                             memcpy(vbuffer->data + vbufferOffset, chunk, size);
+
                             vbufferOffset += vertexSize;
+                            it += stride;
+                            idx++;
                           }
 
                           // also update layout
@@ -436,12 +452,13 @@ struct Load {
                           else // VEC4
                             return 4;
                         }();
-                        const auto gsize = elemSize * elemNum;
                         const auto osize = 4;
                         auto vbufferOffset = offsetSize;
                         offsetSize += osize;
 
-                        for (auto it = dataBeg; it != dataEnd; it += stride) {
+                        size_t idx = 0;
+                        auto it = dataBeg;
+                        while (idx < vertexCount) {
                           switch (elemNum) {
                           case 3: {
                             switch (elemSize) {
@@ -511,7 +528,10 @@ struct Load {
                             assert(false);
                             break;
                           }
+
                           vbufferOffset += vertexSize;
+                          it += stride;
+                          idx++;
                         }
 
                         prims.layout.add(attrib, 4, bgfx::AttribType::Uint8,
@@ -535,13 +555,13 @@ struct Load {
                           else // BYTE
                             return 1;
                         }();
-                        const auto elemNum = 2;
-                        const auto gsize = elemSize * elemNum;
                         const auto osize = sizeof(float) * 2;
                         auto vbufferOffset = offsetSize;
                         offsetSize += osize;
 
-                        for (auto it = dataBeg; it != dataEnd; it += stride) {
+                        size_t idx = 0;
+                        auto it = dataBeg;
+                        while (idx < vertexCount) {
                           switch (elemSize) {
                           case 4: { // float
                             const float *chunk = (float *)&(*it);
@@ -568,7 +588,10 @@ struct Load {
                             assert(false);
                             break;
                           }
+
                           vbufferOffset += vertexSize;
+                          it += stride;
+                          idx++;
                         }
 
                         prims.layout.add(attrib, 2, bgfx::AttribType::Float);
@@ -609,9 +632,9 @@ struct Load {
                       }
                       const auto &view = gltf.bufferViews[indices.bufferView];
                       const auto &buffer = gltf.buffers[view.buffer];
-                      const auto dataBeg =
-                          buffer.data.begin() + view.byteOffset;
-                      const auto dataEnd = dataBeg + view.byteLength;
+                      const auto dataBeg = buffer.data.begin() +
+                                           view.byteOffset + indices.byteOffset;
+                      const auto stride = indices.ByteStride(view);
 
 #define FILL_INDEX                                                             \
   if (esize == 4) {                                                            \
@@ -621,7 +644,9 @@ struct Load {
     uint16_t *ibuf = (uint16_t *)(ibuffer->data + offset);                     \
     *ibuf = uint16_t(*chunk);                                                  \
   }
-                      for (auto it = dataBeg; it != dataEnd; it += gsize) {
+                      size_t idx = 0;
+                      auto it = dataBeg;
+                      while (idx < count) {
                         switch (gsize) {
                         case 4: {
                           const uint32_t *chunk = (uint32_t *)&(*it);
@@ -639,7 +664,10 @@ struct Load {
                           assert(false);
                           break;
                         }
+
                         offset += esize;
+                        it += stride;
+                        idx++;
                       }
 #undef FILL_INDEX
                       prims.ib = bgfx::createIndexBuffer(
