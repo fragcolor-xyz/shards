@@ -181,11 +181,12 @@ struct RenderXR : public BGFX::BaseConsumer {
       }
     }
 
-    arrayPush(data.shared,
-              ExposedInfo::ProtectedVariable(
-                  "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
-
+    IterableExposedInfo shared(data.shared);
+    shared.push_back(ExposedInfo::ProtectedVariable(
+        "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
+    data.shared = shared;
     _blocks.compose(data);
+
     return CoreInfo::AnyType;
   }
 

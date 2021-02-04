@@ -175,6 +175,13 @@ void testLoad() {
       "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
       "blinn3-fx", 2.0);
 
+  GLTF_TEST_MODEL(
+      "Buggy-Text-NoBitangents",
+      "../external/glTF-Sample-Models/2.0/Buggy/glTF/Buggy.gltf",
+      "../external/glTF-Sample-Models/2.0/Duck/glTF/DuckCM.png",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
+      "Material_20", 100.0);
+
   SECTION("Cube2-Text") {
     auto chain =
         CHAIN("test-chain")

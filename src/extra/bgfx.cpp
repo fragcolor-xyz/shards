@@ -520,16 +520,17 @@ struct MainWindow : public BaseWindow {
       }
     }
 
-    arrayPush(data.shared,
-              ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
-                                             CBCCSTR("The exposed SDL window."),
-                                             BaseConsumer::windowType));
-    arrayPush(data.shared,
-              ExposedInfo::ProtectedVariable(
-                  "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
-    arrayPush(data.shared, ExposedInfo::ProtectedVariable(
-                               "GUI.Context", CBCCSTR("The ImGui Context."),
-                               chainblocks::ImGui::Context::Info));
+    // we need to free data outself here because we add stuff to it
+    IterableExposedInfo shared(data.shared);
+    shared.push_back(ExposedInfo::ProtectedVariable(
+        "GFX.CurrentWindow", CBCCSTR("The exposed SDL window."),
+        BaseConsumer::windowType));
+    shared.push_back(ExposedInfo::ProtectedVariable(
+        "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
+    shared.push_back(ExposedInfo::ProtectedVariable(
+        "GUI.Context", CBCCSTR("The ImGui Context."),
+        chainblocks::ImGui::Context::Info));
+    data.shared = shared;
     _blocks.compose(data);
 
     return data.inputType;
