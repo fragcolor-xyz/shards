@@ -38,6 +38,7 @@ namespace chainblocks {
 namespace gltf {
 struct GFXMaterial {
   std::string name;
+  bool doubleSided{false};
 
   // TODO
 };
@@ -649,7 +650,8 @@ struct Load {
 
                     if (glprims.material != -1) {
                       const auto &glmaterial = gltf.materials[glprims.material];
-                      GFXMaterial material{glmaterial.name};
+                      GFXMaterial material{glmaterial.name,
+                                           glmaterial.doubleSided};
                       prims.material = _model->gfxMaterials.emplace_back(
                           std::move(material));
                     }
@@ -789,16 +791,20 @@ struct Draw : public BGFX::BaseConsumer {
           uint64_t state = prims.stateFlags | BGFX_STATE_WRITE_RGB |
                            BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
                            BGFX_STATE_DEPTH_TEST_LESS;
-          if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
-            // workaround for flipped Y render to textures
-            if (currentView.id > 0) {
-              state |= BGFX_STATE_CULL_CCW;
+
+          if (!prims.material || !(*prims.material).get().doubleSided) {
+            if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
+              // workaround for flipped Y render to textures
+              if (currentView.id > 0) {
+                state |= BGFX_STATE_CULL_CW;
+              } else {
+                state |= BGFX_STATE_CULL_CCW;
+              }
             } else {
-              state |= BGFX_STATE_CULL_CW;
+              state |= BGFX_STATE_CULL_CCW;
             }
-          } else {
-            state |= BGFX_STATE_CULL_CW;
           }
+
           bgfx::setState(state);
 
           bgfx::setVertexBuffer(0, prims.vb);
@@ -823,6 +829,13 @@ struct Draw : public BGFX::BaseConsumer {
                 handle = shader->handle;
                 if (ptextures->valueType == CBType::Seq &&
                     ptextures->payload.seqValue.len > 0) {
+                  auto textures = ptextures->payload.seqValue;
+                  for (uint32_t i = 0; i < textures.len; i++) {
+                    auto texture = reinterpret_cast<BGFX::Texture *>(
+                        textures.elements[i].payload.objectValue);
+                    bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
+                                     texture->handle);
+                  }
                 }
               }
             }

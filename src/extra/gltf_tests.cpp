@@ -41,6 +41,13 @@
 #define FS_Read_Bytes() block("FS.Read", true)
 #define GFX_Shader(_vs, _fs)                                                   \
   block("GFX.Shader", Var::ContextVar(#_vs), Var::ContextVar(#_fs))
+#ifdef LoadImage
+// mingw defines this
+#undef LoadImage
+#endif
+#define LoadImage(_imagePath) block("LoadImage", _imagePath)
+#define GFX_Texture2D() block("GFX.Texture2D")
+#define Push(_name) block("Push", #_name)
 
 namespace chainblocks {
 namespace GLTF_Tests {
@@ -112,6 +119,15 @@ void testLoad() {
                         .GLTF_Load_NoBitangents()
                         .Ref(model)
                         .Log()
+                        // textures
+                        .LoadImage(
+                            "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
+                        .GFX_Texture2D()
+                        .Push(textures)
+                        .LoadImage(
+                            "../deps/bgfx/examples/06-bump/fieldstone-n.tga")
+                        .GFX_Texture2D()
+                        .Push(textures)
                         // vertex shader load
                         .let(vs)
                         .FS_Read_Bytes()
@@ -124,11 +140,13 @@ void testLoad() {
                         .GFX_Shader(vs_bytes, fs_bytes)
                         // setup material override table
                         .RefTable(mat1, Shader)
+                        .Get(textures)
+                        .RefTable(mat1, Textures)
                         .Get(mat1)
                         .RefTable(mats,
                                   Cube) // Cube is the material name in the json
                     )
-                    .let(0.0, 0.0, 10.0)
+                    .let(10.0, 10.0, 10.0)
                     .RefTable(cam, Position)
                     .let(0.0, 0.0, 0.0)
                     .RefTable(cam, Target)

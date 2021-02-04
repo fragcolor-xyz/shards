@@ -1291,7 +1291,10 @@ struct Model : public BaseConsumer {
       {"Dynamic",
        CBCCSTR("If the model is dynamic and will be optimized to change as "
                "often as every frame."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"CullMode",
+       CBCCSTR("Triangles facing the specified direction are not drawn."),
+       {ModelHandle::CullModeType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1302,6 +1305,7 @@ struct Model : public BaseConsumer {
   size_t _elemSize{0};
   bool _dynamic{false};
   ModelHandle *_output{nullptr};
+  ModelHandle::CullMode _cullMode{ModelHandle::CullMode::Back};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1310,6 +1314,9 @@ struct Model : public BaseConsumer {
       break;
     case 1:
       _dynamic = value.payload.boolValue;
+      break;
+    case 2:
+      _cullMode = ModelHandle::CullMode(value.payload.enumValue);
       break;
     }
   }
@@ -1320,6 +1327,8 @@ struct Model : public BaseConsumer {
       return Var(_layout);
     case 1:
       return Var(_dynamic);
+    case 2:
+      return Var::Enum(_cullMode, CoreCC, ModelHandle::CullModeCC);
     default:
       return Var::Empty;
     }
@@ -1575,6 +1584,7 @@ struct Model : public BaseConsumer {
 
     model.vb = bgfx::createVertexBuffer(buffer, _blayout);
     model.ib = bgfx::createIndexBuffer(ibuffer, flags);
+    _output->cullMode = _cullMode;
 
     _output->model = model;
 
@@ -2019,9 +2029,6 @@ struct Draw : public BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    // touch this thread shared to create it if not already created
-    Samplers().clear();
-
     _shader.warmup(context);
     _textures.warmup(context);
     _model.warmup(context);
@@ -2030,16 +2037,6 @@ struct Draw : public BaseConsumer {
   }
 
   void cleanup() {
-    // this is shared, means the first cleanup will do it fully, other calls
-    // will just be already cleared
-    auto &samplers = Samplers();
-    for (auto sampler : samplers) {
-      if (sampler.idx != bgfx::kInvalidHandle) {
-        bgfx::destroy(sampler);
-      }
-    }
-    samplers.clear();
-
     _shader.cleanup();
     _textures.cleanup();
     _model.cleanup();
@@ -2082,8 +2079,6 @@ struct Draw : public BaseConsumer {
   };
 
   static inline bool LayoutSetup{false};
-
-  ThreadShared<std::vector<bgfx::UniformHandle>> Samplers{};
 
   void setup() {
     if (!LayoutSetup) {
@@ -2175,16 +2170,35 @@ struct Draw : public BaseConsumer {
           model->model);
       state |= BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS;
 
-      if constexpr (CurrentRenderer == Renderer::OpenGL) {
-        // workaround for flipped Y render to textures
-        if (currentView.id > 0) {
-          state |= BGFX_STATE_CULL_CCW;
+      switch (model->cullMode) {
+      case ModelHandle::CullMode::Front: {
+        if constexpr (CurrentRenderer == Renderer::OpenGL) {
+          // workaround for flipped Y render to textures
+          if (currentView.id > 0) {
+            state |= BGFX_STATE_CULL_CCW;
+          } else {
+            state |= BGFX_STATE_CULL_CW;
+          }
         } else {
           state |= BGFX_STATE_CULL_CW;
         }
-      } else {
-        state |= BGFX_STATE_CULL_CW;
+      } break;
+      case ModelHandle::CullMode::Back: {
+        if constexpr (CurrentRenderer == Renderer::OpenGL) {
+          // workaround for flipped Y render to textures
+          if (currentView.id > 0) {
+            state |= BGFX_STATE_CULL_CW;
+          } else {
+            state |= BGFX_STATE_CULL_CCW;
+          }
+        } else {
+          state |= BGFX_STATE_CULL_CCW;
+        }
+      } break;
+      default:
+        break;
       }
+
     } else {
       screenSpaceQuad();
     }
@@ -2193,27 +2207,15 @@ struct Draw : public BaseConsumer {
     bgfx::setState(state);
 
     auto vtextures = _textures.get();
-    auto nsamplers = Samplers().size();
     if (vtextures.valueType == CBType::Object) {
-      if (nsamplers == 0) {
-        Samplers().emplace_back(
-            bgfx::createUniform("DrawSampler0", bgfx::UniformType::Sampler));
-      }
       auto texture = reinterpret_cast<Texture *>(vtextures.payload.objectValue);
-      bgfx::setTexture(0, Samplers()[0], texture->handle);
+      bgfx::setTexture(0, ctx->getSampler(0), texture->handle);
     } else if (vtextures.valueType == CBType::Seq) {
       auto textures = vtextures.payload.seqValue;
       for (uint32_t i = 0; i < textures.len; i++) {
-        if (i >= nsamplers) {
-          std::string name("DrawSampler");
-          name.append(std::to_string(i));
-          Samplers().emplace_back(
-              bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
-          nsamplers++;
-        }
         auto texture = reinterpret_cast<Texture *>(
             textures.elements[i].payload.objectValue);
-        bgfx::setTexture(uint8_t(i), Samplers()[i], texture->handle);
+        bgfx::setTexture(uint8_t(i), ctx->getSampler(i), texture->handle);
       }
     }
 

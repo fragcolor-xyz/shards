@@ -86,7 +86,7 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) {
     enum { value = sizeof(test<T>(0)) == sizeof(char) };                       \
   }
 
-template <typename T> class ThreadShared {
+template <typename T, void (*OnDelete)(T *p) = nullptr> class ThreadShared {
 public:
   ThreadShared() { addRef(); }
 
@@ -119,6 +119,9 @@ private:
 
     if (_refs == 0) {
       for (auto ptr : _ptrs) {
+        if constexpr (OnDelete != nullptr) {
+          OnDelete(*ptr);
+        }
         // delete the internal object
         delete *ptr;
         // null the thread local

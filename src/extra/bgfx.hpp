@@ -64,11 +64,28 @@ struct Context {
   void reset() {
     viewsStack.clear();
     nextViewCounter = 0;
+    for (auto &sampler : samplers) {
+      bgfx::destroy(sampler);
+    }
+    samplers.clear();
+  }
+
+  const bgfx::UniformHandle &getSampler(size_t index) {
+    const auto nsamplers = samplers.size();
+    if (index >= nsamplers) {
+      std::string name("DrawSampler_");
+      name.append(std::to_string(index));
+      return samplers.emplace_back(
+          bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
+    } else {
+      return samplers[index];
+    }
   }
 
 private:
   std::deque<ViewInfo> viewsStack;
   bgfx::ViewId nextViewCounter{0};
+  std::vector<bgfx::UniformHandle> samplers;
 };
 
 struct Texture {
@@ -114,6 +131,12 @@ struct ShaderHandle {
 };
 
 struct ModelHandle {
+  enum class CullMode { None, Front, Back };
+  static constexpr uint32_t CullModeCC = 'gfxC';
+  static inline EnumInfo<CullMode> CullModeEnumInfo{"CullMode", CoreCC,
+                                                    CullModeCC};
+  static inline Type CullModeType = Type::Enum(CoreCC, CullModeCC);
+
   static inline Type ObjType{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
@@ -133,6 +156,7 @@ struct ModelHandle {
   };
 
   uint64_t topologyStateFlag{0}; // Triangle list
+  CullMode cullMode{CullMode::Back};
 
   std::variant<StaticModel, DynamicModel> model{
       StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
