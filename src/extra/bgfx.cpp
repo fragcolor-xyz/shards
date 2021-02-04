@@ -507,7 +507,7 @@ struct MainWindow : public BaseWindow {
   // TODO thread_local? anyway sort multiple threads
   static inline std::vector<SDL_Event> sdlEvents;
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
       throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
                          "within an Await block)");
@@ -520,18 +520,17 @@ struct MainWindow : public BaseWindow {
       }
     }
 
-    CBInstanceData dataCopy = data;
-    arrayPush(dataCopy.shared,
+    arrayPush(data.shared,
               ExposedInfo::ProtectedVariable("GFX.CurrentWindow",
                                              CBCCSTR("The exposed SDL window."),
                                              BaseConsumer::windowType));
-    arrayPush(dataCopy.shared,
+    arrayPush(data.shared,
               ExposedInfo::ProtectedVariable(
                   "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
-    arrayPush(dataCopy.shared, ExposedInfo::ProtectedVariable(
-                                   "GUI.Context", CBCCSTR("The ImGui Context."),
-                                   chainblocks::ImGui::Context::Info));
-    _blocks.compose(dataCopy);
+    arrayPush(data.shared, ExposedInfo::ProtectedVariable(
+                               "GUI.Context", CBCCSTR("The ImGui Context."),
+                               chainblocks::ImGui::Context::Info));
+    _blocks.compose(data);
 
     return data.inputType;
   }

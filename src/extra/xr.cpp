@@ -168,7 +168,7 @@ struct RenderXR : public BGFX::BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
       throw ComposeError("XR Blocks cannot be used on a worker thread (e.g. "
                          "within an Await block)");
@@ -181,12 +181,11 @@ struct RenderXR : public BGFX::BaseConsumer {
       }
     }
 
-    CBInstanceData dataCopy = data;
-    arrayPush(dataCopy.shared,
+    arrayPush(data.shared,
               ExposedInfo::ProtectedVariable(
                   "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
 
-    _blocks.compose(dataCopy);
+    _blocks.compose(data);
     return CoreInfo::AnyType;
   }
 
