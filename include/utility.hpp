@@ -479,6 +479,23 @@ template <class CB_CORE> struct TTableVar : public CBVar {
     payload.tableValue = CB_CORE::tableNew();
   }
 
+  TTableVar(const TTableVar &other) : CBVar() {
+    CB_CORE::cloneVar(*this, other);
+  }
+
+  TTableVar &operator=(const TTableVar &other) {
+    CB_CORE::cloneVar(*this, other);
+    return *this;
+  }
+
+  TTableVar(TTableVar &&other) : CBVar() { std::swap(*this, other); }
+
+  TTableVar &operator=(TTableVar &&other) {
+    std::swap(*this, other);
+    memset(&other, 0x0, sizeof(CBVar));
+    return *this;
+  }
+
   ~TTableVar() { CB_CORE::destroyVar(*this); }
 
   CBVar &operator[](std::string_view key) {
@@ -500,6 +517,21 @@ template <class CB_CORE> struct TTableVar : public CBVar {
 
 template <class CB_CORE> struct TSeqVar : public CBVar {
   TSeqVar() : CBVar() { valueType = CBType::Seq; }
+
+  TSeqVar(const TSeqVar &other) : CBVar() { CB_CORE::cloneVar(*this, other); }
+
+  TSeqVar &operator=(const TSeqVar &other) {
+    CB_CORE::cloneVar(*this, other);
+    return *this;
+  }
+
+  TSeqVar(TSeqVar &&other) : CBVar() { std::swap(*this, other); }
+
+  TSeqVar &operator=(TSeqVar &&other) {
+    std::swap(*this, other);
+    memset(&other, 0x0, sizeof(CBVar));
+    return *this;
+  }
 
   ~TSeqVar() { CB_CORE::destroyVar(*this); }
 

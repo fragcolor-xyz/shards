@@ -36,11 +36,20 @@ GLTF.Simulate - depending on physics simulation blocks
 */
 namespace chainblocks {
 namespace gltf {
+struct GFXMaterial {
+  std::string name;
+
+  // TODO
+};
+
+using GFXMaterialRef = std::reference_wrapper<GFXMaterial>;
+
 struct GFXPrimitive {
   bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
   bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
   bgfx::VertexLayout layout{};
   uint64_t stateFlags{0};
+  std::optional<GFXMaterialRef> material;
 
   GFXPrimitive() {}
 
@@ -48,6 +57,7 @@ struct GFXPrimitive {
     std::swap(vb, other.vb);
     std::swap(ib, other.ib);
     std::swap(layout, other.layout);
+    std::swap(material, other.material);
   }
 
   ~GFXPrimitive() {
@@ -85,6 +95,7 @@ struct Model {
   std::deque<Node> nodes;
   std::deque<GFXMesh> gfxMeshes;
   std::deque<GFXPrimitive> gfxPrimitives;
+  std::deque<GFXMaterial> gfxMaterials;
   std::optional<NodeRef> rootNode;
 };
 
@@ -586,9 +597,11 @@ struct Load {
                       auto offset = 0;
                       int gsize;
                       // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#indices
-                      if (TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                      if (indices.componentType ==
+                          TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
                         gsize = 4;
-                      } else if (TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                      } else if (indices.componentType ==
+                                 TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
                         gsize = 2;
                       } else {
                         gsize = 1;
@@ -633,10 +646,17 @@ struct Load {
                     } else {
                       prims.stateFlags = BGFX_STATE_PT_TRISTRIP;
                     }
-                  }
 
-                  mesh.primitives.emplace_back(
-                      _model->gfxPrimitives.emplace_back(std::move(prims)));
+                    if (glprims.material != -1) {
+                      const auto &glmaterial = gltf.materials[glprims.material];
+                      GFXMaterial material{glmaterial.name};
+                      prims.material = _model->gfxMaterials.emplace_back(
+                          std::move(material));
+                    }
+
+                    mesh.primitives.emplace_back(
+                        _model->gfxPrimitives.emplace_back(std::move(prims)));
+                  }
                 }
                 node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
               }
@@ -662,21 +682,39 @@ struct Load {
 
 struct Draw : public BGFX::BaseConsumer {
   ParamVar _model{};
+  ParamVar _materials{};
   CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 1> _required;
+
+  static inline Types MaterialTableValues{
+      {BGFX::ShaderHandle::ObjType, BGFX::Texture::SeqType}};
+  static inline std::array<CBString, 2> MaterialTableKeys{"Shader", "Textures"};
+  static inline Type MaterialTableType =
+      Type::TableOf(MaterialTableValues, MaterialTableKeys);
+  static inline Type MaterialTableVarType = Type::VariableOf(MaterialTableType);
 
   static CBTypesInfo inputTypes() { return CoreInfo::Float4x4Types; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Types; }
 
-  static inline Parameters Params{{"Model",
-                                   CBCCSTR("The GLTF model to render."),
-                                   {Load::ModelType, Load::ModelVarType}}};
+  static inline Parameters Params{
+      {"Model",
+       CBCCSTR("The GLTF model to render."),
+       {Load::ModelType, Load::ModelVarType}},
+      {"Materials",
+       CBCCSTR("The materials override table, to override the default PBR "
+               "metallic-roughness by primitive material name. The table must "
+               "be like {Material-Name <name> {Shader <shader> Textures "
+               "[<texture>]}}."),
+       {CoreInfo::NoneType, MaterialTableType, MaterialTableVarType}}};
   static CBParametersInfo parameters() { return Params; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _model = value;
+      break;
+    case 1:
+      _materials = value;
       break;
     default:
       break;
@@ -687,6 +725,8 @@ struct Draw : public BGFX::BaseConsumer {
     switch (index) {
     case 0:
       return _model;
+    case 1:
+      return _materials;
     default:
       throw InvalidParameterIndex();
     }
@@ -721,11 +761,13 @@ struct Draw : public BGFX::BaseConsumer {
 
   void warmup(CBContext *context) {
     _model.warmup(context);
+    _materials.warmup(context);
     _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
     _model.cleanup();
+    _materials.cleanup();
     if (_bgfxContext) {
       releaseVariable(_bgfxContext);
       _bgfxContext = nullptr;
@@ -737,7 +779,7 @@ struct Draw : public BGFX::BaseConsumer {
     return input;
   }
 
-  void renderNode(BGFX::Context *ctx, const Node &node) {
+  void renderNode(BGFX::Context *ctx, const Node &node, const CBTable *mats) {
     if (node.mesh) {
       for (const auto &primsRef : node.mesh->get().primitives) {
         const auto &prims = primsRef.get();
@@ -764,23 +806,49 @@ struct Draw : public BGFX::BaseConsumer {
             bgfx::setIndexBuffer(prims.ib);
           }
 
-          // // Submit primitive for rendering to the current view.
           bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+
+          if (mats && prims.material) {
+            const auto &material = (*prims.material).get();
+            // TODO optimize away this table lookup
+            const auto override =
+                mats->api->tableAt(*mats, material.name.c_str());
+            if (override) {
+              const auto &records = override->payload.tableValue;
+              const auto pshader = records.api->tableAt(records, "Shader");
+              const auto ptextures = records.api->tableAt(records, "Textures");
+              if (pshader && ptextures) {
+                const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
+                    pshader->payload.objectValue);
+                handle = shader->handle;
+                if (ptextures->valueType == CBType::Seq &&
+                    ptextures->payload.seqValue.len > 0) {
+                }
+              }
+            }
+          }
+
           bgfx::submit(currentView.id, handle);
         }
       }
     }
 
     for (const auto &snode : node.children) {
-      renderNode(ctx, snode);
+      renderNode(ctx, snode, mats);
     }
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
     auto *ctx =
         reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
+    const auto &matsVar = _materials.get();
+    const auto mats = matsVar.valueType != CBType::None
+                          ? &matsVar.payload.tableValue
+                          : nullptr;
+
     float mat[16];
     memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
            sizeof(float) * 4);
@@ -791,8 +859,9 @@ struct Draw : public BGFX::BaseConsumer {
     memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
            sizeof(float) * 4);
     bgfx::setTransform(mat);
+
     if (model->rootNode) {
-      renderNode(ctx, *model->rootNode);
+      renderNode(ctx, *model->rootNode, mats);
     }
     return input;
   }
