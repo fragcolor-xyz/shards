@@ -819,11 +819,11 @@ struct Draw : public BGFX::BaseConsumer {
             // TODO optimize away this table lookup
             const auto override =
                 mats->api->tableAt(*mats, material.name.c_str());
-            if (override) {
+            if (override->valueType == CBType::Table) {
               const auto &records = override->payload.tableValue;
               const auto pshader = records.api->tableAt(records, "Shader");
               const auto ptextures = records.api->tableAt(records, "Textures");
-              if (pshader && ptextures) {
+              if (pshader->valueType == CBType::Object) {
                 const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
                     pshader->payload.objectValue);
                 handle = shader->handle;

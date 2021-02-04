@@ -32,8 +32,8 @@
 #define Set(_name) block("Set", #_name)
 #define Ref(_name) block("Ref", #_name)
 #define Get(_name) block("Get", #_name)
-#define SetTable(_name, _key) block("Set", #_name, #_key)
-#define RefTable(_name, _key) block("Ref", #_name, #_key)
+#define SetTable(_name, _key) block("Set", #_name, _key)
+#define RefTable(_name, _key) block("Ref", #_name, _key)
 #define GFX_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
 #define GFX_Draw_WithMaterials(_model, _mats)                                  \
   block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))
@@ -48,6 +48,55 @@
 #define LoadImage(_imagePath) block("LoadImage", _imagePath)
 #define GFX_Texture2D() block("GFX.Texture2D")
 #define Push(_name) block("Push", #_name)
+
+#define GLTF_TEST_MODEL(_name, _path, _albedo, _normal, _mat_name, _cam_scale) \
+  SECTION(_name) {                                                             \
+    auto chain =                                                               \
+        CHAIN("test-chain")                                                    \
+            .looped(true)                                                      \
+            .GFX_MainWindow("window",                                          \
+                            Once(let(_path)                                    \
+                                     .GLTF_Load_NoBitangents()                 \
+                                     .Ref(model)                               \
+                                     .Log()                                    \
+                                     .LoadImage(_albedo)                       \
+                                     .GFX_Texture2D()                          \
+                                     .Push(textures)                           \
+                                     .LoadImage(_normal)                       \
+                                     .GFX_Texture2D()                          \
+                                     .Push(textures)                           \
+                                     .let(vs)                                  \
+                                     .FS_Read_Bytes()                          \
+                                     .Ref(vs_bytes)                            \
+                                     .let(fs)                                  \
+                                     .FS_Read_Bytes()                          \
+                                     .Ref(fs_bytes)                            \
+                                     .GFX_Shader(vs_bytes, fs_bytes)           \
+                                     .RefTable(mat1, "Shader")                 \
+                                     .Get(textures)                            \
+                                     .RefTable(mat1, "Textures")               \
+                                     .Get(mat1)                                \
+                                     .RefTable(mats, _mat_name))               \
+                                .let(_cam_scale, _cam_scale, _cam_scale)       \
+                                .RefTable(cam, "Position")                     \
+                                .let(0.0, 0.0, 0.0)                            \
+                                .RefTable(cam, "Target")                       \
+                                .Get(cam)                                      \
+                                .GFX_Camera()                                  \
+                                .let(identity)                                 \
+                                .GFX_Draw_WithMaterials(model, mats));         \
+    auto node = CBNode::make();                                                \
+    node->schedule(chain);                                                     \
+    auto count = 50;                                                           \
+    while (count--) {                                                          \
+      REQUIRE(node->tick());                                                   \
+      if (node->empty())                                                       \
+        break;                                                                 \
+      sleep(0.1);                                                              \
+    }                                                                          \
+    auto errors = node->errors();                                              \
+    REQUIRE(errors.size() == 0);                                               \
+  }
 
 namespace chainblocks {
 namespace GLTF_Tests {
@@ -87,9 +136,9 @@ void testLoad() {
                                     .Ref(model)
                                     .Log())
                                 .let(0.0, 0.0, 10.0)
-                                .RefTable(cam, Position)
+                                .RefTable(cam, "Position")
                                 .let(0.0, 0.0, 0.0)
-                                .RefTable(cam, Target)
+                                .RefTable(cam, "Target")
                                 .Get(cam)
                                 .GFX_Camera()
                                 .let(identity)
@@ -107,65 +156,17 @@ void testLoad() {
     REQUIRE(errors.size() == 0);
   }
 
-  SECTION("Cube1-Text-NoBitangents") {
-    auto chain =
-        CHAIN("test-chain")
-            .looped(true)
-            .GFX_MainWindow(
-                "window",
-                Once(
-                    // model
-                    let("../deps/tinygltf/models/Cube/Cube.gltf")
-                        .GLTF_Load_NoBitangents()
-                        .Ref(model)
-                        .Log()
-                        // textures
-                        .LoadImage(
-                            "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
-                        .GFX_Texture2D()
-                        .Push(textures)
-                        .LoadImage(
-                            "../deps/bgfx/examples/06-bump/fieldstone-n.tga")
-                        .GFX_Texture2D()
-                        .Push(textures)
-                        // vertex shader load
-                        .let(vs)
-                        .FS_Read_Bytes()
-                        .Ref(vs_bytes)
-                        // fragment shader load
-                        .let(fs)
-                        .FS_Read_Bytes()
-                        .Ref(fs_bytes)
-                        // setup shader program
-                        .GFX_Shader(vs_bytes, fs_bytes)
-                        // setup material override table
-                        .RefTable(mat1, Shader)
-                        .Get(textures)
-                        .RefTable(mat1, Textures)
-                        .Get(mat1)
-                        .RefTable(mats,
-                                  Cube) // Cube is the material name in the json
-                    )
-                    .let(10.0, 10.0, 10.0)
-                    .RefTable(cam, Position)
-                    .let(0.0, 0.0, 0.0)
-                    .RefTable(cam, Target)
-                    .Get(cam)
-                    .GFX_Camera()
-                    .let(identity)
-                    .GFX_Draw_WithMaterials(model, mats));
-    auto node = CBNode::make();
-    node->schedule(chain);
-    auto count = 50;
-    while (count--) {
-      REQUIRE(node->tick());
-      if (node->empty())
-        break;
-      sleep(0.1);
-    }
-    auto errors = node->errors();
-    REQUIRE(errors.size() == 0);
-  }
+  GLTF_TEST_MODEL(
+      "Cube1-Text-NoBitangents", "../deps/tinygltf/models/Cube/Cube.gltf",
+      "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga",
+      "../deps/bgfx/examples/06-bump/fieldstone-n.tga", "Cube", 10.0);
+
+  GLTF_TEST_MODEL(
+      "Avocado-Text-NoBitangents",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_baseColor.png",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
+      "2256_Avocado_d", 0.1);
 
   SECTION("Cube2-Text") {
     auto chain =
