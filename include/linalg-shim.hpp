@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace chainblocks {
-struct Mat4 : public linalg::aliases::float4x4 {
+struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   template <typename NUMBER>
   static Mat4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
@@ -43,7 +43,7 @@ struct Mat4 : public linalg::aliases::float4x4 {
   }
 };
 
-struct Vec4 : public linalg::aliases::float4 {
+struct alignas(16) Vec4 : public linalg::aliases::float4 {
   constexpr static Vec4 Quaternion() {
     Vec4 q;
     q.x = 0.0;
@@ -71,7 +71,7 @@ struct Vec4 : public linalg::aliases::float4 {
   }
 };
 
-struct Vec3 : public linalg::aliases::float3 {
+struct alignas(16) Vec3 : public linalg::aliases::float3 {
   Vec3() : linalg::aliases::float3() {}
 
   template <typename NUMBER> Vec3(NUMBER x_, NUMBER y_, NUMBER z_) {

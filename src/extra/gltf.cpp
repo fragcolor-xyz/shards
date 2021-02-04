@@ -287,8 +287,9 @@ struct Load {
                     const auto totalSize = uint32_t(vertexCount) * vertexSize;
                     auto vbuffer = bgfx::alloc(totalSize);
                     auto offsetSize = 0;
-                    std::vector<Vec3>
-                        normals; // store normals to generate bitangents
+                    // store normals to generate bitangents
+                    std::vector<Vec3> normals;
+                    normals.resize(vertexCount);
                     prims.layout.begin();
                     for (const auto &[attrib, accessorRef] : accessors) {
                       const auto &accessor = accessorRef.get();
@@ -297,10 +298,10 @@ struct Load {
                       const auto dataBeg =
                           buffer.data.begin() + view.byteOffset;
                       const auto dataEnd = dataBeg + view.byteLength;
+                      const auto stride = accessor.ByteStride(view);
                       switch (attrib) {
                       case bgfx::Attrib::Position: {
                         const auto size = sizeof(float) * 3;
-                        const auto skips = size + view.byteStride;
                         auto vbufferOffset = offsetSize;
                         offsetSize += size;
 
@@ -311,7 +312,7 @@ struct Load {
                                                 "a float32 vector of 3");
                         }
 
-                        for (auto it = dataBeg; it != dataEnd; it += skips) {
+                        for (auto it = dataBeg; it != dataEnd; it += stride) {
                           const uint8_t *chunk = &(*it);
                           memcpy(vbuffer->data + vbufferOffset, chunk, size);
                           vbufferOffset += vertexSize;
@@ -322,7 +323,6 @@ struct Load {
                       } break;
                       case bgfx::Attrib::Normal: {
                         const auto size = sizeof(float) * 3;
-                        const auto skips = size + view.byteStride;
                         auto vbufferOffset = offsetSize;
                         offsetSize += size;
 
@@ -333,11 +333,15 @@ struct Load {
                                                 "float32 vector of 3");
                         }
 
-                        for (auto it = dataBeg; it != dataEnd; it += skips) {
+                        auto idx = 0;
+                        for (auto it = dataBeg; it != dataEnd; it += stride) {
                           const float *chunk = (float *)&(*it);
                           memcpy(vbuffer->data + vbufferOffset, chunk, size);
                           vbufferOffset += vertexSize;
-                          normals.emplace_back(chunk[0], chunk[1], chunk[2]);
+                          normals[idx].x = chunk[0];
+                          normals[idx].y = chunk[1];
+                          normals[idx].z = chunk[2];
+                          idx++;
                         }
 
                         // also update layout
@@ -346,7 +350,6 @@ struct Load {
                       case bgfx::Attrib::Tangent: {
                         if (_bitangents) {
                           const auto gsize = sizeof(float) * 4;
-                          const auto gskips = gsize + view.byteStride;
                           const auto osize = sizeof(float) * 6;
                           const auto ssize = sizeof(float) * 3;
                           auto vbufferOffset = offsetSize;
@@ -366,7 +369,7 @@ struct Load {
                           }
 
                           auto idx = 0;
-                          for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                          for (auto it = dataBeg; it != dataEnd; it += stride) {
                             const float *chunk = (float *)&(*it);
                             memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
 
@@ -392,7 +395,6 @@ struct Load {
                         } else {
                           // w is handedness
                           const auto size = sizeof(float) * 4;
-                          const auto skips = size + view.byteStride;
                           auto vbufferOffset = offsetSize;
                           offsetSize += size;
 
@@ -404,7 +406,7 @@ struct Load {
                                 "float32 vector of 4");
                           }
 
-                          for (auto it = dataBeg; it != dataEnd; it += skips) {
+                          for (auto it = dataBeg; it != dataEnd; it += stride) {
                             const float *chunk = (float *)&(*it);
                             memcpy(vbuffer->data + vbufferOffset, chunk, size);
                             vbufferOffset += vertexSize;
@@ -435,12 +437,11 @@ struct Load {
                             return 4;
                         }();
                         const auto gsize = elemSize * elemNum;
-                        const auto gskips = gsize + view.byteStride;
                         const auto osize = 4;
                         auto vbufferOffset = offsetSize;
                         offsetSize += osize;
 
-                        for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                        for (auto it = dataBeg; it != dataEnd; it += stride) {
                           switch (elemNum) {
                           case 3: {
                             switch (elemSize) {
@@ -536,12 +537,11 @@ struct Load {
                         }();
                         const auto elemNum = 2;
                         const auto gsize = elemSize * elemNum;
-                        const auto gskips = gsize + view.byteStride;
                         const auto osize = sizeof(float) * 2;
                         auto vbufferOffset = offsetSize;
                         offsetSize += osize;
 
-                        for (auto it = dataBeg; it != dataEnd; it += gskips) {
+                        for (auto it = dataBeg; it != dataEnd; it += stride) {
                           switch (elemSize) {
                           case 4: { // float
                             const float *chunk = (float *)&(*it);
