@@ -520,8 +520,9 @@ struct MainWindow : public BaseWindow {
       }
     }
 
-    // we need to free data outself here because we add stuff to it
-    IterableExposedInfo shared(data.shared);
+    // twice to actually own the data and release...
+    IterableExposedInfo rshared(data.shared);
+    IterableExposedInfo shared(rshared);
     shared.push_back(ExposedInfo::ProtectedVariable(
         "GFX.CurrentWindow", CBCCSTR("The exposed SDL window."),
         BaseConsumer::windowType));

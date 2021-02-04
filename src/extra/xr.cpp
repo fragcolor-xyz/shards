@@ -181,7 +181,9 @@ struct RenderXR : public BGFX::BaseConsumer {
       }
     }
 
-    IterableExposedInfo shared(data.shared);
+    // twice to actually own the data and release...
+    IterableExposedInfo rshared(data.shared);
+    IterableExposedInfo shared(rshared);
     shared.push_back(ExposedInfo::ProtectedVariable(
         "XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
     data.shared = shared;
