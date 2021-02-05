@@ -183,7 +183,7 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
+        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils valgrind
         rustup update
         mkdir external && cd external
         git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
@@ -198,13 +198,13 @@ jobs:
         RUST_BACKTRACE: 1
       run: |
         cd build
-        ./test_runtime
+        valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
         working-directory: ./build
         run: |
-          ./test_extra
+          valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_extra
     - name: CodeCov
       run: |
         mkdir coverage
