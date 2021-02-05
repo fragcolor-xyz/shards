@@ -14,15 +14,6 @@
 #include <string.h>
 #include <unordered_set>
 
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-
-#ifndef CUSTOM_XXH3_kSecret
-// Applications embedding chainblocks can override this and should.
-// TODO add our secret
-#define CUSTOM_XXH3_kSecret XXH3_kSecret
-#endif
-
 INITIALIZE_EASYLOGGINGPP
 
 #ifdef __EMSCRIPTEN__

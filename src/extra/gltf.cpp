@@ -26,6 +26,7 @@ using LastWriteTime = decltype(fs::last_write_time(fs::path()));
 // #define TINYGLTF_ENABLE_DRACO
 #include <tinygltf/tiny_gltf.h>
 using GLTFModel = tinygltf::Model;
+using GLTFImage = tinygltf::Image;
 using namespace tinygltf;
 #undef Model
 
@@ -36,11 +37,44 @@ GLTF.Simulate - depending on physics simulation blocks
 */
 namespace chainblocks {
 namespace gltf {
+struct GFXTexture {
+  uint16_t width;
+  uint16_t height;
+  bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
+
+  GFXTexture(uint16_t width, uint16_t height) : width(width), height(height) {}
+
+  GFXTexture(GFXTexture &&other) {
+    std::swap(width, other.width);
+    std::swap(height, other.height);
+    std::swap(handle, other.handle);
+  }
+
+  ~GFXTexture() {
+    if (handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handle);
+    }
+  }
+};
+
 struct GFXMaterial {
   std::string name;
   bool doubleSided{false};
 
-  // TODO
+  // textures and parameters
+  std::shared_ptr<GFXTexture> baseColorTexture;
+  std::array<float, 4> baseColor;
+
+  std::shared_ptr<GFXTexture> metallicRoughnessTexture;
+  float metallicFactor;
+  float roughnessFactor;
+
+  std::shared_ptr<GFXTexture> normalTexture;
+
+  std::shared_ptr<GFXTexture> occlusionTexture;
+
+  std::shared_ptr<GFXTexture> emissiveTexture;
+  std::array<float, 3> emissiveColor;
 };
 
 using GFXMaterialRef = std::reference_wrapper<GFXMaterial>;
@@ -100,6 +134,13 @@ struct Model {
   std::optional<NodeRef> rootNode;
 };
 
+bool LoadImageData(GLTFImage *image, const int image_idx, std::string *err,
+                   std::string *warn, int req_width, int req_height,
+                   const unsigned char *bytes, int size, void *user_pointer) {
+  return tinygltf::LoadImageData(image, image_idx, err, warn, req_width,
+                                 req_height, bytes, size, user_pointer);
+}
+
 struct Load {
   static constexpr uint32_t ModelCC = 'gltf';
   static inline Type ModelType{
@@ -114,6 +155,13 @@ struct Load {
       {"Bitangents",
        CBCCSTR("If we should generate bitangents when loading the model, from "
                "normals and tangent data. Default is true"),
+       {CoreInfo::BoolType}},
+      {"NoTextures",
+       CBCCSTR("If the textures linked ot this model should not be loaded."),
+       {CoreInfo::BoolType}},
+      {"sRGB",
+       CBCCSTR("If the textures should be loaded as an sRGB format (only valid "
+               "for 8 bit per color textures)."),
        {CoreInfo::BoolType}}};
 
   Model *_model{nullptr};
@@ -121,11 +169,58 @@ struct Load {
   size_t _fileNameHash;
   LastWriteTime _fileLastWrite;
   bool _bitangents{true};
+  bool _srgb{false};
+  bool _noTextures{false};
+
+  void setup() { _loader.SetImageLoader(&LoadImageData, this); }
+
+  struct TextureDatabase {
+    std::shared_ptr<GFXTexture> findTexture(uint64_t hash) {
+      std::shared_ptr<GFXTexture> res;
+      std::unique_lock lock(_mutex);
+      auto it = _textures.find(hash);
+      if (it != _textures.end()) {
+        res = it->second.lock();
+      }
+      return res;
+    }
+
+    void addTexture(uint64_t hash, const std::shared_ptr<GFXTexture> &texture) {
+      std::unique_lock lock(_mutex);
+      _textures[hash] = texture;
+    }
+
+    static uint64_t hashTexture(const Texture &gltexture,
+                                const GLTFImage &glsource) {
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+
+      XXH3_64bits_update(&hashState, glsource.image.data(),
+                         glsource.image.size());
+
+      return XXH3_64bits_digest(&hashState);
+    }
+
+  private:
+    std::mutex _mutex;
+    // weak pointers in order to avoid holding textures in memory
+    std::unordered_map<uint64_t, std::weak_ptr<GFXTexture>> _textures;
+  };
+
+  Shared<TextureDatabase> _texturesDb;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _bitangents = value.payload.boolValue;
+      break;
+    case 1:
+      _noTextures = value.payload.boolValue;
+      break;
+    case 2:
+      _srgb = value.payload.boolValue;
       break;
     default:
       break;
@@ -136,6 +231,10 @@ struct Load {
     switch (index) {
     case 0:
       return Var(_bitangents);
+    case 1:
+      return Var(_noTextures);
+    case 2:
+      return Var(_srgb);
     default:
       throw InvalidParameterIndex();
     }
@@ -146,6 +245,127 @@ struct Load {
       ModelVar.Release(_model);
       _model = nullptr;
     }
+  }
+
+  std::shared_ptr<GFXTexture> getOrLoadTexture(const GLTFModel &gltf,
+                                               const Texture &gltexture) {
+    if (!_noTextures && gltexture.source != -1) {
+      const auto &image = gltf.images[gltexture.source];
+      const auto imgHash = TextureDatabase::hashTexture(gltexture, image);
+      auto texture = _texturesDb().findTexture(imgHash);
+      if (!texture) {
+        texture = std::make_shared<GFXTexture>(uint16_t(image.width),
+                                               uint16_t(image.height));
+        if (image.bits == 8) {
+          switch (image.component) {
+          case 1:
+            texture->handle = bgfx::createTexture2D(
+                texture->width, texture->height, false, 1,
+                bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);
+            break;
+          case 2:
+            texture->handle = bgfx::createTexture2D(
+                texture->width, texture->height, false, 1,
+                bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);
+            break;
+          case 3:
+            texture->handle = bgfx::createTexture2D(
+                texture->width, texture->height, false, 1,
+                bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);
+            break;
+          case 4:
+            texture->handle = bgfx::createTexture2D(
+                texture->width, texture->height, false, 1,
+                bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);
+            break;
+          default:
+            cbassert(false);
+            break;
+          }
+        } else if (image.bits == 16) {
+          switch (image.component) {
+          case 1:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::R16U);
+            break;
+          case 2:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::RG16U);
+            break;
+          case 3:
+            throw ActivationError(
+                "Format not supported, it seems bgfx has no "
+                "RGB16, try using RGBA16 instead (FillAlpha).");
+            break;
+          case 4:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::RGBA16U);
+            break;
+          default:
+            cbassert(false);
+            break;
+          }
+        } else if (image.bits == 32) {
+          switch (image.component) {
+          case 1:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::R32F);
+            break;
+          case 2:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::RG32F);
+            break;
+          case 3:
+            throw ActivationError(
+                "Format not supported, it seems bgfx has no RGB32F, try using "
+                "RGBA32F instead (FillAlpha).");
+            break;
+          case 4:
+            texture->handle =
+                bgfx::createTexture2D(texture->width, texture->height, false, 1,
+                                      bgfx::TextureFormat::RGBA32F);
+            break;
+          default:
+            cbassert(false);
+            break;
+          }
+        }
+        _texturesDb().addTexture(imgHash, texture);
+      }
+      return texture;
+    } else {
+      return nullptr;
+    }
+  }
+
+  GFXMaterial processMaterial(const GLTFModel &gltf,
+                              const Material &glmaterial) {
+    GFXMaterial material{glmaterial.name, glmaterial.doubleSided};
+    if (glmaterial.pbrMetallicRoughness.baseColorTexture.index != -1) {
+      material.baseColorTexture =
+          getOrLoadTexture(gltf, gltf.textures[glmaterial.pbrMetallicRoughness
+                                                   .baseColorTexture.index]);
+    }
+    const auto colorFactorSize =
+        glmaterial.pbrMetallicRoughness.baseColorFactor.size();
+    if (colorFactorSize > 0) {
+      for (size_t i = 0; i < colorFactorSize && i < 4; i++) {
+        material.baseColor[i] =
+            glmaterial.pbrMetallicRoughness.baseColorFactor[i];
+      }
+    }
+    material.metallicFactor = glmaterial.pbrMetallicRoughness.metallicFactor;
+    material.roughnessFactor = glmaterial.pbrMetallicRoughness.roughnessFactor;
+    if (glmaterial.normalTexture.index != -1) {
+      material.normalTexture =
+          getOrLoadTexture(gltf, gltf.textures[glmaterial.normalTexture.index]);
+    }
+    return material;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -214,10 +434,6 @@ struct Load {
                                              : Vec3(1.0, 1.0, 1.0));
                 node.transform = linalg::mul(linalg::mul(t, r), s);
               }
-
-              // if (glnode.skin != -1) {
-              //   // TODO
-              // }
 
               if (glnode.mesh != -1) {
                 const auto &glmesh = gltf.meshes[glnode.mesh];
@@ -677,11 +893,9 @@ struct Load {
                     }
 
                     if (glprims.material != -1) {
-                      const auto &glmaterial = gltf.materials[glprims.material];
-                      GFXMaterial material{glmaterial.name,
-                                           glmaterial.doubleSided};
-                      prims.material = _model->gfxMaterials.emplace_back(
-                          std::move(material));
+                      prims.material =
+                          _model->gfxMaterials.emplace_back(processMaterial(
+                              gltf, gltf.materials[glprims.material]));
                     }
 
                     mesh.primitives.emplace_back(
@@ -690,10 +904,6 @@ struct Load {
                 }
                 node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
               }
-
-              // if (glnode.camera != -1) {
-              //   // TODO
-              // }
 
               for (const auto childIndex : glnode.children) {
                 const auto &subglnode = gltf.nodes[childIndex];

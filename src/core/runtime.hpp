@@ -35,6 +35,15 @@ using CBDuration = std::chrono::duration<double>;
 #include <emscripten/val.h>
 #endif
 
+#define XXH_INLINE_ALL
+#include <xxhash.h>
+
+#ifndef CUSTOM_XXH3_kSecret
+// Applications embedding chainblocks can override this and should.
+// TODO add our secret
+#define CUSTOM_XXH3_kSecret XXH3_kSecret
+#endif
+
 #define CB_SUSPEND(_ctx_, _secs_)                                              \
   const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_);             \
   if (_suspend_state != CBChainState::Continue)                                \
