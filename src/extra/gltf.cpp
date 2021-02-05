@@ -141,7 +141,7 @@ bool LoadImageData(GLTFImage *image, const int image_idx, std::string *err,
                                  req_height, bytes, size, user_pointer);
 }
 
-struct Load {
+struct Load : public BGFX::BaseConsumer {
   static constexpr uint32_t ModelCC = 'gltf';
   static inline Type ModelType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = ModelCC}}}};
@@ -855,7 +855,7 @@ struct Draw : public BGFX::BaseConsumer {
   ParamVar _model{};
   ParamVar _materials{};
   CBVar *_bgfxContext{nullptr};
-  std::array<CBExposedTypeInfo, 1> _required;
+  std::array<CBExposedTypeInfo, 3> _required;
 
   static inline Types MaterialTableValues{{BGFX::ShaderHandle::ObjType}};
   static inline std::array<CBString, 2> MaterialTableKeys{"Shader"};
@@ -903,18 +903,23 @@ struct Draw : public BGFX::BaseConsumer {
   }
 
   CBExposedTypesInfo requiredVariables() {
-    int idx = -1;
+    int idx = 0;
+    _required[idx] = BGFX::BaseConsumer::ContextInfo;
+    idx++;
+
     if (_model.isVariable()) {
-      idx++;
       _required[idx].name = _model.variableName();
       _required[idx].help = CBCCSTR("The required model.");
       _required[idx].exposedType = Load::ModelType;
+      idx++;
     }
-    if (idx == -1) {
-      return {};
-    } else {
-      return {_required.data(), uint32_t(idx + 1), 0};
+    if (_materials.isVariable()) {
+      _required[idx].name = _materials.variableName();
+      _required[idx].help = CBCCSTR("The required materials table.");
+      _required[idx].exposedType = MaterialTableType;
+      idx++;
     }
+    return {_required.data(), uint32_t(idx), 0};
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {

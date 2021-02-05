@@ -268,8 +268,9 @@ struct BaseConsumer : public Base {
   static inline Type windowType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
 
-  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info));
+  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
+      "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info);
+  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);

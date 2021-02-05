@@ -971,38 +971,35 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
   ParamVar _pcode{};
   ParamVar _ccode{};
   ShaderHandle *_output{nullptr};
-  std::array<CBExposedTypeInfo, 2> _exposing;
+  std::array<CBExposedTypeInfo, 3> _requiring;
 
   CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _requiring[idx] = BaseConsumer::ContextInfo;
+    idx++;
+
     if constexpr (SHADER_TYPE == 'c') {
-      if (!_ccode.isVariable()) {
-        return {};
-      } else {
-        _exposing[0].name = _ccode.variableName();
-        _exposing[0].help = CBCCSTR("The required compute shader bytecode.");
-        _exposing[0].exposedType = CoreInfo::BytesType;
-        return {_exposing.data(), 1, 0};
+      if (_ccode.isVariable()) {
+        _requiring[idx].name = _ccode.variableName();
+        _requiring[idx].help = CBCCSTR("The required compute shader bytecode.");
+        _requiring[idx].exposedType = CoreInfo::BytesType;
+        idx++;
       }
     } else {
-      int idx = -1;
       if (_vcode.isVariable()) {
+        _requiring[idx].name = _vcode.variableName();
+        _requiring[idx].help = CBCCSTR("The required vertex shader bytecode.");
+        _requiring[idx].exposedType = CoreInfo::BytesType;
         idx++;
-        _exposing[idx].name = _vcode.variableName();
-        _exposing[idx].help = CBCCSTR("The required vertex shader bytecode.");
-        _exposing[idx].exposedType = CoreInfo::BytesType;
       }
       if (_pcode.isVariable()) {
+        _requiring[idx].name = _pcode.variableName();
+        _requiring[idx].help = CBCCSTR("The required pixel shader bytecode.");
+        _requiring[idx].exposedType = CoreInfo::BytesType;
         idx++;
-        _exposing[idx].name = _pcode.variableName();
-        _exposing[idx].help = CBCCSTR("The required pixel shader bytecode.");
-        _exposing[idx].exposedType = CoreInfo::BytesType;
-      }
-      if (idx == -1) {
-        return {};
-      } else {
-        return {_exposing.data(), uint32_t(idx + 1), 0};
       }
     }
+    return {_requiring.data(), uint32_t(idx), 0};
   }
 
   void setParam(int index, const CBVar &value) {
@@ -1919,37 +1916,36 @@ struct Draw : public BaseConsumer {
   ParamVar _textures{};
   ParamVar _model{};
   CBVar *_bgfxContext{nullptr};
-  std::array<CBExposedTypeInfo, 4> _exposing;
+  std::array<CBExposedTypeInfo, 5> _requiring;
 
   CBExposedTypesInfo requiredVariables() {
-    int idx = -1;
+    int idx = 0;
+    _requiring[idx] = BaseConsumer::ContextInfo;
+    idx++;
+
     if (_shader.isVariable()) {
+      _requiring[idx].name = _shader.variableName();
+      _requiring[idx].help = CBCCSTR("The required shader.");
+      _requiring[idx].exposedType = ShaderHandle::ObjType;
       idx++;
-      _exposing[idx].name = _shader.variableName();
-      _exposing[idx].help = CBCCSTR("The required shader.");
-      _exposing[idx].exposedType = ShaderHandle::ObjType;
     }
     if (_textures.isVariable()) {
+      _requiring[idx].name = _textures.variableName();
+      _requiring[idx].help = CBCCSTR("The required texture.");
+      _requiring[idx].exposedType = Texture::ObjType;
       idx++;
-      _exposing[idx].name = _textures.variableName();
-      _exposing[idx].help = CBCCSTR("The required texture.");
-      _exposing[idx].exposedType = Texture::ObjType;
+      _requiring[idx].name = _textures.variableName();
+      _requiring[idx].help = CBCCSTR("The required textures.");
+      _requiring[idx].exposedType = Texture::SeqType;
       idx++;
-      _exposing[idx].name = _textures.variableName();
-      _exposing[idx].help = CBCCSTR("The required textures.");
-      _exposing[idx].exposedType = Texture::SeqType;
     }
     if (_model.isVariable()) {
+      _requiring[idx].name = _model.variableName();
+      _requiring[idx].help = CBCCSTR("The required model.");
+      _requiring[idx].exposedType = ModelHandle::ObjType;
       idx++;
-      _exposing[idx].name = _model.variableName();
-      _exposing[idx].help = CBCCSTR("The required model.");
-      _exposing[idx].exposedType = ModelHandle::ObjType;
     }
-    if (idx == -1) {
-      return {};
-    } else {
-      return {_exposing.data(), uint32_t(idx + 1), 0};
-    }
+    return {_requiring.data(), uint32_t(idx), 0};
   }
 
   void warmup(CBContext *context) {
