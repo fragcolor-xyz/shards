@@ -107,6 +107,9 @@ pub struct BlockWrapper<T: Block> {
   help: Option<CString>,
 }
 
+/// # Safety
+///
+/// Used internally actually
 pub unsafe extern "C" fn cblock_construct<T: Default + Block>() -> *mut CBlock {
   let wrapper: Box<BlockWrapper<T>> = Box::new(create());
   let wptr = Box::into_raw(wrapper);
@@ -154,8 +157,7 @@ unsafe extern "C" fn cblock_setup<T: Block>(arg1: *mut CBlock) {
 unsafe extern "C" fn cblock_destroy<T: Block>(arg1: *mut CBlock) {
   let blk = arg1 as *mut BlockWrapper<T>;
   (*blk).block.destroy();
-  Box::from_raw(blk);
-  drop(blk);
+  Box::from_raw(blk); // this will deallocate the Box
 }
 
 unsafe extern "C" fn cblock_warmup<T: Block>(arg1: *mut CBlock, arg2: *mut CBContext) {
