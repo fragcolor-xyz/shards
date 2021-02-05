@@ -112,6 +112,87 @@ struct Texture {
   }
 };
 
+// utility macro to load textures of different sizes
+#define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture, _srgb)             \
+  if (_bits == 8) {                                                            \
+    switch (_components) {                                                     \
+    case 1:                                                                    \
+      _texture->handle = bgfx::createTexture2D(                                \
+          _texture->width, _texture->height, false, 1,                         \
+          bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);             \
+      break;                                                                   \
+    case 2:                                                                    \
+      _texture->handle = bgfx::createTexture2D(                                \
+          _texture->width, _texture->height, false, 1,                         \
+          bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);            \
+      break;                                                                   \
+    case 3:                                                                    \
+      _texture->handle = bgfx::createTexture2D(                                \
+          _texture->width, _texture->height, false, 1,                         \
+          bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);           \
+      break;                                                                   \
+    case 4:                                                                    \
+      _texture->handle = bgfx::createTexture2D(                                \
+          _texture->width, _texture->height, false, 1,                         \
+          bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);          \
+      break;                                                                   \
+    default:                                                                   \
+      cbassert(false);                                                         \
+      break;                                                                   \
+    }                                                                          \
+  } else if (_bits == 16) {                                                    \
+    switch (_components) {                                                     \
+    case 1:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::R16U);                    \
+      break;                                                                   \
+    case 2:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RG16U);                   \
+      break;                                                                   \
+    case 3:                                                                    \
+      throw ActivationError("Format not supported, it seems bgfx has no "      \
+                            "RGB16, try using RGBA16 instead (FillAlpha).");   \
+      break;                                                                   \
+    case 4:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RGBA16U);                 \
+      break;                                                                   \
+    default:                                                                   \
+      cbassert(false);                                                         \
+      break;                                                                   \
+    }                                                                          \
+  } else if (_bits == 32) {                                                    \
+    switch (_components) {                                                     \
+    case 1:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::R32F);                    \
+      break;                                                                   \
+    case 2:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RG32F);                   \
+      break;                                                                   \
+    case 3:                                                                    \
+      throw ActivationError(                                                   \
+          "Format not supported, it seems bgfx has no RGB32F, try using "      \
+          "RGBA32F instead (FillAlpha).");                                     \
+      break;                                                                   \
+    case 4:                                                                    \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RGBA32F);                 \
+      break;                                                                   \
+    default:                                                                   \
+      cbassert(false);                                                         \
+      break;                                                                   \
+    }                                                                          \
+  }
+
 struct ShaderHandle {
   static inline Type ObjType{
       {CBType::Object,

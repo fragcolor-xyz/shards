@@ -256,85 +256,7 @@ struct Load {
       if (!texture) {
         texture = std::make_shared<GFXTexture>(uint16_t(image.width),
                                                uint16_t(image.height));
-        if (image.bits == 8) {
-          switch (image.component) {
-          case 1:
-            texture->handle = bgfx::createTexture2D(
-                texture->width, texture->height, false, 1,
-                bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);
-            break;
-          case 2:
-            texture->handle = bgfx::createTexture2D(
-                texture->width, texture->height, false, 1,
-                bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);
-            break;
-          case 3:
-            texture->handle = bgfx::createTexture2D(
-                texture->width, texture->height, false, 1,
-                bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);
-            break;
-          case 4:
-            texture->handle = bgfx::createTexture2D(
-                texture->width, texture->height, false, 1,
-                bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);
-            break;
-          default:
-            cbassert(false);
-            break;
-          }
-        } else if (image.bits == 16) {
-          switch (image.component) {
-          case 1:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::R16U);
-            break;
-          case 2:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::RG16U);
-            break;
-          case 3:
-            throw ActivationError(
-                "Format not supported, it seems bgfx has no "
-                "RGB16, try using RGBA16 instead (FillAlpha).");
-            break;
-          case 4:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::RGBA16U);
-            break;
-          default:
-            cbassert(false);
-            break;
-          }
-        } else if (image.bits == 32) {
-          switch (image.component) {
-          case 1:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::R32F);
-            break;
-          case 2:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::RG32F);
-            break;
-          case 3:
-            throw ActivationError(
-                "Format not supported, it seems bgfx has no RGB32F, try using "
-                "RGBA32F instead (FillAlpha).");
-            break;
-          case 4:
-            texture->handle =
-                bgfx::createTexture2D(texture->width, texture->height, false, 1,
-                                      bgfx::TextureFormat::RGBA32F);
-            break;
-          default:
-            cbassert(false);
-            break;
-          }
-        }
+        BGFX_TEXTURE2D_CREATE(image.bits, image.component, texture, _srgb);
         _texturesDb().addTexture(imgHash, texture);
       }
       return texture;
@@ -1065,9 +987,12 @@ struct Draw : public BGFX::BaseConsumer {
               const auto pshader = records.api->tableAt(records, "Shader");
               const auto ptextures = records.api->tableAt(records, "Textures");
               if (pshader->valueType == CBType::Object) {
+                // we got the shader
                 const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
                     pshader->payload.objectValue);
                 handle = shader->handle;
+                // textures might be empty, in such case use the ones we loaded
+                // during Load
                 if (ptextures->valueType == CBType::Seq &&
                     ptextures->payload.seqValue.len > 0) {
                   auto textures = ptextures->payload.seqValue;
@@ -1076,6 +1001,18 @@ struct Draw : public BGFX::BaseConsumer {
                         textures.elements[i].payload.objectValue);
                     bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
                                      texture->handle);
+                  }
+                } else {
+                  uint8_t samplerSlot = 0;
+                  if (material.baseColorTexture) {
+                    bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                                     material.baseColorTexture->handle);
+                    samplerSlot++;
+                  }
+                  if (material.normalTexture) {
+                    bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                                     material.normalTexture->handle);
+                    samplerSlot++;
                   }
                 }
               }
