@@ -256,10 +256,19 @@ struct Load {
       if (!texture) {
         texture = std::make_shared<GFXTexture>(uint16_t(image.width),
                                                uint16_t(image.height));
+
         BGFX_TEXTURE2D_CREATE(image.bits, image.component, texture, _srgb);
+
+        auto mem = bgfx::copy(image.image.data(), image.image.size());
+        bgfx::updateTexture2D(texture->handle, 0, 0, 0, 0, texture->width,
+                              texture->height, mem);
+
         _texturesDb().addTexture(imgHash, texture);
       }
-      return texture;
+      // we are sure we added the texture but still return it from the table
+      // as there might be some remote chance of racing and both threads loading
+      // the same in such case we rather have one destroyed
+      return _texturesDb().findTexture(imgHash);
     } else {
       return nullptr;
     }
@@ -848,9 +857,8 @@ struct Draw : public BGFX::BaseConsumer {
   CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 1> _required;
 
-  static inline Types MaterialTableValues{
-      {BGFX::ShaderHandle::ObjType, BGFX::Texture::SeqType}};
-  static inline std::array<CBString, 2> MaterialTableKeys{"Shader", "Textures"};
+  static inline Types MaterialTableValues{{BGFX::ShaderHandle::ObjType}};
+  static inline std::array<CBString, 2> MaterialTableKeys{"Shader"};
   static inline Type MaterialTableType =
       Type::TableOf(MaterialTableValues, MaterialTableKeys);
   static inline Type MaterialTableVarType = Type::VariableOf(MaterialTableType);
@@ -866,7 +874,7 @@ struct Draw : public BGFX::BaseConsumer {
        CBCCSTR("The materials override table, to override the default PBR "
                "metallic-roughness by primitive material name. The table must "
                "be like {Material-Name <name> {Shader <shader> Textures "
-               "[<texture>]}}."),
+               "[<texture>]}} - Textures can be omitted."),
        {CoreInfo::NoneType, MaterialTableType, MaterialTableVarType}}};
   static CBParametersInfo parameters() { return Params; }
 

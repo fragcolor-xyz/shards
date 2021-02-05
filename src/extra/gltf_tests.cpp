@@ -98,6 +98,47 @@
     REQUIRE(errors.size() == 0);                                               \
   }
 
+#define GLTF_TEST_MODEL2(_name, _path, _mat_name, _cam_scale)                  \
+  SECTION(_name) {                                                             \
+    auto chain =                                                               \
+        CHAIN("test-chain")                                                    \
+            .looped(true)                                                      \
+            .GFX_MainWindow("window",                                          \
+                            Once(let(_path)                                    \
+                                     .GLTF_Load_NoBitangents()                 \
+                                     .Ref(model)                               \
+                                     .Log()                                    \
+                                     .let(vs)                                  \
+                                     .FS_Read_Bytes()                          \
+                                     .Ref(vs_bytes)                            \
+                                     .let(fs)                                  \
+                                     .FS_Read_Bytes()                          \
+                                     .Ref(fs_bytes)                            \
+                                     .GFX_Shader(vs_bytes, fs_bytes)           \
+                                     .RefTable(mat1, "Shader")                 \
+                                     .Get(mat1)                                \
+                                     .RefTable(mats, _mat_name))               \
+                                .let(_cam_scale, _cam_scale, _cam_scale)       \
+                                .RefTable(cam, "Position")                     \
+                                .let(0.0, 0.0, 0.0)                            \
+                                .RefTable(cam, "Target")                       \
+                                .Get(cam)                                      \
+                                .GFX_Camera()                                  \
+                                .let(identity)                                 \
+                                .GFX_Draw_WithMaterials(model, mats));         \
+    auto node = CBNode::make();                                                \
+    node->schedule(chain);                                                     \
+    auto count = 50;                                                           \
+    while (count--) {                                                          \
+      REQUIRE(node->tick());                                                   \
+      if (node->empty())                                                       \
+        break;                                                                 \
+      sleep(0.1);                                                              \
+    }                                                                          \
+    auto errors = node->errors();                                              \
+    REQUIRE(errors.size() == 0);                                               \
+  }
+
 namespace chainblocks {
 namespace GLTF_Tests {
 void testLoad() {
@@ -161,11 +202,9 @@ void testLoad() {
       "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga",
       "../deps/bgfx/examples/06-bump/fieldstone-n.tga", "Cube", 10.0);
 
-  GLTF_TEST_MODEL(
-      "Avocado-Text-NoBitangents",
-      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado.gltf",
-      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_baseColor.png",
-      "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
+  GLTF_TEST_MODEL2(
+      "Avocado-Bin-NoBitangents",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
       "2256_Avocado_d", 0.1);
 
   GLTF_TEST_MODEL(
