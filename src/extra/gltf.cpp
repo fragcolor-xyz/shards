@@ -163,6 +163,7 @@ struct Load : public BGFX::BaseConsumer {
        CBCCSTR("If the textures should be loaded as an sRGB format (only valid "
                "for 8 bit per color textures)."),
        {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return Params; }
 
   Model *_model{nullptr};
   TinyGLTF _loader;
