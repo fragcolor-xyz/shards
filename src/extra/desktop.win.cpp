@@ -2,10 +2,14 @@
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
 #define WINVER 0x0602
-#include "desktop.capture.win.hpp"
-#include "desktop.hpp"
+
+#include <winsock2.h>
+
 #include <Windows.h>
 #include <psapi.h>
+
+#include "desktop.capture.win.hpp"
+#include "desktop.hpp"
 
 #ifndef NDEBUG
 #define DBG_CHECK_OFF 1

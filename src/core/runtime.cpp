@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
-// must go first
-#include <boost/asio.hpp>
-
-#include "blocks/shared.hpp"
 #include "runtime.hpp"
+#include "blocks/shared.hpp"
 #include "utility.hpp"
+#include <boost/asio/thread_pool.hpp>
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
@@ -741,79 +739,6 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
 Shared<boost::asio::thread_pool> SharedThreadPool{};
-
-CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  return func();
-#else
-  std::exception_ptr exp = nullptr;
-  CBVar res{};
-  std::atomic_bool complete = false;
-
-  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
-    try {
-      res = func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
-      break;
-  }
-
-  // TODO figure out cancellations inside parallel tasks...
-  while (!complete) {
-    std::this_thread::yield();
-  }
-
-  if (exp) {
-    try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
-  }
-
-  return res;
-#endif
-}
-
-void await(CBContext *context, std::function<void()> func) {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  func();
-#else
-  std::exception_ptr exp = nullptr;
-  std::atomic_bool complete = false;
-
-  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
-    try {
-      func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
-      break;
-  }
-
-  // TODO figure out cancellations inside parallel tasks...
-  while (!complete) {
-    std::this_thread::yield();
-  }
-
-  if (exp) {
-    std::rethrow_exception(exp);
-  }
-#endif
-}
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {

@@ -4,15 +4,19 @@
 #ifndef CB_RUNTIME_HPP
 #define CB_RUNTIME_HPP
 
-// ONLY CLANG AND GCC SUPPORTED FOR NOW
+// must go first
+#if _WIN32
+#include <winsock2.h>
+#endif
+
+#include <boost/asio/dispatch.hpp>
+#include <boost/asio/thread_pool.hpp>
 
 #include <string.h> // memset
 
 #include "blocks_macros.hpp"
 #include "foundation.hpp"
-// C++ Mandatory from now!
 
-// Since we build the runtime we are free to use any std and lib
 #include <chrono>
 #include <iostream>
 #include <list>
@@ -1620,6 +1624,82 @@ inline T emscripten_wait(CBContext *context, emscripten::val promise) {
   return fut["result"].as<T>();
 }
 #endif
+
+extern Shared<boost::asio::thread_pool> SharedThreadPool;
+
+template <typename FUNC>
+inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  return func();
+#else
+  std::exception_ptr exp = nullptr;
+  CBVar res{};
+  std::atomic_bool complete = false;
+
+  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
+    try {
+      res = func();
+    } catch (...) {
+      exp = std::current_exception();
+    }
+    complete = true;
+  });
+
+  while (!complete && context->shouldContinue()) {
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+      break;
+  }
+
+  // TODO figure out cancellations inside parallel tasks...
+  while (!complete) {
+    std::this_thread::yield();
+  }
+
+  if (exp) {
+    try {
+      std::rethrow_exception(exp);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+    } catch (...) {
+      context->cancelFlow("foreign exception failure");
+    }
+  }
+
+  return res;
+#endif
+}
+
+template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  func();
+#else
+  std::exception_ptr exp = nullptr;
+  std::atomic_bool complete = false;
+
+  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
+    try {
+      func();
+    } catch (...) {
+      exp = std::current_exception();
+    }
+    complete = true;
+  });
+
+  while (!complete && context->shouldContinue()) {
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+      break;
+  }
+
+  // TODO figure out cancellations inside parallel tasks...
+  while (!complete) {
+    std::this_thread::yield();
+  }
+
+  if (exp) {
+    std::rethrow_exception(exp);
+  }
+#endif
+}
 } // namespace chainblocks
 
 #endif

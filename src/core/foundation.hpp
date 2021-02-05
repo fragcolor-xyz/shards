@@ -4,6 +4,11 @@
 #ifndef CB_CORE_HPP
 #define CB_CORE_HPP
 
+// must go first
+#if _WIN32
+#include <winsock2.h>
+#endif
+
 #ifdef CB_USE_TSAN
 extern "C" {
 void *__tsan_get_current_fiber(void);
@@ -128,8 +133,7 @@ void unregisterExitCallback(std::string_view eventName);
 void callExitCallbacks();
 void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
-CBVar awaitne(CBContext *context, std::function<CBVar()> func) noexcept;
-void await(CBContext *context, std::function<void()> func);
+
 struct RuntimeObserver {
   virtual void registerBlock(const char *fullName,
                              CBBlockConstructor constructor) {}
