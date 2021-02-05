@@ -3,7 +3,7 @@
 
 #include "./bgfx.hpp"
 #include "blocks/shared.hpp"
-#include <linalg-shim.hpp>
+#include <linalg_shim.hpp>
 
 namespace chainblocks {
 namespace XR {

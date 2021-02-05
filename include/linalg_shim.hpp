@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2021 Giovanni Petrantoni */
 
+#ifndef CB_LINALG_SHIM_HPP
+#define CB_LINALG_SHIM_HPP
+
 #include <linalg.h>
 #include <vector>
-
 namespace chainblocks {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   template <typename NUMBER>
@@ -98,3 +100,5 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
   }
 };
 }; // namespace chainblocks
+
+#endif

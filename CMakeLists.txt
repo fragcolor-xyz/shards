@@ -253,7 +253,8 @@ set(
   ${CHAINBLOCKS_DIR}/include/chainblocks.h
   ${CHAINBLOCKS_DIR}/include/common_types.hpp
   ${CHAINBLOCKS_DIR}/include/ops.hpp
-  ${CHAINBLOCKS_DIR}/include/linalg-shim.hpp
+  ${CHAINBLOCKS_DIR}/include/linalg_shim.hpp
+  ${CHAINBLOCKS_DIR}/include/chain_dsl.hpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.cpp
   ${CHAINBLOCKS_DIR}/src/core/runtime.hpp

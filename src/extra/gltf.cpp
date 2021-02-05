@@ -3,7 +3,7 @@
 
 #include "./bgfx.hpp"
 #include "blocks/shared.hpp"
-#include "linalg-shim.hpp"
+#include "linalg_shim.hpp"
 #include "runtime.hpp"
 
 #include <deque>

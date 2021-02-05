@@ -3,7 +3,7 @@
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
 #include "../core/runtime.hpp"
-#include <linalg-shim.hpp>
+#include <linalg_shim.hpp>
 
 #undef CHECK
 
