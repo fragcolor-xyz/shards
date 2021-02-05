@@ -866,7 +866,7 @@ struct Draw : public BGFX::BaseConsumer {
   std::array<CBExposedTypeInfo, 4> _required;
 
   static inline Types MaterialTableValues2{
-      {BGFX::ShaderHandle::ObjType, BGFX::Texture::ObjType}};
+      {BGFX::ShaderHandle::ObjType, BGFX::Texture::SeqType}};
   static inline std::array<CBString, 2> MaterialTableKeys2{"Shader",
                                                            "Textures"};
   static inline Type MaterialTableType2 =
