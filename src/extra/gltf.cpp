@@ -174,22 +174,35 @@ struct Load : public BGFX::BaseConsumer {
 
   void setup() { _loader.SetImageLoader(&LoadImageData, this); }
 
-  struct TextureDatabase {
-    std::shared_ptr<GFXTexture> findTexture(uint64_t hash) {
-      std::shared_ptr<GFXTexture> res;
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // Skip base compose, we don't care about that check
+    // BGFX::BaseConsumer::compose(data);
+    return ModelType;
+  }
+
+  template <typename T> struct Cache {
+    std::shared_ptr<T> find(uint64_t hash) {
+      std::shared_ptr<T> res;
       std::unique_lock lock(_mutex);
-      auto it = _textures.find(hash);
-      if (it != _textures.end()) {
+      auto it = _cache.find(hash);
+      if (it != _cache.end()) {
         res = it->second.lock();
       }
       return res;
     }
 
-    void addTexture(uint64_t hash, const std::shared_ptr<GFXTexture> &texture) {
+    void add(uint64_t hash, const std::shared_ptr<T> &data) {
       std::unique_lock lock(_mutex);
-      _textures[hash] = texture;
+      _cache[hash] = data;
     }
 
+  private:
+    std::mutex _mutex;
+    // weak pointers in order to avoid holding in memory
+    std::unordered_map<uint64_t, std::weak_ptr<T>> _cache;
+  };
+
+  struct TextureCache : public Cache<GFXTexture> {
     static uint64_t hashTexture(const Texture &gltexture,
                                 const GLTFImage &glsource) {
       XXH3_state_s hashState;
@@ -202,14 +215,9 @@ struct Load : public BGFX::BaseConsumer {
 
       return XXH3_64bits_digest(&hashState);
     }
-
-  private:
-    std::mutex _mutex;
-    // weak pointers in order to avoid holding textures in memory
-    std::unordered_map<uint64_t, std::weak_ptr<GFXTexture>> _textures;
   };
 
-  Shared<TextureDatabase> _texturesDb;
+  Shared<TextureCache> _texturesCache;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -251,8 +259,8 @@ struct Load : public BGFX::BaseConsumer {
                                                const Texture &gltexture) {
     if (!_noTextures && gltexture.source != -1) {
       const auto &image = gltf.images[gltexture.source];
-      const auto imgHash = TextureDatabase::hashTexture(gltexture, image);
-      auto texture = _texturesDb().findTexture(imgHash);
+      const auto imgHash = TextureCache::hashTexture(gltexture, image);
+      auto texture = _texturesCache().find(imgHash);
       if (!texture) {
         texture = std::make_shared<GFXTexture>(uint16_t(image.width),
                                                uint16_t(image.height));
@@ -263,12 +271,12 @@ struct Load : public BGFX::BaseConsumer {
         bgfx::updateTexture2D(texture->handle, 0, 0, 0, 0, texture->width,
                               texture->height, mem);
 
-        _texturesDb().addTexture(imgHash, texture);
+        _texturesCache().add(imgHash, texture);
       }
       // we are sure we added the texture but still return it from the table
       // as there might be some remote chance of racing and both threads loading
       // the same in such case we rather have one destroyed
-      return _texturesDb().findTexture(imgHash);
+      return _texturesCache().find(imgHash);
     } else {
       return nullptr;
     }
@@ -855,13 +863,25 @@ struct Draw : public BGFX::BaseConsumer {
   ParamVar _model{};
   ParamVar _materials{};
   CBVar *_bgfxContext{nullptr};
-  std::array<CBExposedTypeInfo, 3> _required;
+  std::array<CBExposedTypeInfo, 4> _required;
+
+  static inline Types MaterialTableValues2{
+      {BGFX::ShaderHandle::ObjType, BGFX::Texture::ObjType}};
+  static inline std::array<CBString, 2> MaterialTableKeys2{"Shader",
+                                                           "Textures"};
+  static inline Type MaterialTableType2 =
+      Type::TableOf(MaterialTableValues2, MaterialTableKeys2);
+  static inline Type MaterialsTableType2 = Type::TableOf(MaterialTableType2);
+  static inline Type MaterialsTableVarType2 =
+      Type::VariableOf(MaterialsTableType2);
 
   static inline Types MaterialTableValues{{BGFX::ShaderHandle::ObjType}};
-  static inline std::array<CBString, 2> MaterialTableKeys{"Shader"};
+  static inline std::array<CBString, 1> MaterialTableKeys{"Shader"};
   static inline Type MaterialTableType =
       Type::TableOf(MaterialTableValues, MaterialTableKeys);
-  static inline Type MaterialTableVarType = Type::VariableOf(MaterialTableType);
+  static inline Type MaterialsTableType = Type::TableOf(MaterialTableType);
+  static inline Type MaterialsTableVarType =
+      Type::VariableOf(MaterialsTableType);
 
   static CBTypesInfo inputTypes() { return CoreInfo::Float4x4Types; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Types; }
@@ -875,7 +895,8 @@ struct Draw : public BGFX::BaseConsumer {
                "metallic-roughness by primitive material name. The table must "
                "be like {Material-Name <name> {Shader <shader> Textures "
                "[<texture>]}} - Textures can be omitted."),
-       {CoreInfo::NoneType, MaterialTableType, MaterialTableVarType}}};
+       {CoreInfo::NoneType, MaterialsTableType, MaterialsTableVarType,
+        MaterialsTableType2, MaterialsTableVarType2}}};
   static CBParametersInfo parameters() { return Params; }
 
   void setParam(int index, const CBVar &value) {
@@ -916,7 +937,12 @@ struct Draw : public BGFX::BaseConsumer {
     if (_materials.isVariable()) {
       _required[idx].name = _materials.variableName();
       _required[idx].help = CBCCSTR("The required materials table.");
-      _required[idx].exposedType = MaterialTableType;
+      _required[idx].exposedType = MaterialsTableType;
+      idx++;
+      // OR
+      _required[idx].name = _materials.variableName();
+      _required[idx].help = CBCCSTR("The required materials table.");
+      _required[idx].exposedType = MaterialsTableType2;
       idx++;
     }
     return {_required.data(), uint32_t(idx), 0};

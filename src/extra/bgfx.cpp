@@ -1557,6 +1557,11 @@ struct CameraBase : public BaseConsumer {
 
   static CBParametersInfo parameters() { return params; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    return data.inputType;
+  }
+
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:

@@ -281,7 +281,8 @@ struct BaseConsumer : public Base {
       throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
                          "within an Await block)");
     }
-    return data.inputType;
+    return CoreInfo::NoneType; // on purpose to trigger assertion during
+                               // validation
   }
 };
 }; // namespace BGFX

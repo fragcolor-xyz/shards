@@ -189,7 +189,7 @@ struct RenderXR : public BGFX::BaseConsumer {
     data.shared = shared;
     _blocks.compose(data);
 
-    return CoreInfo::AnyType;
+    return data.inputType;
   }
 
   void warmup(CBContext *context) {
