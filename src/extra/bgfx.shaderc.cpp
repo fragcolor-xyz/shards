@@ -33,7 +33,7 @@
 #ifdef _WIN32
 #define Shaderc_Command(_args) Process_Run("shadercRelease.exe", _args)
 #else
-#define Shaderc_Command(_args) Wasm_Run("shadercRelease.exe", _args)
+#define Shaderc_Command(_args) Wasm_Run("shadercRelease.wasm", _args)
 #endif
 
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
@@ -55,67 +55,57 @@ struct ShaderCompiler : public IShaderCompiler {
     DefChain(shader_compiler)
         // unpack input arguments
         .Input()
-        .Take(0)
-        .Ref(varyings)
+        .Take(0) Ref(varyings)
         // also fill the hash data sequence
-        .Push(shader_hashing)
+        Push(shader_hashing)
         .Input()
-        .Take(1)
-        .Ref(shader_code)
+        .Take(1) Ref(shader_code)
         // also fill the hash data sequence
-        .Push(shader_hashing)
+        Push(shader_hashing)
         .Input()
-        .Take(2)
-        .Ref(shader_type)
+        .Take(2) Ref(shader_type)
         // also fill the hash data sequence
-        .Push(shader_hashing)
+        Push(shader_hashing)
         .Input()
-        .Take(3)
-        .Ref(defines)
+        .Take(3) Ref(defines)
         // also fill the hash data sequence
-        .Push(shader_hashing)
-        // write temporary files
-        .let("varying.def.sc")
-        .FS_Write_Overwriting(varyings)
-        .let("shader-tmp.txt")
-        .FS_Write_Overwriting(shader_code)
-        // populate command arguments
-        .let("-f")
-        .Push(args)
-        .let("shader-tmp.txt")
-        .Push(args)
-        .let("-o")
-        .Push(args)
-        .let("shader-tmp.bin")
-        .Push(args)
-        .let("--platform")
-        .Push(args)
-        .Platform_Name()
-        .Push(args)
-        .let("-p")
-        .Push(args)
-        .Shader_Model()
-        .Push(args)
-        .let("--type")
-        .Push(args)
-        .Get(shader_type)
-        .Push(args)
+        Push(shader_hashing)
         // hash the shader code and other parameters
         .Get(shader_hashing)
         .Hash()
         .ToHex()
-        .ToString()
-        .Set(shader_hash_filename)
-        .let("shaders_cache/")
-        .PrependTo(shader_hash_filename)
+        .ToString() Set(shader_hash_filename)
+        .let("shaders_cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
-        .Maybe(FS_Read_Bytes(), Shaderc_Command(args)
-                                    // read the temporary binary file
-                                    .let("shader-tmp.bin")
-                                    .FS_Read_Bytes()
-                                    .Ref(shader_bytecode)
-                                    .Get(shader_hash_filename)
-                                    .FS_Write_Overwriting(shader_bytecode));
+        .Maybe( // try to load from cache
+            FS_Read_Bytes().Brotli_Decompress(),
+            // if cache fails compile and cache
+            // write temporary files
+            let("varying.def.sc")
+                .FS_Write_Overwriting(varyings)
+                .let("shader-tmp.txt")
+                .FS_Write_Overwriting(shader_code)
+                // populate command arguments
+                .let("-f") Push(args)
+                .let("shader-tmp.txt") Push(args)
+                .let("-o") Push(args)
+                .let("shader-tmp.bin") Push(args)
+                .let("--platform") Push(args)
+                .Platform_Name() Push(args)
+                .let("-p") Push(args)
+                .Shader_Model() Push(args)
+                .let("--type") Push(args)
+                .Get(shader_type) Push(args)
+                .let("--defines") Push(args)
+                .Get(defines) Push(args)
+                .Shaderc_Command(args)
+                // read the temporary binary file result
+                .let("shader-tmp.bin")
+                .FS_Read_Bytes() Ref(shader_bytecode)
+                .Brotli_Compress() Ref(shader_bytecode_compressed)
+                .Get(shader_hash_filename)
+                .FS_Write_Overwriting(shader_bytecode_compressed)
+                .Get(shader_bytecode));
 
     _chain = shader_compiler;
   }

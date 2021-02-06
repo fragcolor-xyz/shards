@@ -13,15 +13,15 @@
 
 #define Input() block("Input")
 
-#define Set(_name) block("Set", #_name)
-#define Ref(_name) block("Ref", #_name)
+#define Set(_name) .block("Set", #_name)
+#define Ref(_name) .block("Ref", #_name)
 #define Get(_name) block("Get", #_name)
-#define SetTable(_name, _key) block("Set", #_name, _key)
-#define RefTable(_name, _key) block("Ref", #_name, _key)
+#define SetTable(_name, _key) .block("Set", #_name, _key)
+#define RefTable(_name, _key) .block("Ref", #_name, _key)
 #define GetTable(_name, _key) block("Get", #_name, _key)
 #define GetTable_Default(_name, _key, _default)                                \
   block("Get", #_name, _key, false, false, _default)
-#define Push(_name) block("Push", #_name)
+#define Push(_name) .block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
 
 #define If(_condition, _then, _else)                                           \
@@ -36,8 +36,8 @@
 #define ToString() block("ToString")
 #define ToHex() block("ToHex")
 
-#define PrependTo(_var) block("PrependTo", Var::ContextVar(#_var))
-#define AppendTo(_var) block("AppendTo", Var::ContextVar(#_var))
+#define PrependTo(_var) .block("PrependTo", Var::ContextVar(#_var))
+#define AppendTo(_var) .block("AppendTo", Var::ContextVar(#_var))
 
 #define FS_Read_Bytes() block("FS.Read", true)
 #define FS_Write_Overwriting(_contents)                                        \
@@ -64,5 +64,8 @@
 #define GLTF_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
 #define GLTF_Draw_WithMaterials(_model, _mats)                                 \
   block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))
+
+#define Brotli_Compress() block("Brotli.Compress")
+#define Brotli_Decompress() block("Brotli.Decompress")
 
 #endif
