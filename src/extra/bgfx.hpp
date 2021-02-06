@@ -68,6 +68,7 @@ struct Context {
       bgfx::destroy(sampler);
     }
     samplers.clear();
+    lightCount = 0;
   }
 
   const bgfx::UniformHandle &getSampler(size_t index) {
@@ -82,10 +83,16 @@ struct Context {
     }
   }
 
+  // for now this is very simple, we just compute how many max light sources we
+  // have to render. In the future we will do it in a smarter way
+  uint32_t getMaxLights() const { return lightCount; }
+  void addLight() { lightCount++; }
+
 private:
   std::deque<ViewInfo> viewsStack;
   bgfx::ViewId nextViewCounter{0};
   std::vector<bgfx::UniformHandle> samplers;
+  uint32_t lightCount{0};
 };
 
 struct Texture {

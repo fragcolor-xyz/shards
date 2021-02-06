@@ -59,6 +59,7 @@ struct GFXTexture {
 
 struct GFXMaterial {
   std::string name;
+  size_t hash;
   bool doubleSided{false};
 
   // textures and parameters
@@ -285,7 +286,9 @@ struct Load : public BGFX::BaseConsumer {
 
   GFXMaterial processMaterial(const GLTFModel &gltf,
                               const Material &glmaterial) {
-    GFXMaterial material{glmaterial.name, glmaterial.doubleSided};
+    GFXMaterial material{glmaterial.name,
+                         std::hash<std::string_view>()(glmaterial.name),
+                         glmaterial.doubleSided};
     if (glmaterial.pbrMetallicRoughness.baseColorTexture.index != -1) {
       material.baseColorTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.pbrMetallicRoughness
@@ -865,6 +868,9 @@ struct Draw : public BGFX::BaseConsumer {
   ParamVar _materials{};
   CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 4> _required;
+  std::unordered_map<size_t,
+                     std::optional<std::pair<const CBVar *, const CBVar *>>>
+      _matsCache;
 
   static inline Types MaterialTableValues2{
       {BGFX::ShaderHandle::ObjType, BGFX::Texture::SeqType}};
@@ -968,6 +974,7 @@ struct Draw : public BGFX::BaseConsumer {
   }
 
   void cleanup() {
+    _matsCache.clear();
     _model.cleanup();
     _materials.cleanup();
     if (_bgfxContext) {
@@ -1019,41 +1026,57 @@ struct Draw : public BGFX::BaseConsumer {
 
           if (mats && prims.material) {
             const auto &material = (*prims.material).get();
-            // TODO optimize away this table lookup
-            const auto override =
-                mats->api->tableAt(*mats, material.name.c_str());
-            if (override->valueType == CBType::Table) {
-              const auto &records = override->payload.tableValue;
-              const auto pshader = records.api->tableAt(records, "Shader");
-              const auto ptextures = records.api->tableAt(records, "Textures");
-              if (pshader->valueType == CBType::Object) {
-                // we got the shader
-                const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
-                    pshader->payload.objectValue);
-                handle = shader->handle;
-                // textures might be empty, in such case use the ones we loaded
-                // during Load
-                if (ptextures->valueType == CBType::Seq &&
-                    ptextures->payload.seqValue.len > 0) {
-                  auto textures = ptextures->payload.seqValue;
-                  for (uint32_t i = 0; i < textures.len; i++) {
-                    auto texture = reinterpret_cast<BGFX::Texture *>(
-                        textures.elements[i].payload.objectValue);
-                    bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
-                                     texture->handle);
-                  }
-                } else {
-                  uint8_t samplerSlot = 0;
-                  if (material.baseColorTexture) {
-                    bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
-                                     material.baseColorTexture->handle);
-                    samplerSlot++;
-                  }
-                  if (material.normalTexture) {
-                    bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
-                                     material.normalTexture->handle);
-                    samplerSlot++;
-                  }
+            const CBVar *pshader = nullptr;
+            const CBVar *ptextures = nullptr;
+
+            const auto it = _matsCache.find(material.hash);
+            if (it != _matsCache.end()) {
+              if (it->second) {
+                pshader = it->second->first;
+                ptextures = it->second->second;
+              }
+            } else {
+              // not found, let's cache it as well
+              const auto override =
+                  mats->api->tableAt(*mats, material.name.c_str());
+              if (override->valueType == CBType::Table) {
+                const auto &records = override->payload.tableValue;
+                pshader = records.api->tableAt(records, "Shader");
+                ptextures = records.api->tableAt(records, "Textures");
+                // add to quick cache map by integer
+                _matsCache[material.hash] = std::make_pair(pshader, ptextures);
+              } else {
+                _matsCache[material.hash].reset();
+              }
+            }
+
+            if (pshader && pshader->valueType == CBType::Object) {
+              // we got the shader
+              const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
+                  pshader->payload.objectValue);
+              handle = shader->handle;
+              // textures might be empty, in such case use the ones we loaded
+              // during Load
+              if (ptextures && ptextures->valueType == CBType::Seq &&
+                  ptextures->payload.seqValue.len > 0) {
+                auto textures = ptextures->payload.seqValue;
+                for (uint32_t i = 0; i < textures.len; i++) {
+                  auto texture = reinterpret_cast<BGFX::Texture *>(
+                      textures.elements[i].payload.objectValue);
+                  bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
+                                   texture->handle);
+                }
+              } else {
+                uint8_t samplerSlot = 0;
+                if (material.baseColorTexture) {
+                  bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                                   material.baseColorTexture->handle);
+                  samplerSlot++;
+                }
+                if (material.normalTexture) {
+                  bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                                   material.normalTexture->handle);
+                  samplerSlot++;
                 }
               }
             }
