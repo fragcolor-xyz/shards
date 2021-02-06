@@ -989,5 +989,28 @@ void testUniforms() {
   }
 }
 
+void testShaderCompiler() {
+  SECTION("Create") {
+    auto compiler = makeShaderCompiler();
+    REQUIRE(compiler);
+  }
+
+  SECTION("Compile") {
+    std::ifstream va("../deps/bgfx/examples/01-cubes/varying.def.sc");
+    std::stringstream vabuffer;
+    vabuffer << va.rdbuf();
+    auto vastr = vabuffer.str();
+
+    std::ifstream code("../deps/bgfx/examples/01-cubes/vs_cubes.sc");
+    std::stringstream codebuffer;
+    codebuffer << code.rdbuf();
+    auto codestr = codebuffer.str();
+
+    auto compiler = makeShaderCompiler();
+    auto bytes = compiler->compile(vastr, codestr, "v", "");
+    REQUIRE(bytes.payload.bytesSize > 0);
+  }
+}
+
 } // namespace BGFX_Tests
 } // namespace chainblocks

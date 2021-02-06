@@ -38,8 +38,8 @@ echo "Running test: channels"
 ./cbl ../src/tests/channels.clj
 # echo "Running test: pytest"
 # ./cbl ../src/tests/pytest.clj
-echo "Running test: genetic"
-./cbl ../src/tests/genetic.clj
+# echo "Running test: genetic"
+# ./cbl ../src/tests/genetic.clj
 echo "Running test: http"
 ./cbl ../src/tests/http.clj
 echo "Running test: brotli"

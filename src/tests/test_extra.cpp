@@ -28,6 +28,7 @@ namespace BGFX_Tests {
   extern void testCamera();
   extern void testDraw();
   extern void testUniforms();
+  extern void testShaderCompiler();
 }
 namespace GLTF_Tests {
   extern void testLoad();
@@ -54,6 +55,10 @@ TEST_CASE("GFX-Draw", "[gfx]") {
 
 TEST_CASE("GFX-Uniforms", "[gfx]") {
   BGFX_Tests::testUniforms();
+}
+
+TEST_CASE("GFX-ShaderCompiler", "[gfx]") {
+  BGFX_Tests::testShaderCompiler();
 }
 
 TEST_CASE("GLTF-Load", "[gltf]") {

@@ -302,6 +302,9 @@ struct Write {
             "FS.Write, file already exists and overwrite flag is not on!.");
       }
 
+      // make sure to create directories
+      fs::create_directories(p.parent_path());
+
       auto flags = std::ios::binary;
       if (_append) {
         flags |= std::ios::app;

@@ -296,7 +296,14 @@ struct BaseConsumer : public Base {
 }; // namespace BGFX
 
 namespace chainblocks {
-extern void compileShader();
-}
+struct IShaderCompiler {
+  virtual CBVar compile(std::string_view varyings, //
+                        std::string_view code,     //
+                        std::string_view type,     //
+                        std::string_view defines   //
+                        ) = 0;
+};
+extern std::unique_ptr<IShaderCompiler> makeShaderCompiler();
+} // namespace chainblocks
 
 #endif

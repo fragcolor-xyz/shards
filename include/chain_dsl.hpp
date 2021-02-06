@@ -6,6 +6,8 @@
 
 #include "./chainblocks.hpp"
 
+#define Variable(_name) Var::ContextVar(#_name)
+
 #define DefChain(_name) auto _name = chainblocks::Chain(#_name)
 #define Looped() looped(true)
 
@@ -17,11 +19,25 @@
 #define SetTable(_name, _key) block("Set", #_name, _key)
 #define RefTable(_name, _key) block("Ref", #_name, _key)
 #define GetTable(_name, _key) block("Get", #_name, _key)
+#define GetTable_Default(_name, _key, _default)                                \
+  block("Get", #_name, _key, false, false, _default)
 #define Push(_name) block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
 
+#define If(_condition, _then, _else)                                           \
+  block("If", Blocks()._condition, Blocks()._then, Blocks()._else)
+#define Is(_value) block("Is", _value)
+#define IsNot(_value) block("IsNot", _value)
+#define Maybe(_do, _else) block("Maybe", Blocks()._do, Blocks()._else)
+
 #define Once(_blocks) block("Once", Blocks()._blocks)
 #define Log() block("Log")
+#define Hash() block("Hash")
+#define ToString() block("ToString")
+#define ToHex() block("ToHex")
+
+#define PrependTo(_var) block("PrependTo", Var::ContextVar(#_var))
+#define AppendTo(_var) block("AppendTo", Var::ContextVar(#_var))
 
 #define FS_Read_Bytes() block("FS.Read", true)
 #define FS_Write_Overwriting(_contents)                                        \
