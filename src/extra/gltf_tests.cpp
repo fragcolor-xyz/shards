@@ -57,7 +57,7 @@
                                       .Get(cam)                                \
                                       .GFX_Camera()                            \
                                       .let(identity)                           \
-                                      .GFX_Draw_WithMaterials(model, mats));   \
+                                      .GLTF_Draw_WithMaterials(model, mats));  \
     auto node = CBNode::make();                                                \
     node->schedule(test_chain);                                                \
     auto count = 50;                                                           \
@@ -96,7 +96,7 @@
                                       .Get(cam)                                \
                                       .GFX_Camera()                            \
                                       .let(identity)                           \
-                                      .GFX_Draw_WithMaterials(model, mats));   \
+                                      .GLTF_Draw_WithMaterials(model, mats));  \
     auto node = CBNode::make();                                                \
     node->schedule(test_chain);                                                \
     auto count = 50;                                                           \
@@ -152,7 +152,7 @@ void testLoad() {
                             .Get(cam)
                             .GFX_Camera()
                             .let(identity)
-                            .GFX_Draw(model));
+                            .GLTF_Draw(model));
     auto node = CBNode::make();
     node->schedule(test_chain);
     auto count = 50;
