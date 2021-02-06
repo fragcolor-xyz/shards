@@ -108,6 +108,7 @@ struct ShaderCompiler : public IShaderCompiler {
         .Set(shader_hash_filename)
         .let("shaders_cache/")
         .PrependTo(shader_hash_filename)
+        .Get(shader_hash_filename)
         .Maybe(FS_Read_Bytes(), Shaderc_Command(args)
                                     // read the temporary binary file
                                     .let("shader-tmp.bin")

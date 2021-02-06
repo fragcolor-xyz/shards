@@ -225,6 +225,7 @@ struct Read {
     _buffer.clear();
     fs::path p(input.payload.stringValue);
     if (!fs::exists(p)) {
+      LOG(ERROR) << "File is missing: " << p;
       throw ActivationError("FS.Read, file does not exist.");
     }
 

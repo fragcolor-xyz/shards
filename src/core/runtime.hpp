@@ -702,7 +702,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       data.chain = chain.get();
       data.inputType = deriveTypeInfo(input);
       auto validation = composeChain(
-          chain->blocks,
+          chain.get(),
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
