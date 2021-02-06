@@ -303,7 +303,9 @@ struct Write {
       }
 
       // make sure to create directories
-      fs::create_directories(p.parent_path());
+      auto parent_path = p.parent_path();
+      if (!parent_path.empty() && !fs::exists(parent_path))
+        fs::create_directories(p.parent_path());
 
       auto flags = std::ios::binary;
       if (_append) {
