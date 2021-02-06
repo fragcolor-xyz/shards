@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2020 Giovanni Petrantoni */
 
-#pragma once
+#ifndef CB_BGFX_HPP
+#define CB_BGFX_HPP
 
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
@@ -293,3 +294,9 @@ struct BaseConsumer : public Base {
   }
 };
 }; // namespace BGFX
+
+namespace chainblocks {
+extern void compileShader();
+}
+
+#endif

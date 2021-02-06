@@ -4,7 +4,7 @@
 #ifndef CB_UTILITY_HPP
 #define CB_UTILITY_HPP
 
-#include "chainblocks.h"
+#include "chainblocks.hpp"
 #include <future>
 #include <magic_enum.hpp>
 #include <memory>

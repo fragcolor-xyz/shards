@@ -173,6 +173,7 @@ struct Evolve {
       cleanupFlow.for_each_dynamic(
           _population.begin(), _population.end(), [&](Individual &i) {
             // Free and release chain
+            i.node->terminate();
             auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
             stop(chain.get());
             Serialization::varFree(i.chain);
@@ -180,13 +181,11 @@ struct Evolve {
                 CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
             stop(fitchain.get());
             Serialization::varFree(i.fitnessChain);
-            i.node->terminate();
           });
       _exec->run(cleanupFlow).get();
-
+      _exec.reset(nullptr);
       _sortedPopulation.clear();
       _population.clear();
-      _exec.reset(nullptr);
     }
   }
 

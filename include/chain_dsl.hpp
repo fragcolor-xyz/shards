@@ -9,22 +9,32 @@
 #define DefChain(_name) auto _name = chainblocks::Chain(#_name)
 #define Looped() looped(true)
 
+#define Input() block("Input")
+
 #define Set(_name) block("Set", #_name)
 #define Ref(_name) block("Ref", #_name)
 #define Get(_name) block("Get", #_name)
 #define SetTable(_name, _key) block("Set", #_name, _key)
 #define RefTable(_name, _key) block("Ref", #_name, _key)
+#define GetTable(_name, _key) block("Get", #_name, _key)
 #define Push(_name) block("Push", #_name)
+#define Take(_idx_or_key) block("Take", _idx_or_key)
 
 #define Once(_blocks) block("Once", Blocks()._blocks)
 #define Log() block("Log")
 
 #define FS_Read_Bytes() block("FS.Read", true)
+#define FS_Write_Overwriting(_contents)                                        \
+  block("FS.Write", Var::ContextVar(#_contents), true)
 #ifdef LoadImage
 // mingw defines this
 #undef LoadImage
 #endif
 #define LoadImage(_imagePath) block("LoadImage", _imagePath)
+
+#define Process_Run(_cmd, _args)                                               \
+  block("Process.Run", _cmd, Var::ContextVar(#_args))
+#define Wasm_Run(_cmd, _args) block("Wasm.Run", _cmd, Var::ContextVar(#_args))
 
 #define GFX_MainWindow(_name, _blocks)                                         \
   block("GFX.MainWindow", _name, Var::Any, Var::Any, Blocks()._blocks)

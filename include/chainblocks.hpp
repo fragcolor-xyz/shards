@@ -1053,6 +1053,7 @@ private:
 
 class Chain {
 public:
+  Chain() {}
   Chain(std::string_view name);
 
   Chain &block(std::string_view name, std::vector<Var> params);

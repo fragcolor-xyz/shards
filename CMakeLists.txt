@@ -285,6 +285,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
@@ -728,6 +729,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
