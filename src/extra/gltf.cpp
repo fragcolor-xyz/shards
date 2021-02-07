@@ -37,6 +37,20 @@ GLTF.Simulate - depending on physics simulation blocks
 */
 namespace chainblocks {
 namespace gltf {
+struct GFXShader {
+  GFXShader(bgfx::ProgramHandle handle) : handle(handle) {}
+
+  bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+
+  GFXShader(GFXShader &&other) { std::swap(handle, other.handle); }
+
+  ~GFXShader() {
+    if (handle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handle);
+    }
+  }
+};
+
 struct GFXTexture {
   uint16_t width;
   uint16_t height;
@@ -76,6 +90,8 @@ struct GFXMaterial {
 
   std::shared_ptr<GFXTexture> emissiveTexture;
   std::array<float, 3> emissiveColor;
+
+  std::shared_ptr<GFXShader> shader;
 };
 
 using GFXMaterialRef = std::reference_wrapper<GFXMaterial>;
@@ -157,12 +173,16 @@ struct Load : public BGFX::BaseConsumer {
        CBCCSTR("If we should generate bitangents when loading the model, from "
                "normals and tangent data. Default is true"),
        {CoreInfo::BoolType}},
-      {"NoTextures",
-       CBCCSTR("If the textures linked ot this model should not be loaded."),
+      {"Textures",
+       CBCCSTR("If the textures linked to this model should be loaded."),
        {CoreInfo::BoolType}},
       {"sRGB",
        CBCCSTR("If the textures should be loaded as an sRGB format (only valid "
                "for 8 bit per color textures)."),
+       {CoreInfo::BoolType}},
+      {"Shaders",
+       CBCCSTR("If the shaders linked to this model should be compiled and/or "
+               "loaded."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return Params; }
 
@@ -172,7 +192,10 @@ struct Load : public BGFX::BaseConsumer {
   LastWriteTime _fileLastWrite;
   bool _bitangents{true};
   bool _srgb{false};
-  bool _noTextures{false};
+  bool _withTextures{true};
+  bool _withShaders{true};
+  uint32_t _numLights{0};
+  std::unique_ptr<IShaderCompiler> _shaderCompiler = makeShaderCompiler();
 
   void setup() { _loader.SetImageLoader(&LoadImageData, this); }
 
@@ -219,7 +242,26 @@ struct Load : public BGFX::BaseConsumer {
     }
   };
 
+  struct ShadersCache : public Cache<GFXShader> {
+    static uint64_t hashShader(const std::string &defines) {
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+
+      XXH3_64bits_update(&hashState, defines.data(), defines.size());
+
+      return XXH3_64bits_digest(&hashState);
+    }
+  };
+
   Shared<TextureCache> _texturesCache;
+  Shared<ShadersCache> _shadersCache;
+
+  std::mutex _shadersMutex;
+  Shared<std::string> _shadersVarying;
+  Shared<std::string> _shadersVSEntry;
+  Shared<std::string> _shadersPSEntry;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -227,10 +269,13 @@ struct Load : public BGFX::BaseConsumer {
       _bitangents = value.payload.boolValue;
       break;
     case 1:
-      _noTextures = value.payload.boolValue;
+      _withTextures = value.payload.boolValue;
       break;
     case 2:
       _srgb = value.payload.boolValue;
+      break;
+    case 3:
+      _withShaders = value.payload.boolValue;
       break;
     default:
       break;
@@ -242,9 +287,11 @@ struct Load : public BGFX::BaseConsumer {
     case 0:
       return Var(_bitangents);
     case 1:
-      return Var(_noTextures);
+      return Var(_withTextures);
     case 2:
       return Var(_srgb);
+    case 3:
+      return Var(_withShaders);
     default:
       throw InvalidParameterIndex();
     }
@@ -259,7 +306,7 @@ struct Load : public BGFX::BaseConsumer {
 
   std::shared_ptr<GFXTexture> getOrLoadTexture(const GLTFModel &gltf,
                                                const Texture &gltexture) {
-    if (!_noTextures && gltexture.source != -1) {
+    if (_withTextures && gltexture.source != -1) {
       const auto &image = gltf.images[gltexture.source];
       const auto imgHash = TextureCache::hashTexture(gltexture, image);
       auto texture = _texturesCache().find(imgHash);
@@ -289,10 +336,17 @@ struct Load : public BGFX::BaseConsumer {
     GFXMaterial material{glmaterial.name,
                          std::hash<std::string_view>()(glmaterial.name),
                          glmaterial.doubleSided};
+    std::string shaderDefines;
+
+    if (_numLights > 0) {
+      shaderDefines = "CB_NUM_LIGHTS" + std::to_string(_numLights);
+    }
+
     if (glmaterial.pbrMetallicRoughness.baseColorTexture.index != -1) {
       material.baseColorTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.pbrMetallicRoughness
                                                    .baseColorTexture.index]);
+      shaderDefines += ";CB_PBR_COLOR_TEXTURE=1";
     }
     const auto colorFactorSize =
         glmaterial.pbrMetallicRoughness.baseColorFactor.size();
@@ -301,13 +355,89 @@ struct Load : public BGFX::BaseConsumer {
         material.baseColor[i] =
             glmaterial.pbrMetallicRoughness.baseColorFactor[i];
       }
+      shaderDefines += ";CB_PBR_COLOR_FACTOR=1";
     }
+
     material.metallicFactor = glmaterial.pbrMetallicRoughness.metallicFactor;
     material.roughnessFactor = glmaterial.pbrMetallicRoughness.roughnessFactor;
+    if (glmaterial.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) {
+      material.metallicRoughnessTexture = getOrLoadTexture(
+          gltf, gltf.textures[glmaterial.pbrMetallicRoughness
+                                  .metallicRoughnessTexture.index]);
+      shaderDefines += ";CB_PBR_METALLIC_ROUGHNESS_TEXTURE=1";
+    }
+
     if (glmaterial.normalTexture.index != -1) {
       material.normalTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.normalTexture.index]);
+      shaderDefines += ";CB_NORMAL_TEXTURE=1";
     }
+
+    if (_withShaders) {
+      auto hash = ShadersCache::hashShader(shaderDefines);
+      auto shader = _shadersCache().find(hash);
+      if (!shader) {
+        // compile or fetch cached shaders
+        // lazily fill out varying and entry point shaders
+        if (_shadersVarying().size() == 0) {
+          std::unique_lock lock(_shadersMutex);
+          // check again after unlock
+          if (_shadersVarying().size() == 0) {
+            auto failed = false;
+            {
+              std::ifstream stream("shaders/lib/pbr/varying.txt");
+              if (!stream.is_open())
+                failed = true;
+              std::stringstream buffer;
+              buffer << stream.rdbuf();
+              _shadersVarying().assign(buffer.str());
+            }
+            {
+              std::ifstream stream("shaders/lib/pbr/vs_entry.h");
+              if (!stream.is_open())
+                failed = true;
+              std::stringstream buffer;
+              buffer << stream.rdbuf();
+              _shadersVSEntry().assign(buffer.str());
+            }
+            {
+              std::ifstream stream("shaders/lib/pbr/ps_entry.h");
+              if (!stream.is_open())
+                failed = true;
+              std::stringstream buffer;
+              buffer << stream.rdbuf();
+              _shadersPSEntry().assign(buffer.str());
+            }
+            if (failed) {
+              LOG(FATAL) << "shaders library is missing";
+            }
+          }
+        }
+        // vertex
+        bgfx::ShaderHandle vsh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              _shadersVarying(), _shadersVSEntry(), "v", shaderDefines);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          vsh = bgfx::createShader(mem);
+        }
+        // pixel
+        bgfx::ShaderHandle psh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              _shadersVarying(), _shadersPSEntry(), "f", shaderDefines);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          psh = bgfx::createShader(mem);
+        }
+        shader =
+            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true));
+        _shadersCache().add(hash, shader);
+      }
+      material.shader = shader;
+    }
+
     return material;
   }
 
@@ -647,7 +777,7 @@ struct Load : public BGFX::BaseConsumer {
                               buf[3] = 255;
                             } break;
                             default:
-                              assert(false);
+                              LOG(FATAL) << "invalid state";
                               break;
                             }
                           } break;
@@ -679,12 +809,14 @@ struct Load : public BGFX::BaseConsumer {
                               memcpy(buf, chunk, 4);
                             } break;
                             default:
-                              assert(false);
+                              LOG(FATAL) << "invalid state";
+                              ;
                               break;
                             }
                           } break;
                           default:
-                            assert(false);
+                            LOG(FATAL) << "invalid state";
+                            ;
                             break;
                           }
 
@@ -744,7 +876,8 @@ struct Load : public BGFX::BaseConsumer {
                             buf[1] = float(chunk[1]) / float(255);
                           } break;
                           default:
-                            assert(false);
+                            LOG(FATAL) << "invalid state";
+                            ;
                             break;
                           }
 
@@ -820,7 +953,8 @@ struct Load : public BGFX::BaseConsumer {
                           FILL_INDEX;
                         } break;
                         default:
-                          assert(false);
+                          LOG(FATAL) << "invalid state";
+                          ;
                           break;
                         }
 

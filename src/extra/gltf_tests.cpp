@@ -28,29 +28,29 @@
   SECTION(_name) {                                                             \
     DefChain(test_chain)                                                       \
         .Looped()                                                              \
-        .GFX_MainWindow("window",                                              \
-                        Once(let(_path)                                        \
-                                 .GLTF_Load_NoBitangents() Ref(model)          \
-                                 .Log()                                        \
-                                 .LoadImage(_albedo)                           \
-                                 .GFX_Texture2D() Push(textures)               \
-                                 .LoadImage(_normal)                           \
-                                 .GFX_Texture2D() Push(textures)               \
-                                 .let(vs)                                      \
-                                 .FS_Read_Bytes() Ref(vs_bytes)                \
-                                 .let(fs)                                      \
-                                 .FS_Read_Bytes() Ref(fs_bytes)                \
-                                 .GFX_Shader(vs_bytes, fs_bytes)               \
-                                     RefTable(mat1, "Shader")                  \
-                                 .Get(textures) RefTable(mat1, "Textures")     \
-                                 .Get(mat1) RefTable(mats, _mat_name))         \
-                            .let(_cam_scale, _cam_scale, _cam_scale)           \
-                                RefTable(cam, "Position")                      \
-                            .let(0.0, 0.0, 0.0) RefTable(cam, "Target")        \
-                            .Get(cam)                                          \
-                            .GFX_Camera()                                      \
-                            .let(identity)                                     \
-                            .GLTF_Draw_WithMaterials(model, mats));            \
+        .GFX_MainWindow(                                                       \
+            "window",                                                          \
+            Once(let(_path)                                                    \
+                     .GLTF_Load_NoBitangents_NoShaders() Ref(model)            \
+                     .Log()                                                    \
+                     .LoadImage(_albedo)                                       \
+                     .GFX_Texture2D() Push(textures)                           \
+                     .LoadImage(_normal)                                       \
+                     .GFX_Texture2D() Push(textures)                           \
+                     .let(vs)                                                  \
+                     .FS_Read_Bytes() Ref(vs_bytes)                            \
+                     .let(fs)                                                  \
+                     .FS_Read_Bytes() Ref(fs_bytes)                            \
+                     .GFX_Shader(vs_bytes, fs_bytes) RefTable(mat1, "Shader")  \
+                     .Get(textures) RefTable(mat1, "Textures")                 \
+                     .Get(mat1) RefTable(mats, _mat_name))                     \
+                .let(_cam_scale, _cam_scale, _cam_scale)                       \
+                    RefTable(cam, "Position")                                  \
+                .let(0.0, 0.0, 0.0) RefTable(cam, "Target")                    \
+                .Get(cam)                                                      \
+                .GFX_Camera()                                                  \
+                .let(identity)                                                 \
+                .GLTF_Draw_WithMaterials(model, mats));                        \
     auto node = CBNode::make();                                                \
     node->schedule(test_chain);                                                \
     auto count = 50;                                                           \
@@ -68,24 +68,24 @@
   SECTION(_name) {                                                             \
     DefChain(test_chain)                                                       \
         .Looped()                                                              \
-        .GFX_MainWindow("window",                                              \
-                        Once(let(_path)                                        \
-                                 .GLTF_Load_NoBitangents() Ref(model)          \
-                                 .Log()                                        \
-                                 .let(vs)                                      \
-                                 .FS_Read_Bytes() Ref(vs_bytes)                \
-                                 .let(fs)                                      \
-                                 .FS_Read_Bytes() Ref(fs_bytes)                \
-                                 .GFX_Shader(vs_bytes, fs_bytes)               \
-                                     RefTable(mat1, "Shader")                  \
-                                 .Get(mat1) RefTable(mats, _mat_name))         \
-                            .let(_cam_scale, _cam_scale, _cam_scale)           \
-                                RefTable(cam, "Position")                      \
-                            .let(0.0, 0.0, 0.0) RefTable(cam, "Target")        \
-                            .Get(cam)                                          \
-                            .GFX_Camera()                                      \
-                            .let(identity)                                     \
-                            .GLTF_Draw_WithMaterials(model, mats));            \
+        .GFX_MainWindow(                                                       \
+            "window",                                                          \
+            Once(let(_path)                                                    \
+                     .GLTF_Load_NoBitangents_NoShaders() Ref(model)            \
+                     .Log()                                                    \
+                     .let(vs)                                                  \
+                     .FS_Read_Bytes() Ref(vs_bytes)                            \
+                     .let(fs)                                                  \
+                     .FS_Read_Bytes() Ref(fs_bytes)                            \
+                     .GFX_Shader(vs_bytes, fs_bytes) RefTable(mat1, "Shader")  \
+                     .Get(mat1) RefTable(mats, _mat_name))                     \
+                .let(_cam_scale, _cam_scale, _cam_scale)                       \
+                    RefTable(cam, "Position")                                  \
+                .let(0.0, 0.0, 0.0) RefTable(cam, "Target")                    \
+                .Get(cam)                                                      \
+                .GFX_Camera()                                                  \
+                .let(identity)                                                 \
+                .GLTF_Draw_WithMaterials(model, mats));                        \
     auto node = CBNode::make();                                                \
     node->schedule(test_chain);                                                \
     auto count = 50;                                                           \
@@ -131,7 +131,7 @@ void testLoad() {
                         Once(
                             // load the model
                             let("../deps/tinygltf/models/Cube/Cube.gltf")
-                                .GLTF_Load() Ref(model)
+                                .GLTF_Load_NoShaders() Ref(model)
                                 .Log())
                             .let(0.0, 0.0, 10.0) RefTable(cam, "Position")
                             .let(0.0, 0.0, 0.0) RefTable(cam, "Target")
@@ -181,7 +181,7 @@ void testLoad() {
         .GFX_MainWindow(
             "window",
             let("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
-                .GLTF_Load()
+                .GLTF_Load_NoShaders()
                 .Log());
     auto node = CBNode::make();
     node->schedule(test_chain);

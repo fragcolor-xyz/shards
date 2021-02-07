@@ -344,7 +344,7 @@ struct Comment {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // We are a NOOP block
-    assert(false);
+    LOG(FATAL) << "invalid state";
     return input;
   }
 };
@@ -407,7 +407,7 @@ struct OnCleanup {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // We are a NOOP block
-    assert(false);
+    LOG(FATAL) << "invalid state";
     return input;
   }
 };

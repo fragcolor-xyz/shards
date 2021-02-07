@@ -1743,7 +1743,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       return {context->getFlowStorage(), Stopped};
     case CBChainState::Rebase:
       // Handled inside blocksActivation
-      assert(false);
+      LOG(FATAL) << "invalid state";
     case CBChainState::Continue:
       break;
     }
@@ -2177,7 +2177,7 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     }
   } break;
   default:
-    assert(false);
+    LOG(FATAL) << "invalid state";
   }
 }
 
