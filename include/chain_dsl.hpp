@@ -25,7 +25,7 @@
   block("Get", #_name, _key, false, false, _default)
 #define Push(_name) .block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
-#define Count(_name) block("Count", #_name)
+#define Count(_name) block("Count", Var::ContextVar(#_name))
 
 #define If(_condition, _then, _else)                                           \
   block("If", Blocks()._condition, Blocks()._then, Blocks()._else)

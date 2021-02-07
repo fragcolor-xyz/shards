@@ -1052,6 +1052,23 @@ void testShaderCompiler() {
     auto bytes = compiler->compile(vastr, codestr, "v", "A=1;B=2;C=3");
     REQUIRE(bytes.payload.bytesSize > 0);
   }
+
+  SECTION("Compile2") {
+    std::ifstream va("../src/extra/shaders/gltf/varying.txt");
+    std::stringstream vabuffer;
+    vabuffer << va.rdbuf();
+    auto vastr = vabuffer.str();
+
+    std::ifstream code("../src/extra/shaders/gltf/vs_entry.h");
+    std::stringstream codebuffer;
+    codebuffer << code.rdbuf();
+    auto codestr = codebuffer.str();
+
+    auto compiler = makeShaderCompiler();
+    auto bytes = compiler->compile(
+        vastr, codestr, "v", "CB_HAS_NORMAL;CB_HAS_TANGENT;CB_HAS_TEXCOORD_0");
+    REQUIRE(bytes.payload.bytesSize > 0);
+  }
 }
 
 } // namespace BGFX_Tests

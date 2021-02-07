@@ -108,7 +108,7 @@ struct ShaderCompiler : public IShaderCompiler {
                 .let("shaders/include") Push(args)
                 .Count(defines)
                 .When(IsNot(0),
-                      let("--defines") Push(args) //
+                      let("--define") Push(args) //
                           .Get(defines) Push(args))
                 .Shaderc_Command(args)
                 // read the temporary binary file result

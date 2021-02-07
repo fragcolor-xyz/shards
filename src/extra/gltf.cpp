@@ -190,7 +190,7 @@ struct Load : public BGFX::BaseConsumer {
   TinyGLTF _loader;
   size_t _fileNameHash;
   LastWriteTime _fileLastWrite;
-  bool _bitangents{true};
+  bool _bitangents{false};
   bool _srgb{false};
   bool _withTextures{true};
   bool _withShaders{true};
@@ -204,7 +204,6 @@ struct Load : public BGFX::BaseConsumer {
     // BGFX::BaseConsumer::compose(data);
     return ModelType;
   }
-
   template <typename T> struct Cache {
     std::shared_ptr<T> find(uint64_t hash) {
       std::shared_ptr<T> res;
@@ -331,22 +330,21 @@ struct Load : public BGFX::BaseConsumer {
     }
   }
 
-  GFXMaterial processMaterial(const GLTFModel &gltf,
-                              const Material &glmaterial) {
+  GFXMaterial processMaterial(const GLTFModel &gltf, const Material &glmaterial,
+                              std::unordered_set<std::string> &shaderDefines) {
     GFXMaterial material{glmaterial.name,
                          std::hash<std::string_view>()(glmaterial.name),
                          glmaterial.doubleSided};
-    std::string shaderDefines;
 
     if (_numLights > 0) {
-      shaderDefines = "CB_NUM_LIGHTS" + std::to_string(_numLights);
+      shaderDefines.insert("CB_NUM_LIGHTS" + std::to_string(_numLights));
     }
 
     if (glmaterial.pbrMetallicRoughness.baseColorTexture.index != -1) {
       material.baseColorTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.pbrMetallicRoughness
                                                    .baseColorTexture.index]);
-      shaderDefines += ";CB_PBR_COLOR_TEXTURE=1";
+      shaderDefines.insert("CB_PBR_COLOR_TEXTURE");
     }
     const auto colorFactorSize =
         glmaterial.pbrMetallicRoughness.baseColorFactor.size();
@@ -355,7 +353,7 @@ struct Load : public BGFX::BaseConsumer {
         material.baseColor[i] =
             glmaterial.pbrMetallicRoughness.baseColorFactor[i];
       }
-      shaderDefines += ";CB_PBR_COLOR_FACTOR=1";
+      shaderDefines.insert("CB_PBR_COLOR_FACTOR");
     }
 
     material.metallicFactor = glmaterial.pbrMetallicRoughness.metallicFactor;
@@ -364,17 +362,21 @@ struct Load : public BGFX::BaseConsumer {
       material.metallicRoughnessTexture = getOrLoadTexture(
           gltf, gltf.textures[glmaterial.pbrMetallicRoughness
                                   .metallicRoughnessTexture.index]);
-      shaderDefines += ";CB_PBR_METALLIC_ROUGHNESS_TEXTURE=1";
+      shaderDefines.insert("CB_PBR_METALLIC_ROUGHNESS_TEXTURE");
     }
 
     if (glmaterial.normalTexture.index != -1) {
       material.normalTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.normalTexture.index]);
-      shaderDefines += ";CB_NORMAL_TEXTURE=1";
+      shaderDefines.insert("CB_NORMAL_TEXTURE");
     }
 
     if (_withShaders) {
-      auto hash = ShadersCache::hashShader(shaderDefines);
+      std::string shaderDefinesStr;
+      for (const auto &define : shaderDefines) {
+        shaderDefinesStr += define + ";";
+      }
+      auto hash = ShadersCache::hashShader(shaderDefinesStr);
       auto shader = _shadersCache().find(hash);
       if (!shader) {
         // compile or fetch cached shaders
@@ -417,7 +419,7 @@ struct Load : public BGFX::BaseConsumer {
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
-              _shadersVarying, _shadersVSEntry, "v", shaderDefines);
+              _shadersVarying, _shadersVSEntry, "v", shaderDefinesStr);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           vsh = bgfx::createShader(mem);
@@ -426,7 +428,7 @@ struct Load : public BGFX::BaseConsumer {
         bgfx::ShaderHandle psh;
         {
           auto bytecode = _shaderCompiler->compile(
-              _shadersVarying, _shadersPSEntry, "f", shaderDefines);
+              _shadersVarying, _shadersPSEntry, "f", shaderDefinesStr);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
@@ -513,6 +515,7 @@ struct Load : public BGFX::BaseConsumer {
                 GFXMesh mesh{glmesh.name};
                 for (const auto &glprims : glmesh.primitives) {
                   GFXPrimitive prims{};
+                  std::unordered_set<std::string> shaderDefines;
                   // we gotta do few things here
                   // build a layout
                   // populate vb and ib
@@ -530,13 +533,17 @@ struct Load : public BGFX::BaseConsumer {
                       accessors.emplace_back(bgfx::Attrib::Normal,
                                              gltf.accessors[attributeIdx]);
                       vertexSize += sizeof(float) * 3;
+                      shaderDefines.insert("CB_HAS_NORMAL");
                     } else if (attributeName == "TANGENT") {
                       accessors.emplace_back(bgfx::Attrib::Tangent,
                                              gltf.accessors[attributeIdx]);
-                      if (_bitangents)
+                      shaderDefines.insert("CB_HAS_TANGENT");
+                      if (_bitangents) {
                         vertexSize += sizeof(float) * 6;
-                      else
+                        shaderDefines.insert("CB_HAS_BITANGENT");
+                      } else {
                         vertexSize += sizeof(float) * 4;
+                      }
                     } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
                       int strIndex = std::stoi(attributeName.substr(9));
                       if (strIndex >= 8) {
@@ -547,6 +554,7 @@ struct Load : public BGFX::BaseConsumer {
                       accessors.emplace_back(texcoord,
                                              gltf.accessors[attributeIdx]);
                       vertexSize += sizeof(float) * 2;
+                      shaderDefines.insert("CB_HAS_" + attributeName);
                     } else if (boost::starts_with(attributeName, "COLOR_")) {
                       int strIndex = std::stoi(attributeName.substr(6));
                       if (strIndex >= 4) {
@@ -557,6 +565,7 @@ struct Load : public BGFX::BaseConsumer {
                       accessors.emplace_back(color,
                                              gltf.accessors[attributeIdx]);
                       vertexSize += 4;
+                      shaderDefines.insert("CB_HAS_" + attributeName);
                     } else {
                       // TODO JOINTS_ and WEIGHTS_
                       LOG(WARNING)
@@ -972,7 +981,8 @@ struct Load : public BGFX::BaseConsumer {
                     if (glprims.material != -1) {
                       prims.material =
                           _model->gfxMaterials.emplace_back(processMaterial(
-                              gltf, gltf.materials[glprims.material]));
+                              gltf, gltf.materials[glprims.material],
+                              shaderDefines));
                     }
 
                     mesh.primitives.emplace_back(
