@@ -194,6 +194,25 @@ void testLoad() {
     auto errors = node->errors();
     REQUIRE(errors.size() == 0);
   }
+
+  SECTION("Cube3-Text") {
+    DefChain(test_chain)
+        .GFX_MainWindow(
+            "window",
+            let("../external/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+                .GLTF_Load_NoBitangents() // will load and compile shaders
+                .Log());
+    auto node = CBNode::make();
+    node->schedule(test_chain);
+    while (true) {
+      REQUIRE(node->tick());
+      if (node->empty())
+        break;
+      sleep(0.1);
+    }
+    auto errors = node->errors();
+    REQUIRE(errors.size() == 0);
+  }
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks

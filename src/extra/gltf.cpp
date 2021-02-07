@@ -259,9 +259,9 @@ struct Load : public BGFX::BaseConsumer {
   Shared<ShadersCache> _shadersCache;
 
   std::mutex _shadersMutex;
-  Shared<std::string> _shadersVarying;
-  Shared<std::string> _shadersVSEntry;
-  Shared<std::string> _shadersPSEntry;
+  static inline std::string _shadersVarying;
+  static inline std::string _shadersVSEntry;
+  static inline std::string _shadersPSEntry;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -379,34 +379,34 @@ struct Load : public BGFX::BaseConsumer {
       if (!shader) {
         // compile or fetch cached shaders
         // lazily fill out varying and entry point shaders
-        if (_shadersVarying().size() == 0) {
+        if (_shadersVarying.size() == 0) {
           std::unique_lock lock(_shadersMutex);
           // check again after unlock
-          if (_shadersVarying().size() == 0) {
+          if (_shadersVarying.size() == 0) {
             auto failed = false;
             {
-              std::ifstream stream("shaders/lib/pbr/varying.txt");
+              std::ifstream stream("shaders/lib/gltf/varying.txt");
               if (!stream.is_open())
                 failed = true;
               std::stringstream buffer;
               buffer << stream.rdbuf();
-              _shadersVarying().assign(buffer.str());
+              _shadersVarying.assign(buffer.str());
             }
             {
-              std::ifstream stream("shaders/lib/pbr/vs_entry.h");
+              std::ifstream stream("shaders/lib/gltf/vs_entry.h");
               if (!stream.is_open())
                 failed = true;
               std::stringstream buffer;
               buffer << stream.rdbuf();
-              _shadersVSEntry().assign(buffer.str());
+              _shadersVSEntry.assign(buffer.str());
             }
             {
-              std::ifstream stream("shaders/lib/pbr/ps_entry.h");
+              std::ifstream stream("shaders/lib/gltf/ps_entry.h");
               if (!stream.is_open())
                 failed = true;
               std::stringstream buffer;
               buffer << stream.rdbuf();
-              _shadersPSEntry().assign(buffer.str());
+              _shadersPSEntry.assign(buffer.str());
             }
             if (failed) {
               LOG(FATAL) << "shaders library is missing";
@@ -417,7 +417,7 @@ struct Load : public BGFX::BaseConsumer {
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
-              _shadersVarying(), _shadersVSEntry(), "v", shaderDefines);
+              _shadersVarying, _shadersVSEntry, "v", shaderDefines);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           vsh = bgfx::createShader(mem);
@@ -426,7 +426,7 @@ struct Load : public BGFX::BaseConsumer {
         bgfx::ShaderHandle psh;
         {
           auto bytecode = _shaderCompiler->compile(
-              _shadersVarying(), _shadersPSEntry(), "f", shaderDefines);
+              _shadersVarying, _shadersPSEntry, "f", shaderDefines);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);

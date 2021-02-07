@@ -189,10 +189,13 @@ jobs:
         git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
         cd -
         mkdir -p build/shaders/include
+        mkdir -p build/shaders/lib
         cd build/shaders
         wget https://github.com/sinkingsugar/chainblocks/files/5938139/shadercRelease.zip
         unzip shadercRelease.zip
         cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
+        cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
+        cp ../../src/extra/shaders/gltf/*.* lib/*.*
     - name: Build
       run: |
         cd build
