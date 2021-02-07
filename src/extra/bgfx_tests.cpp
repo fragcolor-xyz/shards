@@ -1007,7 +1007,7 @@ void testShaderCompiler() {
     auto codestr = codebuffer.str();
 
     auto compiler = makeShaderCompiler();
-    auto bytes = compiler->compile(vastr, codestr, "v", "");
+    auto bytes = compiler->compile(vastr, codestr, "v", "A=1;B=2;C=3");
     REQUIRE(bytes.payload.bytesSize > 0);
   }
 }

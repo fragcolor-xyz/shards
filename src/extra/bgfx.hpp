@@ -297,6 +297,8 @@ struct BaseConsumer : public Base {
 
 namespace chainblocks {
 struct IShaderCompiler {
+  virtual ~IShaderCompiler() {}
+
   virtual CBVar compile(std::string_view varyings, //
                         std::string_view code,     //
                         std::string_view type,     //
