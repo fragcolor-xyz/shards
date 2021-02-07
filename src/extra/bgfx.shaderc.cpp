@@ -21,7 +21,9 @@
 #endif
 
 #ifdef _WIN32
-#define Shader_Model() let("s_5")
+#define Shader_Model()                                                         \
+  Get(shader_type)                                                             \
+      .If(Is("v"), let("vs_5_0"), If(Is("f"), let("ps_5_0"), let("cs_5_0")))
 #elif defined(__APPLE__)
 #define Shader_Model() let("metal")
 #elif defined(__linux__)
@@ -31,9 +33,11 @@
 #endif
 
 #ifdef _WIN32
-#define Shaderc_Command(_args) Process_Run("shadercRelease.exe", _args)
+#define Shaderc_Command(_args)                                                 \
+  let("").Process_Run("shaders/shadercRelease.exe", _args)
 #else
-#define Shaderc_Command(_args) Wasm_Run("shadercRelease.wasm", _args)
+#define Shaderc_Command(_args)                                                 \
+  let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
 #endif
 
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
@@ -75,32 +79,38 @@ struct ShaderCompiler : public IShaderCompiler {
         .Hash()
         .ToHex()
         .ToString() Set(shader_hash_filename)
-        .let("shaders_cache/") PrependTo(shader_hash_filename) //
+        .let("shaders/cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
         .Maybe( // try to load from cache
             FS_Read_Bytes().Brotli_Decompress(),
             // if cache fails compile and cache
             // write temporary files
-            let("varying.def.sc")
+            let("shaders/tmp/varying.txt")
                 .FS_Write_Overwriting(varyings)
-                .let("shader-tmp.txt")
+                .let("shaders/tmp/shader.txt")
                 .FS_Write_Overwriting(shader_code)
                 // populate command arguments
                 .let("-f") Push(args)
-                .let("shader-tmp.txt") Push(args)
+                .let("shaders/tmp/shader.txt") Push(args)
                 .let("-o") Push(args)
-                .let("shader-tmp.bin") Push(args)
+                .let("shaders/tmp/shader.bin") Push(args)
+                .let("--varyingdef") Push(args)
+                .let("shaders/tmp/varying.txt") Push(args)
                 .let("--platform") Push(args)
                 .Platform_Name() Push(args)
                 .let("-p") Push(args)
                 .Shader_Model() Push(args)
                 .let("--type") Push(args)
                 .Get(shader_type) Push(args)
-                .let("--defines") Push(args)
-                .Get(defines) Push(args)
+                .let("-i") Push(args)
+                .let("shaders/include") Push(args)
+                .Count(defines)
+                .When(IsNot(0),
+                      let("--defines") Push(args) //
+                          .Get(defines) Push(args))
                 .Shaderc_Command(args)
                 // read the temporary binary file result
-                .let("shader-tmp.bin")
+                .let("shaders/tmp/shader.bin")
                 .FS_Read_Bytes() Ref(shader_bytecode)
                 .Brotli_Compress() Ref(shader_bytecode_compressed)
                 .Get(shader_hash_filename)

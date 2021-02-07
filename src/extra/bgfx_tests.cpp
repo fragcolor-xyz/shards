@@ -996,12 +996,12 @@ void testShaderCompiler() {
   }
 
   SECTION("Compile") {
-    std::ifstream va("../deps/bgfx/examples/01-cubes/varying.def.sc");
+    std::ifstream va("../src/extra/shaders/var_cubes.txt");
     std::stringstream vabuffer;
     vabuffer << va.rdbuf();
     auto vastr = vabuffer.str();
 
-    std::ifstream code("../deps/bgfx/examples/01-cubes/vs_cubes.sc");
+    std::ifstream code("../src/extra/shaders/vs_cubes.glsl");
     std::stringstream codebuffer;
     codebuffer << code.rdbuf();
     auto codestr = codebuffer.str();
