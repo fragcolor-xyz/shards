@@ -86,16 +86,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     auto count = 100;
@@ -126,7 +129,9 @@ void testModel() {
                      .let(cubeIndices)
                      .block("Set", "cube", "Indices")
                      .block("Get", "cube")
-                     .block("GFX.Model", Var(layout));
+                     .block("GFX.Model", Var(layout), false,
+                            Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                      'sink', 'gfxV'));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -152,16 +157,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let("foobar")
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let("foobar")
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -187,16 +195,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "foo")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "foo")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -222,17 +233,21 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks().block(
-                                "Await", Blocks()
-                                             .let(cubeVertices)
-                                             .block("Set", "cube", "Vertices")
-                                             .let(cubeIndices)
-                                             .block("Set", "cube", "Indices")
-                                             .block("Get", "cube")
-                                             .block("GFX.Model", Var(layout))));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks().block(
+                       "Await",
+                       Blocks()
+                           .let(cubeVertices)
+                           .block("Set", "cube", "Vertices")
+                           .let(cubeIndices)
+                           .block("Set", "cube", "Indices")
+                           .block("Get", "cube")
+                           .block("GFX.Model", Var(layout), false,
+                                  Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                            'sink', 'gfxV'))));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -258,16 +273,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -289,16 +307,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1), Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -321,16 +342,19 @@ void testModel() {
         Var(0, 2, 4), Var(4, 2, 6),  Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1),  Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -353,16 +377,19 @@ void testModel() {
         Var(0, 2, 4), Var(300, 2, 6), Var(1, 5, 3), Var(5, 7, 3),
         Var(0, 4, 1), Var(4, 5, 1),   Var(2, 3, 6), Var(6, 3, 7),
     };
-    auto chain = chainblocks::Chain("test-chain")
-                     .looped(true)
-                     .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
-                            Blocks()
-                                .let(cubeVertices)
-                                .block("Set", "cube", "Vertices")
-                                .let(cubeIndices)
-                                .block("Set", "cube", "Indices")
-                                .block("Get", "cube")
-                                .block("GFX.Model", Var(layout)));
+    auto chain =
+        chainblocks::Chain("test-chain")
+            .looped(true)
+            .block("GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
+                   Blocks()
+                       .let(cubeVertices)
+                       .block("Set", "cube", "Vertices")
+                       .let(cubeIndices)
+                       .block("Set", "cube", "Indices")
+                       .block("Get", "cube")
+                       .block("GFX.Model", Var(layout), false,
+                              Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                        'sink', 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -429,24 +456,27 @@ void testDraw() {
             .block(
                 "GFX.MainWindow", "MainWindow", Var::Any, Var::Any,
                 Blocks()
-                    .block("Once",
-                           Blocks() //
-                               .let(vs)
-                               .block("FS.Read", true)
-                               .block("Set", "vs_bytes")
-                               .let(fs)
-                               .block("FS.Read", true)
-                               .block("Set", "fs_bytes")
-                               .block("GFX.Shader", Var::ContextVar("vs_bytes"),
-                                      Var::ContextVar("fs_bytes"))
-                               .block("Set", "shader")
-                               .let(cubeVertices)
-                               .block("Set", "cube", "Vertices")
-                               .let(cubeIndices)
-                               .block("Set", "cube", "Indices")
-                               .block("Get", "cube")
-                               .block("GFX.Model", Var(layout))
-                               .block("Set", "cube-model"))
+                    .block(
+                        "Once",
+                        Blocks() //
+                            .let(vs)
+                            .block("FS.Read", true)
+                            .block("Set", "vs_bytes")
+                            .let(fs)
+                            .block("FS.Read", true)
+                            .block("Set", "fs_bytes")
+                            .block("GFX.Shader", Var::ContextVar("vs_bytes"),
+                                   Var::ContextVar("fs_bytes"))
+                            .block("Set", "shader")
+                            .let(cubeVertices)
+                            .block("Set", "cube", "Vertices")
+                            .let(cubeIndices)
+                            .block("Set", "cube", "Indices")
+                            .block("Get", "cube")
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
+                            .block("Set", "cube-model"))
                     .let(0.0, 0.0, 10.0)
                     .block("Set", "cam", "Position")
                     .let(0.0, 0.0, 0.0)
@@ -531,7 +561,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .GFX_SetUniform("u_lightPosRadius", 4)
@@ -617,7 +649,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .block("Push", "matricesX2")
@@ -705,7 +739,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .block("Push", "matricesX2")
@@ -792,7 +828,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)
@@ -878,7 +916,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)
@@ -963,7 +1003,9 @@ void testUniforms() {
                             .let(cubeIndices)
                             .block("Ref", "cube", "Indices")
                             .block("Get", "cube")
-                            .block("GFX.Model", Var(layout))
+                            .block("GFX.Model", Var(layout), false,
+                                   Var::Enum(BGFX::ModelHandle::CullMode::Front,
+                                             'sink', 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)

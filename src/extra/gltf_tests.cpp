@@ -270,9 +270,9 @@ void testLoad() {
       "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
       "blinn3-fx", 2.0);
 
-  testGLTFModel("Buggy-Text-NoBitangents",
-                "../external/glTF-Sample-Models/2.0/Buggy/glTF/Buggy.gltf",
-                100.0);
+  // testGLTFModel("Buggy-Text-NoBitangents",
+  //               "../external/glTF-Sample-Models/2.0/Buggy/glTF/Buggy.gltf",
+  //               100.0);
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
