@@ -169,10 +169,6 @@ struct Load : public BGFX::BaseConsumer {
   static CBTypesInfo outputTypes() { return ModelType; }
 
   static inline Parameters Params{
-      {"Bitangents",
-       CBCCSTR("If we should generate bitangents when loading the model, from "
-               "normals and tangent data. Default is true"),
-       {CoreInfo::BoolType}},
       {"Textures",
        CBCCSTR("If the textures linked to this model should be loaded."),
        {CoreInfo::BoolType}},
@@ -188,9 +184,6 @@ struct Load : public BGFX::BaseConsumer {
 
   Model *_model{nullptr};
   TinyGLTF _loader;
-  size_t _fileNameHash;
-  LastWriteTime _fileLastWrite;
-  bool _bitangents{false};
   bool _srgb{false};
   bool _withTextures{true};
   bool _withShaders{true};
@@ -265,15 +258,12 @@ struct Load : public BGFX::BaseConsumer {
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
-      _bitangents = value.payload.boolValue;
-      break;
-    case 1:
       _withTextures = value.payload.boolValue;
       break;
-    case 2:
+    case 1:
       _srgb = value.payload.boolValue;
       break;
-    case 3:
+    case 2:
       _withShaders = value.payload.boolValue;
       break;
     default:
@@ -284,12 +274,10 @@ struct Load : public BGFX::BaseConsumer {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_bitangents);
-    case 1:
       return Var(_withTextures);
-    case 2:
+    case 1:
       return Var(_srgb);
-    case 3:
+    case 2:
       return Var(_withShaders);
     default:
       throw InvalidParameterIndex();
@@ -452,7 +440,6 @@ struct Load : public BGFX::BaseConsumer {
       const auto filename = input.payload.stringValue;
       fs::path filepath(filename);
       const auto &ext = filepath.extension();
-      const auto hash = std::hash<std::string_view>()(filename);
 
       if (!fs::exists(filepath)) {
         throw ActivationError("GLTF model file does not exist.");
@@ -464,8 +451,6 @@ struct Load : public BGFX::BaseConsumer {
       }
       _model = ModelVar.New();
 
-      _fileNameHash = hash;
-      _fileLastWrite = fs::last_write_time(filepath);
       if (ext == ".glb") {
         success = _loader.LoadBinaryFromFile(&gltf, &err, &warn, filename);
       } else {
@@ -538,12 +523,7 @@ struct Load : public BGFX::BaseConsumer {
                       accessors.emplace_back(bgfx::Attrib::Tangent,
                                              gltf.accessors[attributeIdx]);
                       shaderDefines.insert("CB_HAS_TANGENT");
-                      if (_bitangents) {
-                        vertexSize += sizeof(float) * 6;
-                        shaderDefines.insert("CB_HAS_BITANGENT");
-                      } else {
-                        vertexSize += sizeof(float) * 4;
-                      }
+                      vertexSize += sizeof(float) * 4;
                     } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
                       int strIndex = std::stoi(attributeName.substr(9));
                       if (strIndex >= 8) {
@@ -585,9 +565,6 @@ struct Load : public BGFX::BaseConsumer {
                     const auto totalSize = uint32_t(vertexCount) * vertexSize;
                     auto vbuffer = bgfx::alloc(totalSize);
                     auto offsetSize = 0;
-                    // store normals to generate bitangents
-                    std::vector<Vec3> normals;
-                    normals.resize(vertexCount);
                     prims.layout.begin();
                     for (const auto &[attrib, accessorRef] : accessors) {
                       const auto &accessor = accessorRef.get();
@@ -598,7 +575,8 @@ struct Load : public BGFX::BaseConsumer {
                                            accessor.byteOffset;
                       const auto stride = accessor.ByteStride(view);
                       switch (attrib) {
-                      case bgfx::Attrib::Position: {
+                      case bgfx::Attrib::Position:
+                      case bgfx::Attrib::Normal: {
                         const auto size = sizeof(float) * 3;
                         auto vbufferOffset = offsetSize;
                         offsetSize += size;
@@ -606,8 +584,9 @@ struct Load : public BGFX::BaseConsumer {
                         if (accessor.componentType !=
                                 TINYGLTF_COMPONENT_TYPE_FLOAT ||
                             accessor.type != TINYGLTF_TYPE_VEC3) {
-                          throw ActivationError("Position vector data was not "
-                                                "a float32 vector of 3");
+                          throw ActivationError(
+                              "Position/Normal vector data was not "
+                              "a float32 vector of 3");
                         }
 
                         size_t idx = 0;
@@ -624,16 +603,18 @@ struct Load : public BGFX::BaseConsumer {
                         // also update layout
                         prims.layout.add(attrib, 3, bgfx::AttribType::Float);
                       } break;
-                      case bgfx::Attrib::Normal: {
-                        const auto size = sizeof(float) * 3;
+                        break;
+                      case bgfx::Attrib::Tangent: {
+                        // w is handedness
+                        const auto size = sizeof(float) * 4;
                         auto vbufferOffset = offsetSize;
                         offsetSize += size;
 
                         if (accessor.componentType !=
                                 TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                            accessor.type != TINYGLTF_TYPE_VEC3) {
-                          throw ActivationError("Normal vector data was not a "
-                                                "float32 vector of 3");
+                            accessor.type != TINYGLTF_TYPE_VEC4) {
+                          throw ActivationError("Tangent vector data was not a "
+                                                "float32 vector of 4");
                         }
 
                         size_t idx = 0;
@@ -642,93 +623,13 @@ struct Load : public BGFX::BaseConsumer {
                           const float *chunk = (float *)&(*it);
                           memcpy(vbuffer->data + vbufferOffset, chunk, size);
 
-                          normals[idx].x = chunk[0];
-                          normals[idx].y = chunk[1];
-                          normals[idx].z = chunk[2];
-
                           vbufferOffset += vertexSize;
                           it += stride;
                           idx++;
                         }
 
                         // also update layout
-                        prims.layout.add(attrib, 3, bgfx::AttribType::Float);
-                      } break;
-                      case bgfx::Attrib::Tangent: {
-                        if (_bitangents) {
-                          const auto gsize = sizeof(float) * 4;
-                          const auto osize = sizeof(float) * 6;
-                          const auto ssize = sizeof(float) * 3;
-                          auto vbufferOffset = offsetSize;
-                          offsetSize += osize;
-
-                          if (accessor.componentType !=
-                                  TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                              accessor.type != TINYGLTF_TYPE_VEC4) {
-                            throw ActivationError(
-                                "Tangent vector data was not a "
-                                "float32 vector of 4");
-                          }
-
-                          if (normals.size() == 0) {
-                            throw ActivationError(
-                                "Got Tangent without normals");
-                          }
-
-                          size_t idx = 0;
-                          auto it = dataBeg;
-                          while (idx < vertexCount) {
-                            const float *chunk = (float *)&(*it);
-                            memcpy(vbuffer->data + vbufferOffset, chunk, gsize);
-
-                            auto &normal = normals[idx];
-                            Vec3 tangent(chunk[0], chunk[1], chunk[2]);
-                            float w = chunk[3];
-                            auto bitangent =
-                                linalg::cross(linalg::normalize(normal),
-                                              linalg::normalize(tangent)) *
-                                w;
-                            memcpy(vbuffer->data + vbufferOffset + ssize,
-                                   &bitangent[0], ssize);
-
-                            vbufferOffset += vertexSize;
-                            it += stride;
-                            idx++;
-                          }
-
-                          // also update layout
-                          prims.layout.add(bgfx::Attrib::Tangent, 3,
-                                           bgfx::AttribType::Float);
-                          prims.layout.add(bgfx::Attrib::Bitangent, 3,
-                                           bgfx::AttribType::Float);
-                        } else {
-                          // w is handedness
-                          const auto size = sizeof(float) * 4;
-                          auto vbufferOffset = offsetSize;
-                          offsetSize += size;
-
-                          if (accessor.componentType !=
-                                  TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                              accessor.type != TINYGLTF_TYPE_VEC4) {
-                            throw ActivationError(
-                                "Tangent vector data was not a "
-                                "float32 vector of 4");
-                          }
-
-                          size_t idx = 0;
-                          auto it = dataBeg;
-                          while (idx < vertexCount) {
-                            const float *chunk = (float *)&(*it);
-                            memcpy(vbuffer->data + vbufferOffset, chunk, size);
-
-                            vbufferOffset += vertexSize;
-                            it += stride;
-                            idx++;
-                          }
-
-                          // also update layout
-                          prims.layout.add(attrib, 4, bgfx::AttribType::Float);
-                        }
+                        prims.layout.add(attrib, 4, bgfx::AttribType::Float);
                       } break;
                       case bgfx::Attrib::Color0:
                       case bgfx::Attrib::Color1:

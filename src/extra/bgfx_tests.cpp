@@ -1065,8 +1065,10 @@ void testShaderCompiler() {
     auto codestr = codebuffer.str();
 
     auto compiler = makeShaderCompiler();
-    auto bytes = compiler->compile(
-        vastr, codestr, "v", "CB_HAS_NORMAL;CB_HAS_TANGENT;CB_HAS_TEXCOORD_0");
+    auto bytes =
+        compiler->compile(vastr, codestr, "v",
+                          "CB_HAS_NORMAL;CB_HAS_TANGENT;CB_"
+                          "HAS_TEXCOORD_0;CB_HAS_TEXCOORD_1;CB_HAS_COLOR_0");
     REQUIRE(bytes.payload.bytesSize > 0);
   }
 }

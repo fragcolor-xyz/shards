@@ -23,17 +23,13 @@ void main() {
 
 #ifdef CB_HAS_NORMAL
 	vec4 normal = a_normal * 2.0 - 1.0;
-	vec3 wnormal = mul(u_model[0], vec4(normal.xyz, 0.0) ).xyz;
+	vec3 wnormal = mul(u_model[0], vec4(normal.xyz, 0.0)).xyz;
 	v_normal = normalize(wnormal);
 #ifdef CB_HAS_TANGENT
 	vec4 tangent = a_tangent * 2.0 - 1.0;
-	vec3 wtangent = mul(u_model[0], vec4(tangent.xyz, 0.0) ).xyz;
+	vec3 wtangent = mul(u_model[0], vec4(tangent.xyz, 0.0)).xyz;
 	v_tangent = normalize(wtangent);
-#ifdef CB_HAS_BITANGENT
-	v_bitangent = a_bitangent * 2.0 - 1.0;
-#else
 	v_bitangent = cross(v_normal, v_tangent) * tangent.w;
-#endif
 	mat3 tbn = mtx3FromCols(v_tangent, v_bitangent, v_normal);
 	// eye position in world space
 	vec3 weyepos = mul(vec4(0.0, 0.0, 0.0, 1.0), u_view).xyz;
