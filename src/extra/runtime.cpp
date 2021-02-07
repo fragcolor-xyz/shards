@@ -37,6 +37,9 @@ extern void registerBlocks();
 extern "C" void registerRustBlocks(CBCore *core);
 
 void cbInitExtras() {
+  Snappy::registerBlocks();
+  Brotli::registerBlocks();
+  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
   XR::registerBlocks();
@@ -44,8 +47,5 @@ void cbInitExtras() {
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
-  Snappy::registerBlocks();
-  Brotli::registerBlocks();
-  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
 }
 }; // namespace chainblocks
