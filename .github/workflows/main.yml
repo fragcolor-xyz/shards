@@ -183,10 +183,16 @@ jobs:
       run: |
         git submodule update --init --recursive
         sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
+        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils unzip
         rustup update
         mkdir external && cd external
         git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
+        cd -
+        mkdir -p build/shaders/include
+        cd build/shaders
+        wget https://github.com/sinkingsugar/chainblocks/files/5938139/shadercRelease.zip
+        unzip shadercRelease.zip
+        cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
     - name: Build
       run: |
         mkdir build

@@ -57,7 +57,7 @@ TEST_CASE("GFX-Uniforms", "[gfx]") {
   BGFX_Tests::testUniforms();
 }
 
-TEST_CASE("GFX-ShaderCompiler", "[!mayfail]") {
+TEST_CASE("GFX-ShaderCompiler", "[gfx]") { //[!mayfail]
   BGFX_Tests::testShaderCompiler();
 }
 
