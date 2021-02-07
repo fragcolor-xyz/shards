@@ -81,7 +81,20 @@ struct Run {
       auto argsVar = _arguments.get();
       if (argsVar.valueType == Seq) {
         for (auto &arg : argsVar) {
-          argsArray.emplace_back(arg.payload.stringValue);
+          if (arg.payload.stringLen > 0) {
+            argsArray.emplace_back(arg.payload.stringValue,
+                                   arg.payload.stringLen);
+          } else {
+            // if really empty likely it's an error (also windows will fail
+            // converting to utf16) if not maybe the string just didn't have len
+            // set
+            if (strlen(arg.payload.stringValue) == 0) {
+              throw ActivationError(
+                  "Empty argument passed, this most likely is a mistake.");
+            } else {
+              argsArray.emplace_back(arg.payload.stringValue);
+            }
+          }
         }
       }
 

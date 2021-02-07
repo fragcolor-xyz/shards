@@ -1218,20 +1218,40 @@ struct Run {
         auto argsVar = _arguments.get();
         if (argsVar.valueType == Seq) {
           for (auto &arg : argsVar) {
-            _argsArray.push_back(arg.payload.stringValue);
+            if (arg.payload.stringLen > 0) {
+              _argsArray.emplace_back(arg.payload.stringValue);
+            } else {
+              // if really empty likely it's an error
+              if (strlen(arg.payload.stringValue) == 0) {
+                throw ActivationError(
+                    "Empty argument passed, this most likely is a mistake.");
+              } else {
+                _argsArray.emplace_back(arg.payload.stringValue);
+              }
+            }
           }
         }
 
         result = m3_CallWithArgs(_mainFunc, _argsArray.size(), &_argsArray[0]);
       } else {
-        // assume _stary wasi
+        // assume wasi
         _data.args.clear();
         _data.args.push_back(_moduleFileName.c_str());
         // add any arguments we have
         auto argsVar = _arguments.get();
         if (argsVar.valueType == Seq) {
           for (auto &arg : argsVar) {
-            _data.args.push_back(arg.payload.stringValue);
+            if (arg.payload.stringLen > 0) {
+              _data.args.emplace_back(arg.payload.stringValue);
+            } else {
+              // if really empty likely it's an error
+              if (strlen(arg.payload.stringValue) == 0) {
+                throw ActivationError(
+                    "Empty argument passed, this most likely is a mistake.");
+              } else {
+                _data.args.emplace_back(arg.payload.stringValue);
+              }
+            }
           }
         }
 

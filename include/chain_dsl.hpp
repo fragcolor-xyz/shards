@@ -11,6 +11,8 @@
 #define DefChain(_name) auto _name = chainblocks::Chain(#_name)
 #define Looped() looped(true)
 
+#define None() .let(Var::Empty)
+
 #define Input() block("Input")
 
 #define Set(_name) .block("Set", #_name)
@@ -23,9 +25,13 @@
   block("Get", #_name, _key, false, false, _default)
 #define Push(_name) .block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
+#define Count(_name) block("Count", #_name)
 
 #define If(_condition, _then, _else)                                           \
   block("If", Blocks()._condition, Blocks()._then, Blocks()._else)
+#define When(_condition, _then)                                                \
+  block("When", Blocks()._condition, Blocks()._then)
+#define Match()
 #define Is(_value) block("Is", _value)
 #define IsNot(_value) block("IsNot", _value)
 #define Maybe(_do, _else) block("Maybe", Blocks()._do, Blocks()._else)
