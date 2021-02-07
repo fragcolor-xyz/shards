@@ -74,11 +74,13 @@ struct ShaderCompiler : public IShaderCompiler {
         .Take(3) Ref(defines)
         // also fill the hash data sequence
         Push(shader_hashing)
+        // also add platform specifics
+        .Platform_Name() Push(shader_hashing)
+        .Shader_Model() Push(shader_hashing)
         // hash the shader code and other parameters
         .Get(shader_hashing)
         .Hash()
-        .ToHex()
-        .ToString() Set(shader_hash_filename)
+        .ToHex() Set(shader_hash_filename)
         .let("shaders/cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
         .Maybe( // try to load from cache
