@@ -54,7 +54,8 @@
          (GFX.Texture2D) >> .bump-textures
          cube (GFX.Model
                :Layout [VertexAttribute.Position
-                        VertexAttribute.Color0]) >= .cube
+                        VertexAttribute.Color0]
+               :CullMode CullMode.Front) >= .cube
          (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
          (FS.Read :Bytes true) >= .vs_bytes
          (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
@@ -111,7 +112,7 @@
                                        {"Position" (Float3 5 5 5)
                                         "Target" (Float3 0 0 0)} (GFX.Camera)
                                        ; this model is not really idea, vertex layout is not correct
-                                       identity (GFX.Draw :Shader .bump-shader 
+                                       identity (GFX.Draw :Shader .bump-shader
                                                           :Textures .bump-textures
                                                           :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
@@ -124,6 +125,16 @@
                                        nil (GFX.CameraOrtho) ; to set only projection
                                        ; no model means full screen quad
                                        identity (GFX.Draw :Shader .shader)))
+                   (GUI.Image (Float2 1.0 1.0))
+
+                   (GFX.RenderTexture 64 64
+                                      (->
+                                       ; render the model
+                                       {"Position" (Float3 0 0 2)
+                                        "Target" (Float3 0 0 0)} (GFX.Camera)
+                                       ; this model is not really idea, vertex layout is not correct
+                                       identity (GFX.Draw :Shader .shader
+                                                          :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
 
                    (GUI.ChildWindow

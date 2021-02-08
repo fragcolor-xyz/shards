@@ -2100,24 +2100,24 @@ struct Draw : public BaseConsumer {
         if constexpr (CurrentRenderer == Renderer::OpenGL) {
           // workaround for flipped Y render to textures
           if (currentView.id > 0) {
-            state |= BGFX_STATE_CULL_CCW;
-          } else {
-            state |= BGFX_STATE_CULL_CW;
-          }
-        } else {
-          state |= BGFX_STATE_CULL_CW;
-        }
-      } break;
-      case ModelHandle::CullMode::Back: {
-        if constexpr (CurrentRenderer == Renderer::OpenGL) {
-          // workaround for flipped Y render to textures
-          if (currentView.id > 0) {
             state |= BGFX_STATE_CULL_CW;
           } else {
             state |= BGFX_STATE_CULL_CCW;
           }
         } else {
           state |= BGFX_STATE_CULL_CCW;
+        }
+      } break;
+      case ModelHandle::CullMode::Back: {
+        if constexpr (CurrentRenderer == Renderer::OpenGL) {
+          // workaround for flipped Y render to textures
+          if (currentView.id > 0) {
+            state |= BGFX_STATE_CULL_CCW;
+          } else {
+            state |= BGFX_STATE_CULL_CW;
+          }
+        } else {
+          state |= BGFX_STATE_CULL_CW;
         }
       } break;
       default:
