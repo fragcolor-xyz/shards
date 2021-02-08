@@ -46,7 +46,7 @@
 #endif
 
 #ifndef NDEBUG
-#define Verbose() let("--verbose") Push(args)
+#define Verbose() let("--verbose") Push(args).let("--disasm") Push(args)
 #else
 #define Verbose()
 #endif
