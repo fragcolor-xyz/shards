@@ -879,6 +879,12 @@ struct Load : public BGFX::BaseConsumer {
                       prims.stateFlags = BGFX_STATE_PT_TRISTRIP;
                     }
 
+                    const auto determinant =
+                        linalg::determinant(node.transform);
+                    if (determinant < 0.0) {
+                      prims.stateFlags |= BGFX_STATE_FRONT_CCW;
+                    }
+
                     if (glprims.material != -1) {
                       prims.material =
                           _model->gfxMaterials.emplace_back(processMaterial(

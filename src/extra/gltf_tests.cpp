@@ -35,32 +35,32 @@ const auto fs =
     "../deps/bgfx/examples/runtime/shaders/" SHADERS_FOLDER "/fs_bump.bin";
 
 void testGLTFModel(CBString name, CBString modelPath, CBString colorPath,
-                   CBString normalPath, CBString matName, float camScale) {
+                   CBString normalPath, CBString matName, Var camera_pos) {
   SECTION(name) {
     DefChain(test_chain)
         .Looped()
-        .GFX_MainWindow(
-            "window",
-            Once(let(modelPath)
-                     .GLTF_Load_NoShaders() Ref(model)
-                     .Log()
-                     .LoadImage(colorPath)
-                     .GFX_Texture2D() Push(textures)
-                     .LoadImage(normalPath)
-                     .GFX_Texture2D() Push(textures)
-                     .let(vs)
-                     .FS_Read_Bytes() Ref(vs_bytes)
-                     .let(fs)
-                     .FS_Read_Bytes() Ref(fs_bytes)
-                     .GFX_Shader(vs_bytes, fs_bytes) RefTable(mat1, "Shader")
-                     .Get(textures) RefTable(mat1, "Textures")
-                     .Get(mat1) RefTable(mats, matName))
-                .let(camScale, camScale, camScale) RefTable(cam, "Position")
-                .let(0.0, 0.0, 0.0) RefTable(cam, "Target")
-                .Get(cam)
-                .GFX_Camera()
-                .let(identity)
-                .GLTF_Draw_WithMaterials(model, mats));
+        .GFX_MainWindow("window",
+                        Once(let(modelPath)
+                                 .GLTF_Load_NoShaders() Ref(model)
+                                 .Log()
+                                 .LoadImage(colorPath)
+                                 .GFX_Texture2D() Push(textures)
+                                 .LoadImage(normalPath)
+                                 .GFX_Texture2D() Push(textures)
+                                 .let(vs)
+                                 .FS_Read_Bytes() Ref(vs_bytes)
+                                 .let(fs)
+                                 .FS_Read_Bytes() Ref(fs_bytes)
+                                 .GFX_Shader(vs_bytes, fs_bytes)
+                                     RefTable(mat1, "Shader")
+                                 .Get(textures) RefTable(mat1, "Textures")
+                                 .Get(mat1) RefTable(mats, matName))
+                            .let(camera_pos) RefTable(cam, "Position")
+                            .let(0.0, 0.0, 0.0) RefTable(cam, "Target")
+                            .Get(cam)
+                            .GFX_Camera()
+                            .let(identity)
+                            .GLTF_Draw_WithMaterials(model, mats));
     auto node = CBNode::make();
     node->schedule(test_chain);
     auto count = 100;
@@ -76,27 +76,27 @@ void testGLTFModel(CBString name, CBString modelPath, CBString colorPath,
 }
 
 void testGLTFModel(CBString name, CBString modelPath, CBString matName,
-                   float camScale) {
+                   Var camera_pos) {
   SECTION(name) {
     DefChain(test_chain)
         .Looped()
-        .GFX_MainWindow(
-            "window",
-            Once(let(modelPath)
-                     .GLTF_Load_NoShaders() Ref(model)
-                     .Log()
-                     .let(vs)
-                     .FS_Read_Bytes() Ref(vs_bytes)
-                     .let(fs)
-                     .FS_Read_Bytes() Ref(fs_bytes)
-                     .GFX_Shader(vs_bytes, fs_bytes) RefTable(mat1, "Shader")
-                     .Get(mat1) RefTable(mats, matName))
-                .let(camScale, camScale, camScale) RefTable(cam, "Position")
-                .let(0.0, 0.0, 0.0) RefTable(cam, "Target")
-                .Get(cam)
-                .GFX_Camera()
-                .let(identity)
-                .GLTF_Draw_WithMaterials(model, mats));
+        .GFX_MainWindow("window", Once(let(modelPath)
+                                           .GLTF_Load_NoShaders() Ref(model)
+                                           .Log()
+                                           .let(vs)
+                                           .FS_Read_Bytes() Ref(vs_bytes)
+                                           .let(fs)
+                                           .FS_Read_Bytes() Ref(fs_bytes)
+                                           .GFX_Shader(vs_bytes, fs_bytes)
+                                               RefTable(mat1, "Shader")
+                                           .Get(mat1) RefTable(mats, matName))
+                                      .let(camera_pos) RefTable(cam, "Position")
+                                      .let(0.0, 0.0, 0.0)
+                                          RefTable(cam, "Target")
+                                      .Get(cam)
+                                      .GFX_Camera()
+                                      .let(identity)
+                                      .GLTF_Draw_WithMaterials(model, mats));
     auto node = CBNode::make();
     node->schedule(test_chain);
     auto count = 100;
@@ -111,14 +111,13 @@ void testGLTFModel(CBString name, CBString modelPath, CBString matName,
   }
 }
 
-void testGLTFModel(CBString name, CBString modelPath, float camScale) {
+void testGLTFModel(CBString name, CBString modelPath, Var camera_pos) {
   SECTION(name) {
     DefChain(test_chain)
         .Looped()
         .GFX_MainWindow("window",
                         Once(let(modelPath).GLTF_Load() Ref(model).Log())
-                            .let(camScale, camScale, camScale)
-                                RefTable(cam, "Position")
+                            .let(camera_pos) RefTable(cam, "Position")
                             .let(0.0, 0.0, 0.0) RefTable(cam, "Target")
                             .Get(cam)
                             .GFX_Camera()
@@ -220,27 +219,28 @@ void testLoad() {
 
   testGLTFModel("Cube-Text", "../deps/tinygltf/models/Cube/Cube.gltf",
                 "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga",
-                "../deps/bgfx/examples/06-bump/fieldstone-n.tga", "Cube", 10.0);
+                "../deps/bgfx/examples/06-bump/fieldstone-n.tga", "Cube",
+                Var(10.0, 10.0, 10.0));
 
   testGLTFModel(
       "Avocado-Bin",
       "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
-      "2256_Avocado_d", 0.1);
+      "2256_Avocado_d", Var(0.1, 0.1, 0.1));
 
   testGLTFModel(
       "Duck-Text", "../external/glTF-Sample-Models/2.0/Duck/glTF/Duck.gltf",
       "../external/glTF-Sample-Models/2.0/Duck/glTF/DuckCM.png",
       "../external/glTF-Sample-Models/2.0/Avocado/glTF/Avocado_normal.png",
-      "blinn3-fx", 2.0);
+      "blinn3-fx", Var(2.0, 2.0, 2.0));
 
   testGLTFModel("Buggy-Text",
                 "../external/glTF-Sample-Models/2.0/Buggy/glTF/Buggy.gltf",
-                100.0);
+                Var(100.0, 100.0, 100.0));
 
   testGLTFModel("BoxVertexColors-Text",
                 "../external/glTF-Sample-Models/2.0/BoxVertexColors/glTF/"
                 "BoxVertexColors.gltf",
-                1.0);
+                Var(0.0, 0.0, 2.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
