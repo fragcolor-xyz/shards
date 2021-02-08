@@ -45,6 +45,12 @@
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
 #endif
 
+#ifndef NDEBUG
+#define Verbose() let("--verbose") Push(args)
+#else
+#define Verbose()
+#endif
+
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
 
 #define Compile_Shader(_type)
@@ -115,7 +121,9 @@ struct ShaderCompiler : public IShaderCompiler {
                 .When(IsNot(0),
                       let("--define") Push(args) //
                           .Get(defines) Push(args))
+                .Verbose()
                 .Shaderc_Command(args)
+                .Log()
                 // read the temporary binary file result
                 .let("shaders/tmp/shader.bin")
                 .FS_Read_Bytes() Ref(shader_bytecode)
