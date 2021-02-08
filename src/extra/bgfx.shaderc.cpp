@@ -48,7 +48,7 @@
 #ifndef NDEBUG
 #define Verbose() let("--verbose") Push(args).let("--disasm") Push(args)
 #else
-#define Verbose()
+#define Verbose() Noop()
 #endif
 
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
