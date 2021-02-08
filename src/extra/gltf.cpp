@@ -31,9 +31,8 @@ using namespace tinygltf;
 #undef Model
 
 /*
-TODO:
-GLTF.Draw - depending on GFX blocks
-GLTF.Simulate - depending on physics simulation blocks
+TODO: GLTF.Simulate - depending on physics simulation blocks
+TODO; GLTF.Animate - to play animations
 */
 namespace chainblocks {
 namespace gltf {
@@ -173,8 +172,8 @@ struct Load : public BGFX::BaseConsumer {
        CBCCSTR("If the textures linked to this model should be loaded."),
        {CoreInfo::BoolType}},
       {"sRGB",
-       CBCCSTR("If the textures should be loaded as an sRGB format (only valid "
-               "for 8 bit per color textures)."),
+       CBCCSTR("If diffuse color textures should be loaded as an sRGB format "
+               "(only valid for 8 bit per color textures)."),
        {CoreInfo::BoolType}},
       {"Shaders",
        CBCCSTR("If the shaders linked to this model should be compiled and/or "
@@ -291,8 +290,8 @@ struct Load : public BGFX::BaseConsumer {
     }
   }
 
-  std::shared_ptr<GFXTexture> getOrLoadTexture(const GLTFModel &gltf,
-                                               const Texture &gltexture) {
+  std::shared_ptr<GFXTexture>
+  getOrLoadTexture(const GLTFModel &gltf, const Texture &gltexture, bool srgb) {
     if (_withTextures && gltexture.source != -1) {
       const auto &image = gltf.images[gltexture.source];
       const auto imgHash = TextureCache::hashTexture(gltexture, image);
@@ -301,7 +300,7 @@ struct Load : public BGFX::BaseConsumer {
         texture = std::make_shared<GFXTexture>(uint16_t(image.width),
                                                uint16_t(image.height));
 
-        BGFX_TEXTURE2D_CREATE(image.bits, image.component, texture, _srgb);
+        BGFX_TEXTURE2D_CREATE(image.bits, image.component, texture, srgb);
 
         auto mem = bgfx::copy(image.image.data(), image.image.size());
         bgfx::updateTexture2D(texture->handle, 0, 0, 0, 0, texture->width,
@@ -329,9 +328,10 @@ struct Load : public BGFX::BaseConsumer {
     }
 
     if (glmaterial.pbrMetallicRoughness.baseColorTexture.index != -1) {
-      material.baseColorTexture =
-          getOrLoadTexture(gltf, gltf.textures[glmaterial.pbrMetallicRoughness
-                                                   .baseColorTexture.index]);
+      material.baseColorTexture = getOrLoadTexture(
+          gltf,
+          gltf.textures[glmaterial.pbrMetallicRoughness.baseColorTexture.index],
+          _srgb);
       shaderDefines.insert("CB_PBR_COLOR_TEXTURE");
     }
     const auto colorFactorSize =
@@ -347,15 +347,17 @@ struct Load : public BGFX::BaseConsumer {
     material.metallicFactor = glmaterial.pbrMetallicRoughness.metallicFactor;
     material.roughnessFactor = glmaterial.pbrMetallicRoughness.roughnessFactor;
     if (glmaterial.pbrMetallicRoughness.metallicRoughnessTexture.index != -1) {
-      material.metallicRoughnessTexture = getOrLoadTexture(
-          gltf, gltf.textures[glmaterial.pbrMetallicRoughness
-                                  .metallicRoughnessTexture.index]);
+      material.metallicRoughnessTexture =
+          getOrLoadTexture(gltf,
+                           gltf.textures[glmaterial.pbrMetallicRoughness
+                                             .metallicRoughnessTexture.index],
+                           false);
       shaderDefines.insert("CB_PBR_METALLIC_ROUGHNESS_TEXTURE");
     }
 
     if (glmaterial.normalTexture.index != -1) {
-      material.normalTexture =
-          getOrLoadTexture(gltf, gltf.textures[glmaterial.normalTexture.index]);
+      material.normalTexture = getOrLoadTexture(
+          gltf, gltf.textures[glmaterial.normalTexture.index], false);
       shaderDefines.insert("CB_NORMAL_TEXTURE");
     }
 
