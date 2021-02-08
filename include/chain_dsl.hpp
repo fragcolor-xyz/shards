@@ -14,7 +14,7 @@
 #define None() .let(Var::Empty)
 
 #define Input() block("Input")
-#define Noop() block("Noop")
+#define Pass() block("Pass")
 
 #define Set(_name) .block("Set", #_name)
 #define Ref(_name) .block("Ref", #_name)
