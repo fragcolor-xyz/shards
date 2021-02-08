@@ -28,8 +28,8 @@
 #define Shader_Model() let("metal")
 #elif defined(__linux__)
 #if (BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION == 33)
-// headless tests run at version 3.3 due to xvfb limitations
-#define Shader_Model() let("330")
+// headless tests run at version 150 due to xvfb limitations
+#define Shader_Model() let("150")
 #else
 #define Shader_Model() let("430")
 #endif
