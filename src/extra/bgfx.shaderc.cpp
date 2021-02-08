@@ -51,6 +51,7 @@
 #define Debug_Print() Ref(bin_path).FS_Read().Log().Get(bin_path)
 #else
 #define Debug_Print()
+#endif
 #else
 #define Debug_Print()
 #endif
