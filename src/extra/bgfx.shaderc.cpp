@@ -27,7 +27,12 @@
 #elif defined(__APPLE__)
 #define Shader_Model() let("metal")
 #elif defined(__linux__)
+#if BGFX_OPENGL_VERSION == 33
+// headless tests run at version 3.3 due to xvfb limitations
+#define Shader_Model() let("330")
+#else
 #define Shader_Model() let("430")
+#endif
 #elif defined(__EMSCRIPTEN__)
 #define Shader_Model() let("300_es")
 #endif
