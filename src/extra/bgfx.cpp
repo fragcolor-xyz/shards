@@ -1844,7 +1844,7 @@ struct CameraOrtho : public CameraBase {
 
     float proj[16];
     bx::mtxOrtho(proj, _left, _right, _bottom, _top, _near, _far, 0.0,
-                 bgfx::getCaps()->homogeneousDepth);
+                 bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
       // workaround for flipped Y render to textures

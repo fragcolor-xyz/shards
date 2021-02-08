@@ -54,8 +54,7 @@
          (GFX.Texture2D) >> .bump-textures
          cube (GFX.Model
                :Layout [VertexAttribute.Position
-                        VertexAttribute.Color0]
-               :CullMode CullMode.Front) >= .cube
+                        VertexAttribute.Color0]) >= .cube
          (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
          (FS.Read :Bytes true) >= .vs_bytes
          (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
