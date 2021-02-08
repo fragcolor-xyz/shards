@@ -1,4 +1,4 @@
-$input v_wpos, v_view, v_normal, v_tangent, v_bitangent, v_texcoord0// in...
+$input v_normal, v_tangent, v_bitangent, v_texcoord0, v_texcoord1, v_color0, v_wpos, v_view
 
 /*
  * Copyright 2011-2021 Branimir Karadzic. All rights reserved.
@@ -68,9 +68,14 @@ void main()
 {
 	mat3 tbn = mtx3FromCols(v_tangent, v_bitangent, v_normal);
 
+#ifdef CB_NORMAL_TEXTURE
 	vec3 normal;
 	normal.xy = texture2D(s_texNormal, v_texcoord0).xy * 2.0 - 1.0;
 	normal.z = sqrt(1.0 - dot(normal.xy, normal.xy) );
+#else
+	vec3 normal = v_normal;
+#endif
+
 	vec3 view = normalize(v_view);
 
 	vec3 lightColor;
@@ -79,7 +84,11 @@ void main()
 	lightColor += calcLight(2, tbn, v_wpos, normal, view);
 	lightColor += calcLight(3, tbn, v_wpos, normal, view);
 
-	vec4 color = toLinear(texture2D(s_texColor, v_texcoord0) );
+#ifdef CB_PBR_COLOR_TEXTURE
+	vec4 color = toLinear(texture2D(s_texColor, v_texcoord0) * v_color0);
+#else
+	vec4 color = toLinear(v_color0);
+#endif
 
 	gl_FragColor.xyz = max(vec3_splat(0.05), lightColor.xyz)*color.xyz;
 	gl_FragColor.w = 1.0;

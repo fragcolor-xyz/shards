@@ -46,6 +46,7 @@
 #define AppendTo(_var) .block("AppendTo", Var::ContextVar(#_var))
 
 #define FS_Read_Bytes() block("FS.Read", true)
+#define FS_Read() block("FS.Read")
 #define FS_Write_Overwriting(_contents)                                        \
   block("FS.Write", Var::ContextVar(#_contents), true)
 #ifdef LoadImage

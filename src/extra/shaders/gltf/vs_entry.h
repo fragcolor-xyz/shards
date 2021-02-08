@@ -1,5 +1,5 @@
-$input a_position, a_normal, a_tangent, a_bitangent, a_texcoord0, a_texcoord1, a_color0
-$output v_wpos, v_view, v_normal, v_tangent, v_bitangent, v_texcoord0, v_texcoord1, v_color0
+$input a_position, a_normal, a_tangent, a_texcoord0, a_texcoord1, a_color0
+$output v_normal, v_tangent, v_bitangent, v_texcoord0, v_texcoord1, v_color0, v_wpos, v_view
 
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2021 Giovanni Petrantoni */
@@ -16,6 +16,7 @@ mat3 mtx3FromCols(vec3 c0, vec3 c1, vec3 c2) {
 }
 
 void main() {
+	// this will need to become vec4 when we add anims and morphs and divide by .w
 	vec3 wpos = mul(u_model[0], vec4(a_position, 1.0) ).xyz;
 	v_wpos = wpos;
 

@@ -45,6 +45,16 @@
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
 #endif
 
+#ifndef NDEBUG
+#ifndef _WIN32
+// windows shaders are binary (also spirv but we don't use atm)
+#define Debug_Print() Ref(bin_path).FS_Read().Log().Get(bin_path)
+#else
+#define Debug_Print()
+#else
+#define Debug_Print()
+#endif
+
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
 
 #define Compile_Shader(_type)
@@ -117,7 +127,7 @@ struct ShaderCompiler : public IShaderCompiler {
                           .Get(defines) Push(args))
                 .Shaderc_Command(args)
                 // read the temporary binary file result
-                .let("shaders/tmp/shader.bin")
+                .let("shaders/tmp/shader.bin") Debug_Print()
                 .FS_Read_Bytes() Ref(shader_bytecode)
                 .Brotli_Compress() Ref(shader_bytecode_compressed)
                 .Get(shader_hash_filename)

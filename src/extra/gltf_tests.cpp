@@ -236,6 +236,11 @@ void testLoad() {
   testGLTFModel("Buggy-Text",
                 "../external/glTF-Sample-Models/2.0/Buggy/glTF/Buggy.gltf",
                 100.0);
+
+  testGLTFModel("BoxVertexColors-Text",
+                "../external/glTF-Sample-Models/2.0/BoxVertexColors/glTF/"
+                "BoxVertexColors.gltf",
+                1.0);
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
