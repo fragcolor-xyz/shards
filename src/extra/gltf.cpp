@@ -883,7 +883,7 @@ struct Load : public BGFX::BaseConsumer {
 
                     const auto determinant =
                         linalg::determinant(node.transform);
-                    if (determinant < 0.0) {
+                    if (!(determinant < 0.0)) {
                       prims.stateFlags |= BGFX_STATE_FRONT_CCW;
                     }
 
@@ -1078,7 +1078,7 @@ struct Draw : public BGFX::BaseConsumer {
                 state |= BGFX_STATE_CULL_CCW;
               }
             } else {
-              state |= BGFX_STATE_CULL_CCW;
+              state |= BGFX_STATE_CULL_CW;
             }
           }
 

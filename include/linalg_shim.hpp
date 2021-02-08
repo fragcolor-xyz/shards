@@ -23,6 +23,21 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
+  template <typename NUMBER>
+  static Mat4 FromArray(const std::array<NUMBER, 16> &mat) {
+    // used by gltf
+    assert(mat.size() == 16);
+    int idx = 0;
+    Mat4 res;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        res[i][j] = float(mat[idx]);
+        idx++;
+      }
+    }
+    return res;
+  }
+
   Mat4 &operator=(linalg::aliases::float4x4 &&mat) {
     (*this)[0] = std::move(mat[0]);
     (*this)[1] = std::move(mat[1]);

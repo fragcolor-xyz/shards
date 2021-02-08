@@ -241,6 +241,11 @@ void testLoad() {
                 "../external/glTF-Sample-Models/2.0/BoxVertexColors/glTF/"
                 "BoxVertexColors.gltf",
                 Var(0.0, 0.0, 2.0));
+
+  testGLTFModel("TextureCoordinateTest-Text",
+                "../external/glTF-Sample-Models/2.0/TextureCoordinateTest/glTF/"
+                "TextureCoordinateTest.gltf",
+                Var(0.0, 0.0, 4.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks

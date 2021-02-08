@@ -1696,7 +1696,7 @@ struct Camera : public CameraBase {
       bx::Vec3 *bp =
           reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
       bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
-      bx::mtxLookAt(view, *bp, *bt);
+      bx::mtxLookAt(view, *bp, *bt, {0.0, 1.0, 0.0}, bx::Handness::Right);
     }
 
     int width = _width != 0 ? _width : currentView.width;
@@ -1704,7 +1704,7 @@ struct Camera : public CameraBase {
 
     float proj[16];
     bx::mtxProj(proj, _fov, float(width) / float(height), _near, _far,
-                bgfx::getCaps()->homogeneousDepth);
+                bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
       // workaround for flipped Y render to textures
