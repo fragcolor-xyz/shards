@@ -55,6 +55,8 @@
 #undef LoadImage
 #endif
 #define LoadImage(_imagePath) block("LoadImage", _imagePath)
+#define ToJson() block("ToJson")
+#define FromJson() block("FromJson")
 
 #define Process_Run(_cmd, _args)                                               \
   block("Process.Run", _cmd, Var::ContextVar(#_args))

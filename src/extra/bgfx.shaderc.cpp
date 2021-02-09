@@ -40,6 +40,14 @@
 #ifdef _WIN32
 #define Shaderc_Command(_args)                                                 \
   let("").Process_Run("shaders/shadercRelease.exe", _args)
+#elif defined(__EMSCRIPTEN__)
+#define Shaderc_Command(_args)                                                 \
+  Get(_args)                                                                   \
+      .ToJson() Set(_args_json)                                                \
+      .let("globalThis.chainblocks.compileShader(") PrependTo(_args_json)      \
+      .let(");") AppendTo(_args_json)                                          \
+      .Get(_args_json)                                                         \
+      .block("_Emscripten.EvalAsync")
 #else
 #define Shaderc_Command(_args)                                                 \
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
