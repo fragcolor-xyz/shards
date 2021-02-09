@@ -23,8 +23,8 @@ void main() {
 	gl_Position = mul(u_viewProj, vec4(wpos, 1.0) );
 
 #ifdef CB_HAS_NORMAL
-	vec4 normal = a_normal * 2.0 - 1.0;
-	vec3 wnormal = mul(u_model[0], vec4(normal.xyz, 0.0)).xyz;
+	vec3 normal = a_normal * 2.0 - 1.0;
+	vec3 wnormal = mul(u_model[0], vec4(normal, 0.0)).xyz;
 	v_normal = normalize(wnormal);
 #ifdef CB_HAS_TANGENT
 	vec4 tangent = a_tangent * 2.0 - 1.0;

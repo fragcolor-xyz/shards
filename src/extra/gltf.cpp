@@ -318,7 +318,8 @@ struct Load : public BGFX::BaseConsumer {
   }
 
   GFXMaterial processMaterial(const GLTFModel &gltf, const Material &glmaterial,
-                              std::unordered_set<std::string> &shaderDefines) {
+                              std::unordered_set<std::string> &shaderDefines,
+                              const std::string &varyings) {
     GFXMaterial material{glmaterial.name,
                          std::hash<std::string_view>()(glmaterial.name),
                          glmaterial.doubleSided};
@@ -370,46 +371,11 @@ struct Load : public BGFX::BaseConsumer {
       auto shader = _shadersCache().find(hash);
       if (!shader) {
         // compile or fetch cached shaders
-        // lazily fill out varying and entry point shaders
-        if (_shadersVarying.size() == 0) {
-          std::unique_lock lock(_shadersMutex);
-          // check again after unlock
-          if (_shadersVarying.size() == 0) {
-            auto failed = false;
-            {
-              std::ifstream stream("shaders/lib/gltf/varying.txt");
-              if (!stream.is_open())
-                failed = true;
-              std::stringstream buffer;
-              buffer << stream.rdbuf();
-              _shadersVarying.assign(buffer.str());
-            }
-            {
-              std::ifstream stream("shaders/lib/gltf/vs_entry.h");
-              if (!stream.is_open())
-                failed = true;
-              std::stringstream buffer;
-              buffer << stream.rdbuf();
-              _shadersVSEntry.assign(buffer.str());
-            }
-            {
-              std::ifstream stream("shaders/lib/gltf/ps_entry.h");
-              if (!stream.is_open())
-                failed = true;
-              std::stringstream buffer;
-              buffer << stream.rdbuf();
-              _shadersPSEntry.assign(buffer.str());
-            }
-            if (failed) {
-              LOG(FATAL) << "shaders library is missing";
-            }
-          }
-        }
         // vertex
         bgfx::ShaderHandle vsh;
         {
-          auto bytecode = _shaderCompiler->compile(
-              _shadersVarying, _shadersVSEntry, "v", shaderDefinesStr);
+          auto bytecode = _shaderCompiler->compile(varyings, _shadersVSEntry,
+                                                   "v", shaderDefinesStr);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           vsh = bgfx::createShader(mem);
@@ -417,8 +383,8 @@ struct Load : public BGFX::BaseConsumer {
         // pixel
         bgfx::ShaderHandle psh;
         {
-          auto bytecode = _shaderCompiler->compile(
-              _shadersVarying, _shadersPSEntry, "f", shaderDefinesStr);
+          auto bytecode = _shaderCompiler->compile(varyings, _shadersPSEntry,
+                                                   "f", shaderDefinesStr);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
@@ -431,6 +397,44 @@ struct Load : public BGFX::BaseConsumer {
     }
 
     return material;
+  }
+
+  void warmup(CBContext *ctx) {
+    // lazily fill out varying and entry point shaders
+    if (_shadersVarying.size() == 0) {
+      std::unique_lock lock(_shadersMutex);
+      // check again after unlock
+      if (_shadersVarying.size() == 0) {
+        auto failed = false;
+        {
+          std::ifstream stream("shaders/lib/gltf/varying.txt");
+          if (!stream.is_open())
+            failed = true;
+          std::stringstream buffer;
+          buffer << stream.rdbuf();
+          _shadersVarying.assign(buffer.str());
+        }
+        {
+          std::ifstream stream("shaders/lib/gltf/vs_entry.h");
+          if (!stream.is_open())
+            failed = true;
+          std::stringstream buffer;
+          buffer << stream.rdbuf();
+          _shadersVSEntry.assign(buffer.str());
+        }
+        {
+          std::ifstream stream("shaders/lib/gltf/ps_entry.h");
+          if (!stream.is_open())
+            failed = true;
+          std::stringstream buffer;
+          buffer << stream.rdbuf();
+          _shadersPSEntry.assign(buffer.str());
+        }
+        if (failed) {
+          LOG(FATAL) << "shaders library is missing";
+        }
+      }
+    }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -503,6 +507,7 @@ struct Load : public BGFX::BaseConsumer {
                 for (const auto &glprims : glmesh.primitives) {
                   GFXPrimitive prims{};
                   std::unordered_set<std::string> shaderDefines;
+                  std::string varyings = _shadersVarying;
                   // we gotta do few things here
                   // build a layout
                   // populate vb and ib
@@ -521,10 +526,12 @@ struct Load : public BGFX::BaseConsumer {
                                              gltf.accessors[attributeIdx]);
                       vertexSize += sizeof(float) * 3;
                       shaderDefines.insert("CB_HAS_NORMAL");
+                      varyings.append("vec3 a_normal : NORMAL;\n");
                     } else if (attributeName == "TANGENT") {
                       accessors.emplace_back(bgfx::Attrib::Tangent,
                                              gltf.accessors[attributeIdx]);
                       shaderDefines.insert("CB_HAS_TANGENT");
+                      varyings.append("vec4 a_tangent : TANGENT;\n");
                       vertexSize += sizeof(float) * 4;
                     } else if (boost::starts_with(attributeName, "TEXCOORD_")) {
                       int strIndex = std::stoi(attributeName.substr(9));
@@ -537,6 +544,9 @@ struct Load : public BGFX::BaseConsumer {
                                              gltf.accessors[attributeIdx]);
                       vertexSize += sizeof(float) * 2;
                       shaderDefines.insert("CB_HAS_" + attributeName);
+                      auto idxStr = std::to_string(strIndex);
+                      varyings.append("vec2 a_texcoord" + idxStr +
+                                      " : TEXCOORD" + idxStr + ";\n");
                     } else if (boost::starts_with(attributeName, "COLOR_")) {
                       int strIndex = std::stoi(attributeName.substr(6));
                       if (strIndex >= 4) {
@@ -548,6 +558,9 @@ struct Load : public BGFX::BaseConsumer {
                                              gltf.accessors[attributeIdx]);
                       vertexSize += 4;
                       shaderDefines.insert("CB_HAS_" + attributeName);
+                      auto idxStr = std::to_string(strIndex);
+                      varyings.append("vec4 a_color" + idxStr + " : COLOR" +
+                                      idxStr + ";\n");
                     } else {
                       // TODO JOINTS_ and WEIGHTS_
                       LOG(WARNING)
@@ -891,7 +904,7 @@ struct Load : public BGFX::BaseConsumer {
                       prims.material =
                           _model->gfxMaterials.emplace_back(processMaterial(
                               gltf, gltf.materials[glprims.material],
-                              shaderDefines));
+                              shaderDefines, varyings));
                     }
 
                     mesh.primitives.emplace_back(
