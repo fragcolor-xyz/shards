@@ -147,7 +147,7 @@ struct Model {
   std::deque<GFXMesh> gfxMeshes;
   std::deque<GFXPrimitive> gfxPrimitives;
   std::deque<GFXMaterial> gfxMaterials;
-  std::optional<NodeRef> rootNode;
+  std::vector<NodeRef> rootNodes;
 };
 
 bool LoadImageData(GLTFImage *image, const int image_idx, std::string *err,
@@ -908,7 +908,7 @@ struct Load : public BGFX::BaseConsumer {
 
               return NodeRef(_model->nodes.emplace_back(std::move(node)));
             };
-        _model->rootNode = processNode(glnode);
+        _model->rootNodes.emplace_back(processNode(glnode));
       }
 
       return ModelVar.Get(_model);
@@ -1185,8 +1185,8 @@ struct Draw : public BGFX::BaseConsumer {
 
     auto rootTransform =
         reinterpret_cast<Mat4 *>(&input.payload.seqValue.elements[0]);
-    if (model->rootNode) {
-      renderNode(ctx, *model->rootNode, *rootTransform, mats);
+    for (const auto &nodeRef : model->rootNodes) {
+      renderNode(ctx, nodeRef.get(), *rootTransform, mats);
     }
     return input;
   }
