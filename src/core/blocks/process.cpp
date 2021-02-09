@@ -101,10 +101,8 @@ struct Run {
 
       // use async asio to avoid deadlocks
       boost::asio::io_service ios;
-      std::vector<char> obuf;
-      boost::process::async_pipe opipe(ios);
-      std::vector<char> ebuf;
-      boost::process::async_pipe epipe(ios);
+      std::future<std::string> ostr;
+      std::future<std::string> estr;
       boost::process::opstream ipipe;
 
       // try PATH first
@@ -121,44 +119,23 @@ struct Run {
       exePath = exePath.make_preferred();
 
       boost::process::child cmd(
-          exePath, argsArray, boost::process::std_out > opipe,
-          boost::process::std_err > epipe, boost::process::std_in < ipipe);
+          exePath, argsArray, boost::process::std_out > ostr,
+          boost::process::std_err > estr, boost::process::std_in < ipipe, ios);
 
       if (!ipipe) {
         throw ActivationError("Failed to open streams for child process");
       }
 
-      _outBuf.clear();
-      _errBuf.clear();
-
-      boost::asio::async_read(
-          opipe, boost::asio::buffer(obuf),
-          [&](const boost::system::error_code &ec, std::size_t size) {
-            if (ec) {
-              throw boost::system::system_error(ec);
-            }
-            _outBuf.append(obuf.data(), size);
-          });
-
-      boost::asio::async_read(
-          opipe, boost::asio::buffer(ebuf),
-          [&](const boost::system::error_code &ec, std::size_t size) {
-            if (ec) {
-              throw boost::system::system_error(ec);
-            }
-            _errBuf.append(ebuf.data(), size);
-          });
-
-      if (input.payload.stringLen > 0 ||
-          strlen(input.payload.stringValue) > 0) {
-        ipipe << input.payload.stringValue << std::endl;
-        ipipe.pipe().close(); // send EOF
-      }
+      ipipe << input.payload.stringValue << std::endl;
+      ipipe.pipe().close(); // send EOF
 
       ios.run_for(std::chrono::seconds(_timeout));
 
       // we still need to wait termination
       if (cmd.wait_for(std::chrono::seconds(5))) {
+        _outBuf = ostr.get();
+        _errBuf = estr.get();
+
         if (cmd.exit_code() != 0) {
           LOG(INFO) << _outBuf;
           LOG(ERROR) << _errBuf;
