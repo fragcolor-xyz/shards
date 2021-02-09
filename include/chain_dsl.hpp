@@ -21,6 +21,7 @@
 #define Get(_name) block("Get", #_name)
 #define SetTable(_name, _key) .block("Set", #_name, _key)
 #define RefTable(_name, _key) .block("Ref", #_name, _key)
+#define PushTable(_name, _key) .block("Push", #_name, _key)
 #define GetTable(_name, _key) block("Get", #_name, _key)
 #define GetTable_Default(_name, _key, _default)                                \
   block("Get", #_name, _key, false, false, _default)
