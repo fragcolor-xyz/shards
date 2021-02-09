@@ -11,6 +11,7 @@
 #ifndef __kernel_entry
 #define __kernel_entry
 #endif
+#include <boost/asio.hpp>
 #include <boost/process.hpp>
 #include <boost/stacktrace.hpp>
 #include <sstream>
@@ -98,8 +99,12 @@ struct Run {
         }
       }
 
-      boost::process::ipstream opipe;
-      boost::process::ipstream epipe;
+      // use async asio to avoid deadlocks
+      boost::asio::io_service ios;
+      std::vector<char> obuf;
+      boost::process::async_pipe opipe(ios);
+      std::vector<char> ebuf;
+      boost::process::async_pipe epipe(ios);
       boost::process::opstream ipipe;
 
       // try PATH first
@@ -113,27 +118,47 @@ struct Run {
         throw ActivationError("Executable not found");
       }
 
+      exePath = exePath.make_preferred();
+
       boost::process::child cmd(
           exePath, argsArray, boost::process::std_out > opipe,
           boost::process::std_err > epipe, boost::process::std_in < ipipe);
 
-      if (!opipe || !epipe || !ipipe) {
+      if (!ipipe) {
         throw ActivationError("Failed to open streams for child process");
       }
 
-      ipipe << input.payload.stringValue << std::endl;
-      ipipe.pipe().close(); // send EOF
+      _outBuf.clear();
+      _errBuf.clear();
 
-      if (cmd.wait_for(std::chrono::seconds(_timeout))) {
-        _outBuf.clear();
-        _errBuf.clear();
-        std::stringstream ss;
-        ss << opipe.rdbuf();
-        _outBuf.assign(ss.str());
-        ss.clear();
-        ss << epipe.rdbuf();
-        _errBuf.assign(ss.str());
+      boost::asio::async_read(
+          opipe, boost::asio::buffer(obuf),
+          [&](const boost::system::error_code &ec, std::size_t size) {
+            if (ec) {
+              throw boost::system::system_error(ec);
+            }
+            _outBuf.append(obuf.data(), size);
+          });
 
+      boost::asio::async_read(
+          opipe, boost::asio::buffer(ebuf),
+          [&](const boost::system::error_code &ec, std::size_t size) {
+            if (ec) {
+              throw boost::system::system_error(ec);
+            }
+            _errBuf.append(ebuf.data(), size);
+          });
+
+      if (input.payload.stringLen > 0 ||
+          strlen(input.payload.stringValue) > 0) {
+        ipipe << input.payload.stringValue << std::endl;
+        ipipe.pipe().close(); // send EOF
+      }
+
+      ios.run_for(std::chrono::seconds(_timeout));
+
+      // we still need to wait termination
+      if (cmd.wait_for(std::chrono::seconds(5))) {
         if (cmd.exit_code() != 0) {
           LOG(INFO) << _outBuf;
           LOG(ERROR) << _errBuf;
