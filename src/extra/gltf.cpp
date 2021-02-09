@@ -1073,9 +1073,9 @@ struct Draw : public BGFX::BaseConsumer {
             if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
               // workaround for flipped Y render to textures
               if (currentView.id > 0) {
-                state |= BGFX_STATE_CULL_CW;
-              } else {
                 state |= BGFX_STATE_CULL_CCW;
+              } else {
+                state |= BGFX_STATE_CULL_CW;
               }
             } else {
               state |= BGFX_STATE_CULL_CW;
