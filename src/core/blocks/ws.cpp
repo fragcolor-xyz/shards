@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2019-2020 Giovanni Petrantoni */
+/* Copyright © 2019-2021 Giovanni Petrantoni */
 
 #ifndef CB_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY

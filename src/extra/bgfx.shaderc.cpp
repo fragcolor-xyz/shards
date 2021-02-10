@@ -154,7 +154,7 @@ struct ShaderCompiler : public IShaderCompiler {
     Var v_code{code.data(), code.size()};
     Var v_type{type.data(), type.size()};
     Var v_defines{defines.data(), defines.size()};
-    std::vector<Var> args = {v_varyings, v_code, v_type, v_defines};
+    std::array<Var, 4> args = {v_varyings, v_code, v_type, v_defines};
     Var v_args{args};
     auto node = CBNode::make();
     node->schedule(_chain, v_args);
