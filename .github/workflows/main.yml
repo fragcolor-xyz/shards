@@ -177,6 +177,9 @@ jobs:
 
   Linux-Coverage-Tests:
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        test-tags: ["[gfx]", "[gltf]"]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
@@ -212,7 +215,7 @@ jobs:
       with:
         working-directory: ./build
         run: |
-          ./test_extra
+          ./test_extra ${{ matrix.test-tags }}
     - name: CodeCov
       run: |
         mkdir coverage
