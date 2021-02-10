@@ -1175,6 +1175,20 @@ struct Draw : public BGFX::BaseConsumer {
           memcpy(&mat[12], &transform.w, sizeof(float) * 4);
           bgfx::setTransform(mat);
 
+          if (handle.idx == bgfx::kInvalidHandle) {
+            const std::string *matName;
+            if (prims.material) {
+              const auto &material = (*prims.material).get();
+              matName = &material.name;
+            }
+            LOG_EVERY_N(240, WARNING)
+                << "Rendering a primitive with invalid shader handle, "
+                   "mesh: "
+                << node.mesh->get().name << " material: "
+                << (matName ? matName->c_str() : "<no material>")
+                << " mats table: " << _materials.get();
+          }
+
           bgfx::submit(currentView.id, handle);
         }
       }
