@@ -18,6 +18,12 @@ INITIALIZE_EASYLOGGINGPP
 // clang-format off
 EM_JS(void, cb_emscripten_init, (), {
   // inject some of our types
+  if(typeof globalThis.chainblocks === 'undefined') {
+    globalThis.chainblocks = {};
+  }
+  if(typeof globalThis.chainblocks.bonds === 'undefined') {
+    globalThis.chainblocks.bonds = {};
+  }
   if(typeof globalThis.ChainblocksBonder === 'undefined') {
     globalThis.ChainblocksBonder = class ChainblocksBonder {
       constructor(promise) {

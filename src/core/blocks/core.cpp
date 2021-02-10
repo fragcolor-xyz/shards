@@ -1692,6 +1692,65 @@ EM_JS(char *, cb_emscripten_eval, (const char *code), {
 });
 // clang-format on
 
+// clang-format off
+EM_JS(bool, cb_emscripten_eval_async_run, (const char *code, size_t index), {
+  try {
+    const scode = UTF8ToString(code);
+    const promise = eval(scode);
+    const bond = new ChainblocksBonder(promise);
+    bond.run();
+    globalThis.chainblocks.bonds[index] = bond;
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+});
+
+EM_JS(int, cb_emscripten_eval_async_check, (size_t index), {
+  try {
+    const bond = globalThis.chainblocks.bonds[index];
+    if(bond.finished) {
+      if(bond.hadErrors) {
+        globalThis.chainblocks.bonds[index] = undefined;
+        return -1;
+      } else {
+        return 1;
+      }
+    } else {
+      return 0;
+    }
+  } catch (error) {
+    console.error(error);
+    globalThis.chainblocks.bonds[index] = undefined;
+    return -1;
+  }
+});
+
+EM_JS(char *, cb_emscripten_eval_async_get, (size_t index), {
+  try {
+    const bond = globalThis.chainblocks.bonds[index];
+    var result = bond.result;
+    globalThis.chainblocks.bonds[index] = undefined;
+    // if undefined just return null
+    if(result === undefined) {
+      return 0;
+    }
+    // if not undefined return a string
+    if(typeof(result) !== "string") {
+      result = JSON.stringify(result);
+    }
+    var len = lengthBytesUTF8(result) + 1;
+    var buffer = _malloc(len);
+    stringToUTF8(result, buffer, len);
+    return buffer;
+  } catch (error) {
+    console.error(error);
+    return -1;
+  }
+});
+// clang-format on
+
 CBVar emscriptenEvalActivation(const CBVar &input) {
   static thread_local std::string str;
   auto res = cb_emscripten_eval(input.payload.stringValue);
@@ -1707,15 +1766,54 @@ CBVar emscriptenEvalActivation(const CBVar &input) {
   return Var(str);
 }
 
+/*
+using embind fails inside workers... that's why we implemented it using EM_JS
+*/
+// struct EmscriptenAsyncEval {
+//   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+//   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+//   CBVar activate(CBContext *context, const CBVar &input) {
+//     static thread_local std::string str;
+//     const static emscripten::val eval = emscripten::val::global("eval");
+//     str = emscripten_wait<std::string>(
+//         context, eval(emscripten::val(input.payload.stringValue)));
+//     return Var(str);
+//   }
+// };
+
 struct EmscriptenAsyncEval {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     static thread_local std::string str;
-    const static emscripten::val eval = emscripten::val::global("eval");
-    str = emscripten_wait<std::string>(
-        context, eval(emscripten::val(input.payload.stringValue)));
+    static thread_local size_t slots;
+
+    size_t slot = ++slots;
+    const auto startCheck =
+        cb_emscripten_eval_async_run(input.payload.stringValue, slot);
+    if (!startCheck) {
+      throw ActivationError("Failed to start a javascript async task.");
+    }
+
+    while (true) {
+      const auto runCheck = cb_emscripten_eval_async_check(slot);
+      if (runCheck == 0) {
+        suspend(context, 0.0);
+      } else if (runCheck == -1) {
+        throw ActivationError("Failure on the javascript side, check console");
+      } else {
+        break;
+      }
+    }
+
+    const auto res = cb_emscripten_eval_async_get(slot);
+    str.clear();
+    if (res) {
+      str.assign(res);
+      free(res);
+    }
     return Var(str);
   }
 };
