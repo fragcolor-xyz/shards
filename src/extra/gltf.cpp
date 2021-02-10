@@ -1115,9 +1115,6 @@ struct Draw : public BGFX::BaseConsumer {
                 if (it->second) {
                   pshader = it->second->first;
                   ptextures = it->second->second;
-                } else {
-                  LOG_EVERY_N(240, WARNING)
-                      << "Cached material not found, name: " << material.name;
                 }
               } else {
                 // not found, let's cache it as well
