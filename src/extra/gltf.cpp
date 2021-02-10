@@ -1115,6 +1115,9 @@ struct Draw : public BGFX::BaseConsumer {
                 if (it->second) {
                   pshader = it->second->first;
                   ptextures = it->second->second;
+                } else {
+                  LOG_EVERY_N(240, WARNING)
+                      << "Cached material not found, name: " << material.name;
                 }
               } else {
                 // not found, let's cache it as well
@@ -1136,7 +1139,7 @@ struct Draw : public BGFX::BaseConsumer {
             // try override shader, if not use the default PBR shader
             if (pshader && pshader->valueType == CBType::Object) {
               // we got the shader
-              const auto &shader = reinterpret_cast<BGFX::ShaderHandle *>(
+              const auto shader = reinterpret_cast<BGFX::ShaderHandle *>(
                   pshader->payload.objectValue);
               handle = shader->handle;
             } else if (material.shader) {
@@ -1146,9 +1149,9 @@ struct Draw : public BGFX::BaseConsumer {
             // if textures are empty, use the ones we loaded during Load
             if (ptextures && ptextures->valueType == CBType::Seq &&
                 ptextures->payload.seqValue.len > 0) {
-              auto textures = ptextures->payload.seqValue;
+              const auto textures = ptextures->payload.seqValue;
               for (uint32_t i = 0; i < textures.len; i++) {
-                auto texture = reinterpret_cast<BGFX::Texture *>(
+                const auto texture = reinterpret_cast<BGFX::Texture *>(
                     textures.elements[i].payload.objectValue);
                 bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
                                  texture->handle);
