@@ -1072,7 +1072,7 @@ struct Run {
   PlatformData _data{};
   CachedStreamBuf _sout{};
   CachedStreamBuf _serr{};
-  bool _reset{false};
+  bool _reset{true};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1137,6 +1137,9 @@ struct Run {
   }
 
   void loadModule() {
+    _runtime.reset();
+    _env.reset();
+
     // here we load the module, that's why Module parameter is not variable
     std::filesystem::path p(_moduleName);
     if (!std::filesystem::exists(p)) {
