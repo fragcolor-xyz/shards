@@ -137,7 +137,8 @@ private:
   static inline std::vector<T **> _ptrs;
 };
 
-template <typename T> class Shared {
+template <typename T, typename ARG = void *, ARG defaultValue = nullptr>
+class Shared {
 public:
   Shared() { addRef(); }
 
@@ -147,8 +148,13 @@ public:
     if (!_tp) {
       std::unique_lock<std::mutex> lock(_m);
       // check again as another thread might have locked
-      if (!_tp)
-        _tp = new T();
+      if constexpr (!std::is_same<ARG, void *>::value) {
+        if (!_tp)
+          _tp = new T(defaultValue);
+      } else {
+        if (!_tp)
+          _tp = new T();
+      }
     }
 
     return *_tp;

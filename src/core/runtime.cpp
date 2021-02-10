@@ -738,7 +738,12 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
+#ifdef __EMSCRIPTEN__
+// limit to 4 under emscripten
+Shared<boost::asio::thread_pool, int, 4> SharedThreadPool{};
+#else
 Shared<boost::asio::thread_pool> SharedThreadPool{};
+#endif
 
 bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                 bool isParameter, bool strict) {

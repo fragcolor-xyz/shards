@@ -1625,7 +1625,12 @@ inline T emscripten_wait(CBContext *context, emscripten::val promise) {
 }
 #endif
 
+#ifdef __EMSCRIPTEN__
+// limit to 4 under emscripten
+extern Shared<boost::asio::thread_pool, int, 4> SharedThreadPool;
+#else
 extern Shared<boost::asio::thread_pool> SharedThreadPool;
+#endif
 
 template <typename FUNC>
 inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
