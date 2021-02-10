@@ -12,12 +12,13 @@
 #undef CHECK
 #endif
 
-#if defined(_WIN32)
-#define SHADERS_FOLDER "dx11"
+#if defined(BGFX_CONFIG_RENDERER_OPENGL) || defined(__linux__) ||              \
+    defined(__EMSCRIPTEN__)
+#define SHADERS_FOLDER "glsl"
 #elif defined(__APPLE__)
 #define SHADERS_FOLDER "metal"
-#else
-#define SHADERS_FOLDER "glsl"
+#elif defined(_WIN32)
+#define SHADERS_FOLDER "dx11"
 #endif
 
 #include <catch2/catch_all.hpp>
@@ -245,6 +246,11 @@ void testLoad() {
                 "../external/glTF-Sample-Models/2.0/TextureCoordinateTest/glTF/"
                 "TextureCoordinateTest.gltf",
                 Var(0.0, 0.0, 4.0));
+
+  testGLTFModel(
+      "Avocado-Bin-2",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
+      Var(0.1, 0.1, 0.1));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks

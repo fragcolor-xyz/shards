@@ -20,21 +20,21 @@
 #define Platform_Name() let("asm.js")
 #endif
 
-#ifdef _WIN32
-#define Shader_Model()                                                         \
-  Get(shader_type)                                                             \
-      .If(Is("v"), let("vs_5_0"), If(Is("f"), let("ps_5_0"), let("cs_5_0")))
-#elif defined(__APPLE__)
-#define Shader_Model() let("metal")
-#elif defined(__linux__)
+#if defined(__EMSCRIPTEN__)
+#define Shader_Model() let("300_es")
+#elif defined(BGFX_CONFIG_RENDERER_OPENGL) || defined(__linux__)
 #if (BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION == 33)
 // headless tests run at version 150 due to xvfb limitations
 #define Shader_Model() let("150")
 #else
 #define Shader_Model() let("430")
 #endif
-#elif defined(__EMSCRIPTEN__)
-#define Shader_Model() let("300_es")
+#elif defined(__APPLE__)
+#define Shader_Model() let("metal")
+#elif defined(_WIN32)
+#define Shader_Model()                                                         \
+  Get(shader_type)                                                             \
+      .If(Is("v"), let("vs_5_0"), If(Is("f"), let("ps_5_0"), let("cs_5_0")))
 #endif
 
 #ifdef _WIN32

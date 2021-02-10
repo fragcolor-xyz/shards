@@ -531,7 +531,12 @@ if(NOT BUILD_CORE_ONLY)
   add_dependencies(libsdl sdl_a)
 
   if(WIN32)
-    add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
+    if(FORCE_USE_OPENGL)
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL=46)
+      include_directories(${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/khronos)
+    else()
+      add_compile_definitions(BGFX_CONFIG_RENDERER_DIRECT3D11)
+    endif()
 
     include_directories(
       ${CHAINBLOCKS_DIR}/deps/bx/include/compat/mingw

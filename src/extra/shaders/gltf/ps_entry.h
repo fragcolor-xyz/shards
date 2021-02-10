@@ -74,10 +74,16 @@ void main() {
 	lightColor += calcLight(2, tbn, v_wpos, normal, view);
 	lightColor += calcLight(3, tbn, v_wpos, normal, view);
 
-#ifdef CB_PBR_COLOR_TEXTURE
-	vec4 color = toLinear(texture2D(s_texColor, v_texcoord0) * v_color0);
+#ifndef CB_HAS_COLOR_0
+	vec4 _color = vec4(1.0, 1.0, 1.0, 1.0);
 #else
-	vec4 color = toLinear(v_color0);
+	vec4 _color = v_color0;
+#endif
+
+#ifdef CB_PBR_COLOR_TEXTURE
+	vec4 color = toLinear(texture2D(s_texColor, v_texcoord0) * _color);
+#else
+	vec4 color = toLinear(_color);
 #endif
 
 	gl_FragColor.xyz = max(vec3_splat(0.05), lightColor.xyz)*color.xyz;
