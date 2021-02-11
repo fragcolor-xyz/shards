@@ -42,7 +42,12 @@
   let("").Process_Run("shaders/shadercRelease.exe", _args)
 #elif defined(__EMSCRIPTEN__)
 #define Shaderc_Command(_args)                                                 \
-  Get(_args).ToJson().block("_Emscripten.CompileShader")
+  Get(varyings) SetTable(_args_em, "varyings")                                 \
+      .Get(shader_code) SetTable(_args_em, "shader_code")                      \
+      .Get(_args) SetTable(_args_em, "params")                                 \
+      .Get(_args_em)                                                           \
+      .ToJson()                                                                \
+      .block("_Emscripten.CompileShader")
 #else
 #define Shaderc_Command(_args)                                                 \
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
@@ -63,7 +68,7 @@ So we need to use an emscripten module and a bit of JS for now
 */
 // clang-format off
 // not sure if it's a bug but this can only return "number" or false
-EM_JS(int, cb_emscripten_compile_shader, (const char *json), {
+EM_JS(char*, cb_emscripten_compile_shader, (const char *json), {
   return Asyncify.handleAsync(async () => {
     try {
       const paramsStr = UTF8ToString(json);
@@ -81,9 +86,19 @@ EM_JS(int, cb_emscripten_compile_shader, (const char *json), {
         globalThis.shaderc_binary = new Uint8Array(buffer);
       }
 
+      var output = {
+        stdout: "",
+        stderr: ""
+      };
       const compiler = await shaderc({
         noInitialRun: true,
-        wasmBinary: shaderc_binary
+        wasmBinary: shaderc_binary,
+        print: function(text) {
+          output.stdout += text;
+        },
+        printErr: function(text) {
+          output.stderr += text;
+        }
       });
 
       // shaders library
@@ -123,9 +138,20 @@ EM_JS(int, cb_emscripten_compile_shader, (const char *json), {
         compiler.FS.writeFile(fetches[i].filename, view);
       }
 
-      compiler.callMain(params);
+      // write the required files
+      compiler.FS.writeFile("/shaders/tmp/shader.txt", params.shader_code);
+      compiler.FS.writeFile("/shaders/tmp/varying.txt", params.varyings);
 
-      return 1;
+      // run the program until the end
+      compiler.callMain(params.params);
+
+      output.bytecode = Array.from(compiler.FS.readFile("/shaders/tmp/shader.bin"));
+
+      const result = JSON.stringify(output);
+      const len = lengthBytesUTF8(result) + 1;
+      var obuffer = _malloc(len);
+      stringToUTF8(result, obuffer, len);
+      return obuffer;
     } catch(e) {
       console.error(e);
       return 0;
@@ -136,12 +162,28 @@ EM_JS(int, cb_emscripten_compile_shader, (const char *json), {
 
 namespace chainblocks {
 CBVar emCompileShader(const CBVar &input) {
-  const auto res = cb_emscripten_compile_shader(input.payload.stringValue);
-  if (!res) {
+  static thread_local std::string str;
+  auto res = cb_emscripten_compile_shader(input.payload.stringValue);
+  const auto check = reinterpret_cast<intptr_t>(res);
+  if (check == -1) {
     throw ActivationError(
-        "Shader compiler failed to compile a shader, check the JS console");
+        "Exception while compiling a shader, check the JS console");
   }
-  return input;
+
+  MAIN_THREAD_EM_ASM(
+      {
+        const data = JSON.parse(UTF8ToString($0));
+        const buffer = new Uint8Array(data.bytecode);
+        FS.writeFile("shaders/tmp/shader.bin", buffer);
+      },
+      res);
+
+  str.clear();
+  if (res) {
+    str.assign(res);
+    free(res);
+  }
+  return Var(str);
 }
 
 using EmscriptenShaderCompiler =
