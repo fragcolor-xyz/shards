@@ -5,6 +5,7 @@
 // storage.
 
 #include "./bgfx.hpp"
+#include "nlohmann/json.hpp"
 #include <runtime.hpp>
 #include <utility.hpp>
 // include this last
@@ -145,7 +146,11 @@ EM_JS(char*, cb_emscripten_compile_shader, (const char *json), {
       // run the program until the end
       compiler.callMain(params.params);
 
-      output.bytecode = Array.from(compiler.FS.readFile("/shaders/tmp/shader.bin"));
+      const fileExists = compiler.FS.analyzePath("/shaders/tmp/shader.bin").exists;
+      // if exists should be successful
+      if(fileExists) {
+        output.bytecode = Array.from(compiler.FS.readFile("/shaders/tmp/shader.bin"));
+      }
 
       const result = JSON.stringify(output);
       const len = lengthBytesUTF8(result) + 1;
@@ -170,19 +175,33 @@ CBVar emCompileShader(const CBVar &input) {
         "Exception while compiling a shader, check the JS console");
   }
 
-  MAIN_THREAD_EM_ASM(
-      {
-        const data = JSON.parse(UTF8ToString($0));
-        const buffer = new Uint8Array(data.bytecode);
-        FS.writeFile("shaders/tmp/shader.bin", buffer);
-      },
-      res);
+  DEFER(free(res));
 
-  str.clear();
-  if (res) {
-    str.assign(res);
-    free(res);
+  nlohmann::json j = nlohmann::json::parse(res);
+
+  const auto err = j["stderr"].get<std::string>();
+  if (err.size() > 0) {
+    LOG(ERROR) << err;
   }
+
+  if (j.contains("bytecode")) {
+    MAIN_THREAD_EM_ASM(
+        {
+          const data = JSON.parse(UTF8ToString($0));
+          const buffer = new Uint8Array(data.bytecode);
+          FS.writeFile("shaders/tmp/shader.bin", buffer);
+        },
+        res);
+  } else {
+    LOG(INFO) << j["stdout"].get<std::string>();
+    throw ActivationError("Failed to compile a shader.");
+  }
+
+  str.assign(j["stdout"].get<std::string>());
+  if (str.size() == 0) {
+    str.assign("Successfully compiled a shader.");
+  }
+
   return Var(str);
 }
 
