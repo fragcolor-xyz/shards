@@ -40,14 +40,9 @@
 #ifdef _WIN32
 #define Shaderc_Command(_args)                                                 \
   let("").Process_Run("shaders/shadercRelease.exe", _args)
-// #elif defined(__EMSCRIPTEN__)
-// #define Shaderc_Command(_args)                                                 \
-//   Get(_args)                                                                   \
-//       .ToJson() Set(_args_json)                                                \
-//       .let("globalThis.chainblocks.compileShader(") PrependTo(_args_json)      \
-//       .let(");") AppendTo(_args_json)                                          \
-//       .Get(_args_json)                                                         \
-//       .block("_Emscripten.EvalAsync")
+#elif defined(__EMSCRIPTEN__)
+#define Shaderc_Command(_args)                                                 \
+  Get(_args).ToJson().block("_Emscripten.CompileShader")
 #else
 #define Shaderc_Command(_args)                                                 \
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
@@ -61,7 +56,101 @@
 
 chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
 
-#define Compile_Shader(_type)
+#ifdef __EMSCRIPTEN__
+/*
+Sadly out WASI shader compiler fails (call stack overflow)
+So we need to use an emscripten module and a bit of JS for now
+*/
+// clang-format off
+// not sure if it's a bug but this can only return "number" or false
+EM_JS(int, cb_emscripten_compile_shader, (const char *json), {
+  return Asyncify.handleAsync(async () => {
+    try {
+      const paramsStr = UTF8ToString(json);
+      const params = JSON.parse(paramsStr);
+
+      // load the JS part if needed
+      if (globalThis.shaderc === undefined) {
+        // cache it at worker level
+        importScripts("shaderc.js");
+      }
+      // also cache and load the wasm binary
+      if (globalThis.shaderc_binary === undefined) {
+        const response = await fetch("shaderc.wasm");
+        const buffer = await response.arrayBuffer();
+        globalThis.shaderc_binary = new Uint8Array(buffer);
+      }
+
+      const compiler = await shaderc({
+        noInitialRun: true,
+        wasmBinary: shaderc_binary
+      });
+
+      // shaders library
+      compiler.FS.mkdir("/shaders/");
+      compiler.FS.mkdir("/shaders/include");
+      compiler.FS.mkdir("/shaders/lib");
+      compiler.FS.mkdir("/shaders/lib/gltf");
+      compiler.FS.mkdir("/shaders/cache");
+      compiler.FS.mkdir("/shaders/tmp");
+
+      var fetches = [];
+      fetches.push({
+        filename: "/shaders/include/bgfx_shader.h",
+        operation: fetch("shaders/include/bgfx_shader.h")
+      });
+      fetches.push({
+        filename: "/shaders/include/shaderlib.h",
+        operation: fetch("shaders/include/shaderlib.h")
+      });
+      fetches.push({
+        filename: "/shaders/lib/gltf/ps_entry.h",
+        operation: fetch("shaders/lib/gltf/ps_entry.h")
+      });
+      fetches.push({
+        filename: "/shaders/lib/gltf/vs_entry.h",
+        operation: fetch("shaders/lib/gltf/vs_entry.h")
+      });
+      fetches.push({
+        filename: "/shaders/lib/gltf/varying.h",
+        operation: fetch("shaders/lib/gltf/varying.h")
+      });
+
+      for(let i = 0; i < fetches.length; i++) {
+        const response = await fetches[i].operation;
+        const buffer = await response.arrayBuffer();
+        const view = new Uint8Array(buffer);
+        compiler.FS.writeFile(fetches[i].filename, view);
+      }
+
+      compiler.callMain(params);
+
+      return 1;
+    } catch(e) {
+      console.error(e);
+      return 0;
+    }
+  });
+});
+// clang-format on
+
+namespace chainblocks {
+CBVar emCompileShader(const CBVar &input) {
+  const auto res = cb_emscripten_compile_shader(input.payload.stringValue);
+  if (!res) {
+    throw ActivationError(
+        "Shader compiler failed to compile a shader, check the JS console");
+  }
+  return input;
+}
+
+using EmscriptenShaderCompiler =
+    LambdaBlock<emCompileShader, CoreInfo::StringType, CoreInfo::StringType>;
+void registerEmscriptenShaderCompiler() {
+  REGISTER_CBLOCK("_Emscripten.CompileShader", EmscriptenShaderCompiler);
+}
+} // namespace chainblocks
+#endif
 
 namespace chainblocks {
 struct ShaderCompiler : public IShaderCompiler {
@@ -141,7 +230,7 @@ struct ShaderCompiler : public IShaderCompiler {
                 .Get(shader_bytecode));
 
     _chain = shader_compiler;
-  }
+  } // namespace chainblocks
 
   virtual ~ShaderCompiler() {}
 

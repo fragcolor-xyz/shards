@@ -3,6 +3,8 @@
 
 #include "runtime.hpp"
 
+extern "C" void registerRustBlocks(CBCore *core);
+
 namespace BGFX {
 extern void registerBGFXBlocks();
 }
@@ -34,12 +36,17 @@ namespace gltf {
 extern void registerBlocks();
 }
 
-extern "C" void registerRustBlocks(CBCore *core);
+#ifdef __EMSCRIPTEN__
+extern void registerEmscriptenShaderCompiler();
+#endif
 
 void cbInitExtras() {
+  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
   Snappy::registerBlocks();
   Brotli::registerBlocks();
-  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
+#ifdef __EMSCRIPTEN__
+  registerEmscriptenShaderCompiler();
+#endif
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
   XR::registerBlocks();
