@@ -40,14 +40,14 @@
 #ifdef _WIN32
 #define Shaderc_Command(_args)                                                 \
   let("").Process_Run("shaders/shadercRelease.exe", _args)
-#elif defined(__EMSCRIPTEN__)
-#define Shaderc_Command(_args)                                                 \
-  Get(_args)                                                                   \
-      .ToJson() Set(_args_json)                                                \
-      .let("globalThis.chainblocks.compileShader(") PrependTo(_args_json)      \
-      .let(");") AppendTo(_args_json)                                          \
-      .Get(_args_json)                                                         \
-      .block("_Emscripten.EvalAsync")
+// #elif defined(__EMSCRIPTEN__)
+// #define Shaderc_Command(_args)                                                 \
+//   Get(_args)                                                                   \
+//       .ToJson() Set(_args_json)                                                \
+//       .let("globalThis.chainblocks.compileShader(") PrependTo(_args_json)      \
+//       .let(");") AppendTo(_args_json)                                          \
+//       .Get(_args_json)                                                         \
+//       .block("_Emscripten.EvalAsync")
 #else
 #define Shaderc_Command(_args)                                                 \
   let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
@@ -157,7 +157,9 @@ struct ShaderCompiler : public IShaderCompiler {
     std::array<Var, 4> args = {v_varyings, v_code, v_type, v_defines};
     Var v_args{args};
     auto node = CBNode::make();
+    LOG(DEBUG) << "Shader compiler about to be scheduled.";
     node->schedule(_chain, v_args);
+    LOG(DEBUG) << "Shader compiler chain scheduled and ready to run.";
     while (!node->empty()) {
       if (!node->tick())
         break;

@@ -1,29 +1,8 @@
 #include "foundation.hpp"
 
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
-
-static struct Globals {
-  Globals() {
-    LOG(TRACE) << "EM MAIN FIBER INIT";
-    emscripten_fiber_init_from_current_context(&main_coro, asyncify_main_stack,
-                                               CBCoro::as_stack_size);
-    em_local_coro = &main_coro;
-#ifndef NDEBUG
-    CBCoro c1;
-    c1.init([&]() {
-      LOG(TRACE) << "Inside coro";
-      c1.yield();
-      LOG(TRACE) << "Inside coro again";
-      c1.yield();
-    });
-    c1.resume();
-    c1.resume();
-#endif
-  }
-
-  emscripten_fiber_t main_coro{};
-  uint8_t asyncify_main_stack[CBCoro::as_stack_size];
-} Globals;
+thread_local emscripten_fiber_t em_main_coro{};
+thread_local uint8_t em_asyncify_main_stack[CBCoro::as_stack_size];
 
 [[noreturn]] static void action(void *p) {
   LOG(TRACE) << "EM FIBER ACTION RUN";
@@ -44,6 +23,16 @@ void CBCoro::init(const std::function<void()> &func) {
 
 NO_INLINE void CBCoro::resume() {
   LOG(TRACE) << "EM FIBER SWAP RESUME " << (void *)(&em_fiber);
+  // ensure local thread is setup
+  if (!em_main_coro.stack_ptr) {
+    LOG(DEBUG) << "CBCoro - initialization of new thread";
+    emscripten_fiber_init_from_current_context(
+        &em_main_coro, em_asyncify_main_stack, CBCoro::as_stack_size);
+  }
+  // ensure we have a local coro
+  if (!em_local_coro) {
+    em_local_coro = &em_main_coro;
+  }
   // from current to new
   em_parent_fiber = em_local_coro;
   em_local_coro = &em_fiber;
