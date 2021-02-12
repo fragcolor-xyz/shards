@@ -134,7 +134,7 @@ struct ChainBase {
     dataCopy.chain = chain.get();
     IterableExposedInfo shared(data.shared);
     IterableExposedInfo sharedCopy;
-    if (mode == RunChainMode::Detached) {
+    if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped) {
       // keep only globals
       auto end =
           std::remove_if(shared.begin(), shared.end(),

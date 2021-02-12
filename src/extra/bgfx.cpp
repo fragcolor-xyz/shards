@@ -483,7 +483,7 @@ struct MainWindow : public BaseWindow {
                             uint32_t _height, uint32_t _pitch,
                             const void *_data, uint32_t _size,
                             bool _yflip) override {
-      LOG(TRACE) << "Screenshot requested for path: " << _filePath;
+      LOG(DEBUG) << "Screenshot requested for path: " << _filePath;
 
       // For now.. TODO as might be not true
       assert(_pitch == (_width * 4));
