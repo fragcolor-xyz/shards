@@ -67,108 +67,23 @@ chainblocks::Var empty_bytes((uint8_t *)nullptr, 0);
 Sadly out WASI shader compiler fails (call stack overflow)
 So we need to use an emscripten module and a bit of JS for now
 */
-// clang-format off
+
+extern "C" {
+void emSetupShaderCompiler();
 // not sure if it's a bug but this can only return "number" or false
-EM_JS(char*, cb_emscripten_compile_shader, (const char *json), {
-  return Asyncify.handleAsync(async () => {
-    try {
-      const paramsStr = UTF8ToString(json);
-      const params = JSON.parse(paramsStr);
-
-      // load the JS part if needed
-      if (globalThis.shaderc === undefined) {
-        // cache it at worker level
-        importScripts("shaderc.js");
-      }
-      // also cache and load the wasm binary
-      if (globalThis.shaderc_binary === undefined) {
-        const response = await fetch("shaderc.wasm");
-        const buffer = await response.arrayBuffer();
-        globalThis.shaderc_binary = new Uint8Array(buffer);
-      }
-
-      var output = {
-        stdout: "",
-        stderr: ""
-      };
-      const compiler = await shaderc({
-        noInitialRun: true,
-        wasmBinary: shaderc_binary,
-        print: function(text) {
-          output.stdout += text;
-        },
-        printErr: function(text) {
-          output.stderr += text;
-        }
-      });
-
-      // shaders library
-      compiler.FS.mkdir("/shaders/");
-      compiler.FS.mkdir("/shaders/include");
-      compiler.FS.mkdir("/shaders/lib");
-      compiler.FS.mkdir("/shaders/lib/gltf");
-      compiler.FS.mkdir("/shaders/cache");
-      compiler.FS.mkdir("/shaders/tmp");
-
-      var fetches = [];
-      fetches.push({
-        filename: "/shaders/include/bgfx_shader.h",
-        operation: fetch("shaders/include/bgfx_shader.h")
-      });
-      fetches.push({
-        filename: "/shaders/include/shaderlib.h",
-        operation: fetch("shaders/include/shaderlib.h")
-      });
-      fetches.push({
-        filename: "/shaders/lib/gltf/ps_entry.h",
-        operation: fetch("shaders/lib/gltf/ps_entry.h")
-      });
-      fetches.push({
-        filename: "/shaders/lib/gltf/vs_entry.h",
-        operation: fetch("shaders/lib/gltf/vs_entry.h")
-      });
-      fetches.push({
-        filename: "/shaders/lib/gltf/varying.h",
-        operation: fetch("shaders/lib/gltf/varying.h")
-      });
-
-      for(let i = 0; i < fetches.length; i++) {
-        const response = await fetches[i].operation;
-        const buffer = await response.arrayBuffer();
-        const view = new Uint8Array(buffer);
-        compiler.FS.writeFile(fetches[i].filename, view);
-      }
-
-      // write the required files
-      compiler.FS.writeFile("/shaders/tmp/shader.txt", params.shader_code);
-      compiler.FS.writeFile("/shaders/tmp/varying.txt", params.varyings);
-
-      // run the program until the end
-      compiler.callMain(params.params);
-
-      const fileExists = compiler.FS.analyzePath("/shaders/tmp/shader.bin").exists;
-      // if exists should be successful
-      if(fileExists) {
-        output.bytecode = Array.from(compiler.FS.readFile("/shaders/tmp/shader.bin"));
-      }
-
-      const result = JSON.stringify(output);
-      const len = lengthBytesUTF8(result) + 1;
-      var obuffer = _malloc(len);
-      stringToUTF8(result, obuffer, len);
-      return obuffer;
-    } catch(e) {
-      console.error(e);
-      return 0;
-    }
-  });
-});
-// clang-format on
+// this implementation is blocking on the C side, promises and async did not
+// work well when inside a worker
+char *emCompileShaderBlocking(const char *json);
+}
 
 namespace chainblocks {
 CBVar emCompileShader(const CBVar &input) {
   static thread_local std::string str;
-  auto res = cb_emscripten_compile_shader(input.payload.stringValue);
+
+  emSetupShaderCompiler();
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+  auto res = emCompileShaderBlocking(input.payload.stringValue);
   const auto check = reinterpret_cast<intptr_t>(res);
   if (check == -1) {
     throw ActivationError(
@@ -201,6 +116,9 @@ CBVar emCompileShader(const CBVar &input) {
   if (str.size() == 0) {
     str.assign("Successfully compiled a shader.");
   }
+#else
+#error "shaderc for single threaded code path not implemented"
+#endif
 
   return Var(str);
 }
