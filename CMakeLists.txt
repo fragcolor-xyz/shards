@@ -1021,6 +1021,12 @@ target_link_libraries(test_runtime ${CB_RUNTIME_LIBS} libCatch2Main libCatch2 ${
 #   target_compile_options(test_runtime PRIVATE -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer)
 #   target_link_options(test_runtime PRIVATE -fsanitize=address)
 # endif()
+if(EMSCRIPTEN)
+  em_link_js_library(test_runtime ${CHAINBLOCKS_DIR}/src/core/blocks/core.js)
+  if(NOT BUILD_CORE_ONLY)
+    em_link_js_library(test_runtime ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.js)
+  endif()
+endif()
 
 add_executable(
   test_extra
@@ -1035,3 +1041,9 @@ target_link_libraries(test_extra ${CB_RUNTIME_LIBS} libCatch2Main libCatch2 ${EX
 #   target_compile_options(test_extra PRIVATE -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer)
 #   target_link_options(test_extra PRIVATE -fsanitize=address)
 # endif()
+if(EMSCRIPTEN)
+  em_link_js_library(test_extra ${CHAINBLOCKS_DIR}/src/core/blocks/core.js)
+  if(NOT BUILD_CORE_ONLY)
+    em_link_js_library(test_extra ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.js)
+  endif()
+endif()
