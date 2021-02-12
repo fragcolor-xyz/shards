@@ -105,7 +105,7 @@ else()
   add_link_options(--bind)
   ## if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=4")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=6")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
   endif()
