@@ -37,6 +37,7 @@ struct ViewInfo {
   bgfx::ViewId id{0};
   int width{0};
   int height{0};
+  bgfx::FrameBufferHandle fb = BGFX_INVALID_HANDLE;
 };
 
 struct Context {

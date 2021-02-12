@@ -9,6 +9,8 @@
 #include <bx/math.h>
 #include <bx/timer.h>
 #include <cstdlib>
+#include <filesystem>
+#include <stb_image_write.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/html5.h>
@@ -431,6 +433,7 @@ struct MainWindow : public BaseWindow {
       if (bgfx::Fatal::DebugCheck == _code) {
         bx::debugBreak();
       } else {
+        fatalError = _str;
         throw std::runtime_error(_str);
       }
     }
@@ -480,8 +483,37 @@ struct MainWindow : public BaseWindow {
                             uint32_t _height, uint32_t _pitch,
                             const void *_data, uint32_t _size,
                             bool _yflip) override {
-      BX_UNUSED(_filePath, _width, _height, _pitch, _data, _size, _yflip);
-      // TODO
+      LOG(TRACE) << "Screenshot requested for path: " << _filePath;
+
+      // For now.. TODO as might be not true
+      assert(_pitch == (_width * 4));
+
+      // need to convert to rgba
+      std::vector<uint8_t> data;
+      data.resize(_size);
+      const uint8_t *bgra = (uint8_t *)_data;
+      for (uint32_t x = 0; x < _height; x++) {
+        for (uint32_t y = 0; y < _width; y++) {
+          data[((y * 4) + 0) + (_pitch * x)] =
+              bgra[((y * 4) + 2) + (_pitch * x)];
+          data[((y * 4) + 1) + (_pitch * x)] =
+              bgra[((y * 4) + 1) + (_pitch * x)];
+          data[((y * 4) + 2) + (_pitch * x)] =
+              bgra[((y * 4) + 0) + (_pitch * x)];
+          data[((y * 4) + 3) + (_pitch * x)] =
+              bgra[((y * 4) + 3) + (_pitch * x)];
+        }
+      }
+
+      stbi_flip_vertically_on_write(_yflip);
+      std::filesystem::path p(_filePath);
+      const auto ext = p.extension();
+      if (ext == ".png" || ext == ".PNG") {
+        stbi_write_png(_filePath, _width, _height, 4, data.data(), _pitch);
+      } else if (ext == ".jpg" || ext == ".JPG" || ext == ".jpeg" ||
+                 ext == ".JPEG") {
+        stbi_write_jpg(_filePath, _width, _height, 4, data.data(), 95);
+      }
     }
 
     virtual void captureBegin(uint32_t /*_width*/, uint32_t /*_height*/,
@@ -495,7 +527,9 @@ struct MainWindow : public BaseWindow {
 
     virtual void captureFrame(const void * /*_data*/,
                               uint32_t /*_size*/) override {}
-  };
+
+    std::string fatalError;
+  } bgfxCallback;
 
   Context _bgfxContext{};
   chainblocks::ImGui::Context _imguiContext{};
@@ -628,6 +662,7 @@ struct MainWindow : public BaseWindow {
     });
 
     bgfx::Init initInfo{};
+    initInfo.callback = &bgfxCallback;
 
     // try to see if global native window is set
     _nativeWnd = referenceVariable(context, "fragcolor.gfx.nativewindow");
@@ -772,8 +807,12 @@ struct MainWindow : public BaseWindow {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (!bgfxCallback.fatalError.empty()) {
+      throw ActivationError(bgfxCallback.fatalError);
+    }
+
     // push view 0
-    _bgfxContext.pushView({0, _width, _height});
+    _bgfxContext.pushView({0, _width, _height, BGFX_INVALID_HANDLE});
     DEFER({
       _bgfxContext.popView();
       assert(_bgfxContext.viewIndex() == 0);
@@ -2298,7 +2337,7 @@ struct RenderTexture : public RenderTarget {
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
     // push _viewId
-    ctx->pushView({_viewId, _width, _height});
+    ctx->pushView({_viewId, _width, _height, _framebuffer});
     DEFER({ ctx->popView(); });
 
     // Touch _viewId
@@ -2494,6 +2533,69 @@ struct SetUniform : public BaseConsumer {
   }
 };
 
+struct Screenshot : public BaseConsumer {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static inline Parameters params{
+      {"Overwrite",
+       CBCCSTR("If each activation should overwrite the previous screenshot at "
+               "the given path if existing. If false the path will be suffixed "
+               "in order to avoid overwriting."),
+       {CoreInfo::BoolType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _overwrite = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_overwrite); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    return CoreInfo::StringType;
+  }
+
+  void warmup(CBContext *context) {
+    _bgfxContext = referenceVariable(context, "GFX.Context");
+    assert(_bgfxContext->valueType == CBType::Object);
+  }
+
+  void cleanup() {
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    const auto &currentView = ctx->currentView();
+    if (_overwrite) {
+      bgfx::requestScreenShot(currentView.fb, input.payload.stringValue);
+    } else {
+      std::filesystem::path base(input.payload.stringValue);
+      const auto baseName = base.stem().string();
+      const auto ext = base.extension().string();
+      uint32_t suffix = 0;
+      std::filesystem::path path = base;
+      while (std::filesystem::exists(path)) {
+        const auto ssuffix = std::to_string(suffix++);
+        const auto newName = baseName + ssuffix + ext;
+        path = base.root_path() / newName;
+      }
+      const auto s = path.string();
+      bgfx::requestScreenShot(currentView.fb, s.c_str());
+    }
+    return input;
+  }
+
+  CBVar *_bgfxContext{nullptr};
+  bool _overwrite{true};
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -2507,6 +2609,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.Draw", Draw);
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
   REGISTER_CBLOCK("GFX.SetUniform", SetUniform);
+  REGISTER_CBLOCK("GFX.Screenshot", Screenshot);
 }
 }; // namespace BGFX
 
