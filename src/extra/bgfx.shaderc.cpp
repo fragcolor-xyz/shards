@@ -117,7 +117,7 @@ CBVar emCompileShader(const CBVar &input) {
     str.assign("Successfully compiled a shader.");
   }
 #else
-#error "shaderc for single threaded code path not implemented"
+// #error "shaderc for single threaded code path not implemented"
 #endif
 
   return Var(str);
