@@ -1796,6 +1796,12 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   CBContext context(coro, chain, flow ? flow : &anonFlow);
 #endif
 
+  // if the chain had a context (Stepped chains in chains.cpp)
+  // copy some stuff from it
+  if (chain->context) {
+    context.chainStack = chain->context->chainStack;
+  }
+
 #ifdef CB_USE_TSAN
   context.tsan_handle = chain->tsan_coro;
 #endif

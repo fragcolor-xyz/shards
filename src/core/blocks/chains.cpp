@@ -134,13 +134,14 @@ struct ChainBase {
     dataCopy.chain = chain.get();
     IterableExposedInfo shared(data.shared);
     IterableExposedInfo sharedCopy;
-    if (mode == RunChainMode::Detached || mode == RunChainMode::Stepped) {
+    if (mode == RunChainMode::Detached) {
       // keep only globals
       auto end =
           std::remove_if(shared.begin(), shared.end(),
                          [](const CBExposedTypeInfo &x) { return !x.global; });
       sharedCopy = IterableExposedInfo(shared.begin(), end);
     } else {
+      // we allow Detached but they need to be referenced during warmup
       sharedCopy = shared;
     }
 
@@ -435,6 +436,7 @@ struct StopChain : public ChainBase {
 
 struct Resume : public ChainBase {
   void setup() {
+    // we use those during ChainBase::compose
     passthrough = true;
     mode = Detached;
   }
@@ -684,6 +686,9 @@ struct BaseRunner : public ChainBase {
     // Prepare if no callc was called
     if (!chain->coro) {
       chain->node = context->main->node;
+      // pre-set chain context with our context
+      // this is used to copy chainStack over to the new one
+      chain->context = context;
       // Notice we don't share our flow!
       // let the chain create one by passing null
       chainblocks::prepare(chain.get(), nullptr);

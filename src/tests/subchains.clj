@@ -59,6 +59,9 @@
    (Msg "message 4")
    4
    (Pause)
+
+   .var-from-root
+   (Assert.Is "Ok!" true)
                                ; make sure main is not stopped in this case
    (Resume "stopping")
    ;; the flow stopped before!
@@ -120,6 +123,7 @@
    (Stop loopedOther)
    (Wait loopedOther)
 
+   "Ok!" = .var-from-root
                                         ; test a stepped chain that (Stop)s
    (Step tickedChain)
    (Msg "had message 1")
