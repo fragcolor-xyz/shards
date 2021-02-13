@@ -43,6 +43,10 @@
 (def tickedChain
   (Chain
    "ticked"
+   ; check that we can read root variables
+   .var-from-root
+   (Assert.Is "Ok!" true)
+   
    (Msg "message 1")
    1
    (Pause)
@@ -59,15 +63,11 @@
    (Msg "message 4")
    4
    (Pause)
-
-   .var-from-root
-   (Assert.Is "Ok!" true)
                                ; make sure main is not stopped in this case
    (Resume "stopping")
    ;; the flow stopped before!
    ;; this should be unreachable
-   false (Assert.Is true true)
-   ))
+   false (Assert.Is true true)))
 
 (def tickedChain2
   (Chain

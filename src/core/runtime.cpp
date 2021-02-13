@@ -1800,6 +1800,8 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   // copy some stuff from it
   if (chain->context) {
     context.chainStack = chain->context->chainStack;
+    // need to add back ourself
+    context.chainStack.push_back(chain);
   }
 
 #ifdef CB_USE_TSAN
