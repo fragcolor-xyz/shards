@@ -296,6 +296,6 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
 #[no_mangle]
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
-  blocks::ipfs_cid::registerBlocks();
+  blocks::hash::registerBlocks();
   // cblog!("Rust blocks initialization done.");
 }
