@@ -797,9 +797,9 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_BINDGEN ,run_bindgen)
   endif()
 
-  # if(USE_LTO)
-  #   set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
-  # endif()
+  if(RUST_USE_LTO)
+    set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
+  endif()
 
   if(EMSCRIPTEN_PTHREADS)
     set(RUST_CRT "-Ctarget-feature=+atomics,+bulk-memory ")
