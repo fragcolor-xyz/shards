@@ -1,10 +1,10 @@
 #[cfg(not(target_arch = "wasm32"))]
 extern crate reqwest;
-// #[cfg(target_arch="wasm32")]
-// extern crate wasm_bindgen_futures;
+extern crate cid;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod http;
+pub mod ipfs_cid;
 
 #[cfg(test)]
 mod tests {
