@@ -232,12 +232,12 @@ struct Read {
     if (_binary) {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
-      return Var(&_buffer.front(), uint32_t(_buffer.size()));
+      return Var(_buffer.data(), uint32_t(_buffer.size()));
     } else {
       std::ifstream file(p.string(), std::ios::binary);
       _buffer.assign(std::istreambuf_iterator<char>(file), {});
       _buffer.push_back(0);
-      return Var((const char *)&_buffer.front());
+      return Var((const char *)_buffer.data());
     }
   }
 };

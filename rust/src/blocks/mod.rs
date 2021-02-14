@@ -1,10 +1,10 @@
 #[cfg(not(target_arch = "wasm32"))]
 extern crate reqwest;
-extern crate cid;
+extern crate tiny_keccak;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod http;
-pub mod ipfs_cid;
+pub mod hash;
 
 #[cfg(test)]
 mod tests {
