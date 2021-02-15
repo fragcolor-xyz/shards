@@ -498,10 +498,6 @@ struct SendFile {
 };
 
 void registerBlocks() {
-  REGISTER_CBLOCK("Http.Get", Get);
-  REGISTER_CBLOCK("Http.Post", Post);
-  REGISTER_CBLOCK("Http.Put", Put);
-  REGISTER_CBLOCK("Http.Delete", Delete);
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);
   REGISTER_CBLOCK("Http.Response", Response);
