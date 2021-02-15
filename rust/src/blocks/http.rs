@@ -19,6 +19,12 @@ use std::ffi::CStr;
 
 lazy_static! {
   static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
+  static ref POST_INPUT_TYPES: Vec<Type> = vec![
+    common_type::none,
+    common_type::string_table,
+    common_type::bytes,
+    common_type::string
+  ];
   static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::string];
   static ref GET_PARAMETERS: Parameters = vec![
     (
@@ -46,129 +52,32 @@ lazy_static! {
   ];
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 type Client = reqwest::blocking::Client;
-#[cfg(target_arch = "wasm32")]
-type Client = reqwest::Client;
 
-#[cfg(not(target_arch = "wasm32"))]
 fn new_client() -> Client {
   reqwest::blocking::Client::new()
 }
 
-#[cfg(target_arch = "wasm32")]
-fn new_client() -> Client {
-  reqwest::Client::new()
-}
-
-struct Get {
+struct RequestBase {
   client: Client,
   url: ParamVar,
   headers: ParamVar,
-  headers_map: HeaderMap,
   output: ClonedVar,
   timeout: u64,
 }
 
-impl Default for Get {
+impl Default for RequestBase {
   fn default() -> Self {
     Self {
       client: new_client(),
       url: ParamVar::new(cstr!("").into()),
       headers: ParamVar::new(().into()),
-      headers_map: HeaderMap::new(),
       output: ().into(),
       timeout: 10,
     }
   }
 }
 
-impl Block for Get {
-  fn registerName() -> &'static str {
-    cstr!("Http.Get2")
-  }
-  fn name(&mut self) -> &str {
-    "Http.Get2"
-  }
-
-  fn inputTypes(&mut self) -> &Types {
-    &GET_INPUT_TYPES
-  }
-  fn outputTypes(&mut self) -> &Types {
-    &STR_OUTPUT_TYPE
-  }
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&GET_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) {
-    match index {
-      0 => self.url.setParam(value),
-      1 => self.headers.setParam(value),
-      2 => self.timeout = value.try_into().expect("Integer timeout value"),
-      _ => unreachable!(),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.url.getParam(),
-      1 => self.headers.getParam(),
-      2 => self.timeout.try_into().expect("A valid integer in range"),
-      _ => unreachable!(),
-    }
-  }
-
-  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.url.warmup(context);
-    self.headers.warmup(context);
-    Ok(())
-  }
-
-  fn cleanup(&mut self) {
-    self.url.cleanup();
-    self.headers.cleanup();
-    self.headers_map.clear();
-  }
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(do_blocking(context, || {
-      let request = self.url.get();
-      let request_string: &str = request.as_ref().try_into()?;
-      let mut request = self.client.get(request_string);
-      // request = request.timeout(Duration::from_secs(self.timeout));
-      let headers = self.headers.get();
-      if !headers.is_none() {
-        let headers_table: Table = headers.as_ref().try_into()?;
-        for (k, v) in headers_table.iter() {
-          let key: &str = k.into();
-          let hname: HeaderName = key
-            .try_into()
-            .map_err(|_| "Could not convert into HeaderName")?;
-          let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
-            .map_err(|_| "Could not convert into HeaderValue")?;
-          request = request.header(hname, hvalue);
-        }
-      }
-      if !input.is_none() {
-        let input_table: Table = input.as_ref().try_into()?;
-        for (k, v) in input_table.iter() {
-          let key: &str = k.into();
-          let value: &str = v.as_ref().try_into()?;
-          request = request.query(&[(key, value)]);
-        }
-      }
-      let response = exec_request_string(request)?;
-      self.output = response.as_str().into();
-      Ok(self.output.0)
-    }))
-  }
-
-  fn hash() -> u32 {
-    compile_time_crc32::crc32!("Http.Get2-rust-0x20200101")
-  }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 fn exec_request_string(
   request: reqwest::blocking::RequestBuilder,
 ) -> Result<std::string::String, &'static str> {
@@ -185,48 +94,222 @@ fn exec_request_string(
     })
 }
 
-#[cfg(target_arch = "wasm32")]
-async fn exec_request_string_async(
-  request: reqwest::RequestBuilder,
-) -> Result<std::string::String, &'static str> {
-  request
-    .send()
-    .await
-    .map_err(|e| {
-      cblog!("Failure details: {}", e);
-      "Failed to send the request"
-    })?
-    .text()
-    .await
-    .map_err(|e| {
-      cblog!("Failure details: {}", e);
-      "Failed to decode the response"
-    })
+macro_rules! get_like {
+  ($block_name:ident, $call:ident, $name_str:literal, $hash:literal) => {
+    #[derive(Default)]
+    struct $block_name {
+      rb: RequestBase,
+    }
+
+    impl Block for $block_name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+
+      fn inputTypes(&mut self) -> &Types {
+        &GET_INPUT_TYPES
+      }
+      fn outputTypes(&mut self) -> &Types {
+        &STR_OUTPUT_TYPE
+      }
+      fn parameters(&mut self) -> Option<&Parameters> {
+        Some(&GET_PARAMETERS)
+      }
+
+      fn setParam(&mut self, index: i32, value: &Var) {
+        match index {
+          0 => self.rb.url.setParam(value),
+          1 => self.rb.headers.setParam(value),
+          2 => self.rb.timeout = value.try_into().expect("Integer timeout value"),
+          _ => unreachable!(),
+        }
+      }
+
+      fn getParam(&mut self, index: i32) -> Var {
+        match index {
+          0 => self.rb.url.getParam(),
+          1 => self.rb.headers.getParam(),
+          2 => self
+            .rb
+            .timeout
+            .try_into()
+            .expect("A valid integer in range"),
+          _ => unreachable!(),
+        }
+      }
+
+      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+        self.rb.url.warmup(context);
+        self.rb.headers.warmup(context);
+        Ok(())
+      }
+
+      fn cleanup(&mut self) {
+        self.rb.url.cleanup();
+        self.rb.headers.cleanup();
+      }
+
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+        Ok(do_blocking(context, || {
+          let request = self.rb.url.get();
+          let request_string: &str = request.as_ref().try_into()?;
+          let mut request = self.rb.client.$call(request_string);
+          request = request.timeout(Duration::from_secs(self.rb.timeout));
+          let headers = self.rb.headers.get();
+          if !headers.is_none() {
+            let headers_table: Table = headers.as_ref().try_into()?;
+            for (k, v) in headers_table.iter() {
+              let key: &str = k.into();
+              let hname: HeaderName = key
+                .try_into()
+                .map_err(|_| "Could not convert into HeaderName")?;
+              let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
+                .map_err(|_| "Could not convert into HeaderValue")?;
+              request = request.header(hname, hvalue);
+            }
+          }
+          if !input.is_none() {
+            let input_table: Table = input.as_ref().try_into()?;
+            for (k, v) in input_table.iter() {
+              let key: &str = k.into();
+              let value: &str = v.as_ref().try_into()?;
+              request = request.query(&[(key, value)]);
+            }
+          }
+          let response = exec_request_string(request)?;
+          self.rb.output = response.as_str().into();
+          Ok(self.rb.output.0)
+        }))
+      }
+    }
+  };
 }
 
-#[cfg(target_arch = "wasm32")]
-fn exec_request_string(
-  request: reqwest::RequestBuilder,
-) -> Result<std::string::String, &'static str> {
-  // wasm_bindgen_futures::spawn_local(async {
-  //   let _ = exec_request_string_async(request).await;
-  // });
-  Err("Not yet implemented properly")
+macro_rules! post_like {
+  ($block_name:ident, $call:ident, $name_str:literal, $hash:literal) => {
+    #[derive(Default)]
+    struct $block_name {
+      rb: RequestBase,
+    }
+    impl Block for $block_name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+      fn inputTypes(&mut self) -> &Types {
+        &POST_INPUT_TYPES
+      }
+      fn outputTypes(&mut self) -> &Types {
+        &STR_OUTPUT_TYPE
+      }
+      fn parameters(&mut self) -> Option<&Parameters> {
+        Some(&GET_PARAMETERS)
+      }
+      fn setParam(&mut self, index: i32, value: &Var) {
+        match index {
+          0 => self.rb.url.setParam(value),
+          1 => self.rb.headers.setParam(value),
+          2 => self.rb.timeout = value.try_into().expect("Integer timeout value"),
+          _ => unreachable!(),
+        }
+      }
+      fn getParam(&mut self, index: i32) -> Var {
+        match index {
+          0 => self.rb.url.getParam(),
+          1 => self.rb.headers.getParam(),
+          2 => self
+            .rb
+            .timeout
+            .try_into()
+            .expect("A valid integer in range"),
+          _ => unreachable!(),
+        }
+      }
+      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+        self.rb.url.warmup(context);
+        self.rb.headers.warmup(context);
+        Ok(())
+      }
+      fn cleanup(&mut self) {
+        self.rb.url.cleanup();
+        self.rb.headers.cleanup();
+      }
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+        Ok(do_blocking(context, || {
+          let request = self.rb.url.get();
+          let request_string: &str = request.as_ref().try_into()?;
+          let mut request = self.rb.client.$call(request_string);
+          request = request.timeout(Duration::from_secs(self.rb.timeout));
+          let headers = self.rb.headers.get();
+          if !headers.is_none() {
+            let headers_table: Table = headers.as_ref().try_into()?;
+            for (k, v) in headers_table.iter() {
+              let key: &str = k.into();
+              let hname: HeaderName = key
+                .try_into()
+                .map_err(|_| "Could not convert into HeaderName")?;
+              let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
+                .map_err(|_| "Could not convert into HeaderValue")?;
+              request = request.header(hname, hvalue);
+            }
+          }
+          if !input.is_none() {
+            // .form ( kv table )
+            let input_table: Result<Table, &str> = input.as_ref().try_into();
+            if let Ok(input_table) = input_table {
+              for (k, v) in input_table.iter() {
+                let key: &str = k.into();
+                let value: &str = v.as_ref().try_into()?;
+                request = request.form(&[(key, value)]);
+              }
+            } else {
+              // .body ( string )
+              let input_string: Result<&str, &str> = input.as_ref().try_into();
+              if let Ok(input_string) = input_string {
+                request = request.body(input_string);
+              } else {
+                // .body ( bytes )
+                let input_bytes: Result<&[u8], &str> = input.as_ref().try_into();
+                if let Ok(input_bytes) = input_bytes {
+                  request = request.body(input_bytes);
+                }
+              }
+            }
+          }
+          let response = exec_request_string(request)?;
+          self.rb.output = response.as_str().into();
+          Ok(self.rb.output.0)
+        }))
+      }
+    }
+  };
 }
+
+get_like!(Get, get, "Http.Get", "Http.Get-rust-0x20200101");
+get_like!(Head, head, "Http.Head", "Http.Head-rust-0x20200101");
+post_like!(Post, post, "Http.Post", "Http.Post-rust-0x20200101");
+post_like!(Put, put, "Http.Put", "Http.Put-rust-0x20200101");
+post_like!(Patch, patch, "Http.Patch", "Http.Patch-rust-0x20200101");
+post_like!(Delete, delete, "Http.Delete", "Http.Delete-rust-0x20200101");
 
 pub fn registerBlocks() {
   registerBlock::<Get>();
-}
-
-#[cfg(test)]
-mod tests {
-  use std::collections::HashMap;
-  #[test]
-  fn it_works() {
-    let resp = reqwest::blocking::get("https://httpbin.org/ip")
-      .unwrap()
-      .json::<HashMap<String, String>>()
-      .unwrap();
-    println!("{:#?}", resp);
-  }
+  registerBlock::<Head>();
+  registerBlock::<Post>();
+  registerBlock::<Put>();
+  registerBlock::<Patch>();
+  registerBlock::<Delete>();
 }

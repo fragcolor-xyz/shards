@@ -9,7 +9,7 @@
    (Set .params "postId")
                                         ; GET
    .params
-   (Http.Get "jsonplaceholder.typicode.com" "/comments")
+   (Http.Get "https://jsonplaceholder.typicode.com/comments")
    (FromJson)
    (ExpectSeq)
    (Take 0)
@@ -18,19 +18,14 @@
    (Assert.Is "id labore ex et quam laborum" true)
    (Log)
 
-   (if (hasBlock? "Http.Get2")
-     ~[.params
-       (Http.Get2 "https://jsonplaceholder.typicode.com/comments")
-       (FromJson)
-       (ExpectSeq)
-       (Take 0)
-       (ExpectTable)
-       (Take "name")
-       (Assert.Is "id labore ex et quam laborum" true)
-       (Log)])
+   (Maybe
+    (->
+     nil
+     (Http.Get "https://httpstat.us/200?sleep=5000" :Timeout 1)
+     (Log)))
                                         ; POST
    .params
-   (Http.Post "jsonplaceholder.typicode.com" "/posts") &> .json
+   (Http.Post "https://jsonplaceholder.typicode.com/posts") &> .json
    (FromJson)
    (ExpectTable)
    (Take "id")
@@ -38,12 +33,8 @@
    (Log)
 
    .json
-   (Http.Post "postman-echo.com" "/post")
-   (Log)
-
-  ;;  nil (Http.Get "localhost" "/" :Port 8000 :Secure false)
-  ;;  (Log)
-   ))
+   (Http.Post "https://postman-echo.com/post")
+   (Log)))
 
 (schedule Root test)
 (run Root 0.1 50)
