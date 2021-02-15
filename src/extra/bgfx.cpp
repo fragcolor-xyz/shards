@@ -791,7 +791,7 @@ struct MainWindow : public BaseWindow {
         _imguiCtx->payload.objectVendorId = CoreCC;
 
     _sdlWinVar->payload.objectTypeId = windowCC;
-    _sdlWinVar->payload.objectValue = _sysWnd;
+    _sdlWinVar->payload.objectValue = _window;
 
     _bgfxCtx->payload.objectTypeId = BgfxContextCC;
     _bgfxCtx->payload.objectValue = &_bgfxContext;

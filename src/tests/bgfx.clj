@@ -68,7 +68,8 @@
          (FS.Read :Bytes true) > .fs_bytes
          (GFX.Shader :VertexShader .vs_bytes
                      :PixelShader .fs_bytes) >= .bump-shader
-         false (Set "checkBoxie")])
+         false (Set "checkBoxie")
+         (Inputs.Mouse :Hidden true :Capture true :Relative true)])
       ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera)
