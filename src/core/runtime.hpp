@@ -75,6 +75,7 @@ struct CBContext {
   CBFlow *flow;
   std::vector<CBChain *> chainStack;
   bool onCleanup{false};
+  bool onLastResume{false};
 
 // Used within the coro& stack! (suspend, etc)
 #ifndef __EMSCRIPTEN__
@@ -522,6 +523,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
         chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
       chain->context->stopFlow(Var::Empty);
+      chain->context->onLastResume = true;
 
       // BIG Warning: chain->context existed in the coro stack!!!
       // after this resume chain->context is trash!
@@ -1637,8 +1639,7 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
-  std::exception_ptr ex1 = nullptr;
-  std::exception_ptr ex2 = nullptr;
+  std::exception_ptr exp = nullptr;
   CBVar res{};
   std::atomic_bool complete = false;
 
@@ -1646,19 +1647,14 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
     try {
       res = func();
     } catch (...) {
-      ex1 = std::current_exception();
+      exp = std::current_exception();
     }
     complete = true;
   });
 
   while (!complete && context->shouldContinue()) {
-    try {
-      if (chainblocks::suspend(context, 0) != CBChainState::Continue)
-        break;
-    } catch (...) {
-      ex2 = std::current_exception();
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
-    }
   }
 
   // TODO figure out cancellations inside parallel tasks...
@@ -1666,33 +1662,10 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
     std::this_thread::yield();
   }
 
-  // priority to this one due to possible unwind
-  if (ex2) {
+  if (exp) {
     try {
-      std::rethrow_exception(ex2);
-    }
-#ifndef __EMSCRIPTEN__
-    catch (boost::context::detail::forced_unwind const &e) {
-      throw;
-    }
-#endif
-    catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
-  }
-
-  if (ex1) {
-    try {
-      std::rethrow_exception(ex1);
-    }
-#ifndef __EMSCRIPTEN__
-    catch (boost::context::detail::forced_unwind const &e) {
-      throw;
-    }
-#endif
-    catch (const std::exception &e) {
+      std::rethrow_exception(exp);
+    } catch (const std::exception &e) {
       context->cancelFlow(e.what());
     } catch (...) {
       context->cancelFlow("foreign exception failure");
@@ -1707,27 +1680,21 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  std::exception_ptr ex1 = nullptr;
-  std::exception_ptr ex2 = nullptr;
+  std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
   boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
     try {
       func();
     } catch (...) {
-      ex1 = std::current_exception();
+      exp = std::current_exception();
     }
     complete = true;
   });
 
   while (!complete && context->shouldContinue()) {
-    try {
-      if (chainblocks::suspend(context, 0) != CBChainState::Continue)
-        break;
-    } catch (...) {
-      ex2 = std::current_exception();
+    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
       break;
-    }
   }
 
   // TODO figure out cancellations inside parallel tasks...
@@ -1735,14 +1702,8 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
     std::this_thread::yield();
   }
 
-  // give priority to this one
-  // mostly for unwind one
-  if (ex2) {
-    std::rethrow_exception(ex2);
-  }
-
-  if (ex1) {
-    std::rethrow_exception(ex1);
+  if (exp) {
+    std::rethrow_exception(exp);
   }
 #endif
 }

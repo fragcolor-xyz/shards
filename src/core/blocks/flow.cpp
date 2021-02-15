@@ -438,10 +438,14 @@ struct Maybe : public BaseSubFlow {
       try {
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
-        LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
-        context->resetCancelFlow();
-        if (_elseBlks)
-          _elseBlks.activate(context, input, output);
+        if (likely(!context->onLastResume)) {
+          LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
+          context->resetCancelFlow();
+          if (_elseBlks)
+            _elseBlks.activate(context, input, output);
+        } else {
+          throw ex;
+        }
       }
     }
     return output;
