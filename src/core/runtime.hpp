@@ -1637,7 +1637,8 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
-  std::exception_ptr exp = nullptr;
+  std::exception_ptr ex1 = nullptr;
+  std::exception_ptr ex2 = nullptr;
   CBVar res{};
   std::atomic_bool complete = false;
 
@@ -1645,7 +1646,7 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
     try {
       res = func();
     } catch (...) {
-      exp = std::current_exception();
+      ex1 = std::current_exception();
     }
     complete = true;
   });
@@ -1654,7 +1655,8 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
     try {
       if (chainblocks::suspend(context, 0) != CBChainState::Continue)
         break;
-    } catch (boost::context::detail::forced_unwind const &e) {
+    } catch (...) {
+      ex2 = std::current_exception();
       break;
     }
   }
@@ -1664,10 +1666,33 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
     std::this_thread::yield();
   }
 
-  if (exp) {
+  // priority to this one due to possible unwind
+  if (ex2) {
     try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
+      std::rethrow_exception(ex2);
+    }
+#ifndef __EMSCRIPTEN__
+    catch (boost::context::detail::forced_unwind const &e) {
+      throw;
+    }
+#endif
+    catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+    } catch (...) {
+      context->cancelFlow("foreign exception failure");
+    }
+  }
+
+  if (ex1) {
+    try {
+      std::rethrow_exception(ex1);
+    }
+#ifndef __EMSCRIPTEN__
+    catch (boost::context::detail::forced_unwind const &e) {
+      throw;
+    }
+#endif
+    catch (const std::exception &e) {
       context->cancelFlow(e.what());
     } catch (...) {
       context->cancelFlow("foreign exception failure");
@@ -1682,14 +1707,15 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  std::exception_ptr exp = nullptr;
+  std::exception_ptr ex1 = nullptr;
+  std::exception_ptr ex2 = nullptr;
   std::atomic_bool complete = false;
 
   boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
     try {
       func();
     } catch (...) {
-      exp = std::current_exception();
+      ex1 = std::current_exception();
     }
     complete = true;
   });
@@ -1698,7 +1724,8 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
     try {
       if (chainblocks::suspend(context, 0) != CBChainState::Continue)
         break;
-    } catch (boost::context::detail::forced_unwind const &e) {
+    } catch (...) {
+      ex2 = std::current_exception();
       break;
     }
   }
@@ -1708,8 +1735,14 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
     std::this_thread::yield();
   }
 
-  if (exp) {
-    std::rethrow_exception(exp);
+  // give priority to this one
+  // mostly for unwind one
+  if (ex2) {
+    std::rethrow_exception(ex2);
+  }
+
+  if (ex1) {
+    std::rethrow_exception(ex1);
   }
 #endif
 }
