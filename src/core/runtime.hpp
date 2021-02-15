@@ -1651,8 +1651,12 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
   });
 
   while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+    try {
+      if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+        break;
+    } catch (boost::context::detail::forced_unwind const &e) {
       break;
+    }
   }
 
   // TODO figure out cancellations inside parallel tasks...
@@ -1691,8 +1695,12 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
   });
 
   while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+    try {
+      if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+        break;
+    } catch (boost::context::detail::forced_unwind const &e) {
       break;
+    }
   }
 
   // TODO figure out cancellations inside parallel tasks...
