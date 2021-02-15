@@ -36,6 +36,10 @@ namespace gltf {
 extern void registerBlocks();
 }
 
+namespace Inputs {
+extern void registerBlocks();
+}
+
 #ifdef __EMSCRIPTEN__
 extern void registerEmscriptenShaderCompiler();
 #endif
@@ -51,6 +55,7 @@ void cbInitExtras() {
   chainblocks::ImGui::registerImGuiBlocks();
   XR::registerBlocks();
   gltf::registerBlocks();
+  Inputs::registerBlocks();
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
