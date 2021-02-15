@@ -538,9 +538,6 @@ struct MainWindow : public BaseWindow {
   float _windowScalingW{1.0};
   float _windowScalingH{1.0};
 
-  // TODO thread_local? anyway sort multiple threads
-  static inline std::vector<SDL_Event> sdlEvents;
-
   CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
       throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
@@ -654,10 +651,10 @@ struct MainWindow : public BaseWindow {
     }
 
     registerRunLoopCallback("fragcolor.gfx.ospump", [] {
-      sdlEvents.clear();
+      Context::sdlEvents.clear();
       SDL_Event event;
       while (SDL_PollEvent(&event)) {
-        sdlEvents.push_back(event);
+        Context::sdlEvents.push_back(event);
       }
     });
 
@@ -839,7 +836,7 @@ struct MainWindow : public BaseWindow {
     }
 
     // process some events
-    for (auto &event : sdlEvents) {
+    for (auto &event : Context::sdlEvents) {
       if (event.type == SDL_MOUSEWHEEL) {
         _wheelScroll += event.wheel.y;
         // This is not needed seems.. not even on MacOS Natural On/Off

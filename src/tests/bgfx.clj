@@ -90,6 +90,7 @@
                    "Hello world 3" (GUI.SameLine) (GUI.Text)
                    "Hello world 4" (GUI.SameLine) (GUI.Text)
                    (Inputs.MousePos) (GUI.Text "mouse pos")
+                   (Inputs.MouseDelta) (GUI.Text "mouse delta")
                    (GUI.Separator)
 
                    (GUI.Indent)

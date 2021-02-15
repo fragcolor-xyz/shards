@@ -4,6 +4,7 @@
 #ifndef CB_BGFX_HPP
 #define CB_BGFX_HPP
 
+#include "SDL.h"
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
 #include "blocks/shared.hpp"
@@ -90,6 +91,10 @@ struct Context {
   // have to render. In the future we will do it in a smarter way
   uint32_t getMaxLights() const { return lightCount; }
   void addLight() { lightCount++; }
+
+  // TODO thread_local? anyway sort multiple threads
+  // this is written during sleeps between node ticks
+  static inline std::vector<SDL_Event> sdlEvents;
 
 private:
   std::deque<ViewInfo> viewsStack;

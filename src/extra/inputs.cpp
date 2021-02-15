@@ -45,15 +45,47 @@ struct MousePos : public Base {
 };
 
 struct MouseDelta : public Base {
+  CBVar *_sdlWinVar{nullptr};
+  Uint32 _windowId{0};
+  int _width;
+  int _height;
+
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // no base call.. Await should be fine here
+    // sdlEvents is not thread safe
+    Base::compose(data);
     return CoreInfo::Float2Type;
   }
 
+  void warmup(CBContext *context) {
+    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+    const auto window =
+        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    _windowId = SDL_GetWindowID(window);
+    SDL_GetWindowSize(window, &_width, &_height);
+  }
+
+  void cleanup() {
+    if (_sdlWinVar) {
+      releaseVariable(_sdlWinVar);
+      _sdlWinVar = nullptr;
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
+    for (const auto &event : BGFX::Context::sdlEvents) {
+      if (event.type == SDL_MOUSEMOTION && event.motion.windowID == _windowId) {
+        return Var(float(event.motion.xrel) / float(_width),
+                   float(event.motion.yrel) / float(_height));
+      } else if (event.type == SDL_WINDOWEVENT &&
+                 event.window.event == SDL_WINDOWEVENT_RESIZED) {
+        const auto window =
+            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+        SDL_GetWindowSize(window, &_width, &_height);
+      }
+    }
     return Var(0.0, 0.0);
   }
 };
@@ -187,6 +219,7 @@ struct Mouse : public Base {
 
 void registerBlocks() {
   REGISTER_CBLOCK("Inputs.MousePos", MousePos);
+  REGISTER_CBLOCK("Inputs.MouseDelta", MouseDelta);
   REGISTER_CBLOCK("Inputs.Mouse", Mouse);
 }
 } // namespace Inputs
