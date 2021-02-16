@@ -11,8 +11,8 @@ too...
 
 namespace chainblocks {
 namespace Wasm {
-void registerBlocks();
-}
+void registerBlocks() {}
+} // namespace Wasm
 } // namespace chainblocks
 
 #else
