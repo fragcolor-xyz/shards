@@ -243,6 +243,7 @@ void registerCoreBlocks() {
   BigInt::registerBlocks();
   registerFSBlocks();
   Wasm::registerBlocks();
+  Http::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
@@ -250,7 +251,6 @@ void registerCoreBlocks() {
   Genetic::registerBlocks();
   registerNetworkBlocks();
   Python::registerBlocks();
-  Http::registerBlocks();
   WS::registerBlocks();
 #endif
 

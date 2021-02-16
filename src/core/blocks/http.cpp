@@ -2,6 +2,8 @@
 /* Copyright © 2019-2021 Giovanni Petrantoni */
 
 #ifndef CB_NO_HTTP_BLOCKS
+
+#ifndef __EMSCRIPTEN__
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -11,10 +13,6 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
-
-#include "chainblocks.hpp"
-#include "shared.hpp"
-#include <filesystem>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
@@ -27,6 +25,13 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #include <iomanip>
 #include <sstream>
 #include <string>
+#else
+#include <emscripten/fetch.h>
+#endif
+
+#include "chainblocks.hpp"
+#include "shared.hpp"
+#include <filesystem>
 
 using namespace std;
 
@@ -56,6 +61,146 @@ inline std::string url_encode(const std::string &value) {
 
 namespace chainblocks {
 namespace Http {
+#ifdef __EMSCRIPTEN__
+// those blocks for non emscripten platforms are implemented in Rust
+
+template <const string_view &METHOD> struct GetLike {
+  static inline Types InputTypes{
+      {CoreInfo::NoneType, CoreInfo::StringTableType}};
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static inline Parameters params{
+      {"URL",
+       CBCCSTR("The url to request to"),
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Headers",
+       CBCCSTR("The headers to use for the request."),
+       {CoreInfo::NoneType, CoreInfo::StringTableType,
+        CoreInfo::StringVarTableType}},
+      {"Timeout",
+       CBCCSTR("How many seconds to wait for the request to complete."),
+       {CoreInfo::IntType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  int state = 0;
+  std::string buffer;
+  std::string vars;
+  std::vector<const char *> headersCArray;
+  int timeout{0};
+  ParamVar url{Var("")};
+  ParamVar headers{};
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      url = value;
+      break;
+    case 1:
+      headers = value;
+      break;
+    case 2:
+      timeout = int(value.payload.intValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return url;
+    case 1:
+      return headers;
+    case 2:
+      return Var(timeout);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  static void fetchSucceeded(emscripten_fetch_t *fetch) {
+    auto self = reinterpret_cast<GetLike *>(fetch->userData);
+    self->buffer.assign(fetch->data);
+    self->state = 1;
+    emscripten_fetch_close(fetch);
+  }
+
+  static void fetchFailed(emscripten_fetch_t *fetch) {
+    auto self = reinterpret_cast<GetLike *>(fetch->userData);
+    self->buffer.assign(fetch->statusText);
+    self->state = -1;
+    emscripten_fetch_close(fetch); // Also free data on failure.
+  }
+
+  void warmup(CBContext *context) {
+    url.warmup(context);
+    headers.warmup(context);
+  }
+
+  void cleanup() {
+    url.cleanup();
+    headers.cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+    strcpy(attr.requestMethod, METHOD.data());
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+    attr.onsuccess = fetchSucceeded;
+    attr.onerror = fetchFailed;
+    attr.userData = this;
+
+    vars.clear();
+    vars.append(url.get().payload.stringValue);
+    if (input.valueType == Table) {
+      vars.append("?");
+      ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+        vars.append(url_encode(key));
+        vars.append("=");
+        vars.append(url_encode(value.payload.stringValue));
+        vars.append("&");
+        return true;
+      });
+      vars.resize(vars.size() - 1);
+    }
+
+    // add custom headers
+    headersCArray.clear();
+    if (headers.get().valueType == Table) {
+      auto htab = headers.get().payload.tableValue;
+      ForEach(htab, [&](auto key, auto &value) {
+        headersCArray.emplace_back(key);
+        headersCArray.emplace_back(value.payload.stringValue);
+        return true;
+      });
+    }
+    attr.requestHeaders = headersCArray.data();
+
+    state = 0;
+    buffer.clear();
+    emscripten_fetch(&attr, vars.c_str());
+
+    while (state == 0) {
+      CB_SUSPEND(context, 0.0);
+    }
+
+    if (state == 1) {
+      return Var(buffer);
+    } else {
+      LOG(ERROR) << "Http request failed with status: " << buffer;
+      throw ActivationError("Http request failed");
+    }
+  }
+};
+
+constexpr string_view GET = "GET";
+using Get = GetLike<GET>;
+
+#else
+
 struct Peer : public std::enable_shared_from_this<Peer> {
   static constexpr uint32_t PeerCC = 'httP';
   static inline Type Info{
@@ -496,12 +641,17 @@ struct SendFile {
   http::response<http::file_body> _response;
   http::response<http::string_body> _404_response;
 };
+#endif
 
 void registerBlocks() {
+#ifdef __EMSCRIPTEN__
+  REGISTER_CBLOCK("Http.Get", Get);
+#else
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);
   REGISTER_CBLOCK("Http.Response", Response);
   REGISTER_CBLOCK("Http.SendFile", SendFile);
+#endif
 }
 } // namespace Http
 } // namespace chainblocks

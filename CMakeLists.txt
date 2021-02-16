@@ -96,7 +96,7 @@ if(NOT EMSCRIPTEN)
 else()
   # MinSizeRel is better for release builds and RelWithDebInfo for debug
   # check github actions CI for config command line
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s NO_EXIT_RUNTIME=1 -s DISABLE_EXCEPTION_CATCHING=0 -s INITIAL_MEMORY=209715200 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=[\"emEval\", \"emCompileShaderBlocking\"]' -s 'EXPORTED_FUNCTIONS=[\"_main\", \"_chainblocksInterface\", \"_malloc\", \"_free\"]' -s MODULARIZE=1 -s 'EXPORT_NAME=\"cbl\"' -s 'EXTRA_EXPORTED_RUNTIME_METHODS=[\"FS\", \"callMain\", \"ENV\", \"IDBFS\", \"GL\", \"setValue\", \"getValue\", \"lengthBytesUTF8\", \"stringToUTF8\"]' -s MIN_WEBGL_VERSION=2 -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s NO_EXIT_RUNTIME=1 -s DISABLE_EXCEPTION_CATCHING=0 -s INITIAL_MEMORY=209715200 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=[\"emEval\", \"emCompileShaderBlocking\"]' -s 'EXPORTED_FUNCTIONS=[\"_main\", \"_chainblocksInterface\", \"_malloc\", \"_free\"]' -s MODULARIZE=1 -s 'EXPORT_NAME=\"cbl\"' -s 'EXTRA_EXPORTED_RUNTIME_METHODS=[\"FS\", \"callMain\", \"ENV\", \"IDBFS\", \"GL\", \"setValue\", \"getValue\", \"lengthBytesUTF8\", \"stringToUTF8\"]' -s MIN_WEBGL_VERSION=2 -s MAX_WEBGL_VERSION=2 -s USE_SDL=2")
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ASSERTIONS=2")
     add_compile_options(-g1 -Os)
@@ -855,6 +855,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CB_EXTRAS}
   )
 
@@ -876,7 +877,6 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
