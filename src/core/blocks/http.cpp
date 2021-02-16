@@ -199,6 +199,8 @@ template <const string_view &METHOD> struct GetLike {
 
 constexpr string_view GET = "GET";
 using Get = GetLike<GET>;
+constexpr string_view HEAD = "HEAD";
+using Head = GetLike<HEAD>;
 
 #else
 
@@ -647,6 +649,7 @@ struct SendFile {
 void registerBlocks() {
 #ifdef __EMSCRIPTEN__
   REGISTER_CBLOCK("Http.Get", Get);
+  REGISTER_CBLOCK("Http.Head", Head);
 #else
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);

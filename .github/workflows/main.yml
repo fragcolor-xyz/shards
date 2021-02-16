@@ -157,6 +157,7 @@ jobs:
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/shell.clj
         ./cbl ../src/tests/blocks.clj
+        ./cbl ../src/tests/rust.clj
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
@@ -366,6 +367,7 @@ jobs:
         ./cbl ../src/tests/snappy.clj
         ./cbl ../src/tests/wasm.clj
         ./cbl ../src/tests/infos.clj
+        ./cbl ../src/tests/rust.clj
         ./test_runtime
 
   iOS:
