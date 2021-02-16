@@ -17,8 +17,8 @@
    (If (< 2)
        :Then (Pass)
        :Else (-> .n (- 2) (Recur) >= .a
-                  .n (- 1) (Recur) >= .b
-                  .a (+ .b)))
+                 .n (- 1) (Recur) >= .b
+                 .a (+ .b)))
    ;; (Log "exit")
    ))
 
@@ -32,7 +32,7 @@
    (If (< 2)
        :Then (Pass)
        :Else (-> (- 2) (Recur) >= .a
-                  .n (- 1) (Recur) (+ .a)))
+                 .n (- 1) (Recur) (+ .a)))
    ;; (Log "exit")
    ))
 
@@ -46,7 +46,7 @@
    (If (< 2)
        :Then (Pass)
        :Else (-> (- 2) (Recur) >= .a
-                  (Pop) (- 1) (Recur) (+ .a)))
+                 (Pop) (- 1) (Recur) (+ .a)))
    ;; (Log "exit")
    ))
 

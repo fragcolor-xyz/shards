@@ -823,76 +823,7 @@ private:
 
 namespace chainblocks {
 struct Serialization {
-  static void varFree(CBVar &output) {
-    switch (output.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
-    case CBType::Enum:
-    case CBType::Bool:
-    case CBType::Int:
-    case CBType::Int2:
-    case CBType::Int3:
-    case CBType::Int4:
-    case CBType::Int8:
-    case CBType::Int16:
-    case CBType::Float:
-    case CBType::Float2:
-    case CBType::Float3:
-    case CBType::Float4:
-    case CBType::Color:
-      break;
-    case CBType::Bytes:
-      delete[] output.payload.bytesValue;
-      break;
-    case CBType::Array:
-      chainblocks::arrayFree(output.payload.arrayValue);
-      break;
-    case CBType::Path:
-    case CBType::String:
-    case CBType::ContextVar: {
-      delete[] output.payload.stringValue;
-      break;
-    }
-    case CBType::Seq: {
-      for (uint32_t i = 0; i < output.payload.seqValue.cap; i++) {
-        varFree(output.payload.seqValue.elements[i]);
-      }
-      chainblocks::arrayFree(output.payload.seqValue);
-      break;
-    }
-    case CBType::Table: {
-      output.payload.tableValue.api->tableFree(output.payload.tableValue);
-      break;
-    }
-    case CBType::Image: {
-      delete[] output.payload.imageValue.data;
-      break;
-    }
-    case CBType::Block: {
-      auto blk = output.payload.blockValue;
-      if (!blk->owned) {
-        // destroy only if not owned
-        blk->destroy(blk);
-      }
-      break;
-    }
-    case CBType::Chain: {
-      CBChain::deleteRef(output.payload.chainValue);
-      break;
-    }
-    case CBType::Object: {
-      if ((output.flags & CBVAR_FLAGS_USES_OBJINFO) ==
-              CBVAR_FLAGS_USES_OBJINFO &&
-          output.objectInfo && output.objectInfo->release) {
-        output.objectInfo->release(output.payload.objectValue);
-      }
-      break;
-    }
-    }
-
-    memset(&output, 0x0, sizeof(CBVar));
-  }
+  static void varFree(CBVar &output);
 
   std::unordered_map<std::string, CBChainRef> chains;
   std::unordered_map<std::string, std::shared_ptr<CBlock>> defaultBlocks;

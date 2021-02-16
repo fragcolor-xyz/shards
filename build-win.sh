@@ -23,7 +23,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=$1 -DUSE_LIBBACKTRACE=1 ..
 ninja rust_blocks && ninja cbl && ninja test_runtime
 
 echo "Running test: general"
-./cbl ../src/tests/general.clj
+./cbl ../src/tests/general.edn
 echo "Running test: variables"
 ./cbl ../src/tests/variables.clj
 echo "Running test: subchains"
