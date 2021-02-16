@@ -1,6 +1,22 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2021 Giovanni Petrantoni */
 
+#ifdef __EMSCRIPTEN__
+
+/*
+* TODO
+JS runtimes have good wasm Jitse, let's use that, we reduce our binary size
+too...
+*/
+
+namespace chainblocks {
+namespace Wasm {
+void registerBlocks();
+}
+} // namespace chainblocks
+
+#else
+
 #include "shared.hpp"
 #include <cstdio>
 #include <filesystem>
@@ -1296,3 +1312,5 @@ void registerBlocks() { REGISTER_CBLOCK("Wasm.Run", Wasm::Run); }
 
 } // namespace Wasm
 } // namespace chainblocks
+
+#endif
