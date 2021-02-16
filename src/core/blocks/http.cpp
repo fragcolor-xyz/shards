@@ -87,7 +87,7 @@ template <const string_view &METHOD> struct GetLike {
   std::string buffer;
   std::string vars;
   std::vector<const char *> headersCArray;
-  int timeout{0};
+  int timeout{10};
   ParamVar url{Var("")};
   ParamVar headers{};
 
@@ -152,6 +152,7 @@ template <const string_view &METHOD> struct GetLike {
     attr.onsuccess = fetchSucceeded;
     attr.onerror = fetchFailed;
     attr.userData = this;
+    attr.timeoutMSecs = timeout * 1000;
 
     vars.clear();
     vars.append(url.get().payload.stringValue);
