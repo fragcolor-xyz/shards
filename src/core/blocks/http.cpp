@@ -68,7 +68,13 @@ template <const string_view &METHOD> struct GetLike {
   static inline Types InputTypes{
       {CoreInfo::NoneType, CoreInfo::StringTableType}};
   static CBTypesInfo inputTypes() { return InputTypes; }
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBTypesInfo outputTypes() {
+    if (asBytes) {
+      return CoreInfo::BytesType;
+    } else {
+      return CoreInfo::StringType;
+    }
+  }
 
   static inline Parameters params{
       {"URL",
@@ -80,7 +86,10 @@ template <const string_view &METHOD> struct GetLike {
         CoreInfo::StringVarTableType}},
       {"Timeout",
        CBCCSTR("How many seconds to wait for the request to complete."),
-       {CoreInfo::IntType}}};
+       {CoreInfo::IntType}},
+      {"Bytes",
+       CBCCSTR("If instead of a string the block should outout bytes."),
+       {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   int state = 0;
@@ -88,6 +97,7 @@ template <const string_view &METHOD> struct GetLike {
   std::string vars;
   std::vector<const char *> headersCArray;
   int timeout{10};
+  bool asBytes{false};
   ParamVar url{Var("")};
   ParamVar headers{};
 
@@ -102,6 +112,9 @@ template <const string_view &METHOD> struct GetLike {
     case 2:
       timeout = int(value.payload.intValue);
       break;
+    case 3:
+      asBytes = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -115,6 +128,8 @@ template <const string_view &METHOD> struct GetLike {
       return headers;
     case 2:
       return Var(timeout);
+    case 3:
+      return Var(asBytes);
     default:
       throw InvalidParameterIndex();
     }
@@ -122,7 +137,7 @@ template <const string_view &METHOD> struct GetLike {
 
   static void fetchSucceeded(emscripten_fetch_t *fetch) {
     auto self = reinterpret_cast<GetLike *>(fetch->userData);
-    self->buffer.assign(fetch->data);
+    self->buffer.assign(fetch->data, fetch->numBytes);
     self->state = 1;
     emscripten_fetch_close(fetch);
   }
@@ -189,7 +204,11 @@ template <const string_view &METHOD> struct GetLike {
     }
 
     if (state == 1) {
-      return Var(buffer);
+      if (asBytes) {
+        return Var((uint8_t *)buffer.data(), buffer.size());
+      } else {
+        return Var(buffer);
+      }
     } else {
       LOG(ERROR) << "Http request failed with status: " << buffer;
       throw ActivationError("Http request failed");
