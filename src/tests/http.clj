@@ -43,6 +43,13 @@
 (schedule Root test)
 (run Root 0.1 50)
 
+(schedule Root
+          (Chain
+           "Download"
+           nil (Http.Get "https://ipfs.io/ipfs/QmSsba3SLnAEVGFaEcnpUeRuAb2vrJE2wpLpmRonf6aRrm" :Bytes true) = .avocado
+           "avocado.glb" (FS.Write .avocado :Overwrite true)))
+(run Root 0.1)
+
 ;; (def server-handler
 ;;   (Chain
 ;;    "server-handler"

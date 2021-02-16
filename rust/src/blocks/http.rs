@@ -26,6 +26,7 @@ lazy_static! {
     common_type::string
   ];
   static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::string];
+  static ref BYTES_OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
   static ref GET_PARAMETERS: Parameters = vec![
     (
       "URL",
@@ -48,6 +49,12 @@ lazy_static! {
       "How many seconds to wait for the request to complete.",
       vec![common_type::int]
     )
+      .into(),
+    (
+      "Bytes",
+      "If instead of a string the block should outout bytes.",
+      vec![common_type::bool]
+    )
       .into()
   ];
 }
@@ -64,6 +71,7 @@ struct RequestBase {
   headers: ParamVar,
   output: ClonedVar,
   timeout: u64,
+  as_bytes: bool,
 }
 
 impl Default for RequestBase {
@@ -74,24 +82,9 @@ impl Default for RequestBase {
       headers: ParamVar::new(().into()),
       output: ().into(),
       timeout: 10,
+      as_bytes: false,
     }
   }
-}
-
-fn exec_request_string(
-  request: reqwest::blocking::RequestBuilder,
-) -> Result<std::string::String, &'static str> {
-  request
-    .send()
-    .map_err(|e| {
-      cblog!("Failure details: {}", e);
-      "Failed to send the request"
-    })?
-    .text()
-    .map_err(|e| {
-      cblog!("Failure details: {}", e);
-      "Failed to decode the response"
-    })
 }
 
 macro_rules! get_like {
@@ -118,8 +111,13 @@ macro_rules! get_like {
         &GET_INPUT_TYPES
       }
       fn outputTypes(&mut self) -> &Types {
-        &STR_OUTPUT_TYPE
+        if self.rb.as_bytes {
+          &BYTES_OUTPUT_TYPE
+        } else {
+          &STR_OUTPUT_TYPE
+        }
       }
+
       fn parameters(&mut self) -> Option<&Parameters> {
         Some(&GET_PARAMETERS)
       }
@@ -128,7 +126,8 @@ macro_rules! get_like {
         match index {
           0 => self.rb.url.setParam(value),
           1 => self.rb.headers.setParam(value),
-          2 => self.rb.timeout = value.try_into().expect("Integer timeout value"),
+          2 => self.rb.timeout = value.try_into().unwrap(),
+          3 => self.rb.as_bytes = value.try_into().unwrap(),
           _ => unreachable!(),
         }
       }
@@ -142,6 +141,7 @@ macro_rules! get_like {
             .timeout
             .try_into()
             .expect("A valid integer in range"),
+          3 => self.rb.as_bytes.into(),
           _ => unreachable!(),
         }
       }
@@ -184,9 +184,35 @@ macro_rules! get_like {
               request = request.query(&[(key, value)]);
             }
           }
-          let response = exec_request_string(request)?;
-          self.rb.output = response.as_str().into();
-          Ok(self.rb.output.0)
+          if self.rb.as_bytes {
+            let bytes = request
+              .send()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to send the request"
+              })?
+              .bytes()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to decode the response"
+              })?;
+            self.rb.output = bytes.as_ref().into();
+            Ok(self.rb.output.0)
+          } else {
+            let str = request
+              .send()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to send the request"
+              })?
+              .text()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to decode the response"
+              })?;
+            self.rb.output = str.as_str().into();
+            Ok(self.rb.output.0)
+          }
         }))
       }
     }
@@ -199,33 +225,46 @@ macro_rules! post_like {
     struct $block_name {
       rb: RequestBase,
     }
+
     impl Block for $block_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
+
       fn name(&mut self) -> &str {
         $name_str
       }
+
       fn hash() -> u32 {
         compile_time_crc32::crc32!($hash)
       }
+
       fn inputTypes(&mut self) -> &Types {
         &POST_INPUT_TYPES
       }
+
       fn outputTypes(&mut self) -> &Types {
-        &STR_OUTPUT_TYPE
+        if self.rb.as_bytes {
+          &BYTES_OUTPUT_TYPE
+        } else {
+          &STR_OUTPUT_TYPE
+        }
       }
+
       fn parameters(&mut self) -> Option<&Parameters> {
         Some(&GET_PARAMETERS)
       }
+
       fn setParam(&mut self, index: i32, value: &Var) {
         match index {
           0 => self.rb.url.setParam(value),
           1 => self.rb.headers.setParam(value),
-          2 => self.rb.timeout = value.try_into().expect("Integer timeout value"),
+          2 => self.rb.timeout = value.try_into().unwrap(),
+          3 => self.rb.as_bytes = value.try_into().unwrap(),
           _ => unreachable!(),
         }
       }
+
       fn getParam(&mut self, index: i32) -> Var {
         match index {
           0 => self.rb.url.getParam(),
@@ -235,18 +274,22 @@ macro_rules! post_like {
             .timeout
             .try_into()
             .expect("A valid integer in range"),
+          3 => self.rb.as_bytes.into(),
           _ => unreachable!(),
         }
       }
+
       fn warmup(&mut self, context: &Context) -> Result<(), &str> {
         self.rb.url.warmup(context);
         self.rb.headers.warmup(context);
         Ok(())
       }
+
       fn cleanup(&mut self) {
         self.rb.url.cleanup();
         self.rb.headers.cleanup();
       }
+
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
         Ok(do_blocking(context, || {
           let request = self.rb.url.get();
@@ -289,9 +332,35 @@ macro_rules! post_like {
               }
             }
           }
-          let response = exec_request_string(request)?;
-          self.rb.output = response.as_str().into();
-          Ok(self.rb.output.0)
+          if self.rb.as_bytes {
+            let bytes = request
+              .send()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to send the request"
+              })?
+              .bytes()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to decode the response"
+              })?;
+            self.rb.output = bytes.as_ref().into();
+            Ok(self.rb.output.0)
+          } else {
+            let str = request
+              .send()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to send the request"
+              })?
+              .text()
+              .map_err(|e| {
+                cblog!("Failure details: {}", e);
+                "Failed to decode the response"
+              })?;
+            self.rb.output = str.as_str().into();
+            Ok(self.rb.output.0)
+          }
         }))
       }
     }
