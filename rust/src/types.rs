@@ -1094,16 +1094,16 @@ impl Var {
     }
   }
 
-  pub unsafe fn into_object_ptr<T>(var: Var, info: &Type) -> Result<*const T, &str> {
+  pub unsafe fn into_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
     if var.valueType != CBType_Object
       || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
         != info.details.object.vendorId
       || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
     {
-      Err("Failed to cast Var into custom *const T object")
+      Err("Failed to cast Var into custom &mut T object")
     } else {
-      let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *const T;
-      Ok(aptr)
+      let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut T;
+      Ok(&mut *aptr)
     }
   }
 

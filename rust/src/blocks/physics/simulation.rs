@@ -1,3 +1,4 @@
+use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
 use crate::blocks::physics::SIMULATION_TYPE;
 use crate::core::registerBlock;
@@ -27,26 +28,11 @@ lazy_static! {
     .into()];
 }
 
-struct Simulation {
-  pipeline: PhysicsPipeline,
-  gravity: Vector3<f32>,
-  integration_parameters: IntegrationParameters,
-  broad_phase: BroadPhase,
-  narrow_phase: NarrowPhase,
-  bodies: RigidBodySet,
-  colliders: ColliderSet,
-  joints: JointSet,
-  contacts_channel: crossbeam::channel::Receiver<ContactEvent>,
-  intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
-  event_handler: ChannelEventCollector,
-  self_obj: ParamVar,
-}
-
 impl Default for Simulation {
   fn default() -> Self {
     let (contact_send, contact_recv) = crossbeam::channel::unbounded();
     let (intersection_send, intersection_recv) = crossbeam::channel::unbounded();
-    Simulation {
+    let mut res = Simulation {
       pipeline: PhysicsPipeline::new(),
       gravity: Vector3::new(0.0, -9.81, 0.0),
       integration_parameters: IntegrationParameters::default(),
@@ -59,7 +45,9 @@ impl Default for Simulation {
       intersections_channel: intersection_recv,
       event_handler: ChannelEventCollector::new(intersection_send, contact_send),
       self_obj: ParamVar::new(().into()),
-    }
+    };
+    res.self_obj.setName("Physics.Simulation");
+    res
   }
 }
 
