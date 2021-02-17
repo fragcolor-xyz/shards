@@ -1,0 +1,15 @@
+(defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) :Looped (chainify (vector ~@blocks))))))
+(defmacro! defloop (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) :Looped (chainify (vector ~@blocks))))))
+
+(defchain x
+  "Hello world"
+  (Log))
+
+(defloop y
+  "Hello world"
+  (Log)
+  (Pause 1.0))
+
+(def Root (Node))
+(schedule Root x)
+(run Root 0.1 50)
