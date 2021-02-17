@@ -1957,3 +1957,9 @@ impl PartialEq for Var {
     }
   }
 }
+
+lazy_static! {
+  pub static ref ANY_TYPE: Vec<Type> = vec![
+    common_type::any,
+  ];
+}

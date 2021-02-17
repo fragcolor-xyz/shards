@@ -16,20 +16,25 @@ compile-time-crc32 = "0.1.2"
 tiny-keccak = { version = "2.0.2", features = ["keccak"], optional = true }
 libsecp256k1 = { version = "0.3.5", optional = true }
 hex = { version = "0.4.2", optional = true }
+crossbeam = { version = "0.8", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
-reqwest = { version = "0.10", features = ["blocking"], optional = true }
+reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
+rapier3d = { version = "0.5.0", features = [ "simd-stable", "parallel" ], optional = true }
+
+[target.'cfg(target_arch="wasm32")'.dependencies]
+rapier3d = { version = "0.5.0", optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"
 
 [build-dependencies]
-bindgen = { version = "0.55.1", optional = true }
+bindgen = { version = "0.57.0", optional = true }
 
 [features]
 default = []
 dummy = []
-blocks = ["reqwest", "tiny-keccak", "libsecp256k1", "hex"]
+blocks = ["reqwest", "tiny-keccak", "libsecp256k1", "hex", "rapier3d", "crossbeam"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]

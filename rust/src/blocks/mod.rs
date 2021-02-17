@@ -5,16 +5,13 @@ extern crate tiny_keccak;
 extern crate secp256k1;
 extern crate hex;
 
+use crate::types::Type;
+use crate::types::common_type;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub mod http;
 
 pub mod hash;
 pub mod sign;
 
-#[cfg(test)]
-mod tests {
-  #[test]
-  fn it_works() {
-    assert_eq!(2 + 2, 4);
-  }
-}
+pub mod physics;
