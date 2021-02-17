@@ -1134,6 +1134,15 @@ struct VarStringStream {
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
           stream << std::setw(2) << std::setfill('0')
                  << (int)var.payload.bytesValue[i];
+      } else if (var.valueType == String) {
+        stream << std::hex;
+        auto len = var.payload.stringLen;
+        if (len == 0) {
+          len = strlen(var.payload.stringValue);
+        }
+        for (uint32_t i = 0; i < len; i++)
+          stream << std::setw(2) << std::setfill('0')
+                 << (int)var.payload.stringValue[i];
       } else {
         stream << var;
       }

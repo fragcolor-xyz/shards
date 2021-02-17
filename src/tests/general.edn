@@ -25,6 +25,10 @@
    (Const #"\sHello")
    (Log)
 
+   "phys"
+   (ToHex)
+   (Log)
+
    false
    (Match [true ~["Yes"]
            false ~["No"]]
