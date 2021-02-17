@@ -1,5 +1,13 @@
+use crate::blocks::physics::EXPOSED_SIMULATION;
+use crate::blocks::physics::SIMULATION_TYPE;
 use crate::core::registerBlock;
+use crate::types::common_type;
 use crate::types::Context;
+use crate::types::ExposedInfo;
+use crate::types::ExposedTypes;
+use crate::types::ParamVar;
+use crate::types::Parameters;
+use crate::types::Type;
 use crate::types::ANY_TYPE;
 use crate::Block;
 use crate::Types;
@@ -8,8 +16,18 @@ use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
 use rapier3d::na::Vector3;
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
+use std::convert::TryInto;
 
-struct Pipeline {
+lazy_static! {
+  static ref SIMULATION_PARAMETERS: Parameters = vec![(
+    "Gravity",
+    "The gravity force vector.",
+    vec![common_type::float3]
+  )
+    .into()];
+}
+
+struct Simulation {
   pipeline: PhysicsPipeline,
   gravity: Vector3<f32>,
   integration_parameters: IntegrationParameters,
@@ -21,13 +39,14 @@ struct Pipeline {
   contacts_channel: crossbeam::channel::Receiver<ContactEvent>,
   intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
   event_handler: ChannelEventCollector,
+  self_obj: ParamVar,
 }
 
-impl Default for Pipeline {
+impl Default for Simulation {
   fn default() -> Self {
     let (contact_send, contact_recv) = crossbeam::channel::unbounded();
     let (intersection_send, intersection_recv) = crossbeam::channel::unbounded();
-    Pipeline {
+    Simulation {
       pipeline: PhysicsPipeline::new(),
       gravity: Vector3::new(0.0, -9.81, 0.0),
       integration_parameters: IntegrationParameters::default(),
@@ -39,26 +58,69 @@ impl Default for Pipeline {
       contacts_channel: contact_recv,
       intersections_channel: intersection_recv,
       event_handler: ChannelEventCollector::new(intersection_send, contact_send),
+      self_obj: ParamVar::new(().into()),
     }
   }
 }
 
-impl Block for Pipeline {
+impl Block for Simulation {
   fn registerName() -> &'static str {
-    cstr!("Physics.Pipeline")
+    cstr!("Physics.Simulation")
   }
+
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("Physics.Pipeline-rust-0x20200101")
+    compile_time_crc32::crc32!("Physics.Simulation-rust-0x20200101")
   }
+
   fn name(&mut self) -> &str {
-    "Physics.Pipeline"
+    "Physics.Simulation"
   }
 
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPE
   }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPE
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&SIMULATION_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => {
+        let (x, y, z) = value.try_into().unwrap();
+        self.gravity = Vector3::new(x, y, z);
+      }
+      _ => unreachable!(),
+    }
+  }
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => (self.gravity[0], self.gravity[1], self.gravity[2]).into(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    Some(&EXPOSED_SIMULATION)
+  }
+
+  fn cleanup(&mut self) {
+    self.self_obj.cleanup();
+  }
+
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.self_obj.warmup(context);
+    unsafe {
+      self.self_obj.set(Var::new_object_from_ptr(
+        self as *const Simulation,
+        &SIMULATION_TYPE,
+      ));
+    }
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -79,5 +141,5 @@ impl Block for Pipeline {
 }
 
 pub fn registerBlocks() {
-  registerBlock::<Pipeline>();
+  registerBlock::<Simulation>();
 }

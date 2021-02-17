@@ -123,6 +123,7 @@ unsafe impl Send for Block {}
 CBTypeInfo & co
 */
 unsafe impl std::marker::Sync for CBTypeInfo {}
+unsafe impl std::marker::Sync for CBExposedTypeInfo {}
 unsafe impl std::marker::Sync for CBParameterInfo {}
 unsafe impl std::marker::Sync for CBStrings {}
 
@@ -384,6 +385,7 @@ pub mod common_type {
   use crate::chainblocksc::CBType_String;
   use crate::chainblocksc::CBType_Table;
   use crate::chainblocksc::CBTypesInfo;
+  use crate::types::CBType_Object;
 
   const fn base_info() -> CBTypeInfo {
     CBTypeInfo {
@@ -401,13 +403,7 @@ pub mod common_type {
     }
   }
 
-  const fn make_none() -> CBTypeInfo {
-    let mut res = base_info();
-    res.basicType = CBType_None;
-    res
-  }
-
-  pub static none: CBTypeInfo = make_none();
+  pub static none: CBTypeInfo = base_info();
 
   macro_rules! cbtype {
     ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $name_table:ident, $name_table_var:ident) => {
@@ -494,6 +490,15 @@ pub mod common_type {
     any_table_var
   );
   cbtype!(
+    make_object,
+    CBType_Object,
+    object,
+    objects,
+    object_var,
+    object_table,
+    object_table_var
+  );
+  cbtype!(
     make_string,
     CBType_String,
     string,
@@ -528,6 +533,33 @@ pub mod common_type {
     float_var,
     float_table,
     float_table_var
+  );
+  cbtype!(
+    make_float2,
+    CBType_Float,
+    float2,
+    float2s,
+    float2_var,
+    float2_table,
+    float2_table_var
+  );
+  cbtype!(
+    make_float3,
+    CBType_Float,
+    float3,
+    float3s,
+    float3_var,
+    float3_table,
+    float3_table_var
+  );
+  cbtype!(
+    make_float4,
+    CBType_Float,
+    float4,
+    float4s,
+    float4_var,
+    float4_table,
+    float4_table_var
   );
   cbtype!(
     make_bool,
@@ -856,6 +888,39 @@ impl From<&CStr> for Var {
   }
 }
 
+impl From<(f32, f32, f32)> for Var {
+  #[inline(always)]
+  fn from(v: (f32, f32, f32)) -> Self {
+    let mut res = CBVar {
+      valueType: CBType_Float3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float3Value[0] = v.0;
+      res.payload.__bindgen_anon_1.float3Value[1] = v.1;
+      res.payload.__bindgen_anon_1.float3Value[2] = v.2;
+    }
+    res
+  }
+}
+
+impl From<(f32, f32, f32, f32)> for Var {
+  #[inline(always)]
+  fn from(v: (f32, f32, f32, f32)) -> Self {
+    let mut res = CBVar {
+      valueType: CBType_Float4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float4Value[0] = v.0;
+      res.payload.__bindgen_anon_1.float4Value[1] = v.1;
+      res.payload.__bindgen_anon_1.float4Value[2] = v.2;
+      res.payload.__bindgen_anon_1.float4Value[3] = v.3;
+    }
+    res
+  }
+}
+
 impl From<&CString> for Var {
   #[inline(always)]
   fn from(v: &CString) -> Self {
@@ -997,7 +1062,23 @@ impl Var {
     }
   }
 
-  pub fn into_object<'a, T>(var: Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
+  pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
+    Var {
+      valueType: CBType_Object,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
+            objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
+            objectVendorId: info.details.object.vendorId,
+            objectTypeId: info.details.object.typeId,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn into_object<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1010,6 +1091,19 @@ impl Var {
         let at = (*aptr).clone();
         Ok(at)
       }
+    }
+  }
+
+  pub unsafe fn into_object_ptr<T>(var: Var, info: &Type) -> Result<*const T, &str> {
+    if var.valueType != CBType_Object
+      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+        != info.details.object.vendorId
+      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+    {
+      Err("Failed to cast Var into custom *const T object")
+    } else {
+      let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *const T;
+      Ok(aptr)
     }
   }
 
@@ -1239,6 +1333,25 @@ impl TryFrom<&Var> for f64 {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
+    }
+  }
+}
+
+impl TryFrom<&Var> for (f32, f32, f32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float3Value[0],
+          var.payload.__bindgen_anon_1.float3Value[1],
+          var.payload.__bindgen_anon_1.float3Value[2],
+        ))
+      }
     }
   }
 }
@@ -1482,7 +1595,7 @@ impl Seq {
     self.s.len.try_into().unwrap()
   }
 
-  pub fn is_empty(&self) -> bool{
+  pub fn is_empty(&self) -> bool {
     self.s.len == 0
   }
 
@@ -1959,7 +2072,5 @@ impl PartialEq for Var {
 }
 
 lazy_static! {
-  pub static ref ANY_TYPE: Vec<Type> = vec![
-    common_type::any,
-  ];
+  pub static ref ANY_TYPE: Vec<Type> = vec![common_type::any,];
 }
