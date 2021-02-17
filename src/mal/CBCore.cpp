@@ -179,6 +179,12 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
 #elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
+  rep("(defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) "
+      "(Chain ~(str name) :Looped (chainify (vector ~@blocks))))))",
+      env);
+  rep("(defmacro! defloop (fn* [name & blocks] `(def! ~(symbol (str name)) "
+      "(Chain ~(str name) :Looped (chainify (vector ~@blocks))))))",
+      env);
 }
 
 class malRoot {
