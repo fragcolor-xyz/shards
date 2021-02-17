@@ -1951,6 +1951,14 @@ struct PlotBars : public PlottableBase {
   }
 };
 
+struct HasPointer : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(::ImGui::IsAnyItemHovered());
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -1990,6 +1998,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
   REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
   REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
+  REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
 }
 }; // namespace ImGui
 }; // namespace chainblocks

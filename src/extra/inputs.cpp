@@ -217,10 +217,108 @@ struct Mouse : public Base {
   }
 };
 
+template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Left",
+       CBCCSTR(
+           "The action to perform when the left mouse button is pressed down."),
+       {CoreInfo::BlocksOrNone}},
+      {"Right",
+       CBCCSTR("The action to perform when the right mouse button is pressed "
+               "down."),
+       {CoreInfo::BlocksOrNone}},
+      {"Middle",
+       CBCCSTR("The action to perform when the middle mouse button is pressed "
+               "down."),
+       {CoreInfo::BlocksOrNone}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _leftButton = value;
+      break;
+    case 1:
+      _rightButton = value;
+      break;
+    case 2:
+      _middleButton = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _leftButton;
+    case 1:
+      return _rightButton;
+    case 2:
+      return _middleButton;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  BlocksVar _leftButton{};
+  BlocksVar _rightButton{};
+  BlocksVar _middleButton{};
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // sdlEvents is not thread safe
+    Base::compose(data);
+
+    _leftButton.compose(data);
+    _rightButton.compose(data);
+    _middleButton.compose(data);
+
+    return data.inputType;
+  }
+
+  void cleanup() {
+    _leftButton.cleanup();
+    _rightButton.cleanup();
+    _middleButton.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _leftButton.warmup(context);
+    _rightButton.warmup(context);
+    _middleButton.warmup(context);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    for (const auto &event : BGFX::Context::sdlEvents) {
+      if (event.type == EVENT_TYPE) {
+        CBVar output{};
+        if (event.button.button == SDL_BUTTON_LEFT) {
+          _leftButton.activate(context, input, output);
+        } else if (event.button.button == SDL_BUTTON_RIGHT) {
+          _rightButton.activate(context, input, output);
+        } else if (event.button.button == SDL_BUTTON_MIDDLE) {
+          _middleButton.activate(context, input, output);
+        }
+      }
+    }
+    return input;
+  }
+};
+
+using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
+using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
+
 void registerBlocks() {
   REGISTER_CBLOCK("Inputs.MousePos", MousePos);
   REGISTER_CBLOCK("Inputs.MouseDelta", MouseDelta);
   REGISTER_CBLOCK("Inputs.Mouse", Mouse);
+  REGISTER_CBLOCK("Inputs.MouseUp", MouseUp);
+  REGISTER_CBLOCK("Inputs.MouseDown", MouseDown);
 }
 } // namespace Inputs
 } // namespace chainblocks
