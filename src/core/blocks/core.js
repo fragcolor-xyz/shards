@@ -4,6 +4,9 @@
 // emscripten related utilities
 
 mergeInto(LibraryManager.library, {
+  now: function () {
+    return Date.now() / 1000.0;
+  },
   emEval: function (code) {
     try {
       const scode = UTF8ToString(code);
