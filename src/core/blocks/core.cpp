@@ -1670,6 +1670,7 @@ CBVar hashActivation(const CBVar &input) {
 #ifdef __EMSCRIPTEN__
 extern "C" {
 char *emEval(const char *code);
+double now();
 bool emEvalAsyncRun(const char *code, size_t index);
 int emEvalAsyncCheck(size_t index);
 char *emEvalAsyncGet(size_t index);
