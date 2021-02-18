@@ -1,4 +1,3 @@
-use core::ops::IndexMut;
 use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBChainState;
@@ -70,6 +69,7 @@ use core::convert::TryFrom;
 use core::convert::TryInto;
 use core::mem::transmute;
 use core::ops::Index;
+use core::ops::IndexMut;
 use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -386,6 +386,9 @@ pub mod common_type {
   use crate::chainblocksc::CBType_String;
   use crate::chainblocksc::CBType_Table;
   use crate::chainblocksc::CBTypesInfo;
+  use crate::types::CBType_Float2;
+  use crate::types::CBType_Float3;
+  use crate::types::CBType_Float4;
   use crate::types::CBType_Object;
 
   const fn base_info() -> CBTypeInfo {
@@ -537,7 +540,7 @@ pub mod common_type {
   );
   cbtype!(
     make_float2,
-    CBType_Float,
+    CBType_Float2,
     float2,
     float2s,
     float2_var,
@@ -546,7 +549,7 @@ pub mod common_type {
   );
   cbtype!(
     make_float3,
-    CBType_Float,
+    CBType_Float3,
     float3,
     float3s,
     float3_var,
@@ -555,7 +558,7 @@ pub mod common_type {
   );
   cbtype!(
     make_float4,
-    CBType_Float,
+    CBType_Float4,
     float4,
     float4s,
     float4_var,
@@ -1389,6 +1392,26 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   }
 }
 
+impl TryFrom<&Var> for (f32, f32, f32, f32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float4Value[0],
+          var.payload.__bindgen_anon_1.float4Value[1],
+          var.payload.__bindgen_anon_1.float4Value[2],
+          var.payload.__bindgen_anon_1.float4Value[3],
+        ))
+      }
+    }
+  }
+}
+
 impl TryFrom<&Var> for bool {
   type Error = &'static str;
 
@@ -1435,6 +1458,13 @@ impl TryFrom<Var> for &[Var] {
         Ok(res)
       }
     }
+  }
+}
+
+impl AsRef<Var> for Var {
+  #[inline(always)]
+  fn as_ref(&self) -> &Var {
+    &self
   }
 }
 
@@ -1518,6 +1548,12 @@ impl ParamVar {
 
   pub fn getName(&mut self) -> *const i8 {
     (&self.parameter.0).try_into().unwrap()
+  }
+}
+
+impl Default for ParamVar {
+  fn default() -> Self {
+    ParamVar::new(().into())
   }
 }
 
@@ -1687,6 +1723,12 @@ impl Seq {
   }
 }
 
+impl Default for Seq {
+  fn default() -> Self {
+    Seq::new()
+  }
+}
+
 impl AsRef<Seq> for Seq {
   #[inline(always)]
   fn as_ref(&self) -> &Seq {
@@ -1707,25 +1749,37 @@ impl From<&Seq> for Var {
   }
 }
 
-impl From<Var> for Seq {
+impl TryFrom<&Var> for Seq {
+  type Error = &'static str;
+
   #[inline(always)]
-  fn from(v: Var) -> Self {
-    unsafe {
-      Seq {
-        s: v.payload.__bindgen_anon_1.seqValue,
-        owned: false,
+  fn try_from(v: &Var) -> Result<Self, Self::Error> {
+    if v.valueType != CBType_Seq {
+      Err("Expected Seq variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(Seq {
+          s: v.payload.__bindgen_anon_1.seqValue,
+          owned: false,
+        })
       }
     }
   }
 }
 
-impl From<&Var> for Seq {
+impl TryFrom<Var> for Seq {
+  type Error = &'static str;
+
   #[inline(always)]
-  fn from(v: &Var) -> Self {
-    unsafe {
-      Seq {
-        s: v.payload.__bindgen_anon_1.seqValue,
-        owned: false,
+  fn try_from(v: Var) -> Result<Self, Self::Error> {
+    if v.valueType != CBType_Seq {
+      Err("Expected Seq variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(Seq {
+          s: v.payload.__bindgen_anon_1.seqValue,
+          owned: false,
+        })
       }
     }
   }
@@ -2087,8 +2141,8 @@ impl PartialEq for Var {
             {
               false
             } else {
-              let aseq: Seq = self.into();
-              let bseq: Seq = other.into();
+              let aseq: Seq = self.try_into().unwrap();
+              let bseq: Seq = other.try_into().unwrap();
               aseq.into_iter().eq(bseq.into_iter())
             }
           }
@@ -2148,6 +2202,8 @@ impl PartialEq for Var {
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
+  pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
+  pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
   pub static ref FLOAT4X4_TYPE: Type = {
     let mut t = common_type::float4s;
     t.fixedSize = 4;
@@ -2157,9 +2213,16 @@ lazy_static! {
   pub static ref FLOAT4X4S_TYPE: Type = Type::seq_single(&FLOAT4X4_TYPE);
   pub static ref FLOAT3X3_TYPE: Type = {
     let mut t = common_type::float3s;
-    t.fixedSize = 4;
+    t.fixedSize = 3;
     t
   };
   pub static ref FLOAT3X3_TYPES: Vec<Type> = vec![*FLOAT3X3_TYPE];
   pub static ref FLOAT3X3S_TYPE: Type = Type::seq_single(&FLOAT3X3_TYPE);
+  pub static ref FLOAT4X2_TYPE: Type = {
+    let mut t = common_type::float4s;
+    t.fixedSize = 2;
+    t
+  };
+  pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
+  pub static ref FLOAT4X2S_TYPE: Type = Type::seq_single(&FLOAT4X2_TYPE);
 }

@@ -61,7 +61,7 @@ impl Block for Keccak256 {
     self.output.resize(32, 0);
 
     if input.is_seq() {
-      let s: Seq = input.into();
+      let s: Seq = input.try_into().unwrap();
       for val in s.iter() {
         let bytes: Result<&[u8], &str> = val.as_ref().try_into();
         if let Ok(bytes) = bytes {

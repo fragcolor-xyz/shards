@@ -14,8 +14,7 @@ use crate::types::Type;
 use crate::Var;
 use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
-use rapier3d::na::Matrix4;
-use rapier3d::na::Vector3;
+use rapier3d::na::{Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 
 lazy_static! {
@@ -72,6 +71,45 @@ fn fill_seq_from_mat4(var: &mut Seq, mat: &Matrix4<f32>) {
     var[3].payload.__bindgen_anon_1.float4Value[1] = mat[13];
     var[3].payload.__bindgen_anon_1.float4Value[2] = mat[14];
     var[3].payload.__bindgen_anon_1.float4Value[3] = mat[15];
+  }
+}
+
+fn mat4_from_seq(var: &Seq) -> Matrix4<f32> {
+  unsafe {
+    Matrix4::new(
+      var[0].payload.__bindgen_anon_1.float4Value[0],
+      var[0].payload.__bindgen_anon_1.float4Value[1],
+      var[0].payload.__bindgen_anon_1.float4Value[2],
+      var[0].payload.__bindgen_anon_1.float4Value[3],
+      var[1].payload.__bindgen_anon_1.float4Value[0],
+      var[1].payload.__bindgen_anon_1.float4Value[1],
+      var[1].payload.__bindgen_anon_1.float4Value[2],
+      var[1].payload.__bindgen_anon_1.float4Value[3],
+      var[2].payload.__bindgen_anon_1.float4Value[0],
+      var[2].payload.__bindgen_anon_1.float4Value[1],
+      var[2].payload.__bindgen_anon_1.float4Value[2],
+      var[2].payload.__bindgen_anon_1.float4Value[3],
+      var[3].payload.__bindgen_anon_1.float4Value[0],
+      var[3].payload.__bindgen_anon_1.float4Value[1],
+      var[3].payload.__bindgen_anon_1.float4Value[2],
+      var[3].payload.__bindgen_anon_1.float4Value[3],
+    )
+  }
+}
+
+fn mat3_from_seq(var: &Seq) -> Matrix3<f32> {
+  unsafe {
+    Matrix3::new(
+      var[0].payload.__bindgen_anon_1.float3Value[0],
+      var[0].payload.__bindgen_anon_1.float3Value[1],
+      var[0].payload.__bindgen_anon_1.float3Value[2],
+      var[1].payload.__bindgen_anon_1.float3Value[0],
+      var[1].payload.__bindgen_anon_1.float3Value[1],
+      var[1].payload.__bindgen_anon_1.float3Value[2],
+      var[2].payload.__bindgen_anon_1.float3Value[0],
+      var[2].payload.__bindgen_anon_1.float3Value[1],
+      var[2].payload.__bindgen_anon_1.float3Value[2],
+    )
   }
 }
 
