@@ -290,6 +290,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::hash::registerBlocks();
   blocks::sign::registerBlocks();
   blocks::physics::simulation::registerBlocks();
+  blocks::physics::shapes::registerBlocks();
   blocks::physics::rigidbody::registerBlocks();
   // cblog!("Rust blocks initialization done.");
 }
@@ -302,6 +303,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::hash::registerBlocks();
   blocks::sign::registerBlocks();
   blocks::physics::simulation::registerBlocks();
+  blocks::physics::shapes::registerBlocks();
   blocks::physics::rigidbody::registerBlocks();
   // cblog!("Rust blocks initialization done.");
 }

@@ -69,7 +69,9 @@
          (GFX.Shader :VertexShader .vs_bytes
                      :PixelShader .fs_bytes) >= .bump-shader
          false (Set "checkBoxie")
-         (Inputs.Mouse :Hidden true :Capture true :Relative true)])
+         (Inputs.Mouse :Hidden true :Capture true :Relative true)
+         (Physics.Shape.Ball 0.5) = .ball-pshape
+         (Physics.Shape.Cuboid (Float3 100 1 100)) = .ground-pshape])
       ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera)
@@ -83,8 +85,8 @@
        (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
       identity (GFX.Draw :Shader .shader :Model .cube)
       (Physics.Simulation)
-      (Physics.StaticRigidBody (Float3 0.0 -5.0 0.0))
-      (Physics.DynamicRigidBody) (Log "rb")
+      (Physics.StaticRigidBody .ground-pshape (Float3 0.0 -5.0 0.0))
+      (Physics.DynamicRigidBody .ball-pshape) (Log "rb")
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :PosX 0 :PosY 0 :Contents
                   (->

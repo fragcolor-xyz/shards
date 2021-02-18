@@ -31,6 +31,19 @@ lazy_static! {
     cstr!("Physics.Simulation"),
     *SIMULATION_TYPE
   )];
+
+  static ref SHAPE_TYPE: Type = {
+    let mut t = common_type::object;
+    t.details.object = CBTypeInfo_Details_Object {
+      vendorId: 0x73696e6b, // 'sink'
+      typeId: 0x70687953, // 'phyS'
+    };
+    t
+  };
+  static ref SHAPES_TYPE: Type = Type::seq(&[*SHAPE_TYPE]);
+  static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&[*SHAPE_TYPE]);
+  static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&[*SHAPES_TYPE]);
+  static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
 }
 
 struct Simulation {
@@ -114,4 +127,5 @@ fn mat3_from_seq(var: &Seq) -> Matrix3<f32> {
 }
 
 pub mod rigidbody;
+pub mod shapes;
 pub mod simulation;

@@ -655,29 +655,13 @@ impl Type {
     }
   }
 
-  pub const fn seq_many(types: &[Type]) -> Type {
+  pub const fn seq(types: &[Type]) -> Type {
     Type {
       basicType: CBType_Seq,
       details: CBTypeInfo_Details {
         seqTypes: CBTypesInfo {
           elements: types.as_ptr() as *mut CBTypeInfo,
           len: types.len() as u32,
-          cap: 0,
-        },
-      },
-      fixedSize: 0,
-      innerType: CBType_None,
-      recursiveSelf: false,
-    }
-  }
-
-  pub const fn seq_single(stype: &Type) -> Type {
-    Type {
-      basicType: CBType_Seq,
-      details: CBTypeInfo_Details {
-        seqTypes: CBTypesInfo {
-          elements: stype as *const CBTypeInfo as *mut CBTypeInfo,
-          len: 1,
           cap: 0,
         },
       },
@@ -1130,16 +1114,18 @@ impl Var {
     }
   }
 
-  pub unsafe fn into_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
-    if var.valueType != CBType_Object
-      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
-        != info.details.object.vendorId
-      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
-    {
-      Err("Failed to cast Var into custom &mut T object")
-    } else {
-      let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut T;
-      Ok(&mut *aptr)
+  pub fn into_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+    unsafe {
+      if var.valueType != CBType_Object
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+          != info.details.object.vendorId
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+      {
+        Err("Failed to cast Var into custom &mut T object")
+      } else {
+        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut T;
+        Ok(&mut *aptr)
+      }
     }
   }
 
@@ -1369,6 +1355,19 @@ impl TryFrom<&Var> for f64 {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
+    }
+  }
+}
+
+impl TryFrom<&Var> for f32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.floatValue as f32) }
     }
   }
 }
@@ -2210,19 +2209,19 @@ lazy_static! {
     t
   };
   pub static ref FLOAT4X4_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE];
-  pub static ref FLOAT4X4S_TYPE: Type = Type::seq_single(&FLOAT4X4_TYPE);
+  pub static ref FLOAT4X4S_TYPE: Type = Type::seq(&[*FLOAT4X4_TYPE]);
   pub static ref FLOAT3X3_TYPE: Type = {
     let mut t = common_type::float3s;
     t.fixedSize = 3;
     t
   };
   pub static ref FLOAT3X3_TYPES: Vec<Type> = vec![*FLOAT3X3_TYPE];
-  pub static ref FLOAT3X3S_TYPE: Type = Type::seq_single(&FLOAT3X3_TYPE);
+  pub static ref FLOAT3X3S_TYPE: Type = Type::seq(&[*FLOAT3X3_TYPE]);
   pub static ref FLOAT4X2_TYPE: Type = {
     let mut t = common_type::float4s;
     t.fixedSize = 2;
     t
   };
   pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
-  pub static ref FLOAT4X2S_TYPE: Type = Type::seq_single(&FLOAT4X2_TYPE);
+  pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&[*FLOAT4X2_TYPE]);
 }
