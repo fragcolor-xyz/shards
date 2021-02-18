@@ -49,19 +49,36 @@ macro_rules! shape {
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {
-        self.get_parameters()
+        self._parameters()
       }
 
       fn setParam(&mut self, index: i32, value: &Var) {
-        self.set_param(index, value);
+        match index {
+          0 => self.position.setParam(value),
+          1 => self.rotation.setParam(value),
+          _ => self._set_param(index, value),
+        }
       }
 
       fn getParam(&mut self, index: i32) -> Var {
-        self.get_param(index)
+        match index {
+          0 => self.position.getParam(),
+          1 => self.rotation.getParam(),
+          _ => self._get_param(index),
+        }
       }
 
       fn cleanup(&mut self) {
         self.shape = None;
+        self.position.cleanup();
+        self.rotation.cleanup();
+        self._cleanup();
+      }
+
+      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+        self.position.warmup(context);
+        self.rotation.warmup(context);
+        self._warmup(context)
       }
 
       fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
@@ -78,91 +95,152 @@ macro_rules! shape {
 }
 
 lazy_static! {
-  static ref BALL_PARAMETERS: Parameters = vec![(
-    "Radius",
-    "The radius of the sphere.",
-    vec![common_type::float]
-  )
-    .into()];
+  static ref BALL_PARAMETERS: Parameters = vec![
+    (
+      "Position",
+      "The position wrt. the body it is attached to.",
+      vec![common_type::float3, common_type::float3_var]
+    )
+      .into(),
+    (
+      "Rotation",
+      "The rotation  wrt. the body it is attached to",
+      vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
+    )
+      .into(),
+    (
+      "Radius",
+      "The radius of the sphere.",
+      vec![common_type::float]
+    )
+    .into()
+  ];
 }
 
-#[derive(Default)]
 struct BallShape {
   shape: Option<SharedShape>,
-  radius: f32,
+  position: ParamVar,
+  rotation: ParamVar,
+  radius: ParamVar,
+}
+
+impl Default for BallShape {
+  fn default() -> Self {
+    BallShape {
+      shape: None,
+      position: ParamVar::new((0.0, 0.0, 0.0).into()),
+      rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
+      radius: ParamVar::new(0.5.into()),
+    }
+  }
 }
 
 impl BallShape {
-  fn make(&mut self) -> SharedShape {
-    SharedShape::ball(self.radius)
+  fn _cleanup(&mut self) {
+    self.radius.cleanup();
   }
 
-  fn get_parameters(&mut self) -> Option<&Parameters> {
+  fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.radius.warmup(context);
+    Ok(())
+  }
+
+  fn make(&mut self) -> SharedShape {
+    let radius = self.radius.get().as_ref().try_into().unwrap();
+    SharedShape::ball(radius)
+  }
+
+  fn _parameters(&mut self) -> Option<&Parameters> {
     Some(&BALL_PARAMETERS)
   }
 
-  fn set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.radius = value.as_ref().try_into().unwrap(),
+      2 => self.radius.setParam(value),
       _ => unreachable!(),
     }
   }
 
-  fn get_param(&mut self, index: i32) -> Var {
+  fn _get_param(&mut self, index: i32) -> Var {
     match index {
-      0 => self.radius.into(),
+      2 => self.radius.getParam(),
       _ => unreachable!(),
     }
   }
 }
 
-shape!(
-  BallShape,
-  "Physics.Ball",
-  "Physics.Ball-rust-0x20200101"
-);
+shape!(BallShape, "Physics.Ball", "Physics.Ball-rust-0x20200101");
 
 lazy_static! {
-  static ref CUBE_PARAMETERS: Parameters = vec![(
-    "HalfExtents",
-    "The half-extents of the cuboid shape.",
-    vec![common_type::float3]
-  )
-    .into()];
+  static ref CUBE_PARAMETERS: Parameters = vec![
+    (
+      "Position",
+      "The position wrt. the body it is attached to.",
+      vec![common_type::float3, common_type::float3_var]
+    )
+      .into(),
+    (
+      "Rotation",
+      "The rotation  wrt. the body it is attached to",
+      vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
+    )
+      .into(),
+    (
+      "HalfExtents",
+      "The half-extents of the cuboid shape.",
+      vec![common_type::float3]
+    )
+    .into()
+  ];
 }
 
-#[derive(Default)]
 struct CubeShape {
   shape: Option<SharedShape>,
-  hx: f32,
-  hy: f32,
-  hz: f32,
+  position: ParamVar,
+  rotation: ParamVar,
+  half_extents: ParamVar,
+}
+
+impl Default for CubeShape {
+  fn default() -> Self {
+    CubeShape {
+      shape: None,
+      position: ParamVar::new((0.0, 0.0, 0.0).into()),
+      rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
+      half_extents: ParamVar::new((0.5, 0.5, 0.5).into()),
+    }
+  }
 }
 
 impl CubeShape {
-  fn make(&mut self) -> SharedShape {
-    SharedShape::cuboid(self.hx, self.hy, self.hz)
+  fn _cleanup(&mut self) {
+    self.half_extents.cleanup();
   }
 
-  fn get_parameters(&mut self) -> Option<&Parameters> {
+  fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.half_extents.warmup(context);
+    Ok(())
+  }
+
+  fn make(&mut self) -> SharedShape {
+    let (x, y, z) = self.half_extents.get().as_ref().try_into().unwrap();
+    SharedShape::cuboid(x, y, z)
+  }
+
+  fn _parameters(&mut self) -> Option<&Parameters> {
     Some(&CUBE_PARAMETERS)
   }
 
-  fn set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) {
     match index {
-      0 => {
-        let (hx, hy, hz) = value.try_into().unwrap();
-        self.hx = hx;
-        self.hy = hy;
-        self.hz = hz;
-      }
+      2 => self.half_extents.setParam(value),
       _ => unreachable!(),
     }
   }
 
-  fn get_param(&mut self, index: i32) -> Var {
+  fn _get_param(&mut self, index: i32) -> Var {
     match index {
-      0 => (self.hx, self.hy, self.hz).into(),
+      2 => self.half_extents.getParam(),
       _ => unreachable!(),
     }
   }

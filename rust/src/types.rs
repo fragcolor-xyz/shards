@@ -261,7 +261,7 @@ impl From<&ExposedTypes> for CBExposedTypesInfo {
 
 /*
 CBParameterInfo & co
- */
+*/
 pub struct ParameterInfo(pub CBParameterInfo);
 pub struct ParameterInfoView(pub CBParameterInfo);
 

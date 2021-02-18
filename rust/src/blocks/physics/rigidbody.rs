@@ -158,16 +158,28 @@ impl RigidBody {
       let rigid_body = simulation.bodies.insert(rigid_body);
 
       let shape = self.shape_var.get();
-      let shape = Var::into_object_mut_ref::<SharedShape>(shape, &SHAPE_TYPE)?;
-      let shape = shape.clone();
-
-      let collider = ColliderBuilder::new(shape).build();
-      self.collider = Some(simulation.colliders.insert(
-        collider,
-        rigid_body,
-        &mut simulation.bodies,
-      ));
-
+      if shape.is_seq() {
+        let shapes: Seq = shape.try_into().unwrap();
+        for shape in shapes {
+          let shape = Var::into_object_mut_ref::<SharedShape>(shape, &SHAPE_TYPE)?;
+          let shape = shape.clone();
+          let collider = ColliderBuilder::new(shape).build();
+          self.collider = Some(simulation.colliders.insert(
+            collider,
+            rigid_body,
+            &mut simulation.bodies,
+          ));
+        }
+      } else {
+        let shape = Var::into_object_mut_ref::<SharedShape>(shape, &SHAPE_TYPE)?;
+        let shape = shape.clone();
+        let collider = ColliderBuilder::new(shape).build();
+        self.collider = Some(simulation.colliders.insert(
+          collider,
+          rigid_body,
+          &mut simulation.bodies,
+        ));
+      }
       self.rigid_body = Some(rigid_body);
     }
     Ok(self.rigid_body.unwrap())
@@ -178,19 +190,19 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
       "Shapes",
-      "The shapes of this rigid body.",
+      "The shape or shapes of this rigid body.",
       vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none]
     )
       .into(),
     (
       "Position",
-      "The permanent position of this static rigid body.",
+      "The initial position of this rigid body.",
       vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
       "Rotation",
-      "The permanent rotation of this static rigid body. Either axis angles in radians Float3 or a quaternion Float4",
+      "The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4",
       vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
     )
       .into()
