@@ -9,7 +9,7 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Type;
-use crate::types::ANY_TYPE;
+use crate::types::ANY_TYPES;
 use crate::Block;
 use crate::Types;
 use crate::Var;
@@ -65,11 +65,11 @@ impl Block for Simulation {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &ANY_TYPE
+    &ANY_TYPES
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &ANY_TYPE
+    &ANY_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

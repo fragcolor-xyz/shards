@@ -1,3 +1,4 @@
+use core::ops::IndexMut;
 use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBChainState;
@@ -643,6 +644,38 @@ impl Type {
             len: types.len() as u32,
             cap: 0,
           },
+        },
+      },
+      fixedSize: 0,
+      innerType: CBType_None,
+      recursiveSelf: false,
+    }
+  }
+
+  pub const fn seq_many(types: &[Type]) -> Type {
+    Type {
+      basicType: CBType_Seq,
+      details: CBTypeInfo_Details {
+        seqTypes: CBTypesInfo {
+          elements: types.as_ptr() as *mut CBTypeInfo,
+          len: types.len() as u32,
+          cap: 0,
+        },
+      },
+      fixedSize: 0,
+      innerType: CBType_None,
+      recursiveSelf: false,
+    }
+  }
+
+  pub const fn seq_single(stype: &Type) -> Type {
+    Type {
+      basicType: CBType_Seq,
+      details: CBTypeInfo_Details {
+        seqTypes: CBTypesInfo {
+          elements: stype as *const CBTypeInfo as *mut CBTypeInfo,
+          len: 1,
+          cap: 0,
         },
       },
       fixedSize: 0,
@@ -1539,6 +1572,7 @@ impl IntoIterator for Seq {
 }
 
 impl Index<usize> for CBSeq {
+  #[inline(always)]
   fn index(&self, idx: usize) -> &Self::Output {
     let idx_u32: u32 = idx.try_into().unwrap();
     if idx_u32 < self.len {
@@ -1551,10 +1585,30 @@ impl Index<usize> for CBSeq {
 }
 
 impl Index<usize> for Seq {
+  #[inline(always)]
   fn index(&self, idx: usize) -> &Self::Output {
     &self.s[idx]
   }
   type Output = Var;
+}
+
+impl IndexMut<usize> for CBSeq {
+  #[inline(always)]
+  fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+    let idx_u32: u32 = idx.try_into().unwrap();
+    if idx_u32 < self.len {
+      unsafe { &mut *self.elements.offset(idx.try_into().unwrap()) }
+    } else {
+      panic!("Index out of range");
+    }
+  }
+}
+
+impl IndexMut<usize> for Seq {
+  #[inline(always)]
+  fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+    &mut self.s[idx]
+  }
 }
 
 impl Seq {
@@ -1566,6 +1620,15 @@ impl Seq {
         cap: 0,
       },
       owned: true,
+    }
+  }
+
+  pub fn set_len(&mut self, len: usize) {
+    unsafe {
+      (*Core).seqResize.unwrap()(
+        &self.s as *const CBSeq as *mut CBSeq,
+        len.try_into().unwrap(),
+      );
     }
   }
 
@@ -1624,7 +1687,15 @@ impl Seq {
   }
 }
 
+impl AsRef<Seq> for Seq {
+  #[inline(always)]
+  fn as_ref(&self) -> &Seq {
+    &self
+  }
+}
+
 impl From<&Seq> for Var {
+  #[inline(always)]
   fn from(s: &Seq) -> Self {
     CBVar {
       valueType: CBType_Seq,
@@ -1637,6 +1708,7 @@ impl From<&Seq> for Var {
 }
 
 impl From<Var> for Seq {
+  #[inline(always)]
   fn from(v: Var) -> Self {
     unsafe {
       Seq {
@@ -1648,6 +1720,7 @@ impl From<Var> for Seq {
 }
 
 impl From<&Var> for Seq {
+  #[inline(always)]
   fn from(v: &Var) -> Self {
     unsafe {
       Seq {
@@ -2071,6 +2144,22 @@ impl PartialEq for Var {
   }
 }
 
+// TODO share those from C++ ones to reduce binary size
 lazy_static! {
-  pub static ref ANY_TYPE: Vec<Type> = vec![common_type::any,];
+  pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
+  pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
+  pub static ref FLOAT4X4_TYPE: Type = {
+    let mut t = common_type::float4s;
+    t.fixedSize = 4;
+    t
+  };
+  pub static ref FLOAT4X4_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE];
+  pub static ref FLOAT4X4S_TYPE: Type = Type::seq_single(&FLOAT4X4_TYPE);
+  pub static ref FLOAT3X3_TYPE: Type = {
+    let mut t = common_type::float3s;
+    t.fixedSize = 4;
+    t
+  };
+  pub static ref FLOAT3X3_TYPES: Vec<Type> = vec![*FLOAT3X3_TYPE];
+  pub static ref FLOAT3X3S_TYPE: Type = Type::seq_single(&FLOAT3X3_TYPE);
 }

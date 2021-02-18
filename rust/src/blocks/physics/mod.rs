@@ -2,13 +2,19 @@ extern crate crossbeam;
 extern crate rapier3d;
 
 use crate::chainblocksc::CBTypeInfo_Details_Object;
+use crate::chainblocksc::CBType_Float4;
+use crate::chainblocksc::CBType_None;
 use crate::types::common_type;
+use crate::types::ClonedVar;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
+use crate::types::Seq;
 use crate::types::Type;
+use crate::Var;
 use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
+use rapier3d::na::Matrix4;
 use rapier3d::na::Vector3;
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 
@@ -43,5 +49,31 @@ struct Simulation {
   self_obj: ParamVar,
 }
 
-pub mod simulation;
+fn fill_seq_from_mat4(var: &mut Seq, mat: &Matrix4<f32>) {
+  unsafe {
+    let mat = mat.as_slice();
+    var[0].valueType = CBType_Float4;
+    var[0].payload.__bindgen_anon_1.float4Value[0] = mat[0];
+    var[0].payload.__bindgen_anon_1.float4Value[1] = mat[1];
+    var[0].payload.__bindgen_anon_1.float4Value[2] = mat[2];
+    var[0].payload.__bindgen_anon_1.float4Value[3] = mat[3];
+    var[1].valueType = CBType_Float4;
+    var[1].payload.__bindgen_anon_1.float4Value[0] = mat[4];
+    var[1].payload.__bindgen_anon_1.float4Value[1] = mat[5];
+    var[1].payload.__bindgen_anon_1.float4Value[2] = mat[6];
+    var[1].payload.__bindgen_anon_1.float4Value[3] = mat[7];
+    var[2].valueType = CBType_Float4;
+    var[2].payload.__bindgen_anon_1.float4Value[0] = mat[8];
+    var[2].payload.__bindgen_anon_1.float4Value[1] = mat[9];
+    var[2].payload.__bindgen_anon_1.float4Value[2] = mat[10];
+    var[2].payload.__bindgen_anon_1.float4Value[3] = mat[11];
+    var[3].valueType = CBType_Float4;
+    var[3].payload.__bindgen_anon_1.float4Value[0] = mat[12];
+    var[3].payload.__bindgen_anon_1.float4Value[1] = mat[13];
+    var[3].payload.__bindgen_anon_1.float4Value[2] = mat[14];
+    var[3].payload.__bindgen_anon_1.float4Value[3] = mat[15];
+  }
+}
+
 pub mod rigidbody;
+pub mod simulation;
