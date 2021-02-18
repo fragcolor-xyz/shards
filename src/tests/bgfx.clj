@@ -83,10 +83,10 @@
        (Float4 0.7 0.2 1.0 0.8)
        (Float4 0.2 1.0 0.7 0.8)
        (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
-      identity (GFX.Draw :Shader .shader :Model .cube)
       (Physics.Simulation)
       (Physics.StaticRigidBody .ground-pshape (Float3 0.0 -5.0 0.0))
-      (Physics.DynamicRigidBody .ball-pshape) (Log "rb")
+      (Physics.DynamicRigidBody .ball-pshape) 
+      (GFX.Draw :Shader .shader :Model .cube)
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :PosX 0 :PosY 0 :Contents
                   (->
