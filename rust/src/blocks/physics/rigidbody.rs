@@ -31,13 +31,12 @@ use rapier3d::geometry::{
   NarrowPhase, SharedShape,
 };
 use rapier3d::math::Real;
-use rapier3d::na::try_convert;
 use rapier3d::na::Isometry3;
 use rapier3d::na::Projective3;
 use rapier3d::na::Rotation3;
 use rapier3d::na::Transform3;
 use rapier3d::na::{
-  convert_ref, Matrix, Matrix3, Matrix4, Quaternion, Similarity, Similarity3, UnitQuaternion,
+  Matrix, Matrix3, Matrix4, Quaternion, Similarity, Similarity3, Translation, UnitQuaternion,
   Vector3, U3,
 };
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
@@ -123,25 +122,35 @@ impl Block for DynamicRigidBody {
   }
 
   fn cleanup(&mut self) {
+    if let Some(rigid_body) = self.rb.rigid_body {
+      let sim_var = self.rb.simulation_var.get();
+      let simulation =
+        unsafe { Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap() };
+      simulation.bodies.remove(
+        rigid_body,
+        &mut simulation.colliders,
+        &mut simulation.joints,
+      );
+      self.rb.rigid_body = None;
+    }
+
     self.rb.simulation_var.cleanup();
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.rb.simulation_var.warmup(context);
     let sim_var = self.rb.simulation_var.get();
-    unsafe {
-      let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-      let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic).build();
-      self.rb.rigid_body = Some(simulation.bodies.insert(rigid_body));
+    let simulation = unsafe { Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)? };
+    let rigid_body = RigidBodyBuilder::new(BodyStatus::Dynamic).build();
+    self.rb.rigid_body = Some(simulation.bodies.insert(rigid_body));
 
-      // TODO
-      let collider = ColliderBuilder::new(SharedShape::ball(0.5)).build();
-      self.rb.default_collider = Some(simulation.colliders.insert(
-        collider,
-        self.rb.rigid_body.unwrap(),
-        &mut simulation.bodies,
-      ));
-    }
+    // TODO
+    let collider = ColliderBuilder::new(SharedShape::ball(0.5)).build();
+    self.rb.default_collider = Some(simulation.colliders.insert(
+      collider,
+      self.rb.rigid_body.unwrap(),
+      &mut simulation.bodies,
+    ));
     Ok(())
   }
 
@@ -162,13 +171,13 @@ lazy_static! {
     (
       "Position",
       "The permanent position of this static rigid body.",
-      vec![common_type::float3]
+      vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
       "Rotation",
-      "The permanent rotation of this static rigid body.",
-      vec![common_type::float3]
+      "The permanent rotation of this static rigid body. Either axis angles in radians Float3 or a quaternion Float4",
+      vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
     )
       .into()
   ];
@@ -209,13 +218,13 @@ impl Block for StaticRigidBody {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.position.setParam(value),
-      1 => self.position.setParam(value),
+      1 => self.rotation.setParam(value),
       _ => unreachable!(),
     }
   }
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.rotation.getParam(),
+      0 => self.position.getParam(),
       1 => self.rotation.getParam(),
       _ => unreachable!(),
     }
@@ -226,6 +235,18 @@ impl Block for StaticRigidBody {
   }
 
   fn cleanup(&mut self) {
+    if let Some(rigid_body) = self.rb.rigid_body {
+      let sim_var = self.rb.simulation_var.get();
+      let simulation =
+        unsafe { Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap() };
+      simulation.bodies.remove(
+        rigid_body,
+        &mut simulation.colliders,
+        &mut simulation.joints,
+      );
+      self.rb.rigid_body = None;
+    }
+
     self.rb.simulation_var.cleanup();
     self.position.cleanup();
     self.rotation.cleanup();
@@ -236,40 +257,56 @@ impl Block for StaticRigidBody {
     self.position.warmup(context);
     self.rotation.warmup(context);
 
-    let sim_var = self.rb.simulation_var.get();
-    unsafe {
-      let pos = {
-        let p = self.position.get();
-        if p.is_none() {
-          Vector3::new(0.0, 0.0, 0.0)
-        } else {
-          let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
-          Vector3::new(tx, ty, tz)
-        }
-      };
-      let rot = {
-        let r = self.rotation.get();
-        if r.is_none() {
-          Vector3::new(0.0, 0.0, 0.0)
-        } else {
-          let (tx, ty, tz): (f32, f32, f32) = r.as_ref().try_into()?;
-          Vector3::new(tx, ty, tz)
-        }
-      };
-      let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-      let rigid_body = RigidBodyBuilder::new(BodyStatus::Static)
-        .position(Isometry3::new(pos, rot))
-        .build();
-      self.rb.rigid_body = Some(simulation.bodies.insert(rigid_body));
+    let pos = {
+      let p = self.position.get();
+      if p.is_none() {
+        Vector3::new(0.0, 0.0, 0.0)
+      } else {
+        let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
+        Vector3::new(tx, ty, tz)
+      }
+    };
 
-      // TODO
-      let collider = ColliderBuilder::new(SharedShape::cuboid(100.0, 0.1, 100.0)).build();
-      self.rb.default_collider = Some(simulation.colliders.insert(
-        collider,
-        self.rb.rigid_body.unwrap(),
-        &mut simulation.bodies,
-      ));
-    }
+    let iso = {
+      let r = self.rotation.get();
+      if r.is_none() {
+        Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
+      } else {
+        let axisAngles: Result<(f32, f32, f32), &str> = r.as_ref().try_into();
+        if let Ok(axisAngles) = axisAngles {
+          Isometry3::new(pos, Vector3::new(axisAngles.0, axisAngles.1, axisAngles.2))
+        } else {
+          let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+          if let Ok(quaternion) = quaternion {
+            let quaternion =
+              Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+            let quaternion = UnitQuaternion::from_quaternion(quaternion);
+            let pos = Translation::from(pos);
+            Isometry3::from_parts(pos, quaternion)
+          } else {
+            // if setParam validation is correct this is impossible
+            panic!("unexpected branch")
+          }
+        }
+      }
+    };
+
+    let sim_var = self.rb.simulation_var.get();
+    let simulation = unsafe { Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)? };
+
+    let rigid_body = RigidBodyBuilder::new(BodyStatus::Static)
+      .position(iso)
+      .build();
+    self.rb.rigid_body = Some(simulation.bodies.insert(rigid_body));
+
+    // TODO
+    let collider = ColliderBuilder::new(SharedShape::cuboid(100.0, 0.1, 100.0)).build();
+    self.rb.default_collider = Some(simulation.colliders.insert(
+      collider,
+      self.rb.rigid_body.unwrap(),
+      &mut simulation.bodies,
+    ));
+
     Ok(())
   }
 
