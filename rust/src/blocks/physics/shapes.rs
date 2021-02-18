@@ -118,8 +118,8 @@ impl BallShape {
 
 shape!(
   BallShape,
-  "Physics.Shape.Ball",
-  "Physics.Shape.Ball-rust-0x20200101"
+  "Physics.Ball",
+  "Physics.Ball-rust-0x20200101"
 );
 
 lazy_static! {
@@ -170,8 +170,8 @@ impl CubeShape {
 
 shape!(
   CubeShape,
-  "Physics.Shape.Cuboid",
-  "Physics.Shape.Cuboid-rust-0x20200101"
+  "Physics.Cuboid",
+  "Physics.Cuboid-rust-0x20200101"
 );
 
 pub fn registerBlocks() {

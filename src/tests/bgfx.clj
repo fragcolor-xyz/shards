@@ -70,8 +70,8 @@
                      :PixelShader .fs_bytes) >= .bump-shader
          false (Set "checkBoxie")
          (Inputs.Mouse :Hidden true :Capture true :Relative true)
-         (Physics.Shape.Ball 0.5) = .ball-pshape
-         (Physics.Shape.Cuboid (Float3 100 1 100)) = .ground-pshape])
+         (Physics.Ball 0.5) = .ball-pshape
+         (Physics.Cuboid (Float3 100 1 100)) = .ground-pshape])
       ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera)
