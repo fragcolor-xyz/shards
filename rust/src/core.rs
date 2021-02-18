@@ -12,7 +12,8 @@ use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
 use crate::types::ChainState;
 use crate::types::Context;
-use crate::types::ParameterInfoView;
+use crate::types::ParameterInfo;
+use crate::types::Parameters;
 use crate::types::Var;
 use core::convert::TryInto;
 use core::ffi::c_void;
@@ -310,19 +311,5 @@ impl Drop for BlockInstance {
         (*self.ptr).destroy.unwrap()(self.ptr);
       }
     }
-  }
-}
-
-impl BlockInstance {
-  pub fn parameters(self) -> Vec<ParameterInfoView> {
-    let mut res = Vec::new();
-    unsafe {
-      let params = (*self.ptr).parameters.unwrap()(self.ptr);
-      let slice = slice::from_raw_parts(params.elements, params.len.try_into().unwrap());
-      for info in slice.iter() {
-        res.push(ParameterInfoView(*info));
-      }
-    }
-    res
   }
 }

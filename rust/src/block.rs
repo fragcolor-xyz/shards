@@ -18,7 +18,6 @@ use crate::types::ComposeResult;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
-use crate::types::ParameterInfoView;
 use crate::types::Parameters;
 use crate::types::Table;
 use crate::types::Type;

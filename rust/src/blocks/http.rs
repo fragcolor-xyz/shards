@@ -29,14 +29,14 @@ lazy_static! {
   static ref BYTES_OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
   static ref GET_PARAMETERS: Parameters = vec![
     (
-      "URL",
-      "The url to request to.",
+      cstr!("URL"),
+      cstr!("The url to request to."),
       vec![common_type::string, common_type::string_var]
     )
       .into(),
     (
-      "Headers",
-      "The headers to use for the request.",
+      cstr!("Headers"),
+      cstr!("The headers to use for the request."),
       vec![
         common_type::none,
         common_type::string_table,
@@ -45,14 +45,14 @@ lazy_static! {
     )
       .into(),
     (
-      "Timeout",
-      "How many seconds to wait for the request to complete.",
+      cstr!("Timeout"),
+      cstr!("How many seconds to wait for the request to complete."),
       vec![common_type::int]
     )
       .into(),
     (
-      "Bytes",
-      "If instead of a string the block should outout bytes.",
+      cstr!("Bytes"),
+      cstr!("If instead of a string the block should outout bytes."),
       vec![common_type::bool]
     )
       .into()

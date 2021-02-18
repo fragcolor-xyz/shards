@@ -21,8 +21,8 @@ use std::convert::TryInto;
 
 lazy_static! {
   static ref SIMULATION_PARAMETERS: Parameters = vec![(
-    "Gravity",
-    "The gravity force vector.",
+    cstr!("Gravity"),
+    cstr!("The gravity force vector."),
     vec![common_type::float3]
   )
     .into()];

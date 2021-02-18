@@ -90,6 +90,8 @@ pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
+pub type ParameterInfo = CBParameterInfo;
+
 #[derive(PartialEq)]
 pub struct String(pub CBString);
 pub struct OptionalString(pub CBOptionalString);
@@ -262,36 +264,27 @@ impl From<&ExposedTypes> for CBExposedTypesInfo {
 /*
 CBParameterInfo & co
 */
-pub struct ParameterInfo(pub CBParameterInfo);
-pub struct ParameterInfoView(pub CBParameterInfo);
-
 impl ParameterInfo {
-  fn new(name: &str, types: Types) -> Self {
-    let cname = CString::new(name).unwrap();
-    let chelp = core::ptr::null();
-    let res = CBParameterInfo {
-      name: cname.into_raw() as *mut i8,
+  fn new(name: &'static str, types: Types) -> Self {
+    CBParameterInfo {
+      name: name.as_ptr() as *mut i8,
       help: CBOptionalString {
-        string: chelp,
+        string: core::ptr::null(),
         crc: 0,
       },
       valueTypes: internal_from_types(types),
-    };
-    ParameterInfo(res)
+    }
   }
 
-  fn new1(name: &str, help: &str, types: Types) -> Self {
-    let cname = CString::new(name).unwrap();
-    let chelp = CString::new(help).unwrap();
-    let res = CBParameterInfo {
-      name: cname.into_raw() as *mut i8,
+  fn new1(name: &'static str, help: &'static str, types: Types) -> Self {
+    CBParameterInfo {
+      name: name.as_ptr() as *mut i8,
       help: CBOptionalString {
-        string: chelp.into_raw() as *mut i8,
+        string: help.as_ptr() as *mut i8,
         crc: 0,
       },
       valueTypes: internal_from_types(types),
-    };
-    ParameterInfo(res)
+    }
   }
 }
 
@@ -314,35 +307,15 @@ impl From<&str> for CBOptionalString {
   }
 }
 
-impl From<(&str, Types)> for ParameterInfo {
-  fn from(v: (&str, Types)) -> ParameterInfo {
+impl From<(&'static str, Types)> for ParameterInfo {
+  fn from(v: (&'static str, Types)) -> ParameterInfo {
     ParameterInfo::new(v.0, v.1)
   }
 }
 
-impl From<(&str, &str, Types)> for ParameterInfo {
-  fn from(v: (&str, &str, Types)) -> ParameterInfo {
+impl From<(&'static str, &'static str, Types)> for ParameterInfo {
+  fn from(v: (&'static str, &'static str, Types)) -> ParameterInfo {
     ParameterInfo::new1(v.0, v.1, v.2)
-  }
-}
-
-impl Drop for ParameterInfo {
-  fn drop(&mut self) {
-    if !self.0.name.is_null() {
-      unsafe {
-        let cname = CString::from_raw(self.0.name as *mut i8);
-        drop(cname);
-      }
-    }
-    if !self.0.help.string.is_null() {
-      unsafe {
-        let chelp = CString::from_raw(self.0.help.string as *mut i8);
-        drop(chelp);
-      }
-    }
-    unsafe {
-      internal_drop_types(self.0.valueTypes);
-    }
   }
 }
 

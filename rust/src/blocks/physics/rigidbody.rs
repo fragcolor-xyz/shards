@@ -189,20 +189,20 @@ impl RigidBody {
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
-      "Shapes",
-      "The shape or shapes of this rigid body.",
+      cstr!("Shapes"),
+      cstr!("The shape or shapes of this rigid body."),
       vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none]
     )
       .into(),
     (
-      "Position",
-      "The initial position of this rigid body.",
+      cstr!("Position"),
+      cstr!("The initial position of this rigid body."),
       vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
-      "Rotation",
-      "The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4",
+      cstr!("Rotation"),
+      cstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
       vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
     )
       .into()
