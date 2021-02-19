@@ -54,19 +54,19 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("Shapes"),
-      cstr!("The shape or shapes of this rigid body."),
+      cbccstr!("The shape or shapes of this rigid body."),
       vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none]
     )
       .into(),
     (
       cstr!("Position"),
-      cstr!("The initial position of this rigid body."),
+      cbccstr!("The initial position of this rigid body."),
       vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
       cstr!("Rotation"),
-      cstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
+      cbccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
       vec![common_type::float4, common_type::float4_var]
     )
       .into()
@@ -278,7 +278,7 @@ lazy_static! {
   static ref NONSTATIC_PARAMETERS: Parameters = {
     let mut v = vec![(
       cstr!("Name"),
-      cstr!("The optional name of the variable that will be exposed to apply forces and control this rigid body."),
+      cbccstr!("The optional name of the variable that will be exposed to apply forces and control this rigid body."),
       vec![common_type::string, common_type::none]
     )
       .into()];

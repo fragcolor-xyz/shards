@@ -30,13 +30,13 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("Position"),
-      cstr!("The position wrt. the body it is attached to."),
+      cbccstr!("The position wrt. the body it is attached to."),
       vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
       cstr!("Rotation"),
-      cstr!("The rotation  wrt. the body it is attached to"),
+      cbccstr!("The rotation  wrt. the body it is attached to"),
       vec![common_type::float4, common_type::float4_var]
     )
       .into()
@@ -138,7 +138,7 @@ lazy_static! {
   static ref BALL_PARAMETERS: Parameters = {
     let mut v = vec![(
       cstr!("Radius"),
-      cstr!("The radius of the sphere."),
+      cbccstr!("The radius of the sphere."),
       vec![common_type::float],
     )
       .into()];
@@ -209,7 +209,7 @@ lazy_static! {
   static ref CUBE_PARAMETERS: Parameters = {
     let mut v = vec![(
       cstr!("HalfExtents"),
-      cstr!("The half-extents of the cuboid shape."),
+      cbccstr!("The half-extents of the cuboid shape."),
       vec![common_type::float3],
     )
       .into()];

@@ -23,7 +23,7 @@ lazy_static! {
   static ref OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
-    cstr!("The private key to be used to sign the hashed message input."),
+    cbccstr!("The private key to be used to sign the hashed message input."),
     vec![
       common_type::bytes,
       common_type::bytes_var,

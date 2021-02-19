@@ -6,6 +6,7 @@ use crate::chainblocksc::CBBool;
 use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBCore;
+use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBStrings;
 use crate::chainblocksc::CBVar;
@@ -201,6 +202,38 @@ pub fn cloneVar(dst: &mut Var, src: &Var) {
   unsafe {
     (*Core).cloneVar.unwrap()(dst, src);
   }
+}
+
+pub fn readCachedString(id: u32) -> &'static str {
+  unsafe {
+    let s = (*Core).readCachedString.unwrap()(id);
+    CStr::from_ptr(s.string).to_str().unwrap()
+  }
+}
+
+pub fn writeCachedString(id: u32, string: &'static str) -> &'static str {
+  unsafe {
+    let s = (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const i8);
+    CStr::from_ptr(s.string).to_str().unwrap()
+  }
+}
+
+pub fn readCachedString1(id: u32) -> CBOptionalString {
+  unsafe { (*Core).readCachedString.unwrap()(id) }
+}
+
+pub fn writeCachedString1(id: u32, string: &'static str) -> CBOptionalString {
+  unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const i8) }
+}
+
+macro_rules! cbccstr {
+  ($string:literal) => {
+    if cfg!(debug_assertions) {
+      crate::core::writeCachedString1(compile_time_crc32::crc32!($string), cstr!($string))
+    } else {
+      crate::core::readCachedString1(compile_time_crc32::crc32!($string))
+    }
+  };
 }
 
 pub fn referenceMutVariable(context: &CBContext, name: CBString) -> &mut CBVar {

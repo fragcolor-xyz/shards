@@ -286,6 +286,14 @@ impl ParameterInfo {
       valueTypes: internal_from_types(types),
     }
   }
+
+  fn new2(name: &'static str, help: CBOptionalString, types: Types) -> Self {
+    CBParameterInfo {
+      name: name.as_ptr() as *mut i8,
+      help,
+      valueTypes: internal_from_types(types),
+    }
+  }
 }
 
 impl From<&str> for OptionalString {
@@ -316,6 +324,12 @@ impl From<(&'static str, Types)> for ParameterInfo {
 impl From<(&'static str, &'static str, Types)> for ParameterInfo {
   fn from(v: (&'static str, &'static str, Types)) -> ParameterInfo {
     ParameterInfo::new1(v.0, v.1, v.2)
+  }
+}
+
+impl From<(&'static str, CBOptionalString, Types)> for ParameterInfo {
+  fn from(v: (&'static str, CBOptionalString, Types)) -> ParameterInfo {
+    ParameterInfo::new2(v.0, v.1, v.2)
   }
 }
 

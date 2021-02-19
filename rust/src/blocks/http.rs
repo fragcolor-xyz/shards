@@ -30,13 +30,13 @@ lazy_static! {
   static ref GET_PARAMETERS: Parameters = vec![
     (
       cstr!("URL"),
-      cstr!("The url to request to."),
+      cbccstr!("The url to request to."),
       vec![common_type::string, common_type::string_var]
     )
       .into(),
     (
       cstr!("Headers"),
-      cstr!("The headers to use for the request."),
+      cbccstr!("The headers to use for the request."),
       vec![
         common_type::none,
         common_type::string_table,
@@ -46,13 +46,13 @@ lazy_static! {
       .into(),
     (
       cstr!("Timeout"),
-      cstr!("How many seconds to wait for the request to complete."),
+      cbccstr!("How many seconds to wait for the request to complete."),
       vec![common_type::int]
     )
       .into(),
     (
       cstr!("Bytes"),
-      cstr!("If instead of a string the block should outout bytes."),
+      cbccstr!("If instead of a string the block should outout bytes."),
       vec![common_type::bool]
     )
       .into()

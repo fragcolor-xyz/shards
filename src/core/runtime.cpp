@@ -2369,18 +2369,6 @@ void hash_update(const CBVar &var, void *state) {
   }
 }
 
-CBString getString(uint32_t crc) {
-  assert(chainblocks::Globals::CompressedStrings);
-  auto s = (*chainblocks::Globals::CompressedStrings)[crc].string;
-  return s != nullptr ? s : "";
-}
-
-void setString(uint32_t crc, CBString str) {
-  assert(chainblocks::Globals::CompressedStrings);
-  (*chainblocks::Globals::CompressedStrings)[crc].string = str;
-  (*chainblocks::Globals::CompressedStrings)[crc].crc = crc;
-}
-
 void Serialization::varFree(CBVar &output) {
   switch (output.valueType) {
   case CBType::None:
@@ -2449,6 +2437,18 @@ void Serialization::varFree(CBVar &output) {
   }
 
   memset(&output, 0x0, sizeof(CBVar));
+}
+
+CBString getString(uint32_t crc) {
+  assert(chainblocks::Globals::CompressedStrings);
+  auto s = (*chainblocks::Globals::CompressedStrings)[crc].string;
+  return s != nullptr ? s : "";
+}
+
+void setString(uint32_t crc, CBString str) {
+  assert(chainblocks::Globals::CompressedStrings);
+  (*chainblocks::Globals::CompressedStrings)[crc].string = str;
+  (*chainblocks::Globals::CompressedStrings)[crc].crc = crc;
 }
 }; // namespace chainblocks
 
@@ -2961,10 +2961,14 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     return s;
   };
 
-  result->getString = [](uint32_t crc) { return chainblocks::getString(crc); };
+  result->readCachedString = [](uint32_t crc) {
+    auto s = chainblocks::getString(crc);
+    return CBOptionalString{s, crc};
+  };
 
-  result->setString = [](uint32_t crc, CBString str) {
+  result->writeCachedString = [](uint32_t crc, CBString str) {
     chainblocks::setString(crc, str);
+    return CBOptionalString{str, crc};
   };
 
   return result;

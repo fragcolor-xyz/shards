@@ -932,9 +932,6 @@ typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
 
 typedef CBStrings(__cdecl *CBGetBlocks)();
 
-typedef CBString(__cdecl *CBGetString)(uint32_t crc);
-typedef void(__cdecl *CBSetString)(uint32_t crc, CBString str);
-
 struct CBChainInfo {
   CBString name;
   CBBool looped;
@@ -951,6 +948,14 @@ struct CBLoggingOptions {
 typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 
 typedef void(__cdecl *CBSetLoggingOptions)(struct CBLoggingOptions options);
+
+// id is generally a crc32 value
+// use this when the cache is compiled
+typedef CBOptionalString(__cdecl *CBReadCachedString)(uint32_t id);
+// the string is not copied! should be constant.
+// use this when the cache is not precompiled
+typedef CBOptionalString(__cdecl *CBWriteCachedString)(uint32_t id,
+                                                       const char *str);
 
 typedef struct _CBCore {
   // CBTable interface
@@ -1001,10 +1006,6 @@ typedef struct _CBCore {
   // Blocks discovery (free after use, only the array, not the strings)
   CBGetBlocks getBlocks;
 
-  // interned strings management
-  CBGetString getString;
-  CBSetString setString;
-
   // Adds a block to the runtime database
   CBRegisterBlock registerBlock;
   // Adds a custom object type to the runtime database
@@ -1039,6 +1040,10 @@ typedef struct _CBCore {
   // Utility to deal with CBVars
   CBCloneVar cloneVar;
   CBDestroyVar destroyVar;
+
+  // Compressed strings utility
+  CBReadCachedString readCachedString;
+  CBWriteCachedString writeCachedString;
 
   // Utility to deal with CBSeqs
   CB_ARRAY_PROCS(CBSeq, seq);
