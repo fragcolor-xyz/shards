@@ -541,16 +541,12 @@ struct Orthographic : VectorUnaryBase {
 struct Scale {
   Mat4 _output{};
 
-  void setup() { _output.w.w = 1.0; }
-
   static CBTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto v3 = reinterpret_cast<const Vec3 *>(&input);
-    _output.x.x = v3->x;
-    _output.y.y = v3->y;
-    _output.z.z = v3->z;
+    _output = linalg::scaling_matrix(*v3);
     return _output;
   }
 };
@@ -558,24 +554,13 @@ struct Scale {
 struct Rotation {
   Mat4 _output{};
 
-  void setup() { _output.w.w = 1.0; }
-
   static CBTypesInfo inputTypes() { return CoreInfo::Float4Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // quaternion
     auto v4 = reinterpret_cast<const Vec4 *>(&input);
-    auto qrot = linalg::qmat(*v4);
-    _output.x.x = qrot.x.x;
-    _output.x.y = qrot.x.y;
-    _output.x.z = qrot.x.z;
-    _output.y.x = qrot.y.x;
-    _output.y.y = qrot.y.y;
-    _output.y.z = qrot.y.z;
-    _output.z.x = qrot.z.x;
-    _output.z.y = qrot.z.y;
-    _output.z.z = qrot.z.z;
+    _output = linalg::rotation_matrix(*v4);
     return _output;
   }
 };

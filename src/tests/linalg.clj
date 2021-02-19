@@ -108,8 +108,13 @@
   (Log)
 
   180.0 (Math.DegreesToRadians) (Log) (Sub (-> (ToString) (Assert.Is "3.14159" true)))
-  (Math.LinAlg.AxisAngleX) (Log) 
-  (Math.LinAlg.Rotation) (Log)
+  (Math.LinAlg.AxisAngleX) (Log)
+  (Math.LinAlg.Rotation) (Log) 
+
+  (/ 3.141592653589793238463 2.0)
+  (Math.LinAlg.AxisAngleY) (Log)
+  (Math.LinAlg.Rotation) (Log) 
+  (Sub (-> (ToString) (Assert.Is "[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)))
 
   (Msg "Done!")
 ))
