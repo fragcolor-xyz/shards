@@ -410,7 +410,7 @@ impl Block for KinematicRigidBody {
     let sim_var = self.rb.simulation_var.get();
     let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     let (rigid_body, p, r) = self.rb._populate(BodyStatus::Kinematic)?;
-    let rb = simulation.bodies.get(rigid_body).unwrap();
+    let rb = simulation.bodies.get_mut(rigid_body).unwrap();
 
     // this guy will read constantly pos and rotations from variable values
     let pos = {
