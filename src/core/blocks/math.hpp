@@ -343,20 +343,6 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_BINARY_BLOCK(NAME)                                                \
-  RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
-  RUNTIME_BLOCK_cleanup(NAME);                                                 \
-  RUNTIME_BLOCK_warmup(NAME);                                                  \
-  RUNTIME_BLOCK_inputTypes(NAME);                                              \
-  RUNTIME_BLOCK_outputTypes(NAME);                                             \
-  RUNTIME_BLOCK_parameters(NAME);                                              \
-  RUNTIME_BLOCK_compose(NAME);                                                 \
-  RUNTIME_BLOCK_requiredVariables(NAME);                                       \
-  RUNTIME_BLOCK_setParam(NAME);                                                \
-  RUNTIME_BLOCK_getParam(NAME);                                                \
-  RUNTIME_BLOCK_activate(NAME);                                                \
-  RUNTIME_BLOCK_END(NAME);
-
 // Not used for now...
 #define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
   struct NAME##UnaryFuncD {                                                    \
@@ -505,13 +491,6 @@ MATH_UNARY_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
 MATH_UNARY_OPERATION(Floor, __builtin_floor, __builtin_floorf);
 MATH_UNARY_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf);
-
-#define MATH_UNARY_BLOCK(NAME)                                                 \
-  RUNTIME_BLOCK_FACTORY(Math, NAME);                                           \
-  RUNTIME_BLOCK_inputTypes(NAME);                                              \
-  RUNTIME_BLOCK_outputTypes(NAME);                                             \
-  RUNTIME_BLOCK_activate(NAME);                                                \
-  RUNTIME_BLOCK_END(NAME);
 
 struct Mean {
   struct ArithMean {
@@ -705,5 +684,58 @@ using Min = BinaryOperation<MinOp>;
 
 MATH_BINARY_FLOAT_PROC(Pow, std::pow);
 using Pow = BinaryOperation<PowOp>;
+
+inline void registerBlocks() {
+  REGISTER_CBLOCK("Math.Add", Add);
+  REGISTER_CBLOCK("Math.Subtract", Subtract);
+  REGISTER_CBLOCK("Math.Multiply", Multiply);
+  REGISTER_CBLOCK("Math.Divide", Divide);
+  REGISTER_CBLOCK("Math.Xor", Xor);
+  REGISTER_CBLOCK("Math.And", And);
+  REGISTER_CBLOCK("Math.Or", Or);
+  REGISTER_CBLOCK("Math.Mod", Mod);
+  REGISTER_CBLOCK("Math.LShift", LShift);
+  REGISTER_CBLOCK("Math.RShift", RShift);
+
+  REGISTER_CBLOCK("Math.Abs", Abs);
+  REGISTER_CBLOCK("Math.Exp", Exp);
+  REGISTER_CBLOCK("Math.Exp2", Exp2);
+  REGISTER_CBLOCK("Math.Expm1", Expm1);
+  REGISTER_CBLOCK("Math.Log", Log);
+  REGISTER_CBLOCK("Math.Log10", Log10);
+  REGISTER_CBLOCK("Math.Log2", Log2);
+  REGISTER_CBLOCK("Math.Log1p", Log1p);
+  REGISTER_CBLOCK("Math.Sqrt", Sqrt);
+  REGISTER_CBLOCK("Math.Cbrt", Cbrt);
+  REGISTER_CBLOCK("Math.Sin", Sin);
+  REGISTER_CBLOCK("Math.Cos", Cos);
+  REGISTER_CBLOCK("Math.Tan", Tan);
+  REGISTER_CBLOCK("Math.Asin", Asin);
+  REGISTER_CBLOCK("Math.Acos", Acos);
+  REGISTER_CBLOCK("Math.Atan", Atan);
+  REGISTER_CBLOCK("Math.Sinh", Sinh);
+  REGISTER_CBLOCK("Math.Cosh", Cosh);
+  REGISTER_CBLOCK("Math.Tanh", Tanh);
+  REGISTER_CBLOCK("Math.Asinh", Asinh);
+  REGISTER_CBLOCK("Math.Acosh", Acosh);
+  REGISTER_CBLOCK("Math.Atanh", Atanh);
+  REGISTER_CBLOCK("Math.Erf", Erf);
+  REGISTER_CBLOCK("Math.Erfc", Erfc);
+  REGISTER_CBLOCK("Math.TGamma", TGamma);
+  REGISTER_CBLOCK("Math.LGamma", LGamma);
+  REGISTER_CBLOCK("Math.Ceil", Ceil);
+  REGISTER_CBLOCK("Math.Floor", Floor);
+  REGISTER_CBLOCK("Math.Trunc", Trunc);
+  REGISTER_CBLOCK("Math.Round", Round);
+
+  REGISTER_CBLOCK("Math.Mean", Mean);
+  REGISTER_CBLOCK("Math.Inc", Inc);
+  REGISTER_CBLOCK("Math.Dec", Dec);
+
+  REGISTER_CBLOCK("Max", Max);
+  REGISTER_CBLOCK("Min", Min);
+  REGISTER_CBLOCK("Math.Pow", Pow);
+}
+
 }; // namespace Math
 }; // namespace chainblocks

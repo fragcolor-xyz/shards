@@ -87,6 +87,7 @@ extern void registerTimeBlocks();
 extern void registerProcessBlocks();
 
 namespace Math {
+extern void registerBlocks();
 namespace LinAlg {
 extern void registerBlocks();
 }
@@ -232,6 +233,7 @@ void registerCoreBlocks() {
   registerSeqsBlocks();
   registerCastingBlocks();
   registerSerializationBlocks();
+  Math::registerBlocks();
   Math::LinAlg::registerBlocks();
   registerJsonBlocks();
   registerStructBlocks();

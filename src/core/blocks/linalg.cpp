@@ -538,59 +538,15 @@ struct Orthographic : VectorUnaryBase {
   }
 };
 
-#define LINALG_BINARY_BLOCK(_name_)                                            \
-  RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
-  RUNTIME_BLOCK_cleanup(_name_);                                               \
-  RUNTIME_BLOCK_warmup(_name_);                                                \
-  RUNTIME_BLOCK_inputTypes(_name_);                                            \
-  RUNTIME_BLOCK_outputTypes(_name_);                                           \
-  RUNTIME_BLOCK_parameters(_name_);                                            \
-  RUNTIME_BLOCK_compose(_name_);                                               \
-  RUNTIME_BLOCK_requiredVariables(_name_);                                     \
-  RUNTIME_BLOCK_setParam(_name_);                                              \
-  RUNTIME_BLOCK_getParam(_name_);                                              \
-  RUNTIME_BLOCK_activate(_name_);                                              \
-  RUNTIME_BLOCK_END(_name_);
-
-LINALG_BINARY_BLOCK(Cross);
-LINALG_BINARY_BLOCK(Dot);
-LINALG_BINARY_BLOCK(MatMul);
-
-#define LINALG_UNARY_BLOCK(_name_)                                             \
-  RUNTIME_BLOCK(Math.LinAlg, _name_);                                          \
-  RUNTIME_BLOCK_compose(_name_);                                               \
-  RUNTIME_BLOCK_inputTypes(_name_);                                            \
-  RUNTIME_BLOCK_outputTypes(_name_);                                           \
-  RUNTIME_BLOCK_activate(_name_);                                              \
-  RUNTIME_BLOCK_END(_name_);
-
-LINALG_UNARY_BLOCK(Normalize);
-LINALG_UNARY_BLOCK(LengthSquared);
-LINALG_UNARY_BLOCK(Length);
-LINALG_UNARY_BLOCK(Transpose);
-
-RUNTIME_BLOCK(Math.LinAlg, Orthographic);
-RUNTIME_BLOCK_setup(Orthographic);
-RUNTIME_BLOCK_inputTypes(Orthographic);
-RUNTIME_BLOCK_outputTypes(Orthographic);
-RUNTIME_BLOCK_compose(Orthographic);
-RUNTIME_BLOCK_activate(Orthographic);
-RUNTIME_BLOCK_parameters(Orthographic);
-RUNTIME_BLOCK_setParam(Orthographic);
-RUNTIME_BLOCK_getParam(Orthographic);
-RUNTIME_BLOCK_END(Orthographic);
-
 void registerBlocks() {
-  chainblocks::registerBlock("Math.LinAlg.Cross", createBlockCross);
-  chainblocks::registerBlock("Math.LinAlg.Dot", createBlockDot);
-  chainblocks::registerBlock("Math.LinAlg.Normalize", createBlockNormalize);
-  chainblocks::registerBlock("Math.LinAlg.LengthSquared",
-                             createBlockLengthSquared);
-  chainblocks::registerBlock("Math.LinAlg.Length", createBlockLength);
-  chainblocks::registerBlock("Math.LinAlg.MatMul", createBlockMatMul);
-  chainblocks::registerBlock("Math.LinAlg.Transpose", createBlockTranspose);
-  chainblocks::registerBlock("Math.LinAlg.Orthographic",
-                             createBlockOrthographic);
+  REGISTER_CBLOCK("Math.LinAlg.Cross", Cross);
+  REGISTER_CBLOCK("Math.LinAlg.Dot", Dot);
+  REGISTER_CBLOCK("Math.LinAlg.Normalize", Normalize);
+  REGISTER_CBLOCK("Math.LinAlg.LengthSquared", LengthSquared);
+  REGISTER_CBLOCK("Math.LinAlg.Length", Length);
+  REGISTER_CBLOCK("Math.LinAlg.MatMul", MatMul);
+  REGISTER_CBLOCK("Math.LinAlg.Transpose", Transpose);
+  REGISTER_CBLOCK("Math.LinAlg.Orthographic", Orthographic);
 }
 }; // namespace LinAlg
 }; // namespace Math
