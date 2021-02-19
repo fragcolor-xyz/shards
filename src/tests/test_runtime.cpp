@@ -864,7 +864,9 @@ TEST_CASE("ObjectVar") {
 TEST_CASE("linalg compatibility") {
   static_assert(sizeof(linalg::aliases::double2) == 32);
   static_assert(sizeof(linalg::aliases::float3) == 32);
+  static_assert(sizeof(linalg::aliases::float3) == sizeof(Vec3));
   static_assert(sizeof(linalg::aliases::float4) == 32);
+  static_assert(sizeof(linalg::aliases::float4) == sizeof(Vec4));
   Var a{1.0, 2.0, 3.0, 4.0};
   Var b{4.0, 3.0, 2.0, 1.0};
   const linalg::aliases::float4 *va =

@@ -70,6 +70,12 @@
 #define GFX_Texture2D() block("GFX.Texture2D")
 
 #define GLTF_Load() block("GLTF.Load")
+#define GLTF_Load_WithTransformBefore(_transform)                              \
+  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
+#define GLTF_Load_WithTransformAfter(_transform)                               \
+  block("GLTF.Load", Var::Any, Var::Any, Var::Any, Var::Any, _transform)
+#define GLTF_Load_WithTransforms(_before, _after)                              \
+  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _before, _after)
 #define GLTF_Load_NoShaders() block("GLTF.Load", Var::Any, Var::Any, false)
 #define GLTF_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
 #define GLTF_Draw_WithMaterials(_model, _mats)                                 \

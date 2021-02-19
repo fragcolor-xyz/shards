@@ -30,6 +30,9 @@ namespace GLTF_Tests {
 std::vector<Var> identity = {Var(1.0, 0.0, 0.0, 0.0), Var(0.0, 1.0, 0.0, 0.0),
                              Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
 
+std::vector<Var> scale10 = {Var(10.0, 0.0, 0.0, 0.0), Var(0.0, 10.0, 0.0, 0.0),
+                            Var(0.0, 0.0, 10.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
+
 const auto vs =
     "../deps/bgfx/examples/runtime/shaders/" SHADERS_FOLDER "/vs_bump.bin";
 const auto fs =
@@ -111,18 +114,23 @@ void testGLTFModel(CBString name, CBString modelPath, CBString matName,
   }
 }
 
-void testGLTFModel(CBString name, CBString modelPath, Var camera_pos) {
+void testGLTFModel(CBString name, CBString modelPath, Var camera_pos,
+                   const std::vector<Var> &btransform = identity,
+                   const std::vector<Var> &atransform = identity) {
   SECTION(name) {
     DefChain(test_chain)
         .Looped()
-        .GFX_MainWindow("window",
-                        Once(let(modelPath).GLTF_Load() Ref(model).Log())
-                            .let(camera_pos) SetTable(cam, "Position")
-                            .let(0.0, 0.0, 0.0) SetTable(cam, "Target")
-                            .Get(cam)
-                            .GFX_Camera()
-                            .let(identity)
-                            .GLTF_Draw(model));
+        .GFX_MainWindow(
+            "window", Once(let(modelPath)
+                               .GLTF_Load_WithTransforms(btransform, atransform)
+                                   Ref(model)
+                               .Log())
+                          .let(camera_pos) SetTable(cam, "Position")
+                          .let(0.0, 0.0, 0.0) SetTable(cam, "Target")
+                          .Get(cam)
+                          .GFX_Camera()
+                          .let(identity)
+                          .GLTF_Draw(model));
     auto node = CBNode::make();
     node->schedule(test_chain);
     auto count = 100;
@@ -250,7 +258,7 @@ void testLoad() {
   testGLTFModel(
       "Avocado-Bin-2",
       "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
-      Var(0.1, 0.1, 0.1));
+      Var(1.0, 1.0, 1.0), scale10);
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks

@@ -541,6 +541,8 @@ struct Orthographic : VectorUnaryBase {
 struct Scale {
   Mat4 _output{};
 
+  void setup() { _output.w.w = 1.0; }
+
   static CBTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
@@ -549,8 +551,63 @@ struct Scale {
     _output.x.x = v3->x;
     _output.y.y = v3->y;
     _output.z.z = v3->z;
-    _output.w.w = 1.0;
     return _output;
+  }
+};
+
+struct Rotation {
+  Mat4 _output{};
+
+  void setup() { _output.w.w = 1.0; }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::Float4Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // quaternion
+    auto v4 = reinterpret_cast<const Vec4 *>(&input);
+    auto qrot = linalg::qmat(*v4);
+    _output.x.x = qrot.x.x;
+    _output.x.y = qrot.x.y;
+    _output.x.z = qrot.x.z;
+    _output.y.x = qrot.y.x;
+    _output.y.y = qrot.y.y;
+    _output.y.z = qrot.y.z;
+    _output.z.x = qrot.z.x;
+    _output.z.y = qrot.z.y;
+    _output.z.z = qrot.z.z;
+    return _output;
+  }
+};
+
+template <const linalg::aliases::float3 &AXIS> struct AxisAngle {
+  Vec4 _output{};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _output = linalg::rotation_quat(AXIS, float(input.payload.floatValue));
+    return _output;
+  }
+};
+
+constexpr linalg::vec<float, 3> AxisX{1.0, 0.0, 0.0};
+constexpr linalg::vec<float, 3> AxisY{0.0, 1.0, 0.0};
+constexpr linalg::vec<float, 3> AxisZ{0.0, 0.0, 1.0};
+
+using AxisAngleX = AxisAngle<AxisX>;
+using AxisAngleY = AxisAngle<AxisY>;
+using AxisAngleZ = AxisAngle<AxisZ>;
+
+struct Deg2Rad {
+  const double PI = 3.141592653589793238463;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(input.payload.floatValue * (PI / 180.0));
   }
 };
 
@@ -564,6 +621,11 @@ void registerBlocks() {
   REGISTER_CBLOCK("Math.LinAlg.Transpose", Transpose);
   REGISTER_CBLOCK("Math.LinAlg.Orthographic", Orthographic);
   REGISTER_CBLOCK("Math.LinAlg.Scale", Scale);
+  REGISTER_CBLOCK("Math.LinAlg.Rotation", Rotation);
+  REGISTER_CBLOCK("Math.LinAlg.AxisAngleX", AxisAngleX);
+  REGISTER_CBLOCK("Math.LinAlg.AxisAngleY", AxisAngleY);
+  REGISTER_CBLOCK("Math.LinAlg.AxisAngleZ", AxisAngleZ);
+  REGISTER_CBLOCK("Math.DegreesToRadians", Deg2Rad);
 }
 }; // namespace LinAlg
 }; // namespace Math

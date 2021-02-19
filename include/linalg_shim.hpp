@@ -46,6 +46,17 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return *this;
   }
 
+  Mat4 &operator=(const CBVar &var) {
+    if (var.valueType != CBType::Seq || var.payload.seqValue.len != 4)
+      throw CBException("Invalid Mat4 variable given as input");
+    auto vm = reinterpret_cast<const Mat4 *>(var.payload.seqValue.elements);
+    (*this)[0] = (*vm)[0];
+    (*this)[1] = (*vm)[1];
+    (*this)[2] = (*vm)[2];
+    (*this)[3] = (*vm)[3];
+    return *this;
+  }
+
   operator CBVar() const {
     CBVar res{};
     res.valueType = CBType::Seq;
@@ -81,6 +92,14 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
     return res;
   }
 
+  Vec4 &operator=(const linalg::aliases::float4 &vec) {
+    x = vec.x;
+    y = vec.y;
+    z = vec.z;
+    w = vec.w;
+    return *this;
+  }
+
   operator CBVar() const {
     auto v = reinterpret_cast<CBVar *>(const_cast<chainblocks::Vec4 *>(this));
     v->valueType = CBType::Float4;
@@ -106,6 +125,13 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
       res[j] = float(vec[j]);
     }
     return res;
+  }
+
+  Vec3 &operator=(const linalg::aliases::float3 &vec) {
+    x = vec.x;
+    y = vec.y;
+    z = vec.z;
+    return *this;
   }
 
   operator CBVar() const {

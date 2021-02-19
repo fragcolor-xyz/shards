@@ -104,8 +104,12 @@
   (Log)
 
   (Float3 2 3 4) (Math.LinAlg.Scale) 
-  (Assert.Is [(Float4 2 0 0 0) (Float4 0 3 0 0) (Float4 0 0 4 0) (Float4 0 0 0 1)] true) 
+  (Assert.Is [(Float4 2 0 0 0) (Float4 0 3 0 0) (Float4 0 0 4 0) (Float4 0 0 0 1)] true)
   (Log)
+
+  180.0 (Math.DegreesToRadians) (Log) (Sub (-> (ToString) (Assert.Is "3.14159" true)))
+  (Math.LinAlg.AxisAngleX) (Log) 
+  (Math.LinAlg.Rotation) (Log)
 
   (Msg "Done!")
 ))

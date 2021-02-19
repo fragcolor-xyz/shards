@@ -178,7 +178,15 @@ struct Load : public BGFX::BaseConsumer {
       {"Shaders",
        CBCCSTR("If the shaders linked to this model should be compiled and/or "
                "loaded."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"TransformBefore",
+       CBCCSTR("An optional global transformation matrix to apply before the "
+               "model root nodes transformations."),
+       {CoreInfo::Float4x4Type, CoreInfo::NoneType}},
+      {"TransformAfter",
+       CBCCSTR("An optional global transformation matrix to apply after the "
+               "model root nodes transformations."),
+       {CoreInfo::Float4x4Type, CoreInfo::NoneType}}};
   static CBParametersInfo parameters() { return Params; }
 
   Model *_model{nullptr};
@@ -188,6 +196,8 @@ struct Load : public BGFX::BaseConsumer {
   bool _withShaders{true};
   uint32_t _numLights{0};
   std::unique_ptr<IShaderCompiler> _shaderCompiler = makeShaderCompiler();
+  std::optional<Mat4> _before;
+  std::optional<Mat4> _after;
 
   void setup() { _loader.SetImageLoader(&LoadImageData, this); }
 
@@ -265,6 +275,26 @@ struct Load : public BGFX::BaseConsumer {
     case 2:
       _withShaders = value.payload.boolValue;
       break;
+    case 3:
+      if (value.valueType == CBType::None) {
+        _before.reset();
+      } else {
+        // navigating c++ operators for Mat4
+        Mat4 m;
+        m = value;
+        _before = m;
+      }
+      break;
+    case 4:
+      if (value.valueType == CBType::None) {
+        _after.reset();
+      } else {
+        // navigating c++ operators for Mat4
+        Mat4 m;
+        m = value;
+        _after = m;
+      }
+      break;
     default:
       break;
     }
@@ -278,6 +308,16 @@ struct Load : public BGFX::BaseConsumer {
       return Var(_srgb);
     case 2:
       return Var(_withShaders);
+    case 3:
+      if (_before)
+        return *_before;
+      else
+        return Var::Empty;
+    case 4:
+      if (_after)
+        return *_after;
+      else
+        return Var::Empty;
     default:
       throw InvalidParameterIndex();
     }
@@ -499,6 +539,14 @@ struct Load : public BGFX::BaseConsumer {
                     glnode.scale.size() != 0 ? Vec3::FromVector(glnode.scale)
                                              : Vec3(1.0, 1.0, 1.0));
                 node.transform = linalg::mul(linalg::mul(t, r), s);
+              }
+
+              if (_before) {
+                node.transform = linalg::mul(*_before, node.transform);
+              }
+
+              if (_after) {
+                node.transform = linalg::mul(node.transform, *_after);
               }
 
               if (glnode.mesh != -1) {
