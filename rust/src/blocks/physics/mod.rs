@@ -1,7 +1,6 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
-use rapier3d::geometry::SharedShape;
 use crate::chainblocksc::CBTypeInfo_Details_Object;
 use crate::chainblocksc::CBType_Float4;
 use crate::chainblocksc::CBType_None;
@@ -13,9 +12,12 @@ use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::Type;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
-use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
-use rapier3d::na::{Matrix3, Matrix4, Vector3, Isometry3};
+use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet};
+use rapier3d::geometry::SharedShape;
+use rapier3d::geometry::{
+  BroadPhase, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase,
+};
+use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 
 lazy_static! {
@@ -45,6 +47,15 @@ lazy_static! {
   static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&[*SHAPE_TYPE]);
   static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&[*SHAPES_TYPE]);
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
+
+  static ref RIGIDBODY_TYPE: Type = {
+    let mut t = common_type::object;
+    t.details.object = CBTypeInfo_Details_Object {
+      vendorId: 0x73696e6b, // 'sink'
+      typeId: 0x70687952, // 'phyR'
+    };
+    t
+  };
 }
 
 struct Simulation {
@@ -60,6 +71,15 @@ struct Simulation {
   intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
+}
+
+struct RigidBody {
+  simulation_var: ParamVar,
+  shape_var: ParamVar,
+  rigid_body: Option<RigidBodyHandle>,
+  collider: Option<ColliderHandle>,
+  position: ParamVar,
+  rotation: ParamVar,
 }
 
 struct BaseShape {
