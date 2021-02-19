@@ -84,7 +84,7 @@
        (Float4 0.2 1.0 0.7 0.8)
        (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
       (Physics.Simulation)
-      (Physics.StaticBody .ground-pshape (Float3 0.0 -5.0 0.0))
+      (Physics.KinematicBody .ground-pshape (Float3 0.0 -5.0 0.0))
       (Physics.DynamicBody .ball-pshape :Name "rb1")
       (Once (-> .rb1 (Log)))
       (GFX.Draw :Shader .shader :Model .cube)
