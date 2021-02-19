@@ -370,7 +370,7 @@ impl Block for DynamicRigidBody {
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
         name: self.self_obj.getName(),
-        help: cstr!("The exposed rigid body.").into(),
+        help: cbccstr!("The exposed rigid body."),
         ..ExposedInfo::default()
       };
       self.exposing.push(exp_info);
@@ -488,7 +488,7 @@ impl Block for KinematicRigidBody {
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
         name: self.self_obj.getName(),
-        help: cstr!("The exposed rigid body.").into(),
+        help: cbccstr!("The exposed rigid body."),
         ..ExposedInfo::default()
       };
       self.exposing.push(exp_info);

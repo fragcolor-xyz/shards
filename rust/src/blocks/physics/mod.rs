@@ -30,10 +30,13 @@ lazy_static! {
     t
   };
 
-  static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![ExposedInfo::new_static(
-    cstr!("Physics.Simulation"),
-    *SIMULATION_TYPE
-  )];
+  static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![
+    ExposedInfo::new_static_with_help(
+      cstr!("Physics.Simulation"),
+      cbccstr!("The physics simulation subsystem."),
+      *SIMULATION_TYPE
+    )
+  ];
 
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;

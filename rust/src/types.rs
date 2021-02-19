@@ -228,18 +228,14 @@ impl ExposedInfo {
 
   pub const fn new_static_with_help(
     name: &'static str,
-    help: &'static str,
+    help: CBOptionalString,
     ctype: CBTypeInfo,
   ) -> Self {
     let cname = name.as_ptr() as *const i8;
-    let chelp = help.as_ptr() as *const i8;
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: CBOptionalString {
-        string: chelp,
-        crc: 0,
-      },
+      help,
       isMutable: false,
       isProtected: false,
       isTableEntry: false,
