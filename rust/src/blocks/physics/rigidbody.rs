@@ -116,10 +116,11 @@ impl RigidBody {
     Ok(())
   }
 
-  fn _populate(&mut self, status: BodyStatus) -> Result<RigidBodyHandle, &str> {
+  fn _populate(&mut self, status: BodyStatus) -> Result<(RigidBodyHandle, Var, Var), &str> {
+    let p = self.position.get();
+    let r = self.rotation.get();
     if self.rigid_body.is_none() {
       let pos = {
-        let p = self.position.get();
         if p.is_none() {
           Vector3::new(0.0, 0.0, 0.0)
         } else {
@@ -129,7 +130,6 @@ impl RigidBody {
       };
 
       let iso = {
-        let r = self.rotation.get();
         if r.is_none() {
           Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
         } else {
@@ -182,7 +182,7 @@ impl RigidBody {
       }
       self.rigid_body = Some(rigid_body);
     }
-    Ok(self.rigid_body.unwrap())
+    Ok((self.rigid_body.unwrap(), p, r))
   }
 }
 
@@ -227,15 +227,15 @@ impl Default for DynamicRigidBody {
 
 impl Block for DynamicRigidBody {
   fn registerName() -> &'static str {
-    cstr!("Physics.DynamicRigidBody")
+    cstr!("Physics.DynamicBody")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("Physics.DynamicRigidBody-rust-0x20200101")
+    compile_time_crc32::crc32!("Physics.DynamicBody-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "Physics.DynamicRigidBody"
+    "Physics.DynamicBody"
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -279,7 +279,7 @@ impl Block for DynamicRigidBody {
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
     let sim_var = self.rb.simulation_var.get();
     let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let rigid_body = self.rb._populate(BodyStatus::Dynamic)?;
+    let (rigid_body, _, _) = self.rb._populate(BodyStatus::Dynamic)?;
     let rb = simulation.bodies.get(rigid_body).unwrap();
     let mat: Matrix4<f32> = rb.position().to_matrix();
     fill_seq_from_mat4(&mut self.output, &mat);
@@ -290,21 +290,19 @@ impl Block for DynamicRigidBody {
 #[derive(Default)]
 struct StaticRigidBody {
   rb: RigidBody,
-  position: ParamVar,
-  rotation: ParamVar,
 }
 
 impl Block for StaticRigidBody {
   fn registerName() -> &'static str {
-    cstr!("Physics.StaticRigidBody")
+    cstr!("Physics.StaticBody")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("Physics.StaticRigidBody-rust-0x20200101")
+    compile_time_crc32::crc32!("Physics.StaticBody-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "Physics.StaticRigidBody"
+    "Physics.StaticBody"
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -351,7 +349,107 @@ impl Block for StaticRigidBody {
   }
 }
 
+#[derive(Default)]
+struct KinematicRigidBody {
+  rb: RigidBody,
+  output: Seq,
+}
+
+impl Block for KinematicRigidBody {
+  fn registerName() -> &'static str {
+    cstr!("Physics.KinematicBody")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("Physics.KinematicBody-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Physics.KinematicBody"
+  }
+
+  fn inputTypes(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &Types {
+    &FLOAT4X4_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 | 1 | 2 => self.rb._set_param(index, value),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 | 1 | 2 => self.rb._get_param(index),
+      _ => unreachable!(),
+    }
+  }
+
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    Some(&EXPOSED_SIMULATION)
+  }
+
+  fn cleanup(&mut self) {
+    self.rb._cleanup();
+  }
+
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.rb._warmup(context)
+  }
+
+  fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
+    let sim_var = self.rb.simulation_var.get();
+    let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
+    let (rigid_body, p, r) = self.rb._populate(BodyStatus::Kinematic)?;
+    let rb = simulation.bodies.get(rigid_body).unwrap();
+
+    // this guy will read constantly pos and rotations from variable values
+    let pos = {
+      if p.is_none() {
+        Vector3::new(0.0, 0.0, 0.0)
+      } else {
+        let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
+        Vector3::new(tx, ty, tz)
+      }
+    };
+
+    let iso = {
+      if r.is_none() {
+        Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
+      } else {
+        let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+        if let Ok(quaternion) = quaternion {
+          let quaternion =
+            Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+          let quaternion = UnitQuaternion::from_quaternion(quaternion);
+          let pos = Translation::from(pos);
+          Isometry3::from_parts(pos, quaternion)
+        } else {
+          // if setParam validation is correct this is impossible
+          panic!("unexpected branch")
+        }
+      }
+    };
+    rb.set_next_kinematic_position(iso);
+
+    // read the interpolated position and output it
+    let mat: Matrix4<f32> = rb.position().to_matrix();
+    fill_seq_from_mat4(&mut self.output, &mat);
+    Ok(self.output.as_ref().into())
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<DynamicRigidBody>();
   registerBlock::<StaticRigidBody>();
+  registerBlock::<KinematicRigidBody>();
 }
