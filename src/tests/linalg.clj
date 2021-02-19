@@ -103,6 +103,10 @@
   (Math.LinAlg.Transpose)
   (Log)
 
+  (Float3 2 3 4) (Math.LinAlg.Scale) 
+  (Assert.Is [(Float4 2 0 0 0) (Float4 0 3 0 0) (Float4 0 0 4 0) (Float4 0 0 0 1)] true) 
+  (Log)
+
   (Msg "Done!")
 ))
 

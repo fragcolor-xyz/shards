@@ -3,7 +3,7 @@
 
 #include "math.h"
 #include "shared.hpp"
-#include <linalg.h>
+#include <linalg_shim.hpp>
 
 namespace chainblocks {
 namespace Math {
@@ -538,6 +538,22 @@ struct Orthographic : VectorUnaryBase {
   }
 };
 
+struct Scale {
+  Mat4 _output{};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto v3 = reinterpret_cast<const Vec3 *>(&input);
+    _output.x.x = v3->x;
+    _output.y.y = v3->y;
+    _output.z.z = v3->z;
+    _output.w.w = 1.0;
+    return _output;
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Math.LinAlg.Cross", Cross);
   REGISTER_CBLOCK("Math.LinAlg.Dot", Dot);
@@ -547,6 +563,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Math.LinAlg.MatMul", MatMul);
   REGISTER_CBLOCK("Math.LinAlg.Transpose", Transpose);
   REGISTER_CBLOCK("Math.LinAlg.Orthographic", Orthographic);
+  REGISTER_CBLOCK("Math.LinAlg.Scale", Scale);
 }
 }; // namespace LinAlg
 }; // namespace Math
