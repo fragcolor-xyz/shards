@@ -1,6 +1,7 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
+use rapier3d::geometry::SharedShape;
 use crate::chainblocksc::CBTypeInfo_Details_Object;
 use crate::chainblocksc::CBType_Float4;
 use crate::chainblocksc::CBType_None;
@@ -14,7 +15,7 @@ use crate::types::Type;
 use crate::Var;
 use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
-use rapier3d::na::{Matrix3, Matrix4, Vector3};
+use rapier3d::na::{Matrix3, Matrix4, Vector3, Isometry3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 
 lazy_static! {
@@ -59,6 +60,11 @@ struct Simulation {
   intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
+}
+
+struct BaseShape {
+  shape: Option<SharedShape>,
+  position: Option<Isometry3<f32>>,
 }
 
 fn fill_seq_from_mat4(var: &mut Seq, mat: &Matrix4<f32>) {

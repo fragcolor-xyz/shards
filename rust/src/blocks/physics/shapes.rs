@@ -1,5 +1,6 @@
 // RigidBody and Collier are unique, Shapes can be shared
 
+use crate::blocks::physics::BaseShape;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
 use crate::blocks::physics::SHAPE_TYPE;
@@ -21,7 +22,7 @@ use crate::Var;
 use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
 use rapier3d::geometry::SharedShape;
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
-use rapier3d::na::Vector3;
+use rapier3d::na::{Isometry3, Quaternion, Translation, UnitQuaternion, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 use std::convert::TryInto;
 
@@ -36,12 +37,7 @@ lazy_static! {
     (
       cstr!("Rotation"),
       cstr!("The rotation  wrt. the body it is attached to"),
-      vec![
-        common_type::float3,
-        common_type::float3_var,
-        common_type::float4,
-        common_type::float4_var
-      ]
+      vec![common_type::float4, common_type::float4_var]
     )
       .into()
   ];
@@ -91,7 +87,7 @@ macro_rules! shape {
       }
 
       fn cleanup(&mut self) {
-        self.shape = None;
+        self.bs.shape = None;
         self.position.cleanup();
         self.rotation.cleanup();
         self._cleanup();
@@ -104,13 +100,35 @@ macro_rules! shape {
       }
 
       fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
-        self.shape = Some(self.make());
-        Ok(unsafe {
-          Var::new_object_from_ptr(
-            self.shape.as_ref().unwrap() as *const SharedShape,
-            &SHAPE_TYPE,
-          )
-        })
+        let pos = {
+          let p = self.position.get();
+          if p.is_none() {
+            Vector3::new(0.0, 0.0, 0.0)
+          } else {
+            let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
+            Vector3::new(tx, ty, tz)
+          }
+        };
+        self.bs.position = Some({
+          let r = self.rotation.get();
+          if r.is_none() {
+            Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
+          } else {
+            let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+            if let Ok(quaternion) = quaternion {
+              let quaternion =
+                Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+              let quaternion = UnitQuaternion::from_quaternion(quaternion);
+              let pos = Translation::from(pos);
+              Isometry3::from_parts(pos, quaternion)
+            } else {
+              // if setParam validation is correct this is impossible
+              panic!("unexpected branch")
+            }
+          }
+        });
+        self.bs.shape = Some(self.make());
+        Ok(unsafe { Var::new_object_from_ptr(&self.bs as *const BaseShape, &SHAPE_TYPE) })
       }
     }
   };
@@ -131,7 +149,7 @@ lazy_static! {
 }
 
 struct BallShape {
-  shape: Option<SharedShape>,
+  bs: BaseShape,
   position: ParamVar,
   rotation: ParamVar,
   radius: ParamVar,
@@ -140,7 +158,10 @@ struct BallShape {
 impl Default for BallShape {
   fn default() -> Self {
     BallShape {
-      shape: None,
+      bs: BaseShape {
+        shape: None,
+        position: None,
+      },
       position: ParamVar::new((0.0, 0.0, 0.0).into()),
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
       radius: ParamVar::new(0.5.into()),
@@ -199,7 +220,7 @@ lazy_static! {
 }
 
 struct CubeShape {
-  shape: Option<SharedShape>,
+  bs: BaseShape,
   position: ParamVar,
   rotation: ParamVar,
   half_extents: ParamVar,
@@ -208,7 +229,10 @@ struct CubeShape {
 impl Default for CubeShape {
   fn default() -> Self {
     CubeShape {
-      shape: None,
+      bs: BaseShape {
+        shape: None,
+        position: None,
+      },
       position: ParamVar::new((0.0, 0.0, 0.0).into()),
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
       half_extents: ParamVar::new((0.5, 0.5, 0.5).into()),

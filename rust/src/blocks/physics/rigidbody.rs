@@ -1,5 +1,6 @@
 use crate::blocks::physics::fill_seq_from_mat4;
 use crate::blocks::physics::mat4_from_seq;
+use crate::blocks::physics::BaseShape;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
 use crate::blocks::physics::SHAPES_TYPE;
@@ -132,21 +133,16 @@ impl RigidBody {
         if r.is_none() {
           Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
         } else {
-          let axisAngles: Result<(f32, f32, f32), &str> = r.as_ref().try_into();
-          if let Ok(axisAngles) = axisAngles {
-            Isometry3::new(pos, Vector3::new(axisAngles.0, axisAngles.1, axisAngles.2))
+          let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+          if let Ok(quaternion) = quaternion {
+            let quaternion =
+              Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+            let quaternion = UnitQuaternion::from_quaternion(quaternion);
+            let pos = Translation::from(pos);
+            Isometry3::from_parts(pos, quaternion)
           } else {
-            let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
-            if let Ok(quaternion) = quaternion {
-              let quaternion =
-                Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
-              let quaternion = UnitQuaternion::from_quaternion(quaternion);
-              let pos = Translation::from(pos);
-              Isometry3::from_parts(pos, quaternion)
-            } else {
-              // if setParam validation is correct this is impossible
-              panic!("unexpected branch")
-            }
+            // if setParam validation is correct this is impossible
+            panic!("unexpected branch")
           }
         }
       };
@@ -161,9 +157,11 @@ impl RigidBody {
       if shape.is_seq() {
         let shapes: Seq = shape.try_into().unwrap();
         for shape in shapes {
-          let shape = Var::into_object_mut_ref::<SharedShape>(shape, &SHAPE_TYPE)?;
-          let shape = shape.clone();
-          let collider = ColliderBuilder::new(shape).build();
+          let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+          let shape = shapeInfo.shape.as_ref().unwrap().clone();
+          let collider = ColliderBuilder::new(shape)
+            .position(shapeInfo.position.unwrap())
+            .build();
           self.collider = Some(simulation.colliders.insert(
             collider,
             rigid_body,
@@ -171,9 +169,11 @@ impl RigidBody {
           ));
         }
       } else {
-        let shape = Var::into_object_mut_ref::<SharedShape>(shape, &SHAPE_TYPE)?;
-        let shape = shape.clone();
-        let collider = ColliderBuilder::new(shape).build();
+        let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+        let shape = shapeInfo.shape.as_ref().unwrap().clone();
+        let collider = ColliderBuilder::new(shape)
+          .position(shapeInfo.position.unwrap())
+          .build();
         self.collider = Some(simulation.colliders.insert(
           collider,
           rigid_body,
@@ -203,7 +203,7 @@ lazy_static! {
     (
       cstr!("Rotation"),
       cstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
-      vec![common_type::float3, common_type::float3_var, common_type::float4, common_type::float4_var]
+      vec![common_type::float4, common_type::float4_var]
     )
       .into()
   ];
