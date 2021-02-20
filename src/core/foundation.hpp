@@ -329,6 +329,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   uint64_t composedHash{};
   bool warmedUp{false};
+  bool isRoot{false};
   std::unordered_set<void *> chainUsers;
 
   // we need to clone this, as might disappear, since outside chain

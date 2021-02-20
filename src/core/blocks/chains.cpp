@@ -98,7 +98,7 @@ struct ChainBase {
     }
 
     // avoid stackoverflow
-    if (visiting.count(chain.get())) {
+    if (chain->isRoot || visiting.count(chain.get())) {
       LOG(DEBUG)
           << "ChainBase::compose early return, chain is being visited, name: "
           << chain->name;

@@ -660,10 +660,12 @@ struct SetBase : public VariableBase {
                              _name);
         }
         if (!_isTable && !reference.isMutable) {
+          LOG(ERROR) << "Error with variable: " << _name;
           throw ComposeError(
               "Set/Ref/Update, attempted to write an immutable variable.");
         }
         if (!_isTable && reference.isProtected) {
+          LOG(ERROR) << "Error with variable: " << _name;
           throw ComposeError(
               "Set/Ref/Update, attempted to write a protected variable.");
         }

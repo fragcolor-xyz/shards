@@ -696,6 +696,9 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     visitedChains.clear();
 
     chain->node = shared_from_this();
+    chain->isRoot = true;
+    // remove when done here
+    DEFER(chain->isRoot = false);
 
     observer.before_compose(chain.get());
     if (validate) {
