@@ -2770,7 +2770,8 @@ struct Slice {
     }
   }
 
-  static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType}};
+  static inline Types InputTypes{
+      {CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
 
   static CBTypesInfo inputTypes() { return InputTypes; }
 
@@ -2815,6 +2816,8 @@ struct Slice {
       OVERRIDE_ACTIVATE(data, activateSeq);
     } else if (data.inputType.basicType == Bytes) {
       OVERRIDE_ACTIVATE(data, activateBytes);
+    } else if (data.inputType.basicType == String) {
+      OVERRIDE_ACTIVATE(data, activateString);
     }
 
     return data.inputType;
@@ -2922,6 +2925,45 @@ struct Slice {
         idx++;
       }
       return Var(&_cachedBytes.front(), uint32_t(actualLen));
+    } else {
+      throw ActivationError("Slice's Step must be greater then 0");
+    }
+  }
+
+  CBVar activateString(CBContext *context, const CBVar &input) {
+    if (_from.valueType == ContextVar && !_fromVar) {
+      _fromVar = referenceVariable(context, _from.payload.stringValue);
+    }
+    if (_to.valueType == ContextVar && !_toVar) {
+      _toVar = referenceVariable(context, _to.payload.stringValue);
+    }
+
+    const auto inputLen = input.payload.stringLen > 0
+                              ? input.payload.stringLen
+                              : uint32_t(strlen(input.payload.stringValue));
+    const auto &vfrom = _fromVar ? *_fromVar : _from;
+    const auto &vto = _toVar ? *_toVar : _to;
+    auto from = vfrom.payload.intValue;
+    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
+    if (to < 0) {
+      to = inputLen + to;
+    }
+
+    if (from > to || to < 0 || to > inputLen) {
+      throw OutOfRangeEx(inputLen, from, to);
+    }
+
+    const auto len = to - from;
+    if (_step > 0) {
+      const auto actualLen = len / _step + (len % _step != 0);
+      _cachedBytes.resize(actualLen + 1);
+      auto idx = 0;
+      for (auto i = from; i < to; i += _step) {
+        _cachedBytes[idx] = input.payload.stringValue[i];
+        idx++;
+      }
+      _cachedBytes[idx] = '\0';
+      return Var((const char *)_cachedBytes.data(), uint32_t(actualLen));
     } else {
       throw ActivationError("Slice's Step must be greater then 0");
     }

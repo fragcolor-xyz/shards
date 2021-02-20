@@ -684,6 +684,12 @@
    (Slice 2 5)
    (BytesToInts) (Assert.Is [3 4 5] true)
 
+   "Hello sliced world"
+   (Log)
+   (Slice :From 4 :To 11)
+   (Assert.Is "o slice" true)
+   (Log)
+
    "passing by..."
    (Drop "s2")
    (Assert.Is "passing by..." true)
