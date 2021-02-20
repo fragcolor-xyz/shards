@@ -1129,14 +1129,14 @@ struct VarStringStream {
       cache.reset();
       std::ostream stream(&cache);
       if (var.valueType == Int) {
-        stream << "0x" << std::hex << var.payload.intValue << std::dec;
+        stream << "0x" << std::hex << var.payload.intValue;
       } else if (var.valueType == Bytes) {
-        stream << std::hex;
+        stream << "0x" << std::hex;
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
           stream << std::setw(2) << std::setfill('0')
                  << (int)var.payload.bytesValue[i];
       } else if (var.valueType == String) {
-        stream << std::hex;
+        stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
         if (len == 0) {
           len = strlen(var.payload.stringValue);
