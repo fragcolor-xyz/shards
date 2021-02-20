@@ -504,25 +504,32 @@ struct XpendTo : public XPendBase {
         if (cons.exposedType.basicType != CBType::Seq &&
             cons.exposedType.basicType != CBType::Bytes &&
             cons.exposedType.basicType != CBType::String) {
-          throw CBException("AppendTo/PrependTo expects either a Seq, String "
-                            "or Bytes variable as collection.");
+          throw ComposeError("AppendTo/PrependTo expects either a Seq, String "
+                             "or Bytes variable as collection.");
+        } else {
+          if (cons.exposedType.basicType != CBType::Seq &&
+              cons.exposedType != data.inputType) {
+            LOG(ERROR) << "Input is: " << data.inputType
+                       << " variable is: " << cons.exposedType;
+            throw ComposeError("Input type not matching the variable.");
+          }
         }
         if (!cons.isMutable) {
-          throw CBException(
+          throw ComposeError(
               "AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
         if (cons.exposedType.basicType == Seq &&
             (cons.exposedType.seqTypes.len != 1 ||
              cons.exposedType.seqTypes.elements[0] != data.inputType)) {
-          throw CBException("AppendTo/PrependTo input type is not compatible "
-                            "with the backing Seq.");
+          throw ComposeError("AppendTo/PrependTo input type is not compatible "
+                             "with the backing Seq.");
         }
         // Validation Ok if here..
         return data.inputType;
       }
     }
-    throw CBException("AppendTo/PrependTo: Failed to find variable: " +
-                      std::string(_collection.variableName()));
+    throw ComposeError("AppendTo/PrependTo: Failed to find variable: " +
+                       std::string(_collection.variableName()));
   }
 
   void setParam(int index, const CBVar &value) {
@@ -561,8 +568,6 @@ struct AppendTo : public XpendTo {
       break;
     }
     case String: {
-      if (input.valueType != String)
-        throw ActivationError("AppendTo: expected String input");
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
@@ -604,8 +609,6 @@ struct PrependTo : public XpendTo {
       break;
     }
     case String: {
-      if (input.valueType != String)
-        throw ActivationError("AppendTo: expected String input");
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
