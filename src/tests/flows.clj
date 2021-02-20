@@ -156,11 +156,13 @@
       (-> false))
   (Assert.IsNot true false)
 
+  "Hello world" = .hello-var
+
   (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) "Ok"))
+  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "Ok"))
   (Assert.Is ["Ok" "Ok" "Ok"] false)
   (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log)) :Policy WaitUntil.FirstSuccess)
+  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
   (Assert.Is "A" false)
 
   -10

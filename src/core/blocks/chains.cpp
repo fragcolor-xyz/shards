@@ -1236,6 +1236,9 @@ struct TryMany : public ChainBase {
           // Prepare and start if no callc was called
           if (!cref->chain->coro) {
             cref->chain->node = context->main->node;
+            // pre-set chain context with our context
+            // this is used to copy chainStack over to the new one
+            cref->chain->context = context;
             // Notice we don't share our flow!
             // let the chain create one by passing null
             chainblocks::prepare(cref->chain.get(), nullptr);
