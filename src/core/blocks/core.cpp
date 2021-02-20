@@ -479,8 +479,9 @@ struct Profile {
 };
 
 struct XPendBase {
-  static inline Types xpendTypes{
-      {CoreInfo::AnyVarSeqType, CoreInfo::StringVarType}};
+  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType,
+                                  CoreInfo::StringVarType,
+                                  CoreInfo::BytesVarType}};
 };
 
 struct XpendTo : public XPendBase {
@@ -572,6 +573,17 @@ struct AppendTo : public XpendTo {
       cloneVar(collection, tmp);
       break;
     }
+    case Bytes: {
+      // we know it's a mutable variable so must be compatible with our
+      // arrayPush and such routines just do like string for now basically
+      _scratchStr().clear();
+      _scratchStr().append((char *)collection.payload.bytesValue,
+                           collection.payload.bytesSize);
+      _scratchStr().append((char *)input.payload.bytesValue,
+                           input.payload.bytesSize);
+      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      cloneVar(collection, tmp);
+    } break;
     default:
       throw ActivationError("AppendTo, case not implemented");
     }
@@ -604,6 +616,17 @@ struct PrependTo : public XpendTo {
       cloneVar(collection, tmp);
       break;
     }
+    case Bytes: {
+      // we know it's a mutable variable so must be compatible with our
+      // arrayPush and such routines just do like string for now basically
+      _scratchStr().clear();
+      _scratchStr().append((char *)input.payload.bytesValue,
+                           input.payload.bytesSize);
+      _scratchStr().append((char *)collection.payload.bytesValue,
+                           collection.payload.bytesSize);
+      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      cloneVar(collection, tmp);
+    } break;
     default:
       throw ActivationError("PrependTo, case not implemented");
     }
