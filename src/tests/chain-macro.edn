@@ -1,4 +1,4 @@
-(defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) :Looped (chainify (vector ~@blocks))))))
+(defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) (chainify (vector ~@blocks))))))
 (defmacro! defloop (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) :Looped (chainify (vector ~@blocks))))))
 
 (defchain x
