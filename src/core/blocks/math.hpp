@@ -21,6 +21,8 @@ struct Base {
 
   void destroy() { destroyVar(_result); }
 
+  CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
+
   static CBTypesInfo inputTypes() { return MathTypes; }
 
   static CBTypesInfo outputTypes() { return MathTypes; }
