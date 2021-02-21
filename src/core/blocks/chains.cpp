@@ -1411,15 +1411,15 @@ struct TryMany : public ParallelBase {
   }
 };
 
-struct DoWide : public ParallelBase {
+struct Expand : public ParallelBase {
   int64_t _width{10};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline Parameters _params{
-      {{"Width",
-        CBCCSTR("How wide the execution mesh will be."),
+      {{"Size",
+        CBCCSTR("The maximum expansion size."),
         {CoreInfo::IntType}}},
       ParallelBase::_params};
 
@@ -1719,7 +1719,7 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("Recur", Recur);
   REGISTER_CBLOCK("TryMany", TryMany);
   REGISTER_CBLOCK("Spawn", Spawn);
-  REGISTER_CBLOCK("DoWide", DoWide);
+  REGISTER_CBLOCK("Expand", Expand);
 }
 }; // namespace chainblocks
 

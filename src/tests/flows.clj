@@ -173,12 +173,12 @@
   (Assert.Is "A" false)
 
   10
-  (DoWide 10 (defchain wide-test (Math.Inc)) :Threads 10)
+  (Expand 10 (defchain wide-test (Math.Inc)) :Threads 10)
   (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
   (Log)
 
   10
-  (DoWide 10 (defchain wide-test (Math.Inc)))
+  (Expand 10 (defchain wide-test (Math.Inc)))
   (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
   (Log)
 
