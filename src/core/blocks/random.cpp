@@ -7,7 +7,7 @@
 namespace chainblocks {
 namespace Random {
 struct RandBase {
-  static inline thread_local std::random_device _rd{};
+  static inline std::random_device _rd{}; // don't make it thread_local!
   static inline thread_local std::mt19937 _gen{_rd()};
   static inline thread_local std::uniform_int_distribution<> _uintdis{};
   static inline thread_local std::uniform_real_distribution<> _udis{0.0, 1.0};
@@ -51,9 +51,6 @@ using RandomInt = Rand<CoreInfo::IntType, CBType::Int>;
 using RandomFloat = Rand<CoreInfo::FloatType, CBType::Float>;
 
 struct RandomBytes : public RandBase {
-  using random_bytes_engine =
-      std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char>;
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
   static CBParametersInfo parameters() { return _params; }
@@ -66,12 +63,13 @@ struct RandomBytes : public RandBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _buffer.resize(_size);
-    std::generate(_buffer.begin(), _buffer.end(), std::ref(rbe));
+    for (int64_t i = 0; i < _size; i++) {
+      _buffer[i] = _uintdis(_gen) % 256;
+    }
     return Var(_buffer.data(), _size);
   }
 
 private:
-  random_bytes_engine rbe{_gen};
   int64_t _size{32};
   std::vector<uint8_t> _buffer;
   static inline Parameters _params{

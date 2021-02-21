@@ -178,6 +178,10 @@
               (Log))
           :Times 10)
   
+  (Repeat (-> 10
+              (Expand 10 (defchain wide-test (RandomBytes 8) (ToHex)) :Threads 10)
+              (Log))
+          :Times 10)
 
   10
   (Expand 10 (defchain wide-test (Math.Inc)))
