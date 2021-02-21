@@ -52,8 +52,7 @@ using RandomFloat = Rand<CoreInfo::FloatType, CBType::Float>;
 
 struct RandomBytes : public RandBase {
   using random_bytes_engine =
-      std::independent_bits_engine<std::default_random_engine, CHAR_BIT,
-                                   unsigned char>;
+      std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char>;
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
@@ -72,7 +71,7 @@ struct RandomBytes : public RandBase {
   }
 
 private:
-  random_bytes_engine rbe;
+  random_bytes_engine rbe{_gen};
   int64_t _size{32};
   std::vector<uint8_t> _buffer;
   static inline Parameters _params{
