@@ -1222,7 +1222,9 @@ protected:
   size_t _maxSize{0};
   int64_t _threads{1};
   int64_t _coros{1};
+#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
   std::unique_ptr<tf::Executor> _exec;
+#endif
 };
 
 struct TryMany : public ParallelBase {
