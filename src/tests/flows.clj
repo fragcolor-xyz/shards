@@ -166,16 +166,18 @@
   (Assert.Is "A" false)
 
   (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "Ok") :Threads 3)
+  (TryMany (Chain "print-stuff" (Log) "Ok") :Threads 3)
   (Assert.Is ["Ok" "Ok" "Ok"] false)
   (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+  (TryMany (Chain "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
   (Assert.Is "A" false)
 
-  10
-  (Expand 10 (defchain wide-test (Math.Inc)) :Threads 10)
-  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
-  (Log)
+  (Repeat (-> 10
+              (Expand 10 (defchain wide-test (Math.Inc)) :Threads 10)
+              (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+              (Log))
+          :Times 10)
+  
 
   10
   (Expand 10 (defchain wide-test (Math.Inc)))

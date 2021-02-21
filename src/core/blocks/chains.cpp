@@ -1153,6 +1153,12 @@ struct ParallelBase : public ChainBase {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    if (_threads > 1) {
+      mode = RunChainMode::Detached;
+    } else {
+      mode = RunChainMode::Inline;
+    }
+
     ChainBase::compose(data); // discard the result, we do our thing here
 
     _pool.reset(new ChainDoppelgangerPool<ManyChain>(CBChain::weakRef(chain)));
@@ -1319,7 +1325,7 @@ struct TryMany : public ParallelBase {
                   // success, next call clones, make sure to destroy
                   _outputs.resize(1);
                   stop(cref->chain.get(), &_outputs[0]);
-                  // short-circuit, defer will take care of cleaning up
+                  _pool->release(cref);
                   return _outputs[0];
                 } else {
                   CBVar output{};
@@ -1345,7 +1351,7 @@ struct TryMany : public ParallelBase {
 
           flow.for_each_dynamic(
               _chains.begin(), _chains.end(),
-              [context, input](auto &cref) {
+              [input](auto &cref) {
                 // skip if failed or ended
                 if (cref->chain->state >= CBChain::State::Failed)
                   return;
@@ -1355,12 +1361,21 @@ struct TryMany : public ParallelBase {
                   if (!cref->node) {
                     cref->node = CBNode::make();
                   }
-                  cref->node->schedule(
-                      cref->chain, input.payload.seqValue.elements[cref->index],
-                      false);
+                  cref->chain->node = cref->node;
+                  // Notice we don't share our flow!
+                  // let the chain create one by passing null
+                  chainblocks::prepare(cref->chain.get(), nullptr);
+                  chainblocks::start(
+                      cref->chain.get(),
+                      input.payload.seqValue.elements[cref->index]);
                 }
 
-                cref->node->tick(input.payload.seqValue.elements[cref->index]);
+                // Tick the chain on the flow that this chain created
+                CBDuration now = CBClock::now().time_since_epoch();
+                chainblocks::tick(cref->chain->context->flow->chain, now,
+                                  input.payload.seqValue.elements[cref->index]);
+                // also tick the node
+                cref->node->tick();
               },
               _coros);
 
@@ -1373,17 +1388,22 @@ struct TryMany : public ParallelBase {
                 // success, next call clones, make sure to destroy
                 _outputs.resize(1);
                 stop(cref->chain.get(), &_outputs[0]);
-                // short-circuit, defer will take care of cleaning up
+                cref->node->terminate();
+                it = _chains.erase(it);
+                _pool->release(cref);
+                // defer did not work for some reason
                 return _outputs[0];
               } else {
                 CBVar output{};
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
+                cref->node->terminate();
                 it = _chains.erase(it);
                 _pool->release(cref);
               }
             } else {
               // remove failed chains
+              cref->node->terminate();
               it = _chains.erase(it);
               _pool->release(cref);
             }
@@ -1460,6 +1480,9 @@ struct Expand : public ParallelBase {
 
     for (auto &cref : _chains) {
       stop(cref->chain.get());
+      if (cref->node) {
+        cref->node->terminate();
+      }
       _pool->release(cref);
     }
     _chains.resize(_width);
@@ -1515,7 +1538,7 @@ struct Expand : public ParallelBase {
                   // success, next call clones, make sure to destroy
                   _outputs.resize(1);
                   stop(cref->chain.get(), &_outputs[0]);
-                  // short-circuit, defer will take care of cleaning up
+                  _pool->release(cref);
                   return _outputs[0];
                 } else {
                   CBVar output{};
@@ -1541,7 +1564,7 @@ struct Expand : public ParallelBase {
 
           flow.for_each_dynamic(
               _chains.begin(), _chains.end(),
-              [context, input](auto &cref) {
+              [input](auto &cref) {
                 // skip if failed or ended
                 if (cref->chain->state >= CBChain::State::Failed)
                   return;
@@ -1551,10 +1574,19 @@ struct Expand : public ParallelBase {
                   if (!cref->node) {
                     cref->node = CBNode::make();
                   }
-                  cref->node->schedule(cref->chain, input, false);
+                  cref->chain->node = cref->node;
+                  // Notice we don't share our flow!
+                  // let the chain create one by passing null
+                  chainblocks::prepare(cref->chain.get(), nullptr);
+                  chainblocks::start(cref->chain.get(), input);
                 }
 
-                cref->node->tick(input);
+                // Tick the chain on the flow that this chain created
+                CBDuration now = CBClock::now().time_since_epoch();
+                chainblocks::tick(cref->chain->context->flow->chain, now,
+                                  input);
+                // also tick the node
+                cref->node->tick();
               },
               _coros);
 
@@ -1567,17 +1599,22 @@ struct Expand : public ParallelBase {
                 // success, next call clones, make sure to destroy
                 _outputs.resize(1);
                 stop(cref->chain.get(), &_outputs[0]);
-                // short-circuit, defer will take care of cleaning up
+                cref->node->terminate();
+                it = _chains.erase(it);
+                _pool->release(cref);
+                // defer did not work for some reason
                 return _outputs[0];
               } else {
                 CBVar output{};
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
+                cref->node->terminate();
                 it = _chains.erase(it);
                 _pool->release(cref);
               }
             } else {
               // remove failed chains
+              cref->node->terminate();
               it = _chains.erase(it);
               _pool->release(cref);
             }
