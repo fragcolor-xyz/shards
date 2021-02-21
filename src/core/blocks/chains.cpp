@@ -1305,7 +1305,6 @@ struct ParallelBase : public ChainBase {
                 }
               } else {
                 // remove failed chains
-                it = _chains.erase(it);
                 failed++;
               }
             }
@@ -1353,7 +1352,6 @@ struct ParallelBase : public ChainBase {
                 // success, next call clones, make sure to destroy
                 _outputs.resize(1);
                 stop(cref->chain.get(), &_outputs[0]);
-                it = _chains.erase(it);
                 return _outputs[0];
               } else {
                 CBVar output{};
@@ -1363,7 +1361,6 @@ struct ParallelBase : public ChainBase {
               }
             } else {
               // remove failed chains
-              it = _chains.erase(it);
               failed++;
             }
           }
