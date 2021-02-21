@@ -896,6 +896,8 @@
    (Log)
 
    (RandomFloat) (IsLess 1.0) (Assert.Is true true)
+   (RandomBytes 16) = .random-bytes
+   (Count .random-bytes) (Assert.Is 16 true)
 
    true
    (When (Is true) (Assert.Is true true))

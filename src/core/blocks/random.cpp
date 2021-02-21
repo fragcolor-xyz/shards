@@ -44,17 +44,45 @@ private:
   static inline Parameters _params{
       {"Max",
        CBCCSTR("The maximum (if integer, not including) value to output."),
-       {CoreInfo::NoneType, OUTTYPE}}
-
-  };
-}; // namespace Random
+       {CoreInfo::NoneType, OUTTYPE}}};
+};
 
 using RandomInt = Rand<CoreInfo::IntType, CBType::Int>;
 using RandomFloat = Rand<CoreInfo::FloatType, CBType::Float>;
 
+struct RandomBytes : public RandBase {
+  using random_bytes_engine =
+      std::independent_bits_engine<std::default_random_engine, CHAR_BIT,
+                                   unsigned char>;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    _size = value.payload.intValue;
+  }
+
+  CBVar getParam(int index) { return Var(_size); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    _buffer.resize(_size);
+    std::generate(_buffer.begin(), _buffer.end(), std::ref(rbe));
+    return Var(_buffer.data(), _size);
+  }
+
+private:
+  random_bytes_engine rbe;
+  int64_t _size{32};
+  std::vector<uint8_t> _buffer;
+  static inline Parameters _params{
+      {"Size", CBCCSTR("The amount of bytes to output."), {CoreInfo::IntType}}};
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("RandomInt", RandomInt);
   REGISTER_CBLOCK("RandomFloat", RandomFloat);
+  REGISTER_CBLOCK("RandomBytes", RandomBytes);
 }
 } // namespace Random
 } // namespace chainblocks

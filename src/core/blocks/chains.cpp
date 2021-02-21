@@ -1418,9 +1418,7 @@ struct Expand : public ParallelBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline Parameters _params{
-      {{"Size",
-        CBCCSTR("The maximum expansion size."),
-        {CoreInfo::IntType}}},
+      {{"Size", CBCCSTR("The maximum expansion size."), {CoreInfo::IntType}}},
       ParallelBase::_params};
 
   static CBParametersInfo parameters() { return _params; }
