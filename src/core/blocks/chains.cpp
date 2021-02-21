@@ -1211,10 +1211,10 @@ struct ParallelBase : public ChainBase {
   }
 
   void cleanup() {
-    _outputs.resize(_maxSize);
     for (auto &v : _outputs) {
       destroyVar(v);
     }
+    _outputs.clear();
     for (auto &cref : _chains) {
       stop(cref->chain.get());
       _pool->release(cref);
@@ -1231,6 +1231,7 @@ struct ParallelBase : public ChainBase {
     auto node = context->main->node.lock();
     auto len = getLength(input);
 
+    _outputs.resize(len);
     _chains.resize(len);
     Defer cleanups([this]() {
       for (auto &cref : _chains) {
@@ -1250,10 +1251,6 @@ struct ParallelBase : public ChainBase {
     }
 
     auto nchains = _chains.size();
-
-    // cleanup outputs, store max size tho for cleanup
-    _maxSize = std::max(_maxSize, _outputs.size());
-    _outputs.clear();
 
     size_t succeeded = 0;
     size_t failed = 0;
@@ -1294,13 +1291,10 @@ struct ParallelBase : public ChainBase {
               if (cref->chain->state == CBChain::State::Ended) {
                 if (_policy == WaitUntil::FirstSuccess) {
                   // success, next call clones, make sure to destroy
-                  _outputs.resize(1);
                   stop(cref->chain.get(), &_outputs[0]);
                   return _outputs[0];
                 } else {
-                  CBVar output{};
-                  stop(cref->chain.get(), &output);
-                  _outputs.emplace_back(output);
+                  stop(cref->chain.get(), &_outputs[succeeded]);
                   succeeded++;
                 }
               } else {
@@ -1350,13 +1344,10 @@ struct ParallelBase : public ChainBase {
             if (cref->chain->state == CBChain::State::Ended) {
               if (_policy == WaitUntil::FirstSuccess) {
                 // success, next call clones, make sure to destroy
-                _outputs.resize(1);
                 stop(cref->chain.get(), &_outputs[0]);
                 return _outputs[0];
               } else {
-                CBVar output{};
-                stop(cref->chain.get(), &output);
-                _outputs.emplace_back(output);
+                stop(cref->chain.get(), &_outputs[succeeded]);
                 succeeded++;
               }
             } else {
@@ -1368,17 +1359,16 @@ struct ParallelBase : public ChainBase {
 #endif
 
         if ((succeeded + failed) == nchains) {
-          auto osize = _outputs.size();
-          if (unlikely(osize == 0)) {
+          if (unlikely(succeeded == 0)) {
             throw ActivationError("TryMany, failed all chains!");
           } else {
             // all ended let's apply policy here
             if (_policy == WaitUntil::SomeSuccess) {
-              return Var(_outputs);
+              return Var(_outputs.data(), succeeded);
             } else {
               assert(_policy == WaitUntil::AllSuccess);
               if (nchains == succeeded) {
-                return Var(_outputs);
+                return Var(_outputs.data(), succeeded);
               } else {
                 throw ActivationError("TryMany, failed some chains!");
               }
@@ -1398,7 +1388,6 @@ protected:
   CBTypeInfo _inputType{};
   std::vector<CBVar> _outputs;
   std::vector<std::shared_ptr<ManyChain>> _chains;
-  size_t _maxSize{0};
   int64_t _threads{1};
   int64_t _coros{1};
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
