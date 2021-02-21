@@ -244,6 +244,7 @@ struct Read {
 
 struct Write {
   ParamVar _contents{};
+  std::array<CBExposedTypeInfo, 2> _requiring;
   bool _overwrite = false;
   bool _append = false;
 
@@ -288,6 +289,22 @@ struct Write {
       return Var(_append);
     default:
       return Var::Empty;
+    }
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_contents.isVariable()) {
+      _requiring[0].name = _contents.variableName();
+      _requiring[0].help =
+          CBCCSTR("The required variable containing the data to be written.");
+      _requiring[0].exposedType = CoreInfo::StringType;
+      _requiring[1].name = _contents.variableName();
+      _requiring[1].help =
+          CBCCSTR("The required variable containing the data to be written.");
+      _requiring[1].exposedType = CoreInfo::BytesType;
+      return {_requiring.data(), 2, 0};
+    } else {
+      return {};
     }
   }
 
