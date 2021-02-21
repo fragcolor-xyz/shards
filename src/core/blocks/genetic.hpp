@@ -2,7 +2,6 @@
 #include "chainblocks.h"
 #include "chainblocks.hpp"
 #include "shared.hpp"
-#include "taskflow/core/executor.hpp"
 #include <limits>
 #include <pdqsort.h>
 #include <random>
@@ -162,8 +161,10 @@ struct Evolve {
   };
 
   void warmup(CBContext *context) {
-    if (!_exec || _exec->num_workers() != (size_t(_threads) + 1)) {
-      _exec.reset(new tf::Executor(size_t(_threads) + 1));
+    const auto threads =
+        std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+    if (!_exec || _exec->num_workers() != (size_t(threads) + 1)) {
+      _exec.reset(new tf::Executor(size_t(threads) + 1));
     }
   }
 

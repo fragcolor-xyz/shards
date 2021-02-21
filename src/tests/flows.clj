@@ -165,6 +165,23 @@
   (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
   (Assert.Is "A" false)
 
+  (Const ["A" "B" "C"])
+  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "Ok") :Threads 3)
+  (Assert.Is ["Ok" "Ok" "Ok"] false)
+  (Const ["A" "B" "C"])
+  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" false)
+
+  10
+  (DoWide 10 (defchain wide-test (Math.Inc)) :Threads 10)
+  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+  (Log)
+
+  10
+  (DoWide 10 (defchain wide-test (Math.Inc)))
+  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+  (Log)
+
   -10
   (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
       (-> true)

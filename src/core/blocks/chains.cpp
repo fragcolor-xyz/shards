@@ -6,6 +6,9 @@
 #include <chrono>
 #include <memory>
 #include <set>
+#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+#include <taskflow/taskflow.hpp>
+#endif
 
 namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
@@ -1104,7 +1107,13 @@ struct ParallelBase : public ChainBase {
        ChainBase::ChainVarTypes},
       {"Policy",
        CBCCSTR("The execution policy in terms of chains success."),
-       {WaitUntilType}}};
+       {WaitUntilType}},
+      {"Threads",
+       CBCCSTR("The number of cpu threads to use."),
+       {CoreInfo::IntType}},
+      {"Coroutines",
+       CBCCSTR("The number of coroutines to run on each thread."),
+       {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1115,6 +1124,12 @@ struct ParallelBase : public ChainBase {
       break;
     case 1:
       _policy = WaitUntil(value.payload.enumValue);
+      break;
+    case 2:
+      _threads = std::max(int64_t(1), value.payload.intValue);
+      break;
+    case 3:
+      _coros = std::max(int64_t(1), value.payload.intValue);
       break;
     default:
       break;
@@ -1127,6 +1142,10 @@ struct ParallelBase : public ChainBase {
       return chainref;
     case 1:
       return Var::Enum(_policy, CoreCC, 'tryM');
+    case 2:
+      return Var(_threads);
+    case 3:
+      return Var(_coros);
     default:
       return Var::Empty;
     }
@@ -1141,23 +1160,7 @@ struct ParallelBase : public ChainBase {
     // copy shared
     _sharedCopy = shared;
 
-    if (data.inputType.seqTypes.len == 1) {
-      // copy single input type
-      _inputType = data.inputType.seqTypes.elements[0];
-    } else {
-      // else just mark as generic any
-      _inputType = CoreInfo::AnyType;
-    }
-
-    if (_policy == WaitUntil::FirstSuccess) {
-      // single result
-      return chain->outputType;
-    } else {
-      // seq result
-      _outputTypes = Types({chain->outputType});
-      _outputSeqType = Type::SeqOf(_outputTypes);
-      return _outputSeqType;
-    }
+    return CoreInfo::NoneType; // not complete
   }
 
   struct Composer {
@@ -1187,7 +1190,18 @@ struct ParallelBase : public ChainBase {
     }
   } _composer{*this};
 
-  void warmup(CBContext *context) { _composer.context = context; }
+  void warmup(CBContext *context) {
+#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+    if (_threads > 1) {
+      const auto threads =
+          std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+      if (!_exec || _exec->num_workers() != (size_t(threads))) {
+        _exec.reset(new tf::Executor(size_t(threads)));
+      }
+    }
+#endif
+    _composer.context = context;
+  }
 
   void cleanup() {
     _outputs.resize(_maxSize);
@@ -1204,32 +1218,58 @@ protected:
   Types _outputTypes;
   CBTypeInfo _inputType{};
   std::vector<CBVar> _outputs;
+  std::vector<std::shared_ptr<ManyChain>> _chains;
   size_t _maxSize{0};
+  int64_t _threads{1};
+  int64_t _coros{1};
+  std::unique_ptr<tf::Executor> _exec;
 };
 
 struct TryMany : public ParallelBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    ParallelBase::compose(data);
+
+    if (data.inputType.seqTypes.len == 1) {
+      // copy single input type
+      _inputType = data.inputType.seqTypes.elements[0];
+    } else {
+      // else just mark as generic any
+      _inputType = CoreInfo::AnyType;
+    }
+
+    if (_policy == WaitUntil::FirstSuccess) {
+      // single result
+      return chain->outputType;
+    } else {
+      // seq result
+      _outputTypes = Types({chain->outputType});
+      _outputSeqType = Type::SeqOf(_outputTypes);
+      return _outputSeqType;
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     // schedule many
     auto node = context->main->node.lock();
 
-    std::vector<std::shared_ptr<ManyChain>> chains(input.payload.seqValue.len);
+    _chains.resize(input.payload.seqValue.len);
     // stop chains in any case if we exit this call
     DEFER({
-      for (auto &cref : chains) {
+      for (auto &cref : _chains) {
         stop(cref->chain.get());
         _pool->release(cref);
       }
     });
 
     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-      chains[i] = _pool->acquire(_composer);
-      chains[i]->index = i;
+      _chains[i] = _pool->acquire(_composer);
+      _chains[i]->index = i;
     }
 
-    auto nchains = chains.size();
+    auto nchains = _chains.size();
 
     // cleanup outputs, store max size tho for cleanup
     _maxSize = std::max(_maxSize, _outputs.size());
@@ -1241,29 +1281,92 @@ struct TryMany : public ParallelBase {
       if (unlikely(_suspend_state != CBChainState::Continue)) {
         return Var::Empty;
       } else {
-        // advance our chains and check
-        for (auto it = chains.begin(); it != chains.end();) {
-          auto &cref = *it;
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+        {
+#else
+        if (_threads == 1) {
+#endif
+          // advance our chains and check
+          for (auto it = _chains.begin(); it != _chains.end();) {
+            auto &cref = *it;
 
-          // Prepare and start if no callc was called
-          if (!cref->chain->coro) {
-            cref->chain->node = context->main->node;
-            // pre-set chain context with our context
-            // this is used to copy chainStack over to the new one
-            cref->chain->context = context;
-            // Notice we don't share our flow!
-            // let the chain create one by passing null
-            chainblocks::prepare(cref->chain.get(), nullptr);
-            chainblocks::start(cref->chain.get(),
-                               input.payload.seqValue.elements[cref->index]);
+            // Prepare and start if no callc was called
+            if (!cref->chain->coro) {
+              cref->chain->node = context->main->node;
+              // pre-set chain context with our context
+              // this is used to copy chainStack over to the new one
+              cref->chain->context = context;
+              // Notice we don't share our flow!
+              // let the chain create one by passing null
+              chainblocks::prepare(cref->chain.get(), nullptr);
+              chainblocks::start(cref->chain.get(),
+                                 input.payload.seqValue.elements[cref->index]);
+            }
+
+            // Tick the chain on the flow that this chain created
+            CBDuration now = CBClock::now().time_since_epoch();
+            chainblocks::tick(cref->chain->context->flow->chain, now,
+                              input.payload.seqValue.elements[cref->index]);
+
+            if (!isRunning(cref->chain.get())) {
+              if (cref->chain->state == CBChain::State::Ended) {
+                if (_policy == WaitUntil::FirstSuccess) {
+                  // success, next call clones, make sure to destroy
+                  _outputs.resize(1);
+                  stop(cref->chain.get(), &_outputs[0]);
+                  // short-circuit, defer will take care of cleaning up
+                  return _outputs[0];
+                } else {
+                  CBVar output{};
+                  stop(cref->chain.get(), &output);
+                  _outputs.emplace_back(output);
+                  it = _chains.erase(it);
+                }
+              } else {
+                // remove failed chains
+                it = _chains.erase(it);
+              }
+            } else {
+              ++it;
+            }
           }
+        }
+#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+        else {
+          // multithreaded
+          tf::Taskflow flow;
 
-          // Tick the chain on the flow that this chain created
-          CBDuration now = CBClock::now().time_since_epoch();
-          chainblocks::tick(cref->chain->context->flow->chain, now,
-                            input.payload.seqValue.elements[cref->index]);
+          flow.for_each_dynamic(
+              _chains.begin(), _chains.end(),
+              [context, input](auto &cref) {
+                // skip if failed or ended
+                if (cref->chain->state >= CBChain::State::Failed)
+                  return;
+                // Prepare and start if no callc was called
+                if (!cref->chain->coro) {
+                  cref->chain->node = context->main->node;
+                  // pre-set chain context with our context
+                  // this is used to copy chainStack over to the new one
+                  cref->chain->context = context;
+                  // Notice we don't share our flow!
+                  // let the chain create one by passing null
+                  chainblocks::prepare(cref->chain.get(), nullptr);
+                  chainblocks::start(
+                      cref->chain.get(),
+                      input.payload.seqValue.elements[cref->index]);
+                }
 
-          if (!isRunning(cref->chain.get())) {
+                // Tick the chain on the flow that this chain created
+                CBDuration now = CBClock::now().time_since_epoch();
+                chainblocks::tick(cref->chain->context->flow->chain, now,
+                                  input.payload.seqValue.elements[cref->index]);
+              },
+              _coros);
+
+          _exec->run(flow).get();
+
+          for (auto it = _chains.begin(); it != _chains.end();) {
+            auto &cref = *it;
             if (cref->chain->state == CBChain::State::Ended) {
               if (_policy == WaitUntil::FirstSuccess) {
                 // success, next call clones, make sure to destroy
@@ -1275,18 +1378,215 @@ struct TryMany : public ParallelBase {
                 CBVar output{};
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
-                it = chains.erase(it);
+                it = _chains.erase(it);
               }
             } else {
               // remove failed chains
-              it = chains.erase(it);
+              it = _chains.erase(it);
             }
-          } else {
-            ++it;
           }
         }
+#endif
 
-        if (chains.size() == 0) {
+        if (_chains.size() == 0) {
+          auto osize = _outputs.size();
+          if (unlikely(osize == 0)) {
+            throw ActivationError("TryMany, failed all chains!");
+          } else {
+            // all ended let's apply policy here
+            if (_policy == WaitUntil::SomeSuccess) {
+              return Var(_outputs);
+            } else {
+              assert(_policy == WaitUntil::AllSuccess);
+              if (nchains == osize) {
+                return Var(_outputs);
+              } else {
+                throw ActivationError("TryMany, failed some chains!");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+struct DoWide : public ParallelBase {
+  int64_t _width{10};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  static inline Parameters _params{
+      {{"Width",
+        CBCCSTR("How wide the execution mesh will be."),
+        {CoreInfo::IntType}}},
+      ParallelBase::_params};
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index == 0) {
+      _width = std::max(int64_t(1), value.payload.intValue);
+    } else {
+      ParallelBase::setParam(index - 1, value);
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (index == 0) {
+      return Var(_width);
+    } else {
+      return ParallelBase::getParam(index - 1);
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    ParallelBase::compose(data);
+
+    // input
+    _inputType = data.inputType;
+
+    // output
+    _outputTypes = Types({chain->outputType});
+    _outputSeqType = Type::SeqOf(_outputTypes);
+    return _outputSeqType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // schedule many
+    auto node = context->main->node.lock();
+
+    _chains.resize(_width);
+    // stop chains in any case if we exit this call
+    DEFER({
+      for (auto &cref : _chains) {
+        stop(cref->chain.get());
+        _pool->release(cref);
+      }
+    });
+
+    for (int64_t i = 0; i < _width; i++) {
+      _chains[i] = _pool->acquire(_composer);
+      _chains[i]->index = uint32_t(i);
+    }
+
+    auto nchains = _chains.size();
+
+    // cleanup outputs, store max size tho for cleanup
+    _maxSize = std::max(_maxSize, _outputs.size());
+    _outputs.clear();
+
+    // wait according to policy
+    while (true) {
+      const auto _suspend_state = chainblocks::suspend(context, 0);
+      if (unlikely(_suspend_state != CBChainState::Continue)) {
+        return Var::Empty;
+      } else {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+        {
+#else
+        if (_threads == 1) {
+#endif
+          // advance our chains and check
+          for (auto it = _chains.begin(); it != _chains.end();) {
+            auto &cref = *it;
+
+            // Prepare and start if no callc was called
+            if (!cref->chain->coro) {
+              cref->chain->node = context->main->node;
+              // pre-set chain context with our context
+              // this is used to copy chainStack over to the new one
+              cref->chain->context = context;
+              // Notice we don't share our flow!
+              // let the chain create one by passing null
+              chainblocks::prepare(cref->chain.get(), nullptr);
+              chainblocks::start(cref->chain.get(), input);
+            }
+
+            // Tick the chain on the flow that this chain created
+            CBDuration now = CBClock::now().time_since_epoch();
+            chainblocks::tick(cref->chain->context->flow->chain, now, input);
+
+            if (!isRunning(cref->chain.get())) {
+              if (cref->chain->state == CBChain::State::Ended) {
+                if (_policy == WaitUntil::FirstSuccess) {
+                  // success, next call clones, make sure to destroy
+                  _outputs.resize(1);
+                  stop(cref->chain.get(), &_outputs[0]);
+                  // short-circuit, defer will take care of cleaning up
+                  return _outputs[0];
+                } else {
+                  CBVar output{};
+                  stop(cref->chain.get(), &output);
+                  _outputs.emplace_back(output);
+                  it = _chains.erase(it);
+                }
+              } else {
+                // remove failed chains
+                it = _chains.erase(it);
+              }
+            } else {
+              ++it;
+            }
+          }
+        }
+#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+        else {
+          // multithreaded
+          tf::Taskflow flow;
+
+          flow.for_each_dynamic(
+              _chains.begin(), _chains.end(),
+              [context, input](auto &cref) {
+                // skip if failed or ended
+                if (cref->chain->state >= CBChain::State::Failed)
+                  return;
+                // Prepare and start if no callc was called
+                if (!cref->chain->coro) {
+                  cref->chain->node = context->main->node;
+                  // pre-set chain context with our context
+                  // this is used to copy chainStack over to the new one
+                  cref->chain->context = context;
+                  // Notice we don't share our flow!
+                  // let the chain create one by passing null
+                  chainblocks::prepare(cref->chain.get(), nullptr);
+                  chainblocks::start(cref->chain.get(), input);
+                }
+
+                // Tick the chain on the flow that this chain created
+                CBDuration now = CBClock::now().time_since_epoch();
+                chainblocks::tick(cref->chain->context->flow->chain, now,
+                                  input);
+              },
+              _coros);
+
+          _exec->run(flow).get();
+
+          for (auto it = _chains.begin(); it != _chains.end();) {
+            auto &cref = *it;
+            if (cref->chain->state == CBChain::State::Ended) {
+              if (_policy == WaitUntil::FirstSuccess) {
+                // success, next call clones, make sure to destroy
+                _outputs.resize(1);
+                stop(cref->chain.get(), &_outputs[0]);
+                // short-circuit, defer will take care of cleaning up
+                return _outputs[0];
+              } else {
+                CBVar output{};
+                stop(cref->chain.get(), &output);
+                _outputs.emplace_back(output);
+                it = _chains.erase(it);
+              }
+            } else {
+              // remove failed chains
+              it = _chains.erase(it);
+            }
+          }
+        }
+#endif
+
+        if (_chains.size() == 0) {
           auto osize = _outputs.size();
           if (unlikely(osize == 0)) {
             throw ActivationError("TryMany, failed all chains!");
@@ -1401,8 +1701,6 @@ struct Spawn : public ChainBase {
   CBTypeInfo _inputType{};
 };
 
-// struct DoWide : public ParallelBase {};
-
 void registerChainsBlocks() {
   using RunChainDo = RunChain<false, RunChainMode::Inline>;
   using RunChainDispatch = RunChain<true, RunChainMode::Inline>;
@@ -1421,6 +1719,17 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("Recur", Recur);
   REGISTER_CBLOCK("TryMany", TryMany);
   REGISTER_CBLOCK("Spawn", Spawn);
-  // REGISTER_CBLOCK("DoWide", DoWide);
+  REGISTER_CBLOCK("DoWide", DoWide);
 }
 }; // namespace chainblocks
+
+#ifndef __EMSCRIPTEN__
+// this is a hack to fix a linker issue with taskflow...
+/*
+duplicate symbol 'thread-local initialization routine for
+tf::Executor::_per_thread' in: libcb_static.a(chains.cpp.o)
+    libcb_static.a(genetic.cpp.o)
+*/
+#include "genetic.hpp"
+
+#endif
