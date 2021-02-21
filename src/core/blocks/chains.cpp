@@ -1092,14 +1092,11 @@ struct ManyChain : public std::enable_shared_from_this<ManyChain> {
   std::shared_ptr<CBChain> chain;
 };
 
-struct TryMany : public ChainBase {
+struct ParallelBase : public ChainBase {
   typedef EnumInfo<WaitUntil> WaitUntilInfo;
   static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
   static inline Type WaitUntilType{
       {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   static inline Parameters _params{
       {"Chain",
@@ -1164,7 +1161,7 @@ struct TryMany : public ChainBase {
   }
 
   struct Composer {
-    TryMany &server;
+    ParallelBase &server;
     CBContext *context;
 
     void compose(CBChain *chain) {
@@ -1198,6 +1195,21 @@ struct TryMany : public ChainBase {
       destroyVar(v);
     }
   }
+
+protected:
+  WaitUntil _policy{WaitUntil::AllSuccess};
+  std::unique_ptr<ChainDoppelgangerPool<ManyChain>> _pool;
+  IterableExposedInfo _sharedCopy;
+  Type _outputSeqType;
+  Types _outputTypes;
+  CBTypeInfo _inputType{};
+  std::vector<CBVar> _outputs;
+  size_t _maxSize{0};
+};
+
+struct TryMany : public ParallelBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // schedule many
@@ -1295,15 +1307,6 @@ struct TryMany : public ChainBase {
       }
     }
   }
-
-  WaitUntil _policy{WaitUntil::AllSuccess};
-  std::unique_ptr<ChainDoppelgangerPool<ManyChain>> _pool;
-  IterableExposedInfo _sharedCopy;
-  Type _outputSeqType;
-  Types _outputTypes;
-  CBTypeInfo _inputType{};
-  std::vector<CBVar> _outputs;
-  size_t _maxSize{0};
 };
 
 struct Spawn : public ChainBase {
@@ -1398,23 +1401,26 @@ struct Spawn : public ChainBase {
   CBTypeInfo _inputType{};
 };
 
+// struct DoWide : public ParallelBase {};
+
 void registerChainsBlocks() {
+  using RunChainDo = RunChain<false, RunChainMode::Inline>;
+  using RunChainDispatch = RunChain<true, RunChainMode::Inline>;
+  using RunChainDetach = RunChain<true, RunChainMode::Detached>;
+  using RunChainStep = RunChain<false, RunChainMode::Stepped>;
   REGISTER_CBLOCK("Resume", Resume);
   REGISTER_CBLOCK("Start", Start);
   REGISTER_CBLOCK("Wait", Wait);
   REGISTER_CBLOCK("Stop", StopChain);
-  using RunChainDo = RunChain<false, RunChainMode::Inline>;
   REGISTER_CBLOCK("Do", RunChainDo);
-  using RunChainDispatch = RunChain<true, RunChainMode::Inline>;
   REGISTER_CBLOCK("Dispatch", RunChainDispatch);
-  using RunChainDetach = RunChain<true, RunChainMode::Detached>;
   REGISTER_CBLOCK("Detach", RunChainDetach);
-  using RunChainStep = RunChain<false, RunChainMode::Stepped>;
   REGISTER_CBLOCK("Step", RunChainStep);
   REGISTER_CBLOCK("ChainLoader", ChainLoader);
   REGISTER_CBLOCK("ChainRunner", ChainRunner);
   REGISTER_CBLOCK("Recur", Recur);
   REGISTER_CBLOCK("TryMany", TryMany);
   REGISTER_CBLOCK("Spawn", Spawn);
+  // REGISTER_CBLOCK("DoWide", DoWide);
 }
 }; // namespace chainblocks
