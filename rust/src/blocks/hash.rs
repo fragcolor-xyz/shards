@@ -57,7 +57,6 @@ impl Block for Keccak256 {
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut k = Keccak::v256();
-    self.output.clear();
     self.output.resize(32, 0);
 
     if input.is_seq() {
