@@ -1231,11 +1231,18 @@ struct ParallelBase : public ChainBase {
     auto node = context->main->node.lock();
     auto len = getLength(input);
 
-    for (auto &cref : _chains) {
-      stop(cref->chain.get());
-      _pool->release(cref);
-    }
     _chains.resize(len);
+    Defer cleanups([this]() {
+      for (auto &cref : _chains) {
+        if (cref) {
+          if (cref->node) {
+            cref->node->terminate();
+          }
+          stop(cref->chain.get());
+          _pool->release(cref);
+        }
+      }
+    });
 
     for (uint32_t i = 0; i < len; i++) {
       _chains[i] = _pool->acquire(_composer);
@@ -1247,6 +1254,9 @@ struct ParallelBase : public ChainBase {
     // cleanup outputs, store max size tho for cleanup
     _maxSize = std::max(_maxSize, _outputs.size());
     _outputs.clear();
+
+    size_t succeeded = 0;
+    size_t failed = 0;
 
     // wait according to policy
     while (true) {
@@ -1260,7 +1270,7 @@ struct ParallelBase : public ChainBase {
         if (_threads == 1) {
 #endif
           // advance our chains and check
-          for (auto it = _chains.begin(); it != _chains.end();) {
+          for (auto it = _chains.begin(); it != _chains.end(); ++it) {
             auto &cref = *it;
 
             // Prepare and start if no callc was called
@@ -1286,22 +1296,18 @@ struct ParallelBase : public ChainBase {
                   // success, next call clones, make sure to destroy
                   _outputs.resize(1);
                   stop(cref->chain.get(), &_outputs[0]);
-                  _pool->release(cref);
                   return _outputs[0];
                 } else {
                   CBVar output{};
                   stop(cref->chain.get(), &output);
                   _outputs.emplace_back(output);
-                  it = _chains.erase(it);
-                  _pool->release(cref);
+                  succeeded++;
                 }
               } else {
                 // remove failed chains
                 it = _chains.erase(it);
-                _pool->release(cref);
+                failed++;
               }
-            } else {
-              ++it;
             }
           }
         }
@@ -1340,37 +1346,31 @@ struct ParallelBase : public ChainBase {
 
           _exec->run(flow).get();
 
-          for (auto it = _chains.begin(); it != _chains.end();) {
+          for (auto it = _chains.begin(); it != _chains.end(); ++it) {
             auto &cref = *it;
             if (cref->chain->state == CBChain::State::Ended) {
               if (_policy == WaitUntil::FirstSuccess) {
                 // success, next call clones, make sure to destroy
                 _outputs.resize(1);
                 stop(cref->chain.get(), &_outputs[0]);
-                cref->node->terminate();
                 it = _chains.erase(it);
-                _pool->release(cref);
-                // defer did not work for some reason
                 return _outputs[0];
               } else {
                 CBVar output{};
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
-                cref->node->terminate();
-                it = _chains.erase(it);
-                _pool->release(cref);
+                succeeded++;
               }
             } else {
               // remove failed chains
-              cref->node->terminate();
               it = _chains.erase(it);
-              _pool->release(cref);
+              failed++;
             }
           }
         }
 #endif
 
-        if (_chains.size() == 0) {
+        if ((succeeded + failed) == nchains) {
           auto osize = _outputs.size();
           if (unlikely(osize == 0)) {
             throw ActivationError("TryMany, failed all chains!");
@@ -1380,7 +1380,7 @@ struct ParallelBase : public ChainBase {
               return Var(_outputs);
             } else {
               assert(_policy == WaitUntil::AllSuccess);
-              if (nchains == osize) {
+              if (nchains == succeeded) {
                 return Var(_outputs);
               } else {
                 throw ActivationError("TryMany, failed some chains!");
