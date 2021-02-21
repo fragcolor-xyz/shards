@@ -1093,6 +1093,7 @@ enum class WaitUntil {
 struct ManyChain : public std::enable_shared_from_this<ManyChain> {
   uint32_t index;
   std::shared_ptr<CBChain> chain;
+  std::shared_ptr<CBNode> node; // used only if MT
 };
 
 struct ParallelBase : public ChainBase {
@@ -1208,6 +1209,11 @@ struct ParallelBase : public ChainBase {
     for (auto &v : _outputs) {
       destroyVar(v);
     }
+    for (auto &cref : _chains) {
+      stop(cref->chain.get());
+      _pool->release(cref);
+    }
+    _chains.clear();
   }
 
 protected:
@@ -1257,14 +1263,11 @@ struct TryMany : public ParallelBase {
     // schedule many
     auto node = context->main->node.lock();
 
+    for (auto &cref : _chains) {
+      stop(cref->chain.get());
+      _pool->release(cref);
+    }
     _chains.resize(input.payload.seqValue.len);
-    // stop chains in any case if we exit this call
-    DEFER({
-      for (auto &cref : _chains) {
-        stop(cref->chain.get());
-        _pool->release(cref);
-      }
-    });
 
     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
       _chains[i] = _pool->acquire(_composer);
@@ -1323,10 +1326,12 @@ struct TryMany : public ParallelBase {
                   stop(cref->chain.get(), &output);
                   _outputs.emplace_back(output);
                   it = _chains.erase(it);
+                  _pool->release(cref);
                 }
               } else {
                 // remove failed chains
                 it = _chains.erase(it);
+                _pool->release(cref);
               }
             } else {
               ++it;
@@ -1344,24 +1349,18 @@ struct TryMany : public ParallelBase {
                 // skip if failed or ended
                 if (cref->chain->state >= CBChain::State::Failed)
                   return;
+
                 // Prepare and start if no callc was called
                 if (!cref->chain->coro) {
-                  cref->chain->node = context->main->node;
-                  // pre-set chain context with our context
-                  // this is used to copy chainStack over to the new one
-                  cref->chain->context = context;
-                  // Notice we don't share our flow!
-                  // let the chain create one by passing null
-                  chainblocks::prepare(cref->chain.get(), nullptr);
-                  chainblocks::start(
-                      cref->chain.get(),
-                      input.payload.seqValue.elements[cref->index]);
+                  if (!cref->node) {
+                    cref->node = CBNode::make();
+                  }
+                  cref->node->schedule(
+                      cref->chain, input.payload.seqValue.elements[cref->index],
+                      false);
                 }
 
-                // Tick the chain on the flow that this chain created
-                CBDuration now = CBClock::now().time_since_epoch();
-                chainblocks::tick(cref->chain->context->flow->chain, now,
-                                  input.payload.seqValue.elements[cref->index]);
+                cref->node->tick(input.payload.seqValue.elements[cref->index]);
               },
               _coros);
 
@@ -1381,10 +1380,12 @@ struct TryMany : public ParallelBase {
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
                 it = _chains.erase(it);
+                _pool->release(cref);
               }
             } else {
               // remove failed chains
               it = _chains.erase(it);
+              _pool->release(cref);
             }
           }
         }
@@ -1457,14 +1458,11 @@ struct Expand : public ParallelBase {
     // schedule many
     auto node = context->main->node.lock();
 
+    for (auto &cref : _chains) {
+      stop(cref->chain.get());
+      _pool->release(cref);
+    }
     _chains.resize(_width);
-    // stop chains in any case if we exit this call
-    DEFER({
-      for (auto &cref : _chains) {
-        stop(cref->chain.get());
-        _pool->release(cref);
-      }
-    });
 
     for (int64_t i = 0; i < _width; i++) {
       _chains[i] = _pool->acquire(_composer);
@@ -1494,7 +1492,10 @@ struct Expand : public ParallelBase {
 
             // Prepare and start if no callc was called
             if (!cref->chain->coro) {
-              cref->chain->node = context->main->node;
+              if (!cref->node) {
+                cref->node = CBNode::make();
+              }
+              cref->chain->node = cref->node;
               // pre-set chain context with our context
               // this is used to copy chainStack over to the new one
               cref->chain->context = context;
@@ -1521,10 +1522,12 @@ struct Expand : public ParallelBase {
                   stop(cref->chain.get(), &output);
                   _outputs.emplace_back(output);
                   it = _chains.erase(it);
+                  _pool->release(cref);
                 }
               } else {
                 // remove failed chains
                 it = _chains.erase(it);
+                _pool->release(cref);
               }
             } else {
               ++it;
@@ -1542,22 +1545,16 @@ struct Expand : public ParallelBase {
                 // skip if failed or ended
                 if (cref->chain->state >= CBChain::State::Failed)
                   return;
+
                 // Prepare and start if no callc was called
                 if (!cref->chain->coro) {
-                  cref->chain->node = context->main->node;
-                  // pre-set chain context with our context
-                  // this is used to copy chainStack over to the new one
-                  cref->chain->context = context;
-                  // Notice we don't share our flow!
-                  // let the chain create one by passing null
-                  chainblocks::prepare(cref->chain.get(), nullptr);
-                  chainblocks::start(cref->chain.get(), input);
+                  if (!cref->node) {
+                    cref->node = CBNode::make();
+                  }
+                  cref->node->schedule(cref->chain, input, false);
                 }
 
-                // Tick the chain on the flow that this chain created
-                CBDuration now = CBClock::now().time_since_epoch();
-                chainblocks::tick(cref->chain->context->flow->chain, now,
-                                  input);
+                cref->node->tick(input);
               },
               _coros);
 
@@ -1577,10 +1574,12 @@ struct Expand : public ParallelBase {
                 stop(cref->chain.get(), &output);
                 _outputs.emplace_back(output);
                 it = _chains.erase(it);
+                _pool->release(cref);
               }
             } else {
               // remove failed chains
               it = _chains.erase(it);
+              _pool->release(cref);
             }
           }
         }
