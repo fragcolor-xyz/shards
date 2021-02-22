@@ -35,6 +35,10 @@ void _releaseMemory(CBVar &var) {
     auto map = (chainblocks::CBMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
+  case CBType::Set: {
+    auto set = (chainblocks::CBHashSet *)var.payload.setValue.opaque;
+    delete set;
+  } break;
   case CBType::Chain: {
     CBChain::deleteRef(var.payload.chainValue);
   } break;
@@ -201,16 +205,27 @@ void to_json(json &j, const CBVar &var) {
   }
   case CBType::Table: {
     std::vector<json> items;
-    auto &ta = var.payload.tableValue;
-    ta.api->tableForEach(
-        ta,
-        [](const char *key, CBVar *value, void *data) {
-          auto items = (std::vector<json> *)data;
-          json entry{{"key", key}, {"value", *value}};
-          items->push_back(entry);
-          return true;
-        },
-        &items);
+    auto &t = var.payload.tableValue;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      json entry{{"key", k}, {"value", v}};
+      items.emplace_back(entry);
+    }
+    j = json{{"type", valType}, {"values", items}};
+    break;
+  }
+  case CBType::Set: {
+    std::vector<json> items;
+    auto &s = var.payload.setValue;
+    CBSetIterator sit;
+    s.api->setGetIterator(s, &sit);
+    CBVar v;
+    while (s.api->setNext(s, &sit, &v)) {
+      items.emplace_back(v);
+    }
     j = json{{"type", valType}, {"values", items}};
     break;
   }
@@ -457,6 +472,17 @@ void from_json(const json &j, CBVar &var) {
       auto key = item.at("key").get<std::string>();
       auto value = item.at("value").get<CBVar>();
       (*map)[key] = value;
+    }
+    break;
+  }
+  case CBType::Set: {
+    auto set = new chainblocks::CBHashSet();
+    var.valueType = CBType::Set;
+    var.payload.setValue.api = &chainblocks::Globals::SetInterface;
+    var.payload.setValue.opaque = set;
+    auto items = j.at("values").get<std::vector<json>>();
+    for (const auto &item : items) {
+      set->emplace(item.get<CBVar>());
     }
     break;
   }

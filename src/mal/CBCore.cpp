@@ -672,6 +672,8 @@ CBType keywordToType(malKeyword *typeKeyword) {
     return CBType::Seq;
   else if (value == ":Table")
     return CBType::Table;
+  else if (value == ":Set")
+    return CBType::Set;
   else
     throw chainblocks::CBException(
         "Could not infer type for special '.' block. Need to return a proper "
@@ -731,6 +733,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":Seq");
   case CBType::Table:
     return mal::keyword(":Table");
+  case CBType::Set:
+    return mal::keyword(":Set");
   case CBType::Array:
     return mal::keyword(":Array");
   };

@@ -956,17 +956,24 @@ using VarPayload =
                  Int8VarPayload, Int16VarPayload, FloatVarPayload,
                  Float2VarPayload, Float3VarPayload, Float4VarPayload>;
 
-inline void ForEach(const CBTable &table,
-                    std::function<bool(const char *, CBVar &)> f) {
-  table.api->tableForEach(
-      table,
-      [](const char *key, struct CBVar *value, void *userData) {
-        auto pf =
-            reinterpret_cast<std::function<bool(const char *, CBVar &)> *>(
-                userData);
-        return (*pf)(key, *value);
-      },
-      &f);
+template <class Function>
+inline void ForEach(const CBTable &table, Function &&f) {
+  CBTableIterator tit;
+  table.api->tableGetIterator(table, &tit);
+  CBString k;
+  CBVar v;
+  while (table.api->tableNext(table, &tit, &k, &v)) {
+    f(k, v);
+  }
+}
+
+template <class Function> inline void ForEach(const CBSet &set, Function &&f) {
+  CBSetIterator sit;
+  set.api->setGetIterator(set, &sit);
+  CBVar v;
+  while (set.api->setNext(set, &sit, &v)) {
+    f(v);
+  }
 }
 
 class ChainProvider {

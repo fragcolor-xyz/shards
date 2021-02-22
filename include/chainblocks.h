@@ -39,7 +39,8 @@ enum CBType : uint8_t {
   Table,
   Chain,
   Object,
-  Array // Notice: of just bilttable types/WIP!
+  Array, // Notice: of just bilttable types/WIP!
+  Set
 };
 
 enum CBChainState : uint8_t {
@@ -161,6 +162,14 @@ struct CBTableInterface;
 struct CBTable {
   void *opaque;
   struct CBTableInterface *api;
+};
+
+// 64 bytes should be huge and well enough space for an iterator...
+typedef char CBSetIterator[64];
+struct CBSetnterface;
+struct CBSet {
+  void *opaque;
+  struct CBSetInterface *api;
 };
 
 struct CBChain;
@@ -291,14 +300,7 @@ struct CBAudio {
   float *samples;
 };
 
-// return false to abort iteration
-typedef CBBool(__cdecl *CBTableForEachCallback)(CBString key,
-                                                struct CBVar *value,
-                                                void *userData);
 // table interface
-typedef void(__cdecl *CBTableForEach)(struct CBTable table,
-                                      CBTableForEachCallback cb,
-                                      void *userData);
 typedef void(__cdecl *CBTableGetIterator)(struct CBTable table,
                                           CBTableIterator *outIter);
 typedef CBBool(__cdecl *CBTableNext)(struct CBTable table,
@@ -312,7 +314,6 @@ typedef void(__cdecl *CBTableClear)(struct CBTable table);
 typedef void(__cdecl *CBTableFree)(struct CBTable table);
 
 struct CBTableInterface {
-  CBTableForEach tableForEach;
   CBTableGetIterator tableGetIterator;
   CBTableNext tableNext;
   CBTableSize tableSize;
@@ -321,6 +322,29 @@ struct CBTableInterface {
   CBTableRemove tableRemove;
   CBTableClear tableClear;
   CBTableFree tableFree;
+};
+
+// set interface
+typedef void(__cdecl *CBSetGetIterator)(struct CBSet set,
+                                        CBSetIterator *outIter);
+typedef CBBool(__cdecl *CBSetNext)(struct CBSet set, CBSetIterator *inIter,
+                                   struct CBVar *outValue);
+typedef size_t(__cdecl *CBSetSize)(struct CBSet table);
+typedef CBBool(__cdecl *CBSetContains)(struct CBSet table, struct CBVar value);
+typedef CBBool(__cdecl *CBSetInclude)(struct CBSet table, struct CBVar value);
+typedef CBBool(__cdecl *CBSetExclude)(struct CBSet table, struct CBVar value);
+typedef void(__cdecl *CBSetClear)(struct CBSet table);
+typedef void(__cdecl *CBSetFree)(struct CBSet table);
+
+struct CBSetInterface {
+  CBSetGetIterator setGetIterator;
+  CBSetNext setNext;
+  CBSetSize setSize;
+  CBSetContains setContains;
+  CBSetInclude setInclude;
+  CBSetExclude setExclude;
+  CBSetClear setClear;
+  CBSetFree setFree;
 };
 
 #ifdef CB_NO_ANON
@@ -354,6 +378,7 @@ struct CBTypeInfo {
     enumeration;
 
     CBTypesInfo seqTypes;
+    CBTypesInfo setTypes;
 
     CB_STRUCT(Table) {
       // If tableKeys is populated, it is expected that
@@ -532,6 +557,8 @@ struct CBVarPayload {
     CBSeq seqValue;
 
     struct CBTable tableValue;
+
+    struct CBSet setValue;
 
     struct {
       CBString stringValue;
@@ -920,6 +947,8 @@ CB_ARRAY_TYPE(CBStrings, CBString);
 
 typedef struct CBTable(__cdecl *CBTableNew)();
 
+typedef struct CBSet(__cdecl *CBSetNew)();
+
 typedef CBString(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(CBString);
 
@@ -960,6 +989,9 @@ typedef CBOptionalString(__cdecl *CBWriteCachedString)(uint32_t id,
 typedef struct _CBCore {
   // CBTable interface
   CBTableNew tableNew;
+
+  // CBSet interface
+  CBSetNew setNew;
 
   // Utility to use blocks within blocks
   CBComposeBlocks composeBlocks;

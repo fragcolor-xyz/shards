@@ -397,10 +397,10 @@ private:
 };
 
 namespace chainblocks {
-using CBSet =
+using CBHashSet =
     std::unordered_set<OwnedVar, std::hash<CBVar>, std::equal_to<CBVar>,
                        boost::alignment::aligned_allocator<OwnedVar, 16>>;
-using CBSetIt = CBSet::iterator;
+using CBHashSetIt = CBHashSet::iterator;
 
 using CBMap = std::unordered_map<
     std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
@@ -433,15 +433,6 @@ struct Globals {
       *CompressedStrings{nullptr};
 
   static inline CBTableInterface TableInterface{
-      .tableForEach =
-          [](CBTable table, CBTableForEachCallback cb, void *data) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
-            for (auto &entry : *map) {
-              if (!cb(entry.first.c_str(), &entry.second, data))
-                break;
-            }
-          },
       .tableGetIterator =
           [](CBTable table, CBTableIterator *outIter) {
             if (outIter == nullptr)
@@ -456,7 +447,7 @@ struct Globals {
           [](CBTable table, CBTableIterator *inIter, CBString *outKey,
              CBVar *outVar) {
             if (inIter == nullptr)
-              LOG(FATAL) << "tableGetIterator - outIter was nullptr";
+              LOG(FATAL) << "tableGetIterator - inIter was nullptr";
             chainblocks::CBMap *map =
                 reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             chainblocks::CBMapIt *mapIt =
@@ -506,6 +497,71 @@ struct Globals {
             chainblocks::CBMap *map =
                 reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             delete map;
+          }};
+
+  static inline CBSetInterface SetInterface{
+      .setGetIterator =
+          [](CBSet cbset, CBSetIterator *outIter) {
+            if (outIter == nullptr)
+              LOG(FATAL) << "setGetIterator - outIter was nullptr";
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSetIt *setIt =
+                reinterpret_cast<chainblocks::CBHashSetIt *>(outIter);
+            *setIt = set->begin();
+          },
+      .setNext =
+          [](CBSet cbset, CBSetIterator *inIter, CBVar *outVar) {
+            if (inIter == nullptr)
+              LOG(FATAL) << "setGetIterator - inIter was nullptr";
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSetIt *setIt =
+                reinterpret_cast<chainblocks::CBHashSetIt *>(inIter);
+            if ((*setIt) != set->end()) {
+              *outVar = (*(*setIt));
+              (*setIt)++;
+              return true;
+            } else {
+              return false;
+            }
+          },
+      .setSize =
+          [](CBSet cbset) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            return set->size();
+          },
+      .setContains =
+          [](CBSet cbset, CBVar value) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            return set->count(value) > 0;
+          },
+      .setInclude =
+          [](CBSet cbset, CBVar value) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            auto [_, inserted] = set->emplace(value);
+            return inserted;
+          },
+      .setExclude =
+          [](CBSet cbset, CBVar value) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            return set->erase(value) > 0;
+          },
+      .setClear =
+          [](CBSet cbset) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            set->clear();
+          },
+      .setFree =
+          [](CBSet cbset) {
+            chainblocks::CBHashSet *set =
+                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            delete set;
           }};
 };
 
@@ -775,6 +831,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
   case Table:
+  case Set:
   case Seq:
     _destroyVarSlow(var);
     break;
@@ -830,6 +887,13 @@ struct InternalCore {
     CBTable res;
     res.api = &chainblocks::Globals::TableInterface;
     res.opaque = new chainblocks::CBMap();
+    return res;
+  }
+
+  static CBSet setNew() {
+    CBSet res;
+    res.api = &chainblocks::Globals::SetInterface;
+    res.opaque = new chainblocks::CBHashSet();
     return res;
   }
 

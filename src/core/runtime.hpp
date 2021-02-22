@@ -998,6 +998,34 @@ struct Serialization {
       }
       break;
     }
+    case CBType::Set: {
+      CBHashSet *set = nullptr;
+
+      if (recycle) {
+        if (output.payload.setValue.api && output.payload.setValue.opaque) {
+          set = (CBHashSet *)output.payload.setValue.opaque;
+          set->clear();
+        } else {
+          varFree(output);
+          output.valueType = nextType;
+        }
+      }
+
+      if (!set) {
+        set = new CBHashSet();
+        output.payload.setValue.api = &Globals::SetInterface;
+        output.payload.setValue.opaque = set;
+      }
+
+      uint64_t len;
+      read((uint8_t *)&len, sizeof(uint64_t));
+      for (uint64_t i = 0; i < len; i++) {
+        CBVar dst{};
+        deserialize(read, dst);
+        (*set).emplace(dst);
+      }
+      break;
+    }
     case CBType::Image: {
       size_t currentSize = 0;
       if (recycle) {
@@ -1273,27 +1301,37 @@ struct Serialization {
         uint64_t len = (uint64_t)t.api->tableSize(t);
         write((const uint8_t *)&len, sizeof(uint64_t));
         total += sizeof(uint64_t);
-        struct iterdata {
-          BinaryWriter *write;
-          size_t *total;
-          Serialization *s;
-        } data;
-        data.write = &write;
-        data.total = &total;
-        data.s = this;
-        t.api->tableForEach(
-            t,
-            [](const char *key, CBVar *value, void *_data) {
-              auto data = (iterdata *)_data;
-              uint32_t klen = strlen(key);
-              (*data->write)((const uint8_t *)&klen, sizeof(uint32_t));
-              *data->total += sizeof(uint32_t);
-              (*data->write)((const uint8_t *)key, klen);
-              *data->total += klen;
-              *data->total += data->s->serialize(*value, *data->write);
-              return true;
-            },
-            &data);
+        CBTableIterator tit;
+        t.api->tableGetIterator(t, &tit);
+        CBString k;
+        CBVar v;
+        while (t.api->tableNext(t, &tit, &k, &v)) {
+          uint32_t klen = strlen(k);
+          write((const uint8_t *)&klen, sizeof(uint32_t));
+          total += sizeof(uint32_t);
+          write((const uint8_t *)k, klen);
+          total += klen;
+          total += serialize(v, write);
+        }
+      } else {
+        uint64_t none = 0;
+        write((const uint8_t *)&none, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+      }
+      break;
+    }
+    case CBType::Set: {
+      if (input.payload.setValue.api && input.payload.setValue.opaque) {
+        auto &s = input.payload.setValue;
+        uint64_t len = (uint64_t)s.api->setSize(s);
+        write((const uint8_t *)&len, sizeof(uint64_t));
+        total += sizeof(uint64_t);
+        CBSetIterator sit;
+        s.api->setGetIterator(s, &sit);
+        CBVar v;
+        while (s.api->setNext(s, &sit, &v)) {
+          total += serialize(v, write);
+        }
       } else {
         uint64_t none = 0;
         write((const uint8_t *)&none, sizeof(uint64_t));

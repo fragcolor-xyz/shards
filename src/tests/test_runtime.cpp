@@ -50,6 +50,7 @@ TEST_CASE("CBType-type2Name", "[ops]") {
   REQUIRE(type2Name(CBType::Image) == "Image");
   REQUIRE(type2Name(CBType::Seq) == "Seq");
   REQUIRE(type2Name(CBType::Table) == "Table");
+  REQUIRE(type2Name(CBType::Set) == "Set");
   REQUIRE(type2Name(CBType::Array) == "Array");
 }
 
@@ -724,10 +725,104 @@ TEST_CASE("VarPayload") {
   }
 }
 
-TEST_CASE("CBSet") {
-  CBSet x;
+TEST_CASE("CBMap") {
+  CBMap x;
+  x.emplace("x", Var(10));
+  x.emplace("y", Var("Hello Set"));
+  CBVar vx{};
+  vx.valueType = CBType::Table;
+  vx.payload.tableValue.opaque = &x;
+  vx.payload.tableValue.api = &Globals::TableInterface;
+
+  CBMap y;
+  y.emplace("y", Var("Hello Set"));
+  y.emplace("x", Var(10));
+
+  CBVar vy{};
+  vy.valueType = CBType::Table;
+  vy.payload.tableValue.opaque = &y;
+  vy.payload.tableValue.api = &Globals::TableInterface;
+
+  REQUIRE(vx == vy);
+
+  OwnedVar vxx = vx;
+  OwnedVar vyy = vy;
+  REQUIRE(vxx == vyy);
+
+  int items = 0;
+  ForEach(vxx.payload.tableValue, [&](auto k, auto &v) {
+    REQUIRE(vx.payload.tableValue.api->tableContains(vx.payload.tableValue, k));
+    items++;
+  });
+  REQUIRE(items == 2);
+
+  auto hash1 = hash(vxx);
+  auto hash2 = hash(vx);
+  auto hash3 = hash(vyy);
+  REQUIRE(hash1 == hash2);
+  REQUIRE(hash1 == hash3);
+
+  auto typeHash1 = deriveTypeHash(vxx);
+  auto typeHash2 = deriveTypeHash(vx);
+  auto typeHash3 = deriveTypeHash(vyy);
+  LOG(INFO) << typeHash1 << " - " << typeHash2 << " - " << typeHash3;
+  REQUIRE(typeHash1 == typeHash2);
+  REQUIRE(typeHash1 == typeHash3);
+
+  REQUIRE(x.size() == 2);
+  REQUIRE(x.count("x") == 1);
+  x.erase("x");
+  REQUIRE(x.count("x") == 0);
+  REQUIRE(x.count("y") == 1);
+  x.erase("y");
+  REQUIRE(x.count("y") == 0);
+
+  REQUIRE(vx != vy);
+}
+
+TEST_CASE("CBHashSet") {
+  CBHashSet x;
   x.insert(Var(10));
   x.emplace(Var("Hello Set"));
+  CBVar vx{};
+  vx.valueType = CBType::Set;
+  vx.payload.setValue.opaque = &x;
+  vx.payload.setValue.api = &Globals::SetInterface;
+
+  CBHashSet y;
+  y.emplace(Var("Hello Set"));
+  y.insert(Var(10));
+
+  CBVar vy{};
+  vy.valueType = CBType::Set;
+  vy.payload.setValue.opaque = &y;
+  vy.payload.setValue.api = &Globals::SetInterface;
+
+  REQUIRE(vx == vy);
+
+  OwnedVar vxx = vx;
+  OwnedVar vyy = vy;
+  REQUIRE(vxx == vyy);
+
+  int items = 0;
+  ForEach(vxx.payload.setValue, [&](auto &v) {
+    REQUIRE(vx.payload.setValue.api->setContains(vx.payload.setValue, v));
+    items++;
+  });
+  REQUIRE(items == 2);
+
+  auto hash1 = hash(vxx);
+  auto hash2 = hash(vx);
+  auto hash3 = hash(vyy);
+  REQUIRE(hash1 == hash2);
+  REQUIRE(hash1 == hash3);
+
+  auto typeHash1 = deriveTypeHash(vxx);
+  auto typeHash2 = deriveTypeHash(vx);
+  auto typeHash3 = deriveTypeHash(vyy);
+  REQUIRE(typeHash1 == typeHash2);
+  REQUIRE(typeHash1 == typeHash3);
+
   REQUIRE(x.size() == 2);
   REQUIRE(x.count(Var(10)) == 1);
   x.erase(Var(10));
@@ -735,6 +830,8 @@ TEST_CASE("CBSet") {
   REQUIRE(x.count(Var("Hello Set")) == 1);
   x.erase(Var("Hello Set"));
   REQUIRE(x.count(Var("Hello Set")) == 0);
+
+  REQUIRE(vx != vy);
 }
 
 TEST_CASE("CXX-Chain-DSL") {

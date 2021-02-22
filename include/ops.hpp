@@ -91,6 +91,9 @@ inline std::string type2Name(CBType type) {
   case Table:
     name = "Table";
     break;
+  case CBType::Set:
+    name = "Set";
+    break;
   case Array:
     name = "Array";
     break;
@@ -117,6 +120,8 @@ inline int cmp(const CBVar &a, const CBVar &b) {
 }
 
 bool _seqEq(const CBVar &a, const CBVar &b);
+
+bool _setEq(const CBVar &a, const CBVar &b);
 
 bool _tableEq(const CBVar &a, const CBVar &b);
 
@@ -270,6 +275,8 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return _seqEq(a, b);
   case Table:
     return _tableEq(a, b);
+  case CBType::Set:
+    return _setEq(a, b);
   case CBType::Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
            (a.payload.bytesValue == b.payload.bytesValue ||
@@ -567,6 +574,14 @@ template <> struct hash<CBTypeInfo> {
           res = res ^ hash<int>()(INT32_MAX);
         } else {
           res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+        }
+      }
+    } else if (typeInfo.basicType == CBType::Set) {
+      for (uint32_t i = 0; i < typeInfo.setTypes.len; i++) {
+        if (typeInfo.setTypes.elements[i].recursiveSelf) {
+          res = res ^ hash<int>()(INT32_MAX);
+        } else {
+          res = res ^ hash<CBTypeInfo>()(typeInfo.setTypes.elements[i]);
         }
       }
     } else if (typeInfo.basicType == Object) {

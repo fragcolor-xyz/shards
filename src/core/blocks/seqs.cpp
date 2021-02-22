@@ -164,17 +164,25 @@ struct Flatten {
       }
       break;
     case Table: {
-      auto &ta = input.payload.tableValue;
-      ta.api->tableForEach(
-          ta,
-          [](const char *key, CBVar *value, void *data) {
-            auto self = (Flatten *)data;
-            self->add(*value);
-            return true;
-          },
-          this);
-      break;
-    }
+      auto &t = input.payload.tableValue;
+      CBTableIterator tit;
+      t.api->tableGetIterator(t, &tit);
+      CBString k;
+      CBVar v;
+      while (t.api->tableNext(t, &tit, &k, &v)) {
+        add(Var(k));
+        add(v);
+      }
+    } break;
+    case CBType::Set: {
+      auto &s = input.payload.setValue;
+      CBSetIterator sit;
+      s.api->setGetIterator(s, &sit);
+      CBVar v;
+      while (s.api->setNext(s, &sit, &v)) {
+        add(v);
+      }
+    } break;
     }
   }
 

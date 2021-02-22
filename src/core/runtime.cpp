@@ -9,6 +9,8 @@
 #include <csignal>
 #include <cstdarg>
 #include <filesystem>
+#include <pdqsort.h>
+#include <set>
 #include <string.h>
 #include <unordered_set>
 
@@ -1333,14 +1335,20 @@ void freeDerivedInfo(CBTypeInfo info) {
       freeDerivedInfo(info.seqTypes.elements[i]);
     }
     chainblocks::arrayFree(info.seqTypes);
-  }
+  } break;
+  case CBType::Set: {
+    for (uint32_t i = 0; info.setTypes.len > i; i++) {
+      freeDerivedInfo(info.setTypes.elements[i]);
+    }
+    chainblocks::arrayFree(info.setTypes);
+  } break;
   case Table: {
     for (uint32_t i = 0; info.table.types.len > i; i++) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
     chainblocks::arrayFree(info.table.types);
     chainblocks::arrayFree(info.table.keys);
-  }
+  } break;
   default:
     break;
   };
@@ -1377,23 +1385,27 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
     break;
   }
   case Table: {
-    auto &ta = value.payload.tableValue;
-    struct iterdata {
-      CBTypeInfo *varType;
-    } data;
-    data.varType = &varType;
-    ta.api->tableForEach(
-        ta,
-        [](const char *key, CBVar *value, void *_data) {
-          auto data = (iterdata *)_data;
-          auto derived = deriveTypeInfo(*value);
-          chainblocks::arrayPush(data->varType->table.types, derived);
-          chainblocks::arrayPush(data->varType->table.keys, key);
-          return true;
-        },
-        &data);
-    break;
-  }
+    auto &t = value.payload.tableValue;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      auto derived = deriveTypeInfo(v);
+      chainblocks::arrayPush(varType.table.types, derived);
+      chainblocks::arrayPush(varType.table.keys, k);
+    }
+  } break;
+  case CBType::Set: {
+    auto &s = value.payload.setValue;
+    CBSetIterator sit;
+    s.api->setGetIterator(s, &sit);
+    CBVar v;
+    while (s.api->setNext(s, &sit, &v)) {
+      auto derived = deriveTypeInfo(v);
+      chainblocks::arrayPush(varType.setTypes, derived);
+    }
+  } break;
   default:
     break;
   };
@@ -1434,8 +1446,8 @@ CBTypeInfo cloneTypeInfo(const CBTypeInfo &other) {
 
 // this is potentially called from unsafe code (e.g. networking)
 // let's do some crude stack protection here
-static thread_local int deriveTypeHashRecursionCounter;
-static constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
+thread_local int deriveTypeHashRecursionCounter;
+constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
 
 uint64_t _deriveTypeHash(const CBVar &value);
 
@@ -1460,37 +1472,57 @@ void updateTypeHash(const CBVar &var, XXH3_state_s *state) {
     break;
   }
   case Seq: {
-    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
-                       stack_allocator<uint64_t>>
-        types;
+    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      // first derive the hash of the full type, mix only once per type
       auto typeHash = _deriveTypeHash(var.payload.seqValue.elements[i]);
-      if (!types.count(typeHash)) {
-        XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
-        types.insert(typeHash);
-      }
+      hashes.insert(typeHash);
     }
-    break;
-  }
+    constexpr auto recursive = false;
+    XXH3_64bits_update(state, &recursive, sizeof(recursive));
+    for (const uint64_t hash : hashes) {
+      XXH3_64bits_update(state, &hash, sizeof(uint64_t));
+    }
+  } break;
   case Table: {
-    auto &ta = var.payload.tableValue;
-    struct iterdata {
-      XXH3_state_s *state;
-    } data;
-    data.state = state;
-    ta.api->tableForEach(
-        ta,
-        [](const char *key, CBVar *value, void *_data) {
-          auto data = (iterdata *)_data;
-          auto typeHash = _deriveTypeHash(*value);
-          XXH3_64bits_update(data->state, &typeHash, sizeof(typeHash));
-          XXH3_64bits_update(data->state, key, strlen(key));
-          return true;
-        },
-        &data);
-    break;
-  }
+    // this is unsafe because allocates on the stack
+    // but we need to sort hashes
+    std::vector<std::pair<uint64_t, CBString>,
+                stack_allocator<std::pair<uint64_t, CBString>>>
+        hashes;
+    // table is unordered so just collect
+    auto &t = var.payload.tableValue;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      hashes.emplace_back(_deriveTypeHash(v), k);
+    }
+    // sort and actually do the hashing
+    pdqsort(hashes.begin(), hashes.end());
+    for (const auto &pair : hashes) {
+      XXH3_64bits_update(state, pair.second, strlen(k));
+      XXH3_64bits_update(state, &pair.first, sizeof(uint64_t));
+    }
+  } break;
+  case CBType::Set: {
+    // this is unsafe because allocates on the stack
+    // but we need to sort hashes
+    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
+    // set is unordered so just collect
+    auto &s = var.payload.setValue;
+    CBSetIterator sit;
+    s.api->setGetIterator(s, &sit);
+    CBVar v;
+    while (s.api->setNext(s, &sit, &v)) {
+      hashes.insert(_deriveTypeHash(v));
+    }
+    constexpr auto recursive = false;
+    XXH3_64bits_update(state, &recursive, sizeof(recursive));
+    for (const uint64_t hash : hashes) {
+      XXH3_64bits_update(state, &hash, sizeof(uint64_t));
+    }
+  } break;
   default:
     break;
   };
@@ -1539,34 +1571,65 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
   }
   case Seq: {
     // this is unsafe because allocates on the stack, but faster...
-    std::unordered_set<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>,
-                       stack_allocator<uint64_t>>
-        types;
+    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
+    bool recursive = false;
+
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       if (t.seqTypes.elements[i].recursiveSelf) {
-        // just mix a integer to flag recursive self
-        uint32_t selfRecursive = UINT32_MAX;
-        XXH3_64bits_update(state, &selfRecursive, sizeof(uint32_t));
+        recursive = true;
       } else {
-        // first derive the hash of the full type, mix only once per type
         auto typeHash = deriveTypeHash(t.seqTypes.elements[i]);
-        if (!types.count(typeHash)) {
-          XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
-          types.insert(typeHash);
-        }
+        hashes.insert(typeHash);
       }
+    }
+    XXH3_64bits_update(state, &recursive, sizeof(recursive));
+    for (const auto hash : hashes) {
+      XXH3_64bits_update(state, &hash, sizeof(hash));
     }
     break;
   }
   case Table: {
-    if (t.table.types.len != t.table.keys.len)
-      throw CBException("updateTypeHash for tables needs both types and keys "
-                        "populated, the other cases are undefined for now");
-    for (uint32_t i = 0; i < t.table.types.len; i++) {
-      auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-      XXH3_64bits_update(state, &typeHash, sizeof(typeHash));
-      const char *key = t.table.keys.elements[i];
-      XXH3_64bits_update(state, key, strlen(key));
+    if (t.table.keys.len == t.table.types.len) {
+      std::vector<std::pair<uint64_t, CBString>,
+                  stack_allocator<std::pair<uint64_t, CBString>>>
+          hashes;
+      for (uint32_t i = 0; i < t.table.types.len; i++) {
+        auto typeHash = deriveTypeHash(t.table.types.elements[i]);
+        const char *key = t.table.keys.elements[i];
+        hashes.emplace_back(typeHash, key);
+      }
+      pdqsort(hashes.begin(), hashes.end());
+      for (const auto &hash : hashes) {
+        XXH3_64bits_update(state, hash.second, strlen(hash.second));
+        XXH3_64bits_update(state, &hash.first, sizeof(uint64_t));
+      }
+    } else {
+      std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
+      for (uint32_t i = 0; i < t.table.types.len; i++) {
+        auto typeHash = deriveTypeHash(t.table.types.elements[i]);
+        hashes.insert(typeHash);
+      }
+      for (const auto hash : hashes) {
+        XXH3_64bits_update(state, &hash, sizeof(hash));
+      }
+    }
+    break;
+  }
+  case CBType::Set: {
+    // this is unsafe because allocates on the stack, but faster...
+    std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
+    bool recursive = false;
+    for (uint32_t i = 0; i < t.setTypes.len; i++) {
+      if (t.setTypes.elements[i].recursiveSelf) {
+        recursive = true;
+      } else {
+        auto typeHash = deriveTypeHash(t.setTypes.elements[i]);
+        hashes.insert(typeHash);
+      }
+    }
+    XXH3_64bits_update(state, &recursive, sizeof(recursive));
+    for (const auto hash : hashes) {
+      XXH3_64bits_update(state, &hash, sizeof(hash));
     }
     break;
   }
@@ -1964,6 +2027,12 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
     auto map = (CBMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
+  case CBType::Set: {
+    assert(var.payload.setValue.api == &Globals::SetInterface);
+    assert(var.payload.setValue.opaque);
+    auto set = (CBHashSet *)var.payload.setValue.opaque;
+    delete set;
+  } break;
   default:
     break;
   };
@@ -2057,6 +2126,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     if (dst.valueType == Table) {
       if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
         return;
+      assert(dst.payload.tableValue.api == &Globals::TableInterface);
       map = (CBMap *)dst.payload.tableValue.opaque;
       map->clear();
     } else {
@@ -2067,15 +2137,38 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       dst.payload.tableValue.opaque = map;
     }
 
-    auto &ta = src.payload.tableValue;
-    ta.api->tableForEach(
-        ta,
-        [](const char *key, CBVar *value, void *data) {
-          auto map = (CBMap *)data;
-          (*map)[key] = *value;
-          return true;
-        },
-        map);
+    auto &t = src.payload.tableValue;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      (*map)[k] = v;
+    }
+  } break;
+  case CBType::Set: {
+    CBHashSet *set;
+    if (dst.valueType == CBType::Set) {
+      if (src.payload.setValue.opaque == dst.payload.setValue.opaque)
+        return;
+      assert(dst.payload.setValue.api == &Globals::SetInterface);
+      set = (CBHashSet *)dst.payload.setValue.opaque;
+      set->clear();
+    } else {
+      destroyVar(dst);
+      dst.valueType = CBType::Set;
+      dst.payload.setValue.api = &Globals::SetInterface;
+      set = new CBHashSet();
+      dst.payload.setValue.opaque = set;
+    }
+
+    auto &s = src.payload.setValue;
+    CBSetIterator sit;
+    s.api->setGetIterator(s, &sit);
+    CBVar v;
+    while (s.api->setNext(s, &sit, &v)) {
+      (*set).emplace(v);
+    }
   } break;
   case Bytes: {
     if (dst.valueType != Bytes ||
@@ -2281,18 +2374,45 @@ void hash_update(const CBVar &var, void *state) {
     }
   } break;
   case CBType::Table: {
+    // this is unsafe because allocates on the stack
+    // but we need to sort hashes
+    std::vector<std::pair<uint64_t, CBString>,
+                stack_allocator<std::pair<uint64_t, CBString>>>
+        hashes;
+
+    auto &t = var.payload.tableValue;
     CBTableIterator it;
-    var.payload.tableValue.api->tableGetIterator(var.payload.tableValue, &it);
+    t.api->tableGetIterator(t, &it);
     CBString key;
     CBVar value;
-    while (true) {
-      auto valid = var.payload.tableValue.api->tableNext(var.payload.tableValue,
-                                                         &it, &key, &value);
-      if (!valid)
-        break;
-      error = XXH3_64bits_update(hashState, key, strlen(key));
+    while (t.api->tableNext(t, &it, &key, &value)) {
+      hashes.emplace_back(hash(value), key);
+    }
+
+    pdqsort(hashes.begin(), hashes.end());
+    for (const auto &pair : hashes) {
+      error = XXH3_64bits_update(hashState, pair.second, strlen(pair.second));
       assert(error == XXH_OK);
-      hash_update(value, state);
+      XXH3_64bits_update(hashState, &pair.first, sizeof(uint64_t));
+    }
+  } break;
+  case CBType::Set: {
+    // this is unsafe because allocates on the stack
+    // but we need to sort hashes
+    std::vector<uint64_t, stack_allocator<uint64_t>> hashes;
+
+    // just store hashes, sort and actually combine later
+    auto &s = var.payload.setValue;
+    CBSetIterator it;
+    s.api->setGetIterator(s, &it);
+    CBVar value;
+    while (s.api->setNext(s, &it, &value)) {
+      hashes.emplace_back(hash(value));
+    }
+
+    pdqsort(hashes.begin(), hashes.end());
+    for (const auto hash : hashes) {
+      XXH3_64bits_update(hashState, &hash, sizeof(uint64_t));
     }
   } break;
   case CBType::Block: {
@@ -2415,6 +2535,10 @@ void Serialization::varFree(CBVar &output) {
   }
   case CBType::Table: {
     output.payload.tableValue.api->tableFree(output.payload.tableValue);
+    break;
+  }
+  case CBType::Set: {
+    output.payload.setValue.api->setFree(output.payload.setValue);
     break;
   }
   case CBType::Image: {
@@ -2749,6 +2873,13 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     CBTable res;
     res.api = &chainblocks::Globals::TableInterface;
     res.opaque = new chainblocks::CBMap();
+    return res;
+  };
+
+  result->setNew = []() noexcept {
+    CBSet res;
+    res.api = &chainblocks::Globals::SetInterface;
+    res.opaque = new chainblocks::CBHashSet();
     return res;
   };
 

@@ -157,30 +157,41 @@ MAKE_LOGGABLE(CBVar, var, os) {
     }
     os << "]";
     break;
-  case Table:
+  case Table: {
     os << "{";
-    auto &ta = var.payload.tableValue;
-    struct iterdata {
-      bool first;
-      el::base::type::ostream_t *os;
-    } data;
-    data.first = true;
-    data.os = &os;
-    ta.api->tableForEach(
-        ta,
-        [](const char *key, CBVar *value, void *_data) {
-          auto data = (iterdata *)_data;
-          if (data->first) {
-            *data->os << key << ": " << *value;
-            data->first = false;
-          } else {
-            *data->os << ", " << key << ": " << *value;
-          }
-          return true;
-        },
-        &data);
+    auto &t = var.payload.tableValue;
+    bool first = true;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      if (first) {
+        os << k << ": " << v;
+        first = false;
+      } else {
+        os << ", " << k << ": " << v;
+      }
+    }
     os << "}";
-    break;
+  } break;
+  case Set: {
+    os << "{";
+    auto &s = var.payload.setValue;
+    bool first = true;
+    CBSetIterator sit;
+    s.api->setGetIterator(s, &sit);
+    CBVar v;
+    while (s.api->setNext(s, &sit, &v)) {
+      if (first) {
+        os << v;
+        first = false;
+      } else {
+        os << ", " << v;
+      }
+    }
+    os << "}";
+  } break;
   }
   return os;
 }
@@ -197,6 +208,21 @@ MAKE_LOGGABLE(CBTypeInfo, t, os) {
         os << "(" << t.seqTypes.elements[i] << ")";
       }
       if (i < (t.seqTypes.len - 1)) {
+        os << " ";
+      }
+    }
+    os << "]";
+  }
+  if (t.basicType == CBType::Set) {
+    os << " [";
+    for (uint32_t i = 0; i < t.setTypes.len; i++) {
+      // avoid recursive types
+      if (t.setTypes.elements[i].recursiveSelf) {
+        os << "(Self)";
+      } else {
+        os << "(" << t.setTypes.elements[i] << ")";
+      }
+      if (i < (t.setTypes.len - 1)) {
         os << " ";
       }
     }
@@ -254,6 +280,27 @@ bool _seqEq(const CBVar &a, const CBVar &b) {
     const auto &subb = b.payload.seqValue.elements[i];
     if (suba != subb)
       return false;
+  }
+
+  return true;
+}
+
+bool _setEq(const CBVar &a, const CBVar &b) {
+  auto &ta = a.payload.setValue;
+  auto &tb = b.payload.setValue;
+  if (ta.opaque == tb.opaque)
+    return true;
+
+  if (ta.api->setSize(ta) != ta.api->setSize(tb))
+    return false;
+
+  CBSetIterator it;
+  ta.api->setGetIterator(ta, &it);
+  CBVar v;
+  while (ta.api->setNext(ta, &it, &v)) {
+    if (!tb.api->setContains(tb, v)) {
+      return false;
+    }
   }
 
   return true;
