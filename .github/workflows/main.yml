@@ -93,7 +93,6 @@ jobs:
         mkdir cbl
         cp cbl.wasm cbl/
         cp cbl.js cbl/
-        cp cbl.worker.js cbl/
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
