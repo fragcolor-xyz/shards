@@ -55,7 +55,7 @@ jobs:
           build/cbl.wasm
           build/cbl.js
           build/cbl.worker.js
-    - uses: chainblocks/ipfs-action@v1
+    - uses: chainblocks/ipfs-action@master
       with:
         path: build/cbl/
 
@@ -100,7 +100,7 @@ jobs:
         path: |
           build/cbl.wasm
           build/cbl.js
-    - uses: chainblocks/ipfs-action@v1
+    - uses: chainblocks/ipfs-action@master
       with:
         path: build/cbl/
 
