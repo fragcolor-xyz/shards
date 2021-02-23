@@ -58,6 +58,7 @@ jobs:
     - uses: chainblocks/ipfs-action@master
       with:
         path: build/cbl/
+        service: infura
 
   wasm32-emscripten:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
@@ -102,6 +103,7 @@ jobs:
     - uses: chainblocks/ipfs-action@master
       with:
         path: build/cbl/
+        service: infura
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
