@@ -44,6 +44,10 @@ jobs:
         cd build
         node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js
         node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js
+        mkdir cbl
+        cp cbl.wasm cbl/
+        cp cbl.js cbl/
+        cp cbl.worker.js cbl/
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm-mt
@@ -51,6 +55,9 @@ jobs:
           build/cbl.wasm
           build/cbl.js
           build/cbl.worker.js
+    - uses: chainblocks/ipfs-action@v1
+      with:
+        path: build/cbl/
 
   wasm32-emscripten:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
@@ -83,12 +90,19 @@ jobs:
         cd build
         node ../src/tests/test_cbl.js
         node ../src/tests/test_runtime.js
+        mkdir cbl
+        cp cbl.wasm cbl/
+        cp cbl.js cbl/
+        cp cbl.worker.js cbl/
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
         path: |
           build/cbl.wasm
           build/cbl.js
+    - uses: chainblocks/ipfs-action@v1
+      with:
+        path: build/cbl/
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
