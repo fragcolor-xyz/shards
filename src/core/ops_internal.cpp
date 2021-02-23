@@ -479,6 +479,33 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 
     return true;
   }
+  case Set: {
+    if (a.setTypes.elements == nullptr && b.setTypes.elements == nullptr)
+      return true;
+
+    if (a.setTypes.elements && b.setTypes.elements) {
+      if (a.setTypes.len != b.setTypes.len)
+        return false;
+      // compare but allow different orders of elements
+      for (uint32_t i = 0; i < a.setTypes.len; i++) {
+        for (uint32_t j = 0; j < b.setTypes.len; j++) {
+          // consider recursive self a match
+          if (a.setTypes.elements[i].recursiveSelf ==
+              b.setTypes.elements[j].recursiveSelf)
+            goto matched_set;
+          if (a.setTypes.elements[i] == b.setTypes.elements[j])
+            goto matched_set;
+        }
+        return false;
+      matched_set:
+        continue;
+      }
+    } else {
+      return false;
+    }
+
+    return true;
+  }
   case Table: {
     auto atypes = a.table.types.len;
     auto btypes = b.table.types.len;

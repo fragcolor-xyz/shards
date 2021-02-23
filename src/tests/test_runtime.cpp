@@ -733,8 +733,16 @@ TEST_CASE("VarPayload") {
   REQUIRE(hash1 == hash3);                                                     \
   auto typeHash1 = deriveTypeHash(vxx);                                        \
   auto typeInfo1 = deriveTypeInfo(vxx);                                        \
+  auto typeInfo2 = deriveTypeInfo(vx);                                         \
+  auto typeInfo3 = deriveTypeInfo(Var::Empty);                                 \
   REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);                             \
+  auto stypeHash = std::hash<CBTypeInfo>()(typeInfo1);                         \
+  REQUIRE(stypeHash != 0);                                                     \
+  REQUIRE(typeInfo1 == typeInfo2);                                             \
+  REQUIRE(typeInfo1 != typeInfo3);                                             \
   freeDerivedInfo(typeInfo1);                                                  \
+  freeDerivedInfo(typeInfo2);                                                  \
+  freeDerivedInfo(typeInfo3);                                                  \
   auto typeHash2 = deriveTypeHash(vx);                                         \
   auto typeHash3 = deriveTypeHash(vyy);                                        \
   LOG(INFO) << typeHash1 << " - " << typeHash2 << " - " << typeHash3;          \
