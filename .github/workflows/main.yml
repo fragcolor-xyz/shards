@@ -59,6 +59,8 @@ jobs:
       with:
         path: build/cbl/
         service: infura
+        port: 5001
+        protocol: https
 
   wasm32-emscripten:
     # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
@@ -104,6 +106,8 @@ jobs:
       with:
         path: build/cbl/
         service: infura
+        port: 5001
+        protocol: https
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
