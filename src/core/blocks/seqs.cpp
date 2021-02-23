@@ -2,12 +2,13 @@
 /* Copyright © 2019-2021 Giovanni Petrantoni */
 
 #include "shared.hpp"
+#include <unordered_set>
 
 namespace chainblocks {
 struct Flatten {
   CBVar outputCache{};
-  CBTypeInfo outputType{};
   Type seqType{};
+  Types seqTypes{};
 
   void destroy() {
     if (outputCache.valueType == Seq) {
@@ -18,12 +19,7 @@ struct Flatten {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void verifyInnerType(CBTypeInfo info, CBTypeInfo &currentType) {
-    if (currentType.basicType != None) {
-      if (currentType != info) {
-        throw CBException("Flatten failed, inner types are not matching.");
-      }
-    }
+  void addInnerType(CBTypeInfo info, std::unordered_set<CBTypeInfo> &types) {
     switch (info.basicType) {
     case None:
     case CBType::Any:
@@ -43,7 +39,7 @@ struct Flatten {
     case Bytes:
     case Array:
     case Bool: {
-      currentType = info;
+      types.insert(info);
       break;
     }
     case Color:
@@ -52,25 +48,28 @@ struct Flatten {
     case Int4:
     case Int8:
     case Int16: {
-      currentType = CoreInfo::IntType;
+      types.insert(CoreInfo::IntType);
       break;
     }
     case Float2:
     case Float3:
     case Float4: {
-      currentType = CoreInfo::FloatType;
+      types.insert(CoreInfo::FloatType);
       break;
     }
     case Seq:
-      if (info.seqTypes.len == 1) {
-        verifyInnerType(info.seqTypes.elements[0], currentType);
-      } else {
-        throw CBException("Expected a Seq of a single specific type.");
+      for (uint32_t i = 0; i < info.seqTypes.len; i++) {
+        addInnerType(info.seqTypes.elements[i], types);
+      }
+      break;
+    case CBType::Set:
+      for (uint32_t i = 0; i < info.setTypes.len; i++) {
+        addInnerType(info.setTypes.elements[i], types);
       }
       break;
     case Table: {
       for (uint32_t i = 0; i < info.table.types.len; i++) {
-        verifyInnerType(info.table.types.elements[i], currentType);
+        addInnerType(info.table.types.elements[i], types);
       }
       break;
     }
@@ -78,10 +77,11 @@ struct Flatten {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    CBTypeInfo current{};
-    verifyInnerType(data.inputType, current);
-    outputType = current;
-    seqType = CBTypeInfo{CBType::Seq, {.seqTypes = {&outputType, 1, 0}}};
+    std::unordered_set<CBTypeInfo> types;
+    addInnerType(data.inputType, types);
+    std::vector<CBTypeInfo> vtypes(types.begin(), types.end());
+    seqTypes = Types(vtypes);
+    seqType = Type::SeqOf(seqTypes);
     return seqType;
   }
 
@@ -195,15 +195,6 @@ struct Flatten {
   }
 };
 
-// Register Flatten
-RUNTIME_CORE_BLOCK(Flatten);
-RUNTIME_BLOCK_destroy(Flatten);
-RUNTIME_BLOCK_inputTypes(Flatten);
-RUNTIME_BLOCK_outputTypes(Flatten);
-RUNTIME_BLOCK_compose(Flatten);
-RUNTIME_BLOCK_activate(Flatten);
-RUNTIME_BLOCK_END(Flatten);
-
 struct IndexOf {
   ParamVar _item{};
   CBSeq _results = {};
@@ -302,20 +293,8 @@ struct IndexOf {
   }
 };
 
-// Register
-RUNTIME_CORE_BLOCK(IndexOf);
-RUNTIME_BLOCK_cleanup(IndexOf);
-RUNTIME_BLOCK_warmup(IndexOf);
-RUNTIME_BLOCK_inputTypes(IndexOf);
-RUNTIME_BLOCK_outputTypes(IndexOf);
-RUNTIME_BLOCK_parameters(IndexOf);
-RUNTIME_BLOCK_setParam(IndexOf);
-RUNTIME_BLOCK_getParam(IndexOf);
-RUNTIME_BLOCK_activate(IndexOf);
-RUNTIME_BLOCK_END(IndexOf);
-
 void registerSeqsBlocks() {
-  REGISTER_CORE_BLOCK(Flatten);
-  REGISTER_CORE_BLOCK(IndexOf);
+  REGISTER_CBLOCK("Flatten", Flatten);
+  REGISTER_CBLOCK("IndexOf", IndexOf);
 }
 }; // namespace chainblocks
