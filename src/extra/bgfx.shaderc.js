@@ -5,6 +5,40 @@
 
 mergeInto(LibraryManager.library, {
   emSetupShaderCompiler: function () {
+    const ensureShaderCompilerDeps = async function () {
+      var prefix = "";
+      if (typeof importScripts !== 'function') {
+        prefix = window.location.pathname + "/";
+      }
+
+      // load the JS part if needed
+      if (globalThis.shaderc === undefined) {
+        if (typeof importScripts === 'function') {
+          // when inside a worker (we are using threads)
+          // cache it at worker level
+          importScripts("shaders/shaderc.js");
+        } else {
+          var shadercLoaded = new Promise((resolve, _reject) => {
+            const shaderc = document.createElement("script");
+            shaderc.src = prefix + "shaders/shaderc.js";
+            shaderc.async = true;
+            shaderc.onload = async function () {
+              resolve();
+            };
+            document.body.appendChild(shaderc);
+          });
+          await shadercLoaded;
+        }
+      }
+
+      // also cache and load the wasm binary
+      if (globalThis.shaderc_binary === undefined) {
+        const response = await fetch(prefix + "shaders/shaderc.wasm");
+        const buffer = await response.arrayBuffer();
+        globalThis.shaderc_binary = new Uint8Array(buffer);
+      }
+    }
+
     if (globalThis.chainblocks === undefined) {
       globalThis.chainblocks = {};
     }
@@ -88,39 +122,19 @@ mergeInto(LibraryManager.library, {
 
     if (globalThis.chainblocks.compileShaderFromJson === undefined) {
       globalThis.chainblocks.compileShaderFromJson = async function (json) {
-        var prefix = "";
-        if (typeof importScripts !== 'function') {
-          prefix = window.location.pathname + "/";
-        }
+        await ensureShaderCompilerDeps();
 
         const params = JSON.parse(json);
 
-        // load the JS part if needed
-        if (globalThis.shaderc === undefined) {
-          if (typeof importScripts === 'function') {
-            // when inside a worker (we are using threads)
-            // cache it at worker level
-            importScripts("shaderc.js");
-          } else {
-            var shadercLoaded = new Promise((resolve, _reject) => {
-              const shaderc = document.createElement("script");
-              shaderc.src = prefix + "shaderc.js";
-              shaderc.async = true;
-              shaderc.onload = async function () {
-                resolve();
-              };
-              document.body.appendChild(shaderc);
-            });
-            await shadercLoaded;
-          }
-        }
+        const output = await globalThis.chainblocks.compileShader(params);
 
-        // also cache and load the wasm binary
-        if (globalThis.shaderc_binary === undefined) {
-          const response = await fetch(prefix + "shaderc.wasm");
-          const buffer = await response.arrayBuffer();
-          globalThis.shaderc_binary = new Uint8Array(buffer);
-        }
+        return JSON.stringify(output);
+      };
+    }
+
+    if (globalThis.chainblocks.compileShaderFromObject === undefined) {
+      globalThis.chainblocks.compileShaderFromObject = async function (params) {
+        await ensureShaderCompilerDeps();
 
         const output = await globalThis.chainblocks.compileShader(params);
 

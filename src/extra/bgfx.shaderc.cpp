@@ -134,6 +134,8 @@ struct EmscriptenShaderCompiler {
 };
 
 void registerEmscriptenShaderCompiler() {
+  // this is good for the single threaded path
+  emSetupShaderCompiler();
   REGISTER_CBLOCK("_Emscripten.CompileShader", EmscriptenShaderCompiler);
 }
 } // namespace chainblocks
