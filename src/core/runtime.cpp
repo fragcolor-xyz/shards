@@ -824,11 +824,15 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
       // still checked)
       const auto atypes = inputType.table.types.len;
       const auto btypes = receiverType.table.types.len;
-      if (receiverType.table.keys.len == 0) {
+      const auto akeys = inputType.table.keys.len;
+      const auto bkeys = receiverType.table.keys.len;
+      if (bkeys == 0) {
         // case 1, consumer is not strict, match types if avail
         // ignore input keys information
         if (atypes == 0) {
           // assume this as an Any
+          if (btypes == 0)
+            return true; // both Any
           auto matched = false;
           CBTypeInfo anyType{CBType::Any};
           for (uint32_t y = 0; y < btypes; y++) {
@@ -863,8 +867,9 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
           }
         }
       } else {
-        const auto akeys = inputType.table.keys.len;
-        const auto bkeys = receiverType.table.keys.len;
+        if (!isParameter && akeys == 0 && atypes == 0)
+          return true; // update case {} >= .edit-me {"x" 10} > .edit-me
+
         const auto anyLast = // last element can be a jolly
             strlen(receiverType.table.keys.elements[bkeys - 1]) == 0;
         if (!anyLast && (akeys != bkeys || akeys != atypes)) {

@@ -1,0 +1,13 @@
+(defnode main)
+
+(defchain table-test-1
+  {} >= .edit-me
+  {} > .edit-me)
+
+(defchain table-test-2
+  {} >= .edit-me
+  {"x" 10} > .edit-me)
+
+(schedule main table-test-1)
+(schedule main table-test-2)
+(run main)

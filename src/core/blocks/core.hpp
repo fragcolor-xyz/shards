@@ -654,7 +654,11 @@ struct SetBase : public VariableBase {
                              _name);
         } else if (!_isTable && reference.isTableEntry) {
           throw ComposeError("Set/Ref/Update, variable was a table: " + _name);
-        } else if (!_isTable && data.inputType != reference.exposedType) {
+        } else if (!_isTable &&
+                   // need to check if this was just a any table definition {}
+                   !(reference.exposedType.basicType == Table &&
+                     reference.exposedType.table.types.len == 0) &&
+                   data.inputType != reference.exposedType) {
           throw ComposeError("Set/Ref/Update, variable already set as another "
                              "type: " +
                              _name);
@@ -910,7 +914,8 @@ struct Update : public SetBase {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
         if (_name == cv.name) {
-          if (data.inputType != cv.exposedType) {
+          if (cv.exposedType.basicType != CBType::Table &&
+              data.inputType != cv.exposedType) {
             throw CBException(
                 "Update: error, update is changing the variable type.");
           }
