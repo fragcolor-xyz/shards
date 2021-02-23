@@ -725,6 +725,28 @@ TEST_CASE("VarPayload") {
   }
 }
 
+#define SET_TABLE_COMMON_TESTS                                                 \
+  auto hash1 = hash(vxx);                                                      \
+  auto hash2 = hash(vx);                                                       \
+  auto hash3 = hash(vyy);                                                      \
+  REQUIRE(hash1 == hash2);                                                     \
+  REQUIRE(hash1 == hash3);                                                     \
+  auto typeHash1 = deriveTypeHash(vxx);                                        \
+  auto typeInfo1 = deriveTypeInfo(vxx);                                        \
+  REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);                             \
+  freeDerivedInfo(typeInfo1);                                                  \
+  auto typeHash2 = deriveTypeHash(vx);                                         \
+  auto typeHash3 = deriveTypeHash(vyy);                                        \
+  LOG(INFO) << typeHash1 << " - " << typeHash2 << " - " << typeHash3;          \
+  REQUIRE(typeHash1 == typeHash2);                                             \
+  REQUIRE(typeHash1 == typeHash3);                                             \
+  vyy = vz;                                                                    \
+  REQUIRE(vyy != vy);                                                          \
+  auto typeHash4 = deriveTypeHash(vyy);                                        \
+  REQUIRE(typeHash4 == typeHash3);                                             \
+  auto typeHash5 = deriveTypeHash(vz);                                         \
+  REQUIRE(typeHash4 == typeHash5)
+
 TEST_CASE("CBMap") {
   CBMap x;
   x.emplace("x", Var(10));
@@ -743,6 +765,15 @@ TEST_CASE("CBMap") {
   vy.payload.tableValue.opaque = &y;
   vy.payload.tableValue.api = &Globals::TableInterface;
 
+  CBMap z;
+  z.emplace("y", Var("Hello Set"));
+  z.emplace("x", Var(11));
+
+  CBVar vz{};
+  vz.valueType = CBType::Table;
+  vz.payload.tableValue.opaque = &z;
+  vz.payload.tableValue.api = &Globals::TableInterface;
+
   REQUIRE(vx == vy);
 
   OwnedVar vxx = vx;
@@ -756,18 +787,7 @@ TEST_CASE("CBMap") {
   });
   REQUIRE(items == 2);
 
-  auto hash1 = hash(vxx);
-  auto hash2 = hash(vx);
-  auto hash3 = hash(vyy);
-  REQUIRE(hash1 == hash2);
-  REQUIRE(hash1 == hash3);
-
-  auto typeHash1 = deriveTypeHash(vxx);
-  auto typeHash2 = deriveTypeHash(vx);
-  auto typeHash3 = deriveTypeHash(vyy);
-  LOG(INFO) << typeHash1 << " - " << typeHash2 << " - " << typeHash3;
-  REQUIRE(typeHash1 == typeHash2);
-  REQUIRE(typeHash1 == typeHash3);
+  SET_TABLE_COMMON_TESTS;
 
   REQUIRE(x.size() == 2);
   REQUIRE(x.count("x") == 1);
@@ -798,7 +818,17 @@ TEST_CASE("CBHashSet") {
   vy.payload.setValue.opaque = &y;
   vy.payload.setValue.api = &Globals::SetInterface;
 
+  CBHashSet z;
+  z.emplace(Var("Hello Set"));
+  z.insert(Var(11));
+
+  CBVar vz{};
+  vz.valueType = CBType::Set;
+  vz.payload.setValue.opaque = &z;
+  vz.payload.setValue.api = &Globals::SetInterface;
+
   REQUIRE(vx == vy);
+  REQUIRE(vx != vz);
 
   OwnedVar vxx = vx;
   OwnedVar vyy = vy;
@@ -811,17 +841,7 @@ TEST_CASE("CBHashSet") {
   });
   REQUIRE(items == 2);
 
-  auto hash1 = hash(vxx);
-  auto hash2 = hash(vx);
-  auto hash3 = hash(vyy);
-  REQUIRE(hash1 == hash2);
-  REQUIRE(hash1 == hash3);
-
-  auto typeHash1 = deriveTypeHash(vxx);
-  auto typeHash2 = deriveTypeHash(vx);
-  auto typeHash3 = deriveTypeHash(vyy);
-  REQUIRE(typeHash1 == typeHash2);
-  REQUIRE(typeHash1 == typeHash3);
+  SET_TABLE_COMMON_TESTS;
 
   REQUIRE(x.size() == 2);
   REQUIRE(x.count(Var(10)) == 1);

@@ -323,8 +323,8 @@ bool _tableEq(const CBVar &a, const CBVar &b) {
     if (!tb.api->tableContains(tb, k)) {
       return false;
     }
-    auto &bval = *tb.api->tableAt(tb, k);
-    if (v != bval) {
+    const auto bval = tb.api->tableAt(tb, k);
+    if (v != *bval) {
       return false;
     }
   }
@@ -370,8 +370,8 @@ bool _tableLess(const CBVar &a, const CBVar &b) {
     if (!tb.api->tableContains(tb, k)) {
       return false;
     }
-    auto &bval = *tb.api->tableAt(tb, k);
-    auto c = cmp(v, bval);
+    const auto bval = tb.api->tableAt(tb, k);
+    auto c = cmp(v, *bval);
     if (c < 0) {
       return true;
     } else if (c > 0) {
@@ -424,8 +424,8 @@ bool _tableLessEq(const CBVar &a, const CBVar &b) {
     if (!tb.api->tableContains(tb, k)) {
       return false;
     }
-    auto &bval = *tb.api->tableAt(tb, k);
-    auto c = cmp(v, bval);
+    const auto bval = tb.api->tableAt(tb, k);
+    auto c = cmp(v, *bval);
     if (c < 0) {
       return true;
     } else if (c > 0) {

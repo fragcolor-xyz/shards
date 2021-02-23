@@ -1560,15 +1560,13 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
   case Object: {
     XXH3_64bits_update(state, &t.object.vendorId, sizeof(t.object.vendorId));
     XXH3_64bits_update(state, &t.object.typeId, sizeof(t.object.typeId));
-    break;
-  }
+  } break;
   case Enum: {
     XXH3_64bits_update(state, &t.enumeration.vendorId,
                        sizeof(t.enumeration.vendorId));
     XXH3_64bits_update(state, &t.enumeration.typeId,
                        sizeof(t.enumeration.typeId));
-    break;
-  }
+  } break;
   case Seq: {
     // this is unsafe because allocates on the stack, but faster...
     std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
@@ -1586,8 +1584,7 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
     for (const auto hash : hashes) {
       XXH3_64bits_update(state, &hash, sizeof(hash));
     }
-    break;
-  }
+  } break;
   case Table: {
     if (t.table.keys.len == t.table.types.len) {
       std::vector<std::pair<uint64_t, CBString>,
@@ -1613,8 +1610,7 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
         XXH3_64bits_update(state, &hash, sizeof(hash));
       }
     }
-    break;
-  }
+  } break;
   case CBType::Set: {
     // this is unsafe because allocates on the stack, but faster...
     std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
@@ -1631,8 +1627,7 @@ void updateTypeHash(const CBTypeInfo &t, XXH3_state_s *state) {
     for (const auto hash : hashes) {
       XXH3_64bits_update(state, &hash, sizeof(hash));
     }
-    break;
-  }
+  } break;
   default:
     break;
   };
