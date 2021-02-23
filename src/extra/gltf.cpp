@@ -357,7 +357,8 @@ struct Load : public BGFX::BaseConsumer {
     }
   }
 
-  GFXMaterial processMaterial(const GLTFModel &gltf, const Material &glmaterial,
+  GFXMaterial processMaterial(CBContext *context, const GLTFModel &gltf,
+                              const Material &glmaterial,
                               std::unordered_set<std::string> &shaderDefines,
                               const std::string &varyings) {
     GFXMaterial material{glmaterial.name,
@@ -414,8 +415,8 @@ struct Load : public BGFX::BaseConsumer {
         // vertex
         bgfx::ShaderHandle vsh;
         {
-          auto bytecode = _shaderCompiler->compile(varyings, _shadersVSEntry,
-                                                   "v", shaderDefinesStr);
+          auto bytecode = _shaderCompiler->compile(
+              varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           vsh = bgfx::createShader(mem);
@@ -423,8 +424,8 @@ struct Load : public BGFX::BaseConsumer {
         // pixel
         bgfx::ShaderHandle psh;
         {
-          auto bytecode = _shaderCompiler->compile(varyings, _shadersPSEntry,
-                                                   "f", shaderDefinesStr);
+          auto bytecode = _shaderCompiler->compile(
+              varyings, _shadersPSEntry, "f", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
@@ -521,7 +522,7 @@ struct Load : public BGFX::BaseConsumer {
       for (const int gltfNodeIdx : scene.nodes) {
         const auto &glnode = gltf.nodes[gltfNodeIdx];
         const std::function<NodeRef(const tinygltf::Node)> processNode =
-            [this, &gltf, &processNode](const tinygltf::Node &glnode) {
+            [this, &gltf, &processNode, context](const tinygltf::Node &glnode) {
               Node node{glnode.name};
 
               if (glnode.matrix.size() != 0) {
@@ -951,7 +952,7 @@ struct Load : public BGFX::BaseConsumer {
                     if (glprims.material != -1) {
                       prims.material =
                           _model->gfxMaterials.emplace_back(processMaterial(
-                              gltf, gltf.materials[glprims.material],
+                              context, gltf, gltf.materials[glprims.material],
                               shaderDefines, varyings));
                     }
 

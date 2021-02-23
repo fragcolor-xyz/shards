@@ -77,54 +77,62 @@ char *emCompileShaderBlocking(const char *json);
 }
 
 namespace chainblocks {
-CBVar emCompileShader(const CBVar &input) {
-  static thread_local std::string str;
+struct EmscriptenShaderCompiler {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  emSetupShaderCompiler();
+  CBVar activate(CBContext *context, const CBVar &input) {
+    static thread_local std::string str;
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-  auto res = emCompileShaderBlocking(input.payload.stringValue);
-  const auto check = reinterpret_cast<intptr_t>(res);
-  if (check == -1) {
-    throw ActivationError(
-        "Exception while compiling a shader, check the JS console");
-  }
+    emSetupShaderCompiler();
 
-  DEFER(free(res));
-
-  nlohmann::json j = nlohmann::json::parse(res);
-
-  const auto err = j["stderr"].get<std::string>();
-  if (err.size() > 0) {
-    LOG(ERROR) << err;
-  }
-
-  if (j.contains("bytecode")) {
-    MAIN_THREAD_EM_ASM(
-        {
-          const data = JSON.parse(UTF8ToString($0));
-          const buffer = new Uint8Array(data.bytecode);
-          FS.writeFile("shaders/tmp/shader.bin", buffer);
-        },
-        res);
-  } else {
-    LOG(INFO) << j["stdout"].get<std::string>();
-    throw ActivationError("Failed to compile a shader.");
-  }
-
-  str.assign(j["stdout"].get<std::string>());
-  if (str.size() == 0) {
-    str.assign("Successfully compiled a shader.");
-  }
+#ifndef __EMSCRIPTEN_PTHREADS__
+    const auto cb = emscripten::val::global("chainblocks");
+    const auto compiler = cb["compileShaderFromJson"];
+    const auto sres =
+        emscripten_wait<emscripten::val>(
+            context, compiler(emscripten::val(input.payload.stringValue)))
+            .as<std::string>();
+    auto res = sres.c_str();
 #else
-// #error "shaderc for single threaded code path not implemented"
+    auto res = emCompileShaderBlocking(input.payload.stringValue);
+    const auto check = reinterpret_cast<intptr_t>(res);
+    if (check == -1) {
+      throw ActivationError(
+          "Exception while compiling a shader, check the JS console");
+    }
+    DEFER(free(res));
 #endif
 
-  return Var(str);
-}
+    nlohmann::json j = nlohmann::json::parse(res);
 
-using EmscriptenShaderCompiler =
-    LambdaBlock<emCompileShader, CoreInfo::StringType, CoreInfo::StringType>;
+    const auto err = j["stderr"].get<std::string>();
+    if (err.size() > 0) {
+      LOG(ERROR) << err;
+    }
+
+    if (j.contains("bytecode")) {
+      MAIN_THREAD_EM_ASM(
+          {
+            const data = JSON.parse(UTF8ToString($0));
+            const buffer = new Uint8Array(data.bytecode);
+            FS.writeFile("shaders/tmp/shader.bin", buffer);
+          },
+          res);
+    } else {
+      LOG(INFO) << j["stdout"].get<std::string>();
+      throw ActivationError("Failed to compile a shader.");
+    }
+
+    str.assign(j["stdout"].get<std::string>());
+    if (str.size() == 0) {
+      str.assign("Successfully compiled a shader.");
+    }
+
+    return Var(str);
+  }
+};
+
 void registerEmscriptenShaderCompiler() {
   REGISTER_CBLOCK("_Emscripten.CompileShader", EmscriptenShaderCompiler);
 }
@@ -216,7 +224,8 @@ struct ShaderCompiler : public IShaderCompiler {
   CBVar compile(std::string_view varyings, //
                 std::string_view code,     //
                 std::string_view type,     //
-                std::string_view defines   //
+                std::string_view defines,  //
+                CBContext *context         //
                 ) override {
     Var v_varyings{varyings.data(), varyings.size()};
     Var v_code{code.data(), code.size()};
@@ -224,6 +233,17 @@ struct ShaderCompiler : public IShaderCompiler {
     Var v_defines{defines.data(), defines.size()};
     std::array<Var, 4> args = {v_varyings, v_code, v_type, v_defines};
     Var v_args{args};
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    // We can make some assumptions...
+    // 1 the caller even if inside an await, will still be in the main thread...
+    // so using the context to suspend is safe in this case
+    auto node = context->main->node.lock();
+    node->schedule(_chain, v_args);
+    while (isRunning(_chain.get())) {
+      CB_SUSPEND(context, 0);
+    }
+#else
     auto node = CBNode::make();
     LOG(DEBUG) << "Shader compiler about to be scheduled.";
     node->schedule(_chain, v_args);
@@ -240,6 +260,8 @@ struct ShaderCompiler : public IShaderCompiler {
       throw CBException(
           "Shader compiler failed to compile, check errors above.");
     }
+#endif
+
     if (_chain->finishedOutput.valueType != CBType::Bytes) {
       throw CBException("Shader compiler failed to compile, no output.");
     }

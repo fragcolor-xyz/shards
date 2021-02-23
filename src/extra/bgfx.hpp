@@ -309,7 +309,8 @@ struct IShaderCompiler {
   virtual CBVar compile(std::string_view varyings, //
                         std::string_view code,     //
                         std::string_view type,     //
-                        std::string_view defines   //
+                        std::string_view defines,  //
+                        CBContext *context         //
                         ) = 0;
 };
 extern std::unique_ptr<IShaderCompiler> makeShaderCompiler();
