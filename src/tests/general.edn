@@ -350,6 +350,12 @@
             (Pop "myseq2flat")
             (Log)) 6)
 
+  {"a" 10
+   "b" 22
+   "d" 50}
+   (Flatten)
+   (Assert.Is ["a" 10 "b" 22 "d" 50] true)
+
    2 (Push "unsortedList")
    4 (Push "unsortedList")
    1 (Push "unsortedList")
