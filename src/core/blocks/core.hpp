@@ -825,9 +825,10 @@ struct Ref : public SetBase {
   }
 
   void cleanup() {
-    // this is a special case
-    // Ref will reference previous block result..
-    // And so we are almost sure the memory will be junk after this..
+  // this is a special case
+  // Ref will reference previous block result..
+  // And so we are almost sure the memory will be junk after this..
+#ifndef NDEBUG // sometimes this is off but still good for debugging!
     // so if we detect refcount > 1, we except signaling a dangling reference
     if (_target) {
       if (_target->refcount > 1 && !_isTable) {
@@ -835,6 +836,7 @@ struct Ref : public SetBase {
         // at some point TODO detect those too
         throw CBException("Ref - detected a dangling reference: " + _name);
       }
+#endif
       memset(_target, 0x0, sizeof(CBVar));
       _target = nullptr;
     }
