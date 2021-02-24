@@ -825,12 +825,12 @@ struct Ref : public SetBase {
   }
 
   void cleanup() {
-  // this is a special case
-  // Ref will reference previous block result..
-  // And so we are almost sure the memory will be junk after this..
-#ifndef NDEBUG // sometimes this is off but still good for debugging!
+    // this is a special case
+    // Ref will reference previous block result..
+    // And so we are almost sure the memory will be junk after this..
     // so if we detect refcount > 1, we except signaling a dangling reference
     if (_target) {
+#ifndef NDEBUG // sometimes this is off but still good for debugging!
       if (_target->refcount > 1 && !_isTable) {
         // in the case of table multiple refs might happen,
         // at some point TODO detect those too
