@@ -560,7 +560,12 @@ struct ChainFileWatcher {
 
   ~ChainFileWatcher() {
     running = false;
+// join is bad under emscripten, will lock the main thread
+#ifndef __EMSCRIPTEN__
     worker.join();
+#elif defined(__EMSCRIPTEN_PTHREADS__)
+    worker.detach();
+#endif
   }
 };
 
