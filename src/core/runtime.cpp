@@ -806,6 +806,11 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
                  receiverType.seqTypes.len == 0) {
         return false;
       }
+      // if a fixed size is requested make sure it fits at least enough elements
+      if (receiverType.fixedSize != 0 &&
+          inputType.fixedSize < receiverType.fixedSize) {
+        return false;
+      }
     }
     break;
   }

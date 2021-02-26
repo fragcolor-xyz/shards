@@ -89,6 +89,12 @@ struct Type {
     return res;
   }
 
+  static Type SeqOf(CBTypesInfo types, uint32_t fixedLen) {
+    Type res;
+    res._type = {CBType::Seq, {.seqTypes = types}, .fixedSize = fixedLen};
+    return res;
+  }
+
   static Type VariableOf(CBTypesInfo types) {
     Type res;
     res._type = {CBType::ContextVar, {.contextVarTypes = types}};

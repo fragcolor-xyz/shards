@@ -1251,7 +1251,7 @@ struct Model : public BaseConsumer {
        {CoreInfo::BoolType}},
       {"CullMode",
        CBCCSTR("Triangles facing the specified direction are not drawn."),
-       {ModelHandle::CullModeType}}};
+       {Enums::CullModeType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1262,7 +1262,7 @@ struct Model : public BaseConsumer {
   size_t _elemSize{0};
   bool _dynamic{false};
   ModelHandle *_output{nullptr};
-  ModelHandle::CullMode _cullMode{ModelHandle::CullMode::Back};
+  Enums::CullMode _cullMode{Enums::CullMode::Back};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1273,7 +1273,7 @@ struct Model : public BaseConsumer {
       _dynamic = value.payload.boolValue;
       break;
     case 2:
-      _cullMode = ModelHandle::CullMode(value.payload.enumValue);
+      _cullMode = Enums::CullMode(value.payload.enumValue);
       break;
     }
   }
@@ -1285,7 +1285,7 @@ struct Model : public BaseConsumer {
     case 1:
       return Var(_dynamic);
     case 2:
-      return Var::Enum(_cullMode, CoreCC, ModelHandle::CullModeCC);
+      return Var::Enum(_cullMode, CoreCC, Enums::CullModeCC);
     default:
       return Var::Empty;
     }
@@ -1920,7 +1920,13 @@ struct Draw : public BaseConsumer {
       {"Model",
        CBCCSTR("The model to draw. If no model is specified a full screen quad "
                "will be used."),
-       {ModelHandle::ObjType, ModelHandle::VarType, CoreInfo::NoneType}}};
+       {ModelHandle::ObjType, ModelHandle::VarType, CoreInfo::NoneType}},
+      {"Blend",
+       CBCCSTR(
+           "The blend state table to describe and enable blending. If it's a "
+           "single table the state will be assigned to both RGB and Alpha, if "
+           "2 tables are specified, the first will be RGB, the second Alpha."),
+       {CoreInfo::NoneType, Enums::BlendTable, Enums::BlendTableSeq}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1935,6 +1941,8 @@ struct Draw : public BaseConsumer {
     case 2:
       _model = value;
       break;
+    case 3:
+      _blend = value;
     default:
       break;
     }
@@ -1948,6 +1956,8 @@ struct Draw : public BaseConsumer {
       return _textures;
     case 2:
       return _model;
+    case 3:
+      return _blend;
     default:
       return Var::Empty;
     }
@@ -1956,6 +1966,7 @@ struct Draw : public BaseConsumer {
   ParamVar _shader{};
   ParamVar _textures{};
   ParamVar _model{};
+  OwnedVar _blend{};
   CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 5> _requiring;
 
@@ -2121,6 +2132,32 @@ struct Draw : public BaseConsumer {
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
+    const auto getBlends = [&](CBVar &blend) {
+      uint64_t s = 0;
+      uint64_t d = 0;
+      uint64_t o = 0;
+      ForEach(blend.payload.tableValue, [&](auto key, auto &val) {
+        if (key[0] == 'S')
+          s = Enums::BlendToBgfx(val.payload.enumValue);
+        else if (key[0] == 'D')
+          d = Enums::BlendToBgfx(val.payload.enumValue);
+        else if (key[0] == 'O')
+          o = Enums::BlendOpToBgfx(val.payload.enumValue);
+      });
+      return std::make_tuple(s, d, o);
+    };
+
+    if (_blend.valueType == Table) {
+      const auto [s, d, o] = getBlends(_blend);
+      state |= BGFX_STATE_BLEND_FUNC(s, d) | BGFX_STATE_BLEND_EQUATION(o);
+    } else if (_blend.valueType == Seq) {
+      assert(_blend.payload.seqValue.len == 2);
+      const auto [sc, dc, oc] = getBlends(_blend.payload.seqValue.elements[0]);
+      const auto [sa, da, oa] = getBlends(_blend.payload.seqValue.elements[1]);
+      state |= BGFX_STATE_BLEND_FUNC_SEPARATE(sc, dc, sa, da) |
+               BGFX_STATE_BLEND_EQUATION_SEPARATE(oc, oa);
+    }
+
     if (model) {
       std::visit(
           [](auto &m) {
@@ -2132,7 +2169,7 @@ struct Draw : public BaseConsumer {
       state |= BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS;
 
       switch (model->cullMode) {
-      case ModelHandle::CullMode::Front: {
+      case Enums::CullMode::Front: {
         if constexpr (CurrentRenderer == Renderer::OpenGL) {
           // workaround for flipped Y render to textures
           if (currentView.id > 0) {
@@ -2144,7 +2181,7 @@ struct Draw : public BaseConsumer {
           state |= BGFX_STATE_CULL_CCW;
         }
       } break;
-      case ModelHandle::CullMode::Back: {
+      case Enums::CullMode::Back: {
         if constexpr (CurrentRenderer == Renderer::OpenGL) {
           // workaround for flipped Y render to textures
           if (currentView.id > 0) {

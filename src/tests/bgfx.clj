@@ -87,7 +87,7 @@
       (Physics.KinematicBody .ground-pshape (Float3 0.0 -5.0 0.0))
       (Physics.DynamicBody .ball-pshape :Name "rb1")
       (Once (-> .rb1 (Log)))
-      (GFX.Draw :Shader .shader :Model .cube)
+      (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :PosX 0 :PosY 0 :Contents
                   (->
@@ -123,7 +123,9 @@
                                        ; this model is not really idea, vertex layout is not correct
                                        identity (GFX.Draw :Shader .bump-shader
                                                           :Textures .bump-textures
-                                                          :Model .cube)))
+                                                          :Model .cube
+                                                          :Blend [{"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}
+                                                                  {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}])))
                    (GUI.Image (Float2 1.0 1.0))
 
                    (GUI.SameLine)
