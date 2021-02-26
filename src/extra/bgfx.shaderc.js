@@ -92,8 +92,8 @@ mergeInto(LibraryManager.library, {
           operation: fetch(prefix + "shaders/lib/gltf/vs_entry.h")
         });
         fetches.push({
-          filename: "/shaders/lib/gltf/varying.h",
-          operation: fetch(prefix + "shaders/lib/gltf/varying.h")
+          filename: "/shaders/lib/gltf/varying.txt",
+          operation: fetch(prefix + "shaders/lib/gltf/varying.txt")
         });
 
         for (let i = 0; i < fetches.length; i++) {
