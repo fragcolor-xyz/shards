@@ -1760,26 +1760,29 @@ BUILTIN("import") {
 
 BUILTIN("getenv") {
   CHECK_ARGS_IS(1);
-#ifndef __EMSCRIPTEN__
   ARG(malString, value);
+#ifndef __EMSCRIPTEN__
   auto envs = boost::this_process::environment();
   auto env_value = envs[value->value()].to_string();
   return mal::string(env_value);
 #else
-  return mal::nilValue();
+  return mal::string(getenv(value->ref().c_str()));
 #endif
 }
 
 BUILTIN("setenv") {
   CHECK_ARGS_IS(2);
-#ifndef __EMSCRIPTEN__
   ARG(malString, key);
   ARG(malString, value);
+#ifndef __EMSCRIPTEN__
   auto envs = boost::this_process::environment();
   envs[key->value()] = value->value();
   return mal::trueValue();
 #else
-  return mal::falseValue();
+  if (!setenv(key->ref().c_str(), value->ref().c_str(), 1))
+    return mal::trueValue();
+  else
+    return mal::falseValue();
 #endif
 }
 
