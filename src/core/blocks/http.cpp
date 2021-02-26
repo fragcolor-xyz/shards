@@ -64,18 +64,7 @@ namespace Http {
 #ifdef __EMSCRIPTEN__
 // those blocks for non emscripten platforms are implemented in Rust
 
-template <const string_view &METHOD> struct GetLike {
-  static inline Types InputTypes{
-      {CoreInfo::NoneType, CoreInfo::StringTableType}};
-  static CBTypesInfo inputTypes() { return InputTypes; }
-  CBTypesInfo outputTypes() {
-    if (asBytes) {
-      return CoreInfo::BytesType;
-    } else {
-      return CoreInfo::StringType;
-    }
-  }
-
+struct Base {
   static inline Parameters params{
       {"URL",
        CBCCSTR("The url to request to"),
@@ -92,14 +81,13 @@ template <const string_view &METHOD> struct GetLike {
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
-  int state = 0;
-  std::string buffer;
-  std::string vars;
-  std::vector<const char *> headersCArray;
-  int timeout{10};
-  bool asBytes{false};
-  ParamVar url{Var("")};
-  ParamVar headers{};
+  CBTypesInfo outputTypes() {
+    if (asBytes) {
+      return CoreInfo::BytesType;
+    } else {
+      return CoreInfo::StringType;
+    }
+  }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -135,20 +123,6 @@ template <const string_view &METHOD> struct GetLike {
     }
   }
 
-  static void fetchSucceeded(emscripten_fetch_t *fetch) {
-    auto self = reinterpret_cast<GetLike *>(fetch->userData);
-    self->buffer.assign(fetch->data, fetch->numBytes);
-    self->state = 1;
-    emscripten_fetch_close(fetch);
-  }
-
-  static void fetchFailed(emscripten_fetch_t *fetch) {
-    auto self = reinterpret_cast<GetLike *>(fetch->userData);
-    self->buffer.assign(fetch->statusText);
-    self->state = -1;
-    emscripten_fetch_close(fetch); // Also free data on failure.
-  }
-
   void warmup(CBContext *context) {
     url.warmup(context);
     headers.warmup(context);
@@ -158,6 +132,35 @@ template <const string_view &METHOD> struct GetLike {
     url.cleanup();
     headers.cleanup();
   }
+
+  static void fetchSucceeded(emscripten_fetch_t *fetch) {
+    auto self = reinterpret_cast<Base *>(fetch->userData);
+    self->buffer.assign(fetch->data, fetch->numBytes);
+    self->state = 1;
+    emscripten_fetch_close(fetch);
+  }
+
+  static void fetchFailed(emscripten_fetch_t *fetch) {
+    auto self = reinterpret_cast<Base *>(fetch->userData);
+    self->buffer.assign(fetch->statusText);
+    self->state = -1;
+    emscripten_fetch_close(fetch); // Also free data on failure.
+  }
+
+  bool asBytes{false};
+  int state{0};
+  int timeout{10};
+  std::string buffer;
+  std::string vars;
+  std::vector<const char *> headersCArray;
+  ParamVar url{Var("")};
+  ParamVar headers{};
+};
+
+template <const string_view &METHOD> struct GetLike : public Base {
+  static inline Types InputTypes{
+      {CoreInfo::NoneType, CoreInfo::StringTableType}};
+  static CBTypesInfo inputTypes() { return InputTypes; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     emscripten_fetch_attr_t attr;
@@ -178,7 +181,6 @@ template <const string_view &METHOD> struct GetLike {
         vars.append("=");
         vars.append(url_encode(value.payload.stringValue));
         vars.append("&");
-        return true;
       });
       vars.resize(vars.size() - 1);
     }
@@ -190,9 +192,9 @@ template <const string_view &METHOD> struct GetLike {
       ForEach(htab, [&](auto key, auto &value) {
         headersCArray.emplace_back(key);
         headersCArray.emplace_back(value.payload.stringValue);
-        return true;
       });
     }
+    headersCArray.emplace_back(nullptr);
     attr.requestHeaders = headersCArray.data();
 
     state = 0;
@@ -220,6 +222,103 @@ constexpr string_view GET = "GET";
 using Get = GetLike<GET>;
 constexpr string_view HEAD = "HEAD";
 using Head = GetLike<HEAD>;
+
+template <const string_view &METHOD> struct PostLike : public Base {
+  static inline Types InputTypes{{CoreInfo::NoneType, CoreInfo::StringTableType,
+                                  CoreInfo::BytesType, CoreInfo::StringType}};
+  static CBTypesInfo inputTypes() { return InputTypes; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    emscripten_fetch_attr_t attr;
+    emscripten_fetch_attr_init(&attr);
+    strcpy(attr.requestMethod, METHOD.data());
+    attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+    attr.onsuccess = fetchSucceeded;
+    attr.onerror = fetchFailed;
+    attr.userData = this;
+    attr.timeoutMSecs = timeout * 1000;
+
+    // add custom headers
+    bool hasContentType = false;
+    headersCArray.clear();
+    if (headers.get().valueType == Table) {
+      auto htab = headers.get().payload.tableValue;
+      ForEach(htab, [&](auto key, auto &value) {
+        std::string data(key);
+        std::transform(data.begin(), data.end(), data.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        if (data == "content-type") {
+          hasContentType = true;
+        }
+        headersCArray.emplace_back(key);
+        headersCArray.emplace_back(value.payload.stringValue);
+      });
+    }
+
+    if (input.valueType == CBType::String) {
+      if (!hasContentType) {
+        headersCArray.emplace_back("content-type");
+        headersCArray.emplace_back("application/json");
+      }
+      attr.overriddenMimeType = "application/json";
+      attr.requestData = input.payload.stringValue;
+      attr.requestDataSize = CBSTRLEN(input);
+    } else if (input.valueType == CBType::Bytes) {
+      if (!hasContentType) {
+        headersCArray.emplace_back("content-type");
+        headersCArray.emplace_back("application/octet-stream");
+      }
+      attr.requestData = (const char *)input.payload.bytesValue;
+      attr.requestDataSize = input.payload.bytesSize;
+    } else if (input.valueType == CBType::Table) {
+      if (!hasContentType) {
+        headersCArray.emplace_back("content-type");
+        headersCArray.emplace_back("application/x-www-form-urlencoded");
+      }
+      vars.clear();
+      ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+        vars.append(url_encode(key));
+        vars.append("=");
+        vars.append(url_encode(value.payload.stringValue));
+        vars.append("&");
+      });
+      vars.resize(vars.size() - 1);
+      attr.requestData = vars.c_str();
+      attr.requestDataSize = vars.size();
+    }
+
+    headersCArray.emplace_back(nullptr);
+    attr.requestHeaders = headersCArray.data();
+
+    state = 0;
+    buffer.clear();
+    emscripten_fetch(&attr, url.get().payload.stringValue);
+
+    while (state == 0) {
+      CB_SUSPEND(context, 0.0);
+    }
+
+    if (state == 1) {
+      if (asBytes) {
+        return Var((uint8_t *)buffer.data(), buffer.size());
+      } else {
+        return Var(buffer);
+      }
+    } else {
+      LOG(ERROR) << "Http request failed with status: " << buffer;
+      throw ActivationError("Http request failed");
+    }
+  }
+};
+
+constexpr string_view POST = "POST";
+using Post = PostLike<POST>;
+constexpr string_view PUT = "PUT";
+using Put = PostLike<PUT>;
+constexpr string_view PATCH = "PATCH";
+using Patch = PostLike<PATCH>;
+constexpr string_view DELETE = "DELETE";
+using Delete = PostLike<DELETE>;
 
 #else
 
@@ -669,6 +768,10 @@ void registerBlocks() {
 #ifdef __EMSCRIPTEN__
   REGISTER_CBLOCK("Http.Get", Get);
   REGISTER_CBLOCK("Http.Head", Head);
+  REGISTER_CBLOCK("Http.Post", Post);
+  REGISTER_CBLOCK("Http.Put", Put);
+  REGISTER_CBLOCK("Http.Patch", Patch);
+  REGISTER_CBLOCK("Http.Delete", Delete);
 #else
   REGISTER_CBLOCK("Http.Server", Server);
   REGISTER_CBLOCK("Http.Read", Read);

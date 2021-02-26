@@ -14,6 +14,11 @@
 #include <vector>
 
 namespace chainblocks {
+// CBVar strings can have an optional len field populated
+#define CBSTRLEN(_v_)                                                          \
+  (_v_.payload.stringLen > 0 ? _v_.payload.stringLen                           \
+                             : strlen(_v_.payload.stringValue))
+
 // compile time CRC32
 constexpr uint32_t crc32(std::string_view str) {
   constexpr uint32_t crc_table[] = {

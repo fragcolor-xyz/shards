@@ -310,6 +310,16 @@ struct ToFloat : public ShiftBase {
   }
 };
 
+struct ToInt {
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    cpp_int bi = from_var(input);
+    return Var(bi.convert_to<int64_t>());
+  }
+};
+
 struct FromFloat : public ShiftBase {
   std::vector<uint8_t> _buffer;
 
@@ -377,6 +387,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.Mod", Mod);
   REGISTER_CBLOCK("BigInt.Shift", Shift);
   REGISTER_CBLOCK("BigInt.ToFloat", ToFloat);
+  REGISTER_CBLOCK("BigInt.ToInt", ToInt);
   REGISTER_CBLOCK("BigInt.FromFloat", FromFloat);
   REGISTER_CBLOCK("BigInt.ToString", ToString);
   REGISTER_CBLOCK("BigInt.Is", Is);
