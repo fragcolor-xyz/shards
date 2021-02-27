@@ -842,6 +842,7 @@ template <class T> struct BaseLoader : public BaseRunner {
 
 struct ChainLoader : public BaseLoader<ChainLoader> {
   BlocksVar _onReloadBlocks{};
+  BlocksVar _onErrorBlocks{};
 
   static inline Parameters params{
       {"Provider",
@@ -859,6 +860,10 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       {"OnReload",
        CBCCSTR("Blocks to execute when the chain is reloaded, the input of "
                "this flow will be the reloaded chain."),
+       {CoreInfo::BlocksOrNone}},
+      {"OnError",
+       CBCCSTR("Blocks to execute when a chain reload failed, the input of "
+               "this flow will be the error message."),
        {CoreInfo::BlocksOrNone}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -881,6 +886,9 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
     case 2: {
       _onReloadBlocks = value;
     } break;
+    case 3: {
+      _onErrorBlocks = value;
+    } break;
     default:
       break;
     }
@@ -898,6 +906,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       return BaseLoader<ChainLoader>::getParam(index);
     case 2:
       return _onReloadBlocks;
+    case 3:
+      return _onErrorBlocks;
     default: {
       return Var::Empty;
     }
@@ -906,12 +916,14 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _onReloadBlocks.compose(data);
+    _onErrorBlocks.compose(data);
     return BaseLoader<ChainLoader>::compose(data);
   }
 
   void cleanup() {
     BaseLoader<ChainLoader>::cleanup();
     _onReloadBlocks.cleanup();
+    _onErrorBlocks.cleanup();
     if (_provider)
       _provider->reset(_provider);
   }
@@ -919,6 +931,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   void warmup(CBContext *context) {
     BaseLoader<ChainLoader>::warmup(context);
     _onReloadBlocks.warmup(context);
+    _onErrorBlocks.warmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -939,6 +952,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       if (unlikely(update.error != nullptr)) {
         LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "
                    << update.error;
+        CBVar output{};
+        _onErrorBlocks.activate(context, Var(update.error), output);
       } else {
         if (chain) {
           // stop and release previous version
