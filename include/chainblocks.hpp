@@ -91,7 +91,7 @@ struct Type {
 
   static Type SeqOf(CBTypesInfo types, uint32_t fixedLen) {
     Type res;
-    res._type = {CBType::Seq, {.seqTypes = types}, .fixedSize = fixedLen};
+    res._type = {CBType::Seq, {.seqTypes = types}, fixedLen};
     return res;
   }
 

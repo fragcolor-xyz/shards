@@ -201,6 +201,8 @@ endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # aggressive inlining
   if(NOT EMSCRIPTEN)
+    # this works with emscripten too but makes the final binary much bigger
+    # for now let's keep it disabled
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
       set(INLINING_FLAGS -mllvm -inline-threshold=100000)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
