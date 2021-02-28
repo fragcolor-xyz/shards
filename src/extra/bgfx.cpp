@@ -349,7 +349,7 @@ struct BaseWindow : public Base {
   void *_sysWnd = nullptr;
 #endif
 
-  enum class FullscreenMode { Windowed, Exclusive, Borderless };
+  enum class FullscreenMode { Disabled, Exclusive, Borderless };
   static constexpr uint32_t FullscreenModeCC = 'gfxF';
   static inline EnumInfo<FullscreenMode> FullscreenModeEnumInfo{
       "FullscreenMode", CoreCC, FullscreenModeCC};
@@ -389,7 +389,7 @@ struct BaseWindow : public Base {
   int _wwidth = 1024;
   int _wheight = 768;
   bool _debug = false;
-  FullscreenMode _fsMode{FullscreenMode::Windowed};
+  FullscreenMode _fsMode{FullscreenMode::Disabled};
   SDL_Window *_window = nullptr;
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
@@ -700,21 +700,35 @@ struct MainWindow : public BaseWindow {
           SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
                            SDL_WINDOWPOS_CENTERED, _width, _height, flags);
 
+      if (_fsMode != FullscreenMode::Disabled) {
+        const auto state = SDL_SetWindowFullscreen(
+            _window, _fsMode == FullscreenMode::Exclusive
+                         ? SDL_WINDOW_FULLSCREEN
+                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
+        if (state != 0)
+          throw ActivationError("Failed to enter fullscreen mode");
+
+        // get the window size again to ensure it's correct
+        SDL_GetWindowSize(_window, &_width, &_height);
+      }
+
 #ifdef __APPLE__
-      // tricky cos retina..
-      // first we must poke metal
       _metalView = SDL_Metal_CreateView(_window);
-      // now we can find out the scaling
-      int real_w, real_h;
-      SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
-      _windowScalingW = float(real_w) / float(_width);
-      _windowScalingH = float(real_h) / float(_height);
-      // fix the scaling now if needed
-      if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
-        SDL_Metal_DestroyView(_metalView);
-        SDL_SetWindowSize(_window, int(float(_width) / _windowScalingW),
-                          int(float(_height) / _windowScalingH));
-        _metalView = SDL_Metal_CreateView(_window);
+      if (_fsMode == FullscreenMode::Disabled) {
+        // seems to work only when windowed...
+        // tricky cos retina..
+        // find out the scaling
+        int real_w, real_h;
+        SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
+        _windowScalingW = float(real_w) / float(_width);
+        _windowScalingH = float(real_h) / float(_height);
+        // fix the scaling now if needed
+        if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
+          SDL_Metal_DestroyView(_metalView);
+          SDL_SetWindowSize(_window, int(float(_width) / _windowScalingW),
+                            int(float(_height) / _windowScalingH));
+          _metalView = SDL_Metal_CreateView(_window);
+        }
       }
       _sysWnd = SDL_Metal_GetLayer(_metalView);
 #elif defined(_WIN32) || defined(__linux__)
@@ -722,18 +736,6 @@ struct MainWindow : public BaseWindow {
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
-    }
-
-    if (_fsMode != FullscreenMode::Windowed) {
-      const auto state =
-          SDL_SetWindowFullscreen(_window, _fsMode == FullscreenMode::Exclusive
-                                               ? SDL_WINDOW_FULLSCREEN
-                                               : SDL_WINDOW_FULLSCREEN_DESKTOP);
-      if (state != 0)
-        throw ActivationError("Failed to enter fullscreen mode");
-
-      // get the window size again to ensure it's correct
-      SDL_GetWindowSize(_window, &_width, &_height);
     }
 
     _nativeWnd->valueType = Object;
