@@ -386,6 +386,8 @@ struct BaseWindow : public Base {
   std::string _title;
   int _width = 1024;
   int _height = 768;
+  int _wwidth = 1024;
+  int _wheight = 768;
   bool _debug = false;
   FullscreenMode _fsMode{FullscreenMode::Windowed};
   SDL_Window *_window = nullptr;
@@ -823,6 +825,11 @@ struct MainWindow : public BaseWindow {
         throw ActivationError("Failed to enter fullscreen mode");
     }
 
+    // get the window size again to ensure it's correct
+    SDL_GetWindowSize(_window, &_wwidth, &_wheight);
+    _windowScalingW *= float(_width) / float(_wwidth);
+    _windowScalingH *= float(_height) / float(_wheight);
+
     // init blocks after we initialize the system
     _blocks.warmup(context);
   }
@@ -881,12 +888,13 @@ struct MainWindow : public BaseWindow {
       } else if (event.type == SDL_TEXTINPUT) {
         io.AddInputCharactersUTF8(event.text.text);
       } else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-        auto key = event.key.keysym.scancode;
+        const auto key = event.key.keysym.scancode;
+        const auto modState = SDL_GetModState();
         io.KeysDown[key] = event.type == SDL_KEYDOWN;
-        io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
-        io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
-        io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
-        io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+        io.KeyShift = ((modState & KMOD_SHIFT) != 0);
+        io.KeyCtrl = ((modState & KMOD_CTRL) != 0);
+        io.KeyAlt = ((modState & KMOD_ALT) != 0);
+        io.KeySuper = ((modState & KMOD_GUI) != 0);
       } else if (event.type == SDL_QUIT) {
         // stop the current chain on close
         throw ActivationError("Window closed, aborting chain.");
@@ -897,6 +905,9 @@ struct MainWindow : public BaseWindow {
         if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
           // stop the current chain on close
           throw ActivationError("Window closed, aborting chain.");
+        } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+          // get the window size again to ensure it's correct
+          SDL_GetWindowSize(_window, &_wwidth, &_wheight);
         }
       }
     }

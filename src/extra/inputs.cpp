@@ -80,7 +80,8 @@ struct MouseDelta : public Base {
         return Var(float(event.motion.xrel) / float(_width),
                    float(event.motion.yrel) / float(_height));
       } else if (event.type == SDL_WINDOWEVENT &&
-                 event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                 event.window.event == SDL_WINDOWEVENT_RESIZED &&
+                 event.window.windowID == _windowId) {
         const auto window =
             reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
         SDL_GetWindowSize(window, &_width, &_height);
