@@ -6,11 +6,6 @@
 mergeInto(LibraryManager.library, {
   emSetupShaderCompiler: function () {
     const ensureShaderCompilerDeps = async function () {
-      var prefix = "";
-      if (typeof importScripts !== 'function') {
-        prefix = window.location.pathname + "/";
-      }
-
       // load the JS part if needed
       if (globalThis.shaderc === undefined) {
         if (typeof importScripts === 'function') {
@@ -20,7 +15,7 @@ mergeInto(LibraryManager.library, {
         } else {
           var shadercLoaded = new Promise((resolve, _reject) => {
             const shaderc = document.createElement("script");
-            shaderc.src = prefix + "shaders/shaderc.js";
+            shaderc.src = "shaders/shaderc.js";
             shaderc.async = true;
             shaderc.onload = async function () {
               resolve();
@@ -33,7 +28,7 @@ mergeInto(LibraryManager.library, {
 
       // also cache and load the wasm binary
       if (globalThis.shaderc_binary === undefined) {
-        const response = await fetch(prefix + "shaders/shaderc.wasm");
+        const response = await fetch("shaders/shaderc.wasm");
         const buffer = await response.arrayBuffer();
         globalThis.shaderc_binary = new Uint8Array(buffer);
       }
@@ -45,11 +40,6 @@ mergeInto(LibraryManager.library, {
 
     if (globalThis.chainblocks.compileShader === undefined) {
       globalThis.chainblocks.compileShader = async function (params) {
-        var prefix = "";
-        if (typeof importScripts !== 'function') {
-          prefix = window.location.pathname + "/";
-        }
-
         var output = {
           stdout: "",
           stderr: ""
@@ -77,23 +67,23 @@ mergeInto(LibraryManager.library, {
         var fetches = [];
         fetches.push({
           filename: "/shaders/include/bgfx_shader.h",
-          operation: fetch(prefix + "shaders/include/bgfx_shader.h")
+          operation: fetch("shaders/include/bgfx_shader.h")
         });
         fetches.push({
           filename: "/shaders/include/shaderlib.h",
-          operation: fetch(prefix + "shaders/include/shaderlib.h")
+          operation: fetch("shaders/include/shaderlib.h")
         });
         fetches.push({
           filename: "/shaders/lib/gltf/ps_entry.h",
-          operation: fetch(prefix + "shaders/lib/gltf/ps_entry.h")
+          operation: fetch("shaders/lib/gltf/ps_entry.h")
         });
         fetches.push({
           filename: "/shaders/lib/gltf/vs_entry.h",
-          operation: fetch(prefix + "shaders/lib/gltf/vs_entry.h")
+          operation: fetch("shaders/lib/gltf/vs_entry.h")
         });
         fetches.push({
           filename: "/shaders/lib/gltf/varying.txt",
-          operation: fetch(prefix + "shaders/lib/gltf/varying.txt")
+          operation: fetch("shaders/lib/gltf/varying.txt")
         });
 
         for (let i = 0; i < fetches.length; i++) {
