@@ -686,6 +686,7 @@ struct MainWindow : public BaseWindow {
         _nativeWnd->payload.objectTypeId == BgfxNativeWindowCC) {
       _sysWnd = decltype(_sysWnd)(_nativeWnd->payload.objectValue);
       // TODO SDL_CreateWindowFrom to enable inputs etc...
+      // Urgent TODO if iOS is needed
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
@@ -721,6 +722,18 @@ struct MainWindow : public BaseWindow {
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
+    }
+
+    if (_fsMode != FullscreenMode::Windowed) {
+      const auto state =
+          SDL_SetWindowFullscreen(_window, _fsMode == FullscreenMode::Exclusive
+                                               ? SDL_WINDOW_FULLSCREEN
+                                               : SDL_WINDOW_FULLSCREEN_DESKTOP);
+      if (state != 0)
+        throw ActivationError("Failed to enter fullscreen mode");
+
+      // get the window size again to ensure it's correct
+      SDL_GetWindowSize(_window, &_width, &_height);
     }
 
     _nativeWnd->valueType = Object;
@@ -816,20 +829,6 @@ struct MainWindow : public BaseWindow {
     auto viewId = _bgfxContext.nextViewId();
     assert(viewId == 0); // always 0 in MainWindow
 
-    if (_fsMode != FullscreenMode::Windowed) {
-      const auto state =
-          SDL_SetWindowFullscreen(_window, _fsMode == FullscreenMode::Exclusive
-                                               ? SDL_WINDOW_FULLSCREEN
-                                               : SDL_WINDOW_FULLSCREEN_DESKTOP);
-      if (state != 0)
-        throw ActivationError("Failed to enter fullscreen mode");
-    }
-
-    // get the window size again to ensure it's correct
-    SDL_GetWindowSize(_window, &_wwidth, &_wheight);
-    _windowScalingW *= float(_width) / float(_wwidth);
-    _windowScalingH *= float(_height) / float(_wheight);
-
     // init blocks after we initialize the system
     _blocks.warmup(context);
   }
@@ -905,10 +904,14 @@ struct MainWindow : public BaseWindow {
         if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
           // stop the current chain on close
           throw ActivationError("Window closed, aborting chain.");
-        } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+        }
+// TODO support window resizing
+#if 0
+        else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           // get the window size again to ensure it's correct
           SDL_GetWindowSize(_window, &_wwidth, &_wheight);
         }
+#endif
       }
     }
 
