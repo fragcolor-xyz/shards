@@ -349,6 +349,12 @@ struct BaseWindow : public Base {
   void *_sysWnd = nullptr;
 #endif
 
+  enum class FullscreenMode { Windowed, Exclusive, Borderless };
+  static constexpr uint32_t FullscreenModeCC = 'gfxF';
+  static inline EnumInfo<FullscreenMode> FullscreenModeEnumInfo{
+      "FullscreenMode", CoreCC, FullscreenModeCC};
+  static inline Type FullscreenModeType = Type::Enum(CoreCC, FullscreenModeCC);
+
   static inline Parameters params{
       {"Title",
        CBCCSTR("The title of the window to create."),
@@ -362,6 +368,10 @@ struct BaseWindow : public Base {
       {"Contents",
        CBCCSTR("The contents of this window."),
        {CoreInfo::BlocksOrNone}},
+      {"Fullscreen",
+       CBCCSTR(
+           "If the window should use fullscreen mode and if so which mode."),
+       {FullscreenModeType}},
       {"Debug",
        CBCCSTR("If the device backing the window should be created with "
                "debug layers on."),
@@ -377,6 +387,7 @@ struct BaseWindow : public Base {
   int _width = 1024;
   int _height = 768;
   bool _debug = false;
+  FullscreenMode _fsMode{FullscreenMode::Windowed};
   SDL_Window *_window = nullptr;
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
@@ -399,6 +410,9 @@ struct BaseWindow : public Base {
       _blocks = value;
       break;
     case 4:
+      _fsMode = FullscreenMode(value.payload.enumValue);
+      break;
+    case 5:
       _debug = value.payload.boolValue;
       break;
     default:
@@ -417,6 +431,8 @@ struct BaseWindow : public Base {
     case 3:
       return _blocks;
     case 4:
+      return Var::Enum(_fsMode, CoreCC, FullscreenModeCC);
+    case 5:
       return Var(_debug);
     default:
       return Var::Empty;
@@ -675,7 +691,6 @@ struct MainWindow : public BaseWindow {
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
 #endif
-      // TODO: SDL_WINDOW_ALLOW_HIGHDPI
       // TODO: SDL_WINDOW_RESIZABLE
       // TODO: SDL_WINDOW_BORDERLESS
       _window =
@@ -798,6 +813,15 @@ struct MainWindow : public BaseWindow {
 
     auto viewId = _bgfxContext.nextViewId();
     assert(viewId == 0); // always 0 in MainWindow
+
+    if (_fsMode != FullscreenMode::Windowed) {
+      const auto state =
+          SDL_SetWindowFullscreen(_window, _fsMode == FullscreenMode::Exclusive
+                                               ? SDL_WINDOW_FULLSCREEN
+                                               : SDL_WINDOW_FULLSCREEN_DESKTOP);
+      if (state != 0)
+        throw ActivationError("Failed to enter fullscreen mode");
+    }
 
     // init blocks after we initialize the system
     _blocks.warmup(context);
