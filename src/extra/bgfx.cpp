@@ -384,8 +384,10 @@ struct BaseWindow : public Base {
   static CBParametersInfo parameters() { return params; }
 
   std::string _title;
-  int _width = 1024;
-  int _height = 768;
+  int _pwidth = 1024;
+  int _pheight = 768;
+  int _rwidth = 1024;
+  int _rheight = 768;
   bool _debug = false;
   FullscreenMode _fsMode{FullscreenMode::Disabled};
   SDL_Window *_window = nullptr;
@@ -401,10 +403,10 @@ struct BaseWindow : public Base {
       _title = value.payload.stringValue;
       break;
     case 1:
-      _width = int(value.payload.intValue);
+      _pwidth = int(value.payload.intValue);
       break;
     case 2:
-      _height = int(value.payload.intValue);
+      _pheight = int(value.payload.intValue);
       break;
     case 3:
       _blocks = value;
@@ -425,9 +427,9 @@ struct BaseWindow : public Base {
     case 0:
       return Var(_title);
     case 1:
-      return Var(_width);
+      return Var(_pwidth);
     case 2:
-      return Var(_height);
+      return Var(_pheight);
     case 3:
       return _blocks;
     case 4:
@@ -662,6 +664,10 @@ struct MainWindow : public BaseWindow {
   constexpr static uint32_t BgfxFlags = BGFX_RESET_VSYNC;
 
   void warmup(CBContext *context) {
+    // do not touch parameter values
+    _rwidth = _pwidth;
+    _rheight = _pheight;
+
     auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     if (initErr != 0) {
       LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
@@ -698,7 +704,7 @@ struct MainWindow : public BaseWindow {
       // TODO: SDL_WINDOW_BORDERLESS
       _window =
           SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                           SDL_WINDOWPOS_CENTERED, _width, _height, flags);
+                           SDL_WINDOWPOS_CENTERED, _rwidth, _rheight, flags);
 
       if (_fsMode != FullscreenMode::Disabled) {
         const auto state = SDL_SetWindowFullscreen(
@@ -709,10 +715,10 @@ struct MainWindow : public BaseWindow {
           throw ActivationError("Failed to enter fullscreen mode");
 
         // get the window size again to ensure it's correct
-        SDL_GetWindowSize(_window, &_width, &_height);
+        SDL_GetWindowSize(_window, &_rwidth, &_rheight);
 
-        LOG(DEBUG) << "Entering fullscreen mode, width: " << _width
-                   << ", height: " << _height;
+        LOG(DEBUG) << "Entering fullscreen mode, width: " << _rwidth
+                   << ", height: " << _rheight;
       }
 
 #ifdef __APPLE__
@@ -723,15 +729,23 @@ struct MainWindow : public BaseWindow {
         // find out the scaling
         int real_w, real_h;
         SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
-        _windowScalingW = float(real_w) / float(_width);
-        _windowScalingH = float(real_h) / float(_height);
+        _windowScalingW = float(real_w) / float(_rwidth);
+        _windowScalingH = float(real_h) / float(_rheight);
         // fix the scaling now if needed
         if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
           SDL_Metal_DestroyView(_metalView);
-          SDL_SetWindowSize(_window, int(float(_width) / _windowScalingW),
-                            int(float(_height) / _windowScalingH));
+          SDL_SetWindowSize(_window, int(float(_rwidth) / _windowScalingW),
+                            int(float(_rheight) / _windowScalingH));
           _metalView = SDL_Metal_CreateView(_window);
         }
+      } else {
+        int real_w, real_h;
+        SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
+        _windowScalingW = float(real_w) / float(_rwidth);
+        _windowScalingH = float(real_h) / float(_rheight);
+        // finally in this case override our real values
+        _rwidth = real_w;
+        _rheight = real_h;
       }
       _sysWnd = SDL_Metal_GetLayer(_metalView);
 #elif defined(_WIN32) || defined(__linux__)
@@ -754,8 +768,8 @@ struct MainWindow : public BaseWindow {
     pdata.nwh = _sysWnd;
     bgfx::setPlatformData(pdata);
 
-    initInfo.resolution.width = _width;
-    initInfo.resolution.height = _height;
+    initInfo.resolution.width = _rwidth;
+    initInfo.resolution.height = _rheight;
     initInfo.resolution.reset = BgfxFlags;
     initInfo.debug = _debug;
     if (!bgfx::init(initInfo)) {
@@ -807,7 +821,7 @@ struct MainWindow : public BaseWindow {
     io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
 
-    bgfx::setViewRect(0, 0, 0, _width, _height);
+    bgfx::setViewRect(0, 0, 0, _rwidth, _rheight);
     bgfx::setViewClear(0,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
                        0xC0C0AAFF, 1.0f, 0);
@@ -903,8 +917,17 @@ struct MainWindow : public BaseWindow {
           throw ActivationError("Window closed, aborting chain.");
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           // get the window size again to ensure it's correct
-          SDL_GetWindowSize(_window, &_width, &_height);
-          bgfx::reset(_width, _height, BgfxFlags);
+          SDL_GetWindowSize(_window, &_rwidth, &_rheight);
+#ifdef __APPLE__
+          int real_w, real_h;
+          SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
+          _windowScalingW = float(real_w) / float(_rwidth);
+          _windowScalingH = float(real_h) / float(_rheight);
+          // finally in this case override our real values
+          _rwidth = real_w;
+          _rheight = real_h;
+#endif
+          bgfx::reset(_rwidth, _rheight, BgfxFlags);
         }
       }
     }
@@ -912,7 +935,7 @@ struct MainWindow : public BaseWindow {
     // now that we settled inputs and possible resize push GUI
 
     // push view 0
-    _bgfxContext.pushView({0, _width, _height, BGFX_INVALID_HANDLE});
+    _bgfxContext.pushView({0, _rwidth, _rheight, BGFX_INVALID_HANDLE});
     DEFER({
       _bgfxContext.popView();
       assert(_bgfxContext.viewIndex() == 0);
@@ -926,8 +949,8 @@ struct MainWindow : public BaseWindow {
       mouseY = int32_t(float(mouseY) * _windowScalingH);
     }
 
-    _imguiBgfxCtx.beginFrame(mouseX, mouseY, imbtns, _wheelScroll, _width,
-                             _height);
+    _imguiBgfxCtx.beginFrame(mouseX, mouseY, imbtns, _wheelScroll, // mouse
+                             _rwidth, _rheight);
 
     // activate the blocks and render
     CBVar output{};
