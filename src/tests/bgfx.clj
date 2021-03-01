@@ -89,7 +89,8 @@
       (Once (-> .rb1 (Log)))
       (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
-                  :PosX 0 :PosY 0 :Contents
+                  :AllowResize true :AllowMove true :AllowClose true
+                  :Pos (Int2 0 0) :Contents
                   (->
                    "Hello world"   (GUI.Text)
                    "Hello world 2" (GUI.Text)
@@ -203,7 +204,12 @@
                    (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
                    (GUI.ChildWindow :Border true :Width 100 :Height 100 :Contents
                                     #((ToBytes)
-                                      (GUI.HexViewer)))))])))
+                                      (GUI.HexViewer)))))
+      (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
+                  :AllowMove true
+                  :Contents
+                  (->
+                   "Hi" (GUI.Text)))])))
 
 (schedule Root test-chain)
 (run Root 0.02 100)

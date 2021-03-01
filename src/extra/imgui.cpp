@@ -540,27 +540,43 @@ struct Style : public Base {
 struct Window : public Base {
   chainblocks::BlocksVar _blks{};
   std::string _title;
-  int _curX = -1, _curY = -1, _curW = -1, _curH = -1;
-  CBVar _posX{}, _posY{}, _width{}, _height{};
+  bool firstActivation{true};
+  Var _pos{}, _width{1.0}, _height{1.0};
+  bool _movable{false};
+  bool _closable{false};
+  bool _resizable{false};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Title", CBCCSTR("The title of the window to create."),
-                        CoreInfo::StringType),
-      ParamsInfo::Param(
-          "PosX", CBCCSTR("The horizontal position of the window to create."),
-          CoreInfo::IntOrNone),
-      ParamsInfo::Param(
-          "PosY", CBCCSTR("The vertical position of the window to create."),
-          CoreInfo::IntOrNone),
-      ParamsInfo::Param("Width", CBCCSTR("The width of the window to create."),
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param("Height",
-                        CBCCSTR("The height of the window to create."),
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."),
-                        CoreInfo::BlocksOrNone));
+  static inline Parameters _params{
+      {"Title",
+       CBCCSTR("The title of the window to create."),
+       {CoreInfo::StringType}},
+      {"Pos",
+       CBCCSTR("The x/y position of the window to create. If the value is a "
+               "Float2, it will be interpreted as relative to the container "
+               "window size."),
+       {CoreInfo::Int2Type, CoreInfo::Float2Type, CoreInfo::NoneType}},
+      {"Width",
+       CBCCSTR("The width of the window to create. If the value is a Float, it "
+               "will be interpreted as relative to the container window size."),
+       {CoreInfo::IntType, CoreInfo::FloatType}},
+      {"Height",
+       CBCCSTR(
+           "The height of the window to create. If the value is a Float, it "
+           "will be interpreted as relative to the container window size."),
+       {CoreInfo::IntType, CoreInfo::FloatType}},
+      {"Contents", CBCCSTR("The inner contents blocks."),
+       CoreInfo::BlocksOrNone},
+      {"AllowMove",
+       CBCCSTR("If the window can be moved."),
+       {CoreInfo::BoolType}},
+      {"AllowResize",
+       CBCCSTR("If the window can be resized."),
+       {CoreInfo::BoolType}},
+      {"AllowClose",
+       CBCCSTR("If the window can be closed."),
+       {CoreInfo::BoolType}}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return _params; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blks.compose(data);
@@ -573,19 +589,25 @@ struct Window : public Base {
       _title = value.payload.stringValue;
       break;
     case 1:
-      _posX = value;
+      _pos = Var(value);
       break;
     case 2:
-      _posY = value;
+      _width = Var(value);
       break;
     case 3:
-      _width = value;
+      _height = Var(value);
       break;
     case 4:
-      _height = value;
+      _blks = value;
       break;
     case 5:
-      _blks = value;
+      _movable = value.payload.boolValue;
+      break;
+    case 6:
+      _resizable = value.payload.boolValue;
+      break;
+    case 7:
+      _closable = value.payload.boolValue;
       break;
     default:
       break;
@@ -597,29 +619,30 @@ struct Window : public Base {
     case 0:
       return Var(_title);
     case 1:
-      return _posX;
+      return _pos;
     case 2:
-      return _posY;
-    case 3:
       return _width;
-    case 4:
+    case 3:
       return _height;
-    case 5:
+    case 4:
       return _blks;
+    case 5:
+      return Var(_movable);
+    case 6:
+      return Var(_resizable);
+    case 7:
+      return Var(_closable);
     default:
       return Var::Empty;
     }
   }
 
-  void cleanup() {
-    _blks.cleanup();
-    _curX = -1;
-    _curY = -1;
-    _curW = -1;
-    _curH = -1;
-  }
+  void cleanup() { _blks.cleanup(); }
 
-  void warmup(CBContext *context) { _blks.warmup(context); }
+  void warmup(CBContext *context) {
+    _blks.warmup(context);
+    firstActivation = true;
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -629,26 +652,42 @@ struct Window : public Base {
 
     int flags = ImGuiWindowFlags_NoSavedSettings;
 
-    if (_posX.valueType == Int && _posY.valueType == Int) {
-      if ((_curX != _posX.payload.intValue) ||
-          (_curY != _posY.payload.intValue)) {
-        _curX = int(_posX.payload.intValue);
-        _curY = int(_posY.payload.intValue);
-        ImVec2 pos = {float(_curX), float(_curY)};
+    flags |= !_movable ? ImGuiWindowFlags_NoMove : 0;
+    flags |= !_closable ? ImGuiWindowFlags_NoCollapse : 0;
+    flags |= !_resizable ? ImGuiWindowFlags_NoResize : 0;
+
+    if (firstActivation) {
+      const ImGuiIO &io = ::ImGui::GetIO();
+
+      if (_pos.valueType == Int2) {
+        ImVec2 pos = {float(_pos.payload.int2Value[0]),
+                      float(_pos.payload.int2Value[1])};
+        ::ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+      } else if (_pos.valueType == Float2) {
+        const auto x = double(io.DisplaySize.x) * _pos.payload.float2Value[0];
+        const auto y = double(io.DisplaySize.y) * _pos.payload.float2Value[1];
+        ImVec2 pos = {float(x), float(y)};
         ::ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
       }
-      flags |= ImGuiWindowFlags_NoMove;
-    }
 
-    if (_width.valueType == Int && _height.valueType == Int) {
-      if ((_curW != _width.payload.intValue) ||
-          (_curH != _height.payload.intValue)) {
-        _curW = int(_width.payload.intValue);
-        _curH = int(_height.payload.intValue);
-        ImVec2 size = {float(_curW), float(_curH)};
-        ::ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+      ImVec2 size;
+      if (_width.valueType == Int) {
+        size.x = float(_width.payload.intValue);
+      } else if (_width.valueType == Float) {
+        size.x = io.DisplaySize.x * float(_width.payload.floatValue);
+      } else {
+        assert(false);
       }
-      flags |= ImGuiWindowFlags_NoResize;
+      if (_height.valueType == Int) {
+        size.y = float(_height.payload.intValue);
+      } else if (_height.valueType == Float) {
+        size.y = io.DisplaySize.y * float(_height.payload.floatValue);
+      } else {
+        assert(false);
+      }
+      ::ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+
+      firstActivation = false;
     }
 
     ::ImGui::Begin(_title.c_str(), nullptr, flags);
