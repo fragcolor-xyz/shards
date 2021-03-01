@@ -710,6 +710,9 @@ struct MainWindow : public BaseWindow {
 
         // get the window size again to ensure it's correct
         SDL_GetWindowSize(_window, &_width, &_height);
+
+        LOG(DEBUG) << "Entering fullscreen mode, width: " << _width
+                   << ", height: " << _height;
       }
 
 #ifdef __APPLE__
