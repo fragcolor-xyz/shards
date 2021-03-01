@@ -689,28 +689,22 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-      uint32_t flags =
-          SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
+      uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI |
+                       SDL_WINDOW_RESIZABLE |
+                       (_fsMode ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
 #endif
       // TODO: SDL_WINDOW_BORDERLESS
-      _window =
-          SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
-                           SDL_WINDOWPOS_CENTERED, _rwidth, _rheight, flags);
+      _window = SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
+                                 SDL_WINDOWPOS_CENTERED, _fsMode ? 0 : _rwidth,
+                                 _fsMode ? 0 : _rheight, flags);
 
-      if (_fsMode) {
-        const auto state =
-            SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-        if (state != 0)
-          throw ActivationError("Failed to enter fullscreen mode");
+      // get the window size again to ensure it's correct
+      SDL_GetWindowSize(_window, &_rwidth, &_rheight);
 
-        // get the window size again to ensure it's correct
-        SDL_GetWindowSize(_window, &_rwidth, &_rheight);
-
-        LOG(DEBUG) << "Entering fullscreen mode, width: " << _rwidth
-                   << ", height: " << _rheight;
-      }
+      LOG(DEBUG) << "GFX.MainWindow, width: " << _rwidth
+                 << ", height: " << _rheight;
 
 #ifdef __APPLE__
       _metalView = SDL_Metal_CreateView(_window);
@@ -909,6 +903,9 @@ struct MainWindow : public BaseWindow {
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           // get the window size again to ensure it's correct
           SDL_GetWindowSize(_window, &_rwidth, &_rheight);
+
+          LOG(DEBUG) << "GFX.MainWindow resized, width: " << _rwidth
+                     << ", height: " << _rheight;
 #ifdef __APPLE__
           int real_w, real_h;
           SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
