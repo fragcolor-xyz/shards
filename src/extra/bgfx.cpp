@@ -386,8 +386,6 @@ struct BaseWindow : public Base {
   std::string _title;
   int _width = 1024;
   int _height = 768;
-  int _wwidth = 1024;
-  int _wheight = 768;
   bool _debug = false;
   FullscreenMode _fsMode{FullscreenMode::Disabled};
   SDL_Window *_window = nullptr;
@@ -661,6 +659,8 @@ struct MainWindow : public BaseWindow {
     SDL_SetClipboardText(text);
   }
 
+  constexpr static uint32_t BgfxFlags = BGFX_RESET_VSYNC;
+
   void warmup(CBContext *context) {
     auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     if (initErr != 0) {
@@ -690,11 +690,11 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-      uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+      uint32_t flags =
+          SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
 #ifdef __APPLE__
       flags |= SDL_WINDOW_METAL;
 #endif
-      // TODO: SDL_WINDOW_RESIZABLE
       // TODO: SDL_WINDOW_BORDERLESS
       _window =
           SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
@@ -756,7 +756,7 @@ struct MainWindow : public BaseWindow {
 
     initInfo.resolution.width = _width;
     initInfo.resolution.height = _height;
-    initInfo.resolution.reset = BGFX_RESET_VSYNC;
+    initInfo.resolution.reset = BgfxFlags;
     initInfo.debug = _debug;
     if (!bgfx::init(initInfo)) {
       throw ActivationError("Failed to initialize BGFX");
@@ -843,20 +843,12 @@ struct MainWindow : public BaseWindow {
       throw ActivationError(bgfxCallback.fatalError);
     }
 
-    // push view 0
-    _bgfxContext.pushView({0, _width, _height, BGFX_INVALID_HANDLE});
-    DEFER({
-      _bgfxContext.popView();
-      assert(_bgfxContext.viewIndex() == 0);
-    });
-    // Touch view 0
-    bgfx::touch(0);
+    // Deal with inputs first as we might resize etc
 
     // _imguiContext.Set();
 
     ImGuiIO &io = ::ImGui::GetIO();
 
-    // Draw imgui and deal with inputs
     int32_t mouseX, mouseY;
     uint32_t mouseBtns = SDL_GetMouseState(&mouseX, &mouseY);
     uint8_t imbtns = 0;
@@ -909,16 +901,25 @@ struct MainWindow : public BaseWindow {
         if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
           // stop the current chain on close
           throw ActivationError("Window closed, aborting chain.");
-        }
-// TODO support window resizing
-#if 0
-        else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+        } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           // get the window size again to ensure it's correct
-          SDL_GetWindowSize(_window, &_wwidth, &_wheight);
+          SDL_GetWindowSize(_window, &_width, &_height);
+          bgfx::reset(_width, _height, BgfxFlags);
         }
-#endif
       }
     }
+
+    // now that we settled inputs and possible resize push GUI
+
+    // push view 0
+    _bgfxContext.pushView({0, _width, _height, BGFX_INVALID_HANDLE});
+    DEFER({
+      _bgfxContext.popView();
+      assert(_bgfxContext.viewIndex() == 0);
+    });
+
+    // Touch view 0
+    bgfx::touch(0);
 
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
       mouseX = int32_t(float(mouseX) * _windowScalingW);
@@ -2372,7 +2373,7 @@ struct RenderTexture : public RenderTarget {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     _viewId = ctx->nextViewId();
-    bgfx::setViewFrameBuffer(_viewId, _framebuffer);
+
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
     bgfx::setViewClear(_viewId,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
@@ -2412,6 +2413,10 @@ struct RenderTexture : public RenderTarget {
   CBVar activate(CBContext *context, const CBVar &input) {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+
+    // we could do this on warmup but breaks on window resize...
+    // so let's just do it every activation, doubt its a bottleneck
+    bgfx::setViewFrameBuffer(_viewId, _framebuffer);
 
     // push _viewId
     ctx->pushView({_viewId, _width, _height, _framebuffer});
