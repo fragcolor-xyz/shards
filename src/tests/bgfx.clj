@@ -43,7 +43,7 @@
    "test-chain"
    :Looped
    (GFX.MainWindow
-    :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen FullscreenMode.Borderless
+    :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen true
     :Contents
     ~[(Once
        ~[(LoadImage "../../assets/drawing.png")

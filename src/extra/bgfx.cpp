@@ -349,12 +349,6 @@ struct BaseWindow : public Base {
   void *_sysWnd = nullptr;
 #endif
 
-  enum class FullscreenMode { Disabled, Exclusive, Borderless };
-  static constexpr uint32_t FullscreenModeCC = 'gfxF';
-  static inline EnumInfo<FullscreenMode> FullscreenModeEnumInfo{
-      "FullscreenMode", CoreCC, FullscreenModeCC};
-  static inline Type FullscreenModeType = Type::Enum(CoreCC, FullscreenModeCC);
-
   static inline Parameters params{
       {"Title",
        CBCCSTR("The title of the window to create."),
@@ -369,9 +363,8 @@ struct BaseWindow : public Base {
        CBCCSTR("The contents of this window."),
        {CoreInfo::BlocksOrNone}},
       {"Fullscreen",
-       CBCCSTR(
-           "If the window should use fullscreen mode and if so which mode."),
-       {FullscreenModeType}},
+       CBCCSTR("If the window should use fullscreen mode."),
+       {CoreInfo::BoolType}},
       {"Debug",
        CBCCSTR("If the device backing the window should be created with "
                "debug layers on."),
@@ -389,7 +382,7 @@ struct BaseWindow : public Base {
   int _rwidth = 1024;
   int _rheight = 768;
   bool _debug = false;
-  FullscreenMode _fsMode{FullscreenMode::Disabled};
+  bool _fsMode{false};
   SDL_Window *_window = nullptr;
   CBVar *_sdlWinVar = nullptr;
   CBVar *_imguiCtx = nullptr;
@@ -412,7 +405,7 @@ struct BaseWindow : public Base {
       _blocks = value;
       break;
     case 4:
-      _fsMode = FullscreenMode(value.payload.enumValue);
+      _fsMode = value.payload.boolValue;
       break;
     case 5:
       _debug = value.payload.boolValue;
@@ -433,7 +426,7 @@ struct BaseWindow : public Base {
     case 3:
       return _blocks;
     case 4:
-      return Var::Enum(_fsMode, CoreCC, FullscreenModeCC);
+      return Var(_fsMode);
     case 5:
       return Var(_debug);
     default:
@@ -706,11 +699,9 @@ struct MainWindow : public BaseWindow {
           SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED,
                            SDL_WINDOWPOS_CENTERED, _rwidth, _rheight, flags);
 
-      if (_fsMode != FullscreenMode::Disabled) {
-        const auto state = SDL_SetWindowFullscreen(
-            _window, _fsMode == FullscreenMode::Exclusive
-                         ? SDL_WINDOW_FULLSCREEN
-                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
+      if (_fsMode) {
+        const auto state =
+            SDL_SetWindowFullscreen(_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
         if (state != 0)
           throw ActivationError("Failed to enter fullscreen mode");
 
@@ -723,7 +714,7 @@ struct MainWindow : public BaseWindow {
 
 #ifdef __APPLE__
       _metalView = SDL_Metal_CreateView(_window);
-      if (_fsMode == FullscreenMode::Disabled) {
+      if (!_fsMode) {
         // seems to work only when windowed...
         // tricky cos retina..
         // find out the scaling
