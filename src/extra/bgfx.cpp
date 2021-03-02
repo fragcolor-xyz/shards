@@ -950,7 +950,7 @@ struct MainWindow : public BaseWindow {
     _clock.Start = tnow; // reset timer
     const auto ftime = dt.count();
     float time[4] = {ftime, ftime, ftime, ftime};
-    bgfx::setUniform(_timeUniformHandle, &time, 1);
+    bgfx::setUniform(_timeUniformHandle, time, 1);
 
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
       mouseX = int32_t(float(mouseX) * _windowScalingW);
