@@ -52,8 +52,8 @@ echo "Running test: brotli"
 ./cbl ../src/tests/brotli.clj
 echo "Running test: snappy"
 ./cbl ../src/tests/snappy.clj
-echo "Running test: ws"
-./cbl ../src/tests/ws.clj
+# echo "Running test: ws"
+# ./cbl ../src/tests/ws.clj
 echo "Running test: bigint"
 ./cbl ../src/tests/bigint.clj
 echo "Running test: bgfx"
