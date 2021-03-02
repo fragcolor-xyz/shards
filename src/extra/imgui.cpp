@@ -572,8 +572,8 @@ struct Window : public Base {
       {"AllowResize",
        CBCCSTR("If the window can be resized."),
        {CoreInfo::BoolType}},
-      {"AllowClose",
-       CBCCSTR("If the window can be closed."),
+      {"AllowCollapse",
+       CBCCSTR("If the window can be collapsed."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return _params; }

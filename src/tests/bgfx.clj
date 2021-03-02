@@ -89,7 +89,7 @@
       (Once (-> .rb1 (Log)))
       (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
-                  :AllowResize true :AllowMove true :AllowClose true
+                  :AllowResize true :AllowMove true :AllowCollapse true
                   :Pos (Int2 0 0) :Contents
                   (->
                    "Hello world"   (GUI.Text)
