@@ -8,6 +8,7 @@
 #include <bx/debug.h>
 #include <bx/math.h>
 #include <bx/timer.h>
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <stb_image_write.h>
@@ -548,6 +549,7 @@ struct MainWindow : public BaseWindow {
   bool _bgfxInit{false};
   float _windowScalingW{1.0};
   float _windowScalingH{1.0};
+  bgfx::UniformHandle _timeUniformHandle = BGFX_INVALID_HANDLE;
 
   CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
@@ -655,6 +657,11 @@ struct MainWindow : public BaseWindow {
   }
 
   constexpr static uint32_t BgfxFlags = BGFX_RESET_VSYNC;
+
+  struct ProcessClock {
+    decltype(std::chrono::high_resolution_clock::now()) Start;
+    ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
+  } _clock;
 
   void warmup(CBContext *context) {
     // do not touch parameter values
@@ -833,6 +840,11 @@ struct MainWindow : public BaseWindow {
     auto viewId = _bgfxContext.nextViewId();
     assert(viewId == 0); // always 0 in MainWindow
 
+    // create time uniform
+    _timeUniformHandle =
+        bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
+    _clock.Start = std::chrono::high_resolution_clock::now();
+
     // init blocks after we initialize the system
     _blocks.warmup(context);
   }
@@ -931,6 +943,14 @@ struct MainWindow : public BaseWindow {
 
     // Touch view 0
     bgfx::touch(0);
+
+    // Set time
+    const auto tnow = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> dt = tnow - _clock.Start;
+    _clock.Start = tnow; // reset timer
+    const auto ftime = dt.count();
+    float time[4] = {ftime, ftime, ftime, ftime};
+    bgfx::setUniform(_timeUniformHandle, &time, 1);
 
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
       mouseX = int32_t(float(mouseX) * _windowScalingW);

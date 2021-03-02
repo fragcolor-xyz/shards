@@ -96,6 +96,11 @@ jobs:
         mkdir cbl
         cp cbl.wasm cbl/
         cp cbl.js cbl/
+    - name: Copy Shaders
+      run: |
+        cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
+        cp deps/bgfx/src/bgfx_compute.sh src/extra/shaders/include/bgfx_compute.h
+        cp deps/bgfx/examples/common/shaderlib.sh src/extra/shaders/include/shaderlib.h
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm
