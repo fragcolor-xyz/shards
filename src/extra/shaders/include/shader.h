@@ -8,6 +8,7 @@
 #include "shaderlib.h"
 
 uniform vec4 u_private_time4; // we might change this in the future, use yzw for other stuff
-#define u_time u_private_time4.x
+#define u_timeDelta u_private_time4.x
+#define u_timeAbs u_private_time4.y
 
 #endif

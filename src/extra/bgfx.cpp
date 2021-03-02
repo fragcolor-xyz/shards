@@ -661,7 +661,10 @@ struct MainWindow : public BaseWindow {
   struct ProcessClock {
     decltype(std::chrono::high_resolution_clock::now()) Start;
     ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
-  } _clock;
+  };
+
+  ProcessClock _absTimer;
+  ProcessClock _deltaTimer;
 
   void warmup(CBContext *context) {
     // do not touch parameter values
@@ -843,7 +846,7 @@ struct MainWindow : public BaseWindow {
     // create time uniform
     _timeUniformHandle =
         bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
-    _clock.Start = std::chrono::high_resolution_clock::now();
+    _deltaTimer.Start = std::chrono::high_resolution_clock::now();
 
     // init blocks after we initialize the system
     _blocks.warmup(context);
@@ -946,10 +949,10 @@ struct MainWindow : public BaseWindow {
 
     // Set time
     const auto tnow = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> dt = tnow - _clock.Start;
-    _clock.Start = tnow; // reset timer
-    const auto ftime = dt.count();
-    float time[4] = {ftime, ftime, ftime, ftime};
+    std::chrono::duration<float> ddt = tnow - _deltaTimer.Start;
+    _deltaTimer.Start = tnow; // reset timer
+    std::chrono::duration<float> adt = tnow - _absTimer.Start;
+    float time[4] = {ddt.count(), adt.count(), 0.0, 0.0};
     bgfx::setUniform(_timeUniformHandle, time, 1);
 
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
