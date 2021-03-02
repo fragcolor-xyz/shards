@@ -103,8 +103,16 @@ jobs:
           build/cbl.wasm
           build/cbl.js
     - uses: chainblocks/ipfs-action@master
+      name: Upload cbl to IPFS
       with:
         path: build/cbl/
+        service: infura
+        port: 5001
+        protocol: https
+    - uses: chainblocks/ipfs-action@master
+      name: Upload shaders to IPFS
+      with:
+        path: src/extra/shaders/
         service: infura
         port: 5001
         protocol: https
@@ -191,10 +199,6 @@ jobs:
         lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
         genhtml coverage/coverage.f.info --output-directory coverage/output
         bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
-    # - uses: actions/upload-artifact@master
-    #   with:
-    #     name: coverage
-    #     path: coverage/output
 
   Linux-Coverage-Tests:
     runs-on: ubuntu-20.04
@@ -244,10 +248,6 @@ jobs:
         lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
         genhtml coverage/coverage.f.info --output-directory coverage/output
         bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
-    # - uses: actions/upload-artifact@master
-    #   with:
-    #     name: coverage
-    #     path: coverage/output
 
   Linux-Release-Docker:
     runs-on: ubuntu-20.04
