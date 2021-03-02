@@ -66,6 +66,10 @@ mergeInto(LibraryManager.library, {
 
         var fetches = [];
         fetches.push({
+          filename: "/shaders/include/shader.h",
+          operation: fetch("shaders/include/shader.h")
+        });
+        fetches.push({
           filename: "/shaders/include/bgfx_shader.h",
           operation: fetch("shaders/include/bgfx_shader.h")
         });
