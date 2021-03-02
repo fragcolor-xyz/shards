@@ -6,7 +6,7 @@ $output v_color0
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
-#include <bgfx_shader.h>
+#include <shader.h>
 
 void main()
 {

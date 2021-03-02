@@ -229,6 +229,7 @@ jobs:
         cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
         cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
         cp ../../src/extra/shaders/gltf/*.* lib/gltf/
+        cp ../../src/extra/shaders/include/shader.h include/shader.h
     - name: Build
       run: |
         cd build
