@@ -191,6 +191,7 @@ jobs:
         ./cbl ../src/tests/blocks.clj
         ./cbl ../src/tests/rust.clj
         ./cbl ../src/tests/chain-macro.edn
+        ./cbl ../src/tests/edn.edn
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
