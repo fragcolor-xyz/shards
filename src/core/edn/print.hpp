@@ -34,6 +34,8 @@ inline std::string pr_str(document &doc, token::Token &token) {
     std::string s = std::get<std::string>(token.value);
     if (token.type == token::type::STRING) {
       return "\"" + escape_str(s) + "\"";
+    } else if (token.type == token::type::RAW_STRING) {
+      return "#\"" + escape_str(s) + "\"";
     } else {
       return s;
     }
@@ -101,11 +103,12 @@ inline std::string pr_str(document &doc, form::Form form) {
   return "";
 }
 
-inline std::string print(const std::list<form::Form> &forms) {
+inline std::string print(const std::list<form::Form> &forms,
+                         char separator = ' ') {
   std::string s;
   document doc;
   for (auto &form : forms) {
-    s += pr_str(doc, form) + "\n";
+    s += pr_str(doc, form) + separator;
   }
   return s;
 }

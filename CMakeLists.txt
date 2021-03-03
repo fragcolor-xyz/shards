@@ -318,6 +318,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/edn.cpp
   ${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/cbccstrings.hpp
   )
@@ -857,6 +858,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/fs.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/edn.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CB_EXTRAS}
   )

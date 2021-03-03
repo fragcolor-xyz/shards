@@ -12,6 +12,7 @@
 #include <regex>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -27,6 +28,7 @@ enum Type {
   SPECIAL_CHARS,
   SPECIAL_CHAR,
   STRING,
+  RAW_STRING,
   COMMENT,
   HEX,
   NUMBER,
@@ -43,14 +45,15 @@ enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
 } // namespace value
 
-const std::regex REGEX("([\\s,]+)|"                   // type::WHITESPACE
-                       "(~@|#\\{)|"                   // type::SPECIAL_CHARS
-                       "([\\[\\]{}()\'`~^@])|"        // type::SPECIAL_CHAR
-                       "(\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::STRING
-                       "(;.*)|"                       // type::COMMENT
-                       "(0[xX][0-9a-fA-F]+)|"         // type::HEX
-                       "(\\d+\\.?\\d*)|"              // type::NUMBER
-                       "([^\\s\\[\\]{}(\'\"`,;)]+)"   // type::SYMBOL
+const std::regex REGEX("([\\s,]+)|"                    // type::WHITESPACE
+                       "(~@|#\\{)|"                    // type::SPECIAL_CHARS
+                       "([\\[\\]{}()\'`~^@])|"         // type::SPECIAL_CHAR
+                       "(\"(?:\\\\.|[^\\\\\"])*\"?)|"  // type::STRING
+                       "(#\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::RAW_STRING
+                       "(;.*)|"                        // type::COMMENT
+                       "(0[xX][0-9a-fA-F]+)|"          // type::HEX
+                       "(\\d+\\.?\\d*)|"               // type::NUMBER
+                       "([^\\s\\[\\]{}(\'\"`,;)]+)"    // type::SYMBOL
 );
 
 struct Token {
@@ -498,6 +501,32 @@ expand_meta_quoted_form(const std::list<token::Token> *tokens,
   }
 }
 
+inline char unescape(char c) {
+  switch (c) {
+  case '\\':
+    return '\\';
+  case 'n':
+    return '\n';
+  case '"':
+    return '"';
+  default:
+    return c;
+  }
+}
+
+inline std::string &unescape(std::string &in) {
+  // in will have double-quotes at either end, so move the iterators in
+  for (auto it = in.begin(), end = in.end(); it != end; ++it) {
+    const char c = *it;
+    if (c == '\\') {
+      if (it != end) {
+        *it = unescape(c);
+      }
+    }
+  }
+  return in;
+}
+
 inline std::pair<form::Form, std::list<token::Token>::const_iterator>
 read_form(const std::list<token::Token> *tokens,
           std::list<token::Token>::const_iterator it) {
@@ -552,7 +581,19 @@ read_form(const std::list<token::Token> *tokens,
           form::Special{"ReaderError", "EOF: unbalanced quote", token},
           tokens->end());
     } else {
-      token.value = s.substr(1, s.size() - 2);
+      s = s.substr(1, s.size() - 2);
+      token.value = unescape(s);
+    }
+    break;
+  }
+  case token::type::RAW_STRING: {
+    std::string s = std::get<std::string>(token.value);
+    if (s.size() < 3 || s.back() != '"') {
+      return std::make_pair(
+          form::Special{"ReaderError", "EOF: unbalanced quote", token},
+          tokens->end());
+    } else {
+      token.value = s.substr(2, s.size() - 3);
     }
     break;
   }

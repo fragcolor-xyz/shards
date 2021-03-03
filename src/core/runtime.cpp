@@ -139,6 +139,10 @@ namespace Wasm {
 extern void registerBlocks();
 }
 
+namespace edn {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -248,6 +252,7 @@ void registerCoreBlocks() {
   registerFSBlocks();
   Wasm::registerBlocks();
   Http::registerBlocks();
+  edn::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();

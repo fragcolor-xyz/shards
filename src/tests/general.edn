@@ -1,19 +1,19 @@
 (def! Root (Node))
 
 (def! inner1 (Chain "inner"
-  (Assert.Is "My input" true)
-  "My input 2"))
+                    (Assert.Is "My input" true)
+                    "My input 2"))
 
 (def adder (Chain "adder"
-  >= .adder-x
-  (Pop) >= .adder-y
-  .adder-x
-  (Math.Add .adder-y)))
+                  >= .adder-x
+                  (Pop) >= .adder-y
+                  .adder-x
+                  (Math.Add .adder-y)))
 
 (def adderSeq (Chain "adderSeq"
-  >= .args (Take 1) >= .adder-y
-  .args (Take 0)
-  (Math.Add .adder-y)))
+                     >= .args (Take 1) >= .adder-y
+                     .args (Take 0)
+                     (Math.Add .adder-y)))
 
 (def! testChain
   (Chain
@@ -42,7 +42,7 @@
    (Assert.Is "No" true)
 
    true
-   (Cond [#((Is true)) #((Msg "Cond was true!!") false)
+   (Cond [(-> (Is true)) (-> (Msg "Cond was true!!") false)
           (-> (Is false)) (-> (Msg "Cond was false!") true)] :Passthrough false)
    (Assert.Is false true)
    (Log)
@@ -350,9 +350,9 @@
             (Pop "myseq2flat")
             (Log)) 6)
 
-  {"a" 10
-   "b" 22
-   "d" 50}
+   {"a" 10
+    "b" 22
+    "d" 50}
    (Flatten)
    ; the following can be out of order, todo
   ;;  (Assert.Is ["a" 10 "b" 22 "d" 50] true)
@@ -1033,17 +1033,17 @@
 (prn "Doing LoopedChain")
 
 (def loopedChain (Chain "LoopedChain" :Looped
-  10 (Push "loopVar1")
-  11 (Push "loopVar1")
-  12 (Push "loopVar1")
-  (Count "loopVar1")
-  (Assert.Is 3 true)))
+                        10 (Push "loopVar1")
+                        11 (Push "loopVar1")
+                        12 (Push "loopVar1")
+                        (Count "loopVar1")
+                        (Assert.Is 3 true)))
 
- (def loopedChain2 (Chain "LoopedChain" :Looped
-  10 (Push "loopVar2" :Clear false)
-  11 (Push "loopVar2")
-  12 (Push "loopVar2")
-  (Count "loopVar2")))
+(def loopedChain2 (Chain "LoopedChain" :Looped
+                         10 (Push "loopVar2" :Clear false)
+                         11 (Push "loopVar2")
+                         12 (Push "loopVar2")
+                         (Count "loopVar2")))
 
 (prepare loopedChain)
 (start loopedChain)
@@ -1060,13 +1060,12 @@
 (if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
 
 (def fileReader (Chain "readFile"
-  (Repeat (->
-    (ReadFile "test.bin")
-    (ExpectString)
-    (Log)
-    (Assert.Is "Hello file append..." true))
-    2)
-))
+                       (Repeat (->
+                                (ReadFile "test.bin")
+                                (ExpectString)
+                                (Log)
+                                (Assert.Is "Hello file append..." true))
+                               2)))
 
 (schedule Root fileReader)
 (if (run Root 0.1) nil (throw "Root tick failed"))

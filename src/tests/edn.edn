@@ -1,0 +1,18 @@
+(defnode main)
+
+(defchain uglify
+  "general.edn"
+  (FS.Read)
+  (EDN.Uglify) = .ugly1
+  "general.ugly.edn"
+  (FS.Write .ugly1 :Overwrite true)
+  (Log)
+  "loader.clj"
+  (FS.Read)
+  (EDN.Uglify) = .ugly2
+  "loader.ugly.clj"
+  (FS.Write .ugly2 :Overwrite true)
+  (Log))
+
+(schedule main uglify)
+(run main)

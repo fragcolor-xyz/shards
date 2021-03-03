@@ -47,3 +47,5 @@ examples/shaderc/fs-shader-tmp.txt
 examples/shaderc/vs-shader-tmp.txt
 examples/shaderc/varying.def.sc
 examples/shaderc/bgfx_shader.sh
+src/tests/loader.ugly.clj
+src/tests/general.ugly.edn

@@ -34,8 +34,8 @@
   (cond
     (= platform "windows") "dx11"
     (= platform "apple") "metal"
-    (or 
-     (= platform "linux") 
+    (or
+     (= platform "linux")
      (= platform "emscripten")) "glsl"))
 
 (def test-chain
@@ -151,47 +151,47 @@
 
                    (GUI.ChildWindow
                     :Border true :Contents
-                    #((GUI.TreeNode
-                       "Node1"
-                       (->
-                        "Node text..."
-                        (GUI.Text)
-                        (GUI.TextInput "Say something" "text1")
-                        (GUI.Text "<-- you said!")
+                    (-> (GUI.TreeNode
+                         "Node1"
+                         (->
+                          "Node text..."
+                          (GUI.Text)
+                          (GUI.TextInput "Say something" "text1")
+                          (GUI.Text "<-- you said!")
 
-                        (GUI.IntInput)
-                        (GUI.Text)
+                          (GUI.IntInput)
+                          (GUI.Text)
 
-                        (GUI.FloatInput)
-                        (GUI.Text)
+                          (GUI.FloatInput)
+                          (GUI.Text)
 
-                        (GUI.Int3Input)
-                        (GUI.Text)
+                          (GUI.Int3Input)
+                          (GUI.Text)
 
-                        (GUI.Float3Input "f3" "f3var")
-                        (Get "f3var")
-                        (GUI.Text)
+                          (GUI.Float3Input "f3" "f3var")
+                          (Get "f3var")
+                          (GUI.Text)
 
-                        (GUI.FloatDrag)
-                        (GUI.Text)
+                          (GUI.FloatDrag)
+                          (GUI.Text)
 
-                        (GUI.ColorInput)
-                        (GUI.Text)
+                          (GUI.ColorInput)
+                          (GUI.Text)
 
-                        (GUI.Float3Drag)
-                        (GUI.Text)
-                        (GUI.Plot "Plot"
-                                  #((Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
-                                    (GUI.PlotLine)
-                                    (GUI.PlotDigital)
-                                    (Math.Add (Float2 -10 -10))
-                                    (GUI.PlotScatter)
-                                    (Math.Add (Float2 5 3))
-                                    (GUI.PlotBars))
-                                  :X_Limits (Float2 -10 10)
-                                  :Y_Limits (Float2 -10 10)
-                                  :Lock_X false
-                                  :Lock_Y true)))))
+                          (GUI.Float3Drag)
+                          (GUI.Text)
+                          (GUI.Plot "Plot"
+                                    (-> (Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
+                                        (GUI.PlotLine)
+                                        (GUI.PlotDigital)
+                                        (Math.Add (Float2 -10 -10))
+                                        (GUI.PlotScatter)
+                                        (Math.Add (Float2 5 3))
+                                        (GUI.PlotBars))
+                                    :X_Limits (Float2 -10 10)
+                                    :Y_Limits (Float2 -10 10)
+                                    :Lock_X false
+                                    :Lock_Y true)))))
 
                    (GUI.Button "Push me!" (->
                                            (Msg "Action!")))
@@ -203,8 +203,8 @@
                                            (Msg "Action!")) ImGuiButton.ArrowUp)
                    (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
                    (GUI.ChildWindow :Border true :Width 100 :Height 100 :Contents
-                                    #((ToBytes)
-                                      (GUI.HexViewer)))))
+                                    (-> (ToBytes)
+                                        (GUI.HexViewer)))))
       (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
                   :AllowMove true
                   :Contents

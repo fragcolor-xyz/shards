@@ -5,9 +5,9 @@
    "Producer"
    ;; :Looped
    (Repeat
-    #("A message"
-      (Produce "a")
-      (Log "Produced: "))
+    (-> "A message"
+        (Produce "a")
+        (Log "Produced: "))
     10)
    (Complete "a")))
 
@@ -35,10 +35,10 @@
    "Producer"
    ;; :Looped
    (Repeat
-    #("A message"
-      (Broadcast "b" :NoCopy!! true)
-      (Log "Broadcasted: ")
-      (Pause 0.1))
+    (-> "A message"
+        (Broadcast "b" :NoCopy!! true)
+        (Log "Broadcasted: ")
+        (Pause 0.1))
     10)
    (Complete "b")))
 
