@@ -121,9 +121,12 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   env->set(":Chain", mal::keyword(":Chain"));
   env->set(":Block", mal::keyword(":Block"));
   env->set(":String", mal::keyword(":String"));
+  env->set(":Path", mal::keyword(":Path"));
   env->set(":ContextVar", mal::keyword(":ContextVar"));
   env->set(":Image", mal::keyword(":Image"));
   env->set(":Seq", mal::keyword(":Seq"));
+  env->set(":Array", mal::keyword(":Array"));
+  env->set(":Set", mal::keyword(":Set"));
   env->set(":Table", mal::keyword(":Table"));
   env->set(":Bytes", mal::keyword(":Bytes"));
 
