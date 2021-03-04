@@ -68,6 +68,8 @@ static char unescape(char c) {
     return '\\';
   case 'n':
     return '\n';
+  case 'r':
+    return '\r';
   case '"':
     return '"';
   default:
