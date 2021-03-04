@@ -1440,7 +1440,7 @@ CBTypeInfo cloneTypeInfo(const CBTypeInfo &other) {
     }
     break;
   }
-  case Set: {
+  case CBType::Set: {
     varType.setTypes = {};
     for (uint32_t i = 0; i < other.setTypes.len; i++) {
       auto cloned = cloneTypeInfo(other.setTypes.elements[i]);

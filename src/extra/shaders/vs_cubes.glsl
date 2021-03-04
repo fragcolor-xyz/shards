@@ -7,6 +7,8 @@ $output v_color0
  */
 
 #include <shader.h>
+// test including and build with our library shaders
+#include "implicit_shapes.h"
 
 void main()
 {
