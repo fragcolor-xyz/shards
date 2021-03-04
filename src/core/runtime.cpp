@@ -1440,6 +1440,14 @@ CBTypeInfo cloneTypeInfo(const CBTypeInfo &other) {
     }
     break;
   }
+  case Set: {
+    varType.setTypes = {};
+    for (uint32_t i = 0; i < other.setTypes.len; i++) {
+      auto cloned = cloneTypeInfo(other.setTypes.elements[i]);
+      chainblocks::arrayPush(varType.setTypes, cloned);
+    }
+    break;
+  }
   case Table: {
     varType.table = {};
     for (uint32_t i = 0; i < other.table.types.len; i++) {
