@@ -520,9 +520,18 @@ struct ChainFileWatcher {
       if (this->autoexec != nullptr) {
         EVAL(this->autoexec, rootEnv);
       }
+    } catch (malEmptyInputException &) {
+      LOG(ERROR) << "empty input exception.";
+      throw;
+    } catch (malValuePtr &mv) {
+      LOG(ERROR) << "script error: " << mv->print(true);
+      throw;
+    } catch (MalString &s) {
+      LOG(ERROR) << "parse error: " << s;
+      throw;
     } catch (const std::exception &e) {
       LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
-      throw e;
+      throw;
     } catch (...) {
       LOG(ERROR) << "Failed to init ChainFileWatcher.";
       throw;
@@ -535,6 +544,15 @@ struct ChainFileWatcher {
         if (this->autoexec != nullptr) {
           EVAL(this->autoexec, rootEnv);
         }
+      } catch (malEmptyInputException &) {
+        LOG(ERROR) << "empty input exception.";
+        throw;
+      } catch (malValuePtr &mv) {
+        LOG(ERROR) << "script error: " << mv->print(true);
+        throw;
+      } catch (MalString &s) {
+        LOG(ERROR) << "parse error: " << s;
+        throw;
       } catch (const std::exception &e) {
         LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
         throw;
