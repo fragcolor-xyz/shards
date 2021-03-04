@@ -1109,6 +1109,7 @@ struct ManyChain : public std::enable_shared_from_this<ManyChain> {
   uint32_t index;
   std::shared_ptr<CBChain> chain;
   std::shared_ptr<CBNode> node; // used only if MT
+  bool done;
 };
 
 struct ParallelBase : public ChainBase {
@@ -1231,6 +1232,9 @@ struct ParallelBase : public ChainBase {
     }
     _outputs.clear();
     for (auto &cref : _chains) {
+      if (cref->node) {
+        cref->node->terminate();
+      }
       stop(cref->chain.get());
       _pool->release(cref);
     }
@@ -1250,19 +1254,19 @@ struct ParallelBase : public ChainBase {
     _chains.resize(len);
     Defer cleanups([this]() {
       for (auto &cref : _chains) {
-        if (cref) {
-          if (cref->node) {
-            cref->node->terminate();
-          }
-          stop(cref->chain.get());
-          _pool->release(cref);
+        if (cref->node) {
+          cref->node->terminate();
         }
+        stop(cref->chain.get());
+        _pool->release(cref);
       }
+      _chains.clear();
     });
 
     for (uint32_t i = 0; i < len; i++) {
       _chains[i] = _pool->acquire(_composer);
       _chains[i]->index = i;
+      _chains[i]->done = false;
     }
 
     auto nchains = _chains.size();
@@ -1284,6 +1288,8 @@ struct ParallelBase : public ChainBase {
           // advance our chains and check
           for (auto it = _chains.begin(); it != _chains.end(); ++it) {
             auto &cref = *it;
+            if (cref->done)
+              continue;
 
             // Prepare and start if no callc was called
             if (!cref->chain->coro) {
@@ -1313,9 +1319,10 @@ struct ParallelBase : public ChainBase {
                   succeeded++;
                 }
               } else {
-                // remove failed chains
+                stop(cref->chain.get());
                 failed++;
               }
+              cref->done = true;
             }
           }
         }
@@ -1328,7 +1335,7 @@ struct ParallelBase : public ChainBase {
               _chains.begin(), _chains.end(),
               [this, input](auto &cref) {
                 // skip if failed or ended
-                if (cref->chain->state >= CBChain::State::Failed)
+                if (cref->done)
                   return;
 
                 // Prepare and start if no callc was called
@@ -1356,18 +1363,21 @@ struct ParallelBase : public ChainBase {
 
           for (auto it = _chains.begin(); it != _chains.end(); ++it) {
             auto &cref = *it;
-            if (cref->chain->state == CBChain::State::Ended) {
-              if (_policy == WaitUntil::FirstSuccess) {
-                // success, next call clones, make sure to destroy
-                stop(cref->chain.get(), &_outputs[0]);
-                return _outputs[0];
+            if (!cref->done && !isRunning(cref->chain.get())) {
+              if (cref->chain->state == CBChain::State::Ended) {
+                if (_policy == WaitUntil::FirstSuccess) {
+                  // success, next call clones, make sure to destroy
+                  stop(cref->chain.get(), &_outputs[0]);
+                  return _outputs[0];
+                } else {
+                  stop(cref->chain.get(), &_outputs[succeeded]);
+                  succeeded++;
+                }
               } else {
-                stop(cref->chain.get(), &_outputs[succeeded]);
-                succeeded++;
+                stop(cref->chain.get());
+                failed++;
               }
-            } else {
-              // remove failed chains
-              failed++;
+              cref->done = true;
             }
           }
         }
