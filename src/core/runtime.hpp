@@ -247,7 +247,7 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   }
   case CoreGet: {
     auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return *cblock->core._cell;
   }
   case CoreSet: {
     auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);

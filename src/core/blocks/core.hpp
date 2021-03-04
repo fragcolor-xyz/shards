@@ -964,6 +964,7 @@ struct Get : public VariableBase {
   CBTypeInfo _defaultType{};
   std::vector<CBTypeInfo> _tableTypes{};
   std::vector<CBString> _tableKeys{};
+  CBlock *_block{nullptr};
 
   static inline ParamsInfo getParamsInfo = ParamsInfo(
       variableParamsInfo,
@@ -1001,6 +1002,7 @@ struct Get : public VariableBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
+    _block = const_cast<CBlock *>(data.block);
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
@@ -1157,9 +1159,18 @@ struct Get : public VariableBase {
     _key.warmup(context);
   }
 
-  ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
-    if (likely(_cell != nullptr)) {
-      return *_cell;
+  void cleanup() {
+    // reset block id
+    if (_block) {
+      _block->inlineBlockId = CBInlineBlocks::NotInline;
+    }
+    VariableBase::cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(_cell != nullptr)) {
+      // we override block id, this should not happen
+      assert(false);
     } else {
       if (_isTable) {
         if (_target->valueType == Table) {
@@ -1176,8 +1187,11 @@ struct Get : public VariableBase {
             } else {
               // Pin fast cell
               // skip if variable
-              if (!_key.isVariable())
+              if (!_key.isVariable()) {
                 _cell = vptr;
+                // override block internal id
+                _block->inlineBlockId = CBInlineBlocks::CoreGet;
+              }
               return *vptr;
             }
           } else {
@@ -1204,6 +1218,8 @@ struct Get : public VariableBase {
         } else {
           // Pin fast cell
           _cell = _target;
+          // override block internal id
+          _block->inlineBlockId = CBInlineBlocks::CoreGet;
           return value;
         }
       }

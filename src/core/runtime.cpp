@@ -343,8 +343,6 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
   } else if (name == "Once") {
     blkp->inlineBlockId = CBInlineBlocks::CoreOnce;
-  } else if (name == "Get") {
-    blkp->inlineBlockId = CBInlineBlocks::CoreGet;
   } else if (name == "Set") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSet;
   } else if (name == "Update") {
