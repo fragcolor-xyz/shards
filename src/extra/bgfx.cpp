@@ -1835,14 +1835,21 @@ struct Camera : public CameraBase {
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
 
+    // set depth
+    currentView.minDepth = _near;
+    currentView.maxDepth = _far;
+
     // populate view matrices
     if (input.valueType != CBType::Table) {
-      currentView.worldToView = Mat4::FromArray(proj);
+      currentView.view = linalg::identity;
     } else {
-      currentView.worldToView =
-          linalg::mul(Mat4::FromArray(view), Mat4::FromArray(proj));
+      currentView.view = Mat4::FromArray(view);
     }
-    currentView.viewToWorld = linalg::inverse(currentView.worldToView);
+    currentView.invView = linalg::inverse(currentView.view);
+    currentView.proj = Mat4::FromArray(proj);
+    currentView.invProj = linalg::inverse(currentView.proj);
+    currentView.viewProj = linalg::mul(currentView.view, currentView.proj);
+    currentView.invViewProj = linalg::inverse(currentView.viewProj);
 
     return input;
   }
@@ -1983,14 +1990,21 @@ struct CameraOrtho : public CameraBase {
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
 
+    // set depth
+    currentView.minDepth = _near;
+    currentView.maxDepth = _far;
+
     // populate view matrices
     if (input.valueType != CBType::Table) {
-      currentView.worldToView = Mat4::FromArray(proj);
+      currentView.view = linalg::identity;
     } else {
-      currentView.worldToView =
-          linalg::mul(Mat4::FromArray(view), Mat4::FromArray(proj));
+      currentView.view = Mat4::FromArray(view);
     }
-    currentView.viewToWorld = linalg::inverse(currentView.worldToView);
+    currentView.invView = linalg::inverse(currentView.view);
+    currentView.proj = Mat4::FromArray(proj);
+    currentView.invProj = linalg::inverse(currentView.proj);
+    currentView.viewProj = linalg::mul(currentView.view, currentView.proj);
+    currentView.invViewProj = linalg::inverse(currentView.viewProj);
 
     return input;
   }
@@ -2730,8 +2744,7 @@ struct Screenshot : public BaseConsumer {
 };
 
 struct ViewToWorld : public BaseConsumer {
-  static inline Types InputTypes{{CoreInfo::Int2Type, CoreInfo::Float2Type}};
-  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo inputTypes() { return CoreInfo::Float2Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float3Type; }
 
   CBVar *_bgfxContext{nullptr};
@@ -2768,23 +2781,23 @@ struct ViewToWorld : public BaseConsumer {
     }
   }
 
+  CBOptionalString help() {
+    return CBCCSTR("This block transforms view/screen coordinates into world "
+                   "coordinates.");
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
-    linalg::aliases::float4 from(0.0f, 0.0f, _z, 1.0);
-    if (input.valueType == CBType::Int2) {
-      // neeed to transform pixel coords to homogeneous 0,1 coords
-      from.x = float(input.payload.int2Value[0]) / float(currentView.width);
-      from.y = float(input.payload.int2Value[1]) / float(currentView.height);
-    } else {
-      from.x = float(input.payload.float2Value[0]);
-      from.y = float(input.payload.float2Value[1]);
-    }
+    auto x = (float(input.payload.float2Value[0]) * 2.0f) - 1.0f;
+    auto y = 1.0f - (float(input.payload.float2Value[1]) * 2.0f);
 
-    linalg::aliases::float4 world = linalg::mul(currentView.viewToWorld, from);
-    Vec3 res = world;
+    // TODO not complete
+    linalg::aliases::float4 from(x, y, _z, 1.0);
+    Vec3 res = linalg::mul(currentView.invViewProj, from);
+
     return res;
   }
 };

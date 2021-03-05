@@ -28,7 +28,7 @@ struct Base {
   }
 };
 
-struct MousePos : public Base {
+struct MousePixelPos : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
@@ -88,6 +88,54 @@ struct MouseDelta : public Base {
       }
     }
     return Var(0.0, 0.0);
+  }
+};
+
+struct MousePos : public Base {
+  CBVar *_sdlWinVar{nullptr};
+  Uint32 _windowId{0};
+  int _width;
+  int _height;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // sdlEvents is not thread safe
+    Base::compose(data);
+    return CoreInfo::Float2Type;
+  }
+
+  void warmup(CBContext *context) {
+    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+    const auto window =
+        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    _windowId = SDL_GetWindowID(window);
+    SDL_GetWindowSize(window, &_width, &_height);
+  }
+
+  void cleanup() {
+    if (_sdlWinVar) {
+      releaseVariable(_sdlWinVar);
+      _sdlWinVar = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    for (const auto &event : BGFX::Context::sdlEvents) {
+      if (event.type == SDL_WINDOWEVENT &&
+          event.window.event == SDL_WINDOWEVENT_RESIZED &&
+          event.window.windowID == _windowId) {
+        const auto window =
+            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+        SDL_GetWindowSize(window, &_width, &_height);
+      }
+    }
+
+    int32_t mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+
+    return Var(float(mouseX) / float(_width), float(mouseY) / float(_height));
   }
 };
 
@@ -315,6 +363,7 @@ using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
 using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
 void registerBlocks() {
+  REGISTER_CBLOCK("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_CBLOCK("Inputs.MousePos", MousePos);
   REGISTER_CBLOCK("Inputs.MouseDelta", MouseDelta);
   REGISTER_CBLOCK("Inputs.Mouse", Mouse);

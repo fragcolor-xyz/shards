@@ -502,10 +502,18 @@ struct RenderXR : public BGFX::BaseConsumer {
           }
           bgfx::setViewTransform(_views[i], viewMat.data(), projMat.data());
 
-          // populate view matrices
-          currentView.worldToView =
-              linalg::mul(Mat4::FromArray(viewMat), Mat4::FromArray(projMat));
-          currentView.viewToWorld = linalg::inverse(currentView.worldToView);
+          // set depth
+          currentView.minDepth = _near;
+          currentView.maxDepth = _far;
+
+          // set view transforms
+          currentView.view = Mat4::FromArray(viewMat);
+          currentView.invView = linalg::inverse(currentView.view);
+          currentView.proj = Mat4::FromArray(proj);
+          currentView.invProj = linalg::inverse(currentView.proj);
+          currentView.viewProj =
+              linalg::mul(currentView.view, currentView.proj);
+          currentView.invViewProj = linalg::inverse(currentView.viewProj);
 
           populateInputsData();
 

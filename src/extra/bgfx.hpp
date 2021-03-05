@@ -122,11 +122,21 @@ struct NativeWindow {
 
 struct ViewInfo {
   bgfx::ViewId id{0};
+
   int width{0};
   int height{0};
+
   bgfx::FrameBufferHandle fb = BGFX_INVALID_HANDLE;
-  Mat4 viewToWorld;
-  Mat4 worldToView;
+
+  float minDepth;
+  float maxDepth;
+
+  Mat4 view;
+  Mat4 invView;
+  Mat4 proj;
+  Mat4 invProj;
+  Mat4 viewProj;
+  Mat4 invViewProj;
 };
 
 struct Context {
