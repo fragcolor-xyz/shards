@@ -65,10 +65,16 @@ mergeInto(LibraryManager.library, {
         compiler.FS.mkdir("/shaders/tmp");
 
         var fetches = [];
+        // /include from our /include
         fetches.push({
           filename: "/shaders/include/shader.h",
           operation: fetch("shaders/include/shader.h")
         });
+        fetches.push({
+          filename: "/shaders/include/implicit_shapes.h",
+          operation: fetch("shaders/include/implicit_shapes.h")
+        });
+        // /include from bgfx folders
         fetches.push({
           filename: "/shaders/include/bgfx_shader.h",
           operation: fetch("shaders/include/bgfx_shader.h")
@@ -77,6 +83,7 @@ mergeInto(LibraryManager.library, {
           filename: "/shaders/include/shaderlib.h",
           operation: fetch("shaders/include/shaderlib.h")
         });
+        // /lib/gltf from our /gltf
         fetches.push({
           filename: "/shaders/lib/gltf/ps_entry.h",
           operation: fetch("shaders/lib/gltf/ps_entry.h")
