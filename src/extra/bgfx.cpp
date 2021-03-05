@@ -1774,10 +1774,9 @@ struct Camera : public CameraBase {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
-    const auto currentView = ctx->currentView();
+    auto &currentView = ctx->currentView();
 
-    float view[16];
-
+    std::array<float, 16> view;
     if (input.valueType == CBType::Table) {
       // this is the most efficient way to find items in table
       // without hashing and possible allocations etc
@@ -1810,14 +1809,15 @@ struct Camera : public CameraBase {
       bx::Vec3 *bp =
           reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
       bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
-      bx::mtxLookAt(view, *bp, *bt, {0.0, 1.0, 0.0}, bx::Handness::Right);
+      bx::mtxLookAt(view.data(), *bp, *bt, {0.0, 1.0, 0.0},
+                    bx::Handness::Right);
     }
 
     int width = _width != 0 ? _width : currentView.width;
     int height = _height != 0 ? _height : currentView.height;
 
-    float proj[16];
-    bx::mtxProj(proj, _fov, float(width) / float(height), _near, _far,
+    std::array<float, 16> proj;
+    bx::mtxProj(proj.data(), _fov, float(width) / float(height), _near, _far,
                 bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
@@ -1829,11 +1829,20 @@ struct Camera : public CameraBase {
       }
     }
 
-    bgfx::setViewTransform(currentView.id,
-                           input.valueType == CBType::Table ? view : nullptr,
-                           proj);
+    bgfx::setViewTransform(
+        currentView.id,
+        input.valueType == CBType::Table ? view.data() : nullptr, proj.data());
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
+
+    // populate view matrices
+    if (input.valueType != CBType::Table) {
+      currentView.worldToView = Mat4::FromArray(proj);
+    } else {
+      currentView.worldToView =
+          linalg::mul(Mat4::FromArray(view), Mat4::FromArray(proj));
+    }
+    currentView.viewToWorld = linalg::inverse(currentView.worldToView);
 
     return input;
   }
@@ -1914,10 +1923,9 @@ struct CameraOrtho : public CameraBase {
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
 
-    const auto currentView = ctx->currentView();
+    auto &currentView = ctx->currentView();
 
-    float view[16];
-
+    std::array<float, 16> view;
     if (input.valueType == CBType::Table) {
       // this is the most efficient way to find items in table
       // without hashing and possible allocations etc
@@ -1950,14 +1958,14 @@ struct CameraOrtho : public CameraBase {
       bx::Vec3 *bp =
           reinterpret_cast<bx::Vec3 *>(&position.payload.float3Value);
       bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
-      bx::mtxLookAt(view, *bp, *bt);
+      bx::mtxLookAt(view.data(), *bp, *bt);
     }
 
     int width = _width != 0 ? _width : currentView.width;
     int height = _height != 0 ? _height : currentView.height;
 
-    float proj[16];
-    bx::mtxOrtho(proj, _left, _right, _bottom, _top, _near, _far, 0.0,
+    std::array<float, 16> proj;
+    bx::mtxOrtho(proj.data(), _left, _right, _bottom, _top, _near, _far, 0.0,
                  bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
     if constexpr (CurrentRenderer == Renderer::OpenGL) {
@@ -1969,11 +1977,20 @@ struct CameraOrtho : public CameraBase {
       }
     }
 
-    bgfx::setViewTransform(currentView.id,
-                           input.valueType == CBType::Table ? view : nullptr,
-                           proj);
+    bgfx::setViewTransform(
+        currentView.id,
+        input.valueType == CBType::Table ? view.data() : nullptr, proj.data());
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
+
+    // populate view matrices
+    if (input.valueType != CBType::Table) {
+      currentView.worldToView = Mat4::FromArray(proj);
+    } else {
+      currentView.worldToView =
+          linalg::mul(Mat4::FromArray(view), Mat4::FromArray(proj));
+    }
+    currentView.viewToWorld = linalg::inverse(currentView.worldToView);
 
     return input;
   }
@@ -2195,7 +2212,7 @@ struct Draw : public BaseConsumer {
       throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
     }
 
-    const auto currentView = ctx->currentView();
+    const auto &currentView = ctx->currentView();
 
     float mat[16];
     memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
@@ -2712,6 +2729,66 @@ struct Screenshot : public BaseConsumer {
   bool _overwrite{true};
 };
 
+struct ViewToWorld : public BaseConsumer {
+  static inline Types InputTypes{{CoreInfo::Int2Type, CoreInfo::Float2Type}};
+  static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+
+  CBVar *_bgfxContext{nullptr};
+  float _z{0.0};
+
+  static inline Parameters params{
+      {"Z",
+       CBCCSTR("The value of Z depth to use, generally 0.0 for  the near "
+               "plane, 1.0 for the far plane."),
+       {CoreInfo::FloatType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _z = float(value.payload.floatValue);
+  }
+
+  CBVar getParam(int index) { return Var(_z); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    return CoreInfo::Float3Type;
+  }
+
+  void warmup(CBContext *context) {
+    _bgfxContext = referenceVariable(context, "GFX.Context");
+    assert(_bgfxContext->valueType == CBType::Object);
+  }
+
+  void cleanup() {
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    Context *ctx =
+        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    const auto &currentView = ctx->currentView();
+
+    linalg::aliases::float4 from(0.0f, 0.0f, _z, 1.0);
+    if (input.valueType == CBType::Int2) {
+      // neeed to transform pixel coords to homogeneous 0,1 coords
+      from.x = float(input.payload.int2Value[0]) / float(currentView.width);
+      from.y = float(input.payload.int2Value[1]) / float(currentView.height);
+    } else {
+      from.x = float(input.payload.float2Value[0]);
+      from.y = float(input.payload.float2Value[1]);
+    }
+
+    linalg::aliases::float4 world = linalg::mul(currentView.viewToWorld, from);
+    Vec3 res = world;
+    return res;
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -2726,6 +2803,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
   REGISTER_CBLOCK("GFX.SetUniform", SetUniform);
   REGISTER_CBLOCK("GFX.Screenshot", Screenshot);
+  REGISTER_CBLOCK("GFX.ViewToWorld", ViewToWorld);
 }
 }; // namespace BGFX
 

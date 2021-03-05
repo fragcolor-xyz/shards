@@ -8,6 +8,7 @@
 #include "bgfx/bgfx.h"
 #include "bgfx/platform.h"
 #include "blocks/shared.hpp"
+#include "linalg_shim.hpp"
 
 using namespace chainblocks;
 namespace BGFX {
@@ -124,6 +125,8 @@ struct ViewInfo {
   int width{0};
   int height{0};
   bgfx::FrameBufferHandle fb = BGFX_INVALID_HANDLE;
+  Mat4 viewToWorld;
+  Mat4 worldToView;
 };
 
 struct Context {
@@ -136,7 +139,7 @@ struct Context {
 
   ViewInfo &currentView() { return viewsStack.back(); };
 
-  void pushView(ViewInfo view) { viewsStack.emplace_back(view); }
+  ViewInfo &pushView(ViewInfo view) { return viewsStack.emplace_back(view); }
 
   void popView() {
     assert(viewsStack.size() > 0);

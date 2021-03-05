@@ -110,6 +110,12 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
 struct alignas(16) Vec3 : public linalg::aliases::float3 {
   Vec3() : linalg::aliases::float3() {}
 
+  template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {
+    x = float(vec.x);
+    y = float(vec.y);
+    z = float(vec.z);
+  }
+
   template <typename NUMBER> Vec3(NUMBER x_, NUMBER y_, NUMBER z_) {
     x = float(x_);
     y = float(y_);

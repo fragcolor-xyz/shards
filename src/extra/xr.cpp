@@ -474,7 +474,7 @@ struct RenderXR : public BGFX::BaseConsumer {
           const auto vHeight = viewport["height"].as<int>();
 
           // push _viewId
-          ctx->pushView({_views[i], vWidth, vHeight});
+          auto &currentView = ctx->pushView({_views[i], vWidth, vHeight});
           DEFER({ ctx->popView(); });
 
           // Touch _viewId
@@ -486,21 +486,26 @@ struct RenderXR : public BGFX::BaseConsumer {
           bgfx::setViewScissor(_views[i], uint16_t(vX), uint16_t(vY),
                                uint16_t(vWidth), uint16_t(vHeight));
 
-          float viewMat[16];
+          std::array<float, 16> viewMat;
           {
             const auto jview = view["transform"]["inverse"]["matrix"];
             for (int j = 0; j < 16; j++) {
               viewMat[j] = jview[j].as<float>();
             }
           }
-          float projMat[16];
+          std::array<float, 16> projMat;
           {
             const auto jproj = view["projectionMatrix"];
             for (int j = 0; j < 16; j++) {
               projMat[j] = jproj[j].as<float>();
             }
           }
-          bgfx::setViewTransform(_views[i], viewMat, projMat);
+          bgfx::setViewTransform(_views[i], viewMat.data(), projMat.data());
+
+          // populate view matrices
+          currentView.worldToView =
+              linalg::mul(Mat4::FromArray(viewMat), Mat4::FromArray(projMat));
+          currentView.viewToWorld = linalg::inverse(currentView.worldToView);
 
           populateInputsData();
 
