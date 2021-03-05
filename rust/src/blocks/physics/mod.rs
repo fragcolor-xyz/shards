@@ -18,7 +18,7 @@ use rapier3d::geometry::{
   BroadPhase, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase,
 };
 use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
+use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
@@ -63,6 +63,7 @@ lazy_static! {
 
 struct Simulation {
   pipeline: PhysicsPipeline,
+  query_pipeline: QueryPipeline,
   gravity: Vector3<f32>,
   integration_parameters: IntegrationParameters,
   broad_phase: BroadPhase,
@@ -83,6 +84,7 @@ struct RigidBody {
   collider: Option<ColliderHandle>,
   position: ParamVar,
   rotation: ParamVar,
+  user_data: u128
 }
 
 struct BaseShape {
@@ -158,3 +160,4 @@ fn mat3_from_seq(var: &Seq) -> Matrix3<f32> {
 pub mod rigidbody;
 pub mod shapes;
 pub mod simulation;
+pub mod queries;

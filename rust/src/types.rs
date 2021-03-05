@@ -1071,7 +1071,23 @@ impl Var {
       payload: CBVarPayload {
         __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
           __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
-            objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
+            objectValue: obj as *mut T as CBPointer,
+            objectVendorId: info.details.object.vendorId,
+            objectTypeId: info.details.object.typeId,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub unsafe fn new_object_from_raw_ptr(obj: CBPointer, info: &Type) -> Var {
+    Var {
+      valueType: CBType_Object,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
+            objectValue: obj,
             objectVendorId: info.details.object.vendorId,
             objectTypeId: info.details.object.typeId,
           },

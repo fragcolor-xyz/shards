@@ -50,6 +50,8 @@ use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
 use std::convert::TryInto;
 use std::rc::Rc;
 
+// TODO Major refactor to remove copy-pasta, man in C++ this would have been so easy for me... but.
+
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
@@ -69,6 +71,12 @@ lazy_static! {
       cbccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
       vec![common_type::float4, common_type::float4_var]
     )
+      .into(),
+    (
+      cstr!("Name"),
+      cbccstr!("The optional name of the variable that will be exposed to identify, apply forces and control this rigid body."),
+      vec![common_type::string, common_type::none]
+    )
       .into()
   ];
 }
@@ -82,6 +90,7 @@ impl Default for RigidBody {
       collider: None,
       position: ParamVar::new((0.0, 0.0, 0.0).into()),
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
+      user_data: 0,
     };
     r.simulation_var.setName("Physics.Simulation");
     r
@@ -125,11 +134,12 @@ impl RigidBody {
     self.rotation.cleanup();
   }
 
-  fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
+  fn _warmup(&mut self, context: &Context, user_data: u128) -> Result<(), &str> {
     self.simulation_var.warmup(context);
     self.shape_var.warmup(context);
     self.position.warmup(context);
     self.rotation.warmup(context);
+    self.user_data = user_data;
     Ok(())
   }
 
@@ -167,7 +177,8 @@ impl RigidBody {
       let simulation = self.simulation_var.get();
       let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
 
-      let rigid_body = RigidBodyBuilder::new(status).position(iso).build();
+      let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
+      rigid_body.user_data = 0;
       let rigid_body = simulation.bodies.insert(rigid_body);
 
       let shape = self.shape_var.get();
@@ -176,9 +187,10 @@ impl RigidBody {
         for shape in shapes {
           let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
           let shape = shapeInfo.shape.as_ref().unwrap().clone();
-          let collider = ColliderBuilder::new(shape)
+          let mut collider = ColliderBuilder::new(shape)
             .position(shapeInfo.position.unwrap())
             .build();
+          collider.user_data = 0;
           self.collider = Some(simulation.colliders.insert(
             collider,
             rigid_body,
@@ -205,12 +217,16 @@ impl RigidBody {
 
 struct StaticRigidBody {
   rb: Rc<RigidBody>,
+  self_obj: ParamVar,
+  exposing: ExposedTypes,
 }
 
 impl Default for StaticRigidBody {
   fn default() -> Self {
     StaticRigidBody {
       rb: Rc::new(RigidBody::default()),
+      self_obj: ParamVar::new(().into()),
+      exposing: Vec::new(),
     }
   }
 }
@@ -243,6 +259,11 @@ impl Block for StaticRigidBody {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
+      3 => {
+        if !value.is_none() {
+          self.self_obj.setName(value.try_into().unwrap())
+        }
+      }
       _ => unreachable!(),
     }
   }
@@ -250,6 +271,13 @@ impl Block for StaticRigidBody {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._get_param(index),
+      3 => {
+        if self.self_obj.isVariable() {
+          self.self_obj.getName().into()
+        } else {
+          ().into()
+        }
+      }
       _ => unreachable!(),
     }
   }
@@ -258,12 +286,38 @@ impl Block for StaticRigidBody {
     Some(&EXPOSED_SIMULATION)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    if self.self_obj.isVariable() {
+      self.exposing.clear();
+      let exp_info = ExposedInfo {
+        exposedType: *RIGIDBODY_TYPE,
+        name: self.self_obj.getName(),
+        help: cbccstr!("The exposed kinematic rigid body."),
+        ..ExposedInfo::default()
+      };
+      self.exposing.push(exp_info);
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
   fn cleanup(&mut self) {
+    self.self_obj.cleanup();
     Rc::get_mut(&mut self.rb).unwrap()._cleanup();
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    Rc::get_mut(&mut self.rb).unwrap()._warmup(context)
+    self.self_obj.warmup(context);
+    let mut user_data: u128 = 0;
+    if self.self_obj.isVariable() {
+      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
+      self.self_obj.set(obj);
+    }
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      ._warmup(context, user_data)
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -272,21 +326,6 @@ impl Block for StaticRigidBody {
       ._populate(BodyStatus::Static)?;
     Ok(*input)
   }
-}
-
-lazy_static! {
-  static ref NONSTATIC_PARAMETERS: Parameters = {
-    let mut v = vec![(
-      cstr!("Name"),
-      cbccstr!("The optional name of the variable that will be exposed to apply forces and control this rigid body."),
-      vec![common_type::string, common_type::none]
-    )
-      .into()];
-    v.insert(0, (*PARAMETERS)[2]);
-    v.insert(0, (*PARAMETERS)[1]);
-    v.insert(0, (*PARAMETERS)[0]);
-    v
-  };
 }
 
 struct DynamicRigidBody {
@@ -331,7 +370,7 @@ impl Block for DynamicRigidBody {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&NONSTATIC_PARAMETERS)
+    Some(&PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) {
@@ -370,7 +409,7 @@ impl Block for DynamicRigidBody {
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
         name: self.self_obj.getName(),
-        help: cbccstr!("The exposed rigid body."),
+        help: cbccstr!("The exposed dynamic rigid body."),
         ..ExposedInfo::default()
       };
       self.exposing.push(exp_info);
@@ -387,12 +426,15 @@ impl Block for DynamicRigidBody {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
+    let mut user_data: u128 = 0;
     if self.self_obj.isVariable() {
-      self
-        .self_obj
-        .set(Var::new_object(&self.rb, &RIGIDBODY_TYPE));
+      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
+      self.self_obj.set(obj);
     }
-    Rc::get_mut(&mut self.rb).unwrap()._warmup(context)
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      ._warmup(context, user_data)
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
@@ -449,7 +491,7 @@ impl Block for KinematicRigidBody {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&NONSTATIC_PARAMETERS)
+    Some(&PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) {
@@ -488,7 +530,7 @@ impl Block for KinematicRigidBody {
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
         name: self.self_obj.getName(),
-        help: cbccstr!("The exposed rigid body."),
+        help: cbccstr!("The exposed kinematic rigid body."),
         ..ExposedInfo::default()
       };
       self.exposing.push(exp_info);
@@ -505,12 +547,15 @@ impl Block for KinematicRigidBody {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
+    let mut user_data: u128 = 0;
     if self.self_obj.isVariable() {
-      self
-        .self_obj
-        .set(Var::new_object(&self.rb, &RIGIDBODY_TYPE));
+      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
+      self.self_obj.set(obj);
     }
-    Rc::get_mut(&mut self.rb).unwrap()._warmup(context)
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      ._warmup(context, user_data)
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
