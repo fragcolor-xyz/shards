@@ -53,9 +53,11 @@ struct Const {
     bool hasVariables = false;
     _innerInfo = deriveTypeInfo(_value, data, &hasVariables);
     if (hasVariables) {
+      _clone = _value;
       const_cast<CBlock *>(data.block)->inlineBlockId =
           CBInlineBlocks::NotInline;
     } else {
+      _clone = Var::Empty;
       const_cast<CBlock *>(data.block)->inlineBlockId =
           CBInlineBlocks::CoreConst;
     }
@@ -93,9 +95,7 @@ struct Const {
     }
   }
 
-  void warmup(CBContext *context) {
-    warmupVariables(_clone, context);
-  }
+  void warmup(CBContext *context) { warmupVariables(_clone, context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // we need to reassign values every frame
