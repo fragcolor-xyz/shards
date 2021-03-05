@@ -511,7 +511,7 @@ struct RenderXR : public BGFX::BaseConsumer {
           // set view transforms
           currentView.view = Mat4::FromArray(viewMat);
           currentView.invView = linalg::inverse(currentView.view);
-          currentView.proj = Mat4::FromArray(proj);
+          currentView.proj = Mat4::FromArray(projMat);
           currentView.invProj = linalg::inverse(currentView.proj);
           currentView.viewProj =
               linalg::mul(currentView.view, currentView.proj);

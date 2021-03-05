@@ -1171,6 +1171,7 @@ struct Get : public VariableBase {
     if (unlikely(_cell != nullptr)) {
       // we override block id, this should not happen
       assert(false);
+      return Var::Empty;
     } else {
       if (_isTable) {
         if (_target->valueType == Table) {
