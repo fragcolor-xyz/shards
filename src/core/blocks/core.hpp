@@ -95,11 +95,6 @@ struct Const {
 
   void warmup(CBContext *context) {
     warmupVariables(_clone, context);
-    if (_refs.size() > 0) {
-      _pvalue = &_clone;
-    } else {
-      _pvalue = &_value;
-    }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
