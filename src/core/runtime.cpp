@@ -1367,7 +1367,8 @@ void freeDerivedInfo(CBTypeInfo info) {
   };
 }
 
-CBTypeInfo deriveTypeInfo(const CBVar &value) {
+CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data,
+                          bool *containsVariables) {
   // We need to guess a valid CBTypeInfo for this var in order to validate
   // Build a CBTypeInfo for the var
   // this is not complete at all, missing Array and ContextVar for example
@@ -1388,7 +1389,8 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
   case Seq: {
     std::unordered_set<CBTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i]);
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data,
+                                    containsVariables);
       if (!types.count(derived)) {
         chainblocks::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
@@ -1404,7 +1406,7 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
     CBString k;
     CBVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto derived = deriveTypeInfo(v);
+      auto derived = deriveTypeInfo(v, data, containsVariables);
       chainblocks::arrayPush(varType.table.types, derived);
       chainblocks::arrayPush(varType.table.keys, k);
     }
@@ -1415,9 +1417,27 @@ CBTypeInfo deriveTypeInfo(const CBVar &value) {
     s.api->setGetIterator(s, &sit);
     CBVar v;
     while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v);
+      auto derived = deriveTypeInfo(v, data, containsVariables);
       chainblocks::arrayPush(varType.setTypes, derived);
     }
+  } break;
+  case CBType::ContextVar: {
+    if (containsVariables) {
+      // containsVariables is used by Const block mostly
+      *containsVariables = true;
+      const auto varName = value.payload.stringValue;
+      for (auto info : data.shared) {
+        if (strcmp(info.name, varName) == 0) {
+          return info.exposedType;
+        }
+      }
+      // not found! reset
+      *containsVariables = false;
+    }
+    // if we reach this point, no variable was found...
+    // not our job to trigger errors, just continue
+    // specifically we are used to verify parameters as well
+    // and in that case data is empty
   } break;
   default:
     break;
@@ -1678,7 +1698,8 @@ bool validateSetParam(CBlock *block, int index, const CBVar &value,
   auto param = params.elements[index];
 
   // Build a CBTypeInfo for the var
-  auto varType = deriveTypeInfo(value);
+  CBInstanceData data{};
+  auto varType = deriveTypeInfo(value, data);
   DEFER({ freeDerivedInfo(varType); });
 
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {

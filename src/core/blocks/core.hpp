@@ -28,13 +28,13 @@ struct Const {
       "Value", CBCCSTR("The constant value to insert in the chain."),
       CoreInfo::AnyType));
 
-  CBVar _value{};
+  OwnedVar _value{};
+  OwnedVar _clone{};
   CBTypeInfo _innerInfo{};
+  std::vector<CBVar *> _vals;
+  std::vector<CBVar *> _refs;
 
-  void destroy() {
-    destroyVar(_value);
-    freeDerivedInfo(_innerInfo);
-  }
+  void destroy() { freeDerivedInfo(_innerInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
@@ -44,17 +44,72 @@ struct Const {
     return CBParametersInfo(constParamsInfo);
   }
 
-  void setParam(int index, const CBVar &value) { cloneVar(_value, value); }
+  void setParam(int index, const CBVar &value) { _value = value; }
 
   CBVar getParam(int index) { return _value; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     freeDerivedInfo(_innerInfo);
-    _innerInfo = deriveTypeInfo(_value);
+    bool hasVariables = false;
+    _innerInfo = deriveTypeInfo(_value, data, &hasVariables);
+    if (hasVariables) {
+      const_cast<CBlock *>(data.block)->inlineBlockId =
+          CBInlineBlocks::NotInline;
+    } else {
+      const_cast<CBlock *>(data.block)->inlineBlockId =
+          CBInlineBlocks::CoreConst;
+    }
     return _innerInfo;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return _value; }
+  void cleanup() {
+    if (_refs.size() > 0) {
+      for (auto val : _vals) {
+        // we do this to avoid double freeing, we don't really own this value
+        *val = Var::Empty;
+      }
+      for (auto ref : _refs) {
+        releaseVariable(ref);
+      }
+      _refs.clear();
+      _vals.clear();
+    }
+  }
+
+  void warmupVariables(CBVar &v, CBContext *context) {
+    if (v.valueType == CBType::ContextVar) {
+      _refs.emplace_back(referenceVariable(context, v.payload.stringValue));
+      _vals.emplace_back(&v);
+    } else if (v.valueType == CBType::Seq) {
+      for (auto &sv : v) {
+        warmupVariables(sv, context);
+      }
+    } else if (v.valueType == CBType::Table) {
+      ForEach(v.payload.tableValue, [&](auto key, auto &val) {
+        auto vptr =
+            v.payload.tableValue.api->tableAt(v.payload.tableValue, key);
+        warmupVariables(*vptr, context);
+      });
+    }
+  }
+
+  void warmup(CBContext *context) {
+    warmupVariables(_clone, context);
+    if (_refs.size() > 0) {
+      _pvalue = &_clone;
+    } else {
+      _pvalue = &_value;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // we need to reassign values every frame
+    size_t len = _refs.size();
+    for (size_t i = 0; i < len; i++) {
+      *_vals[i] = *_refs[i];
+    }
+    return _clone;
+  }
 };
 
 static ParamsInfo compareParamsInfo = ParamsInfo(ParamsInfo::Param(
@@ -1024,7 +1079,7 @@ struct Get : public VariableBase {
             // we got no key names
             if (_defaultValue.valueType != None) {
               freeDerivedInfo(_defaultType);
-              _defaultType = deriveTypeInfo(_defaultValue);
+              _defaultType = deriveTypeInfo(_defaultValue, data);
               return _defaultType;
             } else if (tableTypes.len == 1) {
               // 1 type only so we assume we return that type
@@ -1044,7 +1099,7 @@ struct Get : public VariableBase {
       }
       if (_defaultValue.valueType != None) {
         freeDerivedInfo(_defaultType);
-        _defaultType = deriveTypeInfo(_defaultValue);
+        _defaultType = deriveTypeInfo(_defaultValue, data);
         return _defaultType;
       } else {
         if (_key.isVariable()) {
@@ -1098,7 +1153,7 @@ struct Get : public VariableBase {
 
     if (_defaultValue.valueType != None) {
       freeDerivedInfo(_defaultType);
-      _defaultType = deriveTypeInfo(_defaultValue);
+      _defaultType = deriveTypeInfo(_defaultValue, data);
       return _defaultType;
     } else {
       throw ComposeError(

@@ -733,7 +733,7 @@ struct ExpectLike {
         return _expectedType;
       } else {
         CBVar example = _example;
-        _expectedType = deriveTypeInfo(example);
+        _expectedType = deriveTypeInfo(example, data);
         _outputTypeHash = deriveTypeHash(_expectedType);
         return _expectedType;
       }

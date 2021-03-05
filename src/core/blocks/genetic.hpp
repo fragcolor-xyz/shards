@@ -765,7 +765,7 @@ struct Mutant {
       for (auto &mut : _mutations) {
         if (idx >= int(innerParams.len))
           break;
-        TypeInfo ptype(inner->getParam(inner, idx));
+        TypeInfo ptype(inner->getParam(inner, idx), data);
         dataCopy.inputType = ptype;
         if (mut.valueType == Block) {
           auto blk = mut.payload.blockValue;

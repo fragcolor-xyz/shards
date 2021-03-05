@@ -139,8 +139,6 @@ struct ViewInfo {
   Mat4 invView;
   Mat4 proj;
   Mat4 invProj;
-  Mat4 viewProj;
-  Mat4 invViewProj;
 };
 
 struct Context {

@@ -1850,8 +1850,6 @@ struct Camera : public CameraBase {
     currentView.invView = linalg::inverse(currentView.view);
     currentView.proj = Mat4::FromArray(proj);
     currentView.invProj = linalg::inverse(currentView.proj);
-    currentView.viewProj = linalg::mul(currentView.view, currentView.proj);
-    currentView.invViewProj = linalg::inverse(currentView.viewProj);
 
     return input;
   }
@@ -2007,8 +2005,6 @@ struct CameraOrtho : public CameraBase {
     currentView.invView = linalg::inverse(currentView.view);
     currentView.proj = Mat4::FromArray(proj);
     currentView.invProj = linalg::inverse(currentView.proj);
-    currentView.viewProj = linalg::mul(currentView.view, currentView.proj);
-    currentView.invViewProj = linalg::inverse(currentView.viewProj);
 
     return input;
   }

@@ -195,7 +195,7 @@ struct Load : public BGFX::BaseConsumer {
   bool _withTextures{true};
   bool _withShaders{true};
   uint32_t _numLights{0};
-  std::unique_ptr<IShaderCompiler> _shaderCompiler = makeShaderCompiler();
+  std::unique_ptr<IShaderCompiler> _shaderCompiler;
   std::optional<Mat4> _before;
   std::optional<Mat4> _after;
 
@@ -328,6 +328,10 @@ struct Load : public BGFX::BaseConsumer {
       ModelVar.Release(_model);
       _model = nullptr;
     }
+
+    if (_shaderCompiler) {
+      _shaderCompiler = nullptr;
+    }
   }
 
   std::shared_ptr<GFXTexture>
@@ -441,6 +445,8 @@ struct Load : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *ctx) {
+    _shaderCompiler = makeShaderCompiler();
+
     // lazily fill out varying and entry point shaders
     if (_shadersVarying.size() == 0) {
       std::unique_lock lock(_shadersMutex);

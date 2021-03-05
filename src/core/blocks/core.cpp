@@ -1282,18 +1282,6 @@ struct Replace {
   }
 };
 
-// Register Const
-RUNTIME_CORE_BLOCK_FACTORY(Const);
-RUNTIME_BLOCK_destroy(Const);
-RUNTIME_BLOCK_inputTypes(Const);
-RUNTIME_BLOCK_outputTypes(Const);
-RUNTIME_BLOCK_parameters(Const);
-RUNTIME_BLOCK_compose(Const);
-RUNTIME_BLOCK_setParam(Const);
-RUNTIME_BLOCK_getParam(Const);
-RUNTIME_BLOCK_activate(Const);
-RUNTIME_BLOCK_END(Const);
-
 // Register And
 RUNTIME_CORE_BLOCK_FACTORY(And);
 RUNTIME_BLOCK_inputTypes(And);
@@ -1719,7 +1707,7 @@ struct EmscriptenAsyncEval {
 #endif
 
 void registerBlocksCoreBlocks() {
-  REGISTER_CORE_BLOCK(Const);
+  REGISTER_CBLOCK("Const", Const);
   REGISTER_CORE_BLOCK(Set);
   REGISTER_CORE_BLOCK(Ref);
   REGISTER_CORE_BLOCK(Update);

@@ -200,7 +200,8 @@ struct stack_allocator {
 };
 
 void freeDerivedInfo(CBTypeInfo info);
-CBTypeInfo deriveTypeInfo(const CBVar &value);
+CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data,
+                          bool *containsVariables = nullptr);
 CBTypeInfo cloneTypeInfo(const CBTypeInfo &other);
 
 uint64_t deriveTypeHash(const CBVar &value);
@@ -208,7 +209,9 @@ uint64_t deriveTypeHash(const CBTypeInfo &value);
 
 struct TypeInfo {
   TypeInfo() {}
-  TypeInfo(const CBVar &var) { _info = deriveTypeInfo(var); }
+  TypeInfo(const CBVar &var, const CBInstanceData &data) {
+    _info = deriveTypeInfo(var, data);
+  }
   TypeInfo(const CBTypeInfo &info) { _info = cloneTypeInfo(info); }
   TypeInfo &operator=(const CBTypeInfo &info) {
     freeDerivedInfo(_info);

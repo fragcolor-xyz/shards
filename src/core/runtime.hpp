@@ -174,8 +174,8 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   case NoopBlock:
     return input;
   case CoreConst: {
-    auto cblock = reinterpret_cast<chainblocks::ConstRuntime *>(blk);
-    return cblock->core._value;
+    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Const> *>(blk);
+    return cblock->block._value;
   }
   case CoreIs: {
     auto cblock = reinterpret_cast<chainblocks::IsRuntime *>(blk);
@@ -705,7 +705,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       // Validate the chain
       CBInstanceData data{};
       data.chain = chain.get();
-      data.inputType = deriveTypeInfo(input);
+      data.inputType = deriveTypeInfo(input, data);
       auto validation = composeChain(
           chain.get(),
           [](const CBlock *errorBlock, const char *errorTxt,

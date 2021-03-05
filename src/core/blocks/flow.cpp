@@ -759,7 +759,7 @@ struct Match {
       if (case_.valueType != None &&
           case_.valueType != data.inputType.basicType) {
         // must compare deeply
-        TypeInfo cinfo(case_);
+        TypeInfo cinfo(case_, data);
         if (cinfo != data.inputType) {
           throw ComposeError(
               "Match: each case must match the input type!, found a mismatch.");
