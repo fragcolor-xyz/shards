@@ -190,6 +190,10 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
       env);
   rep("(defmacro! defnode (fn* [name] `(def ~(symbol (str name)) (Node))))",
       env);
+  rep("(defmacro! | (fn* [& blocks] `(Sub (chainify (vector ~@blocks)))))",
+      env);
+  rep("(defmacro! || (fn* [& blocks] `(Await (chainify (vector ~@blocks)))))",
+      env);
 }
 
 class malRoot {

@@ -97,7 +97,8 @@
                    "Hello world 3" (GUI.SameLine) (GUI.Text)
                    "Hello world 4" (GUI.SameLine) (GUI.Text)
                    (Inputs.MousePos) (GUI.Text "mouse pos")
-                   (GFX.ViewToWorld 1.0) (GUI.Text "mouse pos world")
+                   (| (GFX.Unproject 0.0) (GUI.Text "mouse pos world 0"))
+                   (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1"))
                    (Inputs.MouseDelta) (GUI.Text "mouse delta")
                    (GUI.Separator)
 

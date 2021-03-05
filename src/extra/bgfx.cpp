@@ -1835,9 +1835,11 @@ struct Camera : public CameraBase {
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
 
-    // set depth
-    currentView.minDepth = _near;
-    currentView.maxDepth = _far;
+    // set viewport params
+    currentView.viewport.x = _offsetX;
+    currentView.viewport.y = _offsetY;
+    currentView.viewport.width = width;
+    currentView.viewport.height = height;
 
     // populate view matrices
     if (input.valueType != CBType::Table) {
@@ -1990,9 +1992,11 @@ struct CameraOrtho : public CameraBase {
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
 
-    // set depth
-    currentView.minDepth = _near;
-    currentView.maxDepth = _far;
+    // set viewport params
+    currentView.viewport.x = _offsetX;
+    currentView.viewport.y = _offsetY;
+    currentView.viewport.width = width;
+    currentView.viewport.height = height;
 
     // populate view matrices
     if (input.valueType != CBType::Table) {
@@ -2743,7 +2747,7 @@ struct Screenshot : public BaseConsumer {
   bool _overwrite{true};
 };
 
-struct ViewToWorld : public BaseConsumer {
+struct Unproject : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::Float2Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float3Type; }
 
@@ -2782,8 +2786,8 @@ struct ViewToWorld : public BaseConsumer {
   }
 
   CBOptionalString help() {
-    return CBCCSTR("This block transforms view/screen coordinates into world "
-                   "coordinates.");
+    return CBCCSTR(
+        "This block unprojects screen coordinates into world coordinates.");
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -2791,14 +2795,20 @@ struct ViewToWorld : public BaseConsumer {
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
-    auto x = (float(input.payload.float2Value[0]) * 2.0f) - 1.0f;
-    auto y = 1.0f - (float(input.payload.float2Value[1]) * 2.0f);
+    const auto sx =
+        float(input.payload.float2Value[0]) * float(currentView.width);
+    const auto sy =
+        float(input.payload.float2Value[1]) * float(currentView.height);
+    const auto vx = float(currentView.viewport.x);
+    const auto vy = float(currentView.viewport.y);
+    const auto vw = float(currentView.viewport.width);
+    const auto vh = float(currentView.viewport.height);
+    const auto x = (((sx - vx) / vw) * 2.0f) - 1.0f;
+    const auto y = 1.0f - (((sy - vy) / vh) * 2.0f);
 
-    // TODO not complete
-    linalg::aliases::float4 from(x, y, _z, 1.0);
-    Vec3 res = linalg::mul(currentView.invViewProj, from);
-
-    return res;
+    return Vec3(x, y, _z)
+        .applyMatrix(currentView.invProj)
+        .applyMatrix(currentView.invView);
   }
 };
 
@@ -2816,7 +2826,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.RenderTexture", RenderTexture);
   REGISTER_CBLOCK("GFX.SetUniform", SetUniform);
   REGISTER_CBLOCK("GFX.Screenshot", Screenshot);
-  REGISTER_CBLOCK("GFX.ViewToWorld", ViewToWorld);
+  REGISTER_CBLOCK("GFX.Unproject", Unproject);
 }
 }; // namespace BGFX
 

@@ -978,10 +978,9 @@
 
   ; test for a possible issue with thread pool on ending
    (||
-    (->
-     (Maybe
-      (ExpectString)
-      (Stop))))))
+    (Maybe
+     (ExpectString)
+     (Stop)))))
 
 (prn "Doing SaveBinary")
 

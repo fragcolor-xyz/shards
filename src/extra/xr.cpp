@@ -502,9 +502,11 @@ struct RenderXR : public BGFX::BaseConsumer {
           }
           bgfx::setViewTransform(_views[i], viewMat.data(), projMat.data());
 
-          // set depth
-          currentView.minDepth = _near;
-          currentView.maxDepth = _far;
+          // set viewport params
+          currentView.viewport.x = vX;
+          currentView.viewport.y = vY;
+          currentView.viewport.width = vWidth;
+          currentView.viewport.height = vHeight;
 
           // set view transforms
           currentView.view = Mat4::FromArray(viewMat);

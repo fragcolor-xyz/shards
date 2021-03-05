@@ -128,8 +128,12 @@ struct ViewInfo {
 
   bgfx::FrameBufferHandle fb = BGFX_INVALID_HANDLE;
 
-  float minDepth;
-  float maxDepth;
+  struct {
+    int x{0};
+    int y{0};
+    int width{64};
+    int height{64};
+  } viewport;
 
   Mat4 view;
   Mat4 invView;

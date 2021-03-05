@@ -140,6 +140,14 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     return *this;
   }
 
+  Vec3 &applyMatrix(const linalg::aliases::float4x4 &mat) {
+    const auto w = 1.0f / (mat.x.w * x + mat.y.w * y + mat.z.w * z + mat.w.w);
+    x = (mat.x.x * x + mat.y.x * y + mat.z.x * z + mat.w.x) * w;
+    y = (mat.x.y * x + mat.y.y * y + mat.z.y * z + mat.w.y) * w;
+    z = (mat.x.z * x + mat.y.z * y + mat.z.z * z + mat.w.z) * w;
+    return *this;
+  }
+
   operator CBVar() const {
     auto v = reinterpret_cast<CBVar *>(const_cast<chainblocks::Vec3 *>(this));
     v->valueType = CBType::Float3;
