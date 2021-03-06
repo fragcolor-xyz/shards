@@ -134,13 +134,12 @@ impl RigidBody {
     self.rotation.cleanup();
   }
 
-  fn _warmup(&mut self, context: &Context, user_data: u128) -> Result<(), &str> {
+  fn _warmup(&mut self, context: &Context, user_data: u128) {
     self.simulation_var.warmup(context);
     self.shape_var.warmup(context);
     self.position.warmup(context);
     self.rotation.warmup(context);
     self.user_data = user_data;
-    Ok(())
   }
 
   fn _populate(&mut self, status: BodyStatus) -> Result<(RigidBodyHandle, Var, Var), &str> {
@@ -178,7 +177,7 @@ impl RigidBody {
       let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
 
       let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
-      rigid_body.user_data = 0;
+      rigid_body.user_data = self.user_data;
       let rigid_body = simulation.bodies.insert(rigid_body);
 
       let shape = self.shape_var.get();
@@ -190,7 +189,7 @@ impl RigidBody {
           let mut collider = ColliderBuilder::new(shape)
             .position(shapeInfo.position.unwrap())
             .build();
-          collider.user_data = 0;
+          collider.user_data = self.user_data;
           self.collider = Some(simulation.colliders.insert(
             collider,
             rigid_body,
@@ -200,9 +199,10 @@ impl RigidBody {
       } else {
         let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
         let shape = shapeInfo.shape.as_ref().unwrap().clone();
-        let collider = ColliderBuilder::new(shape)
+        let mut collider = ColliderBuilder::new(shape)
           .position(shapeInfo.position.unwrap())
           .build();
+        collider.user_data = self.user_data;
         self.collider = Some(simulation.colliders.insert(
           collider,
           rigid_body,
@@ -309,15 +309,16 @@ impl Block for StaticRigidBody {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
-    let mut user_data: u128 = 0;
+    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let user_data: u128 =
+      { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.isVariable() {
-      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
-      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      ._warmup(context, user_data)
+      ._warmup(context, user_data);
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -426,15 +427,16 @@ impl Block for DynamicRigidBody {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
-    let mut user_data: u128 = 0;
+    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let user_data: u128 =
+      { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.isVariable() {
-      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
-      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      ._warmup(context, user_data)
+      ._warmup(context, user_data);
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
@@ -547,15 +549,16 @@ impl Block for KinematicRigidBody {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
-    let mut user_data: u128 = 0;
+    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let user_data: u128 =
+      { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.isVariable() {
-      let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
-      unsafe { user_data = obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128; }
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      ._warmup(context, user_data)
+      ._warmup(context, user_data);
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
