@@ -726,15 +726,16 @@ TEST_CASE("VarPayload") {
 }
 
 #define SET_TABLE_COMMON_TESTS                                                 \
+  CBInstanceData data{};                                                       \
   auto hash1 = hash(vxx);                                                      \
   auto hash2 = hash(vx);                                                       \
   auto hash3 = hash(vyy);                                                      \
   REQUIRE(hash1 == hash2);                                                     \
   REQUIRE(hash1 == hash3);                                                     \
   auto typeHash1 = deriveTypeHash(vxx);                                        \
-  auto typeInfo1 = deriveTypeInfo(vxx);                                        \
-  auto typeInfo2 = deriveTypeInfo(vx);                                         \
-  auto typeInfo3 = deriveTypeInfo(Var::Empty);                                 \
+  auto typeInfo1 = deriveTypeInfo(vxx, data);                                  \
+  auto typeInfo2 = deriveTypeInfo(vx, data);                                   \
+  auto typeInfo3 = deriveTypeInfo(Var::Empty, data);                           \
   REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);                             \
   auto stypeHash = std::hash<CBTypeInfo>()(typeInfo1);                         \
   REQUIRE(stypeHash != 0);                                                     \
