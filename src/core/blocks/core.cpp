@@ -572,8 +572,9 @@ struct AppendTo : public XpendTo {
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
       _scratchStr().clear();
-      _scratchStr() += collection.payload.stringValue;
-      _scratchStr() += input.payload.stringValue;
+      _scratchStr().append(collection.payload.stringValue,
+                           CBSTRLEN(collection));
+      _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
       Var tmp(_scratchStr());
       cloneVar(collection, tmp);
       break;
@@ -613,8 +614,9 @@ struct PrependTo : public XpendTo {
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
       _scratchStr().clear();
-      _scratchStr() += input.payload.stringValue;
-      _scratchStr() += collection.payload.stringValue;
+      _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
+      _scratchStr().append(collection.payload.stringValue,
+                           CBSTRLEN(collection));
       Var tmp(_scratchStr());
       cloneVar(collection, tmp);
       break;
