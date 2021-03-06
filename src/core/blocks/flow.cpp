@@ -719,9 +719,9 @@ struct Match {
     case 0: {
       auto counter = value.payload.seqValue.len;
       if (counter % 2)
-        throw CBException("Cond: first parameter must contain a sequence of "
-                          "pairs [condition to check & action to perform if "
-                          "check passed (true)].");
+        throw CBException(
+            "Match: first parameter must contain a sequence of pairs [variable "
+            "to compare & action to perform if matches].");
       _cases.resize(counter / 2);
       _actions.resize(counter / 2);
       _full.resize(counter);
@@ -756,10 +756,10 @@ struct Match {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     for (auto &case_ : _cases) {
-      if (case_.valueType != None &&
-          case_.valueType != data.inputType.basicType) {
+      if (case_.valueType != None) {
         // must compare deeply
-        TypeInfo cinfo(case_, data);
+        bool hasVariables = false;
+        TypeInfo cinfo(case_, data, &hasVariables);
         if (cinfo != data.inputType) {
           throw ComposeError(
               "Match: each case must match the input type!, found a mismatch.");
@@ -792,6 +792,14 @@ struct Match {
   }
 
   void warmup(CBContext *context) {
+    _vars.clear();
+    for (auto &case_ : _cases) {
+      if (case_.valueType == CBType::ContextVar) {
+        _vars.emplace_back(
+            referenceVariable(context, case_.payload.stringValue));
+      }
+    }
+
     for (auto &action : _actions) {
       action.warmup(context);
     }
@@ -801,13 +809,21 @@ struct Match {
     for (auto &action : _actions) {
       action.cleanup();
     }
+
+    for (auto pvar : _vars) {
+      releaseVariable(pvar);
+    }
+    _vars.clear();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar finalOutput{};
     bool matched = false;
+    auto varsIdx = 0;
     for (auto i = 0; i < _ncases; i++) {
-      auto &case_ = _cases[i];
+      auto &case_ = _cases[i].valueType == CBType::ContextVar
+                        ? *(*(_vars.begin() + (varsIdx++)))
+                        : _cases[i];
       auto &action = _actions[i];
       if (case_ == input || case_.valueType == None) {
         action.activate(context, input, finalOutput);
@@ -823,6 +839,7 @@ struct Match {
   }
 
   std::vector<OwnedVar> _cases;
+  std::vector<CBVar *> _vars;
   std::vector<BlocksVar> _actions;
   std::vector<CBVar> _full;
   int _ncases = 0;

@@ -29,6 +29,30 @@
    (ToHex)
    (Log)
 
+   1 = .1-var
+   2 = .2-var
+
+   3
+   (Match [.1-var ~["Yes 1"]
+           .2-var ~["Yes 2"]
+           nil ~["No"]]
+          :Passthrough false)
+   (Assert.Is "No" true)
+
+   1
+   (Match [.1-var ~["Yes 1"]
+           .2-var ~["Yes 2"]
+           nil ~["No"]]
+          :Passthrough false)
+   (Assert.Is "Yes 1" true)
+
+   2
+   (Match [.1-var ~["Yes 1"]
+           .2-var ~["Yes 2"]
+           nil ~["No"]]
+          :Passthrough false)
+   (Assert.Is "Yes 2" true)
+
    false
    (Match [true ~["Yes"]
            false ~["No"]]
