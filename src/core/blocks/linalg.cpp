@@ -538,7 +538,20 @@ struct Orthographic : VectorUnaryBase {
   }
 };
 
-struct Scale {
+struct Translation {
+  Mat4 _output{};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto v3 = reinterpret_cast<const Vec3 *>(&input);
+    _output = linalg::translation_matrix(*v3);
+    return _output;
+  }
+};
+
+struct Scaling {
   Mat4 _output{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::Float3Type; }
@@ -597,19 +610,20 @@ struct Deg2Rad {
 };
 
 void registerBlocks() {
-  REGISTER_CBLOCK("Math.LinAlg.Cross", Cross);
-  REGISTER_CBLOCK("Math.LinAlg.Dot", Dot);
-  REGISTER_CBLOCK("Math.LinAlg.Normalize", Normalize);
-  REGISTER_CBLOCK("Math.LinAlg.LengthSquared", LengthSquared);
-  REGISTER_CBLOCK("Math.LinAlg.Length", Length);
-  REGISTER_CBLOCK("Math.LinAlg.MatMul", MatMul);
-  REGISTER_CBLOCK("Math.LinAlg.Transpose", Transpose);
-  REGISTER_CBLOCK("Math.LinAlg.Orthographic", Orthographic);
-  REGISTER_CBLOCK("Math.LinAlg.Scale", Scale);
-  REGISTER_CBLOCK("Math.LinAlg.Rotation", Rotation);
-  REGISTER_CBLOCK("Math.LinAlg.AxisAngleX", AxisAngleX);
-  REGISTER_CBLOCK("Math.LinAlg.AxisAngleY", AxisAngleY);
-  REGISTER_CBLOCK("Math.LinAlg.AxisAngleZ", AxisAngleZ);
+  REGISTER_CBLOCK("Math.Cross", Cross);
+  REGISTER_CBLOCK("Math.Dot", Dot);
+  REGISTER_CBLOCK("Math.Normalize", Normalize);
+  REGISTER_CBLOCK("Math.LengthSquared", LengthSquared);
+  REGISTER_CBLOCK("Math.Length", Length);
+  REGISTER_CBLOCK("Math.MatMul", MatMul);
+  REGISTER_CBLOCK("Math.Transpose", Transpose);
+  REGISTER_CBLOCK("Math.Orthographic", Orthographic);
+  REGISTER_CBLOCK("Math.Translation", Translation);
+  REGISTER_CBLOCK("Math.Scaling", Scaling);
+  REGISTER_CBLOCK("Math.Rotation", Rotation);
+  REGISTER_CBLOCK("Math.AxisAngleX", AxisAngleX);
+  REGISTER_CBLOCK("Math.AxisAngleY", AxisAngleY);
+  REGISTER_CBLOCK("Math.AxisAngleZ", AxisAngleZ);
   REGISTER_CBLOCK("Math.DegreesToRadians", Deg2Rad);
 }
 }; // namespace LinAlg

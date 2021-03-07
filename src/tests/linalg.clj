@@ -24,96 +24,100 @@
 (def Root (Node))
 (schedule Root (Chain "tests"
   (Float3 1 2 3)
-  (Math.LinAlg.Cross (Float3 2 2 2))
+  (Math.Cross (Float3 2 2 2))
   (Log)
   (Assert.Is (Float3 -2 4 -2) true)
 
   (Const [(Float3 1 2 3), (Float3 1 3 4)])
-  (Math.LinAlg.Cross (Float3 2 2 2))
+  (Math.Cross (Float3 2 2 2))
   (Log)
   (Assert.Is [(Float3 -2 4 -2) (Float3 -2 6 -4)] true)
 
   (Const [(Float3 1 2 3), (Float3 1 3 4)])
-  (Math.LinAlg.Cross [(Float3 2 2 2) (Float3 3 3 3)])
+  (Math.Cross [(Float3 2 2 2) (Float3 3 3 3)])
   (Log)
   (Assert.Is [(Float3 -2 4 -2) (Float3 -3 9 -6)] true)
 
   (Float3 1 2 3)
-  (Math.LinAlg.Dot (Float3 1 5 7))
+  (Math.Dot (Float3 1 5 7))
   (Log)
   (Assert.Is (Float 32) true)
 
   (Float3 1 2 3)
-  (Math.LinAlg.LengthSquared)
+  (Math.LengthSquared)
   (Log)
   (Assert.Is 14.0 true)
 
   (Float3 1 1 2)
-  (Math.LinAlg.Length)
+  (Math.Length)
   (Log)
   (ToString) ; truncate hack
   (Assert.Is "2.44949" true)
 
   (Float3 1 0 1)
-  (Math.LinAlg.Normalize)
+  (Math.Normalize)
   (Log)
 
   (Float3 4270.56 4602.19 188) (Ref "playerPos")
   ; (Float3 4277.35 4596.54 188) (Set "targetPos")
   (Float3 4283.18 4604.73 188) (Ref "targetPos")
   (Get "targetPos") (Math.Subtract .playerPos)
-  (Math.LinAlg.Normalize)
+  (Math.Normalize)
   (Log)
 
   (Float4 2 3 4 5)
   (Ref "vec4.1")
   
   (Const identity)
-  (Math.LinAlg.MatMul (Float4 1 2 3 4))
+  (Math.MatMul (Float4 1 2 3 4))
   (Log)
   (Assert.Is (Float4 1 2 3 4) true)
 
   (Const identity)
-  (Math.LinAlg.MatMul .vec4.1)
+  (Math.MatMul .vec4.1)
   (Log)
   (Assert.Is (Float4 2 3 4 5) true)
   (Ref "vec4.2")
 
   (Const identity)
-  (Math.LinAlg.MatMul .vec4.2)
+  (Math.MatMul .vec4.2)
   (Log)
   (Assert.Is (Float4 2 3 4 5) true)
 
   (Const identity)
-  (Math.LinAlg.MatMul identity)
+  (Math.MatMul identity)
   (Log)
   (Assert.Is identity true)
 
   (Const mat1)
-  (Math.LinAlg.Transpose)
+  (Math.Transpose)
   (Log)
   (Assert.Is mat1t true)
 
   (Const mat2)
-  (Math.LinAlg.Transpose)
+  (Math.Transpose)
   (Log)
   (Assert.Is mat2t true)
 
-  (Math.LinAlg.Orthographic 2560 1440 0 10000)
-  (Math.LinAlg.Transpose)
+  (Math.Orthographic 2560 1440 0 10000)
+  (Math.Transpose)
   (Log)
 
-  (Float3 2 3 4) (Math.LinAlg.Scale) 
+  (Float3 2 3 4) (Math.Scaling)
   (Assert.Is [(Float4 2 0 0 0) (Float4 0 3 0 0) (Float4 0 0 4 0) (Float4 0 0 0 1)] true)
   (Log)
 
+  (Float3 2 3 4) (Math.Translation)
+  (Assert.Is [(Float4 1 0 0 0) (Float4 0 1 0 0) (Float4 0 0 1 0) (Float4 2 3 4 1)] true)
+  (Log)
+
   180.0 (Math.DegreesToRadians) (Log) (Sub (-> (ToString) (Assert.Is "3.14159" true)))
-  (Math.LinAlg.AxisAngleX) (Log)
-  (Math.LinAlg.Rotation) (Log) 
+  (Math.AxisAngleX) (Log)
+  (Math.Rotation) (Log) 
 
   (/ 3.141592653589793238463 2.0)
-  (Math.LinAlg.AxisAngleY) (Log)
-  (Math.LinAlg.Rotation) (Log) 
+  (Math.AxisAngleY) (Log)
+  (Math.Rotation) (Log) 
   ; TODO float precision-less asserts
   ;; (Sub (-> (ToString) (Assert.Is "[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)))
 
