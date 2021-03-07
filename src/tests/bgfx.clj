@@ -45,34 +45,34 @@
    (GFX.MainWindow
     :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen true
     :Contents
-    ~[(Once
-       ~[(LoadImage "../../assets/drawing.png")
-         (GFX.Texture2D) >= .image1
-         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
-         (GFX.Texture2D :sRGB true) >> .bump-textures
-         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
-         (GFX.Texture2D) >> .bump-textures
-         cube (GFX.Model
-               :Layout [VertexAttribute.Position
-                        VertexAttribute.Color0]
-               :CullMode CullMode.Front) >= .cube
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
-         (FS.Read :Bytes true) >= .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
-         (FS.Read :Bytes true) >= .fs_bytes
-         (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .shader
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
-         (FS.Read :Bytes true) > .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
-         (FS.Read :Bytes true) > .fs_bytes
-         (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .bump-shader
-         false (Set "checkBoxie")
+    ~[(Setup
+       (LoadImage "../../assets/drawing.png")
+       (GFX.Texture2D) >= .image1
+       (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
+       (GFX.Texture2D :sRGB true) >> .bump-textures
+       (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
+       (GFX.Texture2D) >> .bump-textures
+       cube (GFX.Model
+             :Layout [VertexAttribute.Position
+                      VertexAttribute.Color0]
+             :CullMode CullMode.Front) >= .cube
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
+       (FS.Read :Bytes true) >= .vs_bytes
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
+       (FS.Read :Bytes true) >= .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .shader
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
+       (FS.Read :Bytes true) > .vs_bytes
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
+       (FS.Read :Bytes true) > .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .bump-shader
+       false (Set "checkBoxie")
          (Inputs.Mouse :Hidden true :Capture true :Relative true)
-         (Physics.Ball :Radius 0.5) = .ball-pshape
-         (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
-         (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape])
+       (Physics.Ball :Radius 0.5) = .ball-pshape
+       (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
+       (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
       ; regular model render
       {"Position" (Float3 0 0 10)
        "Target" (Float3 0 0 0)} (GFX.Camera)
@@ -101,7 +101,9 @@
                    (| (GFX.Unproject 0.0) (GUI.Text "mouse pos world 0") = .ray-from)
                    (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1") = .ray-to)
                    .ray-to (Math.Subtract .ray-from) = .ray-dir
-                   [.ray-from .ray-dir] (Physics.CastRay) (Log "Raycast")
+                   [.ray-from .ray-dir] (Physics.CastRay)
+                   (Match [[.rb1] (Msg "Mouse over the box...")
+                           nil nil])
                    (Inputs.MouseDelta) (GUI.Text "mouse delta")
                    (GUI.Separator)
 
