@@ -263,6 +263,17 @@ void testLoad() {
   testGLTFModel("Sponza",
                 "../external/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",
                 Var(0.0, 1.0, 1.0));
+
+  testGLTFModel("CubeTextured",
+                "../external/glTF-Sample-Models/2.0/BoxTextured/glTF-Binary/"
+                "BoxTextured.glb",
+                Var(1.0, 1.0, 1.0));
+
+  testGLTFModel(
+      "BoxVertexColors",
+      "../external/glTF-Sample-Models/2.0/BoxVertexColors/glTF-Binary/"
+      "BoxVertexColors.glb",
+      Var(1.0, 1.0, 1.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks

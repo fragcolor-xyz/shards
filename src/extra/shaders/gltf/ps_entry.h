@@ -56,8 +56,7 @@ mat3 mtx3FromCols(vec3 c0, vec3 c1, vec3 c2) {
 }
 
 void main() {
-	mat3 tbn = mtx3FromCols(v_tangent, v_bitangent, v_normal);
-
+#ifdef CB_HAS_NORMAL
 #ifdef CB_NORMAL_TEXTURE
 	vec3 normal;
 	normal.xy = texture2D(s_texNormal, v_texcoord0).xy * 2.0 - 1.0;
@@ -65,6 +64,19 @@ void main() {
 #else
 	vec3 normal = v_normal;
 #endif
+#else
+	vec3 normal = vec3(0.0, 0.0, 1.0);
+#endif
+
+#ifdef CB_HAS_TANGENT
+	vec3 tangent = v_tangent;
+	vec3 bitangent = v_bitangent;
+#else
+	vec3 tangent = vec3(1.0, 0.0, 0.0);
+	vec3 bitangent = vec3(0.0, 1.0, 0.0);
+#endif
+
+	mat3 tbn = mtx3FromCols(tangent, bitangent, normal);
 
 	vec3 view = normalize(v_view);
 
