@@ -685,7 +685,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
   template <class Observer>
   void schedule(Observer observer, const std::shared_ptr<CBChain> &chain,
-                CBVar input = {}, bool validate = true) {
+                CBVar input = Var::Empty, bool compose = true) {
     // TODO do this better...
     // this way does not work
     // if (chain->node.lock())
@@ -701,8 +701,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     DEFER(chain->isRoot = false);
 
     observer.before_compose(chain.get());
-    if (validate) {
-      // Validate the chain
+    if (compose) {
+      // compose the chain
       CBInstanceData data{};
       data.chain = chain.get();
       data.inputType = deriveTypeInfo(input, data);
@@ -734,10 +734,10 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     scheduled.insert(chain);
   }
 
-  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = {},
-                bool validate = true) {
+  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty,
+                bool compose = true) {
     EmptyObserver obs;
-    schedule(obs, chain, input, validate);
+    schedule(obs, chain, input, compose);
   }
 
   template <class Observer>
