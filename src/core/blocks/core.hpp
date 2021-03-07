@@ -31,8 +31,7 @@ struct Const {
   OwnedVar _value{};
   OwnedVar _clone{};
   CBTypeInfo _innerInfo{};
-  std::vector<CBVar *> _vals;
-  std::vector<CBVar *> _refs;
+  VariableResolver resolver;
 
   void destroy() { freeDerivedInfo(_innerInfo); }
 
@@ -64,45 +63,16 @@ struct Const {
     return _innerInfo;
   }
 
-  void cleanup() {
-    if (_refs.size() > 0) {
-      for (auto val : _vals) {
-        // we do this to avoid double freeing, we don't really own this value
-        *val = Var::Empty;
-      }
-      for (auto ref : _refs) {
-        releaseVariable(ref);
-      }
-      _refs.clear();
-      _vals.clear();
-    }
-  }
+  void cleanup() { resolver.cleanup(); }
 
-  void warmupVariables(CBVar &v, CBContext *context) {
-    if (v.valueType == CBType::ContextVar) {
-      _refs.emplace_back(referenceVariable(context, v.payload.stringValue));
-      _vals.emplace_back(&v);
-    } else if (v.valueType == CBType::Seq) {
-      for (auto &sv : v) {
-        warmupVariables(sv, context);
-      }
-    } else if (v.valueType == CBType::Table) {
-      ForEach(v.payload.tableValue, [&](auto key, auto &val) {
-        auto vptr =
-            v.payload.tableValue.api->tableAt(v.payload.tableValue, key);
-        warmupVariables(*vptr, context);
-      });
-    }
+  void warmup(CBContext *context) {
+    if (_clone != Var::Empty)
+      resolver.warmup(_value, _clone, context);
   }
-
-  void warmup(CBContext *context) { warmupVariables(_clone, context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // we need to reassign values every frame
-    size_t len = _refs.size();
-    for (size_t i = 0; i < len; i++) {
-      *_vals[i] = *_refs[i];
-    }
+    resolver.reassign();
     return _clone;
   }
 };

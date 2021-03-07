@@ -1234,6 +1234,52 @@ struct CBlockInfo {
 };
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out);
+
+struct VariableResolver {
+  // this an utility to resolve nested variables, like we do in Const, Match etc
+
+  std::vector<CBVar *> _vals;
+  std::vector<CBVar *> _refs;
+
+  void warmup(const CBVar &base, CBVar &slot, CBContext *context) {
+    if (base.valueType == CBType::ContextVar) {
+      _refs.emplace_back(referenceVariable(context, base.payload.stringValue));
+      _vals.emplace_back(&slot);
+    } else if (base.valueType == CBType::Seq) {
+      for (uint32_t i = 0; i < base.payload.seqValue.len; i++) {
+        warmup(base.payload.seqValue.elements[i],
+               slot.payload.seqValue.elements[i], context);
+      }
+    } else if (base.valueType == CBType::Table) {
+      ForEach(base.payload.tableValue, [&](auto key, auto &val) {
+        auto vptr =
+            slot.payload.tableValue.api->tableAt(slot.payload.tableValue, key);
+        warmup(val, *vptr, context);
+      });
+    }
+  }
+
+  void cleanup() {
+    if (_refs.size() > 0) {
+      for (auto val : _vals) {
+        // we do this to avoid double freeing, we don't really own this value
+        *val = Var::Empty;
+      }
+      for (auto ref : _refs) {
+        releaseVariable(ref);
+      }
+      _refs.clear();
+      _vals.clear();
+    }
+  }
+
+  void reassign() {
+    size_t len = _refs.size();
+    for (size_t i = 0; i < len; i++) {
+      *_vals[i] = *_refs[i];
+    }
+  }
+};
 }; // namespace chainblocks
 
 #endif

@@ -39,9 +39,9 @@
           :Passthrough false)
    (Assert.Is "No" true)
 
-   1
-   (Match [.1-var ~["Yes 1"]
-           .2-var ~["Yes 2"]
+   [1]
+   (Match [[.1-var] ~["Yes 1"]
+           [.2-var] ~["Yes 2"]
            nil ~["No"]]
           :Passthrough false)
    (Assert.Is "Yes 1" true)
