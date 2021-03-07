@@ -794,6 +794,7 @@ struct Match {
   void warmup(CBContext *context) {
     _vars.clear();
     for (auto &case_ : _cases) {
+      // TODO deep resolve variables like const
       if (case_.valueType == CBType::ContextVar) {
         _vars.emplace_back(
             referenceVariable(context, case_.payload.stringValue));

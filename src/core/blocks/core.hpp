@@ -151,6 +151,7 @@ struct BaseOpsBin {
   }
 
   void warmup(CBContext *context) {
+    // TODO deep resolve variables like const
     _target = _value.valueType == ContextVar
                   ? referenceVariable(context, _value.payload.stringValue)
                   : &_value;
