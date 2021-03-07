@@ -262,7 +262,7 @@ void testLoad() {
 
   testGLTFModel("Sponza",
                 "../external/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",
-                Var(0.0, 10.0, 0.0));
+                Var(0.0, 1.0, 1.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
