@@ -31,7 +31,7 @@ lazy_static! {
     t
   };
   pub static ref RAY_INPUT_TYPES: Vec<Type> = vec![*RAY_INPUT_TYPE];
-  pub static ref RAY_OUTPUT_TYPES: Vec<Type> = vec![common_type::float3s];
+  pub static ref RAY_OUTPUT_TYPES: Vec<Type> = vec![*RIGIDBODY_TYPE];
 }
 
 struct CastRay {
