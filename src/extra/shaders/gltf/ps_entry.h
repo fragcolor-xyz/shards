@@ -71,14 +71,14 @@ void main() {
 #ifdef CB_HAS_TANGENT
 	vec3 tangent = v_tangent;
 	vec3 bitangent = v_bitangent;
+	vec3 view = normalize(v_view);
 #else
 	vec3 tangent = vec3(1.0, 0.0, 0.0);
 	vec3 bitangent = vec3(0.0, 1.0, 0.0);
+	vec3 view = vec3(0.0, 0.0, 0.0);
 #endif
 
 	mat3 tbn = mtx3FromCols(tangent, bitangent, normal);
-
-	vec3 view = normalize(v_view);
 
 	vec3 lightColor;
 	lightColor =  calcLight(0, tbn, v_wpos, normal, view);
