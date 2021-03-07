@@ -2208,19 +2208,19 @@ lazy_static! {
     t
   };
   pub static ref FLOAT4X4_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE];
-  pub static ref FLOAT4X4S_TYPE: Type = Type::seq(&[*FLOAT4X4_TYPE]);
+  pub static ref FLOAT4X4S_TYPE: Type = Type::seq(&FLOAT4X4_TYPES);
   pub static ref FLOAT3X3_TYPE: Type = {
     let mut t = common_type::float3s;
     t.fixedSize = 3;
     t
   };
   pub static ref FLOAT3X3_TYPES: Vec<Type> = vec![*FLOAT3X3_TYPE];
-  pub static ref FLOAT3X3S_TYPE: Type = Type::seq(&[*FLOAT3X3_TYPE]);
+  pub static ref FLOAT3X3S_TYPE: Type = Type::seq(&FLOAT3X3_TYPES);
   pub static ref FLOAT4X2_TYPE: Type = {
     let mut t = common_type::float4s;
     t.fixedSize = 2;
     t
   };
   pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
-  pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&[*FLOAT4X2_TYPE]);
+  pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
 }

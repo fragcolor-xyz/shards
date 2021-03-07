@@ -14,7 +14,9 @@ MAKE_LOGGABLE(CBVar, var, os) {
     break;
   case Object:
     os << "Object: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.objectValue) << std::dec;
+       << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
+       << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId
+       << std::dec;
     break;
   case Chain:
     os << "Chain: 0x" << std::hex
@@ -32,7 +34,9 @@ MAKE_LOGGABLE(CBVar, var, os) {
        << " of: " << type2Name(var.innerType);
     break;
   case Enum:
-    os << "Enum: " << var.payload.enumValue;
+    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x"
+       << var.payload.enumVendorId << " type: 0x" << var.payload.enumTypeId
+       << std::dec;
     break;
   case Bool:
     os << (var.payload.boolValue ? "true" : "false");

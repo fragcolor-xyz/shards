@@ -46,9 +46,10 @@ lazy_static! {
     };
     t
   };
-  static ref SHAPES_TYPE: Type = Type::seq(&[*SHAPE_TYPE]);
-  static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&[*SHAPE_TYPE]);
-  static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&[*SHAPES_TYPE]);
+  static ref SHAPE_TYPE_VEC: Vec<Type> = vec![*SHAPE_TYPE];
+  static ref SHAPES_TYPE: Type = Type::seq(&SHAPE_TYPE_VEC);
+  static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
+  static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
 
   static ref RIGIDBODY_TYPE: Type = {
@@ -59,6 +60,8 @@ lazy_static! {
     };
     t
   };
+  static ref RIGIDBODY_TYPE_VEC: Vec<Type> = vec![*RIGIDBODY_TYPE];
+  static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
 }
 
 struct Simulation {

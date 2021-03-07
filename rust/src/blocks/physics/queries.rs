@@ -1,3 +1,4 @@
+use crate::blocks::physics::RIGIDBODIES_TYPE;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
 use crate::blocks::physics::RIGIDBODY_TYPE;
@@ -31,7 +32,7 @@ lazy_static! {
     t
   };
   pub static ref RAY_INPUT_TYPES: Vec<Type> = vec![*RAY_INPUT_TYPE];
-  pub static ref RAY_OUTPUT_TYPES: Vec<Type> = vec![*RIGIDBODY_TYPE];
+  pub static ref RAY_OUTPUT_TYPES: Vec<Type> = vec![*RIGIDBODIES_TYPE];
 }
 
 struct CastRay {
