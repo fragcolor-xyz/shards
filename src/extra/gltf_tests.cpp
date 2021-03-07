@@ -259,6 +259,10 @@ void testLoad() {
       "Avocado-Bin-2",
       "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
       Var(1.0, 1.0, 1.0), scale10);
+
+  testGLTFModel("Sponza",
+                "../external/glTF-Sample-Models/2.0/Sponza/glTF/Sponza.gltf",
+                Var(0.0, 10.0, 0.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
