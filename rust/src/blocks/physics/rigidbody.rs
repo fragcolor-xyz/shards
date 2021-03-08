@@ -119,7 +119,7 @@ impl RigidBody {
   fn _cleanup(&mut self) {
     if let Some(rigid_body) = self.rigid_body {
       let sim_var = self.simulation_var.get();
-      let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
+      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
       simulation.bodies.remove(
         rigid_body,
         &mut simulation.colliders,
@@ -174,7 +174,7 @@ impl RigidBody {
       };
 
       let simulation = self.simulation_var.get();
-      let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
+      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
 
       let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
       rigid_body.user_data = self.user_data;
@@ -184,7 +184,7 @@ impl RigidBody {
       if shape.is_seq() {
         let shapes: Seq = shape.try_into().unwrap();
         for shape in shapes {
-          let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+          let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
           let shape = shapeInfo.shape.as_ref().unwrap().clone();
           let mut collider = ColliderBuilder::new(shape)
             .position(shapeInfo.position.unwrap())
@@ -197,7 +197,7 @@ impl RigidBody {
           ));
         }
       } else {
-        let shapeInfo = Var::into_object_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+        let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
         let shape = shapeInfo.shape.as_ref().unwrap().clone();
         let mut collider = ColliderBuilder::new(shape)
           .position(shapeInfo.position.unwrap())
@@ -442,7 +442,7 @@ impl Block for DynamicRigidBody {
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
-    let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     let (rigid_body, _, _) = rbData._populate(BodyStatus::Dynamic)?;
     let rb = simulation.bodies.get(rigid_body).unwrap();
     let mat: Matrix4<f32> = rb.position().to_matrix();
@@ -564,7 +564,7 @@ impl Block for KinematicRigidBody {
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
-    let simulation = Var::into_object_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     let (rigid_body, p, r) = rbData._populate(BodyStatus::Kinematic)?;
     let rb = simulation.bodies.get_mut(rigid_body).unwrap();
 

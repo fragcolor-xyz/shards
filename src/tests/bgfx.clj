@@ -69,7 +69,7 @@
        (GFX.Shader :VertexShader .vs_bytes
                    :PixelShader .fs_bytes) >= .bump-shader
        false (Set "checkBoxie")
-         (Inputs.Mouse :Hidden true :Capture true :Relative true)
+       (Inputs.Mouse :Hidden true :Capture true :Relative true)
        (Physics.Ball :Radius 0.5) = .ball-pshape
        (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
        (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
@@ -102,7 +102,9 @@
                    (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1") = .ray-to)
                    .ray-to (Math.Subtract .ray-from) = .ray-dir
                    [.ray-from .ray-dir] (Physics.CastRay)
-                   (Match [[.rb1] (Msg "Mouse over the box...")
+                   (Match [[.rb1] (-> 
+                                   (Float3 0 10 0) (Physics.Impulse .rb1)
+                                   (Msg "Mouse over the box..."))
                            nil nil])
                    (Inputs.MouseDelta) (GUI.Text "mouse delta")
                    (GUI.Separator)

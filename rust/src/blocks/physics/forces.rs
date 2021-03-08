@@ -125,11 +125,11 @@ impl Block for Impulse {
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let simulation = self.simulation.get();
-    let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
       .map_err(|_| "Physics simulation not found")?;
 
     let rb = self.rb.get();
-    let rb = Var::into_object_mut_ref_rc::<RigidBody>(rb, &RIGIDBODY_TYPE)
+    let rb = Var::from_object_mut_ref::<RigidBody>(rb, &RIGIDBODY_TYPE)
       .map_err(|_| "Rigidbody not found")?;
 
     if let Some(rb) = rb.rigid_body {

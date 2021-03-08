@@ -1110,7 +1110,7 @@ impl Var {
     }
   }
 
-  pub fn into_object<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
+  pub fn from_object<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1126,7 +1126,7 @@ impl Var {
     }
   }
 
-  pub fn into_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+  pub fn from_object_ptr_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1148,7 +1148,7 @@ impl Var {
     unsafe { &mut *mp }
   }
 
-  pub fn into_object_mut_ref_rc<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+  pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
