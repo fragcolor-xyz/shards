@@ -75,7 +75,11 @@ impl Block for Impulse {
   }
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.rb.setName(value.try_into().unwrap()),
+      0 => {
+        if !value.is_none() {
+          self.rb.setName(value.try_into().unwrap())
+        }
+      }
       _ => unreachable!(),
     }
   }
