@@ -1110,7 +1110,8 @@ impl Var {
     }
   }
 
-  pub fn from_object<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
+  pub fn from_object_as_clone<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
+    // use this to store the smart pointer in order to keep it alive
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1126,7 +1127,26 @@ impl Var {
     }
   }
 
+  pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+    // used to use the object once, when it comes from a simple pointer
+    unsafe {
+      if var.valueType != CBType_Object
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+          != info.details.object.vendorId
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+      {
+        Err("Failed to cast Var into custom &mut T object")
+      } else {
+        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
+        let p = Rc::as_ptr(&*aptr);
+        let mp = p as *mut T;
+        Ok(&mut *mp)
+      }
+    }
+  }
+
   pub fn from_object_ptr_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+    // used to use the object once, when it comes from a Rc
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1137,28 +1157,6 @@ impl Var {
       } else {
         let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut T;
         Ok(&mut *aptr)
-      }
-    }
-  }
-
-  pub fn unsafe_mut<'a, T>(obj: &Rc<T>) -> &mut T {
-    // this looks unsafe but CB gives some garantees within chains!
-    let p = Rc::as_ptr(obj);
-    let mp = p as *mut T;
-    unsafe { &mut *mp }
-  }
-
-  pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
-    unsafe {
-      if var.valueType != CBType_Object
-        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
-          != info.details.object.vendorId
-        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
-      {
-        Err("Failed to cast Var into custom &mut T object")
-      } else {
-        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
-        Ok(Var::unsafe_mut(&*aptr))
       }
     }
   }
