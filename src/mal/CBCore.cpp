@@ -921,12 +921,16 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     WRAP_TO_CONST(var);
   } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
     return blockify(v->deref());
-  } else {
+  }
+  // allow anything else, makes more sense, in order to write inline funcs
+  // but print a diagnostic message
+  else {
     if (malValue *v = DYNAMIC_CAST(malValue, arg)) {
-      throw chainblocks::CBException("Invalid argument for chain: " +
-                                     v->print(true));
+      LOG(INFO) << "Ignoring value inside a chain definition: "
+                << v->print(true)
+                << " ignore this warning if this was intentional.";
     } else {
-      throw chainblocks::CBException("Invalid argument for chain");
+      throw chainblocks::CBException("Invalid argument for chain, not a value");
     }
   }
   return result;
@@ -1631,6 +1635,18 @@ BUILTIN("String") {
   ARG(malString, value);
   CBVar var{};
   var.valueType = String;
+  auto &s = value->ref();
+  var.payload.stringValue = s.c_str();
+  auto mvar = new malCBVar(var);
+  mvar->reference(value);
+  return malValuePtr(mvar);
+}
+
+BUILTIN("ContextVar") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  CBVar var{};
+  var.valueType = ContextVar;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
   auto mvar = new malCBVar(var);
