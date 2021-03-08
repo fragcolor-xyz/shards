@@ -46,11 +46,13 @@ struct Impulse {
 
 impl Default for Impulse {
   fn default() -> Self {
-    Impulse {
+    let mut r = Impulse {
       simulation: ParamVar::new(().into()),
       rb: ParamVar::new(().into()),
       reqs: ExposedTypes::new(),
-    }
+    };
+    r.simulation.setName("Physics.Simulation");
+    r
   }
 }
 
