@@ -1148,6 +1148,21 @@ impl Var {
     unsafe { &mut *mp }
   }
 
+  pub fn into_object_mut_ref_rc<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+    unsafe {
+      if var.valueType != CBType_Object
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+          != info.details.object.vendorId
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+      {
+        Err("Failed to cast Var into custom &mut T object")
+      } else {
+        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
+        Ok(Var::unsafe_mut(&*aptr))
+      }
+    }
+  }
+
   pub fn push<T: Into<Var>>(&mut self, _val: T) {
     unimplemented!();
   }

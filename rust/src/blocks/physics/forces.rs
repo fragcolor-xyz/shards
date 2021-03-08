@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use crate::blocks::physics::RigidBody;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
@@ -125,18 +126,22 @@ impl Block for Impulse {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let simulation = self.simulation.get();
     let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
-      .map_err(|_| "Physics simulation not found.")?;
+      .map_err(|_| "Physics simulation not found")?;
 
     let rb = self.rb.get();
-    let rb = Var::into_object_mut_ref::<RigidBody>(rb, &SIMULATION_TYPE)
-      .map_err(|_| "Rigidbody not found.")?;
+    let rb = Var::into_object_mut_ref_rc::<RigidBody>(rb, &RIGIDBODY_TYPE)
+      .map_err(|_| "Rigidbody not found")?;
 
     if let Some(rb) = rb.rigid_body {
       let rb = simulation.bodies.get_mut(rb);
       if let Some(rb) = rb {
         let (x, y, z) = input.as_ref().try_into()?;
         rb.apply_impulse(Vector3::new(x, y, z), true);
+      } else {
+        return Err("Rigidbody not found in the simulation")
       }
+    } else {
+      return Err("Rigidbody not valid")
     }
 
     Ok(*input)
