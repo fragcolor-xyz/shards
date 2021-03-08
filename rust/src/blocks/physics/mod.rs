@@ -62,6 +62,7 @@ lazy_static! {
   };
   static ref RIGIDBODY_TYPE_VEC: Vec<Type> = vec![*RIGIDBODY_TYPE];
   static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
+  static ref RIGIDBODY_VAR_TYPE: Type = Type::context_variable(&RIGIDBODY_TYPE_VEC);
 }
 
 struct Simulation {
@@ -164,3 +165,4 @@ pub mod rigidbody;
 pub mod shapes;
 pub mod simulation;
 pub mod queries;
+pub mod forces;

@@ -1,6 +1,6 @@
-use crate::blocks::physics::RIGIDBODIES_TYPE;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
+use crate::blocks::physics::RIGIDBODIES_TYPE;
 use crate::blocks::physics::RIGIDBODY_TYPE;
 use crate::blocks::physics::SIMULATION_TYPE;
 use crate::chainblocksc::CBPointer;
@@ -81,7 +81,8 @@ impl Block for CastRay {
     self.output.clear();
 
     let simulation = self.simulation_var.get();
-    let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
+    let simulation = Var::into_object_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
+      .map_err(|_| "Physics simulation not found.")?;
 
     let inputs: Seq = input.try_into().unwrap();
     let (from_x, from_y, from_z): (f32, f32, f32) = inputs[0].as_ref().try_into()?;

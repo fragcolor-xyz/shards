@@ -208,6 +208,19 @@ impl ExposedInfo {
     }
   }
 
+  pub fn new_with_help_from_ptr(name: CBString, help: CBOptionalString, ctype: CBTypeInfo) -> Self {
+    CBExposedTypeInfo {
+      exposedType: ctype,
+      name,
+      help,
+      isMutable: false,
+      isProtected: false,
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
+    }
+  }
+
   pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
     let cname = name.as_ptr() as *const i8;
     let chelp = core::ptr::null();
