@@ -1171,6 +1171,10 @@ impl Var {
   pub fn as_ref(&self) -> &Self {
     &self
   }
+
+  pub fn is_context_var(&self) -> bool {
+    self.valueType == CBType_ContextVar
+  }
 }
 
 impl TryFrom<&Var> for CBString {
@@ -1292,8 +1296,11 @@ impl TryFrom<&Var> for &str {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String {
-      Err("Expected String, but casting failed.")
+    if var.valueType != CBType_String
+      && var.valueType != CBType_Path
+      && var.valueType != CBType_ContextVar
+    {
+      Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe {
         let cstr =
