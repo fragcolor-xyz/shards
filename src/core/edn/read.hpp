@@ -45,15 +45,16 @@ enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
 } // namespace value
 
-const std::regex REGEX("([\\s,]+)|"                    // type::WHITESPACE
-                       "(~@|#\\{)|"                    // type::SPECIAL_CHARS
-                       "([\\[\\]{}()\'`~^@])|"         // type::SPECIAL_CHAR
-                       "(\"(?:\\\\.|[^\\\\\"])*\"?)|"  // type::STRING
-                       "(#\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::RAW_STRING
-                       "(;.*)|"                        // type::COMMENT
-                       "(0[xX][0-9a-fA-F]+)|"          // type::HEX
-                       "(\\d+\\.?\\d*)|"               // type::NUMBER
-                       "([^\\s\\[\\]{}(\'\"`,;)]+)"    // type::SYMBOL
+const std::regex REGEX(
+    "([\\s,]+)|"                    // type::WHITESPACE
+    "(~@|#\\{)|"                    // type::SPECIAL_CHARS
+    "([\\[\\]{}()\'`~^@])|"         // type::SPECIAL_CHAR
+    "(\"(?:\\\\.|[^\\\\\"])*\"?)|"  // type::STRING
+    "(#\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::RAW_STRING
+    "(;.*)|"                        // type::COMMENT
+    "(0[xX][0-9a-fA-F]+)|"          // type::HEX
+    "([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)|([-+]?\\d+)|" // type::NUMBER
+    "([^\\s\\[\\]{}(\'\"`,;)]+)"                             // type::SYMBOL
 );
 
 struct Token {

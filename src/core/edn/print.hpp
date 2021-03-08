@@ -7,9 +7,20 @@
 #define CB_LSP_PRINT_HPP
 
 #include "read.hpp"
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <sstream>
+#include <string>
 
 namespace chainblocks {
 namespace edn {
+
+std::string to_string(double d) {
+  std::ostringstream stm;
+  stm << std::setprecision(std::numeric_limits<double>::digits10) << d;
+  return stm.str();
+}
 
 struct document {
   int indent = 0;
@@ -29,7 +40,7 @@ inline std::string pr_str(document &doc, token::Token &token) {
   case token::value::LONG:
     return std::to_string(std::get<int64_t>(token.value));
   case token::value::DOUBLE:
-    return std::to_string(std::get<double>(token.value));
+    return to_string(std::get<double>(token.value));
   case token::value::STRING: {
     std::string s = std::get<std::string>(token.value);
     if (token.type == token::type::STRING) {

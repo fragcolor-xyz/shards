@@ -8,7 +8,7 @@ typedef std::regex Regex;
 
 static const Regex intRegex("^[-+]?\\d+$");
 static const Regex hexRegex("^0x[0-9a-fA-F]+$");
-static const Regex floatRegex("^[-+]?[0-9]*\\.?[0-9]+$");
+static const Regex floatRegex("^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?$");
 static const Regex closeRegex("[\\)\\]}]");
 
 static const Regex newlineRegex("(\\r\\n|\\r|\\n)");
