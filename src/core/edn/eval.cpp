@@ -227,7 +227,8 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
           case token::type::STRING: {
           } break;
           case token::type::HEX:
-          case token::type::NUMBER: {
+          case token::type::INT:
+          case token::type::DOUBLE: {
           } break;
           default:
             break;
@@ -257,12 +258,10 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
           } else if (token.value.index() == token::value::BOOL) {
             return BoolValue(std::get<bool>(token.value), token, env);
           }
-        } else if (token.type == token::type::NUMBER) {
-          if (token.value.index() == token::value::LONG) {
-            return IntValue(std::get<int64_t>(token.value), token, env);
-          } else {
-            return FloatValue(std::get<double>(token.value), token, env);
-          }
+        } else if (token.type == token::type::INT) {
+          return IntValue(std::get<int64_t>(token.value), token, env);
+        } else if (token.type == token::type::DOUBLE) {
+          return FloatValue(std::get<double>(token.value), token, env);
         } else if (token.type == token::type::HEX) {
           return IntValue(std::get<int64_t>(token.value), token, env);
         } else if (token.type == token::type::STRING) {

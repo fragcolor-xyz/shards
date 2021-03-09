@@ -31,7 +31,8 @@ enum Type {
   RAW_STRING,
   COMMENT,
   HEX,
-  NUMBER,
+  DOUBLE,
+  INT,
   SYMBOL
 };
 
@@ -45,17 +46,18 @@ enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
 } // namespace value
 
-const std::regex REGEX(
-    "([\\s,]+)|"                    // type::WHITESPACE
-    "(~@|#\\{)|"                    // type::SPECIAL_CHARS
-    "([\\[\\]{}()\'`~^@])|"         // type::SPECIAL_CHAR
-    "(\"(?:\\\\.|[^\\\\\"])*\"?)|"  // type::STRING
-    "(#\"(?:\\\\.|[^\\\\\"])*\"?)|" // type::RAW_STRING
-    "(;.*)|"                        // type::COMMENT
-    "(0[xX][0-9a-fA-F]+)|"          // type::HEX
-    "([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)|([-+]?\\d+)|" // type::NUMBER
-    "([^\\s\\[\\]{}(\'\"`,;)]+)"                             // type::SYMBOL
-);
+const std::regex
+    REGEX("([\\s,]+)|"                                // type::WHITESPACE
+          "(~@|#\\{)|"                                // type::SPECIAL_CHARS
+          "([\\[\\]{}()\'`~^@])|"                     // type::SPECIAL_CHAR
+          "(\"(?:\\\\.|[^\\\\\"])*\"?)|"              // type::STRING
+          "(#\"(?:\\\\.|[^\\\\\"])*\"?)|"             // type::RAW_STRING
+          "(;.*)|"                                    // type::COMMENT
+          "(0[xX][0-9a-fA-F]+)|"                      // type::HEX
+          "([-+]?[0-9]*\\.[0-9]+([eE][-+]?[0-9]+)?)|" // type::DOUBLE
+          "([-+]?\\d+)|"                              // type::INT
+          "([^\\s\\[\\]{}(\'\"`,;)]+)"                // type::SYMBOL
+    );
 
 struct Token {
   value::Value value;
@@ -160,12 +162,10 @@ inline value::Value parse(std::string value, type::Type type) {
     return value[0];
   case type::HEX:
     return (int64_t)std::stoll(value, nullptr, 16);
-  case type::NUMBER:
-    if (value.find('.') == std::string::npos) {
-      return (int64_t)std::stoll(value);
-    } else {
-      return std::stod(value);
-    }
+  case type::INT:
+    return (int64_t)std::stoll(value);
+  case type::DOUBLE:
+    return std::stod(value);
   case type::SYMBOL:
     if (value == "true") {
       return true;

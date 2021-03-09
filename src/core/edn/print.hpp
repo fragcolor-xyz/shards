@@ -18,7 +18,11 @@ namespace edn {
 
 std::string to_string(double d) {
   std::ostringstream stm;
-  stm << std::setprecision(std::numeric_limits<double>::digits10) << d;
+  stm << d;
+  if (d == int64_t(d)) {
+    // we want to add .0 always
+    stm << ".0";
+  }
   return stm.str();
 }
 
