@@ -78,6 +78,7 @@ void main() {
 	vec3 view = vec3(0.0, 0.0, 0.0);
 #endif
 
+#ifndef CB_UNLIT
 	mat3 tbn = mtx3FromCols(tangent, bitangent, normal);
 
 	vec3 lightColor;
@@ -85,6 +86,7 @@ void main() {
 	lightColor += calcLight(1, tbn, v_wpos, normal, view);
 	lightColor += calcLight(2, tbn, v_wpos, normal, view);
 	lightColor += calcLight(3, tbn, v_wpos, normal, view);
+#endif
 
 #ifndef CB_HAS_COLOR_0
 	vec4 _color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -98,7 +100,11 @@ void main() {
 	vec4 color = toLinear(_color);
 #endif
 
+#ifndef CB_UNLIT
 	gl_FragColor.xyz = max(vec3_splat(0.05), lightColor.xyz)*color.xyz;
+#else
+	gl_FragColor.xyz = color.xyz;
+#endif
 	gl_FragColor.w = 1.0;
 	gl_FragColor = toGamma(gl_FragColor);
 }

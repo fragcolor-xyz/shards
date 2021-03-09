@@ -369,6 +369,13 @@ struct Load : public BGFX::BaseConsumer {
                          std::hash<std::string_view>()(glmaterial.name),
                          glmaterial.doubleSided};
 
+    // do an extension check
+    for (const auto &[name, val] : glmaterial.extensions) {
+      if (name == "KHR_materials_unlit") {
+        shaderDefines.insert("CB_UNLIT");
+      }
+    }
+
     if (_numLights > 0) {
       shaderDefines.insert("CB_NUM_LIGHTS" + std::to_string(_numLights));
     }

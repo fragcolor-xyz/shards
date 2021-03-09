@@ -12,6 +12,12 @@
   (EDN.Uglify) = .ugly2
   "loader.ugly.clj"
   (FS.Write .ugly2 :Overwrite true)
+  (Log)
+  "bgfx.clj"
+  (FS.Read)
+  (EDN.Uglify) = .ugly3
+  "bgfx.ugly.clj"
+  (FS.Write .ugly3 :Overwrite true)
   (Log))
 
 (schedule main uglify)
