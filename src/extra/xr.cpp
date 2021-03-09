@@ -356,12 +356,17 @@ struct RenderXR : public BGFX::BaseConsumer {
     _cb.reset();
     _glLayer.reset();
     _refSpace.reset();
+#endif
 
     if (_bgfxContext) {
       releaseVariable(_bgfxContext);
       _bgfxContext = nullptr;
     }
-#endif
+
+    if (_xrContextPVar) {
+      releaseVariable(_xrContextPVar);
+      _xrContextPVar = nullptr;
+    }
   }
 
   void populateInputsData() {
