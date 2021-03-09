@@ -288,7 +288,7 @@ struct MatMul : public VectorBinaryBase {
       _result.valueType = Seq;
       switch (input.payload.seqValue.elements[0].valueType) {
       case Float2: {
-        MATMUL_OP(float2x2, Float2, 2);
+        MATMUL_OP(double2x2, Float2, 2);
       } break;
       case Float3: {
         MATMUL_OP(float3x3, Float3, 3);
@@ -313,7 +313,7 @@ struct MatMul : public VectorBinaryBase {
   _result.valueType = _v2_;
       switch (input.payload.seqValue.elements[0].valueType) {
       case Float2: {
-        MATMUL_OP(float2x2, Float2, 2, float2, float2Value);
+        MATMUL_OP(double2x2, Float2, 2, double2, float2Value);
       } break;
       case Float3: {
         MATMUL_OP(float3x3, Float3, 3, float3, float3Value);
@@ -538,6 +538,9 @@ struct Orthographic : VectorUnaryBase {
   }
 };
 
+// TODO take opposite type as input and decompose as well, so that the same
+// block can be used to decompose
+
 struct Translation {
   Mat4 _output{};
 
@@ -609,6 +612,17 @@ struct Deg2Rad {
   }
 };
 
+struct Rad2Deg {
+  const double PI = 3.141592653589793238463;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(input.payload.floatValue * (180.0 / PI));
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Math.Cross", Cross);
   REGISTER_CBLOCK("Math.Dot", Dot);
@@ -625,6 +639,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Math.AxisAngleY", AxisAngleY);
   REGISTER_CBLOCK("Math.AxisAngleZ", AxisAngleZ);
   REGISTER_CBLOCK("Math.DegreesToRadians", Deg2Rad);
+  REGISTER_CBLOCK("Math.RadiansToDegrees", Rad2Deg);
 }
 }; // namespace LinAlg
 }; // namespace Math
