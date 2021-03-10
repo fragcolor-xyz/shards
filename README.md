@@ -9,12 +9,12 @@
 ```
 
 ![CI](https://github.com/sinkingsugar/chainblocks/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/sinkingsugar/chainblocks/branch/master/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/sinkingsugar/chainblocks)
+[![codecov](https://codecov.io/gh/sinkingsugar/chainblocks/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/sinkingsugar/chainblocks)
 
 ## Vision
-Building a programming tool for the future. 
+Building a programming tool for the future.
 
-A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment. 
+A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment.
 
 A future that is driven by Artificial Intelligence that wants to become general intelligence, but to make it happen the first step is to focus on Automation and Machine Learning.
 
@@ -67,9 +67,9 @@ To achieve that we build a scripting tool that can be both visual and textual at
  Root
  (Chain
   "MainLoop" :Looped
-  (BGFX.MainWindow :Title "My Window" 
+  (BGFX.MainWindow :Title "My Window"
                    :Width 400 :Height 200)
-  (ImGui.Window "My ImGui Window" 
+  (ImGui.Window "My ImGui Window"
                 :Width 400 :Height 200
                 :PosX 0 :PosY 0
                 :Contents
@@ -105,7 +105,7 @@ In all those years of software engineering I've been touching many fields includ
 
 Chainblocks is my answer to this call, a tool that let's me write specific native code and connect it to any other code I wrote.
 
-Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure. 
+Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure.
 
 With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
 

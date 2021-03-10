@@ -154,34 +154,34 @@ struct ViewInfo {
     return _invProj;
   }
 
-  const Mat4 &viewProj() const {
-    if (unlikely(_viewProj.x._private[0] == 0)) {
-      _viewProj = linalg::mul(view, proj);
-      _viewProj.x._private[0] = 1;
-    }
-    return _viewProj;
-  }
+  // const Mat4 &viewProj() const {
+  //   if (unlikely(_viewProj.x._private[0] == 0)) {
+  //     _viewProj = linalg::mul(view, proj);
+  //     _viewProj.x._private[0] = 1;
+  //   }
+  //   return _viewProj;
+  // }
 
-  const Mat4 &invViewProj() const {
-    if (unlikely(_invViewProj.x._private[0] == 0)) {
-      _invViewProj = linalg::inverse(viewProj());
-      _invViewProj.x._private[0] = 1;
-    }
-    return _invViewProj;
-  }
+  // const Mat4 &invViewProj() const {
+  //   if (unlikely(_invViewProj.x._private[0] == 0)) {
+  //     _invViewProj = linalg::inverse(viewProj());
+  //     _invViewProj.x._private[0] = 1;
+  //   }
+  //   return _invViewProj;
+  // }
 
   void invalidate() {
     _invView.x._private[0] = 0;
     _invProj.x._private[0] = 0;
-    _viewProj.x._private[0] = 0;
-    _invViewProj.x._private[0] = 0;
+    // _viewProj.x._private[0] = 0;
+    // _invViewProj.x._private[0] = 0;
   }
 
   // private:
   mutable Mat4 _invView;
   mutable Mat4 _invProj;
-  mutable Mat4 _viewProj;
-  mutable Mat4 _invViewProj;
+  // mutable Mat4 _viewProj;
+  // mutable Mat4 _invViewProj;
 };
 
 struct Context {
