@@ -28,6 +28,9 @@ mergeInto(LibraryManager.library, {
       return -1;
     }
   },
+  emBrowsePage: function (url) {
+    window.open(url, '_blank').focus();
+  },
   // emEvalAsyncRun: function (code, index) {
   //   try {
   //     const scode = UTF8ToString(code);

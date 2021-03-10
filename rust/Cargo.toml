@@ -18,11 +18,13 @@ libsecp256k1 = { version = "0.3.5", optional = true }
 hex = { version = "0.4.2", optional = true }
 crossbeam = { version = "0.8", optional = true }
 rapier3d = { version = "0.6.1", features = ["simd-stable"], optional = true }
-webbrowser = { version = "0.5.5", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
+
+[target.'cfg(not(any(target_arch="wasm32", target_os="ios")))'.dependencies]
+webbrowser = { version = "0.5.5", optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"

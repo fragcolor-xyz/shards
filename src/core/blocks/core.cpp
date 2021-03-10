@@ -1637,6 +1637,7 @@ double now();
 bool emEvalAsyncRun(const char *code, size_t index);
 int emEvalAsyncCheck(size_t index);
 char *emEvalAsyncGet(size_t index);
+void emBrowsePage(const char *url);
 }
 
 CBVar emscriptenEvalActivation(const CBVar &input) {
@@ -1706,6 +1707,11 @@ struct EmscriptenAsyncEval {
 //     return Var(str);
 //   }
 // };
+
+CBVar emscriptenBrowseActivation(const CBVar &input) {
+  emBrowsePage(input.payload.stringValue);
+  return Var(input);
+}
 #endif
 
 void registerBlocksCoreBlocks() {
@@ -1788,6 +1794,10 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenAsyncEval);
+  using EmscriptenBrowseBlock =
+      LambdaBlock<emscriptenBrowseActivation, CoreInfo::StringType,
+                  CoreInfo::StringType>;
+  REGISTER_CBLOCK("Browse", EmscriptenBrowseBlock);
 #endif
 
   REGISTER_CBLOCK("Return", Return);
