@@ -4,6 +4,7 @@ extern crate reqwest;
 extern crate tiny_keccak;
 extern crate secp256k1;
 extern crate hex;
+extern crate webbrowser;
 
 use crate::types::Type;
 use crate::types::common_type;
@@ -15,3 +16,5 @@ pub mod hash;
 pub mod sign;
 
 pub mod physics;
+
+pub mod browse;
