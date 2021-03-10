@@ -568,6 +568,7 @@ CBVar *referenceChainVariable(CBChainRef chain, const char *name) {
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   auto node = ctx->main->node.lock();
   assert(node);
+
   CBVar &v = node->variables[name];
   v.refcount++;
   if (v.refcount == 1) {
@@ -579,9 +580,6 @@ CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
 }
 
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
-  auto node = ctx->main->node.lock();
-  assert(node);
-
   // try find a chain variable
   // from top to bottom of chain stack
   auto rit = ctx->chainStack.rbegin();
@@ -598,13 +596,22 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
 
   // Was not in chains.. find in global node,
   // if fails create on top chain
-  auto it = node->variables.find(name);
-  if (it != node->variables.end()) {
-    // found, lets get out here
-    CBVar &cv = it->second;
-    cv.refcount++;
-    cv.flags |= CBVAR_FLAGS_REF_COUNTED;
-    return &cv;
+
+  auto snode = ctx->main->node.lock();
+  assert(snode);
+
+  CBNode *node = snode.get();
+  while (node) {
+
+    auto it = node->variables.find(name);
+    if (it != node->variables.end()) {
+      // found, lets get out here
+      CBVar &cv = it->second;
+      cv.refcount++;
+      cv.flags |= CBVAR_FLAGS_REF_COUNTED;
+      return &cv;
+    }
+    node = node->rootNode;
   }
 
   // worst case create in current top chain!

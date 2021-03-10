@@ -1596,6 +1596,65 @@ struct Spawn : public ChainBase {
   CBTypeInfo _inputType{};
 };
 
+struct Branch {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() {
+    static Parameters params{
+        {"Chains",
+         CBCCSTR("The chains to schedule and run on this branch."),
+         {CoreInfo::ChainType, CoreInfo::ChainSeqType, CoreInfo::NoneType}}};
+    return params;
+  }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _chains = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _chains;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBOptionalString help() {
+    return CBCCSTR(
+        "A branch is a child node that runs and is ticked when this block is "
+        "activated, chains on this node will inherit all of the available "
+        "exposed variables in the activator chain.");
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    const IterableExposedInfo shared(data.shared);
+    // copy shared
+    _sharedCopy = shared;
+    _node->instanceData.shared = _sharedCopy;
+
+    return data.inputType;
+  }
+
+  void warmup(CBContext *context) {
+    auto node = context->main->node.lock();
+    assert(node);
+    _node->rootNode = node.get();
+  }
+
+private:
+  OwnedVar _chains{Var::Empty};
+  std::shared_ptr<CBNode> _node = CBNode::make();
+  IterableExposedInfo _sharedCopy;
+};
+
 void registerChainsBlocks() {
   using RunChainDo = RunChain<false, RunChainMode::Inline>;
   using RunChainDispatch = RunChain<true, RunChainMode::Inline>;

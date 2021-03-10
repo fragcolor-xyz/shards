@@ -703,7 +703,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     observer.before_compose(chain.get());
     if (compose) {
       // compose the chain
-      CBInstanceData data{};
+      CBInstanceData data = instanceData;
       data.chain = chain.get();
       data.inputType = deriveTypeInfo(input, data);
       auto validation = composeChain(
@@ -817,6 +817,10 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   std::unordered_map<CBChain *, CBTypeInfo> visitedChains;
 
   std::unordered_set<std::shared_ptr<CBChain>> scheduled;
+
+  CBInstanceData instanceData{};
+
+  CBNode *rootNode{nullptr};
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;
