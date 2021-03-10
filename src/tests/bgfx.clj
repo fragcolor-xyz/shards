@@ -73,9 +73,11 @@
        (Physics.Ball :Radius 0.5) = .ball-pshape
        (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
        (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
+      
       ; regular model render
-      {"Position" (Float3 0 0 10)
+      {"Position" (Float3 5 1 8)
        "Target" (Float3 0 0 0)} (GFX.Camera)
+      
       [(Float4 1.0 0.7 0.2 0.8)
        (Float4 0.7 0.2 1.0 0.8)
        (Float4 0.2 1.0 0.7 0.8)
@@ -85,27 +87,53 @@
        (Float4 0.2 1.0 0.7 0.8)
        (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
       (Physics.Simulation)
-      (Physics.KinematicBody .ground-pshape (Float3 0.0 -5.0 0.0))
-      (Physics.DynamicBody .cube-pshape :Name "rb1")
-      (Once (-> .rb1 (Log)))
-      (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
+      (Physics.KinematicBody .ground-pshape (Float3 0.0 -4.0 0.0))
+      ;; (Physics.DynamicBody .cube-pshape :Name "rb1")
+      ;; (Once (-> .rb1 (Log)))
+      ;; (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
+
+      ; drop a few boxes
+      (defblocks box [n]
+        (Physics.DynamicBody .cube-pshape :Name (str "rb" n))
+        (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}))
+      (map box (range 1 5))
+
+      (defblocks onHover [n]
+        (Float3 0.1 4 0)
+        (Physics.Impulse (ContextVar (str "rb" n)))
+        (str "Box " n))
+
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
                   :AllowResize true :AllowMove true :AllowCollapse true
                   :Pos (Int2 0 0) :Contents
                   (->
+                   (Inputs.MousePos)
+                   (| (GFX.Unproject 0.0) = .ray-from (GUI.Text "from"))
+                   (| (GFX.Unproject 1.0) = .ray-to (GUI.Text "to"))
+                   .ray-to (Math.Subtract .ray-from) (Math.Normalize) = .ray-dir
+                   (GUI.Text "ray")
+                   [.ray-from .ray-dir] (Physics.CastRay)
+                   (Match [[.rb1] (onHover 1)
+                           [.rb2] (onHover 2)
+                           [.rb3] (onHover 3)
+                           [.rb4] (onHover 4)
+                           [.rb5] (onHover 5)
+                           nil (-> "No Box")]
+                          :Passthrough false) (GUI.Text)
+
                    "Hello world"   (GUI.Text)
                    "Hello world 2" (GUI.Text)
                    "Hello world 3" (GUI.SameLine) (GUI.Text)
                    "Hello world 4" (GUI.SameLine) (GUI.Text)
-                   (Inputs.MousePos) (GUI.Text "mouse pos")
-                   (| (GFX.Unproject 0.0) (GUI.Text "mouse pos world 0") = .ray-from)
-                   (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1") = .ray-to)
-                   .ray-to (Math.Subtract .ray-from) = .ray-dir
-                   [.ray-from .ray-dir] (Physics.CastRay)
-                   (Match [[.rb1] (-> 
-                                   (Float3 0 10 0) (Physics.Impulse .rb1)
-                                   (Msg "Mouse over the box..."))
-                           nil nil])
+                  ;;  (Inputs.MousePos) (GUI.Text "mouse pos")
+                  ;;  (| (GFX.Unproject 0.0) (GUI.Text "mouse pos world 0") = .ray-from)
+                  ;;  (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1") = .ray-to)
+                  ;;  .ray-to (Math.Subtract .ray-from) = .ray-dir
+                  ;;  [.ray-from .ray-dir] (Physics.CastRay)
+                  ;;  (Match [[.rb1] (->
+                  ;;                  (Float3 0 10 0) (Physics.Impulse .rb1)
+                  ;;                  (Msg "Mouse over the box..."))
+                  ;;          nil nil])
                    (Inputs.MouseDelta) (GUI.Text "mouse delta")
                    (GUI.Separator)
 

@@ -1847,9 +1847,8 @@ struct Camera : public CameraBase {
     } else {
       currentView.view = Mat4::FromArray(view);
     }
-    currentView.invView = linalg::inverse(currentView.view);
     currentView.proj = Mat4::FromArray(proj);
-    currentView.invProj = linalg::inverse(currentView.proj);
+    currentView.invalidate();
 
     return input;
   }
@@ -2002,9 +2001,8 @@ struct CameraOrtho : public CameraBase {
     } else {
       currentView.view = Mat4::FromArray(view);
     }
-    currentView.invView = linalg::inverse(currentView.view);
     currentView.proj = Mat4::FromArray(proj);
-    currentView.invProj = linalg::inverse(currentView.proj);
+    currentView.invalidate();
 
     return input;
   }
@@ -2787,6 +2785,9 @@ struct Unproject : public BaseConsumer {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    using namespace linalg;
+    using namespace linalg::aliases;
+
     Context *ctx =
         reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     const auto &currentView = ctx->currentView();
@@ -2802,9 +2803,10 @@ struct Unproject : public BaseConsumer {
     const auto x = (((sx - vx) / vw) * 2.0f) - 1.0f;
     const auto y = 1.0f - (((sy - vy) / vh) * 2.0f);
 
-    return Vec3(x, y, _z)
-        .applyMatrix(currentView.invProj)
-        .applyMatrix(currentView.invView);
+    const auto m = mul(currentView.invView(), currentView.invProj());
+    const auto v = mul(m, float4(x, y, _z, 1.0f));
+    const Vec3 res = v / v.w;
+    return res;
   }
 };
 

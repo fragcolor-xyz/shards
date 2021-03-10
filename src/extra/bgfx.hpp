@@ -136,9 +136,52 @@ struct ViewInfo {
   } viewport;
 
   Mat4 view;
-  Mat4 invView;
   Mat4 proj;
-  Mat4 invProj;
+
+  const Mat4 &invView() const {
+    if (unlikely(_invView.x._private[0] == 0)) {
+      _invView = linalg::inverse(view);
+      _invView.x._private[0] = 1;
+    }
+    return _invView;
+  }
+
+  const Mat4 &invProj() const {
+    if (unlikely(_invProj.x._private[0] == 0)) {
+      _invProj = linalg::inverse(proj);
+      _invProj.x._private[0] = 1;
+    }
+    return _invProj;
+  }
+
+  const Mat4 &viewProj() const {
+    if (unlikely(_viewProj.x._private[0] == 0)) {
+      _viewProj = linalg::mul(view, proj);
+      _viewProj.x._private[0] = 1;
+    }
+    return _viewProj;
+  }
+
+  const Mat4 &invViewProj() const {
+    if (unlikely(_invViewProj.x._private[0] == 0)) {
+      _invViewProj = linalg::inverse(viewProj());
+      _invViewProj.x._private[0] = 1;
+    }
+    return _invViewProj;
+  }
+
+  void invalidate() {
+    _invView.x._private[0] = 0;
+    _invProj.x._private[0] = 0;
+    _viewProj.x._private[0] = 0;
+    _invViewProj.x._private[0] = 0;
+  }
+
+  // private:
+  mutable Mat4 _invView;
+  mutable Mat4 _invProj;
+  mutable Mat4 _viewProj;
+  mutable Mat4 _invViewProj;
 };
 
 struct Context {
