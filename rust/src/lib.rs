@@ -281,28 +281,14 @@ mod dummy_block {
   }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[cfg(feature = "blocks")]
 #[no_mangle]
 pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   Core = core;
-  blocks::http::registerBlocks();
-  blocks::hash::registerBlocks();
-  blocks::sign::registerBlocks();
-  blocks::physics::simulation::registerBlocks();
-  blocks::physics::shapes::registerBlocks();
-  blocks::physics::rigidbody::registerBlocks();
-  blocks::physics::queries::registerBlocks();
-  blocks::physics::forces::registerBlocks();
-  blocks::browse::registerBlocks();
-  // cblog!("Rust blocks initialization done.");
-}
 
-#[cfg(target_arch = "wasm32")]
-#[cfg(feature = "blocks")]
-#[no_mangle]
-pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
-  Core = core;
+  #[cfg(not(target_arch = "wasm32"))]
+  blocks::http::registerBlocks();
+
   blocks::hash::registerBlocks();
   blocks::sign::registerBlocks();
   blocks::physics::simulation::registerBlocks();
@@ -310,6 +296,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::physics::rigidbody::registerBlocks();
   blocks::physics::queries::registerBlocks();
   blocks::physics::forces::registerBlocks();
+
+  #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   blocks::browse::registerBlocks();
-  // cblog!("Rust blocks initialization done.");
 }

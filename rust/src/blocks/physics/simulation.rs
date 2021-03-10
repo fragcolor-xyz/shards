@@ -13,10 +13,10 @@ use crate::types::ANY_TYPES;
 use crate::Block;
 use crate::Types;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
+use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet,};
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
 use rapier3d::na::Vector3;
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline, PhysicsHooks};
 use std::convert::TryInto;
 
 lazy_static! {
@@ -121,8 +121,7 @@ impl Block for Simulation {
       &mut self.bodies,
       &mut self.colliders,
       &mut self.joints,
-      None,
-      None,
+      &(),
       &self.event_handler,
     );
     self.query_pipeline.update(&self.bodies, &self.colliders);
