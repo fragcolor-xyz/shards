@@ -931,6 +931,8 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
 
 struct ValidationContext {
   std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
+      inherited;
+  std::unordered_map<std::string, std::unordered_set<CBExposedTypeInfo>>
       exposed;
   std::unordered_set<std::string> variables;
   std::unordered_set<std::string> references;
@@ -1005,6 +1007,12 @@ void validateConnection(ValidationContext &ctx) {
     // Pass all we got in the context!
     // notice that blocks might add new records to this array
     for (auto &info : ctx.exposed) {
+      for (auto &type : info.second) {
+        chainblocks::arrayPush(data.shared, type);
+      }
+    }
+    // and inherited
+    for (auto &info : ctx.inherited) {
       for (auto &type : info.second) {
         chainblocks::arrayPush(data.shared, type);
       }
@@ -1188,8 +1196,14 @@ void validateConnection(ValidationContext &ctx) {
         // the remaining should be a table key which we don't care here
         name = name.substr(0, name.find(' '));
       }
+
+      auto end = ctx.exposed.end();
       auto findIt = ctx.exposed.find(name);
-      if (findIt == ctx.exposed.end()) {
+      if (findIt == end) {
+        end = ctx.inherited.end();
+        findIt = ctx.inherited.find(name);
+      }
+      if (findIt == end) {
         std::string err("Required variable not found: " + name);
         // Warning only, delegate compose to decide
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
@@ -1223,10 +1237,17 @@ void validateConnection(ValidationContext &ctx) {
           ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
         }
       }
+      for (const auto &info : ctx.inherited) {
+        for (auto type : info.second) {
+          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+        }
+      }
       auto sss = ss.str();
       ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
-      ctx.required.emplace(match);
+      // Add required stuff that we do not expose ourself
+      if (ctx.exposed.find(match.name) == ctx.exposed.end())
+        ctx.required.emplace(match);
     }
   }
 }
@@ -1245,7 +1266,7 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &info = data.shared.elements[i];
-      ctx.exposed[info.name].insert(info);
+      ctx.inherited[info.name].insert(info);
     }
   }
 
