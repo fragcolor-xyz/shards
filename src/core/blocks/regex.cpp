@@ -12,6 +12,7 @@ struct Common {
 
   std::regex _re;
   std::string _re_str;
+  std::string _subject;
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 
@@ -33,7 +34,7 @@ struct Common {
     case 0:
       return Var(_re_str);
     default:
-      return CBVar();
+      return Var::Empty;
     }
   }
 };
@@ -46,8 +47,8 @@ struct Match : public Common {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::smatch match;
-    std::string subject(input.payload.stringValue);
-    if (std::regex_match(subject, match, _re)) {
+    _subject.assign(input.payload.stringValue, CBSTRLEN(input));
+    if (std::regex_match(_subject, match, _re)) {
       auto size = match.size();
       _pool.resize(size);
       _output.resize(size);
@@ -68,15 +69,15 @@ struct Search : public Common {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     std::smatch match;
-    std::string subject(input.payload.stringValue);
+    _subject.assign(input.payload.stringValue, CBSTRLEN(input));
     _pool.clear();
     _output.clear();
-    while (std::regex_search(subject, match, _re)) {
+    while (std::regex_search(_subject, match, _re)) {
       auto size = match.size();
       for (size_t i = 0; i < size; i++) {
         _pool.emplace_back(match[i].str());
       }
-      subject = match.suffix();
+      _subject.assign(match.suffix());
     }
     for (auto &s : _pool) {
       _output.push_back(Var(s));
@@ -119,8 +120,8 @@ struct Replace : public Common {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    _output.assign(
-        std::regex_replace(input.payload.stringValue, _re, _replacement));
+    _subject.assign(input.payload.stringValue, CBSTRLEN(input));
+    _output.assign(std::regex_replace(_subject, _re, _replacement));
     return Var(_output);
   }
 };

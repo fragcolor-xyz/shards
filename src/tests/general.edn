@@ -742,6 +742,10 @@
    (Log)
    (Assert.Is "Q[u][i]ck br[o]wn f[o]x" true)
 
+   "How many many do you see?"
+   (Regex.Search #"many") = .2many
+   (Count .2many) (Assert.Is 2 true)
+
    (ToBytes)
    (Set "bytesTest")
    (Get "bytesTest")
