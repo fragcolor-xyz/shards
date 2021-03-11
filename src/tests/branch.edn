@@ -9,7 +9,8 @@
 (defloop c
   "Hello" = .msg1
   "World" = .msg2
-  (Branch [c1 c2]))
+  (Branch [c1 c2])
+  (Msg "And Universe"))
 
 (schedule main c)
 (run main 0.2 50)
