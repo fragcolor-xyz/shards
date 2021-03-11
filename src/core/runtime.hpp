@@ -793,6 +793,9 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       }
     }
     variables.clear();
+
+    // whichever block uses refs must clean them
+    refs.clear();
   }
 
   void remove(const std::shared_ptr<CBChain> &chain) {
@@ -814,13 +817,13 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
                          std::pair<const std::string, CBVar>, 16>>
       variables;
 
+  std::unordered_map<std::string, CBVar *> refs;
+
   std::unordered_map<CBChain *, CBTypeInfo> visitedChains;
 
   std::unordered_set<std::shared_ptr<CBChain>> scheduled;
 
   CBInstanceData instanceData{};
-
-  CBNode *rootNode{nullptr};
 
 private:
   std::list<std::shared_ptr<CBFlow>> _flows;

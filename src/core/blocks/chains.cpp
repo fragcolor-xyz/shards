@@ -59,8 +59,8 @@ struct ChainBase {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
-    chainblocks::arrayFree(chainValidation.requiredInfo);
-    chainblocks::arrayFree(chainValidation.exposedInfo);
+    arrayFree(chainValidation.requiredInfo);
+    arrayFree(chainValidation.exposedInfo);
 
     // Actualize the chain here, if we are deserialized
     // chain might already be populated!
@@ -1634,7 +1634,59 @@ struct Branch {
         "exposed variables in the activator chain.");
   }
 
+  void composeSubChain(const CBInstanceData &data, CBChainRef &chainref) {
+    auto chain = CBChain::sharedFromRef(chainref);
+
+    auto dataCopy = data;
+    dataCopy.chain = chain.get();
+    dataCopy.inputType = data.inputType;
+    auto cr = composeChain(
+        chain.get(),
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
+           void *userData) {
+          if (!nonfatalWarning) {
+            LOG(ERROR) << "Branch: failed inner chain validation, error: "
+                       << errorTxt;
+            throw ComposeError("RunChain: failed inner chain validation");
+          } else {
+            LOG(INFO) << "Branch: warning during inner chain validation: "
+                      << errorTxt;
+          }
+        },
+        this, dataCopy);
+
+    _composes.emplace_back(cr);
+    _runChains.emplace_back(chain);
+
+    // add to merged requirements
+    for (auto &req : cr.requiredInfo) {
+      arrayPush(_mergedReqs, req);
+    }
+  }
+
+  void destroy() {
+    // release any old compose
+    for (auto &cr : _composes) {
+      arrayFree(cr.requiredInfo);
+      arrayFree(cr.exposedInfo);
+    }
+    _composes.clear();
+    arrayFree(_mergedReqs);
+  }
+
   CBTypeInfo compose(const CBInstanceData &data) {
+    // release any old info
+    destroy();
+
+    _runChains.clear();
+    if (_chains.valueType == CBType::Seq) {
+      for (auto &chain : _chains) {
+        composeSubChain(data, chain.payload.chainValue);
+      }
+    } else if (_chains.valueType == CBType::Chain) {
+      composeSubChain(data, _chains.payload.chainValue);
+    }
+
     const IterableExposedInfo shared(data.shared);
     // copy shared
     _sharedCopy = shared;
@@ -1643,16 +1695,48 @@ struct Branch {
     return data.inputType;
   }
 
+  CBExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
   void warmup(CBContext *context) {
-    auto node = context->main->node.lock();
-    assert(node);
-    _node->rootNode = node.get();
+    // grab all the variables we need and reference them
+    for (const auto &cr : _composes) {
+      for (const auto &req : cr.requiredInfo) {
+        if (_node->refs.count(req.name) == 0) {
+          auto vp = referenceVariable(context, req.name);
+          _node->refs[req.name] = vp;
+        }
+      }
+    }
+
+    for (const auto &chain : _runChains) {
+      _node->schedule(chain, Var::Empty, false);
+    }
+  }
+
+  void cleanup() {
+    for (auto &[_, vp] : _node->refs) {
+      releaseVariable(vp);
+    }
+
+    // this will also clear refs
+    _node->terminate();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_node->tick(input)) {
+      // the node had errors in this case
+      throw ActivationError("Branched node had errors");
+    }
+    return input;
   }
 
 private:
   OwnedVar _chains{Var::Empty};
   std::shared_ptr<CBNode> _node = CBNode::make();
   IterableExposedInfo _sharedCopy;
+  std::vector<CBComposeResult> _composes;
+  CBExposedTypesInfo _mergedReqs;
+  std::vector<std::shared_ptr<CBChain>> _runChains;
 };
 
 void registerChainsBlocks() {
@@ -1674,6 +1758,7 @@ void registerChainsBlocks() {
   REGISTER_CBLOCK("TryMany", TryMany);
   REGISTER_CBLOCK("Spawn", Spawn);
   REGISTER_CBLOCK("Expand", Expand);
+  REGISTER_CBLOCK("Branch", Branch);
 }
 }; // namespace chainblocks
 

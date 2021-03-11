@@ -582,27 +582,25 @@ CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
 CBVar *referenceVariable(CBContext *ctx, const char *name) {
   // try find a chain variable
   // from top to bottom of chain stack
-  auto rit = ctx->chainStack.rbegin();
-  for (; rit != ctx->chainStack.rend(); ++rit) {
-    auto it = (*rit)->variables.find(name);
-    if (it != (*rit)->variables.end()) {
-      // found, lets get out here
-      CBVar &cv = it->second;
-      cv.refcount++;
-      cv.flags |= CBVAR_FLAGS_REF_COUNTED;
-      return &cv;
+  {
+    auto rit = ctx->chainStack.rbegin();
+    for (; rit != ctx->chainStack.rend(); ++rit) {
+      auto it = (*rit)->variables.find(name);
+      if (it != (*rit)->variables.end()) {
+        // found, lets get out here
+        CBVar &cv = it->second;
+        cv.refcount++;
+        cv.flags |= CBVAR_FLAGS_REF_COUNTED;
+        return &cv;
+      }
     }
   }
 
-  // Was not in chains.. find in global node,
-  // if fails create on top chain
+  auto node = ctx->main->node.lock();
+  assert(node);
 
-  auto snode = ctx->main->node.lock();
-  assert(snode);
-
-  CBNode *node = snode.get();
-  while (node) {
-
+  // Was not in chains.. find in nodes
+  {
     auto it = node->variables.find(name);
     if (it != node->variables.end()) {
       // found, lets get out here
@@ -611,7 +609,18 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
       cv.flags |= CBVAR_FLAGS_REF_COUNTED;
       return &cv;
     }
-    node = node->rootNode;
+  }
+
+  // Was not in node directly.. try find in nodes refs
+  {
+    auto it = node->refs.find(name);
+    if (it != node->refs.end()) {
+      // found, lets get out here
+      CBVar *cv = it->second;
+      cv->refcount++;
+      cv->flags |= CBVAR_FLAGS_REF_COUNTED;
+      return cv;
+    }
   }
 
   // worst case create in current top chain!
@@ -1217,9 +1226,7 @@ void validateConnection(ValidationContext &ctx) {
       auto sss = ss.str();
       ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
-      // Add required stuff that we do not expose ourself
-      if (ctx.exposed.find(match.name) == ctx.exposed.end())
-        ctx.required.emplace(match);
+      ctx.required.emplace(match);
     }
   }
 }
