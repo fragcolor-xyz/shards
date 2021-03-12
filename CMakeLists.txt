@@ -912,6 +912,10 @@ add_library(
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
 target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
 
+add_dependencies(cb_static libwasm3)
+add_dependencies(cb_shared libwasm3)
+set(EXTRA_LIBS ${EXTRA_LIBS} libwasm3)
+
 if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static cb_rust_static)
   add_dependencies(cb_shared cb_rust_static)
