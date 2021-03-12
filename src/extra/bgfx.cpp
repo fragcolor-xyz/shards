@@ -699,7 +699,10 @@ struct MainWindow : public BaseWindow {
       // specially for iOS thing is that we pass context as variable, not a
       // window object we might need 2 variables in the end
     } else {
-      uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI |
+      uint32_t flags = SDL_WINDOW_SHOWN |
+#ifndef __EMSCRIPTEN__
+                       SDL_WINDOW_ALLOW_HIGHDPI |
+#endif
                        SDL_WINDOW_RESIZABLE |
                        (_fsMode ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 #ifdef __APPLE__
