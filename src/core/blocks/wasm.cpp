@@ -1251,7 +1251,7 @@ struct Run {
           }
         }
 
-        result = m3_CallArgV(_mainFunc, _argsArray.size(), &_argsArray[0]);
+        result = m3_CallArgv(_mainFunc, _argsArray.size(), &_argsArray[0]);
       } else {
         // assume wasi
         _data.args.clear();
@@ -1274,7 +1274,7 @@ struct Run {
           }
         }
 
-        result = m3_CallArgV(_mainFunc, 0, nullptr);
+        result = m3_CallArgv(_mainFunc, 0, nullptr);
       }
 
       if (result == m3Err_trapExit) {
