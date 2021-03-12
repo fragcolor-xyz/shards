@@ -23,8 +23,8 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.14
-        ./emsdk activate 2.0.14
+        ./emsdk install 2.0.15
+        ./emsdk activate 2.0.15
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
@@ -74,12 +74,13 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.5
-        ./emsdk activate 2.0.5
+        ./emsdk install 2.0.15
+        ./emsdk activate 2.0.15
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
         rustup update
+        rustup default nightly
         rustup target add wasm32-unknown-emscripten
     - name: Build
       run: |
