@@ -1217,8 +1217,21 @@ BUILTIN("&>") { return mal::nilValue(); }
 
 BUILTIN(">==") { return mal::nilValue(); }
 
+BUILTIN(">==") { return mal::nilValue(); }
+
+BUILTIN("??") { return mal::nilValue(); }
+
 std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
-  enum State { Get, Set, SetGlobal, Update, Ref, Push, PushNoClear };
+  enum State {
+    Get,
+    Set,
+    SetGlobal,
+    Update,
+    Ref,
+    Push,
+    PushNoClear,
+    AddGetDefault
+  };
   State state = Get;
   std::vector<malCBlockPtr> res;
   while (begin != end) {
@@ -1254,7 +1267,7 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
           res.emplace_back(blk);
           state = Get;
         } else {
-          throw chainblocks::CBException("Unexpected state");
+          throw chainblocks::CBException("Expected a variable");
         }
       } else {
         auto blks = blockify(next);
@@ -1273,12 +1286,26 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         state = Push;
       } else if (v->name() == ">>!") {
         state = PushNoClear;
+      } else if (v->name() == "??") {
+        state = AddGetDefault;
       } else {
-        throw chainblocks::CBException("Unexpected token");
+        throw chainblocks::CBException("Unexpected a token");
       }
     } else {
-      auto blks = blockify(next);
-      res.insert(res.end(), blks.begin(), blks.end());
+      if (state == AddGetDefault) {
+        auto blk = res.back();
+        if (strcmp(blk->value()->name(blk->value()), "Get") != 0) {
+          throw chainblocks::CBException(
+              "There should be a variable preceeding ||");
+        }
+        // set :Default
+        auto v = varify(next);
+        blk->value()->setParam(blk->value(), 4, &v->value());
+        state = Get;
+      } else {
+        auto blks = blockify(next);
+        res.insert(res.end(), blks.begin(), blks.end());
+      }
     }
   }
   return res;

@@ -21,6 +21,9 @@
    (Msg "Running tests!")
    (OnCleanup ~[(Comment "ensure multiple blocks can run")
                 (Msg "Finished running tests!")])
+   
+   .var-with-default ?? 10 ; will either be var-with-default value if existed or 10
+   (Assert.Is 10 true)
 
    (Const #"\sHello")
    (Log)

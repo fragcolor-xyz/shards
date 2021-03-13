@@ -51,10 +51,8 @@
                                         ; right
       (Pop .right-mem) >> .result)
      (-> true)
-     (Clear .result)
-     ])
-   (Get .result :Default [])
-   ))
+     (Clear .result)])
+   .result ?? []))
 
 (def Root (Node))
 (schedule
