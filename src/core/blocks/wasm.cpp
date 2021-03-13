@@ -353,6 +353,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_dir_name) {
   }
   size_t slen = strlen(preopen[fd].path);
   memcpy(path, preopen[fd].path, M3_MIN(slen, path_len));
+  path[M3_MIN(slen, path_len)] = '\0';
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
 }
 
@@ -438,6 +439,41 @@ m3ApiRawFunction(m3_wasi_unstable_fd_filestat_get) {
 
   struct stat s;
   auto res = fstat(fd, &s);
+  if (res == -1) {
+    m3ApiReturn(errno_to_wasi(errno));
+  }
+
+  filestat->dev = s.st_dev;
+  filestat->atim = s.st_atime;
+  filestat->mtim = s.st_mtime;
+  filestat->ctim = s.st_ctime;
+  filestat->nlink = s.st_nlink;
+  filestat->size = s.st_size;
+
+  m3ApiReturn(__WASI_ERRNO_SUCCESS);
+}
+
+m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, fd);
+  m3ApiGetArg(__wasi_lookupflags_t, flags);
+  m3ApiGetArgMem(const char *, path);
+  m3ApiGetArg(uint32_t, path_len);
+  m3ApiGetArgMem(__wasi_filestat_t *, filestat);
+
+  LOG(TRACE) << "WASI m3_wasi_unstable_path_filestat_get, path: " << path;
+
+  std::filesystem::path fp{path};
+  std::filesystem::path rp{chainblocks::Globals::RootPath};
+  std::filesystem::path p = rp / fp;
+  auto ps = p.string();
+
+  if (runtime == NULL || filestat == NULL) {
+    m3ApiReturn(__WASI_ERRNO_INVAL);
+  }
+
+  struct stat s;
+  auto res = stat(ps.c_str(), &s);
   if (res == -1) {
     m3ApiReturn(errno_to_wasi(errno));
   }
@@ -999,9 +1035,13 @@ M3Result m3_LinkWASI(IM3Module module) {
         module, wasi, "fd_write", "i(i*i*)", &m3_wasi_unstable_fd_write)));
 
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
-    //"path_create_directory",    "i(i*i)",       ))); _ (SuppressLookupFailure
-    //(m3_LinkRawFunction (module, wasi, "path_filestat_get",        "i(ii*i*)",
-    //&m3_wasi_unstable_path_filestat_get))); _     (SuppressLookupFailure
+    //"path_create_directory",    "i(i*i)",       )));
+
+    _(SuppressLookupFailure(
+        m3_LinkRawFunction(module, wasi, "path_filestat_get", "i(ii*i*)",
+                           &m3_wasi_unstable_path_filestat_get)));
+
+    // _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "path_filestat_set_times",
     //"i(ii*iIIi)",   ))); _     (SuppressLookupFailure (m3_LinkRawFunction
     //(module, wasi, "path_link",                "i(ii*ii*i)",   )));
@@ -1073,6 +1113,7 @@ struct Run {
   CachedStreamBuf _sout{};
   CachedStreamBuf _serr{};
   bool _reset{true};
+  bool _callCtors{false};
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -1094,6 +1135,11 @@ struct Run {
        CBCCSTR("If the runtime should be reset every activation, altho slow "
                "this might be useful if certain modules fail to execute "
                "properly or leak on multiple activations."),
+       {CoreInfo::BoolType}},
+      {"CallConstructors",
+       CBCCSTR("Use if it might be necessary to force a call to "
+               "`__wasm_call_dtors`, modules generated with WASI rust might "
+               "need this."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
@@ -1114,8 +1160,11 @@ struct Run {
     case 4:
       _reset = value.payload.boolValue;
       break;
+    case 5:
+      _callCtors = value.payload.boolValue;
+      break;
     default:
-      throw CBException("setParam out of range");
+      throw InvalidParameterIndex();
     }
   }
 
@@ -1131,8 +1180,10 @@ struct Run {
       return Var(int64_t(_stackSize) / 1024);
     case 4:
       return Var(_reset);
+    case 5:
+      return Var(_callCtors);
     default:
-      throw CBException("getParam out of range");
+      throw InvalidParameterIndex();
     }
   }
 
@@ -1177,6 +1228,13 @@ struct Run {
 
     err = m3_FindFunction(&_mainFunc, _runtime.get(), _entryPoint.c_str());
     CHECK_COMPOSE_ERR(err);
+
+    if (_callCtors) {
+      IM3Function ctors;
+      err = m3_FindFunction(&ctors, _runtime.get(), "__wasm_call_ctors");
+      if (err == m3Err_none)
+        m3_CallArgv(ctors, 0, nullptr);
+    }
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
