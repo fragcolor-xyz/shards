@@ -360,7 +360,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_dir_name) {
 m3ApiRawFunction(m3_wasi_unstable_fd_prestat_get) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
-  m3ApiGetArgMem(uint32_t *, buf); // TODO: use actual struct
+  m3ApiGetArgMem(__wasi_prestat_t *, s);
 
   LOG(TRACE) << "WASI fd_prestat_get";
 
@@ -370,8 +370,8 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_get) {
   if (fd < 3 || fd >= PREOPEN_CNT) {
     m3ApiReturn(__WASI_ERRNO_BADF);
   }
-  m3ApiWriteMem32(buf, __WASI_PREOPENTYPE_DIR);
-  m3ApiWriteMem32(buf + 1, strlen(preopen[fd].path));
+  s->pr_type = __WASI_PREOPENTYPE_DIR;
+  s->u.dir.pr_name_len = strlen(preopen[fd].path);
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
 }
 
