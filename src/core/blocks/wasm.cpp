@@ -353,7 +353,6 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_dir_name) {
   }
   size_t slen = strlen(preopen[fd].path);
   memcpy(path, preopen[fd].path, M3_MIN(slen, path_len));
-  path[M3_MIN(slen, path_len)] = '\0';
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
 }
 
