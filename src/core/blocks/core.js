@@ -30,7 +30,7 @@ mergeInto(LibraryManager.library, {
   },
   emBrowsePage: function (curl) {
     const url = UTF8ToString(curl);
-    window.open(url, '_blank').focus();
+    window.open(url, '_self');
   },
   // emEvalAsyncRun: function (code, index) {
   //   try {
