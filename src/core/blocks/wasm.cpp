@@ -443,6 +443,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_filestat_get) {
   }
 
   filestat->dev = s.st_dev;
+  filestat->filetype = __WASI_FILETYPE_REGULAR_FILE; // todo
   filestat->atim = s.st_atime;
   filestat->mtim = s.st_mtime;
   filestat->ctim = s.st_ctime;
@@ -478,6 +479,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
   }
 
   filestat->dev = s.st_dev;
+  filestat->filetype = __WASI_FILETYPE_REGULAR_FILE; // todo
   filestat->atim = s.st_atime;
   filestat->mtim = s.st_mtime;
   filestat->ctim = s.st_ctime;
