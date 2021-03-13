@@ -1217,8 +1217,6 @@ BUILTIN("&>") { return mal::nilValue(); }
 
 BUILTIN(">==") { return mal::nilValue(); }
 
-BUILTIN(">==") { return mal::nilValue(); }
-
 BUILTIN("??") { return mal::nilValue(); }
 
 std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
