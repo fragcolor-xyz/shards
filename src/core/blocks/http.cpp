@@ -26,6 +26,7 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #include <sstream>
 #include <string>
 #else
+#include <boost/algorithm/string.hpp>
 #include <emscripten/fetch.h>
 #endif
 
@@ -65,6 +66,17 @@ namespace Http {
 // those blocks for non emscripten platforms are implemented in Rust
 
 struct Base {
+  static inline Types FullStrOutputTypes{
+      {CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
+  static inline Types FullBytesOutputTypes{
+      {CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
+  static inline std::array<CBString, 3> FullOutputKeys{"status", "headers",
+                                                       "body"};
+  static inline Type FullStrOutputType =
+      Type::TableOf(FullStrOutputTypes, FullOutputKeys);
+  static inline Type FullBytesOutputType =
+      Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
+
   static inline Parameters params{
       {"URL",
        CBCCSTR("The url to request to"),
@@ -78,14 +90,26 @@ struct Base {
        {CoreInfo::IntType}},
       {"Bytes",
        CBCCSTR("If instead of a string the block should outout bytes."),
+       {CoreInfo::BoolType}},
+      {"FullResponse",
+       CBCCSTR("If the output should be a table with the full response, "
+               "including headers and status."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   CBTypesInfo outputTypes() {
-    if (asBytes) {
-      return CoreInfo::BytesType;
+    if (fullResponse) {
+      if (asBytes) {
+        return FullBytesOutputType;
+      } else {
+        return FullStrOutputType;
+      }
     } else {
-      return CoreInfo::StringType;
+      if (asBytes) {
+        return CoreInfo::BytesType;
+      } else {
+        return CoreInfo::StringType;
+      }
     }
   }
 
@@ -103,6 +127,18 @@ struct Base {
     case 3:
       asBytes = value.payload.boolValue;
       break;
+    case 4:
+      fullResponse = value.payload.boolValue;
+      if (fullResponse) {
+        // also init lazily the map
+        CBMap m;
+        CBVar empty{};
+        empty.valueType = CBType::Table;
+        empty.payload.tableValue.opaque = &m;
+        empty.payload.tableValue.api = &Globals::TableInterface;
+        outMap["headers"] = empty;
+      }
+      break;
     default:
       break;
     }
@@ -118,6 +154,8 @@ struct Base {
       return Var(timeout);
     case 3:
       return Var(asBytes);
+    case 4:
+      return Var(fullResponse);
     default:
       throw InvalidParameterIndex();
     }
@@ -135,6 +173,27 @@ struct Base {
 
   static void fetchSucceeded(emscripten_fetch_t *fetch) {
     auto self = reinterpret_cast<Base *>(fetch->userData);
+    if (self->fullResponse) {
+      const auto len = emscripten_fetch_get_response_headers_length(fetch);
+      self->hbuffer.resize(len + 1); // well I think the + 1 is not needed
+      emscripten_fetch_get_response_headers(fetch, self->hbuffer.data(),
+                                            len + 1);
+      auto &mvar = self->outMap["headers"];
+      auto m = reinterpret_cast<CBMap *>(mvar.payload.tableValue.opaque);
+      std::istringstream resp(self->hbuffer);
+      std::string header;
+      std::string::size_type index;
+      while (std::getline(resp, header) && header != "\r") {
+        index = header.find(':', 0);
+        if (index != std::string::npos) {
+          auto key = boost::algorithm::trim_copy(header.substr(0, index));
+          boost::algorithm::to_lower(key);
+          auto val = boost::algorithm::trim_copy(header.substr(index + 1));
+          m->emplace(key, Var(val));
+        }
+      }
+      self->status = fetch->status;
+    }
     self->buffer.assign(fetch->data, fetch->numBytes);
     self->state = 1;
     emscripten_fetch_close(fetch);
@@ -148,11 +207,15 @@ struct Base {
   }
 
   bool asBytes{false};
+  bool fullResponse{false};
+  uint16_t status;
   int state{0};
   int timeout{10};
   std::string buffer;
+  std::string hbuffer;
   std::string vars;
   std::vector<const char *> headersCArray;
+  CBMap outMap;
   ParamVar url{Var("")};
   ParamVar headers{};
 };
@@ -206,10 +269,24 @@ template <const string_view &METHOD> struct GetLike : public Base {
     }
 
     if (state == 1) {
-      if (asBytes) {
-        return Var((uint8_t *)buffer.data(), buffer.size());
+      if (unlikely(fullResponse)) {
+        outMap.emplace("status", Var(status));
+        if (asBytes) {
+          outMap.emplace("body", Var((uint8_t *)buffer.data(), buffer.size()));
+        } else {
+          outMap.emplace("body", Var(buffer));
+        }
+        CBVar res{};
+        res.valueType = CBType::Table;
+        res.payload.tableValue.opaque = &outMap;
+        res.payload.tableValue.api = &Globals::TableInterface;
+        return res;
       } else {
-        return Var(buffer);
+        if (asBytes) {
+          return Var((uint8_t *)buffer.data(), buffer.size());
+        } else {
+          return Var(buffer);
+        }
       }
     } else {
       LOG(ERROR) << "Http request failed with status: " << buffer;
@@ -299,10 +376,24 @@ template <const string_view &METHOD> struct PostLike : public Base {
     }
 
     if (state == 1) {
-      if (asBytes) {
-        return Var((uint8_t *)buffer.data(), buffer.size());
+      if (unlikely(fullResponse)) {
+        outMap.emplace("status", Var(status));
+        if (asBytes) {
+          outMap.emplace("body", Var((uint8_t *)buffer.data(), buffer.size()));
+        } else {
+          outMap.emplace("body", Var(buffer));
+        }
+        CBVar res{};
+        res.valueType = CBType::Table;
+        res.payload.tableValue.opaque = &outMap;
+        res.payload.tableValue.api = &Globals::TableInterface;
+        return res;
       } else {
-        return Var(buffer);
+        if (asBytes) {
+          return Var((uint8_t *)buffer.data(), buffer.size());
+        } else {
+          return Var(buffer);
+        }
       }
     } else {
       LOG(ERROR) << "Http request failed with status: " << buffer;
