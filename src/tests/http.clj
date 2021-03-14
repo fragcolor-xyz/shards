@@ -34,7 +34,15 @@
 
    .json
    (Http.Post "https://postman-echo.com/post")
-   (Log)))
+   (Log)
+
+   .json
+   (Http.Post "https://postman-echo.com/post" :FullResponse true)
+   (Log)
+   (Take "headers")
+   (Take "content-type")
+   (Log)
+   (Assert.Is "application/json; charset=utf-8" true)))
 
 (schedule Root test)
 (run Root 0.1 50)

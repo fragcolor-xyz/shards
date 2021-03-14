@@ -628,13 +628,13 @@ impl Type {
     }
   }
 
-  pub const fn table(keys: &[&'static str], types: &[Type]) -> Type {
+  pub const fn table(keys: &[CBString], types: &[Type]) -> Type {
     Type {
       basicType: CBType_Table,
       details: CBTypeInfo_Details {
         table: CBTypeInfo_Details_Table {
           keys: CBStrings {
-            elements: keys.as_ptr() as *mut *const i8,
+            elements: keys.as_ptr() as *mut _,
             len: keys.len() as u32,
             cap: 0,
           },
@@ -818,6 +818,7 @@ macro_rules! var_try_from {
 
 var_from!(bool, boolValue, CBType_Bool);
 var_from!(i64, intValue, CBType_Int);
+var_try_from!(u16, intValue, CBType_Int);
 var_from_into!(i32, intValue, CBType_Int);
 var_try_from!(usize, intValue, CBType_Int);
 var_try_from!(u64, intValue, CBType_Int);
@@ -1852,6 +1853,12 @@ impl Default for Table {
   }
 }
 
+impl AsRef<Table> for Table {
+  fn as_ref(&self) -> &Table {
+    self
+  }
+}
+
 impl Table {
   pub fn new() -> Table {
     unsafe {
@@ -1913,6 +1920,13 @@ impl Table {
     }
   }
 
+  pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
+    unsafe {
+      let cstr = k.as_ptr() as *const i8;
+      &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
+    }
+  }
+
   pub fn get(&self, k: &CString) -> Option<&Var> {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
@@ -1922,6 +1936,13 @@ impl Table {
       } else {
         None
       }
+    }
+  }
+
+  pub fn get_fast_static(&mut self, k: &'static str) -> &Var {
+    unsafe {
+      let cstr = k.as_ptr() as *const i8;
+      &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
 

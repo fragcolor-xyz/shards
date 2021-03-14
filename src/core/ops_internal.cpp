@@ -526,6 +526,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       for (uint32_t j = 0; j < btypes; j++) {
         if (a.table.types.elements[i] == b.table.types.elements[j]) {
           if (a.table.keys.elements) { // this is enough to know they exist
+            assert(i < akeys);
             if (strcmp(a.table.keys.elements[i], b.table.keys.elements[j]) ==
                 0) {
               goto matched_table;
