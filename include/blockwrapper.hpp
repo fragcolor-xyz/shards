@@ -24,6 +24,7 @@ CB_HAS_MEMBER_TEST(setParam);
 CB_HAS_MEMBER_TEST(getParam);
 CB_HAS_MEMBER_TEST(warmup);
 CB_HAS_MEMBER_TEST(activate);
+CB_HAS_MEMBER_TEST(nextFrame);
 CB_HAS_MEMBER_TEST(cleanup);
 CB_HAS_MEMBER_TEST(mutate);
 CB_HAS_MEMBER_TEST(crossover);
@@ -199,6 +200,17 @@ template <class T> struct BlockWrapper {
     } else {
       // warmup is optional!
       result->warmup = nullptr;
+    }
+
+    // nextFrame
+    if constexpr (has_nextFrame<T>::value) {
+      result->nextFrame =
+          static_cast<CBNextFrameProc>([](CBlock *b, CBContext *ctx) {
+            reinterpret_cast<BlockWrapper<T> *>(b)->block.nextFrame(ctx);
+          });
+    } else {
+      // nextFrame is optional!
+      result->nextFrame = nullptr;
     }
 
     // activate

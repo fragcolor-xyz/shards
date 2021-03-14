@@ -710,6 +710,8 @@ typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
 
 typedef void(__cdecl *CBWarmupProc)(struct CBlock *, struct CBContext *);
 
+typedef void(__cdecl *CBNextFrameProc)(struct CBlock *, struct CBContext *);
+
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 // Genetic programming optional crossover (inplace/3way) procedure
@@ -772,6 +774,12 @@ struct CBlock {
   // Called every time you stop a coroutine or sometimes
   // internally to clean up the block
   CBCleanupProc cleanup;
+
+  // this proc is optional and won't be called unless requested
+  // using ... (todo)
+  // it will be called always before activate, right at the beginning of the
+  // next top chain coroutine iteration even if the block is not activated
+  CBNextFrameProc nextFrame;
 
   // Optional genetic programming helpers
   // getState/setState are also used during serialization

@@ -1985,6 +1985,14 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
     // reset context state
     context.continueFlow();
 
+    // call optional nextFrame calls here
+    for (auto blk : context.nextFrameCallbacks()) {
+      auto block = const_cast<CBlock *>(blk);
+      if (block->nextFrame) {
+        block->nextFrame(block, &context);
+      }
+    }
+
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     if (unlikely(runRes.state == Failed)) {
       LOG(DEBUG) << "chain " << chain->name << " failed.";

@@ -134,6 +134,14 @@ struct CBContext {
 
   constexpr CBVar getFlowStorage() const { return flowStorage; }
 
+  void registerNextFrameCallback(const CBlock *block) const {
+    nextFrameBlocks.push_back(block);
+  }
+
+  const std::vector<const CBlock *> &nextFrameCallbacks() const {
+    return nextFrameBlocks;
+  }
+
 private:
   CBChainState state = CBChainState::Continue;
   // Used when flow is stopped/restart/return
@@ -141,6 +149,7 @@ private:
   CBVar flowStorage{};
   bool hasError{false};
   std::string errorMessage;
+  mutable std::vector<const CBlock *> nextFrameBlocks;
 };
 
 namespace chainblocks {

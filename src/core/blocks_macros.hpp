@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2021 Giovanni Petrantoni */
 
+// TODO, get rid of this, use Blockswrapper
+
 #ifndef CB_BLOCK_MACROS
 #define CB_BLOCK_MACROS
 
@@ -42,6 +44,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -83,6 +86,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -125,6 +129,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 
@@ -167,6 +172,7 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
 

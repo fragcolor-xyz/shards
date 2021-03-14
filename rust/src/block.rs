@@ -78,6 +78,10 @@ pub trait Block {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
   fn cleanup(&mut self) {}
 
+  fn nextFrame(&mut self, _context: &Context) -> Result<(), &str> {
+    Ok(())
+  }
+
   fn hasMutate() -> bool {
     false
   }
@@ -162,6 +166,13 @@ unsafe extern "C" fn cblock_destroy<T: Block>(arg1: *mut CBlock) {
 unsafe extern "C" fn cblock_warmup<T: Block>(arg1: *mut CBlock, arg2: *mut CBContext) {
   let blk = arg1 as *mut BlockWrapper<T>;
   if let Err(error) = (*blk).block.warmup(&(*arg2)) {
+    abortChain(&(*arg2), error);
+  }
+}
+
+unsafe extern "C" fn cblock_nextFrame<T: Block>(arg1: *mut CBlock, arg2: *mut CBContext) {
+  let blk = arg1 as *mut BlockWrapper<T>;
+  if let Err(error) = (*blk).block.nextFrame(&(*arg2)) {
     abortChain(&(*arg2), error);
   }
 }
@@ -307,6 +318,7 @@ pub fn create<T: Default + Block>() -> BlockWrapper<T> {
       setParam: Some(cblock_setParam::<T>),
       getParam: Some(cblock_getParam::<T>),
       warmup: Some(cblock_warmup::<T>),
+      nextFrame: Some(cblock_nextFrame::<T>),
       activate: Some(cblock_activate::<T>),
       cleanup: Some(cblock_cleanup::<T>),
       mutate: if T::hasMutate() {
